@@ -1,0 +1,36 @@
+<idea-plugin>
+	<id>biz.paluch.maven-updater</id>
+
+	<name>Maven Updater</name>
+
+	<vendor url="https://paluch.biz">Mark Paluch</vendor>
+
+	<description><![CDATA[
+        Scan a Maven pom.xml and show the version state of each dependency in a popup.
+        Displays the current version and suggests an update when a newer version is available
+        from the project's configured Maven repositories. Use Tools → Check Maven Dependency Versions.
+    ]]></description>
+
+	<depends>org.jetbrains.idea.maven</depends>
+	<depends>com.intellij.modules.xml</depends>
+	<resource-bundle>messages.MyMessageBundle</resource-bundle>
+
+	<extensions defaultExtensionNs="com.intellij">
+		<toolWindow id="CheckMavenDependencies"
+		            icon="MavenIcons.ChildrenProjects"/>
+		<intentionAction>
+			<category>Maven</category>
+			<language>XML</language>
+			<className>biz.paluch.mavenupdater.CheckMavenDependenciesIntention</className>
+		</intentionAction>
+	</extensions>
+
+	<actions>
+		<action id="biz.paluch.mavenupdater.CheckMavenDependencies"
+		        class="biz.paluch.mavenupdater.CheckMavenDependenciesAction"
+		        text="Check Maven Dependency Versions"
+		        description="Scan pom and show current vs latest dependency versions">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+	</actions>
+</idea-plugin>

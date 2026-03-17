@@ -1,0 +1,79 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package biz.paluch.mavenupdater;
+
+import icons.MavenIcons;
+
+import org.jetbrains.annotations.NotNull;
+
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
+
+/**
+ * Tools menu action to check Maven dependency versions for the current POM.
+ */
+public class CheckMavenDependenciesAction extends AnAction {
+
+	@Override
+	public void actionPerformed(AnActionEvent e) {
+
+		Project project = e.getProject();
+		if (project == null) {
+			return;
+		}
+		Editor editor = e.getData(CommonDataKeys.EDITOR);
+		if (editor == null) {
+			Messages.showMessageDialog(project, "No editor is open. Open a pom.xml file in the editor.", "No Editor",
+					Messages.getInformationIcon());
+			return;
+		}
+
+		String pomContent = editor.getDocument().getText();
+		VirtualFile pomFile = e.getData(CommonDataKeys.VIRTUAL_FILE);
+
+		ProgressManager.getInstance().run(new DependencyCheckTask(project, pomFile, pomContent));
+	}
+
+	@Override
+	public void update(AnActionEvent e) {
+
+		Project project = e.getProject();
+		Presentation presentation = e.getPresentation();
+
+		if (project == null) {
+			presentation.setEnabledAndVisible(false);
+			return;
+		}
+
+		Editor editor = e.getData(CommonDataKeys.EDITOR);
+		if (editor == null) {
+			presentation.setEnabledAndVisible(false);
+			return;
+		}
+
+		presentation.setIcon(MavenIcons.ChildrenProjects);
+		presentation.setVisible(true);
+		presentation.setEnabled(MavenUtils.isMavenPomFile(project, editor.getDocument()));
+	}
+
+}
