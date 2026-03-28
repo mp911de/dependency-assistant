@@ -25,11 +25,16 @@ import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.Property;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.Icon;
 
+import org.jetbrains.idea.maven.model.MavenArtifact;
+import org.jetbrains.idea.maven.model.MavenPlugin;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
-import org.springframework.util.StringUtils;
 
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProvider;
@@ -45,7 +50,7 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTokenType;
 
 /**
- * Gutter line marker that indicates an outdated Maven dependency or plugin version in a {@code pom.xml}.
+ * Gutter line marker that indicates an newer Maven dependency or plugin version in a {@code pom.xml}.
  * <p>
  * The marker appears on the line of the version value — either a literal {@code <version>} tag inside a
  * {@code <dependency>} or {@code <plugin>}, or a {@code <properties>} child tag whose name maps to a known artifact in
@@ -54,9 +59,11 @@ import com.intellij.psi.xml.XmlTokenType;
  * Only the in-memory {@link Cache} is consulted — no network I/O is performed — so this is safe to call on the EDT.
  * Markers appear only after the user has run a dependency check that populated the cache.
  * <p>
- * Clicking the gutter icon invokes the <em>Update Maven Plugins and Dependencies</em> action.
+ * Clicking the gutter icon invokes the {@link UpdateMavenDependenciesAction}.
  */
-public class OutdatedVersionLineMarkerProvider implements LineMarkerProvider {
+public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
+
+	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([^}]*)\\}");
 
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
@@ -66,50 +73,44 @@ public class OutdatedVersionLineMarkerProvider implements LineMarkerProvider {
 		}
 
 		PsiFile file = element.getContainingFile();
-		if (!(file instanceof XmlFile xmlFile) || !MavenUtils.isMavenPomFile(xmlFile)) {
+		if (!MavenUtils.isMavenPomFile(file)) {
 			return null;
 		}
 
 		Project project = element.getProject();
-		Cache cache = DependencyAssistantService.getInstance(project).getCache();
+		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(project);
+		MavenProject mavenProject = projectsManager.findProject(file.getVirtualFile());
+		DependencyAssistantService state = DependencyAssistantService.getInstance(project);
 
 		// Inline <version> inside <dependency> or <plugin>
 		XmlTag versionTag = XmlUtil.getVersionTag(element);
 		if (versionTag != null) {
-			return buildVersionTagMarker(element, versionTag, cache);
+			return buildVersionTagMarker(element, versionTag, state, mavenProject);
 		}
 
 		// <properties> child tag that controls a dependency version
 		XmlTag propertyTag = XmlUtil.getPropertyTag(element);
 		if (propertyTag != null) {
-			return buildPropertyTagMarker(element, propertyTag, cache);
+			return buildPropertyTagMarker(element, propertyTag, state.getCache());
 		}
 
 		return null;
 	}
 
-	private @Nullable LineMarkerInfo<?> buildVersionTagMarker(PsiElement element, XmlTag versionTag, Cache cache) {
+	private @Nullable LineMarkerInfo<?> buildVersionTagMarker(PsiElement element, XmlTag versionTag,
+			DependencyAssistantService das, @Nullable MavenProject mavenProject) {
 
-		XmlTag parentTag = versionTag.getParentTag();
-		String groupId = parentTag.getSubTagText("groupId");
-		String artifactId = parentTag.getSubTagText("artifactId");
-		if (!StringUtils.hasText(groupId) || !StringUtils.hasText(artifactId)) {
+		ArtifactId artifact = XmlUtil.getArtifactId(versionTag.getParentTag());
+		if (artifact == null) {
 			return null;
 		}
 
-		String version = versionTag.getValue().getText().trim();
-		if (version.contains("${")) {
+		ArtifactVersion currentVersion = resolveVersion(artifact, versionTag, mavenProject);
+		if (currentVersion == null) {
 			return null;
 		}
 
-		ArtifactVersion currentVersion;
-		try {
-			currentVersion = biz.paluch.dap.artifact.ArtifactVersion.of(version);
-		} catch (Exception e) {
-			return null;
-		}
-
-		List<VersionOption> options = cache.getVersionOptions(ArtifactId.of(groupId, artifactId), false);
+		List<VersionOption> options = das.getCache().getVersionOptions(artifact, false);
 		if (options.isEmpty()) {
 			return null;
 		}
@@ -117,16 +118,80 @@ public class OutdatedVersionLineMarkerProvider implements LineMarkerProvider {
 		return buildMarker(element, currentVersion, options);
 	}
 
+	private static @Nullable ArtifactVersion resolveVersion(ArtifactId artifact, XmlTag versionTag,
+			@Nullable MavenProject mavenProject) {
+
+		String version = versionTag.getValue().getText().trim();
+
+		if (version.contains("${")) {
+			version = resolveProperty(version, mavenProject, (XmlFile) versionTag.getContainingFile());
+		}
+
+		if (version.contains("${") && mavenProject != null) {
+
+			List<MavenArtifact> dependencies = mavenProject.findDependencies(artifact.groupId(), artifact.artifactId());
+			if (dependencies.isEmpty()) {
+				MavenPlugin plugin = mavenProject.findPlugin(artifact.groupId(), artifact.artifactId());
+				if (plugin != null) {
+					version = plugin.getVersion();
+				}
+			} else {
+				MavenArtifact dependency = dependencies.get(0);
+				version = dependency.getVersion();
+			}
+		}
+
+		ArtifactVersion currentVersion;
+		try {
+			currentVersion = ArtifactVersion.of(version);
+		} catch (Exception e) {
+			return null;
+		}
+
+		return currentVersion;
+	}
+
+	private static @Nullable String resolveProperty(String expression, MavenProject mavenProject, XmlFile file) {
+
+		while (expression.contains("${")) {
+
+			Matcher matcher = PROPERTY_PATTERN.matcher(expression);
+
+			if (matcher.find()) {
+
+				String propertyName = matcher.group(1);
+				XmlTag properties = file.getDocument().getRootTag().findFirstSubTag("properties");
+				String value = null;
+
+				if (properties != null) {
+					value = properties.getSubTagText(propertyName);
+				}
+
+				if (value == null) {
+					value = mavenProject.getProperties().getProperty(matcher.group(1));
+				}
+
+				if (value != null) {
+					value = resolveProperty(value.trim(), mavenProject, file);
+				}
+
+				if (value == null) {
+					return null;
+				}
+
+				expression = matcher.replaceFirst(value.trim());
+			}
+		}
+
+		return expression;
+	}
+
 	private @Nullable LineMarkerInfo<?> buildPropertyTagMarker(PsiElement element, XmlTag propertyTag, Cache cache) {
 
 		String propertyName = propertyTag.getLocalName();
 		Property property = cache.getProperty(propertyName);
-		if (property == null || property.artifacts().isEmpty()) {
-			return null;
-		}
-
 		String currentVersionText = propertyTag.getValue().getText().trim();
-		if (currentVersionText.contains("${")) {
+		if (property == null || property.artifacts().isEmpty() || currentVersionText.contains("${")) {
 			return null;
 		}
 

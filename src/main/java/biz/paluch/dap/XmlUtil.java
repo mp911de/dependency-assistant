@@ -15,7 +15,11 @@
  */
 package biz.paluch.dap;
 
+import biz.paluch.dap.artifact.ArtifactId;
+
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.StringUtils;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -51,12 +55,12 @@ public class XmlUtil {
 	public static @Nullable XmlTag getVersionTag(PsiElement contextElement) {
 
 		PsiFile file = contextElement.getContainingFile();
-		if (!(file instanceof XmlFile xmlFile) || !MavenUtils.isMavenPomFile(xmlFile)) {
+		if (!MavenUtils.isMavenPomFile(file)) {
 			return null;
 		}
 
 		XmlTag versionTag = PsiTreeUtil.getParentOfType(contextElement, XmlTag.class, false);
-		if (versionTag == null) {
+		if (versionTag == null || !"version".equals(versionTag.getLocalName())) {
 			return null;
 		}
 
@@ -70,6 +74,21 @@ public class XmlUtil {
 		}
 
 		return null;
+	}
+
+	static @Nullable ArtifactId getArtifactId(@Nullable XmlTag pluginOrDependency) {
+
+		if (pluginOrDependency == null) {
+			return null;
+		}
+
+		String groupId = pluginOrDependency.getSubTagText("groupId");
+		String artifactId = pluginOrDependency.getSubTagText("artifactId");
+		if (!StringUtils.hasText(groupId) || !StringUtils.hasText(artifactId)) {
+			return null;
+		}
+
+		return ArtifactId.of(groupId, artifactId);
 	}
 
 }

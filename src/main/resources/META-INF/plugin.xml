@@ -62,7 +62,7 @@ The currently open <code>pom.xml</code> file is used to apply updates to. The pl
 				implementation="biz.paluch.dap.PropertyVersionDocumentationProvider"/>
 		<codeInsight.lineMarkerProvider
 				language="XML"
-				implementationClass="biz.paluch.dap.OutdatedVersionLineMarkerProvider"/>
+				implementationClass="biz.paluch.dap.NewerVersionLineMarkerProvider"/>
 	</extensions>
 
 	<actions>

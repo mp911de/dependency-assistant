@@ -16,30 +16,24 @@
 package biz.paluch.dap.artifact;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.idea.maven.project.MavenHomeKt;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
+import org.jetbrains.idea.maven.project.StaticResolvedMavenHomeType;
 import org.jetbrains.idea.maven.utils.MavenUtil;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -48,6 +42,9 @@ import com.intellij.openapi.project.Project;
  * Reads Maven {@code settings.xml} for the active project and returns a map of server-id to
  * {@link RepositoryCredentials}.
  * <p>
+ * Uses Maven's own bundled JARs (loaded via {@link URLClassLoader} over {@code <maven_home>/lib}) to parse and decrypt
+ * settings, so all password-encryption schemes supported by the active Maven installation are handled correctly.
+ * <p>
  * Settings files are resolved and merged in priority order (lowest first):
  * <ol>
  * <li>Global settings: {@code <maven_home>/conf/settings.xml}</li>
@@ -55,19 +52,20 @@ import com.intellij.openapi.project.Project;
  * falls back to {@code ~/.m2/settings.xml}</li>
  * </ol>
  * <p>
- * Maven-encrypted passwords (those enclosed in {@code {...}}) are decrypted using the same PBE algorithm as
- * {@code plexus-cipher}: SHA-256 key derivation with AES-128/CBC. The master password is read from
- * {@code ~/.m2/settings-security.xml} (or the location given by the {@code settings.security} system property).
+ * Maven-encrypted passwords (those enclosed in {@code {...}}) are decrypted via Maven's
+ * {@code DefaultSettingsDecrypter → DefaultSecDispatcher → DefaultPlexusCipher} chain. The master password is read from
+ * the file given by the {@code settings.security} system property, defaulting to {@code ~/.m2/settings-security.xml}.
+ *
+ * @author Mark Paluch
  */
-public class SettingsXmlCredentialsLoader {
+class SettingsXmlCredentialsLoader {
 
 	private static final Logger LOG = Logger.getInstance(SettingsXmlCredentialsLoader.class);
 
-	/** Matches Maven-encrypted values: {@code {base64...}}. */
-	private static final Pattern ENCRYPTED_VALUE = Pattern.compile("\\{[^}]+\\}");
+	/** Detects passwords that are still in Maven-encrypted {@code {base64}} form after a decryption attempt. */
+	private static final Pattern STILL_ENCRYPTED = Pattern.compile("\\{[^}]+\\}");
 
-	/** Passphrase Maven uses to encrypt the master password itself. */
-	private static final String MASTER_PASSWORD_PASSPHRASE = "settings.security";
+	private final static Map<File, URLClassLoader> MAVEN_CLASSLOADERS = new LinkedHashMap<>();
 
 	private SettingsXmlCredentialsLoader() {}
 
@@ -84,179 +82,196 @@ public class SettingsXmlCredentialsLoader {
 			return Collections.emptyMap();
 		}
 
-		Map<String, RepositoryCredentials> result = new LinkedHashMap<>();
-
-		// Global settings (lower priority) — <maven_home>/conf/settings.xml
-		String mavenHome = mavenManager.getGeneralSettings().getMavenHome();
-		File mavenHomeDir = MavenUtil.resolveMavenHomeDirectory(mavenHome);
-		if (mavenHomeDir != null) {
-			Path globalSettings = mavenHomeDir.toPath().resolve("conf/settings.xml");
-			if (Files.isRegularFile(globalSettings)) {
-				result.putAll(parseSettings(globalSettings));
-			}
+		// Resolve Maven home — required to locate Maven's own lib JARs.
+		// staticOrBundled() maps MavenWrapper and other non-static types to the bundled distribution.
+		StaticResolvedMavenHomeType homeType = MavenHomeKt
+				.staticOrBundled(mavenManager.getGeneralSettings().getMavenHomeType());
+		Path mavenHomePath = MavenUtil.getMavenHomePath(homeType);
+		File mavenHome = (mavenHomePath != null) ? mavenHomePath.toFile() : null;
+		if (mavenHome == null || !mavenHome.isDirectory()) {
+			LOG.debug("Maven home not resolved; skipping settings.xml credential loading");
+			return Collections.emptyMap();
 		}
+
+		// Global settings (lower priority) — <maven_home>/conf/settings.xml.
+		Path globalSettings = new File(mavenHome, "conf/settings.xml").toPath();
 
 		// User settings (higher priority) — resolved via IntelliJ Maven API, which handles
 		// the configured override path, default ~/.m2/settings.xml, and remote EEL targets.
 		String configuredUserSettings = mavenManager.getGeneralSettings().getUserSettingsFile();
 		Path userSettings = MavenUtil.resolveUserSettingsPath(configuredUserSettings, project);
-		if (userSettings != null && Files.isRegularFile(userSettings)) {
-			result.putAll(parseSettings(userSettings));
-		}
 
-		return result;
+		// settings-security.xml for master-password decryption.
+		String securityFilePath = System.getProperty("settings.security",
+				System.getProperty("user.home") + "/.m2/settings-security.xml");
+
+
+		URLClassLoader mavenClassLoader = MAVEN_CLASSLOADERS.computeIfAbsent(mavenHome, it -> {
+
+			File libDir = new File(mavenHome, "lib");
+			if (!libDir.isDirectory()) {
+				LOG.debug("Maven lib dir not found at " + libDir + "; skipping credential loading");
+			}
+
+			try {
+				return new URLClassLoader(collectJars(libDir), null);
+			}
+			catch (IOException e) {
+				LOG.debug("Failed to list Maven lib JARs from " + libDir, e);
+				throw new RuntimeException(e);
+			}
+		});
+
+		return loadWithMavenApi(mavenClassLoader, globalSettings, userSettings, securityFilePath);
 	}
 
-	private static Map<String, RepositoryCredentials> parseSettings(Path settingsPath) {
+	// -------------------------------------------------------------------------
+	// Settings loading via Maven API
+	// -------------------------------------------------------------------------
 
-		Document doc;
-		try (InputStream in = Files.newInputStream(settingsPath)) {
-			doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+	private static Map<String, RepositoryCredentials> loadWithMavenApi(URLClassLoader loader, Path globalSettings,
+			Path userSettings, String securityFilePath) {
+
+		try {
+			Object mergedSettings = mergeSettings(loader, globalSettings, userSettings);
+			if (mergedSettings == null) {
+				return Collections.emptyMap();
+			}
+			return extractCredentials(loader, mergedSettings, securityFilePath);
 		} catch (Exception e) {
-			LOG.debug("Could not parse Maven settings at " + settingsPath, e);
+			LOG.debug("Error loading credentials from Maven settings via Maven API", e);
 			return Collections.emptyMap();
 		}
+	}
+
+	/**
+	 * Parses global and user {@code settings.xml} files using {@code SettingsXpp3Reader} and merges them (user settings
+	 * taking precedence) using {@code MavenSettingsMerger}.
+	 */
+	private static Object mergeSettings(URLClassLoader loader, Path globalSettings, Path userSettings) throws Exception {
+
+		Class<?> readerClass = loader.loadClass("org.apache.maven.settings.io.xpp3.SettingsXpp3Reader");
+		Object reader = readerClass.getConstructor().newInstance();
+		Method readMethod = readerClass.getMethod("read", InputStream.class);
+
+		// Read global settings (may not exist — treat as empty).
+		Object global = readSettingsFile(reader, readMethod, globalSettings);
+
+		// Read user settings (may not exist — treat as empty).
+		Object user = readSettingsFile(reader, readMethod, userSettings);
+
+		if (global == null && user == null) {
+			return null;
+		}
+
+		// If only one side exists, return it directly without merging.
+		if (global == null) {
+			return user;
+		}
+		if (user == null) {
+			return global;
+		}
+
+		// Merge: user settings are dominant (higher priority).
+		Class<?> mergerClass = loader.loadClass("org.apache.maven.settings.merge.MavenSettingsMerger");
+		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
+		Object merger = mergerClass.getConstructor().newInstance();
+		mergerClass.getMethod("merge", settingsClass, settingsClass, String.class).invoke(merger, user, global,
+				"user-level");
+
+		return user; // user now contains the merged result
+	}
+
+	private static Object readSettingsFile(Object reader, Method readMethod, Path path) {
+		if (path == null || !Files.isRegularFile(path)) {
+			return null;
+		}
+		try (InputStream in = Files.newInputStream(path)) {
+			return readMethod.invoke(reader, in);
+		} catch (Exception e) {
+			LOG.debug("Could not read/parse Maven settings at " + path, e);
+			return null;
+		}
+	}
+
+	/**
+	 * Decrypts the server passwords in {@code settingsObj} using Maven's {@code DefaultSettingsDecrypter} chain and
+	 * returns a map of server-id to {@link RepositoryCredentials}. Servers whose passwords remain encrypted after the
+	 * attempt (decryption failed) are silently omitted.
+	 */
+	private static Map<String, RepositoryCredentials> extractCredentials(URLClassLoader loader, Object settingsObj,
+			String securityFilePath) throws Exception {
+
+		// Wire: DefaultPlexusCipher → DefaultSecDispatcher → DefaultSettingsDecrypter
+		Class<?> cipherClass = loader.loadClass("org.sonatype.plexus.components.cipher.DefaultPlexusCipher");
+		Object cipher = cipherClass.getConstructor().newInstance();
+
+		Class<?> plexusCipherIface = loader.loadClass("org.sonatype.plexus.components.cipher.PlexusCipher");
+		Class<?> dispatcherClass = loader.loadClass("org.sonatype.plexus.components.sec.dispatcher.DefaultSecDispatcher");
+		Constructor<?> dispatcherCtor = dispatcherClass.getConstructor(plexusCipherIface, Map.class, String.class);
+		Object dispatcher = dispatcherCtor.newInstance(cipher, Collections.emptyMap(), securityFilePath);
+
+		Class<?> secDispatcherIface = loader.loadClass("org.sonatype.plexus.components.sec.dispatcher.SecDispatcher");
+		Class<?> decrypterClass = loader.loadClass("org.apache.maven.settings.crypto.DefaultSettingsDecrypter");
+		Object decrypter = decrypterClass.getConstructor(secDispatcherIface).newInstance(dispatcher);
+
+		// Build decryption request from the merged Settings object.
+		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
+		Class<?> requestClass = loader.loadClass("org.apache.maven.settings.crypto.DefaultSettingsDecryptionRequest");
+		Object request = requestClass.getConstructor(settingsClass).newInstance(settingsObj);
+
+		// Decrypt.
+		Class<?> requestIface = loader.loadClass("org.apache.maven.settings.crypto.SettingsDecryptionRequest");
+		Method decryptMethod = decrypterClass.getMethod("decrypt", requestIface);
+		Object result = decryptMethod.invoke(decrypter, request);
+
+		// Extract server credentials from the result.
+		Class<?> resultIface = loader.loadClass("org.apache.maven.settings.crypto.SettingsDecryptionResult");
+		@SuppressWarnings("unchecked")
+		List<Object> servers = (List<Object>) resultIface.getMethod("getServers").invoke(result);
+
+		Class<?> serverClass = loader.loadClass("org.apache.maven.settings.Server");
+		Method getId = serverClass.getMethod("getId");
+		Method getUsername = serverClass.getMethod("getUsername");
+		Method getPassword = serverClass.getMethod("getPassword");
 
 		Map<String, RepositoryCredentials> credentials = new LinkedHashMap<>();
-		NodeList servers = doc.getElementsByTagName("server");
 
-		for (int i = 0; i < servers.getLength(); i++) {
-			Element server = (Element) servers.item(i);
-			String id = firstChildText(server, "id");
-			String username = firstChildText(server, "username");
-			String rawPassword = firstChildText(server, "password");
+		for (Object server : servers) {
+			String id = (String) getId.invoke(server);
+			String username = (String) getUsername.invoke(server);
+			String password = (String) getPassword.invoke(server);
 
-			if (id == null || id.isBlank() || username == null || username.isBlank() || rawPassword == null
-					|| rawPassword.isBlank()) {
+			if (id == null || id.isBlank() || username == null || username.isBlank() || password == null
+					|| password.isBlank()) {
 				continue;
 			}
 
-			String password = decryptIfEncrypted(id, rawPassword.trim());
-			if (password != null) {
-				credentials.put(id.trim(), new RepositoryCredentials(username.trim(), password));
+			if (STILL_ENCRYPTED.matcher(password.trim()).matches()) {
+				LOG.debug("Skipping server '" + id + "' — password could not be decrypted");
+				continue;
 			}
+
+			credentials.put(id.trim(), new RepositoryCredentials(id, username.trim(), password.trim()));
 		}
 
 		return credentials;
 	}
 
 	// -------------------------------------------------------------------------
-	// Maven password decryption
+	// Utilities
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Returns the plaintext password. Encrypted passwords (wrapped in {@code {...}}) are decrypted using the
-	 * Maven/plexus-cipher PBE scheme; if decryption fails the entry is omitted. Plaintext passwords are returned as-is.
-	 */
-	@Nullable
-	private static String decryptIfEncrypted(String serverId, String rawPassword) {
+	private static URL[] collectJars(File libDir) throws IOException {
 
-		if (!ENCRYPTED_VALUE.matcher(rawPassword).matches()) {
-			return rawPassword;
+		File[] jars = libDir.listFiles((dir, name) -> name.endsWith(".jar"));
+		if (jars == null || jars.length == 0) {
+			return new URL[0];
 		}
-
-		String masterPassword = readMasterPassword();
-		if (masterPassword == null) {
-			LOG.debug("Skipping encrypted password for server '" + serverId
-					+ "' — settings-security.xml not found or master password could not be decrypted");
-			return null;
+		URL[] urls = new URL[jars.length];
+		for (int i = 0; i < jars.length; i++) {
+			urls[i] = jars[i].toURI().toURL();
 		}
-
-		try {
-			String inner = rawPassword.substring(1, rawPassword.length() - 1);
-			return pbeDecrypt(inner, masterPassword);
-		} catch (Exception e) {
-			LOG.debug("Failed to decrypt password for Maven server '" + serverId + "'", e);
-			return null;
-		}
-	}
-
-	/**
-	 * Reads and decrypts the master password from {@code settings-security.xml}.
-	 * <p>
-	 * The file location is taken from the {@code settings.security} system property, defaulting to
-	 * {@code ~/.m2/settings-security.xml}.
-	 */
-	@Nullable
-	private static String readMasterPassword() {
-
-		String secFile = System.getProperty("settings.security",
-				System.getProperty("user.home") + "/.m2/settings-security.xml");
-		Path secPath = Paths.get(secFile);
-
-		if (!Files.isRegularFile(secPath)) {
-			return null;
-		}
-
-		Document doc;
-		try (InputStream in = Files.newInputStream(secPath)) {
-			doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
-		} catch (Exception e) {
-			LOG.debug("Could not parse settings-security.xml at " + secPath, e);
-			return null;
-		}
-
-		String encryptedMaster = firstChildText(doc.getDocumentElement(), "master");
-		if (encryptedMaster == null || !ENCRYPTED_VALUE.matcher(encryptedMaster.trim()).matches()) {
-			return null;
-		}
-
-		try {
-			String inner = encryptedMaster.trim();
-			inner = inner.substring(1, inner.length() - 1);
-			return pbeDecrypt(inner, MASTER_PASSWORD_PASSPHRASE);
-		} catch (Exception e) {
-			LOG.debug("Failed to decrypt master password from " + secPath, e);
-			return null;
-		}
-	}
-
-	/**
-	 * Decrypts a Base64-encoded Maven/plexus-cipher ciphertext using the given passphrase.
-	 * <p>
-	 * Matches the {@code PBECipher} algorithm bundled with Maven 3 ({@code plexus-cipher 2.x}):
-	 * <ul>
-	 * <li>Key derivation: one round of SHA-256 over {@code passphrase || salt[0..7]}; first 16 bytes → AES-128 key, bytes
-	 * 16–31 → CBC IV.</li>
-	 * <li>Cipher: AES/CBC/PKCS5Padding.</li>
-	 * <li>Wire format (after Base64 decode): {@code salt[8] | padlen[1] | ciphertext | padding[padlen]}.</li>
-	 * </ul>
-	 */
-	private static String pbeDecrypt(String base64Cipher, String passphrase) throws Exception {
-
-		byte[] decoded = Base64.getDecoder().decode(base64Cipher);
-
-		byte[] salt = Arrays.copyOf(decoded, 8);
-		int padlen = decoded[8] & 0xFF;
-		int ciphertextLen = decoded.length - 9 - padlen;
-		byte[] ciphertext = Arrays.copyOfRange(decoded, 9, 9 + ciphertextLen);
-
-		// SHA-256(passphrase || salt) → 32 bytes; split into key (0..15) and IV (16..31)
-		MessageDigest sha = MessageDigest.getInstance("SHA-256");
-		sha.update(passphrase.getBytes(StandardCharsets.UTF_8));
-		sha.update(salt);
-		byte[] derived = sha.digest();
-
-		SecretKeySpec key = new SecretKeySpec(Arrays.copyOf(derived, 16), "AES");
-		IvParameterSpec iv = new IvParameterSpec(Arrays.copyOfRange(derived, 16, 32));
-
-		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-		cipher.init(Cipher.DECRYPT_MODE, key, iv);
-
-		return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
-	}
-
-	// -------------------------------------------------------------------------
-	// XML helpers
-	// -------------------------------------------------------------------------
-
-	@Nullable
-	private static String firstChildText(Element parent, String tagName) {
-		NodeList nodes = parent.getElementsByTagName(tagName);
-		if (nodes.getLength() == 0) {
-			return null;
-		}
-		String text = nodes.item(0).getTextContent();
-		return (text != null) ? text.trim() : null;
+		return urls;
 	}
 }

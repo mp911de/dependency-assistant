@@ -18,6 +18,7 @@ package biz.paluch.dap;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 
@@ -40,7 +41,12 @@ class MavenUtils {
 		return isMavenPomFile(xmlFile);
 	}
 
+	public static boolean isMavenPomFile(PsiFile file) {
+		return file instanceof XmlFile xmlFile && isMavenPomFile(xmlFile);
+	}
+
 	public static boolean isMavenPomFile(XmlFile xmlFile) {
+
 		XmlTag rootTag = xmlFile.getDocument() != null ? xmlFile.getDocument().getRootTag() : null;
 		if (rootTag == null) {
 			return false;

@@ -19,7 +19,12 @@ package biz.paluch.dap.artifact;
  * HTTP Basic-auth credentials for a Maven repository server entry.
  *
  * @param username server username
- * @param password plain-text password (Maven-encrypted passwords are not supported and are silently skipped)
+ * @param password plain-text password
  */
-public record RepositoryCredentials(String username, String password) {
+public record RepositoryCredentials(String id, String username, String password) {
+
+	@Override
+	public String toString() {
+		return "RepositoryCredentials: " + id();
+	}
 }
