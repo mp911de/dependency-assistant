@@ -19,8 +19,12 @@ It determines available versions from your configured repositories and can apply
 .Screenshot: dependency version check dialog
 image::images/screenshot.png[Maven dependency check dialog,width=800]
 
+{empty} +
+
 .Screenshot: Version Suggestions
 image::images/version-suggestions.png[Suggstions,width=400]
+
+{empty} +
 
 .Screenshot: Version Documentations
 image::images/documentation-highlights.png[Suggstions,width=400]
