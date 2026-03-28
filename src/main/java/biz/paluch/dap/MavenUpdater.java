@@ -21,7 +21,7 @@ import com.intellij.openapi.util.IconLoader;
 
 class MavenUpdater {
 
-	public static final Icon ICON = load("/META-INF/maven-updater.svg");
+	public static final Icon ICON = load("/META-INF/dependency-assistant.svg");
 
 	private static Icon load(String path) {
 		return IconLoader.getIcon(path, MavenUpdater.class.getClassLoader());

@@ -39,9 +39,10 @@ class DependencyCheckTask extends Task.Backgroundable {
 	private static final Logger LOG = Logger.getInstance(DependencyCheckTask.class);
 
 	private final Project project;
-	private volatile @Nullable DependencyUpdates resultRef;
 	private final String pomContent;
 	private final VirtualFile pomFile;
+
+	private volatile @Nullable DependencyUpdates resultRef;
 
 	public DependencyCheckTask(Project project, VirtualFile pomFile, String pomContent) {
 		super(project, MessageBundle.message("action.check.dependencies.progress"), true);
