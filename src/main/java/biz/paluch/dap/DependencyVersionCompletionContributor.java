@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap;
 
-import static com.intellij.patterns.PsiJavaPatterns.*;
+import static com.intellij.patterns.PlatformPatterns.*;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.state.Cache;
@@ -69,7 +69,7 @@ public class DependencyVersionCompletionContributor extends CompletionContributo
 
 			if (StringUtils.hasText(artifactId) && StringUtils.hasText(groupId)) {
 
-				Cache cache = DependencyAssistantService.getInstance(project).getState().getCache();
+				Cache cache = DependencyAssistantService.getInstance(project).getCache();
 
 				// Show all cached versions on a second invocation (Ctrl+Space twice)
 				CompletionResultSet versionsResult = parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")

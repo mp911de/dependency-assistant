@@ -92,19 +92,17 @@ public class Cache {
 	 */
 	public void putVersionOptions(ArtifactId artifactId, List<VersionOption> versionOptions) {
 
-		Artifact artifactToUse = null;
+		Artifact artifactToUse;
 		synchronized (artifacts) {
+			artifactToUse = null;
 			for (Artifact artifact : artifacts) {
 				if (artifact.matches(artifactId)) {
 					artifactToUse = artifact;
 					break;
 				}
 			}
-		}
-
-		if (artifactToUse == null) {
-			artifactToUse = new Artifact(artifactId);
-			synchronized (artifacts) {
+			if (artifactToUse == null) {
+				artifactToUse = new Artifact(artifactId);
 				artifacts.add(artifactToUse);
 			}
 		}

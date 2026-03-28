@@ -133,7 +133,7 @@ class DependencyCheckDialog extends DialogWrapper {
 			if (table.getCellEditor() != null) {
 				table.getCellEditor().cancelCellEditing();
 			}
-			table.repaint();
+			model.setItems(this.model.getUpdates());
 		});
 
 		ComboBox<DependencyUpdateModel.UpgradeStrategies> strategyComboBox = new ComboBox<>(
@@ -488,7 +488,7 @@ class DependencyCheckDialog extends DialogWrapper {
 				boolean plugin = option.source() instanceof DeclarationSource.Plugin;
 
 				if (plugin) {
-					tooltip += MessageBundle.message("dialog.tooltip.plugin", tooltip);
+					tooltip += MessageBundle.message("dialog.tooltip.plugin", option.artifactId().toString());
 				}
 
 				if (option.source() instanceof DeclarationSource.Profile profile) {

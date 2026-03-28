@@ -43,6 +43,8 @@ The currently open <code>pom.xml</code> file is used to apply updates to. The pl
 	<extensions defaultExtensionNs="com.intellij">
 		<projectService
 				serviceImplementation="biz.paluch.dap.state.DependencyAssistantService"/>
+		<projectService
+				serviceImplementation="biz.paluch.dap.artifact.DependencyCheckService"/>
 		<intentionAction>
 			<category>Maven</category>
 			<language>XML</language>

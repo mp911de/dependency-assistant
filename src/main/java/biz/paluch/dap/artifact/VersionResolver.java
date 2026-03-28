@@ -72,7 +72,7 @@ public class VersionResolver {
 			ArtifactVersion currentVersion) {
 
 		String path = coordinate.groupId().replace(".", "/") + "/" + coordinate.artifactId() + "/";
-		String metadataPath = path + "/maven-metadata.xml";
+		String metadataPath = path + "maven-metadata.xml";
 
 		Map<String, LocalDateTime> releaseDates = new HashMap<>();
 		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());

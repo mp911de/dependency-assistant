@@ -37,6 +37,7 @@ import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.model.Pointer;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.HtmlChunk;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.platform.backend.documentation.DocumentationResult;
 import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.documentation.PsiDocumentationTargetProvider;
@@ -84,7 +85,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 		}
 
 		Project project = element.getProject();
-		Cache cache = DependencyAssistantService.getInstance(project).getState().getCache();
+		Cache cache = DependencyAssistantService.getInstance(project).getCache();
 		Property property = cache.getProperty(propertyTag.getLocalName());
 		if (property == null) {
 			return null;
@@ -165,7 +166,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 			sb.append(DocumentationMarkup.CONTENT_START);
 
 			if (!currentValue.isEmpty()) {
-				sb.append("<p>Current value: <code>").append(currentValue).append("</code></p>");
+				sb.append("<p>Current value: <code>").append(StringUtil.escapeXmlEntities(currentValue)).append("</code></p>");
 			}
 
 			boolean hasVersions = false;
@@ -194,10 +195,17 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 
 					sb.append("<td>");
 					boolean preview = v.isPreview();
+					boolean current = v.version().equals(currentVersion);
 					if (preview) {
 						sb.append("<i>");
 					}
+					if (current) {
+						sb.append("<b>");
+					}
 					sb.append(v.version());
+					if (current) {
+						sb.append("</b>");
+					}
 					if (preview) {
 						sb.append("</i>");
 					}

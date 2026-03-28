@@ -20,6 +20,7 @@ import biz.paluch.dap.artifact.xml.PomDependency;
 import biz.paluch.dap.artifact.xml.PomProfile;
 import biz.paluch.dap.artifact.xml.PomProjection;
 import biz.paluch.dap.artifact.xml.XmlBeamProjectorFactory;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.DependencyAssistantState;
 
@@ -58,6 +59,8 @@ import com.intellij.util.concurrency.AppExecutorUtil;
  */
 public class DependencyCheckService {
 
+	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([^}]*)\\}");
+
 	private final Project project;
 	private final DependencyAssistantState state;
 
@@ -65,6 +68,13 @@ public class DependencyCheckService {
 		this.project = project;
 		DependencyAssistantService cacheService = DependencyAssistantService.getInstance(project);
 		this.state = cacheService.getState();
+	}
+
+	/**
+	 * Returns the service instance for the given project.
+	 */
+	public static DependencyCheckService getInstance(Project project) {
+		return project.getService(DependencyCheckService.class);
 	}
 
 	public DependencyUpdates runCheck(ProgressIndicator indicator, String pomContent, @Nullable VirtualFile pomFile)
@@ -96,6 +106,7 @@ public class DependencyCheckService {
 					List.of(MessageBundle.message("action.check.dependencies.empty")));
 		}
 
+		Cache cache = state.getCache();
 		List<RemoteRepository> repoUrls = collectRepositories(mavenProject);
 		VersionResolver resolver = new VersionResolver(repoUrls);
 		List<DependencyUpdateOption> items = new ArrayList<>();
@@ -107,11 +118,12 @@ public class DependencyCheckService {
 		for (VersionCheckCandidate task : tasks) {
 			futures.add(executor.submit(() -> {
 				try {
-					List<VersionOption> versionOptions = state.getCache().getVersionOptions(task.getArtifactId(), true);
+
+					List<VersionOption> versionOptions = cache.getVersionOptions(task.getArtifactId(), true);
 
 					if (CollectionUtils.isEmpty(versionOptions)) {
 						versionOptions = resolver.getVersionSuggestions(task.getArtifactId(), task.getCurrentVersion());
-						state.getCache().putVersionOptions(task.getArtifactId(), versionOptions);
+						cache.putVersionOptions(task.getArtifactId(), versionOptions);
 					}
 
 					return new ResolverResult(null, versionOptions);
@@ -141,14 +153,11 @@ public class DependencyCheckService {
 			}
 			VersionCheckCandidate task = tasks.get(i);
 			DependencyUpdateOption info = new DependencyUpdateOption(task, res.versionOptions);
-			if (info.hasUpdateCandidate()) {
-				items.add(info);
-			}
+			items.add(info);
 		}
 
-		state.getCache().setProperties(collector.getVersionCheckCandidates());
-		state.getCache().recordUpdate();
-		project.scheduleSave();
+		cache.setProperties(collector.getVersionCheckCandidates());
+		cache.recordUpdate();
 		items.sort(Comparator.comparing(DependencyUpdateOption::artifactId));
 
 		return new DependencyUpdates(projectName, items, errors);
@@ -269,7 +278,7 @@ public class DependencyCheckService {
 	}
 
 	private PomProjection project(VirtualFile file) throws IOException {
-		return project(new String(file.contentsToByteArray()));
+		return project(new String(file.contentsToByteArray(), file.getCharset()));
 	}
 
 	private List<RemoteRepository> collectRepositories(MavenProject mavenProject) {
@@ -418,9 +427,17 @@ public class DependencyCheckService {
 	}
 
 	private @Nullable PomProperty resolveProperty(String property, Projects projects) {
+		return resolveProperty(property, projects, new LinkedHashSet<>());
+	}
+
+	private @Nullable PomProperty resolveProperty(String property, Projects projects, Set<String> visited) {
 
 		if (property.startsWith("${") && property.endsWith("}")) {
 			property = property.substring(2, property.length() - 1);
+		}
+
+		if (!visited.add(property)) {
+			return null;
 		}
 
 		PomProperty value = projects.getProperty(property);
@@ -428,7 +445,7 @@ public class DependencyCheckService {
 		if (value != null) {
 
 			if (value.containsProperty()) {
-				return resolveProperty(value.value().trim(), projects);
+				return resolveProperty(value.value().trim(), projects, visited);
 			}
 
 			return new PomProperty(property, value.value().trim(), VersionSource.property(property));
@@ -439,8 +456,7 @@ public class DependencyCheckService {
 
 	private @Nullable String resolvePropertyValue(String property, Projects projects) {
 
-		Pattern pattern = Pattern.compile("\\$\\{(.*)\\}");
-		Matcher matcher = pattern.matcher(property);
+		Matcher matcher = PROPERTY_PATTERN.matcher(property);
 		String result = property;
 		while (matcher.find()) {
 
@@ -448,7 +464,7 @@ public class DependencyCheckService {
 			PomProperty pomProperty = resolveProperty(name, projects);
 			if (pomProperty != null) {
 				result = matcher.replaceFirst(pomProperty.value);
-				matcher = pattern.matcher(result);
+				matcher = PROPERTY_PATTERN.matcher(result);
 			}
 		}
 

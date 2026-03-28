@@ -69,12 +69,12 @@ public class PropertyVersionCompletionContributor extends CompletionContributor 
 			}
 
 			String propertyName = propertyTag.getLocalName();
-			Cache cache = DependencyAssistantService.getInstance(project).getState().getCache();
+			Cache cache = DependencyAssistantService.getInstance(project).getCache();
 
 			// Show all cached versions on a second invocation (Ctrl+Space twice)
 			CompletionResultSet versionsResult = parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("") : result;
 
-			List<SuggestionProviderUtil.ArtifactVersion> allOptions = findVersions(propertyName, cache);
+			List<SuggestionProviderUtil.ArtifactVersion> allOptions = findVersionsForFirstArtifact(propertyName, cache);
 			if (allOptions.isEmpty()) {
 				return;
 			}
@@ -82,7 +82,8 @@ public class PropertyVersionCompletionContributor extends CompletionContributor 
 			SuggestionProviderUtil.addSuggestions(allOptions, versionsResult, ArtifactId::toString);
 		}
 
-		private static List<SuggestionProviderUtil.ArtifactVersion> findVersions(String propertyName, Cache cache) {
+		private static List<SuggestionProviderUtil.ArtifactVersion> findVersionsForFirstArtifact(String propertyName,
+				Cache cache) {
 
 			Property property = cache.getProperty(propertyName);
 			if (property == null) {
@@ -92,7 +93,6 @@ public class PropertyVersionCompletionContributor extends CompletionContributor 
 			List<SuggestionProviderUtil.ArtifactVersion> options = new ArrayList<>();
 			for (Artifact artifact : property.artifacts()) {
 				options.addAll(SuggestionProviderUtil.findOptions(artifact.toArtifactId(), cache));
-
 				break;
 			}
 			options.sort(Comparator.reverseOrder());

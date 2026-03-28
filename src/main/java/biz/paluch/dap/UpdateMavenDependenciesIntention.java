@@ -65,17 +65,17 @@ public class UpdateMavenDependenciesIntention extends BaseElementAtCaretIntentio
 			return false;
 		}
 
-		if (currentTag.getLocalName().equals("properties")) {
-			return true;
-		}
-
 		XmlTag parentTag = currentTag.getParentTag();
+		if (parentTag == null) {
+			return false;
+		}
 
-		if (parentTag != null && parentTag.getLocalName().equals("properties")) {
+		if (currentTag.getLocalName().equals("properties") || parentTag.getLocalName().equals("properties")
+				|| parentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")) {
 			return true;
 		}
 
-		return parentTag != null && "version".equals(currentTag.getLocalName())
+		return "version".equals(currentTag.getLocalName())
 				&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName()));
 	}
 

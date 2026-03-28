@@ -24,6 +24,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.util.MultiValueMapAdapter;
 
 /**
+ * Collects all dependencies and their usages.
+ *
  * @author Mark Paluch
  */
 public class ArtifactCollector {

@@ -41,6 +41,10 @@ public final class DependencyAssistantService implements PersistentStateComponen
 		return state;
 	}
 
+	public Cache getCache() {
+		return state.getCache();
+	}
+
 	@Override
 	public void loadState(DependencyAssistantState state) {
 		XmlSerializerUtil.copyBean(state, this.state);

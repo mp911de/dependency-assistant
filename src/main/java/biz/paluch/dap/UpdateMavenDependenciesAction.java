@@ -39,7 +39,8 @@ public class UpdateMavenDependenciesAction extends AnAction {
 		}
 		Editor editor = e.getData(CommonDataKeys.EDITOR);
 		if (editor == null) {
-			Messages.showMessageDialog(project, "No editor is open. Open a pom.xml file in the editor.", "No Editor",
+			Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.noEditorOpen"),
+					MessageBundle.message("action.check.dependencies.noEditorOpen.title"),
 					Messages.getInformationIcon());
 			return;
 		}

@@ -54,7 +54,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 	@Override
 	public void run(ProgressIndicator indicator) {
 		try {
-			resultRef = new DependencyCheckService(project).runCheck(indicator, pomContent, pomFile);
+			resultRef = DependencyCheckService.getInstance(project).runCheck(indicator, pomContent, pomFile);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

@@ -19,6 +19,7 @@ import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.Icon;
@@ -30,18 +31,19 @@ import org.jspecify.annotations.Nullable;
  */
 class DependencyUpdateModel {
 
-	private final DependencyUpdates updates;
+	private final DependencyUpdates updateCheckResult;
+	private final List<DependencyUpdateOption> updateOptions = new ArrayList<>();
 
 	private UpgradeStrategies upgradeStrategy = UpgradeStrategies.MANUAL;
-
 	private boolean filterVersionSuggestions = true;
 
-	public DependencyUpdateModel(DependencyUpdates updates) {
-		this.updates = updates;
+	public DependencyUpdateModel(DependencyUpdates updateCheckResult) {
+		this.updateCheckResult = updateCheckResult;
+		setFilterVersionSuggestions(true);
 	}
 
 	public void setUpdateAll(boolean state) {
-		for (DependencyUpdateOption option : updates.getUpdates()) {
+		for (DependencyUpdateOption option : getUpdates()) {
 			option.setApplyUpdate(state);
 		}
 	}
@@ -60,14 +62,31 @@ class DependencyUpdateModel {
 
 	public void setFilterVersionSuggestions(boolean filterVersionSuggestions) {
 		this.filterVersionSuggestions = filterVersionSuggestions;
+
+		updateOptions.clear();
+
+		if (filterVersionSuggestions) {
+			for (DependencyUpdateOption updateOption : this.updateCheckResult.getUpdates()) {
+				if (!updateOption.hasUpdateCandidate()) {
+					continue;
+				}
+
+				if (updateOption.getTargets().size() == 1 && updateOption.getTargets().containsKey(UpgradeStrategy.PREVIEW)) {
+					continue;
+				}
+				updateOptions.add(updateOption);
+			}
+		} else {
+			updateOptions.addAll(updateCheckResult.getUpdates());
+		}
 	}
 
 	public List<DependencyUpdateOption> getUpdates() {
-		return updates.getUpdates();
+		return updateOptions;
 	}
 
 	public List<String> getErrors() {
-		return updates.errors();
+		return updateCheckResult.errors();
 	}
 
 	enum UpgradeStrategies {
@@ -116,8 +135,7 @@ class DependencyUpdateModel {
 			return (switch (upgradeStrategy) {
 				case PATCH -> VersionAge.NEWER_PATCH;
 				case MINOR -> VersionAge.NEWER_MINOR;
-				case MAJOR -> VersionAge.NEWER_MAJOR;
-				case LATEST -> VersionAge.NEWER_MAJOR;
+				case MAJOR, LATEST -> VersionAge.NEWER_MAJOR;
 				case PREVIEW -> VersionAge.PREVIEW;
 			}).getIcon();
 		}
