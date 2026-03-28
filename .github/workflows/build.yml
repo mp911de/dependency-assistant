@@ -1,25 +1,17 @@
-# GitHub Actions Workflow created for testing and preparing the plugin release in following steps:
-# - validate Gradle Wrapper,
-# - run test and verifyPlugin tasks,
-# - run buildPlugin task and prepare artifact for the further tests,
-# - run IntelliJ Plugin Verifier,
-# - create a draft release.
-#
-
 name: Build
 on:
   push:
     branches: [ main ]
 
 concurrency:
-  # Only run once for latest commit per ref and cancel other (previous) runs.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
+permissions:
+  contents: read
+  actions: write
 
-  # Build plugin with buildPlugin Gradle task and provide the artifact for the next workflow jobs
-  # Requires gradle validation job to be passed
+jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -36,14 +28,18 @@ jobs:
           java-version: 21
           distribution: 'temurin'
 
-      # Check out current repository
       - name: Fetch Sources
         uses: actions/checkout@v6
 
-      # Setup Gradle
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      # Build artifact using buildPlugin Gradle task
       - name: Build Plugin
         run: ./gradlew check verifyPlugin buildPlugin
+
+      - name: Capture Build Artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: plugin
+          path: 'build/distributions/*.zip'
+          retention-days: 15
