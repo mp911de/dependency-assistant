@@ -18,12 +18,15 @@ package biz.paluch.dap.artifact;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.intellij.util.concurrency.AppExecutorUtil;
 
@@ -45,10 +48,15 @@ public class ReleaseResolver {
 
 		Set<Release> result = new TreeSet<>(Comparator.<Release> naturalOrder().reversed());
 		List<Future<List<Release>>> futures = new ArrayList<>();
+		Map<ReleaseSource, Future<?>> futureMap = new HashMap<>();
 		for (ReleaseSource source : sources) {
 			Future<List<Release>> future = executor.submit(() -> source.getReleases(artifactId));
 			futures.add(future);
 		}
+
+		Map<Class<? extends ReleaseSource>, AtomicInteger> failureCounter = new HashMap<>();
+
+		List<RuntimeException> errors = new ArrayList<>();
 
 		for (Future<List<Release>> future : futures) {
 			try {
@@ -56,10 +64,13 @@ public class ReleaseResolver {
 			} catch (InterruptedException e) {
 				return new ArrayList<>(result);
 			} catch (ExecutionException e) {
-				if (e.getCause() instanceof RuntimeException re) {
-					throw re;
-				}
-				throw new UndeclaredThrowableException(e.getCause());
+				errors.add(e.getCause() instanceof RuntimeException re ? re : new UndeclaredThrowableException(e.getCause()));
+			}
+		}
+
+		if (result.isEmpty() || errors.size() == sources.size()) {
+			if (!errors.isEmpty()) {
+				throw errors.get(0);
 			}
 		}
 

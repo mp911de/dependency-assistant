@@ -35,7 +35,7 @@ import com.intellij.ui.JBColor;
 public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 
 	public static final TextAttributes DEFAULT_TEXT_ATTRIBUTES = new TextAttributes(null,
-			new JBColor(new Color(0x80C2FFC2, true), new Color(0x2C799779, true)), null, null, Font.PLAIN);
+			new JBColor(new Color(0x3DC2FFC2, true), new Color(0x2C799779, true)), null, null, Font.PLAIN);
 	public static final HighlightSeverity NEWER_VERSION = new HighlightSeverity("NEWER",
 			HighlightSeverity.INFORMATION.myVal + 5, //
 			MessageBundle.lazyMessage("newer.severity"), //

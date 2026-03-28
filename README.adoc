@@ -17,7 +17,13 @@ It determines available versions from your configured repositories and can apply
 * Uses repositories from the active Maven project (e.g. Maven Central and repos declared in the POM); **repository authentication is not supported yet**
 
 .Screenshot: dependency version check dialog
-image::src/main/resources/META-INF/screenshot.png[Maven dependency check dialog,width=800]
+image::images/screenshot.png[Maven dependency check dialog,width=800]
+
+.Screenshot: Version Suggestions
+image::images/version-suggestions.png[Suggstions,width=400]
+
+.Screenshot: Version Documentations
+image::images/documentation-highlights.png[Suggstions,width=400]
 
 == Installation
 
