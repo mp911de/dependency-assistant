@@ -15,233 +15,173 @@
  */
 package biz.paluch.mavenupdater;
 
-import biz.paluch.mavenupdater.dependencies.ArtifactCoordinates;
-import biz.paluch.mavenupdater.dependencies.ArtifactVersion;
-import biz.paluch.mavenupdater.dependencies.DependencySource;
-import biz.paluch.mavenupdater.dependencies.DependencyUpgrade;
-import biz.paluch.mavenupdater.dependencies.DependencyUpgrades;
+import biz.paluch.mavenupdater.artifact.ArtifactCoordinate;
+import biz.paluch.mavenupdater.artifact.ArtifactVersion;
+import biz.paluch.mavenupdater.artifact.DeclarationSource;
+import biz.paluch.mavenupdater.artifact.DependencyUpdateOption;
+import biz.paluch.mavenupdater.artifact.DependencyUpdates;
+import biz.paluch.mavenupdater.artifact.UpgradeStrategy;
+import biz.paluch.mavenupdater.artifact.VersionOption;
+import biz.paluch.mavenupdater.artifact.VersionSource;
 import icons.MavenIcons;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.event.ItemEvent;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import javax.swing.JCheckBox;
-import javax.swing.JComponent;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.JTextArea;
-import javax.swing.SwingConstants;
+import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 
 import org.jspecify.annotations.Nullable;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionManager;
+import com.intellij.openapi.actionSystem.ActionToolbar;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.LayeredIcon;
 import com.intellij.ui.components.JBScrollPane;
-import com.intellij.ui.table.JBTable;
+import com.intellij.ui.table.TableView;
+import com.intellij.util.IconUtil;
+import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.ListTableModel;
 
 /**
  * Dialog showing Maven dependency versions and update suggestions.
  */
-public class DependencyCheckDialog extends DialogWrapper {
+class DependencyCheckDialog extends DialogWrapper {
+
+	/** Model index of {@link Upgrades} in the dependency table. */
+	private static final int AVAILABLE_UPDATES_COLUMN_INDEX = 2;
 
 	private final Project project;
 	private final @Nullable VirtualFile pomFile;
-	private final DependencyUpgrades result;
+	private final DependencyUpdateModel model;
 
-	public DependencyCheckDialog(Project project, @Nullable VirtualFile pomFile, DependencyUpgrades upgrades) {
+	public DependencyCheckDialog(Project project, @Nullable VirtualFile pomFile, DependencyUpdates updates) {
 		super(project, false, IdeModalityType.MODELESS);
 		this.project = project;
 		this.pomFile = pomFile;
-		this.result = upgrades;
-		setTitle("Maven Dependency Versions for " + project.getName() + (pomFile != null ? ": " + pomFile.getName() : ""));
+		this.model = new DependencyUpdateModel(updates);
+		setTitle(MessageBundle.message("dialog.title", project.getName()));
 		init();
 	}
 
 	@Override
 	protected JComponent createCenterPanel() {
-		String[] columnNames = { "Dependency", "Current", "Suggested", "Update" };
-		Object[][] data = result.items().stream()
-				.map(
-						info -> new Object[] { info.coordinates(), info.currentVersion(), info.getUpgradeTo(), info.isDoUpgrade() })
-				.toArray(n -> new Object[n][]);
 
-		DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
-			@Override
-			public boolean isCellEditable(int row, int column) {
-				return column == 2 || column == 3;
-			}
+		ListTableModel<DependencyUpdateOption> model = new ListTableModel<>(new DependencyCoordinateColumn(),
+				new CurrentVersionColumn(), new Upgrades(), new UpdateToColumn(), new DoUpdateColumn());
+		model.setItems(this.model.getUpdates());
 
-			@Override
-			public Class<?> getColumnClass(int columnIndex) {
-				if (columnIndex == 0) {
-					return ArtifactCoordinates.class;
-				}
-
-				if (columnIndex == 2) {
-					return ArtifactVersion.class;
-				}
-
-				return columnIndex == 3 ? Boolean.class : String.class;
-			}
-		};
-
-		for (Object[] row : data) {
-			model.addRow(row);
-		}
-
-		JTable table = new JBTable(model);
+		DependencyUpdateTable table = new DependencyUpdateTable(model);
 		table.setAutoCreateRowSorter(true);
 		table.setShowGrid(true);
 		table.setRowHeight(table.getRowHeight() + 4);
 		table.setIntercellSpacing(new Dimension(JBUI.scale(2), JBUI.scale(2)));
-		table.setPreferredScrollableViewportSize(new Dimension(JBUI.scale(750), JBUI.scale(400)));
+		table.setPreferredScrollableViewportSize(new Dimension(JBUI.scale(800), JBUI.scale(400)));
 		table.getTableHeader().setReorderingAllowed(false);
-		// Sync table edits back to VersionUpdateSuggestion: version -> upgradeTo + doUpgrade, checkbox -> doUpgrade
-		model.addTableModelListener(new TableModelListener() {
-			@Override
-			public void tableChanged(TableModelEvent e) {
-				if (e.getType() != TableModelEvent.UPDATE || e.getColumn() < 0) {
-					return;
-				}
-				int row = e.getFirstRow();
-				if (row < 0 || row >= result.items().size()) {
-					return;
-				}
-				DependencyUpgrade suggestion = result.items().get(row);
-				int col = e.getColumn();
-				if (col == 2) {
-					Object value = model.getValueAt(row, 2);
-					if (value instanceof ArtifactVersion av && !av.equals(suggestion.getUpgradeTo())) {
-						suggestion.setUpgradeTo(av);
-						suggestion.setDoUpgrade(true);
-						model.setValueAt(true, row, 3);
-					}
-				} else if (col == 4) {
-					Object value = model.getValueAt(row, 3);
-					suggestion.setDoUpgrade(Boolean.TRUE.equals(value));
-				}
-			}
-		});
 
 		TableColumnModel columns = table.getColumnModel();
 
-		columns.getColumn(0).setPreferredWidth(JBUI.scale(280));
-		columns.getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+		columns.getColumn(0).setPreferredWidth(JBUI.scale(250));
+		columns.getColumn(1).setPreferredWidth(JBUI.scale(150));
+		columns.getColumn(2).setPreferredWidth(JBUI.scale(100));
+		columns.getColumn(3).setPreferredWidth(JBUI.scale(250));
+		columns.getColumn(4).setPreferredWidth(JBUI.scale(50));
 
-			@Override
-			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
-					int row, int column) {
-				Component tableCellRendererComponent = super.getTableCellRendererComponent(table, value, isSelected, hasFocus,
-						row, column);
+		JCheckBox filterVersionsCheckBox = new JCheckBox(MessageBundle.message("dialog.filter.version.suggestions"),
+				this.model.isFilterVersionSuggestions());
+		filterVersionsCheckBox.setToolTipText(MessageBundle.message("dialog.filter.version.tooltip"));
 
-				DependencyUpgrade info = result.getInfo(row);
-				if (info == null) {
-					return tableCellRendererComponent;
-				}
-
-				String tooltip = info.coordinates().toString();
-				if (info.source() instanceof DependencySource.Plugin) {
-					tooltip = "Plugin: " + tooltip;
-					setIcon(MavenIcons.MavenPlugin);
-				} else if (info.source() instanceof DependencySource.Dependency) {
-					setIcon(MavenIcons.MavenProject);
-				}
-
-				if (info.source() instanceof DependencySource.Profile profile) {
-					tooltip += ". Profile: " + profile.getProfileId();
-				}
-
-				setToolTipText(tooltip);
-				return tableCellRendererComponent;
-			}
-
-			@Override
-			protected void setValue(Object value) {
-				if (value instanceof ArtifactCoordinates ac) {
-					setText(ac.artifactId());
-				}
-			}
-		});
-		columns.getColumn(1).setPreferredWidth(JBUI.scale(140));
-		columns.getColumn(2).setPreferredWidth(JBUI.scale(220));
-		columns.getColumn(1).setCellEditor(null);
-
-		columns.getColumn(2).setCellRenderer(new SuggestedVersionTableCellRenderer(result, table));
-		SuggestedVersionComboBoxEditor cellEditor = new SuggestedVersionComboBoxEditor(result, table);
-		cellEditor.getCombo().addItemListener(it -> {
-			if (it.getStateChange() == ItemEvent.SELECTED) {
-				table.editingStopped(new ChangeEvent(it.getItem()));
-			}
-		});
-		columns.getColumn(2).setCellEditor(cellEditor);
-
-		int updateColumnIndex = 3;
-		JCheckBox booleanCheckBox = new JCheckBox();
-		booleanCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
-		columns.getColumn(updateColumnIndex).setCellRenderer(new TableCellRenderer() {
-			@Override
-			public Component getTableCellRendererComponent(JTable t, @Nullable Object value, boolean isSelected,
-					boolean hasFocus, int row, int column) {
-				booleanCheckBox.setSelected(Boolean.TRUE.equals(value));
-				booleanCheckBox.setBackground(isSelected ? t.getSelectionBackground() : t.getBackground());
-				return booleanCheckBox;
-			}
-		});
 		JCheckBox editorCheckBox = new JCheckBox();
 		editorCheckBox.setHorizontalAlignment(SwingConstants.CENTER);
-		columns.getColumn(updateColumnIndex).setCellEditor(new javax.swing.DefaultCellEditor(editorCheckBox));
 
-		AnAction selectAllAction = new AnAction("Select All", "Select all dependencies for update",
-				AllIcons.Actions.Selectall) {
-			@Override
-			public void actionPerformed(AnActionEvent e) {
-				for (int r = 0; r < model.getRowCount(); r++) {
-					model.setValueAt(true, r, updateColumnIndex);
-				}
-			}
-		};
-		AnAction deselectAllAction = new AnAction("Unselect All", "Unselect all dependencies",
-				AllIcons.Actions.Unselectall) {
-			@Override
-			public void actionPerformed(AnActionEvent e) {
-				for (int r = 0; r < model.getRowCount(); r++) {
-					model.setValueAt(false, r, updateColumnIndex);
-				}
-			}
-		};
-		DefaultActionGroup toolbarGroup = new DefaultActionGroup();
-		toolbarGroup.add(selectAllAction);
-		toolbarGroup.add(deselectAllAction);
-		var toolbar = ActionManager.getInstance().createActionToolbar("MavenDependencyVersions", toolbarGroup, true);
+		ActionGroup toolbarGroup = getToolbarGroup(table);
+		ActionToolbar toolbar = ActionManager.getInstance().createActionToolbar("MavenDependencyVersions", toolbarGroup,
+				true);
 		toolbar.setTargetComponent(table);
 
-		JPanel toolbarPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-		toolbarPanel.add(toolbar.getComponent());
+		filterVersionsCheckBox.addItemListener(e -> {
+			this.model.setFilterVersionSuggestions(filterVersionsCheckBox.isSelected());
+			if (table.getCellEditor() != null) {
+				table.getCellEditor().cancelCellEditing();
+			}
+			table.repaint();
+		});
+
+		ComboBox<DependencyUpdateModel.UpgradeStrategies> strategyComboBox = new ComboBox<>(
+				DependencyUpdateModel.UpgradeStrategies.values());
+		strategyComboBox.setSelectedItem(this.model.getUpgradeStrategy());
+		strategyComboBox.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
+			JLabel label = new JLabel(value != null ? MessageBundle.message(value.getMessageKey()) : "");
+			if (value != null) {
+				label.setIcon(value.getIcon());
+				label.setIconTextGap(JBUI.scale(4));
+			} else {
+				label.setIcon(null);
+			}
+			label.setOpaque(isSelected);
+			if (isSelected) {
+				label.setBackground(list.getSelectionBackground());
+				label.setForeground(list.getSelectionForeground());
+			}
+			return label;
+		});
+		strategyComboBox.addItemListener(e -> {
+			if (e.getStateChange() != ItemEvent.SELECTED) {
+				return;
+			}
+			DependencyUpdateModel.UpgradeStrategies strategy = (DependencyUpdateModel.UpgradeStrategies) e.getItem();
+			this.model.setUpgradeStrategy(strategy);
+			if (strategy == DependencyUpdateModel.UpgradeStrategies.MANUAL) {
+				return;
+			}
+			applyUpgradeStrategy(table, strategy);
+		});
+
+		JPanel strategyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(5), 0));
+		JLabel strategyLabel = new JLabel(MessageBundle.message("dialog.upgradeStrategy.label"));
+		strategyComboBox.setToolTipText(MessageBundle.message("dialog.upgradeStrategy.tooltip"));
+		strategyPanel.add(strategyLabel);
+		strategyPanel.add(strategyComboBox);
+
+		JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(8), 0));
+		rightPanel.add(strategyPanel);
+		rightPanel.add(toolbar.getComponent());
+
+		JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(12), 0));
+		leftPanel.add(filterVersionsCheckBox);
+
+		JPanel toolbarPanel = new JPanel(new BorderLayout());
+		toolbarPanel.add(leftPanel, BorderLayout.WEST);
+		toolbarPanel.add(rightPanel, BorderLayout.EAST);
 
 		JBScrollPane scrollPane = new JBScrollPane(table);
 		scrollPane.setPreferredSize(new Dimension(JBUI.scale(775), JBUI.scale(420)));
@@ -249,8 +189,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 		JPanel panel = new JPanel(new BorderLayout());
 		panel.add(toolbarPanel, BorderLayout.NORTH);
 		panel.add(scrollPane, BorderLayout.CENTER);
-		if (!result.errors().isEmpty()) {
-			String errorText = "Warnings:\n" + result.errors().stream().map(s -> "• " + s).collect(Collectors.joining("\n"));
+		if (!this.model.getErrors().isEmpty()) {
+			String errorText = MessageBundle.message("dialog.warnings.prefix") + "\n" + this.model.getErrors().stream()
+					.map(s -> MessageBundle.message("dialog.warnings.bullet") + s).collect(Collectors.joining("\n"));
 			JTextArea errorArea = new JTextArea(errorText);
 			errorArea.setEditable(false);
 			errorArea.setRows(3);
@@ -258,6 +199,32 @@ public class DependencyCheckDialog extends DialogWrapper {
 			panel.add(new JScrollPane(errorArea), BorderLayout.SOUTH);
 		}
 		return panel;
+	}
+
+	private DefaultActionGroup getToolbarGroup(JTable table) {
+
+		AnAction selectAllAction = new AnAction(MessageBundle.message("dialog.action.selectAll"),
+				MessageBundle.message("dialog.action.selectAll.description"), AllIcons.Actions.Selectall) {
+			@Override
+			public void actionPerformed(AnActionEvent e) {
+				model.setUpdateAll(true);
+				table.tableChanged(new TableModelEvent(table.getModel()));
+			}
+		};
+
+		AnAction deselectAllAction = new AnAction(MessageBundle.message("dialog.action.unselectAll"),
+				MessageBundle.message("dialog.action.unselectAll.description"), AllIcons.Actions.Unselectall) {
+			@Override
+			public void actionPerformed(AnActionEvent e) {
+				model.setUpdateAll(false);
+				table.tableChanged(new TableModelEvent(table.getModel()));
+			}
+		};
+
+		DefaultActionGroup toolbarGroup = new DefaultActionGroup();
+		toolbarGroup.add(selectAllAction);
+		toolbarGroup.add(deselectAllAction);
+		return toolbarGroup;
 	}
 
 	@Override
@@ -268,76 +235,550 @@ public class DependencyCheckDialog extends DialogWrapper {
 	@Override
 	protected void doOKAction() {
 		if (pomFile != null) {
-			new PomUpdateService(project).applyUpgrades(pomFile, result.items());
+			new UpdatePom(project).applyUpdates(pomFile, model.getUpdates());
 		}
 		super.doOKAction();
 	}
 
-	private List<ArtifactVersion> filterVersionSuggestions(Collection<ArtifactVersion> versions,
-			ArtifactVersion current) {
+	private void applyUpgradeStrategy(JTable table, DependencyUpdateModel.UpgradeStrategies strategy) {
 
-		ArtifactVersion previousMinor = null;
-		ArtifactVersion previousMajor = null;
-		ArtifactVersion filterMilestone = null;
-		List<ArtifactVersion> newer = new ArrayList<>();
-		List<ArtifactVersion> older = new ArrayList<>();
+		boolean filtered = model.isFilterVersionSuggestions();
 
-		for (ArtifactVersion version : versions.stream().sorted().toList()) {
+		for (int row = 0; row < table.getModel().getRowCount(); row++) {
+			DependencyUpdateOption suggestion = ModelUtil.getOption(table, row);
+			ArtifactVersion target = pickTargetVersion(suggestion,
+					filtered ? suggestion.filtered() : suggestion.versionOptions(), strategy);
 
-			if (version.isPreview()) {
-
-				if (filterMilestone == null) {
-					filterMilestone = version;
-				} else if (version.isNewer(filterMilestone)) {
-					filterMilestone = version;
-				}
-				continue;
-			} else {
-				if (filterMilestone != null) {
-					doAdd(current, filterMilestone, newer, older);
-					filterMilestone = null;
-				}
+			if (target != null) {
+				suggestion.setUpdateTo(target);
+				suggestion.setApplyUpdate(!target.equals(suggestion.currentVersion()));
 			}
-
-			if (previousMajor == null
-					|| version.isNewer(previousMajor) && version.getVersion().getMajor() < current.getVersion().getMajor()) {
-				previousMajor = version;
-			}
-
-			if (previousMinor == null || version.isNewer(previousMinor) && version.hasSameMajorMinor(current)) {
-				previousMinor = version;
-			}
-
-			doAdd(current, version, newer, older);
 		}
 
-		if (filterMilestone != null) {
-			doAdd(current, filterMilestone, newer, older);
-		}
-
-		Set<ArtifactVersion> result = new TreeSet<>(Comparator.reverseOrder());
-
-		result.addAll(older.reversed().stream().limit(10).toList());
-		if (previousMajor != null) {
-			result.add(previousMajor);
-		}
-
-		if (previousMinor != null) {
-			result.add(previousMinor);
-		}
-
-		result.add(current);
-		result.addAll(newer);
-
-		return List.copyOf(result);
+		table.tableChanged(new TableModelEvent(table.getModel()));
+		table.repaint();
 	}
 
-	private static void doAdd(ArtifactVersion current, ArtifactVersion version, List<ArtifactVersion> newer,
-			List<ArtifactVersion> older) {
-		if (version.isNewer(current)) {
-			newer.add(version);
-		} else if (version.isBugFixVersion() || version.isReleaseVersion()) {
-			older.add(version);
+	private @Nullable ArtifactVersion pickTargetVersion(DependencyUpdateOption option, List<VersionOption> options,
+			DependencyUpdateModel.UpgradeStrategies strategy) {
+		if (strategy == DependencyUpdateModel.UpgradeStrategies.MANUAL) {
+			return null;
+		}
+		if (options.isEmpty()) {
+			return null;
+		}
+
+		VersionOption upgradeTo = option.getTargets().get(strategy.getStrategy());
+		if (upgradeTo != null) {
+			return upgradeTo.version();
+		}
+
+		return null;
+	}
+
+	private void applyUpgradeTargetToViewRow(JTable table, int viewRow, UpgradeStrategy strategy) {
+		DependencyUpdateOption suggestion = ModelUtil.getOption(table, viewRow);
+		if (suggestion == null) {
+			return;
+		}
+		VersionOption vo = suggestion.getTargets().get(strategy);
+		if (vo == null) {
+			return;
+		}
+		suggestion.setUpdateTo(vo.version());
+		suggestion.setApplyUpdate(!vo.version().equals(suggestion.currentVersion()));
+		if (table.isEditing()) {
+			table.getCellEditor().stopCellEditing();
+		}
+		table.tableChanged(new TableModelEvent(table.getModel()));
+		table.repaint();
+	}
+
+	/**
+	 * Forwards tooltips and hand cursor for upgrade-target icon buttons (renderer stamps are not in the real component
+	 * tree, so the table must delegate).
+	 */
+	private static class DependencyUpdateTable extends TableView<DependencyUpdateOption> {
+
+		DependencyUpdateTable(ListTableModel<DependencyUpdateOption> model) {
+			super(model);
+			setToolTipText("");
+			addMouseMotionListener(new MouseMotionAdapter() {
+				@Override
+				public void mouseMoved(MouseEvent e) {
+					updateUpgradeTargetsHoverCursor(e);
+				}
+			});
+			addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseExited(MouseEvent e) {
+					setCursor(Cursor.getDefaultCursor());
+				}
+			});
+		}
+
+		@Override
+		public @Nullable String getToolTipText(MouseEvent event) {
+			if (event == null) {
+				return null;
+			}
+			String tip = tooltipForUpgradeTargetsColumn(event);
+			return tip != null ? tip : super.getToolTipText(event);
+		}
+
+		private @Nullable String tooltipForUpgradeTargetsColumn(MouseEvent event) {
+
+			Point p = event.getPoint();
+			int row = rowAtPoint(p);
+			int col = columnAtPoint(p);
+			if (row < 0 || col < 0) {
+				return null;
+			}
+			int upgradesCol = convertColumnIndexToView(AVAILABLE_UPDATES_COLUMN_INDEX);
+			if (upgradesCol < 0 || col != upgradesCol) {
+				return null;
+			}
+			Rectangle cell = getCellRect(row, col, false);
+			if (!cell.contains(p)) {
+				return null;
+			}
+			TableCellRenderer renderer = getCellRenderer(row, col);
+			Component stamp = prepareRenderer(renderer, row, col);
+			layoutRendererStamp(stamp, cell.width, cell.height);
+			Point rel = new Point(p.x - cell.x, p.y - cell.y);
+			Component deepest = SwingUtilities.getDeepestComponentAt(stamp, rel.x, rel.y);
+			if (deepest instanceof JButton btn) {
+				MouseEvent relEv = SwingUtilities.convertMouseEvent(this, event, deepest);
+				return btn.getToolTipText(relEv);
+			}
+			return null;
+		}
+
+		private static void layoutRendererStamp(Component stamp, int w, int h) {
+
+			stamp.setBounds(0, 0, Math.max(1, w), Math.max(1, h));
+			if (stamp instanceof JComponent jc) {
+				jc.validate();
+			}
+		}
+
+		private void updateUpgradeTargetsHoverCursor(MouseEvent e) {
+
+			Point p = e.getPoint();
+			int row = rowAtPoint(p);
+			int col = columnAtPoint(p);
+			Cursor c = Cursor.getDefaultCursor();
+			int upgradesCol = convertColumnIndexToView(AVAILABLE_UPDATES_COLUMN_INDEX);
+			if (row >= 0 && col >= 0 && upgradesCol >= 0 && col == upgradesCol) {
+				Rectangle cell = getCellRect(row, col, false);
+				if (cell.contains(p)) {
+					Component stamp = prepareRenderer(getCellRenderer(row, col), row, col);
+					layoutRendererStamp(stamp, cell.width, cell.height);
+					Point rel = new Point(p.x - cell.x, p.y - cell.y);
+					Component deepest = SwingUtilities.getDeepestComponentAt(stamp, rel.x, rel.y);
+					if (deepest instanceof JButton) {
+						c = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+					}
+				}
+			}
+			setCursor(c);
+		}
+	}
+
+	/**
+	 * One icon-button strip per {@link DependencyUpdateOption}, shared by renderer and editor (see
+	 * {@link UpdateToColumn}). {@link ActionToolbar} is unreliable inside JTable paint stamps (layout/async refresh), so
+	 * this uses plain {@link JButton}s with the same icons.
+	 */
+	private final class UpgradeTargetsToolbarEditor extends DefaultCellEditor {
+
+		private final JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
+		private @Nullable JTable contextTable;
+		private int contextViewRow;
+
+		UpgradeTargetsToolbarEditor(DependencyUpdateOption option) {
+			super(new JTextField());
+			setClickCountToStart(1);
+			buttonPanel.setOpaque(true);
+			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
+				VersionOption vo = option.getTargets().get(strategy);
+				if (vo == null || strategy == UpgradeStrategy.LATEST) {
+					continue;
+				}
+				Icon icon = VersionAge.fromTarget(strategy).getIcon();
+				String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
+				String tooltip = MessageBundle.message("dialog.upgradeTarget.tooltip", shortLabel, vo.version());
+				UpgradeStrategy strat = strategy;
+				JButton b = createButton(icon, tooltip, shortLabel, vo);
+				b.addActionListener(e -> {
+					JTable t = contextTable;
+					if (t != null) {
+						applyUpgradeTargetToViewRow(t, contextViewRow, strat);
+					}
+				});
+				buttonPanel.add(b);
+			}
+		}
+
+		private static JButton createButton(Icon icon, String tooltip, String shortLabel, VersionOption version) {
+			JButton b = new JButton(icon);
+			b.setToolTipText(tooltip);
+			b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+			b.getAccessibleContext().setAccessibleName(shortLabel + " " + version.version());
+			b.setBorderPainted(false);
+			b.setMargin(JBUI.insets(2));
+			b.setContentAreaFilled(false);
+			b.setOpaque(false);
+			b.setFocusPainted(true);
+			b.setRolloverEnabled(true);
+			Dimension preferredSize = new Dimension(icon.getIconWidth(), icon.getIconHeight());
+			b.setPreferredSize(preferredSize);
+			b.setMinimumSize(preferredSize);
+			b.setMaximumSize(preferredSize);
+			return b;
+		}
+
+		JComponent prepareForCell(JTable table, int viewRow, boolean isSelected) {
+
+			contextTable = table;
+			contextViewRow = viewRow;
+			Color bg = isSelected ? table.getSelectionBackground() : table.getBackground();
+			buttonPanel.setBorder(JBUI.Borders.empty());
+			buttonPanel.setBackground(bg);
+			for (Component ch : buttonPanel.getComponents()) {
+				ch.setBackground(bg);
+			}
+			return buttonPanel;
+		}
+
+		@Override
+		public Component getTableCellEditorComponent(JTable table, @Nullable Object value, boolean isSelected, int row,
+				int column) {
+
+			return prepareForCell(table, row, isSelected);
+		}
+
+		@Override
+		public @Nullable Object getCellEditorValue() {
+			return null;
+		}
+	}
+
+	static class DependencyCoordinateColumn extends ColumnInfo<DependencyUpdateOption, ArtifactCoordinate> {
+
+		DefaultTableCellRenderer tcr = new DefaultTableCellRenderer() {
+
+			@Override
+			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+					int row, int column) {
+
+				Component tableCellRendererComponent = super.getTableCellRendererComponent(table, value, isSelected, hasFocus,
+						row, column);
+				DependencyUpdateOption option = ModelUtil.getOption(table, row);
+
+				String tooltip = option.coordinates().toString();
+				boolean hasPropertyVersion = option.hasPropertyVersion();
+				if (hasPropertyVersion) {
+					VersionSource.VersionPropertySource propertyVersion = option.getPropertyVersion();
+					tooltip = MessageBundle.message("dialog.tooltip.property", propertyVersion);
+					if (propertyVersion instanceof VersionSource.ProfilePropertySource pps) {
+						tooltip += MessageBundle.message("dialog.tooltip.profile", pps.getProfileId());
+					}
+				}
+
+				boolean plugin = option.source() instanceof DeclarationSource.Plugin;
+
+				if (plugin) {
+					tooltip += MessageBundle.message("dialog.tooltip.plugin", tooltip);
+				}
+
+				if (option.source() instanceof DeclarationSource.Profile profile) {
+					tooltip += MessageBundle.message("dialog.tooltip.profile", profile.getProfileId());
+				}
+
+				setIcon(DependencyCoordinateColumn.getIcon(option, table));
+
+				setToolTipText(tooltip);
+				return tableCellRendererComponent;
+			}
+
+			@Override
+			protected void setValue(Object value) {
+				if (value instanceof ArtifactCoordinate coordinate) {
+					setText(coordinate.artifactId());
+					return;
+				}
+				super.setValue(value);
+			}
+		};
+
+		/**
+		 * Maven plugin icon with a small property icon overlaid at the bottom-right (for plugin + ${property} version).
+		 */
+		static Icon getIcon(DependencyUpdateOption option, JTable table) {
+
+			Icon base = option.source() instanceof DeclarationSource.Plugin ? MavenIcons.MavenPlugin
+					: MavenIcons.MavenProject;
+
+			int pad = 0;
+			int bw = base.getIconWidth();
+			int bh = base.getIconHeight();
+
+			LayeredIcon layered = new LayeredIcon(2);
+			layered.setIcon(base, 0);
+
+			if (option.hasPropertyVersion()) {
+				Icon propertySmall = IconUtil.scale(AllIcons.Nodes.Property, table, 0.5f);
+
+				int ow = propertySmall.getIconWidth();
+				int oh = propertySmall.getIconHeight();
+				layered.setIcon(propertySmall, 1, Math.max(0, bw - ow - pad), Math.max(0, bh - oh - pad));
+			}
+
+			return layered;
+		}
+
+		DependencyCoordinateColumn() {
+			super(MessageBundle.message("dialog.column.dependency"));
+		}
+
+		@Override
+		public ArtifactCoordinate valueOf(DependencyUpdateOption item) {
+			return item.coordinates();
+		}
+
+		@Override
+		public TableCellRenderer getRenderer(DependencyUpdateOption option) {
+			return tcr;
+		}
+
+		@Override
+		public Class<?> getColumnClass() {
+			return ArtifactCoordinate.class;
+		}
+
+	}
+
+	static class CurrentVersionColumn extends ColumnInfo<DependencyUpdateOption, ArtifactVersion> {
+
+		CurrentVersionColumn() {
+			super(MessageBundle.message("dialog.column.current"));
+		}
+
+		@Override
+		public @Nullable ArtifactVersion valueOf(DependencyUpdateOption item) {
+			return item.currentVersion();
+		}
+
+		@Override
+		public Class<?> getColumnClass() {
+			return ArtifactVersion.class;
+		}
+	}
+
+	class Upgrades extends ColumnInfo<DependencyUpdateOption, Object> {
+
+		private final Map<DependencyUpdateOption, UpgradeTargetsToolbarEditor> editors = new ConcurrentHashMap<>();
+		private final Set<UpgradeTargetsToolbarEditor> listeners = ConcurrentHashMap.newKeySet();
+
+		Upgrades() {
+			super(MessageBundle.message("dialog.column.upgrades"));
+		}
+
+		private UpgradeTargetsToolbarEditor getToolbarEditor(DependencyUpdateOption option) {
+			return editors.computeIfAbsent(option, UpgradeTargetsToolbarEditor::new);
+		}
+
+		@Override
+		public @Nullable Object valueOf(DependencyUpdateOption item) {
+			return null;
+		}
+
+		@Override
+		public boolean isCellEditable(DependencyUpdateOption item) {
+			return item.hasUpgradeTargets();
+		}
+
+		@Override
+		public void setValue(DependencyUpdateOption item, Object value) {
+			// Applied from picker {@link JButton} actions.
+		}
+
+		@Override
+		public TableCellEditor getEditor(DependencyUpdateOption item) {
+			return getToolbarEditor(item);
+		}
+
+		@Override
+		public TableCellRenderer getRenderer(DependencyUpdateOption columnOption) {
+
+			return (table, value, isSelected, hasFocus, row, column) -> {
+
+				DependencyUpdateOption info = ModelUtil.getOption(table, row);
+				if (info == null) {
+					JLabel empty = new JLabel();
+					empty.setOpaque(true);
+					empty.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+					return empty;
+				}
+				UpgradeTargetsToolbarEditor editor = getToolbarEditor(info);
+				if (listeners.add(editor)) {
+					editor.getComponent().setFocusable(false);
+				}
+				JComponent c = editor.prepareForCell(table, row, isSelected);
+				c.setEnabled(table.isEnabled());
+				return c;
+			};
+		}
+
+		@Override
+		public Class<?> getColumnClass() {
+			return Object.class;
+		}
+	}
+
+	class UpdateToColumn extends ColumnInfo<DependencyUpdateOption, ArtifactVersion> {
+
+		private final Map<DependencyUpdateOption, SuggestedVersionComboBoxEditor> editors = new ConcurrentHashMap<>();
+		private final Set<SuggestedVersionComboBoxEditor> listeners = ConcurrentHashMap.newKeySet();
+
+		UpdateToColumn() {
+			super(MessageBundle.message("dialog.column.updateTo"));
+		}
+
+		@Override
+		public @Nullable ArtifactVersion valueOf(DependencyUpdateOption item) {
+			return item.getUpdateTo();
+		}
+
+		@Override
+		public TableCellRenderer getRenderer(DependencyUpdateOption option) {
+
+			return new DefaultTableCellRenderer() {
+
+				@Override
+				public Component getTableCellRendererComponent(JTable table, @Nullable Object value, boolean isSelected,
+						boolean hasFocus, int row, int column) {
+
+					DependencyUpdateOption info = ModelUtil.getOption(table, row);
+
+					SuggestedVersionComboBoxEditor editor = getEditor(info);
+					if (listeners.add(editor)) {
+
+						editor.getCombo().addActionListener(actionEvent -> {
+
+							VersionOption option = (VersionOption) editor.getCombo().getSelectedItem();
+
+							if (option != null && !option.version().equals(info.getUpdateTo())) {
+								info.setApplyUpdate(true);
+								info.setUpdateTo(option.version());
+								table.editingStopped(new ChangeEvent(option));
+							}
+						});
+					}
+
+					return editor.getTableCellEditorComponent(table, value, isSelected, row, column);
+				}
+			};
+
+		}
+
+		@Override
+		public SuggestedVersionComboBoxEditor getEditor(DependencyUpdateOption option) {
+			return editors.computeIfAbsent(option, it -> new SuggestedVersionComboBoxEditor(model, option));
+		}
+
+		@Override
+		public void setValue(DependencyUpdateOption item, ArtifactVersion value) {
+			if (value != null && !value.equals(item.getUpdateTo())) {
+				item.setUpdateTo(value);
+				item.setApplyUpdate(true);
+			}
+		}
+
+		@Override
+		public boolean isCellEditable(DependencyUpdateOption item) {
+			return true;
+		}
+
+		@Override
+		public Class<?> getColumnClass() {
+			return ArtifactVersion.class;
+		}
+	}
+
+	static class DoUpdateColumn extends ColumnInfo<DependencyUpdateOption, Boolean> {
+
+		private final ApplyUpdateCheckboxEditor editor = new ApplyUpdateCheckboxEditor();
+
+		DoUpdateColumn() {
+			super(MessageBundle.message("dialog.column.update"));
+		}
+
+		@Override
+		public TableCellRenderer getRenderer(DependencyUpdateOption option) {
+
+			return (t, value, isSelected, hasFocus, row, column) -> {
+				JCheckBox cb = new JCheckBox();
+				cb.setHorizontalAlignment(SwingConstants.CENTER);
+				cb.setSelected(Boolean.TRUE.equals(value));
+				cb.setBackground(isSelected ? t.getSelectionBackground() : t.getBackground());
+				cb.setOpaque(true);
+				return cb;
+			};
+		}
+
+		@Override
+		public TableCellEditor getEditor(DependencyUpdateOption option) {
+			return editor;
+		}
+
+		@Override
+		public Boolean valueOf(DependencyUpdateOption item) {
+			return item.isApplyUpdate();
+		}
+
+		@Override
+		public void setValue(DependencyUpdateOption item, Boolean value) {
+			item.setApplyUpdate(value);
+		}
+
+		@Override
+		public boolean isCellEditable(DependencyUpdateOption item) {
+			return true;
+		}
+
+		@Override
+		public Class<?> getColumnClass() {
+			return Boolean.class;
+		}
+	}
+
+	/**
+	 * Single checkbox for the active editor cell only; selection is set from the row value when editing starts.
+	 */
+	private static final class ApplyUpdateCheckboxEditor extends AbstractCellEditor implements TableCellEditor {
+
+		private final JCheckBox checkBox = new JCheckBox();
+
+		ApplyUpdateCheckboxEditor() {
+			checkBox.setHorizontalAlignment(SwingConstants.CENTER);
+			checkBox.addActionListener(e -> stopCellEditing());
+		}
+
+		@Override
+		public Component getTableCellEditorComponent(JTable table, @Nullable Object value, boolean isSelected, int row,
+				int column) {
+
+			checkBox.setSelected(Boolean.TRUE.equals(value));
+			checkBox.setBackground(isSelected ? table.getSelectionBackground() : table.getBackground());
+			return checkBox;
+		}
+
+		@Override
+		public @Nullable Object getCellEditorValue() {
+			return checkBox.isSelected();
 		}
 	}
 

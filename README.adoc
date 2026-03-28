@@ -1,0 +1,63 @@
+= Maven Updater Plugin
+Mark Paluch
+:experimental:
+:github: https://github.com/mp911de/maven-updater
+:jb-url: https://plugins.jetbrains.com
+
+image:{github}/actions/workflows/build.yml/badge.svg?branch=main[Build Status (GitHub Workflow Build), link={github}/actions?query=workflow%3ABuild+branch%3Amain]
+
+An https://plugins.jetbrains.com[IntelliJ IDEA] plugin that helps you upgrade Maven dependencies and build plugins.
+It determines available versions from your configured repositories and can apply updates selectively.
+
+== Features
+
+* Scans the open `pom.xml` for dependencies and plugins (including `dependencyManagement`, `pluginManagement`, and `profiles`)
+* Resolves versions from literals, properties, and profile-specific properties where possible
+* Lists update candidates and lets you pick target versions (patch / minor / major / latest strategies)
+* Uses repositories from the active Maven project (e.g. Maven Central and repos declared in the POM); **repository authentication is not supported yet**
+
+.Screenshot: dependency version check dialog
+image::src/main/resources/META-INF/screenshot.png[Maven Updater dependency check dialog,width=800]
+
+== Installation
+
+Install the plugin named *Maven Updater* from the IDE *Settings / Plugins* marketplace, or build the distribution locally (see <<Building>>) and install the ZIP from disk.
+
+== Usage
+
+. Open a `pom.xml` in the editor (the file must belong to an active Maven project).
+. Start a check
+** Use the intention action (light bulb) when the caret is in a relevant place in the POM (e.g. `properties`, or a `version` under `dependency` / `plugin`), or
+** Alternatively: Choose menu:Tools[Update Maven Plugins and Dependencies].
+. In the dialog, review suggestions, adjust *Update to* and the *Update* checkbox per row, then confirm to apply changes.
+
+Updates are written to the **currently open** `pom.xml`.
+The plugin considers other Maven modules in the project when collecting coordinates, but only versions that can be tied to declarations in that open POM are offered for update.
+
+== Building
+
+Prerequisites: JDK 21+, Gradle (wrapper included).
+
+[source,shell]
+----
+./gradlew build
+----
+
+To produce a plugin archive for local installation:
+
+[source,shell]
+----
+./gradlew buildPlugin
+----
+
+The ZIP is generated under `build/distributions/`.
+
+Continuous integration runs tests and the IntelliJ Plugin Verifier; see the link:{github}/actions[Actions] tab on GitHub.
+
+== Contributing
+
+Issues and pull requests are welcome at link:{github}[{github}].
+
+== License
+
+Maven Updater is Open Source software released under the https://www.apache.org/licenses/LICENSE-2.0.html[Apache 2.0 license].

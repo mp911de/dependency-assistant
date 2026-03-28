@@ -3,33 +3,55 @@
 
 	<name>Maven Updater</name>
 
-	<vendor url="https://paluch.biz">Mark Paluch</vendor>
+	<vendor url="https://github.com/mp911de/maven-updater">Mark Paluch</vendor>
+	<category>Maven</category>
 
 	<description><![CDATA[
-        Scan a Maven pom.xml and show the version state of each dependency in a popup.
+        Provides assisted upgrading of Maven dependencies and plugins in a Maven project.
+        <br/>
         Displays the current version and suggests an update when a newer version is available
-        from the project's configured Maven repositories. Use Tools → Check Maven Dependency Versions.
+        from the project's configured Maven repositories.
+
+The support includes:
+<ul>
+  <li>Scanning of an open <code>pom.xml</code> file containing dependencies and plugins (direct, managed, and using properties)</li>
+  <li>Determining version update candidates</li>
+  <li>Selection of dependencies and plugins to update</li>
+  <li>Supports Maven Central and repositories defined in the POM file (does not yet support authentication)</li>
+</ul>
+
+<h3>Usage</h3>
+<ul>
+<li>Open a <code>pom.xml</code> file in the editor.</li>
+<li>Use the intention action (light bulb) to check for updates of dependencies and plugins.</li>
+<li>Alternatively, to use the <strong>Menu action</strong> tool window, select <strong>Tools | Update Maven Plugins and Dependencies</strong>.</li>
+</ul>
+
+<h3>Notes</h3>
+
+The currently open <code>pom.xml</code> file is used to apply updates to. The plugin considers all active Maven projects to scan for dependencies and only suggests plugins and dependencies whose version can be determined from the currently open <code>pom.xml</code> file.
+
+<p>
+<a href="https://github.com/mp911de/maven-updater">GitHub Repository: mp911de/maven-updater</a>
     ]]></description>
+
 
 	<depends>org.jetbrains.idea.maven</depends>
 	<depends>com.intellij.modules.xml</depends>
-	<resource-bundle>messages.MyMessageBundle</resource-bundle>
+	<resource-bundle>messages.MessageBundle</resource-bundle>
 
 	<extensions defaultExtensionNs="com.intellij">
-		<toolWindow id="CheckMavenDependencies"
-		            icon="MavenIcons.ChildrenProjects"/>
 		<intentionAction>
 			<category>Maven</category>
 			<language>XML</language>
-			<className>biz.paluch.mavenupdater.CheckMavenDependenciesIntention</className>
+			<className>biz.paluch.mavenupdater.UpdateMavenDependenciesIntention
+			</className>
 		</intentionAction>
 	</extensions>
 
 	<actions>
-		<action id="biz.paluch.mavenupdater.CheckMavenDependencies"
-		        class="biz.paluch.mavenupdater.CheckMavenDependenciesAction"
-		        text="Check Maven Dependency Versions"
-		        description="Scan pom and show current vs latest dependency versions">
+		<action id="biz.paluch.mavenupdater.UpdateMavenDependencies"
+		        class="biz.paluch.mavenupdater.UpdateMavenDependenciesAction">
 			<add-to-group group-id="ToolsMenu" anchor="last"/>
 		</action>
 	</actions>

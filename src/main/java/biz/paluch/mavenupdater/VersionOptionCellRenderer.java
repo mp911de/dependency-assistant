@@ -15,7 +15,8 @@
  */
 package biz.paluch.mavenupdater;
 
-import biz.paluch.mavenupdater.dependencies.ArtifactVersion;
+import biz.paluch.mavenupdater.artifact.ArtifactVersion;
+import biz.paluch.mavenupdater.artifact.VersionOption;
 
 import java.awt.Component;
 
@@ -23,33 +24,29 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 
-import biz.paluch.mavenupdater.dependencies.VersionAge;
-import biz.paluch.mavenupdater.dependencies.VersionOption;
 import org.jspecify.annotations.Nullable;
+
+import com.intellij.util.ui.JBUI;
 
 /**
  * List cell renderer that shows an icon (older / newer patch / minor / major) plus version text.
  */
-public class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<VersionOption> {
+class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<VersionOption> {
 
-	private final @Nullable ArtifactVersion currentVersion;
+	private final ArtifactVersion currentVersion;
 
-	public VersionOptionCellRenderer(@Nullable ArtifactVersion currentVersion) {
+	public VersionOptionCellRenderer(ArtifactVersion currentVersion) {
 		this.currentVersion = currentVersion;
+		setIconTextGap(JBUI.scale(4));
+		setBorder(JBUI.Borders.empty());
 	}
 
 	@Override
 	public Component getListCellRendererComponent(JList<? extends VersionOption> list, @Nullable VersionOption value,
 			int index, boolean isSelected, boolean cellHasFocus) {
-		setText(value != null ? toString(value) : "");
-		setIcon(
-				value != null && currentVersion != null ? VersionAge.fromVersions(currentVersion, value.getVersion()).getIcon()
-						: null);
+		setText(value != null ? value.toString() : "");
+		setIcon(value != null ? VersionAge.fromVersions(currentVersion, value.version()).getIcon() : null);
 		return this;
-	}
-
-	private String toString(VersionOption value) {
-		return value.getVersion() + (value.getReleaseDate() != null ? " (" + value.getReleaseDate().toLocalDate() + ")" : "");
 	}
 
 }

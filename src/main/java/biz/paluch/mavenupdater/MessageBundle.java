@@ -15,13 +15,13 @@
  */
 package biz.paluch.mavenupdater;
 
-import com.intellij.DynamicBundle;
+import java.util.function.Supplier;
 
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.PropertyKey;
 
-import java.util.function.Supplier;
+import com.intellij.DynamicBundle;
 
 /**
  * Message bundle for plugin strings.
@@ -32,8 +32,7 @@ public class MessageBundle {
 
 	private static final DynamicBundle INSTANCE = new DynamicBundle(MessageBundle.class, BUNDLE);
 
-	private MessageBundle() {
-	}
+	private MessageBundle() {}
 
 	@Nls
 	public static String message(@PropertyKey(resourceBundle = BUNDLE) String key, Object... params) {

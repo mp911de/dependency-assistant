@@ -24,7 +24,7 @@ import com.intellij.psi.xml.XmlTag;
 /**
  * @author Mark Paluch
  */
-public class MavenUtils {
+class MavenUtils {
 
 	/**
 	 * Uses the IDE's PSI to detect if the document is a Maven POM: root element must be "project" with Maven POM
@@ -37,10 +37,10 @@ public class MavenUtils {
 			return false;
 		}
 
-		return isMavenPomFile(project, xmlFile);
+		return isMavenPomFile(xmlFile);
 	}
 
-	public static boolean isMavenPomFile(Project project, XmlFile xmlFile) {
+	public static boolean isMavenPomFile(XmlFile xmlFile) {
 		XmlTag rootTag = xmlFile.getDocument() != null ? xmlFile.getDocument().getRootTag() : null;
 		if (rootTag == null) {
 			return false;

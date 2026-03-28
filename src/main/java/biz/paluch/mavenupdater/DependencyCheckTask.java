@@ -15,11 +15,14 @@
  */
 package biz.paluch.mavenupdater;
 
-import biz.paluch.mavenupdater.dependencies.DependencyCheckService;
-import biz.paluch.mavenupdater.dependencies.DependencyUpgrades;
+import biz.paluch.mavenupdater.artifact.DependencyCheckService;
+import biz.paluch.mavenupdater.artifact.DependencyUpdates;
+
+import java.io.IOException;
 
 import org.jspecify.annotations.Nullable;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
@@ -27,14 +30,16 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Task to check Maven dependency upgrades.
+ * Task to check Maven dependency and plugin updates.
  *
  * @author Mark Paluch
  */
 class DependencyCheckTask extends Task.Backgroundable {
 
+	private static final Logger LOG = Logger.getInstance(DependencyCheckTask.class);
+
 	private final Project project;
-	private volatile @Nullable DependencyUpgrades resultRef;
+	private volatile @Nullable DependencyUpdates resultRef;
 	private final String pomContent;
 	private final VirtualFile pomFile;
 
@@ -47,12 +52,16 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 	@Override
 	public void run(ProgressIndicator indicator) {
-		resultRef = new DependencyCheckService(project).runCheck(indicator, pomContent, pomFile);
+		try {
+			resultRef = new DependencyCheckService(project).runCheck(indicator, pomContent, pomFile);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
 	public void onSuccess() {
-		DependencyUpgrades result = resultRef;
+		DependencyUpdates result = resultRef;
 		if (result != null) {
 			new DependencyCheckDialog(project, pomFile, result).show();
 		}
@@ -60,6 +69,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 	@Override
 	public void onThrowable(Throwable error) {
+		LOG.warn("Dependency check failed", error);
 		Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.error", error.getMessage()),
 				MessageBundle.message("action.check.dependencies.error.title"), Messages.getErrorIcon());
 	}
