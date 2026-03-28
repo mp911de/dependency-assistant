@@ -251,7 +251,6 @@ class DependencyCheckDialog extends DialogWrapper {
 
 			if (target != null) {
 				suggestion.setUpdateTo(target);
-				suggestion.setApplyUpdate(!target.equals(suggestion.currentVersion()));
 			}
 		}
 
@@ -286,7 +285,6 @@ class DependencyCheckDialog extends DialogWrapper {
 			return;
 		}
 		suggestion.setUpdateTo(vo.version());
-		suggestion.setApplyUpdate(!vo.version().equals(suggestion.currentVersion()));
 		if (table.isEditing()) {
 			table.getCellEditor().stopCellEditing();
 		}
@@ -671,7 +669,6 @@ class DependencyCheckDialog extends DialogWrapper {
 							VersionOption option = (VersionOption) editor.getCombo().getSelectedItem();
 
 							if (option != null && !option.version().equals(info.getUpdateTo())) {
-								info.setApplyUpdate(true);
 								info.setUpdateTo(option.version());
 								table.editingStopped(new ChangeEvent(option));
 							}
@@ -693,7 +690,6 @@ class DependencyCheckDialog extends DialogWrapper {
 		public void setValue(DependencyUpdateOption item, ArtifactVersion value) {
 			if (value != null && !value.equals(item.getUpdateTo())) {
 				item.setUpdateTo(value);
-				item.setApplyUpdate(true);
 			}
 		}
 

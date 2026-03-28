@@ -132,6 +132,7 @@ public final class DependencyUpdateOption {
 
 	public void setUpdateTo(@Nullable ArtifactVersion updateTo) {
 		this.updateTo = updateTo;
+		setApplyUpdate(!currentVersion().equals(updateTo));
 	}
 
 	public boolean isApplyUpdate() {

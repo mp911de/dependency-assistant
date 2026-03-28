@@ -31,7 +31,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * @return an artifact version with release suffix
 	 */
 	static ArtifactVersion of(NumericVersionComponents version) {
-		return new SemanticArtifactVersion(version, false, Suffix.Release.RELEASE);
+		return new SemanticArtifactVersion(version);
 	}
 
 	/**
@@ -57,8 +57,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * @return an artifact version with the appropriate release suffix
 	 */
 	static ArtifactVersion of(NumericVersionComponents version, boolean useModifierFormat) {
-		return new SemanticArtifactVersion(version, useModifierFormat,
-				useModifierFormat ? Suffix.Release.INSTANCE : Suffix.Release.RELEASE);
+		return new SemanticArtifactVersion(version, useModifierFormat);
 	}
 
 	/**
