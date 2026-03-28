@@ -86,4 +86,15 @@ enum VersionAge {
 		};
 	}
 
+	public String getIconName() {
+		return switch (this) {
+			case OLDER -> "AllIcons.Nodes.Library";
+			case NEWER_PATCH -> "AllIcons.Actions.StartDebugger";
+			case NEWER_MINOR -> "AllIcons.Debugger.ThreadRunning";
+			case NEWER_MAJOR -> "AllIcons.Actions.RunAll";
+			case PREVIEW -> "AllIcons.Debugger.DebuggerSync";
+			case SAME_OR_UNKNOWN -> "AllIcons.Nodes.PpLibFolder";
+		};
+	}
+
 }

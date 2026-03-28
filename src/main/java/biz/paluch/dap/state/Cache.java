@@ -28,6 +28,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -48,6 +50,8 @@ public class Cache {
 	private final @Tag @XCollection(propertyElementName = "properties", elementName = "property",
 			style = XCollection.Style.v2) List<Property> properties = new ArrayList<>();
 
+	@Transient private final Map<String, Property> propertyMap = new java.util.TreeMap<>();
+
 	public long getLastUpdateTimestamp() {
 		return lastUpdateTimestamp;
 	}
@@ -60,14 +64,16 @@ public class Cache {
 	 * Load cached version options for the given artifact. Returns an empty list if the cache is expired.
 	 */
 	@Transient
-	public List<VersionOption> getVersionOptions(ArtifactId artifactId) {
+	public List<VersionOption> getVersionOptions(ArtifactId artifactId, boolean ensureRecent) {
 
-		Instant instant = CLOCK.instant();
-		Instant lastUpdateInstant = Instant.ofEpochMilli(lastUpdateTimestamp);
-		Duration age = Duration.between(lastUpdateInstant, instant);
+		if (ensureRecent) {
+			Instant instant = CLOCK.instant();
+			Instant lastUpdateInstant = Instant.ofEpochMilli(lastUpdateTimestamp);
+			Duration age = Duration.between(lastUpdateInstant, instant);
 
-		if (age.compareTo(CACHE_EXPIRATION) > 0) {
-			return List.of();
+			if (age.compareTo(CACHE_EXPIRATION) > 0) {
+				return List.of();
+			}
 		}
 
 		synchronized (artifacts) {
@@ -114,13 +120,20 @@ public class Cache {
 	}
 
 	/**
+	 * Returns all known property-to-artifact mappings. Each {@link Property} carries the property name and the
+	 * artifact(s) whose version it controls.
+	 */
+	public List<Property> getProperties() {
+		return List.copyOf(properties);
+	}
+
+	/**
 	 * Update the cache with the given properties.
 	 */
 	public void setProperties(Collection<VersionCheckCandidate> versionCheckCandidates) {
 
 		properties.clear();
-
-		Map<String, Property> propertyMap = new java.util.TreeMap<>();
+		propertyMap.clear();
 
 		for (VersionCheckCandidate candidate : versionCheckCandidates) {
 
@@ -134,5 +147,18 @@ public class Cache {
 		}
 
 		properties.addAll(propertyMap.values());
+	}
+
+	public @Nullable Property getProperty(String propertyName) {
+
+		if (propertyMap.size() != properties.size()) {
+
+			propertyMap.clear();
+			for (Property property : properties) {
+				propertyMap.put(property.name(), property);
+			}
+		}
+
+		return propertyMap.get(propertyName);
 	}
 }

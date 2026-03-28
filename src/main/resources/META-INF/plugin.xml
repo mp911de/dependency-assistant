@@ -49,6 +49,11 @@ The currently open <code>pom.xml</code> file is used to apply updates to. The pl
 			<className>biz.paluch.dap.UpdateMavenDependenciesIntention
 			</className>
 		</intentionAction>
+		<completion.contributor
+				language="XML"
+				implementationClass="biz.paluch.dap.PropertyVersionCompletionContributor"/>
+		<platform.backend.documentation.psiTargetProvider
+				implementation="biz.paluch.dap.PropertyVersionDocumentationProvider"/>
 	</extensions>
 
 	<actions>

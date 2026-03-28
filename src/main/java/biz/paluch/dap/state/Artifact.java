@@ -78,4 +78,8 @@ public class Artifact {
 			this.releases.add(Release.from(versionOption));
 		}
 	}
+
+	public ArtifactId toArtifactId() {
+		return new ArtifactId(groupId, artifactId);
+	}
 }

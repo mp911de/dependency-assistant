@@ -108,7 +108,7 @@ public class DependencyCheckService {
 		for (VersionCheckCandidate task : tasks) {
 			futures.add(executor.submit(() -> {
 				try {
-					List<VersionOption> versionOptions = state.getCache().getVersionOptions(task.getArtifactId());
+					List<VersionOption> versionOptions = state.getCache().getVersionOptions(task.getArtifactId(), true);
 
 					if (CollectionUtils.isEmpty(versionOptions)) {
 						versionOptions = resolver.getVersionSuggestions(task.getArtifactId(), task.getCurrentVersion());
