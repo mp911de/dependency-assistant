@@ -25,13 +25,10 @@ import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.Property;
 
 import java.awt.Image;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.intellij.lang.documentation.DocumentationMarkup;
@@ -55,23 +52,17 @@ import com.intellij.psi.xml.XmlTag;
  * Implemented via {@link PsiDocumentationTargetProvider} (IntelliJ 2022+ new documentation API) so that it runs in the
  * {@code psiDocumentationTargets()} pipeline independently of — and before — the legacy {@code DocumentationProvider}
  * chain where the Maven plugin's {@code MavenModelDocumentationProvider} takes precedence.
- * </p>
  * <p>
  * Shows the artifact the property controls together with the cached available versions, sorted newest-first. Each row
  * carries a {@link VersionAge} icon derived from the tag's current value: GA releases are additionally shown in bold.
  * The list is capped at {@value PropertyVersionDocTarget#MAX_VERSIONS} entries.
- * </p>
  */
 public class PropertyVersionDocumentationProvider implements PsiDocumentationTargetProvider {
 
 	/**
-	 * Returns a {@link PropertyVersionDocTarget} when the element at the caret is inside a {@code <properties>} child tag
-	 * in a Maven POM that maps to a cached artifact, {@code null} otherwise.
-	 * <p>
-	 * Returning {@code null} lets IntelliJ fall through to its own {@code PsiElementDocumentationTarget} (which
-	 * eventually calls Maven's {@code MavenModelDocumentationProvider.generateDoc}), so documentation for all other POM
-	 * elements continues to work normally.
-	 * </p>
+	 * Returns a {@link PropertyVersionDocTarget} when the element at the caret is inside a {@code properties} child tag
+	 * in a Maven POM that maps to a cached artifact, {@code null} otherwise to use
+	 * {@code MavenModelDocumentationProvider}.
 	 */
 	@Override
 	public @Nullable DocumentationTarget documentationTarget(PsiElement targetElement,
@@ -79,17 +70,11 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 
 		// Prefer the element directly at the caret; targetElement may be a resolved reference.
 		PsiElement element = originalElement != null ? originalElement : targetElement;
-
-		XmlTag propertyTag = XmlUtil.findPropertyTag(element);
-		if (propertyTag == null) {
-			return null;
-		}
-
-
 		Project project = element.getProject();
 		MavenContext mavenContext = MavenContext.of(project, element.getContainingFile());
 
-		if (!mavenContext.isAvailable()) {
+		XmlTag propertyTag = XmlUtil.findPropertyTag(element);
+		if (propertyTag == null || !mavenContext.isAvailable()) {
 			return null;
 		}
 
@@ -100,7 +85,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 			return null;
 		}
 
-		return new PropertyVersionDocTarget(propertyTag, property, service.getCache());
+		return new PropertyVersionDocTarget(propertyTag, service.getCache(), property);
 	}
 
 	/**
@@ -111,29 +96,29 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 		static final int MAX_VERSIONS = 10;
 
 		private final XmlTag propertyTag;
-		private final Property property;
 		private final Cache cache;
+		private final Property property;
 
-		PropertyVersionDocTarget(XmlTag propertyTag, Property property, Cache cache) {
+		PropertyVersionDocTarget(XmlTag propertyTag, Cache cache, Property property) {
 			this.propertyTag = propertyTag;
 			this.property = property;
 			this.cache = cache;
 		}
 
 		@Override
-		public @NotNull Pointer<? extends DocumentationTarget> createPointer() {
+		public Pointer<? extends DocumentationTarget> createPointer() {
+
 			SmartPsiElementPointer<XmlTag> psiPointer = SmartPointerManager.getInstance(propertyTag.getProject())
 					.createSmartPsiElementPointer(propertyTag);
-			Property capturedProperty = property;
-			Cache capturedCache = cache;
+
 			return () -> {
 				XmlTag tag = psiPointer.getElement();
-				return tag != null ? new PropertyVersionDocTarget(tag, capturedProperty, capturedCache) : null;
+				return tag != null ? new PropertyVersionDocTarget(tag, cache, property) : null;
 			};
 		}
 
 		@Override
-		public @NotNull TargetPresentation computePresentation() {
+		public TargetPresentation computePresentation() {
 			return TargetPresentation.builder(propertyTag.getLocalName()).presentation();
 		}
 
@@ -143,6 +128,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 		 */
 		@Override
 		public @Nullable DocumentationResult computeDocumentation() {
+
 			Map<String, Image> iconImages = new LinkedHashMap<>();
 			String html = buildHtmlBody(iconImages);
 			if (html == null) {
@@ -164,6 +150,11 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 
 			String propertyName = propertyTag.getLocalName();
 			String currentValue = propertyTag.getValue().getText().trim();
+
+			if (StringUtil.isEmpty(currentValue) || property.artifacts().isEmpty()) {
+				return null;
+			}
+
 			ArtifactVersion currentVersion = tryParseVersion(currentValue);
 
 			StringBuilder sb = new StringBuilder();
@@ -175,20 +166,20 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 			sb.append(DocumentationMarkup.CONTENT_START);
 
 			if (!currentValue.isEmpty()) {
-				sb.append("<p>Current value: <code>").append(StringUtil.escapeXmlEntities(currentValue)).append("</code></p>");
+				sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.current-value"),
+						StringUtil.escapeXmlEntities(currentValue)));
 			}
 
-			boolean hasVersions = false;
 			for (CachedArtifact artifact : property.artifacts()) {
-				ArtifactId artifactId = artifact.toArtifactId();
-				sb.append("<p>Controls: <code>").append(artifactId).append("</code></p>");
 
-				List<Release> versions = sortedVersions(cache.getReleases(artifactId, false));
+				ArtifactId artifactId = artifact.toArtifactId();
+				sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.controls"), artifactId));
+
+				List<Release> versions = cache.getReleases(artifactId, false);
 				if (versions.isEmpty()) {
 					continue;
 				}
 
-				hasVersions = true;
 				sb.append("<table>");
 				int count = 0;
 				for (Release v : versions) {
@@ -229,14 +220,11 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 
 			sb.append(DocumentationMarkup.CONTENT_END);
 
-			return (hasVersions || !currentValue.isEmpty()) ? sb.toString() : null;
+			return sb.toString();
 		}
 
-		/**
-		 * Tries to parse {@code versionString} as an {@link ArtifactVersion}. Returns {@code null} when the string is empty
-		 * or unparseable (e.g. a Maven property placeholder like {@code ${revision}}).
-		 */
 		private static @Nullable ArtifactVersion tryParseVersion(String versionString) {
+
 			if (versionString.isEmpty()) {
 				return null;
 			}
@@ -245,12 +233,6 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 			} catch (Exception e) {
 				return null;
 			}
-		}
-
-		private static List<Release> sortedVersions(List<Release> versions) {
-			List<Release> sorted = new ArrayList<>(versions);
-			sorted.sort(Comparator.reverseOrder());
-			return sorted;
 		}
 	}
 }
