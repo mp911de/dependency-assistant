@@ -44,12 +44,12 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.StringUtils;
 
+import com.intellij.credentialStore.Credentials;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.util.net.IdeProxyAuthenticator;
 import com.intellij.util.net.JdkProxyProvider;
 import com.intellij.util.net.ProxyAuthentication;
 
@@ -220,8 +220,7 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 	private static class RepositoryAuthenticator extends Authenticator {
 
 		private final @Nullable RepositoryCredentials credentials;
-		private final IdeProxyAuthenticator proxyAuthenticator = new IdeProxyAuthenticator(
-				ProxyAuthentication.getInstance());
+		private final ProxyAuthentication proxyAuthentication = ProxyAuthentication.getInstance();
 
 		RepositoryAuthenticator(@Nullable RepositoryCredentials credentials) {
 			this.credentials = credentials;
@@ -231,9 +230,15 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 		protected PasswordAuthentication getPasswordAuthentication() {
 
 			if (getRequestorType() == RequestorType.PROXY) {
-				return proxyAuthenticator.requestPasswordAuthenticationInstance(getRequestingHost(), getRequestingSite(),
-						getRequestingPort(), getRequestingProtocol(), getRequestingPrompt(), getRequestingScheme(),
-						getRequestingURL(), getRequestorType());
+
+				Credentials knownAuthentication = proxyAuthentication.getKnownAuthentication(getRequestingHost(),
+						getRequestingPort());
+
+				if (knownAuthentication == null || knownAuthentication.getUserName() == null) {
+					return null;
+				}
+				return new PasswordAuthentication(knownAuthentication.getUserName(),
+						knownAuthentication.getPassword() != null ? knownAuthentication.getPassword().toCharArray() : new char[0]);
 			}
 
 			if (getRequestorType() == RequestorType.SERVER && credentials != null) {

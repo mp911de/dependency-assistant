@@ -49,7 +49,7 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 			return null;
 		}
 
-		Icon icon = MavenUpdater.TRANSPARENT_ICON;
+		Icon icon = DependencyAssistantIcons.TRANSPARENT_ICON;
 		String tooltip = upgradeSuggestion.getMessage();
 		String accessibleName = MessageBundle.message("gutter.newer.accessible");
 

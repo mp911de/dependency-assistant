@@ -103,6 +103,6 @@ public class UpdateMavenDependenciesIntention extends BaseElementAtCaretIntentio
 
 	@Override
 	public Icon getIcon(int i) {
-		return MavenUpdater.ICON;
+		return DependencyAssistantIcons.ICON;
 	}
 }

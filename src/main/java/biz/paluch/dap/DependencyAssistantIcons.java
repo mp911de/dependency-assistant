@@ -18,15 +18,17 @@ package biz.paluch.dap;
 import javax.swing.Icon;
 
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.util.IconUtil;
 
-class MavenUpdater {
+/**
+ * Icon utility class for Dependency Assistant icons.
+ */
+class DependencyAssistantIcons {
 
 	public static final Icon ICON = load("/META-INF/dependency-assistant.svg");
-	public static final Icon TRANSPARENT_ICON = IconUtil.filterIcon(ICON, () -> new AlphaImageFilter(0.5f), null);
+	public static final Icon TRANSPARENT_ICON = IconLoader.getTransparentIcon(ICON, 0.5f);
 
 	private static Icon load(String path) {
-		return IconLoader.getIcon(path, MavenUpdater.class.getClassLoader());
+		return IconLoader.getIcon(path, DependencyAssistantIcons.class.getClassLoader());
 	}
 
 }

@@ -54,7 +54,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			}
 
 			public Icon getIcon() {
-				return MavenUpdater.TRANSPARENT_ICON;
+				return DependencyAssistantIcons.TRANSPARENT_ICON;
 			}
 		}
 

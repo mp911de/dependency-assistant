@@ -44,7 +44,6 @@ import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jetbrains.idea.maven.project.MavenProjectsTree;
 import org.jetbrains.idea.reposearch.DependencySearchService;
 import org.jspecify.annotations.Nullable;
 
@@ -180,11 +179,11 @@ public class DependencyCheckService {
 			DependencyCollector treeCollector, MavenProjectsManager projectsManager) {
 
 		MavenProject currentProject = projectsManager.findProject(pomFile);
-		MavenProjectsTree projectsTree = projectsManager.getProjectsTree();
+		List<MavenProject> mavenProjects = projectsManager.getProjects();
 
 		PomProjection currentFileProjection = null;
 		Map<MavenId, PomProjection> poms = new HashMap<>();
-		for (MavenProject mavenProject : projectsTree.getProjects()) {
+		for (MavenProject mavenProject : mavenProjects) {
 
 			PomProjection pomProjection;
 
@@ -198,7 +197,7 @@ public class DependencyCheckService {
 
 		AllProjects projects = AllProjects.of(poms);
 
-		for (MavenProject mavenProject : projectsTree.getProjects()) {
+		for (MavenProject mavenProject : mavenProjects) {
 
 			PomProjection pomProjection = poms.get(mavenProject.getMavenId());
 

@@ -59,7 +59,7 @@ public class UpdateMavenDependenciesAction extends AnAction {
 
 		presentation.setText(MessageBundle.message("biz.paluch.dap.UpdateMavenDependencies.text"));
 		presentation.setDescription(MessageBundle.message("action.description"));
-		presentation.setIcon(MavenUpdater.ICON);
+		presentation.setIcon(DependencyAssistantIcons.ICON);
 		presentation.setVisible(true);
 
 		if (project == null) {
