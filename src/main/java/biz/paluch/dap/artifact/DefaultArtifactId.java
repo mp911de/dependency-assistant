@@ -33,7 +33,7 @@ record DefaultArtifactId(String groupId, String artifactId) implements ArtifactI
 	}
 
 	@Override
-	public int compareTo(@NonNull ArtifactId o) {
+	public int compareTo( ArtifactId o) {
 		return ArtifactId.COMPARATOR.compare(this, o);
 	}
 

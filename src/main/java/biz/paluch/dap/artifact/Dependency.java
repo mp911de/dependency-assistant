@@ -15,6 +15,7 @@
  */
 package biz.paluch.dap.artifact;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -47,11 +48,11 @@ public class Dependency implements HasArtifactId {
 	}
 
 	public Set<VersionSource> getVersionSources() {
-		return versionSources;
+		return Collections.unmodifiableSet(versionSources);
 	}
 
 	public Set<DeclarationSource> getDeclarationSources() {
-		return declarationSources;
+		return Collections.unmodifiableSet(declarationSources);
 	}
 
 	public Dependency addVersionSource(VersionSource versionSource) {
@@ -78,5 +79,4 @@ public class Dependency implements HasArtifactId {
 
 		return null;
 	}
-
 }

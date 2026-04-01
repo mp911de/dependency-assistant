@@ -19,10 +19,6 @@ import biz.paluch.dap.artifact.DependencyCheckService;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
-
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
-
 import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -32,6 +28,9 @@ import com.intellij.openapi.project.ProjectLocator;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
+ * Listener to invalidate the state of the dependency assistant when a
+ * {@code pom.xml} file is saved.
+ *
  * @author Mark Paluch
  */
 public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.ActionOnSave
@@ -54,14 +53,14 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 			ProjectState projectState = state.getProjectState(mavenContext.getMavenId());
 			projectState.invalidateDependencies();
 
-			DependencyCollector collector = DependencyCheckService.getInstance(project).collectArtifacts(document.getText(),
-					file);
+			DependencyCollector collector = DependencyCheckService.getInstance(project)
+					.collectArtifacts(document.getText(), file);
 			projectState.setDependencies(collector);
 		}
 	}
 
 	@Override
-	public void afterDocumentSaved(@NotNull Document document) {
+	public void afterDocumentSaved(Document document) {
 
 		VirtualFile virtualFile = DOCUMENT_MANAGER.getFile(document);
 		if (virtualFile != null) {
@@ -75,7 +74,7 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 	}
 
 	@Override
-	public void processDocuments(@NonNull Project project, @NonNull Document[] documents) {
+	public void processDocuments(Project project, Document[] documents) {
 
 		DependencyAssistantService state = DependencyAssistantService.getInstance(project);
 
@@ -93,4 +92,5 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 
 		super.processDocuments(project, documents);
 	}
+
 }

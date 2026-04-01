@@ -83,8 +83,8 @@ public class UpdateMavenDependenciesIntention extends BaseElementAtCaretIntentio
 	}
 
 	@Override
-	public @NotNull IntentionPreviewInfo generatePreview(@NotNull Project project, @NotNull Editor editor,
-			@NotNull PsiFile file) {
+	public  IntentionPreviewInfo generatePreview( Project project,  Editor editor,
+			 PsiFile file) {
 		return IntentionPreviewInfo.EMPTY;
 	}
 

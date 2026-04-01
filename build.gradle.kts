@@ -38,6 +38,9 @@ intellijPlatform {
 			sinceBuild = "253"
 		}
 
+		name = "Dependency Assistant"
+		description ="Provides assisted upgrading of Maven dependencies and plugins in a Maven project."
+
 		changeNotes = """
             Initial version
         """.trimIndent()
@@ -50,13 +53,16 @@ intellijPlatform {
 	}
 }
 
-tasks {
-	withType<JavaCompile> {
-		sourceCompatibility = "17"
-		targetCompatibility = "17"
+java {
+	toolchain {
+		languageVersion.set(JavaLanguageVersion.of(21))
 	}
+}
+
+tasks {
 	withType<Test>().configureEach {
 		useJUnitPlatform()
 		failOnNoDiscoveredTests = true
 	}
 }
+

@@ -28,27 +28,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.intellij.util.concurrency.AppExecutorUtil;
-
 /**
  * Resolves available versions by fetching {@link Release}s from {@link ReleaseSource}s.
  */
 public class ReleaseResolver {
 
 	private final List<ReleaseSource> sources;
+	private final ExecutorService executor;
 
 	public ReleaseResolver(List<ReleaseSource> sources, ExecutorService executor) {
 		this.sources = sources;
+		this.executor = executor;
 	}
 
 	public List<Release> getReleases(ArtifactId artifactId,
-			ArtifactVersion currentVersion) {
+									 ArtifactVersion currentVersion) {
 
-		ExecutorService executor = AppExecutorUtil.getAppExecutorService();
-
-		Set<Release> result = new TreeSet<>(Comparator.<Release> naturalOrder().reversed());
+		Set<Release> result = new TreeSet<>(Comparator.<Release>naturalOrder().reversed());
 		List<Future<List<Release>>> futures = new ArrayList<>();
-		Map<ReleaseSource, Future<?>> futureMap = new HashMap<>();
 		for (ReleaseSource source : sources) {
 			Future<List<Release>> future = executor.submit(() -> source.getReleases(artifactId));
 			futures.add(future);
@@ -74,11 +71,8 @@ public class ReleaseResolver {
 			}
 		}
 
-		if (currentVersion != null) {
-			result.add(Release.of(currentVersion));
-		}
+		result.add(Release.of(currentVersion));
 
 		return new ArrayList<>(result);
 	}
-
 }
