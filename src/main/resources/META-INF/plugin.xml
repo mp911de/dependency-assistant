@@ -46,6 +46,12 @@ The currently open <code>pom.xml</code> file is used to apply updates to. The pl
 	</applicationListeners>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<additionalTextAttributes scheme="Default"
+		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
+		<additionalTextAttributes scheme="Darcula"
+		                          file="colorSchemes/DependencyAssistantDarcula.xml"/>
+		<colorSettingsPage
+				implementation="biz.paluch.dap.DependencyAssistantColorSettingsPage"/>
 		<projectService
 				serviceImplementation="biz.paluch.dap.state.DependencyAssistantService"/>
 		<projectService

@@ -42,7 +42,6 @@ public class NewerVersionAnnotator implements Annotator {
 
 		holder.newAnnotation(NewerVersionSeveritiesProvider.NEWER_VERSION, upgradeSuggestion.getMessage())
 				.range(element.getTextRange()).textAttributes(NewerVersionSeveritiesProvider.NEWER_VERSION_KEY)
-				.withFix(UpdateMavenDependenciesIntention.INSTANCE)
-				.enforcedTextAttributes(NewerVersionSeveritiesProvider.DEFAULT_TEXT_ATTRIBUTES).create();
+				.withFix(UpdateMavenDependenciesIntention.INSTANCE).create();
 	}
 }
