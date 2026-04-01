@@ -16,7 +16,7 @@
 package biz.paluch.dap.artifact;
 
 /**
- * An artifact release.
+ * An artifact release consisting of an {@link ArtifactId} and a {@link Release}.
  *
  * @param artifactId
  * @param release
@@ -41,4 +41,5 @@ public record ArtifactRelease(ArtifactId artifactId,
 	public ArtifactVersion getVersion() {
 		return release.version();
 	}
+
 }

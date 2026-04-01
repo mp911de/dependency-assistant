@@ -125,8 +125,7 @@ class UpdatePom {
 		}
 	}
 
-	private void updateDeclaration(XmlTag projectTag, ArtifactId coordinate, DeclarationSource vds,
-			String newVersion) {
+	private void updateDeclaration(XmlTag projectTag, ArtifactId coordinate, DeclarationSource vds, String newVersion) {
 
 		List<XmlTag> tags = findDependencyOrPluginTag(projectTag, coordinate, vds);
 
@@ -150,58 +149,37 @@ class UpdatePom {
 		}
 	}
 
-	private List<XmlTag> findDependencyOrPluginTag(XmlTag projectTag, ArtifactId coordinate,
-			DeclarationSource source) {
+	private List<XmlTag> findDependencyOrPluginTag(XmlTag projectTag, ArtifactId coordinate, DeclarationSource source) {
+
 		String groupId = coordinate.groupId();
 		String artifactId = coordinate.artifactId();
 		List<XmlTag> tags = new ArrayList<>();
+		XmlTag searchRoot = source instanceof DeclarationSource.Profile inProfile
+				? findProfile(projectTag, inProfile.getProfileId())
+				: projectTag;
 
-		if (source instanceof DeclarationSource.Dependencies) {
-			findAndCollect(projectTag.findFirstSubTag("dependencies"), groupId, artifactId, tags::add);
+		if (searchRoot == null) {
+			return tags;
 		}
 
-		if (source instanceof DeclarationSource.DependencyManagement) {
-			XmlTag dm = projectTag.findFirstSubTag("dependencyManagement");
+		if (source instanceof DeclarationSource.Dependency && !(source instanceof DeclarationSource.Managed)) {
+			findAndCollect(searchRoot.findFirstSubTag("dependencies"), groupId, artifactId, tags::add);
+		}
+
+		if (source instanceof DeclarationSource.Dependency && source instanceof DeclarationSource.Managed) {
+			XmlTag dm = searchRoot.findFirstSubTag("dependencyManagement");
 			XmlTag deps = dm != null ? dm.findFirstSubTag("dependencies") : null;
 			findAndCollect(deps, groupId, artifactId, tags::add);
 		}
 
-		if (source instanceof DeclarationSource.Plugins) {
-			XmlTag build = projectTag.findFirstSubTag("build");
+		if (source instanceof DeclarationSource.Plugin & !(source instanceof DeclarationSource.Managed)) {
+			XmlTag build = searchRoot.findFirstSubTag("build");
 			XmlTag plugins = build != null ? build.findFirstSubTag("plugins") : null;
 			findAndCollect(plugins, groupId, artifactId, tags::add);
 		}
 
-		if (source instanceof DeclarationSource.PluginManagement) {
-			XmlTag build = projectTag.findFirstSubTag("build");
-			XmlTag pm = build != null ? build.findFirstSubTag("pluginManagement") : null;
-			XmlTag plugins = pm != null ? pm.findFirstSubTag("plugins") : null;
-			findAndCollect(plugins, groupId, artifactId, tags::add);
-		}
-
-		if (source instanceof DeclarationSource.ProfileDependencies pd) {
-			XmlTag profile = findProfile(projectTag, pd.getProfileId());
-			XmlTag deps = profile != null ? profile.findFirstSubTag("dependencies") : null;
-			findAndCollect(deps, groupId, artifactId, tags::add);
-		}
-
-		if (source instanceof DeclarationSource.ProfileDependencyManagement pd) {
-			XmlTag profile = findProfile(projectTag, pd.getProfileId());
-			XmlTag dm = profile != null ? profile.findFirstSubTag("dependencyManagement") : null;
-			XmlTag deps = dm != null ? dm.findFirstSubTag("dependencies") : null;
-			findAndCollect(deps, groupId, artifactId, tags::add);
-		}
-
-		if (source instanceof DeclarationSource.ProfilePlugins pp) {
-			XmlTag profile = findProfile(projectTag, pp.getProfileId());
-			XmlTag build = profile != null ? profile.findFirstSubTag("build") : null;
-			XmlTag plugins = build != null ? build.findFirstSubTag("plugins") : null;
-			findAndCollect(plugins, groupId, artifactId, tags::add);
-		}
-
-		if (source instanceof DeclarationSource.ProfilePluginManagement pp) {
-			XmlTag profile = findProfile(projectTag, pp.getProfileId());
-			XmlTag build = profile != null ? profile.findFirstSubTag("build") : null;
+		if (source instanceof DeclarationSource.Plugin && source instanceof DeclarationSource.Managed) {
+			XmlTag build = searchRoot.findFirstSubTag("build");
 			XmlTag pm = build != null ? build.findFirstSubTag("pluginManagement") : null;
 			XmlTag plugins = pm != null ? pm.findFirstSubTag("plugins") : null;
 			findAndCollect(plugins, groupId, artifactId, tags::add);
@@ -211,20 +189,26 @@ class UpdatePom {
 	}
 
 	private @Nullable XmlTag findProfile(XmlTag projectTag, @Nullable String profileId) {
+
 		XmlTag profiles = projectTag.findFirstSubTag("profiles");
+
 		if (profiles == null || profileId == null) {
 			return null;
 		}
+
 		for (XmlTag profile : profiles.getSubTags()) {
+
 			if (!"profile".equals(profile.getLocalName())) {
 				continue;
 			}
+
 			XmlTag idTag = profile.findFirstSubTag("id");
 			String id = idTag != null ? getTagText(idTag) : null;
 			if (profileId.equals(id)) {
 				return profile;
 			}
 		}
+
 		return null;
 	}
 
@@ -255,7 +239,7 @@ class UpdatePom {
 	}
 
 	private static void setTagValue(XmlTag tag, String value) {
-			tag.getValue().setText(value);
+		tag.getValue().setText(value);
 	}
 
 	record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
@@ -267,4 +251,5 @@ class UpdatePom {
 		}
 
 	}
+
 }

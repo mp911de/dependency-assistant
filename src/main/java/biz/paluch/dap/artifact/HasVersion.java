@@ -22,6 +22,9 @@ package biz.paluch.dap.artifact;
  */
 public interface HasVersion {
 
+	/**
+	 * Returns the version.
+	 */
 	ArtifactVersion getVersion();
 
 }

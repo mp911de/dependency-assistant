@@ -30,7 +30,7 @@ public class Property {
 
 	@Attribute private String name;
 	@XCollection(propertyElementName = "artifacts", elementName = "artifact",
-			style = XCollection.Style.v2) private final List<Artifact> artifacts = new ArrayList<>();
+			style = XCollection.Style.v2) private final List<CachedArtifact> artifacts = new ArrayList<>();
 
 	public Property() {}
 
@@ -38,13 +38,13 @@ public class Property {
 		this(name, new ArrayList<>());
 	}
 
-	public Property(String name, List<Artifact> artifacts) {
+	public Property(String name, List<CachedArtifact> artifacts) {
 		this.name = name;
 		this.artifacts.addAll(artifacts);
 	}
 
 	public void addArtifact(ArtifactId artifactId) {
-		this.artifacts.add(new Artifact(artifactId));
+		this.artifacts.add(new CachedArtifact(artifactId));
 	}
 
 	@Tag
@@ -52,7 +52,7 @@ public class Property {
 		return name;
 	}
 
-	public List<Artifact> artifacts() {
+	public List<CachedArtifact> artifacts() {
 		return artifacts;
 	}
 

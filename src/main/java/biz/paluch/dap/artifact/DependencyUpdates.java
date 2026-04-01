@@ -56,4 +56,5 @@ public record DependencyUpdates(String projectName, List<DependencyUpdateOption>
 
 		return unique;
 	}
+
 }

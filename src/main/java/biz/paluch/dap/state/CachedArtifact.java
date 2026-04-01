@@ -27,22 +27,22 @@ import com.intellij.util.xmlb.annotations.Transient;
 import com.intellij.util.xmlb.annotations.XCollection;
 
 @Tag("artifact")
-public class Artifact {
+public class CachedArtifact {
 
 	private @Attribute String groupId;
 	private @Attribute String artifactId;
 
 	private final @XCollection(propertyElementName = "releases", elementName = "release",
-			style = XCollection.Style.v2) List<biz.paluch.dap.state.Release> releases = new ArrayList<>();
+			style = XCollection.Style.v2) List<CachedRelease> releases = new ArrayList<>();
 
-	public Artifact() {}
+	public CachedArtifact() {}
 
-	public Artifact(String groupId, String artifactId) {
+	public CachedArtifact(String groupId, String artifactId) {
 		this.groupId = groupId;
 		this.artifactId = artifactId;
 	}
 
-	public Artifact(ArtifactId artifactId) {
+	public CachedArtifact(ArtifactId artifactId) {
 		this(artifactId.groupId(), artifactId.artifactId());
 	}
 
@@ -54,7 +54,7 @@ public class Artifact {
 		return artifactId;
 	}
 
-	public List<biz.paluch.dap.state.Release> getReleases() {
+	public List<CachedRelease> getReleases() {
 		return releases;
 	}
 
@@ -66,8 +66,8 @@ public class Artifact {
 	public List<Release> getVersionOptions() {
 
 		List<Release> options = new ArrayList<>();
-		for (biz.paluch.dap.state.Release release : releases) {
-			options.add(release.toVersionOption());
+		for (CachedRelease release : releases) {
+			options.add(release.toRelease());
 		}
 		return options;
 	}
@@ -75,7 +75,7 @@ public class Artifact {
 	public void setVersionOptions(List<Release> releases) {
 		this.releases.clear();
 		for (Release release : releases) {
-			this.releases.add(biz.paluch.dap.state.Release.from(release));
+			this.releases.add(CachedRelease.from(release));
 		}
 	}
 

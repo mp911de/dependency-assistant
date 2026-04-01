@@ -48,7 +48,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 
 	public List<HighlightInfoType> getSeveritiesHighlightInfoTypes() {
 
-		final class T extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+		class T extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
 			private T(HighlightSeverity severity, TextAttributesKey attributesKey) {
 				super(severity, attributesKey);
 			}

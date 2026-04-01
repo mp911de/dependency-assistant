@@ -24,11 +24,6 @@ import org.jspecify.annotations.Nullable;
  */
 public record RemoteRepository(String id, String url, @Nullable RepositoryCredentials credentials) {
 
-	/** Convenience constructor for repositories that require no authentication. */
-	public RemoteRepository(String id, String url) {
-		this(id, url, null);
-	}
-
 	@Override
 	public String toString() {
 		return "Repository " + id + " [" + url + "]";

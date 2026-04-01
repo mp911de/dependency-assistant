@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.MultiValueMap;
 import org.springframework.util.MultiValueMapAdapter;
 
@@ -34,14 +36,23 @@ public class DependencyCollector {
 			new TreeMap<>());
 	private final Map<ArtifactId, Dependency> versionCheckCandidates = new TreeMap<>();
 
-	public void add(ArtifactId coordinate, ArtifactUsage usage) {
+	/**
+	 * Add a dependency usage.
+	 */
+	void add(ArtifactId coordinate, ArtifactUsage usage) {
 		allDependencies.add(coordinate, usage);
 	}
 
-	public void doWithArtifacts(BiConsumer<ArtifactId, ArtifactUsage> callback) {
+	/**
+	 * Execute the given callback for each dependency.
+	 */
+	void doWithArtifacts(BiConsumer<ArtifactId, ArtifactUsage> callback) {
 		allDependencies.forEach((coordinate, usages) -> usages.forEach(usage -> callback.accept(coordinate, usage)));
 	}
 
+	/**
+	 * Register an update candidate.
+	 */
 	public void registerUpdateCandidate(ArtifactId artifactId, ArtifactVersion currentVersion,
 			DeclarationSource declarationSource, VersionSource versionSource) {
 
@@ -49,15 +60,25 @@ public class DependencyCollector {
 				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
 	}
 
+	/**
+	 * Return whether there are no update candidates.
+	 */
 	public boolean isEmpty() {
 		return versionCheckCandidates.isEmpty();
 	}
 
+	/**
+	 * Return all update candidates.
+	 */
 	public Collection<Dependency> getDependencies() {
 		return versionCheckCandidates.values();
 	}
 
-	public Dependency getDependency(ArtifactId artifactId) {
+	/**
+	 * Return the dependency for the given artifact id.
+	 */
+	public @Nullable Dependency getDependency(ArtifactId artifactId) {
 		return versionCheckCandidates.get(artifactId);
 	}
+
 }

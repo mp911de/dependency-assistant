@@ -22,6 +22,9 @@ package biz.paluch.dap.artifact;
  */
 public interface HasArtifactId {
 
+	/**
+	 * Returns the {@link ArtifactId}.
+	 */
 	ArtifactId getArtifactId();
 
 }

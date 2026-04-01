@@ -27,4 +27,5 @@ public record RepositoryCredentials(String id, String username, String password)
 	public String toString() {
 		return "RepositoryCredentials: " + id();
 	}
+
 }

@@ -43,7 +43,7 @@ public class Cache {
 	 */
 	@Attribute private long lastUpdateTimestamp = 0L;
 	private final @XCollection(propertyElementName = "artifacts", elementName = "artifact",
-			style = XCollection.Style.v2) List<Artifact> artifacts = new ArrayList<>();
+			style = XCollection.Style.v2) List<CachedArtifact> artifacts = new ArrayList<>();
 	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project",
 			style = XCollection.Style.v2) List<ProjectCache> projects = new ArrayList<>();
 
@@ -72,7 +72,7 @@ public class Cache {
 		}
 
 		synchronized (artifacts) {
-			for (Artifact artifact : artifacts) {
+			for (CachedArtifact artifact : artifacts) {
 				if (artifact.matches(artifactId)) {
 					return artifact.getVersionOptions();
 				}
@@ -87,17 +87,17 @@ public class Cache {
 	 */
 	public void putVersionOptions(ArtifactId artifactId, List<Release> releases) {
 
-		Artifact artifactToUse;
+		CachedArtifact artifactToUse;
 		synchronized (artifacts) {
 			artifactToUse = null;
-			for (Artifact artifact : artifacts) {
+			for (CachedArtifact artifact : artifacts) {
 				if (artifact.matches(artifactId)) {
 					artifactToUse = artifact;
 					break;
 				}
 			}
 			if (artifactToUse == null) {
-				artifactToUse = new Artifact(artifactId);
+				artifactToUse = new CachedArtifact(artifactId);
 				artifacts.add(artifactToUse);
 			}
 		}

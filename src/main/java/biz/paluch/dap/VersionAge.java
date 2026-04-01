@@ -95,6 +95,9 @@ enum VersionAge {
 		};
 	}
 
+	/**
+	 * Documentation icon names.
+	 */
 	public String getIconName() {
 		return switch (this) {
 			case OLDER -> "AllIcons.Nodes.Library";

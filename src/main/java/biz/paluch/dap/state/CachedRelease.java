@@ -15,6 +15,8 @@
  */
 package biz.paluch.dap.state;
 
+import biz.paluch.dap.artifact.Release;
+
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -24,28 +26,35 @@ import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
 
 @Tag("release")
-public class Release {
+public class CachedRelease {
 
 	@Attribute private String version;
 	@Attribute private @Nullable String date;
+	private volatile @Nullable Release release;
 
-	public Release() {}
+	public CachedRelease() {}
 
-	public Release(String version, @Nullable String date) {
+	public CachedRelease(String version, @Nullable String date) {
 		this.version = version;
 		this.date = date;
 	}
 
-	public static Release from(biz.paluch.dap.artifact.Release release) {
+	public static CachedRelease from(Release release) {
 		if (release.releaseDate() != null) {
-			return new Release(release.version().toString(), release.releaseDate().toLocalDate().toString());
+			return new CachedRelease(release.version().toString(), release.releaseDate().toLocalDate().toString());
 		}
-		return new Release(release.version().toString(), null);
+		return new CachedRelease(release.version().toString(), null);
 	}
 
 	@Transient
-	public biz.paluch.dap.artifact.Release toVersionOption() {
-		return biz.paluch.dap.artifact.Release.from(version(), date());
+	public Release toRelease() {
+
+		Release cachedRelease = this.release;
+		if (cachedRelease == null) {
+			cachedRelease = Release.from(version(), date());
+			this.release = cachedRelease;
+		}
+		return cachedRelease;
 	}
 
 	@Attribute
@@ -66,7 +75,7 @@ public class Release {
 		if (obj == null || obj.getClass() != this.getClass()) {
 			return false;
 		}
-		var that = (Release) obj;
+		var that = (CachedRelease) obj;
 		return Objects.equals(this.version, that.version) && Objects.equals(this.date, that.date);
 	}
 

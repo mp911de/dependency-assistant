@@ -35,7 +35,7 @@ import com.intellij.util.xmlb.XmlSerializerUtil;
  * Project-level service.
  */
 @State(name = "DependencyAssistant", storages = @Storage("dependency-assistant.xml"), defaultStateAsResource = true)
-public final class DependencyAssistantService implements PersistentStateComponent<DependencyAssistantState> {
+public class DependencyAssistantService implements PersistentStateComponent<DependencyAssistantState> {
 
 	private final DependencyAssistantState state = new DependencyAssistantState();
 	private final Map<MavenId, DependencyCollector> dependencies = new ConcurrentHashMap<>();

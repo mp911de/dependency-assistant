@@ -58,13 +58,12 @@ public interface MavenContext {
 		if (!projectsManager.isMavenizedProject() || file == null) {
 			return EmptyMavenContext.INSTANCE;
 		}
+		MavenProject mavenProject = projectsManager.findProject(file);
+		if (mavenProject == null) {
+			return EmptyMavenContext.INSTANCE;
+		}
 
 		return MavenContextImpl.contexts.computeIfAbsent(file, it -> {
-			MavenProject mavenProject = projectsManager.findProject(file);
-			if (mavenProject == null) {
-				return EmptyMavenContext.INSTANCE;
-			}
-
 			return new MavenContextImpl(project, mavenProject, mavenProject.getMavenId());
 		});
 	}

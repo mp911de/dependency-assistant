@@ -20,8 +20,8 @@ import static com.intellij.patterns.PlatformPatterns.*;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.state.Artifact;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.Property;
 
@@ -60,14 +60,14 @@ public class PropertyVersionCompletionContributor extends CompletionContributor 
 				new VersionSuggestionProvider());
 	}
 
-	private static final class VersionSuggestionProvider extends CompletionProvider<CompletionParameters> {
+	private static class VersionSuggestionProvider extends CompletionProvider<CompletionParameters> {
 
 		@Override
 		protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
 				CompletionResultSet result) {
 
 			Project project = parameters.getEditor().getProject();
-			XmlTag propertyTag = XmlUtil.getPropertyTag(parameters.getPosition());
+			XmlTag propertyTag = XmlUtil.findPropertyTag(parameters.getPosition());
 			if (project == null || propertyTag == null) {
 				return;
 			}
@@ -108,7 +108,7 @@ public class PropertyVersionCompletionContributor extends CompletionContributor 
 				Cache cache) {
 
 			List<ArtifactRelease> options = new ArrayList<>();
-			for (Artifact artifact : property.artifacts()) {
+			for (CachedArtifact artifact : property.artifacts()) {
 				options.addAll(SuggestionProviderUtil.findOptions(artifact.toArtifactId(), cache));
 				break;
 			}

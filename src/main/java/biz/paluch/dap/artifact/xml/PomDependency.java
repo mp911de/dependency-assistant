@@ -35,8 +35,4 @@ public interface PomDependency {
 	@Nullable
 	String getVersion();
 
-	@XBRead("child::scope")
-	@Nullable
-	String getScope();
-
 }

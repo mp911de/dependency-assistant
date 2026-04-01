@@ -15,29 +15,29 @@
  */
 package biz.paluch.dap.artifact;
 
-import java.util.List;
-import java.util.Set;
+import static org.assertj.core.api.Assertions.*;
 
-import org.jetbrains.idea.reposearch.DependencySearchService;
+import java.time.LocalDateTime;
+
+import org.junit.jupiter.api.Test;
 
 /**
- * Release source that fetches releases from {@link DependencySearchService}.
+ * Unit tests for {@link Release}.
  *
  * @author Mark Paluch
  */
-public class IndexReleaseSource implements ReleaseSource {
+class CachedReleaseUnitTests {
 
-	private final DependencySearchService service;
+	@Test
+	void shouldCompareVersions() {
 
-	public IndexReleaseSource(DependencySearchService service) {
-		this.service = service;
+		Release train = new Release(ArtifactVersion.of("Aluminium-SR1"),
+				LocalDateTime.parse("2017-01-01T00:00:00"));
+		Release v1 = new Release(ArtifactVersion.of("2020.0.0"), LocalDateTime.parse("2019-01-01T00:00:00"));
+		Release v2 = new Release(ArtifactVersion.of("2020.0.1"), LocalDateTime.parse("2019-01-01T00:00:00"));
+
+		assertThat(train).isLessThan(v1);
+		assertThat(v1).isGreaterThan(train).isLessThan(v2);
 	}
 
-	@Override
-	public List<Release> getReleases(ArtifactId artifactId) {
-
-		Set<String> versions = service.getVersions(artifactId.groupId(), artifactId.artifactId());
-
-		return versions.stream().map(Release::of).toList();
-	}
 }

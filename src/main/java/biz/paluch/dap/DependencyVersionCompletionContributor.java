@@ -51,17 +51,16 @@ public class DependencyVersionCompletionContributor extends CompletionContributo
 		extend(CompletionType.BASIC, psiElement().withElementType(XmlTokenType.XML_DATA_CHARACTERS) //
 				.and(psiElement().inside(XmlPatterns.xmlFile())) //
 				.and(psiElement().inside(XmlPatterns.xmlTag().withLocalName("version"))), new VersionSuggestionProvider());
-
 	}
 
-	private static final class VersionSuggestionProvider extends CompletionProvider<CompletionParameters> {
+	static class VersionSuggestionProvider extends CompletionProvider<CompletionParameters> {
 
 		@Override
 		protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
 				CompletionResultSet result) {
 
 			Project project = parameters.getEditor().getProject();
-			XmlTag versionTag = XmlUtil.getVersionTag(parameters.getPosition());
+			XmlTag versionTag = XmlUtil.findVersionTag(parameters.getPosition());
 			if (project == null || versionTag == null) {
 				return;
 			}
@@ -100,4 +99,5 @@ public class DependencyVersionCompletionContributor extends CompletionContributo
 		}
 
 	}
+
 }

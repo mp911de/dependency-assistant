@@ -216,28 +216,6 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		return other instanceof SemanticArtifactVersion sav && components.getMajor() == sav.components.getMajor();
 	}
 
-	public NumericVersionComponents getComponents() {
-		return components;
-	}
-
-	/**
-	 * Returns the release version for the current one.
-	 *
-	 * @return
-	 */
-	public ArtifactVersion getReleaseVersion() {
-		return new SemanticArtifactVersion(components, modifierFormat);
-	}
-
-	/**
-	 * Returns the snapshot version of the current one.
-	 *
-	 * @return
-	 */
-	public ArtifactVersion getSnapshotVersion() {
-		return snapshotOf(components);
-	}
-
 	/**
 	 * Returns whether the version is a release version.
 	 *
@@ -293,20 +271,6 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		return suffix.canonical();
 	}
 
-	public int getLevel() {
-
-		if (suffix instanceof SemVerSuffix sv) {
-			return sv.counter();
-		}
-
-		if (isBugFixVersion()) {
-			return components.getBugfix();
-		}
-
-		throw new IllegalStateException("Not a M/RC/SR release");
-
-	}
-
 	@Override
 	public boolean isSnapshotVersion() {
 		return suffix instanceof Suffix.Snapshot;
@@ -357,10 +321,6 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		return versionOf(components.nextMinor());
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Comparable#compareTo(java.lang.Object)
-	 */
 	@Override
 	public int compareTo(ArtifactVersion that) {
 		return that instanceof SemanticArtifactVersion sav ? compareTo(sav) : 1;

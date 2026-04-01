@@ -18,8 +18,8 @@ package biz.paluch.dap;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.state.Artifact;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.Property;
@@ -80,7 +80,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 		// Prefer the element directly at the caret; targetElement may be a resolved reference.
 		PsiElement element = originalElement != null ? originalElement : targetElement;
 
-		XmlTag propertyTag = XmlUtil.getPropertyTag(element);
+		XmlTag propertyTag = XmlUtil.findPropertyTag(element);
 		if (propertyTag == null) {
 			return null;
 		}
@@ -106,7 +106,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 	/**
 	 * Documentation target for a Maven property tag that controls a cached dependency version.
 	 */
-	static final class PropertyVersionDocTarget implements DocumentationTarget {
+	static class PropertyVersionDocTarget implements DocumentationTarget {
 
 		static final int MAX_VERSIONS = 10;
 
@@ -179,7 +179,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 			}
 
 			boolean hasVersions = false;
-			for (Artifact artifact : property.artifacts()) {
+			for (CachedArtifact artifact : property.artifacts()) {
 				ArtifactId artifactId = artifact.toArtifactId();
 				sb.append("<p>Controls: <code>").append(artifactId).append("</code></p>");
 

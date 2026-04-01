@@ -40,11 +40,11 @@ import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.jetbrains.idea.maven.indices.MavenIndicesManager;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jetbrains.idea.reposearch.DependencySearchService;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.CollectionUtils;
@@ -63,15 +63,15 @@ public class DependencyCheckService {
 	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([^}]*)\\}");
 
 	private final Project project;
-	private final DependencySearchService searchService;
+	private final MavenIndicesManager indicesManager;
 	private final MavenProjectsManager projectsManager;
 	private final DependencyAssistantService service;
 
 	public DependencyCheckService(Project project) {
 		this.project = project;
-		this.searchService = DependencySearchService.getInstance(project);
+		this.indicesManager = MavenIndicesManager.getInstance(project);
 		this.projectsManager = MavenProjectsManager.getInstance(project);
-		this.service = project.getService(DependencyAssistantService.class);
+		this.service = DependencyAssistantService.getInstance(project);
 	}
 
 	/**
@@ -112,7 +112,7 @@ public class DependencyCheckService {
 		Cache cache = service.getCache();
 		List<ReleaseSource> sources = new ArrayList<>();
 		sources.addAll(mavenContext.doWithMaven(this::collectRepositories));
-		sources.add(new IndexReleaseSource(searchService));
+		sources.add(new ReleaseSource.IndexReleaseSource(indicesManager.getCommonGavIndex()));
 
 		ReleaseResolver resolver = new ReleaseResolver(sources, executor);
 		List<DependencyUpdateOption> items = new ArrayList<>();
@@ -324,6 +324,7 @@ public class DependencyCheckService {
 	interface Projects {
 
 		PomProperty getProperty(String property);
+
 	}
 
 	record ProjectPom(PomProjection projection, Map<String, String> properties, List<Profile> profiles) {
@@ -348,9 +349,11 @@ public class DependencyCheckService {
 
 			return null;
 		}
+
 	}
 
 	record Profile(String id, Map<String, String> properties) {
+
 	}
 
 	record AllProjects(Map<MavenId, ProjectPom> project) implements Projects {

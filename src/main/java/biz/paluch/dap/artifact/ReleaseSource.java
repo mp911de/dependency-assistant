@@ -16,6 +16,9 @@
 package biz.paluch.dap.artifact;
 
 import java.util.List;
+import java.util.Set;
+
+import org.jetbrains.idea.maven.indices.MavenGAVIndex;
 
 /**
  * Source to provide release information.
@@ -29,4 +32,25 @@ public interface ReleaseSource {
 	 */
 	List<Release> getReleases(ArtifactId artifactId);
 
+	/**
+	 * Release source that fetches releases from {@link MavenGAVIndex}.
+	 *
+	 * @author Mark Paluch
+	 */
+	class IndexReleaseSource implements ReleaseSource {
+
+		private final MavenGAVIndex index;
+
+		public IndexReleaseSource(MavenGAVIndex index) {
+			this.index = index;
+		}
+
+		@Override
+		public List<Release> getReleases(ArtifactId artifactId) {
+
+			Set<String> versions = index.getVersions(artifactId.groupId(), artifactId.artifactId());
+
+			return versions.stream().map(Release::of).toList();
+		}
+	}
 }

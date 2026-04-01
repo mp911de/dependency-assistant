@@ -28,11 +28,17 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 
 /**
+ * XML handling utility methods.
+ *
  * @author Mark Paluch
  */
-public class XmlUtil {
+class XmlUtil {
 
-	public static @Nullable XmlTag getPropertyTag(PsiElement contextElement) {
+	/**
+	 * Return the property tag for the given context element if the element is a property within the {@code properties}
+	 * tag.
+	 */
+	public static @Nullable XmlTag findPropertyTag(PsiElement contextElement) {
 
 		PsiFile file = contextElement.getContainingFile();
 		if (!(file instanceof XmlFile xmlFile) || !MavenUtils.isMavenPomFile(xmlFile)) {
@@ -52,7 +58,10 @@ public class XmlUtil {
 		return propertyTag;
 	}
 
-	public static @Nullable XmlTag getVersionTag(PsiElement contextElement) {
+	/**
+	 * Return the version tag for the given context element if the element is a version tag within a dependency or plugin.
+	 */
+	public static @Nullable XmlTag findVersionTag(PsiElement contextElement) {
 
 		PsiFile file = contextElement.getContainingFile();
 		if (!MavenUtils.isMavenPomFile(file)) {
@@ -76,6 +85,9 @@ public class XmlUtil {
 		return null;
 	}
 
+	/**
+	 * Return the artifact id of the given plugin or dependency.
+	 */
 	static @Nullable ArtifactId getArtifactId(@Nullable XmlTag pluginOrDependency) {
 
 		if (pluginOrDependency == null) {

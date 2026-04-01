@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Version and update info for a single dependency.
  */
-public final class DependencyUpdateOption implements HasArtifactId {
+public class DependencyUpdateOption implements HasArtifactId {
 
 	private final Dependency dependency;
 	private final List<Release> releases;

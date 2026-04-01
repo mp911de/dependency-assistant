@@ -28,7 +28,7 @@ import com.intellij.psi.PsiElement;
  *
  * @author Mark Paluch
  */
-public class NewVersionAnnotator implements Annotator {
+public class NewerVersionAnnotator implements Annotator {
 
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {

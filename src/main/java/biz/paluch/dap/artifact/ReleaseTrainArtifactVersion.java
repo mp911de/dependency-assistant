@@ -31,7 +31,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Mark Paluch
  */
-final class ReleaseTrainArtifactVersion implements ArtifactVersion {
+class ReleaseTrainArtifactVersion implements ArtifactVersion {
 
 	private final String trainName;
 	private final Suffix suffix;

@@ -29,10 +29,6 @@ public interface MavenMetadataProjection {
 	@Nullable
 	String getRelease();
 
-	@XBRead("/metadata/versioning/latest")
-	@Nullable
-	String getLatest();
-
 	@XBRead("/metadata/versioning/versions/version")
 	List<String> getVersions();
 

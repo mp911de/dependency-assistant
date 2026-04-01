@@ -388,7 +388,7 @@ class DependencyCheckDialog extends DialogWrapper {
 	 * {@link UpdateToColumn}). {@link ActionToolbar} is unreliable inside JTable paint stamps (layout/async refresh), so
 	 * this uses plain {@link JButton}s with the same icons.
 	 */
-	private final class UpgradeTargetsToolbarEditor extends DefaultCellEditor {
+	private class UpgradeTargetsToolbarEditor extends DefaultCellEditor {
 
 		private final JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
@@ -755,7 +755,7 @@ class DependencyCheckDialog extends DialogWrapper {
 	/**
 	 * Single checkbox for the active editor cell only; selection is set from the row value when editing starts.
 	 */
-	private static final class ApplyUpdateCheckboxEditor extends AbstractCellEditor implements TableCellEditor {
+	private static class ApplyUpdateCheckboxEditor extends AbstractCellEditor implements TableCellEditor {
 
 		private final JCheckBox checkBox = new JCheckBox();
 

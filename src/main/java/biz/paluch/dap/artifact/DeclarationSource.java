@@ -22,43 +22,95 @@ import org.jspecify.annotations.Nullable;
  */
 public abstract class DeclarationSource {
 
-	public static DeclarationSource managed() {
-		return DependencyManagement.INSTANCE;
+	/**
+	 * Declaration source for a plugin.
+	 */
+	public interface Plugin {
+
 	}
 
+	/**
+	 * Declaration source for a dependency.
+	 */
+	public interface Dependency {
+
+	}
+
+	/**
+	 * Declaration source for a managed dependency.
+	 */
+	public interface Managed {
+
+	}
+
+	/**
+	 * Artifact declared within a profile.
+	 */
+	public interface Profile {
+		String getProfileId();
+	}
+
+	/**
+	 * Direct dependency.
+	 */
 	public static DeclarationSource dependency() {
 		return Dependencies.INSTANCE;
 	}
 
+	/**
+	 * Managed dependency.
+	 */
+	public static DeclarationSource managed() {
+		return DependencyManagement.INSTANCE;
+	}
+
+	/**
+	 * Dependency under a profile.
+	 */
 	public static DeclarationSource profileDependency(String id) {
 		return new ProfileDependencies(id);
 	}
 
+	/**
+	 * Managed dependency under a profile.
+	 */
 	public static DeclarationSource profileManaged(String id) {
 		return new ProfileDependencyManagement(id);
 	}
 
-	public static DeclarationSource pluginManagement() {
-		return PluginManagement.INSTANCE;
-	}
-
+	/**
+	 * Direct plugin.
+	 */
 	public static DeclarationSource plugin() {
 		return Plugins.INSTANCE;
 	}
 
-	public static DeclarationSource profilePluginManagement(String id) {
-		return new ProfilePluginManagement(id);
+	/**
+	 * Managed plugin.
+	 */
+	public static DeclarationSource pluginManagement() {
+		return PluginManagement.INSTANCE;
 	}
 
+	/**
+	 * Direct plugin under a profile.
+	 */
 	public static DeclarationSource profilePlugin(String id) {
 		return new ProfilePlugins(id);
+	}
+
+	/**
+	 * Managed plugin under a profile.
+	 */
+	public static DeclarationSource profilePluginManagement(String id) {
+		return new ProfilePluginManagement(id);
 	}
 
 	@Override
 	public abstract String toString();
 
 	/** Dependencies under project/dependencies. */
-	public static final class Dependencies extends DeclarationSource implements Dependency {
+	private static class Dependencies extends DeclarationSource implements Dependency {
 
 		public static final Dependencies INSTANCE = new Dependencies();
 
@@ -71,7 +123,7 @@ public abstract class DeclarationSource {
 	}
 
 	/** Dependencies under project/dependencyManagement. */
-	public static final class DependencyManagement extends DeclarationSource implements Dependency {
+	private static class DependencyManagement extends DeclarationSource implements Dependency, Managed {
 
 		public static final DependencyManagement INSTANCE = new DependencyManagement();
 
@@ -84,7 +136,7 @@ public abstract class DeclarationSource {
 	}
 
 	/** Dependencies under a profile's dependencies. */
-	public static final class ProfileDependencies extends DeclarationSource implements Dependency, Profile {
+	private static class ProfileDependencies extends DeclarationSource implements Dependency, Profile {
 
 		private final @Nullable String profileId;
 
@@ -103,7 +155,7 @@ public abstract class DeclarationSource {
 	}
 
 	/** Dependencies under a profile's dependencyManagement. */
-	public static final class ProfileDependencyManagement extends DeclarationSource implements Dependency, Profile {
+	private static class ProfileDependencyManagement extends DeclarationSource implements Dependency, Profile, Managed {
 
 		private final @Nullable String profileId;
 
@@ -119,10 +171,11 @@ public abstract class DeclarationSource {
 		public String toString() {
 			return "profile:" + profileId + "/DM";
 		}
+
 	}
 
 	/** Plugins under project/build/plugins. */
-	public static final class Plugins extends DeclarationSource implements Plugin {
+	private static class Plugins extends DeclarationSource implements Plugin {
 
 		public static final Plugins INSTANCE = new Plugins();
 
@@ -132,10 +185,11 @@ public abstract class DeclarationSource {
 		public String toString() {
 			return "PL";
 		}
+
 	}
 
 	/** Plugins under project/build/pluginManagement. */
-	public static final class PluginManagement extends DeclarationSource implements Plugin {
+	private static class PluginManagement extends DeclarationSource implements Plugin, Managed {
 
 		public static final PluginManagement INSTANCE = new PluginManagement();
 
@@ -145,10 +199,11 @@ public abstract class DeclarationSource {
 		public String toString() {
 			return "PM";
 		}
+
 	}
 
 	/** Plugins under a profile's build/plugins. */
-	public static final class ProfilePlugins extends DeclarationSource implements Plugin, Profile {
+	private static class ProfilePlugins extends DeclarationSource implements Plugin, Profile {
 
 		private final @Nullable String profileId;
 
@@ -164,10 +219,11 @@ public abstract class DeclarationSource {
 		public String toString() {
 			return "profile:" + profileId + "/PL";
 		}
+
 	}
 
 	/** Plugins under a profile's build/pluginManagement. */
-	public static final class ProfilePluginManagement extends DeclarationSource implements Plugin, Profile {
+	private static class ProfilePluginManagement extends DeclarationSource implements Plugin, Profile, Managed {
 
 		private final @Nullable String profileId;
 
@@ -183,17 +239,7 @@ public abstract class DeclarationSource {
 		public String toString() {
 			return "profile:" + profileId + "/PM";
 		}
-	}
-
-	public interface Plugin {
 
 	}
 
-	public interface Dependency {
-
-	}
-
-	public interface Profile {
-		String getProfileId();
-	}
 }

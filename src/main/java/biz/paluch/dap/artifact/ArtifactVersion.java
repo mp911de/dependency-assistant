@@ -145,6 +145,9 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	 */
 	boolean isBugFixVersion();
 
+	/**
+	 * Return whether the given version can be compared with this one (whether objects are semantically comparable).
+	 */
 	default boolean canCompare(ArtifactVersion version) {
 		return getClass().equals(version.getClass());
 	}
@@ -153,4 +156,5 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	default ArtifactVersion getVersion() {
 		return this;
 	}
+
 }

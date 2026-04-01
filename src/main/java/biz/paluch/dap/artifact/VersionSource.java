@@ -44,7 +44,7 @@ public abstract class VersionSource {
 		return new ProfilePropertySource(property, profile);
 	}
 
-	public static final class NoVersionSource extends VersionSource {
+	public static class NoVersionSource extends VersionSource {
 
 		@Override
 		public String toString() {
@@ -52,7 +52,7 @@ public abstract class VersionSource {
 		}
 	}
 
-	public static final class VersionDeclarationSource extends VersionSource {
+	public static class VersionDeclarationSource extends VersionSource {
 
 		private final DeclarationSource declarationSource;
 
@@ -78,7 +78,7 @@ public abstract class VersionSource {
 		}
 	}
 
-	public static final class DeclaredVersion extends VersionSource {
+	public static class DeclaredVersion extends VersionSource {
 
 		private final String version;
 
@@ -140,7 +140,7 @@ public abstract class VersionSource {
 		}
 	}
 
-	public static final class ProfilePropertySource extends VersionPropertySource {
+	public static class ProfilePropertySource extends VersionPropertySource {
 
 		private final String profileId;
 

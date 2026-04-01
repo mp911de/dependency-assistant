@@ -16,6 +16,8 @@
 package biz.paluch.dap.artifact;
 
 /**
+ * Exception thrown when an artifact is not found.
+ *
  * @author Mark Paluch
  */
 public class ArtifactNotFoundException extends RuntimeException {
@@ -30,4 +32,5 @@ public class ArtifactNotFoundException extends RuntimeException {
 	public ArtifactId getArtifactId() {
 		return artifactId;
 	}
+
 }

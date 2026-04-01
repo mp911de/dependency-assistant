@@ -56,7 +56,4 @@ public interface PomProjection {
 	@XBRead("/project/build/pluginManagement/plugins/plugin")
 	List<PomDependency> getBuildPluginManagementPlugins();
 
-	@XBRead("/project/repositories/repository/url")
-	List<String> getRepositoryUrls();
-
 }

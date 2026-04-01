@@ -70,7 +70,7 @@ The currently open <code>pom.xml</code> file is used to apply updates to. The pl
 				language="XML"
 				implementationClass="biz.paluch.dap.NewerVersionLineMarkerProvider"/>
 		<annotator language="XML"
-		           implementationClass="biz.paluch.dap.NewVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.NewerVersionAnnotator"/>
 		<severitiesProvider
 				implementation="biz.paluch.dap.NewerVersionSeveritiesProvider"/>
 		<localInspection

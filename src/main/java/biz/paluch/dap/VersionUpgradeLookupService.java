@@ -20,8 +20,8 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.state.Artifact;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectCache;
 import biz.paluch.dap.state.ProjectState;
@@ -42,7 +42,7 @@ import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTokenType;
 
 /**
- * Shared version-upgrade lookup used by both {@link NewerVersionLineMarkerProvider} and {@link NewVersionAnnotator}.
+ * Shared version-upgrade lookup used by both {@link NewerVersionLineMarkerProvider} and {@link NewerVersionAnnotator}.
  */
 class VersionUpgradeLookupService {
 
@@ -77,12 +77,12 @@ class VersionUpgradeLookupService {
 
 		ProjectCache cache = this.cache.getProject(mavenContext.getMavenId());
 
-		XmlTag versionTag = XmlUtil.getVersionTag(element);
+		XmlTag versionTag = XmlUtil.findVersionTag(element);
 		if (versionTag != null) {
 			return resolveVersionTag(versionTag);
 		}
 
-		XmlTag propertyTag = XmlUtil.getPropertyTag(element);
+		XmlTag propertyTag = XmlUtil.findPropertyTag(element);
 		if (propertyTag != null) {
 			return resolvePropertyTag(cache, propertyTag);
 		}
@@ -217,7 +217,7 @@ class VersionUpgradeLookupService {
 			return null;
 		}
 
-		Artifact firstArtifact = property.artifacts().iterator().next();
+		CachedArtifact firstArtifact = property.artifacts().iterator().next();
 		List<Release> options = this.cache.getReleases(firstArtifact.toArtifactId(), false);
 		if (options.isEmpty()) {
 			return null;

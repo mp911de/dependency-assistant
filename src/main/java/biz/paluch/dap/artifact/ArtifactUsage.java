@@ -16,8 +16,10 @@
 package biz.paluch.dap.artifact;
 
 /**
+ * Usage how an artifact is declared and used.
+ *
  * @author Mark Paluch
  */
-public record ArtifactUsage(DeclarationSource declaration, VersionSource version) {
+record ArtifactUsage(DeclarationSource declaration, VersionSource version) {
 
 }

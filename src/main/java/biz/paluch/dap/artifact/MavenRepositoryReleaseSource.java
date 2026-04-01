@@ -109,6 +109,7 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 		for (ArtifactVersion av : versions) {
 			result.add(new Release(av, releaseDates.get(av.toString())));
 		}
+
 		return result;
 	}
 
@@ -121,6 +122,7 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 		if (versions == null) {
 			return List.of();
 		}
+
 		List<ArtifactVersion> result = new ArrayList<>();
 		for (String v : versions) {
 			String trimmed = v != null ? v.trim() : "";
@@ -178,6 +180,7 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 				}
 			}
 		}
+
 		return result;
 	}
 
@@ -247,6 +250,7 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 
 			return null;
 		}
+
 	}
 
 	private static String getUserAgent() {
@@ -268,4 +272,5 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 
 		return userAgent;
 	}
+
 }

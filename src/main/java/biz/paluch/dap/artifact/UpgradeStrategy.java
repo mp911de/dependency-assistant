@@ -72,7 +72,7 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Upgrade to the latest version.
+	 * Upgrade to the latest stable version.
 	 */
 	LATEST {
 		@Override
@@ -85,6 +85,9 @@ public enum UpgradeStrategy {
 
 	},
 
+	/**
+	 * Upgrade to the latest preview version.
+	 */
 	PREVIEW {
 		@Override
 		@Nullable

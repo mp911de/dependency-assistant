@@ -32,9 +32,11 @@ import org.jspecify.annotations.Nullable;
 class DependencyUpdateModel {
 
 	private final DependencyUpdates updateCheckResult;
+
 	private final List<DependencyUpdateOption> updateOptions = new ArrayList<>();
 
 	private UpgradeStrategies upgradeStrategy = UpgradeStrategies.MANUAL;
+
 	private boolean filterVersionSuggestions = true;
 
 	public DependencyUpdateModel(DependencyUpdates updateCheckResult) {
@@ -61,8 +63,8 @@ class DependencyUpdateModel {
 	}
 
 	public void setFilterVersionSuggestions(boolean filterVersionSuggestions) {
-		this.filterVersionSuggestions = filterVersionSuggestions;
 
+		this.filterVersionSuggestions = filterVersionSuggestions;
 		updateOptions.clear();
 
 		if (filterVersionSuggestions) {
@@ -90,6 +92,7 @@ class DependencyUpdateModel {
 	}
 
 	enum UpgradeStrategies {
+
 		MANUAL("dialog.upgradeStrategy.manual"), //
 		BUGFIX("dialog.upgradeStrategy.bugfix", UpgradeStrategy.PATCH), //
 		MINOR("dialog.upgradeStrategy.minor", UpgradeStrategy.MINOR), //
@@ -109,12 +112,12 @@ class DependencyUpdateModel {
 			this.strategy = strategy;
 		}
 
-		String getMessageKey() {
-			return messageKey;
-		}
-
 		public @Nullable UpgradeStrategy getStrategy() {
 			return strategy;
+		}
+
+		String getMessageKey() {
+			return messageKey;
 		}
 
 		/**
@@ -139,5 +142,7 @@ class DependencyUpdateModel {
 				case PREVIEW -> VersionAge.PREVIEW;
 			}).getIcon();
 		}
+
 	}
+
 }
