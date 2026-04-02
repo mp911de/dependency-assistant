@@ -1,0 +1,106 @@
+<code_scheme name="Dependency Assistant" version="173">
+	<option name="OTHER_INDENT_OPTIONS">
+		<value>
+			<option name="USE_TAB_CHARACTER" value="true"/>
+		</value>
+	</option>
+	<option name="RIGHT_MARGIN" value="90"/>
+	<GroovyCodeStyleSettings>
+		<option name="CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND" value="99"/>
+		<option name="NAMES_COUNT_TO_USE_IMPORT_ON_DEMAND" value="99"/>
+		<option name="IMPORT_LAYOUT_TABLE">
+			<value>
+				<package name="java" withSubpackages="true" static="false"/>
+				<emptyLine/>
+				<package name="javax" withSubpackages="true" static="false"/>
+				<emptyLine/>
+				<package name="" withSubpackages="true" static="false"/>
+				<emptyLine/>
+				<package name="org.springframework" withSubpackages="true"
+				         static="false"/>
+				<emptyLine/>
+				<package name="" withSubpackages="true" static="true"/>
+			</value>
+		</option>
+	</GroovyCodeStyleSettings>
+	<H2CodeStyleSettings version="7">
+		<option name="USE_GENERAL_STYLE" value="false"/>
+	</H2CodeStyleSettings>
+	<JavaCodeStyleSettings>
+		<option name="TEST_NAME_SUFFIX" value="Tests"/>
+		<option name="CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND" value="11"/>
+		<option name="NAMES_COUNT_TO_USE_IMPORT_ON_DEMAND" value="1"/>
+		<option name="PACKAGES_TO_USE_IMPORT_ON_DEMAND">
+			<value/>
+		</option>
+		<option name="IMPORT_LAYOUT_TABLE">
+			<value>
+				<package name="" withSubpackages="true" static="false" module="true"/>
+				<package name="java" withSubpackages="true" static="false"/>
+				<emptyLine/>
+				<package name="javax" withSubpackages="true" static="false"/>
+				<emptyLine/>
+				<package name="" withSubpackages="true" static="false"/>
+				<emptyLine/>
+				<package name="org.springframework" withSubpackages="true"
+				         static="false"/>
+				<emptyLine/>
+				<package name="" withSubpackages="true" static="true"/>
+			</value>
+		</option>
+	</JavaCodeStyleSettings>
+	<JetCodeStyleSettings>
+		<option name="CODE_STYLE_DEFAULTS" value="KOTLIN_OFFICIAL"/>
+	</JetCodeStyleSettings>
+	<codeStyleSettings language="AsciiDoc">
+		<indentOptions>
+			<option name="INDENT_SIZE" value="2"/>
+			<option name="TAB_SIZE" value="2"/>
+			<option name="USE_TAB_CHARACTER" value="true"/>
+		</indentOptions>
+	</codeStyleSettings>
+	<codeStyleSettings language="Groovy">
+		<option name="ELSE_ON_NEW_LINE" value="true"/>
+		<option name="WHILE_ON_NEW_LINE" value="true"/>
+		<option name="CATCH_ON_NEW_LINE" value="true"/>
+		<option name="FINALLY_ON_NEW_LINE" value="true"/>
+		<option name="ALIGN_MULTILINE_PARAMETERS" value="false"/>
+		<option name="METHOD_CALL_CHAIN_WRAP" value="1"/>
+		<indentOptions>
+			<option name="USE_TAB_CHARACTER" value="true"/>
+			<option name="LABEL_INDENT_SIZE" value="4"/>
+		</indentOptions>
+	</codeStyleSettings>
+	<codeStyleSettings language="JAVA">
+		<option name="KEEP_BLANK_LINES_BEFORE_RBRACE" value="1"/>
+		<option name="ELSE_ON_NEW_LINE" value="true"/>
+		<option name="WHILE_ON_NEW_LINE" value="true"/>
+		<option name="CATCH_ON_NEW_LINE" value="true"/>
+		<option name="FINALLY_ON_NEW_LINE" value="true"/>
+		<option name="INDENT_CASE_FROM_SWITCH" value="false"/>
+		<option name="ALIGN_MULTILINE_PARAMETERS" value="false"/>
+		<option name="ALIGN_MULTILINE_BINARY_OPERATION" value="true"/>
+		<option name="SPACE_WITHIN_BRACES" value="true"/>
+		<option name="SPACE_BEFORE_ARRAY_INITIALIZER_LBRACE" value="true"/>
+		<option name="METHOD_CALL_CHAIN_WRAP" value="1"/>
+		<option name="BINARY_OPERATION_SIGN_ON_NEXT_LINE" value="true"/>
+		<option name="KEEP_SIMPLE_CLASSES_IN_ONE_LINE" value="true"/>
+		<option name="KEEP_MULTIPLE_EXPRESSIONS_IN_ONE_LINE" value="true"/>
+		<option name="IF_BRACE_FORCE" value="3"/>
+		<indentOptions>
+			<option name="USE_TAB_CHARACTER" value="true"/>
+		</indentOptions>
+	</codeStyleSettings>
+	<codeStyleSettings language="XML">
+		<indentOptions>
+			<option name="USE_TAB_CHARACTER" value="true"/>
+			<option name="SMART_TABS" value="true"/>
+		</indentOptions>
+	</codeStyleSettings>
+	<codeStyleSettings language="kotlin">
+		<option name="CODE_STYLE_DEFAULTS" value="KOTLIN_OFFICIAL"/>
+		<indentOptions>
+			<option name="USE_TAB_CHARACTER" value="true"/>
+		</indentOptions>
+	</codeStyleSettings>
+</code_scheme>
