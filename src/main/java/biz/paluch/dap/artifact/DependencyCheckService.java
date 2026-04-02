@@ -17,13 +17,13 @@ package biz.paluch.dap.artifact;
 
 import biz.paluch.dap.MavenContext;
 import biz.paluch.dap.MessageBundle;
-import biz.paluch.dap.artifact.xml.PomDependency;
-import biz.paluch.dap.artifact.xml.PomProfile;
-import biz.paluch.dap.artifact.xml.PomProjection;
-import biz.paluch.dap.artifact.xml.XmlBeamProjectorFactory;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.xml.PomDependency;
+import biz.paluch.dap.xml.PomProfile;
+import biz.paluch.dap.xml.PomProjection;
+import biz.paluch.dap.xml.XmlBeamProjectorFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -318,7 +318,7 @@ public class DependencyCheckService {
 			}
 		}
 
-		return urls.stream().map(MavenRepositoryReleaseSource::new).map(it -> (ReleaseSource) it).toList();
+		return urls.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it).toList();
 	}
 
 	interface Projects {

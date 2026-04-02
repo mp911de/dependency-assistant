@@ -77,12 +77,12 @@ class VersionUpgradeLookupService {
 
 		ProjectCache cache = this.cache.getProject(mavenContext.getMavenId());
 
-		XmlTag versionTag = XmlUtil.findVersionTag(element);
+		XmlTag versionTag = PomUtil.findVersionTag(element);
 		if (versionTag != null) {
 			return resolveVersionTag(versionTag);
 		}
 
-		XmlTag propertyTag = XmlUtil.findPropertyTag(element);
+		XmlTag propertyTag = PomUtil.findPropertyTag(element);
 		if (propertyTag != null) {
 			return resolvePropertyTag(cache, propertyTag);
 		}
@@ -113,7 +113,7 @@ class VersionUpgradeLookupService {
 	private VersionUpgradeLookupService.@Nullable UpgradeSuggestion resolveVersionTag(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
-		ArtifactId artifactId = XmlUtil.getArtifactId(parentTag);
+		ArtifactId artifactId = PomUtil.getArtifactId(parentTag);
 		if (artifactId == null) {
 			return null;
 		}

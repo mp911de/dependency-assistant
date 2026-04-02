@@ -32,7 +32,7 @@ import com.intellij.psi.xml.XmlTag;
  *
  * @author Mark Paluch
  */
-class XmlUtil {
+class PomUtil {
 
 	/**
 	 * Return the property tag for the given context element if the element is a property within the {@code properties}

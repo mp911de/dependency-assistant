@@ -73,7 +73,7 @@ public class PropertyVersionDocumentationProvider implements PsiDocumentationTar
 		Project project = element.getProject();
 		MavenContext mavenContext = MavenContext.of(project, element.getContainingFile());
 
-		XmlTag propertyTag = XmlUtil.findPropertyTag(element);
+		XmlTag propertyTag = PomUtil.findPropertyTag(element);
 		if (propertyTag == null || !mavenContext.isAvailable()) {
 			return null;
 		}

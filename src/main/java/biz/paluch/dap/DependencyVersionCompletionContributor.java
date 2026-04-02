@@ -60,7 +60,7 @@ public class DependencyVersionCompletionContributor extends CompletionContributo
 				CompletionResultSet result) {
 
 			Project project = parameters.getEditor().getProject();
-			XmlTag versionTag = XmlUtil.findVersionTag(parameters.getPosition());
+			XmlTag versionTag = PomUtil.findVersionTag(parameters.getPosition());
 			if (project == null || versionTag == null) {
 				return;
 			}

@@ -67,7 +67,7 @@ public class PropertyVersionCompletionContributor extends CompletionContributor 
 				CompletionResultSet result) {
 
 			Project project = parameters.getEditor().getProject();
-			XmlTag propertyTag = XmlUtil.findPropertyTag(parameters.getPosition());
+			XmlTag propertyTag = PomUtil.findPropertyTag(parameters.getPosition());
 			if (project == null || propertyTag == null) {
 				return;
 			}

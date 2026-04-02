@@ -15,8 +15,8 @@
  */
 package biz.paluch.dap.artifact;
 
-import biz.paluch.dap.artifact.xml.MavenMetadataProjection;
-import biz.paluch.dap.artifact.xml.XmlBeamProjectorFactory;
+import biz.paluch.dap.xml.MavenMetadataProjection;
+import biz.paluch.dap.xml.XmlBeamProjectorFactory;
 
 import java.io.IOException;
 import java.net.Authenticator;
@@ -54,13 +54,13 @@ import com.intellij.util.net.JdkProxyProvider;
 import com.intellij.util.net.ProxyAuthentication;
 
 /**
- * Release source that fetches releases from a Maven repository.
+ * Release source that fetches releases from a remote Maven repository.
  *
  * @author Mark Paluch
  */
-public class MavenRepositoryReleaseSource implements ReleaseSource {
+public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
-	private static final Logger LOG = Logger.getInstance(MavenRepositoryReleaseSource.class);
+	private static final Logger LOG = Logger.getInstance(RemoteRepositoryReleaseSource.class);
 
 	private static final Pattern DIRECTORY_LISTING_PATTERN = Pattern
 			.compile("<a (?>[^>]+)>([^/]+)/</a>(?>\\s*)(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2})(?>\\s*)(?>-)?");
@@ -78,7 +78,7 @@ public class MavenRepositoryReleaseSource implements ReleaseSource {
 
 	private final RemoteRepository repository;
 
-	public MavenRepositoryReleaseSource(RemoteRepository repository) {
+	public RemoteRepositoryReleaseSource(RemoteRepository repository) {
 		this.repository = repository;
 	}
 

@@ -13,39 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.artifact.xml;
+package biz.paluch.dap.xml;
 
 import java.util.List;
-import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 import org.xmlbeam.annotation.XBRead;
 
 /**
- * XMLBeam projection for a POM profile element.
+ * XMLBeam projection for Maven repository metadata (maven-metadata.xml).
  */
-public interface PomProfile {
+public interface MavenMetadataProjection {
 
-	@XBRead("child::id")
-	String getId();
-
-	@XBRead("child::properties/{0}")
+	@XBRead("/metadata/versioning/release")
 	@Nullable
-	String getProperty(String propertyName);
+	String getRelease();
 
-	@XBRead("child::properties")
-	Map<String, String> getProperties();
-
-	@XBRead("child::dependencies/dependency")
-	List<PomDependency> getDependencies();
-
-	@XBRead("child::dependencyManagement/dependencies/dependency")
-	List<PomDependency> getDependencyManagementDependencies();
-
-	@XBRead("child::build/plugins/plugin")
-	List<PomDependency> getBuildPlugins();
-
-	@XBRead("child::build/pluginManagement/plugins/plugin")
-	List<PomDependency> getBuildPluginManagementPlugins();
+	@XBRead("/metadata/versioning/versions/version")
+	List<String> getVersions();
 
 }
