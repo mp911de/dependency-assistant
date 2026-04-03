@@ -39,7 +39,7 @@ public class MessageBundle {
 		return INSTANCE.getMessage(key, params);
 	}
 
-	public static Supplier<@Nls String> lazyMessage(@PropertyKey(resourceBundle = BUNDLE) String key, Object... params) {
+	public static @Nls Supplier<String> lazyMessage(@PropertyKey(resourceBundle = BUNDLE) String key, Object... params) {
 		return INSTANCE.getLazyMessage(key, params);
 	}
 

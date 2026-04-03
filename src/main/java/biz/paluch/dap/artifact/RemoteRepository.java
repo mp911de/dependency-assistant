@@ -24,6 +24,13 @@ import org.jspecify.annotations.Nullable;
  */
 public record RemoteRepository(String id, String url, @Nullable RepositoryCredentials credentials) {
 
+	static final RemoteRepository MAVEN_CENTRAL = new RemoteRepository("central", "https://repo1.maven.org/maven2/",
+			null);
+
+	public static RemoteRepository mavenCentral() {
+		return MAVEN_CENTRAL;
+	}
+
 	@Override
 	public String toString() {
 		return "Repository " + id + " [" + url + "]";

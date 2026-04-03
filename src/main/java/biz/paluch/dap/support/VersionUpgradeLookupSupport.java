@@ -1,0 +1,156 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package biz.paluch.dap.support;
+
+import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.ProjectBuildContext;
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.Property;
+
+import java.util.List;
+
+import org.jspecify.annotations.Nullable;
+
+import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiElement;
+
+/**
+ * Shared version-upgrade lookup used by both {@code NewerVersionLineMarkerProvider} and {@code NewerVersionAnnotator}.
+ */
+public abstract class VersionUpgradeLookupSupport {
+
+	private final @Nullable ProjectState projectState;
+
+	protected VersionUpgradeLookupSupport(Project project, ProjectBuildContext buildContext) {
+
+		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
+	}
+
+	protected boolean hasCachedState() {
+		return projectState != null;
+	}
+
+	/**
+	 * Resolves the version upgrade result for a PSI element, or returns {@code null} if the element does not represent a
+	 * version value or no upgrade is available in the cache.
+	 */
+	public abstract VersionUpgradeLookupSupport.@Nullable UpgradeSuggestion determineUpgrade(PsiElement element);
+
+	/**
+	 * Find available upgrade for a PSI element.
+	 */
+	public VersionUpgradeLookupSupport.@Nullable UpgradeAvailable findAvailableUpgrade(PsiElement element) {
+
+		UpgradeSuggestion upgradeSuggestion = determineUpgrade(element);
+		if (upgradeSuggestion != null) {
+			return new UpgradeAvailable(upgradeSuggestion, null);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Resolves the property with the given name. Returns {@code null} if no such property exists in the project state.
+	 *
+	 * @param propertyName the property name
+	 * @return
+	 */
+	public @Nullable Property getProperty(String propertyName) {
+		return projectState != null ? projectState.findProperty(propertyName) : null;
+	}
+
+	/**
+	 * The outcome of a version lookup: the best available upgrade tier, the best candidate version, and the resolved
+	 * current version.
+	 */
+	public record UpgradeSuggestion(UpgradeStrategy strategy, Release bestOption, ArtifactVersion current) {
+
+		public String getMessage() {
+			String upgradeTarget = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
+			return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, bestOption().version().toString());
+		}
+
+	}
+
+	/**
+	 * The outcome of a version lookup: the best available upgrade tier, the best candidate version, and the resolved
+	 * current version.
+	 */
+	public record UpgradeAvailable(UpgradeSuggestion suggestion, DependencyLookupResult metadata) {
+
+	}
+
+	public @Nullable ArtifactVersion getCurrentVersion(Property property) {
+
+		if (property.artifacts().isEmpty()) {
+			return null;
+		}
+		return getCurrentVersion(property.artifacts().iterator().next().toArtifactId());
+	}
+
+	public @Nullable ArtifactVersion getCurrentVersion(ArtifactId artifactId) {
+
+		if (projectState == null) {
+			return null;
+		}
+
+		Dependency dependency = projectState.findDependency(artifactId);
+		return dependency != null ? dependency.getCurrentVersion() : null;
+	}
+
+	/**
+	 * Determines the best available upgrade tier from the given options relative to the current version. Returns
+	 * {@code null} if no upgrade is available.
+	 */
+	public static VersionUpgradeLookupSupport.@Nullable UpgradeSuggestion determineUpgrade(ArtifactVersion current,
+			List<Release> options) {
+
+		Release major = UpgradeStrategy.MAJOR.select(current, options);
+		Release minor = UpgradeStrategy.MINOR.select(current, options);
+		Release patch = UpgradeStrategy.PATCH.select(current, options);
+
+		if (major == null && minor == null && patch == null) {
+			return null;
+		}
+
+		UpgradeStrategy strategy;
+		Release bestOption;
+		if (major != null) {
+			strategy = UpgradeStrategy.MAJOR;
+			bestOption = major;
+		} else if (minor != null) {
+			strategy = UpgradeStrategy.MINOR;
+			bestOption = minor;
+		} else {
+			strategy = UpgradeStrategy.PATCH;
+			bestOption = patch;
+		}
+
+		return new UpgradeSuggestion(strategy, bestOption, current);
+	}
+
+	public record DependencyLookupResult(ArtifactId artifactId, @Nullable ArtifactVersion version,
+			boolean localVersionDeclared, @Nullable String versionLocation) {
+	}
+
+}

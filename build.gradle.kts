@@ -17,8 +17,13 @@ repositories {
 dependencies {
 	intellijPlatform {
 		intellijIdea("2025.3.1")
+		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.JUnit5)
 		bundledPlugin("org.jetbrains.idea.maven")
+		bundledPlugin("org.jetbrains.plugins.gradle")
+		bundledPlugin("org.intellij.groovy")
+		bundledPlugin("org.jetbrains.kotlin")
+		bundledPlugin("org.toml.lang")
 	}
 	implementation("org.springframework:spring-core:7.0.6")
 	implementation("org.xmlbeam:xmlprojector:1.4.26")
@@ -29,7 +34,7 @@ dependencies {
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
 	// https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase
-	testRuntimeOnly("junit:junit:4.13.2")
+	testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
@@ -39,7 +44,8 @@ intellijPlatform {
 		}
 
 		name = "Dependency Assistant"
-		description ="Provides assisted upgrading of Maven dependencies and plugins in a Maven project."
+		description =
+			"Provides assisted upgrading of Maven dependencies and plugins in a Maven project."
 
 		changeNotes = """
             Initial version

@@ -22,7 +22,9 @@ import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.BuildFileUpdateAction;
 import icons.MavenIcons;
 
 import java.awt.BorderLayout;
@@ -53,6 +55,7 @@ import javax.swing.table.TableColumnModel;
 
 import org.jspecify.annotations.Nullable;
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -75,20 +78,23 @@ import com.intellij.util.ui.ListTableModel;
 /**
  * Dialog showing Maven dependency versions and update suggestions.
  */
-class DependencyCheckDialog extends DialogWrapper {
+public class DependencyCheckDialog extends DialogWrapper {
 
 	/** Model index of {@link Upgrades} in the dependency table. */
 	private static final int AVAILABLE_UPDATES_COLUMN_INDEX = 2;
 
 	private final Project project;
-	private final @Nullable VirtualFile pomFile;
+	private final VirtualFile buildFile;
 	private final DependencyUpdateModel model;
+	private final BuildFileUpdateAction updateAction;
 
-	public DependencyCheckDialog(Project project, @Nullable VirtualFile pomFile, DependencyUpdates updates) {
+	public DependencyCheckDialog(Project project, VirtualFile buildFile, DependencyUpdates updates,
+			BuildFileUpdateAction updateAction) {
 		super(project, false, IdeModalityType.MODELESS);
 		this.project = project;
-		this.pomFile = pomFile;
+		this.buildFile = buildFile;
 		this.model = new DependencyUpdateModel(updates);
+		this.updateAction = updateAction;
 		setTitle(MessageBundle.message("dialog.title", project.getName()));
 		init();
 	}
@@ -98,7 +104,7 @@ class DependencyCheckDialog extends DialogWrapper {
 
 		ListTableModel<DependencyUpdateOption> model = new ListTableModel<>(new DependencyCoordinateColumn(),
 				new CurrentVersionColumn(), new Upgrades(), new UpdateToColumn(), new DoUpdateColumn());
-		model.setItems(this.model.getUpdates());
+		model.setItems(this.model.getUpdateOptions());
 
 		DependencyUpdateTable table = new DependencyUpdateTable(model);
 		table.setAutoCreateRowSorter(true);
@@ -133,7 +139,7 @@ class DependencyCheckDialog extends DialogWrapper {
 			if (table.getCellEditor() != null) {
 				table.getCellEditor().cancelCellEditing();
 			}
-			model.setItems(this.model.getUpdates());
+			model.setItems(this.model.getUpdateOptions());
 		});
 
 		ComboBox<DependencyUpdateModel.UpgradeStrategies> strategyComboBox = new ComboBox<>(
@@ -234,10 +240,15 @@ class DependencyCheckDialog extends DialogWrapper {
 
 	@Override
 	protected void doOKAction() {
-		if (pomFile != null) {
-			new UpdatePom(project).applyUpdates(pomFile, model.getUpdates());
-		}
+		updateAction.updateBuildFile(project, buildFile, model.toDependencyUpdates());
+		DaemonCodeAnalyzer.getInstance(project).restart(buildFile);
 		super.doOKAction();
+	}
+
+	@Override
+	public void doCancelAction() {
+		DaemonCodeAnalyzer.getInstance(project).restart(buildFile);
+		super.doCancelAction();
 	}
 
 	private void applyUpgradeStrategy(JTable table, DependencyUpdateModel.UpgradeStrategies strategy) {
@@ -513,7 +524,7 @@ class DependencyCheckDialog extends DialogWrapper {
 		};
 
 		/**
-		 * Maven plugin icon with a small property icon overlaid at the bottom-right (for plugin + ${property} version).
+		 * Plugin icon with a small property icon overlaid at the bottom-right (for plugin + ${property} version).
 		 */
 		static Icon getIcon(DependencyUpdateOption option, JTable table) {
 

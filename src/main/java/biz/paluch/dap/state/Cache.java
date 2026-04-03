@@ -15,6 +15,7 @@
  */
 package biz.paluch.dap.state;
 
+import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Release;
 
@@ -22,9 +23,12 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
-import org.jetbrains.idea.maven.model.MavenId;
+import org.jspecify.annotations.Nullable;
 
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
@@ -39,13 +43,13 @@ public class Cache {
 	private static final Duration CACHE_EXPIRATION = Duration.ofMinutes(10);
 
 	/**
-	 * Epoch-millisecond timestamp of the last successful POM update, or {@code 0} if no update has been applied yet.
+	 * Epoch-millisecond timestamp of the last successful update, or {@code 0} if no update has been applied yet.
 	 */
 	@Attribute private long lastUpdateTimestamp = 0L;
 	private final @XCollection(propertyElementName = "artifacts", elementName = "artifact",
 			style = XCollection.Style.v2) List<CachedArtifact> artifacts = new ArrayList<>();
 	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project",
-			style = XCollection.Style.v2) List<ProjectCache> projects = new ArrayList<>();
+			style = XCollection.Style.v2) List<ProjectCache> projects = Collections.synchronizedList(new ArrayList<>());
 
 	public long getLastUpdateTimestamp() {
 		return lastUpdateTimestamp;
@@ -53,6 +57,12 @@ public class Cache {
 
 	public void setLastUpdateTimestamp(long lastUpdateTimestamp) {
 		this.lastUpdateTimestamp = lastUpdateTimestamp;
+	}
+
+	public List<ProjectCache> getProjects() {
+		synchronized (projects) {
+			return List.copyOf(projects);
+		}
 	}
 
 	/**
@@ -112,23 +122,47 @@ public class Cache {
 		this.lastUpdateTimestamp = CLOCK.millis();
 	}
 
-	public ProjectCache getProject(MavenId mavenId) {
+	public ProjectCache getProject(ProjectId identity) {
 
-		for (ProjectCache project : projects) {
+		synchronized (projects) {
+			for (ProjectCache project : projects) {
 
-			if (project == null) {
-				continue;
+				if (project == null) {
+					continue;
+				}
+				if (project.matches(identity)) {
+					return project;
+				}
 			}
-			if (project.matches(mavenId)) {
-				return project;
+
+			ProjectCache projectCache = new ProjectCache(identity);
+			projects.add(projectCache);
+			projects.sort(ProjectCache.COMPARATOR);
+			return projectCache;
+		}
+	}
+
+	public @Nullable ProjectProperty findProperty(String propertyName, Predicate<Property> filter) {
+
+		synchronized (projects) {
+			for (ProjectCache project : projects) {
+				if (project == null) {
+					continue;
+				}
+
+				Property property = project.getProperty(propertyName);
+				if (property == null || !filter.test(property)) {
+					continue;
+				}
+
+				return new ProjectProperty(project.getId(), property);
 			}
 		}
 
-		ProjectCache projectCache = new ProjectCache(mavenId);
-		projects.add(projectCache);
-		projects.sort(ProjectCache.COMPARATOR);
-
-		return projectCache;
+		return null;
 	}
 
+	public void doWithProperties(Consumer<Property> propertyConsumer) {
+		getProjects().forEach(project -> project.getProperties().forEach(propertyConsumer));
+	}
 }

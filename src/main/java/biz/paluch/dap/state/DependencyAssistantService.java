@@ -15,14 +15,15 @@
  */
 package biz.paluch.dap.state;
 
+import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 
-import org.jetbrains.idea.maven.model.MavenId;
 import org.jspecify.annotations.Nullable;
 
 import com.intellij.openapi.components.PersistentStateComponent;
@@ -38,7 +39,7 @@ import com.intellij.util.xmlb.XmlSerializerUtil;
 public class DependencyAssistantService implements PersistentStateComponent<DependencyAssistantState> {
 
 	private final DependencyAssistantState state = new DependencyAssistantState();
-	private final Map<MavenId, DependencyCollector> dependencies = new ConcurrentHashMap<>();
+	private final Map<ProjectId, DependencyCollector> dependencies = new ConcurrentHashMap<>();
 
 	/**
 	 * Returns the service instance for the given project.
@@ -61,28 +62,24 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 		XmlSerializerUtil.copyBean(state, this.state);
 	}
 
-	public ProjectState getProjectState(MavenId mavenId) {
-		return new DefaultProjectState(mavenId);
-	}
-
-	public void setDependencies(MavenId mavenId, DependencyCollector collector) {
-		dependencies.put(mavenId, collector);
+	public ProjectState getProjectState(ProjectId identity) {
+		return new DefaultProjectState(identity);
 	}
 
 	class DefaultProjectState implements ProjectState {
 
-		private final MavenId mavenId;
+		private final ProjectId identity;
 		private final ProjectCache projectCache;
 
-		public DefaultProjectState(MavenId mavenId) {
-			this.mavenId = mavenId;
-			this.projectCache = getCache().getProject(mavenId);
+		public DefaultProjectState(ProjectId identity) {
+			this.identity = identity;
+			this.projectCache = getCache().getProject(identity);
 		}
 
 		@Override
 		public @Nullable Dependency findDependency(ArtifactId artifactId) {
 
-			DependencyCollector dependencyCollector = dependencies.get(mavenId);
+			DependencyCollector dependencyCollector = dependencies.get(identity);
 			if (dependencyCollector == null) {
 				return null;
 			}
@@ -92,24 +89,38 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 
 		@Override
 		public void setDependencies(DependencyCollector collector) {
-			dependencies.put(mavenId, collector);
-			projectCache.setProperties(collector.getDependencies());
+			dependencies.put(identity, collector);
+			projectCache.setProperties(collector);
 		}
 
 		@Override
 		public boolean hasDependencies() {
-			return dependencies.get(mavenId) != null;
+			return dependencies.get(identity) != null;
 		}
 
 		@Override
 		public void invalidateDependencies() {
-			dependencies.remove(mavenId);
+			dependencies.remove(identity);
 		}
 
 		@Override
-		public @Nullable Property getProperty(String propertyName) {
-			return projectCache.getProperty(propertyName);
+		public @Nullable Property findProperty(String propertyName, Predicate<Property> filter) {
+			ProjectProperty projectProperty = findProjectProperty(propertyName, filter);
+			return projectProperty != null ? projectProperty.property() : null;
 		}
+
+		@Override
+		public @Nullable ProjectProperty findProjectProperty(String propertyName, Predicate<Property> filter) {
+			return getCache().findProperty(propertyName, filter);
+		}
+
+		@Override
+		public @Nullable ArtifactId findArtifactByPropertyName(String versionPropertyName) {
+
+			Property property = findProperty(versionPropertyName);
+			return property != null ? property.artifacts().getFirst().toArtifactId() : null;
+		}
+
 	}
 
 }

@@ -15,7 +15,6 @@
  */
 package biz.paluch.dap;
 
-import java.util.Collections;
 import java.util.List;
 
 import javax.swing.Icon;
@@ -35,7 +34,14 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 
 	public static final TextAttributesKey NEWER_VERSION_KEY = TextAttributesKey.createTextAttributesKey("NEWER_VERSION");
 
-	public static final HighlightSeverity NEWER_VERSION = new HighlightSeverity(NEWER_VERSION_KEY.getExternalName(),
+	public static final HighlightSeverity NEWER_VERSION_MAVEN = new HighlightSeverity(NEWER_VERSION_KEY.getExternalName(),
+			HighlightSeverity.INFORMATION.myVal + 5, //
+			MessageBundle.lazyMessage("newer.severity"), //
+			MessageBundle.lazyMessage("newer.severity.capitalized"), //
+			MessageBundle.lazyMessage("newer.severity.count.message"));
+
+	public static final HighlightSeverity NEWER_VERSION_GRADLE = new HighlightSeverity(
+			NEWER_VERSION_KEY.getExternalName(),
 			HighlightSeverity.INFORMATION.myVal + 5, //
 			MessageBundle.lazyMessage("newer.severity"), //
 			MessageBundle.lazyMessage("newer.severity.capitalized"), //
@@ -45,17 +51,27 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 
 	public List<HighlightInfoType> getSeveritiesHighlightInfoTypes() {
 
-		class T extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
-			private T(HighlightSeverity severity, TextAttributesKey attributesKey) {
+		class M extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+			private M(HighlightSeverity severity, TextAttributesKey attributesKey) {
 				super(severity, attributesKey);
 			}
 
 			public Icon getIcon() {
-				return DependencyAssistantIcons.TRANSPARENT_ICON;
+				return DependencyAssistantIcons.MAVEN_TRANSPARENT_ICON;
 			}
 		}
 
-		return Collections.singletonList(new T(NEWER_VERSION, NEWER_VERSION_KEY));
+		class G extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+			private G(HighlightSeverity severity, TextAttributesKey attributesKey) {
+				super(severity, attributesKey);
+			}
+
+			public Icon getIcon() {
+				return DependencyAssistantIcons.GRADLE_TRANSPARENT_ICON;
+			}
+		}
+
+		return List.of(new M(NEWER_VERSION_MAVEN, NEWER_VERSION_KEY), new G(NEWER_VERSION_GRADLE, NEWER_VERSION_KEY));
 	}
 
 }

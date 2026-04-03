@@ -1,0 +1,46 @@
+<idea-plugin>
+	<applicationListeners>
+		<listener class="biz.paluch.dap.maven.FlushStateOnSave"
+		          topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+	</applicationListeners>
+	<extensions defaultExtensionNs="com.intellij">
+		<projectService
+				serviceImplementation="biz.paluch.dap.maven.MavenDependencyCheckService"/>
+		<intentionAction>
+			<category>Maven</category>
+			<language>XML</language>
+			<className>biz.paluch.dap.maven.UpdateMavenDependenciesIntention</className>
+		</intentionAction>
+		<completion.contributor
+				language="XML"
+				order="first"
+				implementationClass="biz.paluch.dap.maven.PropertyVersionCompletionContributor"/>
+		<completion.contributor
+				language="XML"
+				order="first"
+				implementationClass="biz.paluch.dap.maven.DependencyVersionCompletionContributor"/>
+		<platform.backend.documentation.psiTargetProvider
+				implementation="biz.paluch.dap.maven.PropertyVersionDocumentationProvider"/>
+		<codeInsight.lineMarkerProvider
+				language="XML"
+				implementationClass="biz.paluch.dap.maven.NewerVersionLineMarkerProvider"/>
+		<annotator language="XML"
+		           implementationClass="biz.paluch.dap.maven.NewerVersionAnnotator"/>
+		<localInspection
+				language="XML"
+				shortName="PomArtifactCollection"
+				groupName="Maven"
+				enabledByDefault="true"
+				level="INFORMATION"
+				implementationClass="biz.paluch.dap.maven.PomArtifactCollectionInspection"
+				key="inspection.pom.artifact.collection.display.name"/>
+	</extensions>
+
+	<actions>
+		<action id="biz.paluch.dap.maven.UpdateDependencies"
+		        class="biz.paluch.dap.maven.UpdateDependenciesAction"
+		        text="Update Maven Plugins and Dependencies…">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+	</actions>
+</idea-plugin>

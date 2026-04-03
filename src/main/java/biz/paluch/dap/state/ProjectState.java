@@ -19,6 +19,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 
+import java.util.function.Predicate;
+
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -29,7 +31,7 @@ import org.jspecify.annotations.Nullable;
 public interface ProjectState {
 
 	/**
-	 * Find a dependency by its Maven coordinates.
+	 * Find a dependency by its artifact coordinates.
 	 */
 	@Nullable
 	Dependency findDependency(ArtifactId artifactId);
@@ -50,9 +52,37 @@ public interface ProjectState {
 	void invalidateDependencies();
 
 	/**
-	 * Get a property by its name.
+	 * Find a property by its name that is used to define an artifact version.
 	 */
 	@Nullable
-	Property getProperty(String propertyName);
+	default Property findProperty(String propertyName) {
+		return findProperty(propertyName, Property::hasArtifacts);
+	}
+
+	/**
+	 * Find a property by its name.
+	 */
+	@Nullable
+	Property findProperty(String propertyName, Predicate<Property> filter);
+
+	/**
+	 * Find a property by its name that is used to define an artifact version.
+	 */
+	@Nullable
+	default ProjectProperty findProjectProperty(String propertyName) {
+		return findProjectProperty(propertyName, Property::hasArtifacts);
+	}
+
+	/**
+	 * Find a property by its name that is used to define an artifact version.
+	 */
+	@Nullable
+	ProjectProperty findProjectProperty(String propertyName, Predicate<Property> filter);
+
+	/**
+	 * Find an artifact by its versionPropertyName name used to define the version.
+	 */
+	@Nullable
+	ArtifactId findArtifactByPropertyName(String versionPropertyName);
 
 }

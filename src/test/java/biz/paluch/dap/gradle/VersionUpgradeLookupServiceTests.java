@@ -1,0 +1,541 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package biz.paluch.dap.gradle;
+
+import static org.assertj.core.api.Assertions.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.intellij.lang.properties.IProperty;
+import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiRecursiveElementVisitor;
+import com.intellij.testFramework.LightProjectDescriptor;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
+import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
+import com.intellij.testFramework.fixtures.TestFixtureBuilder;
+import com.intellij.testFramework.junit5.RunInEdt;
+
+/**
+ * PSI-level integration tests for the version-element resolution.
+ *
+ * @author Mark Paluch
+ */
+@RunInEdt(writeIntent = true)
+class VersionUpgradeLookupServiceTests {
+
+	/** The Groovy build script shared by all tests in this class. */
+	private static final String BUILD_GRADLE = """
+			plugins {
+			    id 'groovy'
+			    id 'org.springframework.boot' version '4.0.3'
+			    id 'io.spring.dependency-management' version '1.1.7'
+			}
+
+			ext {
+			    set('springModulithVersion', "2.0.4")
+			}
+
+			dependencies {
+			    implementation 'org.apache.groovy:groovy'
+			    implementation 'org.junit:junit-bom:6.0.0'
+			}
+
+			dependencyManagement {
+			    imports {
+			        mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
+			    }
+			}
+			""";
+
+	private CodeInsightTestFixture fixture;
+
+	@BeforeEach
+	void setUp() throws Exception {
+		TestFixtureBuilder<IdeaProjectTestFixture> builder = IdeaTestFixtureFactory.getFixtureFactory()
+				.createLightFixtureBuilder(new LightProjectDescriptor(), getClass().getSimpleName());
+		fixture = IdeaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(builder.getFixture());
+		fixture.setUp();
+	}
+
+	@AfterEach
+	void tearDown() throws Exception {
+		fixture.tearDown();
+		fixture = null;
+	}
+
+	// ── Single-hit guarantee ──────────────────────────────────────────────────
+
+	/**
+	 * Iterates over every PSI element in the build file and calls {@link UpdateGroovyDsl#findGroovyVersionElement} for
+	 * each. The {@code implementation 'org.junit:junit-bom:6.0.0'} declaration must produce exactly one non-null result –
+	 * leaf tokens inside the {@code GrLiteral} node must not generate an additional hit.
+	 */
+	@Test
+	void junitBomInlineVersionYieldsSingleHit() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		List<GroovyDslUtils.VersionLocation> hits = findVersionLocations(file,
+				loc -> loc.artifactId().groupId().startsWith("org.junit"));
+
+		assertThat(hits).as("exactly one hit for org.junit:junit-bom:6.0.0").hasSize(1);
+		GroovyDslUtils.VersionLocation loc = hits.get(0);
+		assertThat(loc.artifactId().groupId()).isEqualTo("org.junit");
+		assertThat(loc.artifactId().artifactId()).isEqualTo("junit-bom");
+		assertThat(loc.rawVersion()).isEqualTo("6.0.0");
+		assertThat(loc.isPropertyReference()).isFalse();
+	}
+
+	/**
+	 * The managed BOM with an interpolated version {@code "…:${springModulithVersion}"} must also produce exactly one
+	 * hit. The content and injection tokens inside the
+	 * {@link org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrString} node must not generate
+	 * additional hits.
+	 */
+	@Test
+	void managedBomWithInterpolatedVersionYieldsSingleHit() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		List<GroovyDslUtils.VersionLocation> hits = findVersionLocations(file,
+				loc -> loc.artifactId().groupId().startsWith("org.springframework.modulith"));
+
+		assertThat(hits).as("exactly one hit for org.springframework.modulith:spring-modulith-bom").hasSize(1);
+	}
+
+	/**
+	 * The {@link GroovyDslUtils.VersionLocation} for the inline {@code 'org.junit:junit-bom:6.0.0'} literal reports the
+	 * version as a plain declared value (not a property reference).
+	 */
+	@Test
+	void inlineVersionLocationHasCorrectCoordinates() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+					dependencies {
+				    implementation 'org.junit:junit-bom:6.0.0'
+				}
+				""");
+
+		List<GroovyDslUtils.VersionLocation> all = findVersionLocations(file, loc -> true);
+
+		assertThat(all).hasSize(1);
+	}
+
+	/**
+	 * The {@link GroovyDslUtils.VersionLocation} for the interpolated BOM string reports the version as a property
+	 * reference with the bare property name (without {@code ${}}).
+	 */
+	@Test
+	void managedBomVersionIsDetectedAsPropertyReference() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		GroovyDslUtils.VersionLocation loc = findVersionLocation(file,
+				l -> "org.springframework.modulith".equals(l.artifactId().groupId())
+						&& "spring-modulith-bom".equals(l.artifactId().artifactId()));
+
+		assertThat(loc).as("VersionLocation for spring-modulith-bom").isNotNull();
+		assertThat(loc.isPropertyReference()).isTrue();
+		assertThat(loc.rawVersion()).isEqualTo("springModulithVersion");
+	}
+
+
+	/**
+	 * A two-segment dependency string without a version ({@code 'org.apache.groovy:groovy'}) must never produce a hit
+	 * because there is no version to update.
+	 */
+	@Test
+	void dependencyWithoutVersionYieldsNoHit() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		assertThat(findVersionLocations(file, loc -> loc.artifactId().groupId().startsWith("org.apache.groovy")))
+				.as("no hit for versionless dependency").isEmpty();
+	}
+
+	/**
+	 * Plugin {@code id} calls produce single-segment strings (the plugin ID only) that must not be treated as a versioned
+	 * dependency declaration. Only the separate {@code version 'x.y.z'} argument literal is considered.
+	 */
+	@Test
+	void pluginIdStringLiteralsYieldNoHit() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		// No VersionLocation should have an underlying element whose text is a bare plugin-ID string
+		// (contains the plugin ID but no ":" separator — i.e. not a GAV string).
+		assertThat(findVersionLocations(file,
+				loc -> loc.element().getText().contains("org.springframework.boot") && !loc.element().getText().contains(":")))
+				.as("no hits from plugin id string literals").isEmpty();
+	}
+
+	/**
+	 * Ext {@code set()} arguments (the key and value literals inside {@code ext { set('k', 'v') }}) must not produce a
+	 * hit from {@link UpdateGroovyDsl#findGroovyVersionElement} — they are not inside a dependency configuration call.
+	 * The matching uses exact literal text to avoid accidentally matching the interpolated BOM string that also
+	 * references {@code springModulithVersion}.
+	 */
+	@Test
+	void extSetArgumentsYieldNoHitFromFindGroovyVersionElement() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		// Match only the exact key/value literals from ext { set('springModulithVersion', "2.0.4") }.
+		// Single-quoted key and double-quoted value are distinct from the BOM string.
+		assertThat(findVersionLocations(file, loc -> "'springModulithVersion'".equals(loc.element().getText())
+				|| "\"2.0.4\"".equals(loc.element().getText()))).as("no hits from ext set() arguments").isEmpty();
+	}
+
+	/**
+	 * The version literal {@code '4.0.3'} in {@code id 'org.springframework.boot' version '4.0.3'} must produce a
+	 * {@link GroovyDslUtils.VersionLocation} whose artifact coordinates use the plugin ID as both group and artifact.
+	 */
+	@Test
+	void pluginVersionLiteralsAreDetected() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		List<GroovyDslUtils.VersionLocation> springBootHits = findVersionLocations(file,
+				loc -> loc.artifactId().groupId().startsWith("org.springframework.boot"));
+		assertThat(springBootHits).as("one hit for org.springframework.boot plugin").hasSize(1);
+		GroovyDslUtils.VersionLocation bootLoc = springBootHits.get(0);
+		assertThat(bootLoc.artifactId().groupId()).isEqualTo("org.springframework.boot");
+		assertThat(bootLoc.artifactId().artifactId()).isEqualTo("org.springframework.boot");
+		assertThat(bootLoc.rawVersion()).isEqualTo("4.0.3");
+		assertThat(bootLoc.isPropertyReference()).isFalse();
+
+		List<GroovyDslUtils.VersionLocation> depMgmtHits = findVersionLocations(file,
+				loc -> loc.artifactId().groupId().startsWith("io.spring.dependency-management"));
+		assertThat(depMgmtHits).as("one hit for io.spring.dependency-management plugin").hasSize(1);
+		GroovyDslUtils.VersionLocation dmLoc = depMgmtHits.get(0);
+		assertThat(dmLoc.artifactId().groupId()).isEqualTo("io.spring.dependency-management");
+		assertThat(dmLoc.rawVersion()).isEqualTo("1.1.7");
+		assertThat(dmLoc.isPropertyReference()).isFalse();
+	}
+
+	/**
+	 * Each plugin version literal must produce exactly one hit – not two – when every PSI element in the file is
+	 * iterated. This guards against the leaf-token duplication problem.
+	 */
+	@Test
+	void pluginVersionLiteralsYieldSingleHitEach() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		assertThat(findVersionLocations(file, loc -> loc.artifactId().groupId().startsWith("org.springframework.boot")))
+				.as("single hit for org.springframework.boot plugin version").hasSize(1);
+		assertThat(
+				findVersionLocations(file, loc -> loc.artifactId().groupId().startsWith("io.spring.dependency-management")))
+				.as("single hit for io.spring.dependency-management plugin version").hasSize(1);
+	}
+
+	/**
+	 * A plugin declared without a version ({@code id 'groovy'}) must not produce any hit.
+	 */
+	@Test
+	void pluginWithoutVersionYieldsNoHit() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		assertThat(findVersionLocations(file, loc -> loc.artifactId().groupId().startsWith("groovy")))
+				.as("no hit for versionless groovy plugin").isEmpty();
+	}
+
+	/**
+	 * Iterating every element in the build file must produce exactly four {@link GroovyDslUtils.VersionLocation} results:
+	 * two plugin version declarations ({@code org.springframework.boot}, {@code io.spring.dependency-management}), one
+	 * inline dependency ({@code org.junit:junit-bom:6.0.0}), and one property-reference BOM
+	 * ({@code org.springframework.modulith:spring-modulith-bom}). All other literals must not contribute.
+	 */
+	@Test
+	void onlyVersionedDependencyDeclarationsProduceHits() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		List<GroovyDslUtils.VersionLocation> allHits = findVersionLocations(file, loc -> true);
+
+		assertThat(allHits).as("exactly four versioned declarations in the whole file").hasSize(4);
+
+		// Plugin: org.springframework.boot version '4.0.3'
+		assertThat(allHits).anySatisfy(loc -> {
+			assertThat(loc.artifactId().groupId()).isEqualTo("org.springframework.boot");
+			assertThat(loc.isPropertyReference()).isFalse();
+		});
+
+		// Plugin: io.spring.dependency-management version '1.1.7'
+		assertThat(allHits).anySatisfy(loc -> {
+			assertThat(loc.artifactId().groupId()).isEqualTo("io.spring.dependency-management");
+			assertThat(loc.isPropertyReference()).isFalse();
+		});
+
+		// junit-bom with inline version
+		assertThat(allHits).anySatisfy(loc -> {
+			assertThat(loc.artifactId().groupId()).isEqualTo("org.junit");
+			assertThat(loc.artifactId().artifactId()).isEqualTo("junit-bom");
+			assertThat(loc.isPropertyReference()).isFalse();
+		});
+
+		// spring-modulith-bom with property reference
+		assertThat(allHits).anySatisfy(loc -> {
+			assertThat(loc.artifactId().groupId()).isEqualTo("org.springframework.modulith");
+			assertThat(loc.artifactId().artifactId()).isEqualTo("spring-modulith-bom");
+			assertThat(loc.isPropertyReference()).isTrue();
+		});
+	}
+
+	/**
+	 * The value literal {@code "2.0.4"} in {@code ext { set('springModulithVersion', "2.0.4") }} must be detected by
+	 * {@link GradleUtils#findGroovyExtPropertyVersionElement} with the correct key and value.
+	 */
+	@Test
+	void extSetCallValueIsDetectedAsPropertyVersionElement() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file, l -> "2.0.4".equals(l.propertyValue()));
+
+		assertThat(loc).as("PropertyVersionLocation for set() value").isNotNull();
+		assertThat(loc.propertyKey()).isEqualTo("springModulithVersion");
+		assertThat(loc.propertyValue()).isEqualTo("2.0.4");
+	}
+
+	/**
+	 * The key literal {@code 'springModulithVersion'} in {@code set('springModulithVersion', "2.0.4")} must NOT be
+	 * detected - only the value argument is a version element.
+	 */
+	@Test
+	void extSetCallKeyIsNotDetectedAsPropertyVersionElement() {
+
+		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
+
+		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file,
+				l -> "'springModulithVersion'".equals(l.element().getText()));
+
+		assertThat(loc).as("no PropertyVersionLocation for set() key").isNull();
+	}
+
+	/**
+	 * The assignment form {@code ext { springVersion = '3.5.0' }} (inside an {@code ext {}} closure) must be detected
+	 * by {@link GradleUtils#findGroovyExtPropertyVersionElement}.
+	 */
+	@Test
+	void extAssignmentInsideExtBlockIsDetected() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext {
+				    springVersion = '3.5.0'
+				}
+				""");
+
+		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file, l -> "3.5.0".equals(l.propertyValue()));
+
+		assertThat(loc).as("PropertyVersionLocation for ext block assignment").isNotNull();
+		assertThat(loc.propertyKey()).isEqualTo("springVersion");
+		assertThat(loc.propertyValue()).isEqualTo("3.5.0");
+	}
+
+	/**
+	 * The dot-qualified assignment form {@code ext.springVersion = '3.5.0'} must be detected by
+	 * {@link GradleUtils#findGroovyExtPropertyVersionElement}.
+	 */
+	@Test
+	void extDotAssignmentIsDetected() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext.springVersion = '3.5.0'
+				""");
+
+		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file, l -> "3.5.0".equals(l.propertyValue()));
+
+		assertThat(loc).as("PropertyVersionLocation for ext dot-assignment").isNotNull();
+		assertThat(loc.propertyKey()).isEqualTo("springVersion");
+		assertThat(loc.propertyValue()).isEqualTo("3.5.0");
+	}
+
+	/**
+	 * A plain top-level assignment (not inside an {@code ext} block and without the {@code ext.} prefix) must NOT be
+	 * detected as an ext property version element.
+	 */
+	@Test
+	void plainTopLevelAssignmentIsNotDetected() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				version = '1.2.3'
+				group = 'com.example'
+				""");
+
+		assertThat(findExtProperty(file, l -> "1.2.3".equals(l.propertyValue())))
+				.as("no hit for plain version = '...' assignment").isNull();
+		assertThat(findExtProperty(file, l -> "com.example".equals(l.propertyValue())))
+				.as("no hit for plain group = '...' assignment").isNull();
+	}
+
+	/**
+	 * {@link GradleUtils#findPropertiesVersionElement} must return a non-null result when the given PSI element is inside
+	 * the <em>value</em> part of a property entry.
+	 */
+	@Test
+	void propertiesValueElementIsDetected() {
+
+		PsiFile propsFile = fixture.configureByText("gradle.properties", """
+				springVersion=3.5.0
+				lombokVersion=1.18.36
+				""");
+
+		// Find an element that is inside the value of "springVersion"
+		PsiElement valueElement = findPropertyValueElement(propsFile, "springVersion");
+
+		assertThat(valueElement).as("value element for springVersion").isNotNull();
+		GroovyDslUtils.PropertyVersionLocation loc = GroovyDslUtils.findPropertiesVersionElement(valueElement);
+		assertThat(loc).as("PropertyVersionLocation for springVersion").isNotNull();
+		assertThat(loc.propertyKey()).isEqualTo("springVersion");
+		assertThat(loc.propertyValue()).isEqualTo("3.5.0");
+	}
+
+	/**
+	 * {@link GradleUtils#findPropertiesVersionElement} must return {@code null} when the element is part of the key side
+	 * of a properties entry (cursor is on the key, not the value).
+	 */
+	@Test
+	void propertiesKeyElementIsNotDetected() {
+
+		PsiFile propsFile = fixture.configureByText("gradle.properties", "springVersion=3.5.0\n");
+
+		// Find an element that is inside the KEY "springVersion"
+		PsiElement keyElement = findPropertyKeyElement(propsFile, "springVersion");
+
+		assertThat(keyElement).as("key element for springVersion").isNotNull();
+		GroovyDslUtils.PropertyVersionLocation loc = GroovyDslUtils.findPropertiesVersionElement(keyElement);
+		assertThat(loc).as("no PropertyVersionLocation for key element").isNull();
+	}
+
+	// ── BOM + ext property round-trip ────────────────────────────────────────
+
+	/**
+	 * Minimal snippet: an {@code ext { set() }} property declaration alongside a
+	 * {@code dependencyManagement.imports.mavenBom} that references it via {@code ${…}} interpolation.
+	 * <p>
+	 * {@link UpdateGroovyDsl#findGroovyVersionElement} must detect the BOM string as a versioned dependency with a
+	 * property reference, and {@link GradleUtils#findGroovyExtPropertyVersionElement} must detect the ext property
+	 * declaration. The property key reported by both must match, confirming the round-trip linkage.
+	 */
+	@Test
+	void bomWithInterpolatedVersionLinksToExtPropertyDeclaration() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext {
+				    set('springModulithVersion', "2.0.3")
+				}
+
+				dependencyManagement {
+				    imports {
+				        mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
+				    }
+				}
+				""");
+
+		// ── BOM detection ──────────────────────────────────────────────────────────
+		List<GroovyDslUtils.VersionLocation> bomHits = findVersionLocations(file,
+				loc -> loc.artifactId().groupId().startsWith("org.springframework.modulith"));
+		assertThat(bomHits).as("exactly one hit for the spring-modulith-bom managed import").hasSize(1);
+
+		GroovyDslUtils.VersionLocation bomLoc = bomHits.get(0);
+		assertThat(bomLoc.artifactId().groupId()).isEqualTo("org.springframework.modulith");
+		assertThat(bomLoc.artifactId().artifactId()).isEqualTo("spring-modulith-bom");
+		assertThat(bomLoc.isPropertyReference()).as("version should be a property reference").isTrue();
+		assertThat(bomLoc.rawVersion()).as("property key stripped from ${…}").isEqualTo("springModulithVersion");
+
+		// ── Ext property detection ─────────────────────────────────────────────────
+		GroovyDslUtils.PropertyVersionLocation propLoc = findExtProperty(file, l -> "2.0.3".equals(l.propertyValue()));
+		assertThat(propLoc).as("PropertyVersionLocation for the ext set() declaration").isNotNull();
+		assertThat(propLoc.propertyKey()).isEqualTo("springModulithVersion");
+		assertThat(propLoc.propertyValue()).isEqualTo("2.0.3");
+
+		// ── Round-trip linkage ─────────────────────────────────────────────────────
+		assertThat(bomLoc.rawVersion())
+				.as("property key in VersionLocation must match the key in PropertyVersionLocation")
+				.isEqualTo(propLoc.propertyKey());
+	}
+
+	private static <T> List<T> findAll(PsiFile file, Function<PsiElement, T> finder) {
+		List<T> hits = new ArrayList<>();
+		file.accept(new PsiRecursiveElementVisitor() {
+			@Override
+			public void visitElement(PsiElement element) {
+				super.visitElement(element);
+				T result = finder.apply(element);
+				if (result != null) {
+					hits.add(result);
+				}
+			}
+		});
+		return hits;
+	}
+
+	private static List<GroovyDslUtils.VersionLocation> findVersionLocations(PsiFile file,
+			Predicate<GroovyDslUtils.VersionLocation> predicate) {
+		return findAll(file, element -> {
+			GroovyDslUtils.VersionLocation loc = GroovyDslUtils.findGroovyVersionElement(element);
+			return (loc != null && predicate.test(loc)) ? loc : null;
+		});
+	}
+
+	private static GroovyDslUtils.VersionLocation findVersionLocation(PsiFile file,
+			Predicate<GroovyDslUtils.VersionLocation> predicate) {
+		return findVersionLocations(file, predicate).stream().findFirst().orElse(null);
+	}
+
+	private static GroovyDslUtils.PropertyVersionLocation findExtProperty(PsiFile file,
+			Predicate<GroovyDslUtils.PropertyVersionLocation> predicate) {
+		return findAll(file, GroovyDslUtils::findGroovyExtPropertyVersionElement).stream().filter(predicate).findFirst()
+				.orElse(null);
+	}
+
+	private static PsiElement findPropertyValueElement(PsiFile propsFile, String key) {
+		if (!(propsFile instanceof PropertiesFile pf)) {
+			return null;
+		}
+		IProperty property = pf.findPropertyByKey(key);
+		if (property == null) {
+			return null;
+		}
+		// The value element is the last child of the IProperty PSI node.
+		return property.getPsiElement().getLastChild();
+	}
+
+	private static PsiElement findPropertyKeyElement(PsiFile propsFile, String key) {
+		if (!(propsFile instanceof PropertiesFile pf)) {
+			return null;
+		}
+		IProperty property = pf.findPropertyByKey(key);
+		if (property == null) {
+			return null;
+		}
+		// The key element is the first child of the IProperty PSI node.
+		return property.getPsiElement().getFirstChild();
+	}
+
+}

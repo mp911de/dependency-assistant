@@ -1,0 +1,286 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package biz.paluch.dap.gradle;
+
+import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionSource;
+
+import java.util.List;
+
+import org.toml.lang.psi.TomlFile;
+import org.toml.lang.psi.TomlInlineTable;
+import org.toml.lang.psi.TomlKey;
+import org.toml.lang.psi.TomlKeyValue;
+import org.toml.lang.psi.TomlLiteral;
+import org.toml.lang.psi.TomlPsiFactory;
+import org.toml.lang.psi.TomlTable;
+
+import com.intellij.lang.properties.IProperty;
+import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.command.CommandProcessor;
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiDocumentManager;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.util.PsiTreeUtil;
+
+/**
+ * Applies selected dependency version updates to Gradle build/property/TOML files.
+ *
+ * @author Mark Paluch
+ */
+public class UpdateGradleFile {
+
+	private static final Logger LOG = Logger.getInstance(UpdateGradleFile.class);
+
+	private final Project project;
+
+	private final UpdateGroovyDsl groovy;
+
+	public UpdateGradleFile(Project project) {
+		this.project = project;
+		this.groovy = new UpdateGroovyDsl(project);
+	}
+
+	/**
+	 * Applies the selected version updates to the Gradle build file.
+	 *
+	 * @param buildFile the build file currently open in the editor
+	 * @param updates dependency updates to apply.
+	 */
+	public void applyUpdates(VirtualFile buildFile, List<DependencyUpdate> updates) {
+
+		if (updates.isEmpty()) {
+			return;
+		}
+
+		Runnable applyAll = () -> {
+			Document document = FileDocumentManager.getInstance().getDocument(buildFile);
+			if (document != null) {
+				PsiDocumentManager.getInstance(project).commitDocument(document);
+			}
+
+			PsiFile psiFile = PsiManager.getInstance(project).findFile(buildFile);
+			if (psiFile == null) {
+				LOG.warn("Cannot update Gradle file: PSI not found for " + buildFile.getPath());
+				return;
+			}
+
+			for (DependencyUpdate update : updates) {
+				applyUpdate(psiFile, update);
+			}
+
+			Document after = PsiDocumentManager.getInstance(project).getDocument(psiFile);
+			if (after != null) {
+				PsiDocumentManager.getInstance(project).commitDocument(after);
+			}
+		};
+
+		ApplicationManager.getApplication().runWriteAction(() -> CommandProcessor.getInstance().executeCommand(project,
+				applyAll, MessageBundle.message("command.update.title"), null));
+	}
+
+	private void applyUpdate(PsiFile buildFile, DependencyUpdate update) {
+
+		String newVersion = update.version().toString();
+
+		for (VersionSource source : update.versionSources()) {
+
+			if (source instanceof VersionSource.VersionPropertySource vps) {
+				String propertyKey = vps.getProperty();
+				updateProperty(buildFile, propertyKey, newVersion);
+			}
+
+			if (source instanceof VersionSource.DeclaredVersion) {
+				for (DeclarationSource declSrc : update.declarationSources()) {
+					if (declSrc instanceof DeclarationSource.Plugin) {
+						updatePlugin(buildFile, update.coordinate(), newVersion);
+					} else {
+						updateDeclaration(buildFile, update.coordinate(), newVersion);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Updates a version entry inside the {@code [versions]} table of a {@code libs.versions.toml} catalog.
+	 *
+	 * @return {@code true} if the key was found and updated
+	 */
+	public void updateProperty(TomlFile file, String propertyKey, String newVersion) {
+
+		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
+			String tableName = table.getHeader().getKey() != null ? table.getHeader().getKey().getText().trim() : null;
+
+			if (!"versions".equals(tableName)) {
+				continue;
+			}
+
+			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
+				if (!propertyKey.equals(kv.getKey().getText().trim())) {
+					continue;
+				}
+				if (!(kv.getValue() instanceof TomlLiteral literal)) {
+					continue;
+				}
+				TomlLiteral newLiteral = new TomlPsiFactory(project, false).createLiteral("\"%s\"".formatted(newVersion));
+				literal.replace(newLiteral);
+			}
+		}
+	}
+
+	/**
+	 * Updates a property value in a properties file or Groovy/Kotlin ext/extra block.
+	 *
+	 * @return {@code true} if the property was found and updated
+	 */
+	public void updateProperty(PsiFile file, String propertyKey, String newVersion) {
+
+		// gradle.properties
+		if (file instanceof PropertiesFile propsFile) {
+			IProperty prop = propsFile.findPropertyByKey(propertyKey);
+			if (prop != null) {
+				prop.setValue(newVersion);
+			}
+		}
+
+		if (file instanceof TomlFile tf) {
+			updateProperty(tf, propertyKey, newVersion);
+		}
+
+		// Groovy DSL: ext { key = 'value' } / ext.key = 'value' / ext { set('key', 'value') }
+		if (GradleUtils.isGroovyDsl(file.getVirtualFile())) {
+			groovy.updateExtProperty(file, propertyKey, newVersion);
+		}
+
+		// Kotlin DSL: extra["key"] = "value"
+		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
+			KotlinDslUpdate.updateExtraProperty(file, propertyKey, newVersion);
+		}
+	}
+
+	/**
+	 * Updates the version in a dependency GAV string literal or map-notation {@code version:} argument.
+	 */
+	private void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
+
+		// TOML
+		VirtualFile virtualFile = file.getVirtualFile();
+
+		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
+			updateTomlInlineVersion(tomlFile, artifactId, newVersion);
+			return;
+		}
+
+		// Groovy DSL
+		if (GradleUtils.isGroovyDsl(virtualFile)) {
+			groovy.applyUpdate(file, artifactId, newVersion);
+			return;
+		}
+
+		// Kotlin DSL
+		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
+			KotlinDslUpdate.applyKotlinUpdate(file, artifactId, newVersion, List.of(VersionSource.declared(newVersion)),
+					List.of(DeclarationSource.dependency()));
+		}
+	}
+
+	/**
+	 * Updates the plugin versions.
+	 */
+	private void updatePlugin(PsiFile file, ArtifactId id, String newVersion) {
+
+		// TOML
+		VirtualFile virtualFile = file.getVirtualFile();
+
+		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
+			updateTomlInlineVersion(tomlFile, id, newVersion);
+		}
+
+		// Groovy DSL
+		if (GradleUtils.isGroovyDsl(virtualFile)) {
+			groovy.applyUpdate(file, id, newVersion);
+		}
+
+		// Kotlin DSL
+		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
+			KotlinDslUpdate.applyKotlinUpdate(file, id, newVersion, List.of(VersionSource.declared(newVersion)),
+					List.of(DeclarationSource.plugin()));
+		}
+	}
+
+	/**
+	 * Updates {@code version = "…"} inside a {@code [libraries]} or {@code [plugins]} inline table when the entry matches
+	 * {@code artifactId} and uses a literal version (not {@code version.ref}).
+	 */
+	private void updateTomlInlineVersion(TomlFile file, ArtifactId artifactId, String newVersion) {
+
+		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
+
+			TomlKey headerKey = table.getHeader().getKey();
+			String tableName = headerKey != null ? headerKey.getText().trim() : "";
+			if (!"libraries".equals(tableName) && !"plugins".equals(tableName)) {
+				continue;
+			}
+
+			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
+				if (!(kv.getValue() instanceof TomlInlineTable inline)) {
+					continue;
+				}
+
+				GradleParser.GradleDependency dep = TomlParser.parseTomlEntry(inline, GradleParser::parseArtifactId);
+				if (!(dep instanceof GradleParser.SimpleDependency sd)) {
+					continue;
+				}
+
+				if (!sd.id().equals(artifactId)) {
+					continue;
+				}
+
+				setVersion(inline, newVersion);
+			}
+		}
+	}
+
+	private void setVersion(TomlInlineTable inline, String newVersion) {
+
+		for (TomlKeyValue inner : PsiTreeUtil.getChildrenOfTypeAsList(inline, TomlKeyValue.class)) {
+
+			TomlKey k = inner.getKey();
+
+			if (!"version".equals(k.getText().trim())) {
+				continue;
+			}
+
+			if (inner.getValue() instanceof TomlLiteral literal) {
+
+				TomlLiteral newLiteral = new TomlPsiFactory(project, false).createLiteral("\"%s\"".formatted(newVersion));
+				literal.replace(newLiteral);
+				return;
+			}
+		}
+	}
+
+}

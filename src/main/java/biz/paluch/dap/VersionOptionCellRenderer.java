@@ -17,6 +17,7 @@ package biz.paluch.dap;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionAge;
 
 import java.awt.Component;
 

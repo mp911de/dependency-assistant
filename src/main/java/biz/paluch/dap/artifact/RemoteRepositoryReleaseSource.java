@@ -60,6 +60,9 @@ import com.intellij.util.net.ProxyAuthentication;
  */
 public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
+	public static RemoteRepositoryReleaseSource MAVEN_CENTRAL = new RemoteRepositoryReleaseSource(
+			RemoteRepository.mavenCentral());
+
 	private static final Logger LOG = Logger.getInstance(RemoteRepositoryReleaseSource.class);
 
 	private static final Pattern DIRECTORY_LISTING_PATTERN = Pattern

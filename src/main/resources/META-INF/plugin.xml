@@ -4,48 +4,62 @@
 	<name>Dependency Assistant</name>
 
 	<vendor url="https://github.com/mp911de/dependency-assistant">Mark Paluch</vendor>
-	<category>Maven</category>
+	<category>Build Tools</category>
 
 	<description><![CDATA[
-        Provides assisted upgrading of Maven dependencies and plugins in a Maven project.
+        Provides assisted upgrading of Maven and Gradle dependencies in a project.
         <br/>
         Displays the current version and suggests an update when a newer version is available
-        from the project's configured Maven repositories.
+        from the project's configured repositories.
 
 The support includes:
 <ul>
-  <li>Scanning of an open <code>pom.xml</code> file containing dependencies and plugins (direct, managed, and using properties)</li>
-  <li>Determining version update candidates</li>
+  <li>Scanning of <code>pom.xml</code> (Maven) and <code>build.gradle(.kts)</code>, <code>gradle.properties</code>,
+      <code>settings.gradle(.kts)</code>, and <code>gradle/libs.versions.toml</code> (Gradle)</li>
+  <li>Determining version update candidates against remote Maven repositories</li>
   <li>Selection of dependencies and plugins to update</li>
-  <li>Supports Maven Central and repositories defined in the POM file (does not yet support authentication)</li>
+  <li>Supports Maven Central and custom repositories</li>
 </ul>
 
-<h3>Usage</h3>
+<h3>Maven Usage</h3>
 <ul>
 <li>Open a <code>pom.xml</code> file in the editor.</li>
 <li>Use the intention action (light bulb) to check for updates of dependencies and plugins.</li>
-<li>Alternatively, to use the <strong>Menu action</strong> tool window, select <strong>Tools | Update Maven Plugins and Dependencies</strong>.</li>
+<li>Alternatively, use <strong>Tools | Update Maven Plugins and Dependencies</strong>.</li>
 </ul>
 
-<h3>Notes</h3>
-
-The currently open <code>pom.xml</code> file is used to apply updates to. The plugin considers all active Maven projects to scan for dependencies and only suggests plugins and dependencies whose version can be determined from the currently open <code>pom.xml</code> file.
+<h3>Gradle Usage</h3>
+<ul>
+<li>Open a Gradle build file (<code>build.gradle</code>, <code>build.gradle.kts</code>, <code>gradle.properties</code>,
+    or <code>libs.versions.toml</code>) in the editor.</li>
+<li>Use the intention action (light bulb) to check for updates.</li>
+<li>Alternatively, use <strong>Tools | Update Gradle Dependencies</strong>.</li>
+</ul>
 
 <p>
 <a href="https://github.com/mp911de/dependency-assistant">GitHub Repository: mp911de/dependency-assistant</a>
     ]]></description>
 
 
-	<depends>org.jetbrains.idea.maven</depends>
 	<depends>com.intellij.modules.xml</depends>
+	<depends optional="true" config-file="maven-extensions.xml">org.jetbrains.idea.maven
+	</depends>
+	<depends optional="true" config-file="kotlin-extensions.xml">org.jetbrains.kotlin
+	</depends>
+	<depends optional="true" config-file="gradle-extensions.xml">
+		org.jetbrains.plugins.gradle
+	</depends>
+
 	<resource-bundle>messages.MessageBundle</resource-bundle>
 
-	<applicationListeners>
-		<listener class="biz.paluch.dap.FlushStateOnSave"
-		          topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
-	</applicationListeners>
+	<extensions defaultExtensionNs="org.jetbrains.kotlin">
+		<supportsKotlinPluginMode supportsK1="true" supportsK2="true"/>
+	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<notificationGroup id="biz.paluch.dependency-assistant.releases"
+		                   displayType="BALLOON"
+		                   bundle="messages.MessageBundle" key="plugin.name"/>
 		<additionalTextAttributes scheme="Default"
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
 		<additionalTextAttributes scheme="Darcula"
@@ -54,46 +68,7 @@ The currently open <code>pom.xml</code> file is used to apply updates to. The pl
 				implementation="biz.paluch.dap.DependencyAssistantColorSettingsPage"/>
 		<projectService
 				serviceImplementation="biz.paluch.dap.state.DependencyAssistantService"/>
-		<projectService
-				serviceImplementation="biz.paluch.dap.artifact.DependencyCheckService"/>
-		<intentionAction>
-			<category>Maven</category>
-			<language>XML</language>
-			<className>biz.paluch.dap.UpdateMavenDependenciesIntention
-			</className>
-		</intentionAction>
-		<completion.contributor
-				language="XML"
-				order="first"
-				implementationClass="biz.paluch.dap.PropertyVersionCompletionContributor"/>
-		<completion.contributor
-				language="XML"
-				order="first"
-				implementationClass="biz.paluch.dap.DependencyVersionCompletionContributor"/>
-		<platform.backend.documentation.psiTargetProvider
-				implementation="biz.paluch.dap.PropertyVersionDocumentationProvider"/>
-		<codeInsight.lineMarkerProvider
-				language="XML"
-				implementationClass="biz.paluch.dap.NewerVersionLineMarkerProvider"/>
-		<annotator language="XML"
-		           implementationClass="biz.paluch.dap.NewerVersionAnnotator"/>
 		<severitiesProvider
 				implementation="biz.paluch.dap.NewerVersionSeveritiesProvider"/>
-		<localInspection
-				language="XML"
-				shortName="PomArtifactCollection"
-				groupName="Maven"
-				enabledByDefault="true"
-				level="INFORMATION"
-				implementationClass="biz.paluch.dap.PomArtifactCollectionInspection"
-				key="inspection.pom.artifact.collection.display.name"/>
 	</extensions>
-
-	<actions>
-		<action id="biz.paluch.dap.UpdateMavenDependencies"
-		        class="biz.paluch.dap.UpdateMavenDependenciesAction"
-		        text="Update Maven Plugins and Dependencies…">
-			<add-to-group group-id="ToolsMenu" anchor="last"/>
-		</action>
-	</actions>
 </idea-plugin>

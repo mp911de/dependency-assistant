@@ -15,9 +15,11 @@
  */
 package biz.paluch.dap;
 
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.VersionAge;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +47,7 @@ class DependencyUpdateModel {
 	}
 
 	public void setUpdateAll(boolean state) {
-		for (DependencyUpdateOption option : getUpdates()) {
+		for (DependencyUpdateOption option : getUpdateOptions()) {
 			option.setApplyUpdate(state);
 		}
 	}
@@ -83,8 +85,12 @@ class DependencyUpdateModel {
 		}
 	}
 
-	public List<DependencyUpdateOption> getUpdates() {
+	public List<DependencyUpdateOption> getUpdateOptions() {
 		return updateOptions;
+	}
+
+	public List<DependencyUpdate> toDependencyUpdates() {
+		return updateOptions.stream().filter(DependencyUpdateOption::isApplyUpdate).map(DependencyUpdate::of).toList();
 	}
 
 	public List<String> getErrors() {

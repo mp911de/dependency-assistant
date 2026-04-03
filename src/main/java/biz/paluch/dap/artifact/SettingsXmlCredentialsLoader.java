@@ -53,12 +53,12 @@ import com.intellij.openapi.project.Project;
  * </ol>
  * <p>
  * Maven-encrypted passwords (those enclosed in {@code {...}}) are decrypted via Maven's
- * {@code DefaultSettingsDecrypter → DefaultSecDispatcher → DefaultPlexusCipher} chain. The master password is read from
- * the file given by the {@code settings.security} system property, defaulting to {@code ~/.m2/settings-security.xml}.
+ * {@code DefaultSettingsDecrypter} chain. The master password is read from the file given by the
+ * {@code settings.security} system property, defaulting to {@code ~/.m2/settings-security.xml}.
  *
  * @author Mark Paluch
  */
-class SettingsXmlCredentialsLoader {
+public class SettingsXmlCredentialsLoader {
 
 	private static final Logger LOG = Logger.getInstance(SettingsXmlCredentialsLoader.class);
 
@@ -202,7 +202,6 @@ class SettingsXmlCredentialsLoader {
 	private static Map<String, RepositoryCredentials> extractCredentials(URLClassLoader loader, Object settingsObj,
 			String securityFilePath) throws Exception {
 
-		// Wire: DefaultPlexusCipher → DefaultSecDispatcher → DefaultSettingsDecrypter
 		Class<?> cipherClass = loader.loadClass("org.sonatype.plexus.components.cipher.DefaultPlexusCipher");
 		Object cipher = cipherClass.getConstructor().newInstance();
 

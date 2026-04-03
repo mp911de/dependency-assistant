@@ -94,7 +94,7 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 		if (item instanceof Release vo) {
 			return vo.version();
 		}
-		return item != null ? item.toString() : MessageBundle.message("dialog.version.empty");
+		return null;
 	}
 
 	public ComboBox<Release> getCombo() {

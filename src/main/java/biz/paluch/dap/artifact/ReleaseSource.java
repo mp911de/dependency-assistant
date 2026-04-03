@@ -32,6 +32,17 @@ public interface ReleaseSource {
 	 */
 	List<Release> getReleases(ArtifactId artifactId);
 
+	static ReleaseSource mavenCentral() {
+		return RemoteRepositoryReleaseSource.MAVEN_CENTRAL;
+	}
+
+	/**
+	 * Returns a {@link ReleaseSource} that queries the Gradle Plugin Portal for plugin versions.
+	 */
+	static ReleaseSource gradlePluginPortal() {
+		return GradlePluginPortalReleaseSource.INSTANCE;
+	}
+
 	/**
 	 * Release source that fetches releases from {@link MavenGAVIndex}.
 	 *

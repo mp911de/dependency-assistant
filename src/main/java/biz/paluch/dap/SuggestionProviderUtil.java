@@ -18,6 +18,7 @@ package biz.paluch.dap;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.state.Cache;
 
 import java.util.Collection;
@@ -35,9 +36,9 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder;
  *
  * @author Mark Paluch
  */
-abstract class SuggestionProviderUtil {
+public abstract class SuggestionProviderUtil {
 
-	static List<ArtifactRelease> findOptions(ArtifactId artifactId, Cache cache) {
+	public static List<ArtifactRelease> findOptions(ArtifactId artifactId, Cache cache) {
 
 		List<Release> versions = cache.getReleases(artifactId, false);
 		List<ArtifactRelease> result = new java.util.ArrayList<>();
@@ -49,7 +50,7 @@ abstract class SuggestionProviderUtil {
 		return result;
 	}
 
-	static void addSuggestions(Collection<ArtifactRelease> versions, CompletionResultSet result,
+	public static void addSuggestions(Collection<ArtifactRelease> versions, CompletionResultSet result,
 			Function<ArtifactId, String> toString, biz.paluch.dap.artifact.@Nullable ArtifactVersion currentVersion) {
 
 		double priority = versions.size();

@@ -1,0 +1,96 @@
+<idea-plugin>
+
+	<applicationListeners>
+		<listener class="biz.paluch.dap.gradle.FlushStateOnSave"
+		          topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+	</applicationListeners>
+	<extensions defaultExtensionNs="com.intellij">
+		<projectService
+				serviceImplementation="biz.paluch.dap.gradle.GradleDependencyCheckService"/>
+		<projectService serviceImplementation="biz.paluch.dap.gradle.GradlePsiListener"/>
+		<postStartupActivity implementation="biz.paluch.dap.gradle.GradlePostStartup"/>
+		<completion.contributor
+				language="Groovy"
+				order="first"
+				implementationClass="biz.paluch.dap.gradle.DependencyVersionCompletionContributor"/>
+		<completion.contributor
+				language="kotlin"
+				order="first"
+				implementationClass="biz.paluch.dap.gradle.DependencyVersionCompletionContributor"/>
+		<completion.contributor
+				language="Properties"
+				order="first"
+				implementationClass="biz.paluch.dap.gradle.PropertyVersionCompletionContributor"/>
+		<annotator language="Groovy"
+		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
+		<annotator language="kotlin"
+		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
+		<annotator language="Properties"
+		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
+		<annotator language="TOML"
+		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
+		<codeInsight.lineMarkerProvider
+				language="Groovy"
+				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
+		<codeInsight.lineMarkerProvider
+				language="kotlin"
+				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
+		<codeInsight.lineMarkerProvider
+				language="Properties"
+				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
+		<codeInsight.lineMarkerProvider
+				language="TOML"
+				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
+		<localInspection
+				language="Groovy"
+				shortName="GradleArtifactCollection"
+				groupName="Gradle"
+				enabledByDefault="true"
+				level="INFORMATION"
+				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
+				key="inspection.gradle.artifact.collection.display.name"/>
+		<localInspection
+				language="kotlin"
+				shortName="GradleArtifactCollectionKts"
+				groupName="Gradle"
+				enabledByDefault="true"
+				level="INFORMATION"
+				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
+				key="inspection.gradle.artifact.collection.display.name"/>
+		<localInspection
+				language="Properties"
+				shortName="GradlePropertiesArtifactCollection"
+				groupName="Gradle"
+				enabledByDefault="true"
+				level="INFORMATION"
+				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
+				key="inspection.gradle.artifact.collection.display.name"/>
+		<localInspection
+				language="TOML"
+				shortName="GradleTomlArtifactCollection"
+				groupName="Gradle"
+				enabledByDefault="true"
+				level="INFORMATION"
+				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
+				key="inspection.gradle.artifact.collection.display.name"/>
+		<platform.backend.documentation.psiTargetProvider
+				implementation="biz.paluch.dap.gradle.PropertyVersionDocumentationProvider"/>
+		<intentionAction>
+			<category>Gradle</category>
+			<className>biz.paluch.dap.gradle.UpdateGradleDependenciesIntention</className>
+		</intentionAction>
+	</extensions>
+
+	<actions>
+		<action id="biz.paluch.dap.gradle.UpdateDependencies"
+		        class="biz.paluch.dap.gradle.UpdateDependenciesAction"
+		        text="Update Gradle Dependencies…">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+		<action id="biz.paluch.dap.gradle.UpdateReleaseCache"
+		        class="biz.paluch.dap.gradle.UpdateReleaseCacheAction"
+		        text="Update Dependency Releases">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+	</actions>
+</idea-plugin>

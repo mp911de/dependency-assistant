@@ -29,6 +29,8 @@ import com.intellij.util.xmlb.annotations.XCollection;
 public class Property {
 
 	@Attribute private String name;
+	@Attribute private boolean declared;
+	@Attribute private boolean used;
 	@XCollection(propertyElementName = "artifacts", elementName = "artifact",
 			style = XCollection.Style.v2) private final List<CachedArtifact> artifacts = new ArrayList<>();
 
@@ -45,6 +47,22 @@ public class Property {
 
 	public void addArtifact(ArtifactId artifactId) {
 		this.artifacts.add(new CachedArtifact(artifactId));
+	}
+
+	public boolean isUsed() {
+		return used;
+	}
+
+	public void setUsed(boolean used) {
+		this.used = used;
+	}
+
+	public boolean isDeclared() {
+		return declared;
+	}
+
+	public void setDeclared(boolean declared) {
+		this.declared = declared;
 	}
 
 	@Tag
@@ -76,6 +94,10 @@ public class Property {
 	@Override
 	public String toString() {
 		return "Property[" + "name=" + name + ", " + "artifacts=" + artifacts + ']';
+	}
+
+	public boolean hasArtifacts() {
+		return !artifacts.isEmpty();
 	}
 
 }

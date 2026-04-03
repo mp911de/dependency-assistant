@@ -17,7 +17,9 @@ package biz.paluch.dap.artifact;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.function.BiConsumer;
 
 import org.jspecify.annotations.Nullable;
@@ -37,16 +39,34 @@ public class DependencyCollector {
 	private final Map<ArtifactId, Dependency> versionCheckCandidates = new TreeMap<>();
 
 	/**
+	 * Properties defined in the scanned file.
+	 */
+	private final Set<String> properties = new TreeSet<>();
+
+	public void addAll(DependencyCollector other) {
+
+		allDependencies.addAll(other.allDependencies);
+		versionCheckCandidates.putAll(other.versionCheckCandidates);
+	}
+	/**
 	 * Add a dependency usage.
 	 */
-	void add(ArtifactId coordinate, ArtifactUsage usage) {
+	public void add(ArtifactId coordinate, ArtifactUsage usage) {
 		allDependencies.add(coordinate, usage);
+	}
+
+	public void addProperty(String property) {
+		this.properties.add(property);
+	}
+
+	public void addProperties(Collection<String> propertyNames) {
+		this.properties.addAll(propertyNames);
 	}
 
 	/**
 	 * Execute the given callback for each dependency.
 	 */
-	void doWithArtifacts(BiConsumer<ArtifactId, ArtifactUsage> callback) {
+	public void doWithArtifacts(BiConsumer<ArtifactId, ArtifactUsage> callback) {
 		allDependencies.forEach((coordinate, usages) -> usages.forEach(usage -> callback.accept(coordinate, usage)));
 	}
 
@@ -75,10 +95,24 @@ public class DependencyCollector {
 	}
 
 	/**
+	 * Return all properties defined in the scanned file.
+	 */
+	public Collection<String> getProperties() {
+		return properties;
+	}
+
+	/**
 	 * Return the dependency for the given artifact id.
 	 */
 	public @Nullable Dependency getDependency(ArtifactId artifactId) {
 		return versionCheckCandidates.get(artifactId);
+	}
+
+	/**
+	 * Return the dependency for the given artifact id.
+	 */
+	public @Nullable Dependency getDependency(String groupId, String artifactId) {
+		return getDependency(ArtifactId.of(groupId, artifactId));
 	}
 
 }

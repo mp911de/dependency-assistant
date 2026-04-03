@@ -20,6 +20,6 @@ package biz.paluch.dap.artifact;
  *
  * @author Mark Paluch
  */
-record ArtifactUsage(DeclarationSource declaration, VersionSource version) {
+public record ArtifactUsage(DeclarationSource declaration, VersionSource version) {
 
 }

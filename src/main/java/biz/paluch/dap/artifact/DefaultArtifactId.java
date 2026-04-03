@@ -15,8 +15,6 @@
  */
 package biz.paluch.dap.artifact;
 
-import org.jspecify.annotations.NonNull;
-
 import org.springframework.util.StringUtils;
 
 /**
@@ -33,12 +31,16 @@ record DefaultArtifactId(String groupId, String artifactId) implements ArtifactI
 	}
 
 	@Override
-	public int compareTo( ArtifactId o) {
+	public int compareTo(ArtifactId o) {
 		return ArtifactId.COMPARATOR.compare(this, o);
 	}
 
 	@Override
 	public String toString() {
+
+		if (groupId.equals(artifactId)) {
+			return groupId;
+		}
 		return groupId + ":" + artifactId;
 	}
 

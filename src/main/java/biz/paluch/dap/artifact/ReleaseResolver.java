@@ -61,6 +61,10 @@ public class ReleaseResolver {
 			} catch (InterruptedException e) {
 				return new ArrayList<>(result);
 			} catch (ExecutionException e) {
+
+				if (e.getCause() instanceof ArtifactNotFoundException) {
+					continue;
+				}
 				errors.add(e.getCause() instanceof RuntimeException re ? re : new UndeclaredThrowableException(e.getCause()));
 			}
 		}
