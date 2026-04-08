@@ -42,11 +42,23 @@ public class Property {
 
 	public Property(String name, List<CachedArtifact> artifacts) {
 		this.name = name;
-		this.artifacts.addAll(artifacts);
+		synchronized (this.artifacts) {
+			this.artifacts.addAll(artifacts);
+		}
 	}
 
 	public void addArtifact(ArtifactId artifactId) {
-		this.artifacts.add(new CachedArtifact(artifactId));
+
+		synchronized (artifactId) {
+
+			for (CachedArtifact artifact : artifacts) {
+				if (artifact.matches(artifactId)) {
+					return;
+				}
+			}
+
+			this.artifacts.add(new CachedArtifact(artifactId));
+		}
 	}
 
 	public boolean isUsed() {

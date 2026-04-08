@@ -43,7 +43,7 @@ public class UpdateMavenDependenciesIntention extends BaseElementAtCaretIntentio
 
 	@Override
 	public String getFamilyName() {
-		return MessageBundle.message("intention.family.name");
+		return MessageBundle.message("maven.intention.family.name");
 	}
 
 	@Override

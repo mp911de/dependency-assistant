@@ -15,90 +15,29 @@
  */
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.DependencyAssistantService;
-import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.support.FlushStateOnSaveSupport;
 
-import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectLocator;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 
 /**
  * Listener that invalidates and re-collects the dependency state for build files when they are saved or reloaded.
  *
  * @author Mark Paluch
  */
-public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.ActionOnSave
-		implements FileDocumentManagerListener {
-
-	private final FileDocumentManager DOCUMENT_MANAGER = FileDocumentManager.getInstance();
+public class FlushStateOnSave extends FlushStateOnSaveSupport {
 
 	@Override
-	public void fileContentReloaded(VirtualFile file, Document document) {
-
-		Project project = ProjectLocator.getInstance().guessProjectForFile(file);
-		if (project == null || !GradleUtils.isGradleFile(file)) {
-			return;
-		}
-
-		DependencyAssistantService state = DependencyAssistantService.getInstance(project);
-		GradleProjectContext buildContext = GradleProjectContext.of(project, file);
-		if (!buildContext.isAvailable()) {
-			return;
-		}
-
-		ProjectState projectState = state.getProjectState(buildContext.getProjectId());
-		projectState.invalidateDependencies();
-
-		ApplicationManager.getApplication().runReadAction(() -> {
-			PsiManager psiManager = PsiManager.getInstance(project);
-			PsiFile buildFile = psiManager.findFile(file);
-			if (buildFile != null) {
-				DependencyCollector collector = GradleDependencyCheckService.getInstance(project).collectArtifacts(buildFile);
-				projectState.setDependencies(collector);
-			}
-		});
+	protected DependencyCollector collectDependencies(Project project, PsiFile buildFile) {
+		return GradleDependencyCheckService.getInstance(project).collectArtifacts(buildFile);
 	}
 
 	@Override
-	public void afterDocumentSaved(Document document) {
-
-		VirtualFile virtualFile = DOCUMENT_MANAGER.getFile(document);
-		if (virtualFile != null) {
-			fileContentReloaded(virtualFile, document);
-		}
-	}
-
-	@Override
-	public boolean isEnabledForProject(Project project) {
-		return true;
-	}
-
-	@Override
-	public void processDocuments(Project project, Document[] documents) {
-
-		DependencyAssistantService state = DependencyAssistantService.getInstance(project);
-
-		for (Document document : documents) {
-			VirtualFile virtualFile = DOCUMENT_MANAGER.getFile(document);
-			if (virtualFile == null || !GradleUtils.isGradleFile(virtualFile)) {
-				continue;
-			}
-
-			GradleProjectContext buildContext = GradleProjectContext.of(project, virtualFile);
-			if (buildContext.isAvailable()) {
-				state.getProjectState(buildContext.getProjectId()).invalidateDependencies();
-			}
-		}
-
-		super.processDocuments(project, documents);
+	protected ProjectBuildContext getBuildContext(Project project, VirtualFile file) {
+		return GradleProjectContext.of(project, file);
 	}
 
 }

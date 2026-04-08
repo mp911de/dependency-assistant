@@ -37,7 +37,7 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-public class GradleDependencyCollector {
+class GradleDependencyCollector {
 
 	private final DependencyAssistantService service;
 

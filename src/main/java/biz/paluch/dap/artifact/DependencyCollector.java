@@ -43,20 +43,11 @@ public class DependencyCollector {
 	 */
 	private final Set<String> properties = new TreeSet<>();
 
-	public void addAll(DependencyCollector other) {
-
-		allDependencies.addAll(other.allDependencies);
-		versionCheckCandidates.putAll(other.versionCheckCandidates);
-	}
 	/**
 	 * Add a dependency usage.
 	 */
 	public void add(ArtifactId coordinate, ArtifactUsage usage) {
 		allDependencies.add(coordinate, usage);
-	}
-
-	public void addProperty(String property) {
-		this.properties.add(property);
 	}
 
 	public void addProperties(Collection<String> propertyNames) {
