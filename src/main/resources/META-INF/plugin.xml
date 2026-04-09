@@ -7,13 +7,12 @@
 	<category>Build Tools</category>
 
 	<description><![CDATA[
-        Provides assisted upgrading of Maven and Gradle dependencies in a project.
-        <br/>
-        Displays the current version and suggests an update when a newer version is available
-        from the project's configured repositories.
+		<p>
+			Provides assisted upgrading of Maven and Gradle dependencies in your IDE. The plugin highlights dependency declarations for newer versions and offers a controlled path to apply updates without replacing your own judgment about when to upgrade.
+		</p>
 
-The support includes:
-<ul>
+		The support includes:
+		<ul>
   <li>Scanning of <code>pom.xml</code> (Maven) and <code>build.gradle(.kts)</code>, <code>gradle.properties</code>,
       <code>settings.gradle(.kts)</code>, and <code>gradle/libs.versions.toml</code> (Gradle)</li>
   <li>Determining version update candidates against remote Maven repositories</li>
@@ -21,24 +20,25 @@ The support includes:
   <li>Supports Maven Central and custom repositories</li>
 </ul>
 
-<h3>Maven Usage</h3>
-<ul>
-<li>Open a <code>pom.xml</code> file in the editor.</li>
-<li>Use the intention action (light bulb) to check for updates of dependencies and plugins.</li>
-<li>Alternatively, use <strong>Tools | Update Maven Plugins and Dependencies</strong>.</li>
-</ul>
+		<h3>Maven</h3>
+		<ul>
+			<li>Open <code>pom.xml</code> in the editor.</li>
+			<li>Use the intention action (light bulb) on a dependency or plugin version to check for updates.</li>
+			<li>Or use the menu action <strong>Tools | Update Maven Plugins and Dependencies</strong>.</li>
+		</ul>
 
-<h3>Gradle Usage</h3>
-<ul>
-<li>Open a Gradle build file (<code>build.gradle</code>, <code>build.gradle.kts</code>, <code>gradle.properties</code>,
+		<h3>Gradle</h3>
+		<ul>
+			<li>Open a Gradle build file (<code>build.gradle</code>, <code>build.gradle.kts</code>, <code>gradle.properties</code>,
     or <code>libs.versions.toml</code>) in the editor.</li>
-<li>Use the intention action (light bulb) to check for updates.</li>
-<li>Alternatively, use <strong>Tools | Update Gradle Dependencies</strong>.</li>
-</ul>
+			<li>Use the intention action (light bulb) to check for updates.</li>
+			<li>Or use <strong>Tools | Update Gradle Dependencies</strong>.</li>
+		</ul>
 
-<p>
-<a href="https://github.com/mp911de/dependency-assistant">GitHub Repository: mp911de/dependency-assistant</a>
-    ]]></description>
+		<p>
+			<a href="https://github.com/mp911de/dependency-assistant">Source and issues: mp911de/dependency-assistant</a>
+		</p>
+	]]></description>
 
 
 	<depends>com.intellij.modules.xml</depends>
