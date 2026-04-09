@@ -92,10 +92,10 @@ class UpdateGroovyDsl {
 					if (!(element instanceof GrMethodCall call)) {
 						return;
 					}
-					if (!"id".equals(GroovyDslUtils.getGroovyMethodName(call))) {
+					if (!GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(call))) {
 						return;
 					}
-					if (!GroovyDslUtils.isInsideGradleBlock(call, "plugins")) {
+					if (!GroovyDslUtils.isInsidePluginsBlock(call)) {
 						return;
 					}
 

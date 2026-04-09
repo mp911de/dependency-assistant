@@ -53,6 +53,12 @@ import com.intellij.psi.util.PsiTreeUtil;
  */
 class TomlParser extends GradleParserSupport {
 
+	public static final String PLUGINS = "plugins";
+	public static final String BUNDLES = "bundles";
+	public static final String VERSIONS = "versions";
+	public static final String LIBS = "libs";
+	public static final String LIBRARIES = "libraries";
+
 	/**
 	 * A catalog {@code [libraries]} or {@code [plugins]} table together with the TOML entry key (kebab-case).
 	 *
@@ -68,23 +74,23 @@ class TomlParser extends GradleParserSupport {
 	 */
 	static @Nullable CatalogTableKey catalogTableKeyFromLibsSegments(List<String> segments) {
 
-		if (segments.size() < 2 || !"libs".equals(segments.get(0))) {
+		if (segments.size() < 2 || !LIBS.equals(segments.get(0))) {
 			return null;
 		}
-		if ("plugins".equals(segments.get(1))) {
+		if (PLUGINS.equals(segments.get(1))) {
 			if (segments.size() < 3) {
 				return null;
 			}
-			return new CatalogTableKey("plugins", String.join("-", segments.subList(2, segments.size())));
+			return new CatalogTableKey(PLUGINS, String.join("-", segments.subList(2, segments.size())));
 		}
-		if ("versions".equals(segments.get(1)) || "bundles".equals(segments.get(1))) {
+		if (VERSIONS.equals(segments.get(1)) || BUNDLES.equals(segments.get(1))) {
 			return null;
 		}
 		String libKey = String.join("-", segments.subList(1, segments.size()));
 		if (!StringUtils.hasText(libKey)) {
 			return null;
 		}
-		return new CatalogTableKey("libraries", libKey);
+		return new CatalogTableKey(LIBRARIES, libKey);
 	}
 
 	private final Map<String, String> properties;
@@ -141,11 +147,11 @@ class TomlParser extends GradleParserSupport {
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
 
 			String tableName = getTomlTableName(table);
-			if ("libraries".equals(tableName)) {
+			if (LIBRARIES.equals(tableName)) {
 				parseEntries(table, TomlParser::parseArtifactId, DeclarationSource.managed());
 			}
 
-			if ("plugins".equals(tableName)) {
+			if (PLUGINS.equals(tableName)) {
 				parseEntries(table, module -> ArtifactId.of(module, module), DeclarationSource.managed());
 			}
 		}
@@ -169,7 +175,7 @@ class TomlParser extends GradleParserSupport {
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
 			String tableName = getTomlTableName(table);
-			if (!"versions".equals(tableName)) {
+			if (!VERSIONS.equals(tableName)) {
 				continue;
 			}
 			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {

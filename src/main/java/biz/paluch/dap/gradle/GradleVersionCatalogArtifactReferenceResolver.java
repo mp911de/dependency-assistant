@@ -95,7 +95,7 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 			});
 		}
 
-		if (isInsideTable(literal, it -> it.equals("libraries") || it.equals("plugins"))
+		if (isInsideTable(literal, it -> it.equals(TomlParser.LIBRARIES) || it.equals(TomlParser.PLUGINS))
 				&& kv.getParent() instanceof TomlInlineTable inlineTable) {
 
 			PsiElement keyPsi = literal.getParent() != null ? literal.getParent().getFirstChild() : null;

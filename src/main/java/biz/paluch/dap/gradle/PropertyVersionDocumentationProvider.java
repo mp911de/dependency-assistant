@@ -36,6 +36,7 @@ import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.documentation.PsiDocumentationTargetProvider;
 import com.intellij.platform.backend.presentation.TargetPresentation;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 
@@ -88,7 +89,7 @@ public class PropertyVersionDocumentationProvider extends VersionDocumentationPr
 	@SuppressWarnings("unchecked")
 	private static <T> @Nullable T findParent(PsiElement element, Class<T> type) {
 		PsiElement parent = element.getParent();
-		while (parent != null) {
+		while (parent != null && !(parent instanceof PsiFile)) {
 			if (type.isInstance(parent)) {
 				return (T) parent;
 			}

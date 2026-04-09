@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -146,12 +147,12 @@ class KotlinDslUtils {
 		}
 
 		String kotlinCallName = getKotlinCallName(parentCall);
-		if ("plugins".equals(kotlinCallName)) {
+		if (GradleUtils.isPluginSection(kotlinCallName)) {
 			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(raw, raw), rawVersion, isProperty);
 		}
 
 		// Infix plugin form: id("plugin.id") version "x.y.z" — parentCall may not be `plugins` depending on PSI shape.
-		if ("id".equals(getKotlinCallName(call)) && isInsideKotlinBlock(call, "plugins") && !raw.contains(":")) {
+		if (GradleUtils.isPlugin(getKotlinCallName(call)) && isInsidePluginsBlock(call) && !raw.contains(":")) {
 			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(raw.trim(), raw.trim()), rawVersion, isProperty);
 		}
 
@@ -272,7 +273,7 @@ class KotlinDslUtils {
 		}
 
 		String methodName = getKotlinCallName(call);
-		if (!GradleUtils.DEPENDENCY_CONFIGS.contains(methodName)) {
+		if (!GradleUtils.isDependencySection(methodName)) {
 			return null;
 		}
 
@@ -309,10 +310,10 @@ class KotlinDslUtils {
 			return false;
 		}
 
-		if (GradleUtils.DEPENDENCY_CONFIGS.contains(methodName) || GradleUtils.PLATFORM_FUNCTIONS.contains(methodName)) {
+		if (GradleUtils.isDependencySection(methodName) || GradleUtils.isPlatformSection(methodName)) {
 			return true;
 		}
-		return "id".equals(methodName) && isInsideKotlinBlock(call, "plugins");
+		return GradleUtils.isPlugin(methodName) && isInsidePluginsBlock(call);
 	}
 
 	/**
@@ -467,18 +468,22 @@ class KotlinDslUtils {
 		return callee != null ? callee.getText() : null;
 	}
 
-	static boolean isInsideKotlinBlock(PsiElement element, String blockName) {
+	static boolean isInsideBlock(PsiElement element, Predicate<String> predicate) {
 		PsiElement parent = element.getParent();
-		while (parent != null) {
+		while (parent != null && !(parent instanceof PsiFile)) {
 			if (parent instanceof KtCallExpression parentCall) {
 				String name = getKotlinCallName(parentCall);
-				if (blockName.equals(name)) {
+				if (name != null && predicate.test(name)) {
 					return true;
 				}
 			}
 			parent = parent.getParent();
 		}
 		return false;
+	}
+
+	static boolean isInsidePluginsBlock(PsiElement element) {
+		return isInsideBlock(element, GradleUtils::isPluginSection);
 	}
 
 	// -------------------------------------------------------------------------
@@ -492,6 +497,11 @@ class KotlinDslUtils {
 	static @Nullable KtCallExpression findEnclosingCatalogAccessorCall(PsiElement element) {
 
 		for (PsiElement p = element; p != null; p = p.getParent()) {
+
+			if (p instanceof PsiFile) {
+				return null;
+			}
+
 			if (!(p instanceof KtCallExpression call)) {
 				continue;
 			}
@@ -519,10 +529,10 @@ class KotlinDslUtils {
 		if ("alias".equals(name)) {
 			return true;
 		}
-		if ("id".equals(name) && isInsideKotlinBlock(call, "plugins")) {
+		if (GradleUtils.isPlugin(name) && isInsidePluginsBlock(call)) {
 			return true;
 		}
-		if (GradleUtils.DEPENDENCY_CONFIGS.contains(name) || GradleUtils.PLATFORM_FUNCTIONS.contains(name)) {
+		if (GradleUtils.isDependencySection(name) || GradleUtils.isPlatformSection(name)) {
 			return true;
 		}
 		return false;

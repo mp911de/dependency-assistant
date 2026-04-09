@@ -169,9 +169,9 @@ class KotlinDslParser extends GradleParser {
 			return;
 		}
 
-		boolean isDependencyConfig = GradleUtils.DEPENDENCY_CONFIGS.contains(methodName);
-		boolean isPlatform = GradleUtils.PLATFORM_FUNCTIONS.contains(methodName);
-		boolean isPlugin = KotlinDslUtils.isInsideKotlinBlock(call, "plugins");
+		boolean isDependencyConfig = GradleUtils.isDependencySection(methodName);
+		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
+		boolean isPlugin = KotlinDslUtils.isInsidePluginsBlock(call);
 
 		GroovyDslUtils.VersionLocation versionLocation = KotlinDslUtils.findKotlinVersionElement(call);
 
@@ -188,7 +188,7 @@ class KotlinDslParser extends GradleParser {
 			return;
 		}
 
-		if (!KotlinDslUtils.isInsideKotlinBlock(call, "dependencies") && !isPlatform) {
+		if (!KotlinDslUtils.isInsideBlock(call, "dependencies"::equals) && !isPlatform) {
 			return;
 		}
 

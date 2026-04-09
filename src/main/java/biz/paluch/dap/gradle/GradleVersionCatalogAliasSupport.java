@@ -87,7 +87,6 @@ final class GradleVersionCatalogAliasSupport {
 	}
 
 	static Function<String, ArtifactId> idFunctionForTable(String tableName) {
-
 		return "plugins".equals(tableName) ? m -> ArtifactId.of(m, m) : GradleParserSupport::parseArtifactId;
 	}
 

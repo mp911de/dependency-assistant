@@ -116,9 +116,9 @@ class GradleParser extends GradleParserSupport {
 
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);
 
-		boolean isPlatform = GradleUtils.PLATFORM_FUNCTIONS.contains(methodName);
-		boolean isDependencyConfig = GradleUtils.DEPENDENCY_CONFIGS.contains(methodName);
-		boolean isPlugin = GroovyDslUtils.isInsideGradleBlock(call, "plugins");
+		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
+		boolean isDependencyConfig = GradleUtils.isDependencySection(methodName);
+		boolean isPlugin = GroovyDslUtils.isInsidePluginsBlock(call);
 
 		if (!isDependencyConfig && !isPlatform && !isPlugin) {
 			return;

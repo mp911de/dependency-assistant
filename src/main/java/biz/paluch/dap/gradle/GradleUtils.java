@@ -61,13 +61,20 @@ class GradleUtils {
 
 	static final boolean KOTLIN_AVAILABLE = ClassUtils.isPresent("org.jetbrains.kotlin.psi.KtStringTemplateExpression",
 			GradleUtils.class.getClassLoader());
-	/** Dependency configuration names that carry group:artifact:version strings. */
+
+	/** Dependency configuration names that carry {@code group:artifact:version} strings. */
 	static final Set<String> DEPENDENCY_CONFIGS = Set.of("implementation", "api", "runtimeOnly", "compileOnly",
 			"testImplementation", "testRuntimeOnly", "testCompileOnly", "androidTestImplementation", "debugImplementation",
 			"releaseImplementation", "annotationProcessor", "kapt", "ksp", "provided", "compile", "runtime", "testCompile",
 			"testRuntime", "classpath");
+
 	/** Configuration names that represent a BOM / platform import (managed). */
 	static final Set<String> PLATFORM_FUNCTIONS = Set.of("platform", "enforcedPlatform", "mavenBom");
+
+	/**
+	 * Name of the plugins section.
+	 */
+	static final String PLUGINS = "plugins";
 
 	private GradleUtils() {}
 
@@ -181,6 +188,20 @@ class GradleUtils {
 	}
 
 	/**
+	 * Returns the element call refers to a plugin configuration.
+	 */
+	public static boolean isPlugin(@Nullable String name) {
+		return "id".equals(name);
+	}
+
+	/**
+	 * Returns the element call refers to a plugin section configuration.
+	 */
+	public static boolean isPluginSection(@Nullable String name) {
+		return PLUGINS.equals(name);
+	}
+
+	/**
 	 * Returns the element call refers to a dependency configuration.
 	 */
 	public static boolean isDependencySection(String name) {
@@ -190,10 +211,9 @@ class GradleUtils {
 	/**
 	 * Returns the element call refers to a managed (platform) configuration.
 	 */
-	public static boolean isPlatform(String name) {
+	public static boolean isPlatformSection(String name) {
 		return PLATFORM_FUNCTIONS.contains(name);
 	}
-
 
 	// -------------------------------------------------------------------------
 	// Helpers

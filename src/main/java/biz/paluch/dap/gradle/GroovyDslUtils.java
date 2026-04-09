@@ -59,12 +59,12 @@ class GroovyDslUtils {
 		return null;
 	}
 
-	static boolean isInsideGradleBlock(PsiElement element, String blockName) {
+	static boolean isInsidePluginsBlock(PsiElement element) {
 		PsiElement parent = element.getParent();
-		while (parent != null) {
+		while (parent != null && !(parent instanceof PsiFile)) {
 			if (parent instanceof GrMethodCall parentCall) {
 				String name = getGroovyMethodName(parentCall);
-				if (blockName.equals(name)) {
+				if (GradleUtils.isPluginSection(name)) {
 					return true;
 				}
 			}
@@ -77,7 +77,7 @@ class GroovyDslUtils {
 	 * Returns a {@link PropertyVersionLocation} when {@code element} is the <em>value</em> literal of a Groovy
 	 * {@code ext} property declaration, or {@code null} otherwise.
 	 * <p>
-	 * The three recognised forms are:
+	 * The three supported forms are:
 	 * <ul>
 	 * <li>{@code ext { set('key', 'value') }} — set-call form</li>
 	 * <li>{@code ext { key = 'value' }} — assignment inside an {@code ext} closure</li>
@@ -149,7 +149,7 @@ class GroovyDslUtils {
 			return null;
 		}
 		String callName = getGroovyMethodName(call);
-		if (!GradleUtils.DEPENDENCY_CONFIGS.contains(callName) && !GradleUtils.PLATFORM_FUNCTIONS.contains(callName)) {
+		if (!GradleUtils.isDependencySection(callName) && !GradleUtils.isPlatformSection(callName)) {
 			// Not a standard dependency/platform call; check the plugin version pattern:
 			// id 'pluginId' version 'x.y.z'
 			return tryPluginVersionLiteral(literal, call);
@@ -197,10 +197,10 @@ class GroovyDslUtils {
 		if (!(versionRef.getQualifierExpression() instanceof GrMethodCall idCall)) {
 			return null;
 		}
-		if (!"id".equals(getGroovyMethodName(idCall))) {
+		if (!GradleUtils.isPlugin(getGroovyMethodName(idCall))) {
 			return null;
 		}
-		if (!isInsideGradleBlock(idCall, "plugins")) {
+		if (!isInsidePluginsBlock(idCall)) {
 			return null;
 		}
 		String pluginId = firstLiteralString(idCall.getArgumentList().getAllArguments());
@@ -285,7 +285,7 @@ class GroovyDslUtils {
 
 		PsiElement parent = element.getParent();
 
-		while (parent != null) {
+		while (parent != null && !(parent instanceof PsiFile)) {
 			if (parent instanceof GrClosableBlock) {
 				PsiElement blockParent = parent.getParent();
 				if (blockParent instanceof GrMethodCall call && "ext".equals(getGroovyMethodName(call))) {
@@ -336,7 +336,8 @@ class GroovyDslUtils {
 	 */
 	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element) {
 
-		for (PsiElement p = element; p != null; p = p.getParent()) {
+		for (PsiElement p = element; p != null && !(p instanceof PsiFile); p = p.getParent()) {
+
 			if (!(p instanceof GrMethodCall call)) {
 				continue;
 			}
@@ -364,10 +365,10 @@ class GroovyDslUtils {
 		if ("alias".equals(name)) {
 			return true;
 		}
-		if ("id".equals(name) && isInsideGradleBlock(call, "plugins")) {
+		if (GradleUtils.isPlugin(name) && isInsidePluginsBlock(call)) {
 			return true;
 		}
-		return GradleUtils.DEPENDENCY_CONFIGS.contains(name) || GradleUtils.PLATFORM_FUNCTIONS.contains(name);
+		return GradleUtils.isDependencySection(name) || GradleUtils.isPlatformSection(name);
 	}
 
 	static @Nullable GrExpression getFirstGroovyCatalogArgumentExpression(GrMethodCall call) {

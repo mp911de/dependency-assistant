@@ -50,7 +50,7 @@ import com.intellij.psi.util.PsiTreeUtil;
  *
  * @author Mark Paluch
  */
-public class UpdateGradleFile {
+class UpdateGradleFile {
 
 	private static final Logger LOG = Logger.getInstance(UpdateGradleFile.class);
 
@@ -240,7 +240,7 @@ public class UpdateGradleFile {
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
 
 			String tableName = TomlParser.getTomlTableName(table);
-			if (tableName == null || (!"libraries".equals(tableName) && !"plugins".equals(tableName))) {
+			if ((!TomlParser.LIBRARIES.equals(tableName) && !TomlParser.PLUGINS.equals(tableName))) {
 				continue;
 			}
 
