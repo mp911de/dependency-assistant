@@ -54,20 +54,7 @@ public abstract class VersionUpgradeLookupSupport {
 	 * Resolves the version upgrade result for a PSI element, or returns {@code null} if the element does not represent a
 	 * version value or no upgrade is available in the cache.
 	 */
-	public abstract VersionUpgradeLookupSupport.@Nullable UpgradeSuggestion determineUpgrade(PsiElement element);
-
-	/**
-	 * Find available upgrade for a PSI element.
-	 */
-	public VersionUpgradeLookupSupport.@Nullable UpgradeAvailable findAvailableUpgrade(PsiElement element) {
-
-		UpgradeSuggestion upgradeSuggestion = determineUpgrade(element);
-		if (upgradeSuggestion != null) {
-			return new UpgradeAvailable(upgradeSuggestion, null);
-		}
-
-		return null;
-	}
+	public abstract biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(PsiElement element);
 
 	/**
 	 * Resolves the property with the given name. Returns {@code null} if no such property exists in the project state.
@@ -77,27 +64,6 @@ public abstract class VersionUpgradeLookupSupport {
 	 */
 	public @Nullable Property getProperty(String propertyName) {
 		return projectState != null ? projectState.findProperty(propertyName) : null;
-	}
-
-	/**
-	 * The outcome of a version lookup: the best available upgrade tier, the best candidate version, and the resolved
-	 * current version.
-	 */
-	public record UpgradeSuggestion(UpgradeStrategy strategy, Release bestOption, ArtifactVersion current) {
-
-		public String getMessage() {
-			String upgradeTarget = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
-			return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, bestOption().version().toString());
-		}
-
-	}
-
-	/**
-	 * The outcome of a version lookup: the best available upgrade tier, the best candidate version, and the resolved
-	 * current version.
-	 */
-	public record UpgradeAvailable(UpgradeSuggestion suggestion, DependencyLookupResult metadata) {
-
 	}
 
 	public @Nullable ArtifactVersion getCurrentVersion(Property property) {
@@ -149,8 +115,17 @@ public abstract class VersionUpgradeLookupSupport {
 		return new UpgradeSuggestion(strategy, bestOption, current);
 	}
 
-	public record DependencyLookupResult(ArtifactId artifactId, @Nullable ArtifactVersion version,
-			boolean localVersionDeclared, @Nullable String versionLocation) {
+	/**
+	 * The outcome of a version lookup: the best available upgrade tier, the best candidate version, and the resolved
+	 * current version.
+	 */
+	public record UpgradeSuggestion(UpgradeStrategy strategy, Release bestOption, ArtifactVersion current) {
+
+		public String getMessage() {
+			String upgradeTarget = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
+			return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, bestOption().version().toString());
+		}
+
 	}
 
 }

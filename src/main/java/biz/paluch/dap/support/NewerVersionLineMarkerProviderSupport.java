@@ -26,9 +26,8 @@ import com.intellij.codeInsight.daemon.LineMarkerProvider;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
-import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -58,22 +57,21 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
 		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
-		VersionUpgradeLookupSupport.UpgradeAvailable availableUpgrade = service.findAvailableUpgrade(element);
-		if (availableUpgrade == null) {
+		UpgradeSuggestion suggestion = service.suggestUpgrades(element);
+
+		if (!suggestion.isPresent()) {
 			return null;
 		}
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion upgradeSuggestion = availableUpgrade.suggestion();
-
-		String tooltip = upgradeSuggestion.getMessage();
+		String tooltip = suggestion.getMessage();
 		String accessibleName = MessageBundle.message("gutter.newer.accessible");
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
 
-		if (availableUpgrade.metadata() != null && !availableUpgrade.metadata().localVersionDeclared()
-				&& availableUpgrade.metadata().versionLocation() != null) {
+		ArtifactDeclaration declaration = suggestion.getArtifactDeclaration();
+		PsiElement versionLiteral = declaration.getVersionLiteral();
+		if (!declaration.isVersionDefinedInSameFile() && versionLiteral != null) {
 
-			LocalFileSystem lfs = LocalFileSystem.getInstance();
-			VirtualFile virtualFile = lfs.findFileByPath(availableUpgrade.metadata().versionLocation());
+			VirtualFile virtualFile = versionLiteral.getContainingFile().getVirtualFile();
 			if (virtualFile != null) {
 
 				String tooltipToUse = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
@@ -81,7 +79,11 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 
 				return new LineMarkerInfo<>(anchor, getTextRange(anchor), navigate, e -> tooltipToUse,
 						(mouseEvent, psiElement) -> {
-							FileEditorManager.getInstance(psiElement.getProject()).openFile(virtualFile, true);
+
+							OpenFileDescriptor descriptor = new OpenFileDescriptor(versionLiteral.getProject(), virtualFile,
+									versionLiteral.getTextOffset());
+							descriptor.navigate(true);
+
 						}, GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 			}
 		}
@@ -92,6 +94,7 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 				ActionManager.getInstance().tryToExecute(action, mouseEvent, null, null, true);
 			}
 		}, GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
+
 	}
 
 	protected abstract VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element);

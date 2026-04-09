@@ -46,7 +46,9 @@ import com.intellij.testFramework.junit5.RunInEdt;
 @RunInEdt(writeIntent = true)
 class VersionUpgradeLookupServiceTests {
 
-	/** The Groovy build script shared by all tests in this class. */
+	/**
+	 * The Groovy build script shared by all tests in this class.
+	 */
 	private static final String BUILD_GRADLE = """
 			plugins {
 			    id 'groovy'
@@ -86,13 +88,6 @@ class VersionUpgradeLookupServiceTests {
 		fixture = null;
 	}
 
-	// ── Single-hit guarantee ──────────────────────────────────────────────────
-
-	/**
-	 * Iterates over every PSI element in the build file and calls {@link UpdateGroovyDsl#findGroovyVersionElement} for
-	 * each. The {@code implementation 'org.junit:junit-bom:6.0.0'} declaration must produce exactly one non-null result –
-	 * leaf tokens inside the {@code GrLiteral} node must not generate an additional hit.
-	 */
 	@Test
 	void junitBomInlineVersionYieldsSingleHit() {
 
@@ -109,12 +104,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc.isPropertyReference()).isFalse();
 	}
 
-	/**
-	 * The managed BOM with an interpolated version {@code "…:${springModulithVersion}"} must also produce exactly one
-	 * hit. The content and injection tokens inside the
-	 * {@link org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrString} node must not generate
-	 * additional hits.
-	 */
 	@Test
 	void managedBomWithInterpolatedVersionYieldsSingleHit() {
 
@@ -126,10 +115,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(hits).as("exactly one hit for org.springframework.modulith:spring-modulith-bom").hasSize(1);
 	}
 
-	/**
-	 * The {@link GroovyDslUtils.VersionLocation} for the inline {@code 'org.junit:junit-bom:6.0.0'} literal reports the
-	 * version as a plain declared value (not a property reference).
-	 */
 	@Test
 	void inlineVersionLocationHasCorrectCoordinates() {
 
@@ -144,10 +129,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(all).hasSize(1);
 	}
 
-	/**
-	 * The {@link GroovyDslUtils.VersionLocation} for the interpolated BOM string reports the version as a property
-	 * reference with the bare property name (without {@code ${}}).
-	 */
 	@Test
 	void managedBomVersionIsDetectedAsPropertyReference() {
 
@@ -162,11 +143,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc.rawVersion()).isEqualTo("springModulithVersion");
 	}
 
-
-	/**
-	 * A two-segment dependency string without a version ({@code 'org.apache.groovy:groovy'}) must never produce a hit
-	 * because there is no version to update.
-	 */
 	@Test
 	void dependencyWithoutVersionYieldsNoHit() {
 
@@ -176,10 +152,6 @@ class VersionUpgradeLookupServiceTests {
 				.as("no hit for versionless dependency").isEmpty();
 	}
 
-	/**
-	 * Plugin {@code id} calls produce single-segment strings (the plugin ID only) that must not be treated as a versioned
-	 * dependency declaration. Only the separate {@code version 'x.y.z'} argument literal is considered.
-	 */
 	@Test
 	void pluginIdStringLiteralsYieldNoHit() {
 
@@ -192,12 +164,6 @@ class VersionUpgradeLookupServiceTests {
 				.as("no hits from plugin id string literals").isEmpty();
 	}
 
-	/**
-	 * Ext {@code set()} arguments (the key and value literals inside {@code ext { set('k', 'v') }}) must not produce a
-	 * hit from {@link UpdateGroovyDsl#findGroovyVersionElement} — they are not inside a dependency configuration call.
-	 * The matching uses exact literal text to avoid accidentally matching the interpolated BOM string that also
-	 * references {@code springModulithVersion}.
-	 */
 	@Test
 	void extSetArgumentsYieldNoHitFromFindGroovyVersionElement() {
 
@@ -209,10 +175,6 @@ class VersionUpgradeLookupServiceTests {
 				|| "\"2.0.4\"".equals(loc.element().getText()))).as("no hits from ext set() arguments").isEmpty();
 	}
 
-	/**
-	 * The version literal {@code '4.0.3'} in {@code id 'org.springframework.boot' version '4.0.3'} must produce a
-	 * {@link GroovyDslUtils.VersionLocation} whose artifact coordinates use the plugin ID as both group and artifact.
-	 */
 	@Test
 	void pluginVersionLiteralsAreDetected() {
 
@@ -236,10 +198,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(dmLoc.isPropertyReference()).isFalse();
 	}
 
-	/**
-	 * Each plugin version literal must produce exactly one hit – not two – when every PSI element in the file is
-	 * iterated. This guards against the leaf-token duplication problem.
-	 */
 	@Test
 	void pluginVersionLiteralsYieldSingleHitEach() {
 
@@ -252,9 +210,6 @@ class VersionUpgradeLookupServiceTests {
 				.as("single hit for io.spring.dependency-management plugin version").hasSize(1);
 	}
 
-	/**
-	 * A plugin declared without a version ({@code id 'groovy'}) must not produce any hit.
-	 */
 	@Test
 	void pluginWithoutVersionYieldsNoHit() {
 
@@ -264,12 +219,6 @@ class VersionUpgradeLookupServiceTests {
 				.as("no hit for versionless groovy plugin").isEmpty();
 	}
 
-	/**
-	 * Iterating every element in the build file must produce exactly four {@link GroovyDslUtils.VersionLocation} results:
-	 * two plugin version declarations ({@code org.springframework.boot}, {@code io.spring.dependency-management}), one
-	 * inline dependency ({@code org.junit:junit-bom:6.0.0}), and one property-reference BOM
-	 * ({@code org.springframework.modulith:spring-modulith-bom}). All other literals must not contribute.
-	 */
 	@Test
 	void onlyVersionedDependencyDeclarationsProduceHits() {
 
@@ -306,10 +255,6 @@ class VersionUpgradeLookupServiceTests {
 		});
 	}
 
-	/**
-	 * The value literal {@code "2.0.4"} in {@code ext { set('springModulithVersion', "2.0.4") }} must be detected by
-	 * {@link GradleUtils#findGroovyExtPropertyVersionElement} with the correct key and value.
-	 */
 	@Test
 	void extSetCallValueIsDetectedAsPropertyVersionElement() {
 
@@ -322,10 +267,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc.propertyValue()).isEqualTo("2.0.4");
 	}
 
-	/**
-	 * The key literal {@code 'springModulithVersion'} in {@code set('springModulithVersion', "2.0.4")} must NOT be
-	 * detected - only the value argument is a version element.
-	 */
 	@Test
 	void extSetCallKeyIsNotDetectedAsPropertyVersionElement() {
 
@@ -337,10 +278,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc).as("no PropertyVersionLocation for set() key").isNull();
 	}
 
-	/**
-	 * The assignment form {@code ext { springVersion = '3.5.0' }} (inside an {@code ext {}} closure) must be detected
-	 * by {@link GradleUtils#findGroovyExtPropertyVersionElement}.
-	 */
 	@Test
 	void extAssignmentInsideExtBlockIsDetected() {
 
@@ -357,10 +294,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc.propertyValue()).isEqualTo("3.5.0");
 	}
 
-	/**
-	 * The dot-qualified assignment form {@code ext.springVersion = '3.5.0'} must be detected by
-	 * {@link GradleUtils#findGroovyExtPropertyVersionElement}.
-	 */
 	@Test
 	void extDotAssignmentIsDetected() {
 
@@ -375,10 +308,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc.propertyValue()).isEqualTo("3.5.0");
 	}
 
-	/**
-	 * A plain top-level assignment (not inside an {@code ext} block and without the {@code ext.} prefix) must NOT be
-	 * detected as an ext property version element.
-	 */
 	@Test
 	void plainTopLevelAssignmentIsNotDetected() {
 
@@ -393,10 +322,6 @@ class VersionUpgradeLookupServiceTests {
 				.as("no hit for plain group = '...' assignment").isNull();
 	}
 
-	/**
-	 * {@link GradleUtils#findPropertiesVersionElement} must return a non-null result when the given PSI element is inside
-	 * the <em>value</em> part of a property entry.
-	 */
 	@Test
 	void propertiesValueElementIsDetected() {
 
@@ -415,10 +340,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc.propertyValue()).isEqualTo("3.5.0");
 	}
 
-	/**
-	 * {@link GradleUtils#findPropertiesVersionElement} must return {@code null} when the element is part of the key side
-	 * of a properties entry (cursor is on the key, not the value).
-	 */
 	@Test
 	void propertiesKeyElementIsNotDetected() {
 
@@ -432,16 +353,6 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(loc).as("no PropertyVersionLocation for key element").isNull();
 	}
 
-	// ── BOM + ext property round-trip ────────────────────────────────────────
-
-	/**
-	 * Minimal snippet: an {@code ext { set() }} property declaration alongside a
-	 * {@code dependencyManagement.imports.mavenBom} that references it via {@code ${…}} interpolation.
-	 * <p>
-	 * {@link UpdateGroovyDsl#findGroovyVersionElement} must detect the BOM string as a versioned dependency with a
-	 * property reference, and {@link GradleUtils#findGroovyExtPropertyVersionElement} must detect the ext property
-	 * declaration. The property key reported by both must match, confirming the round-trip linkage.
-	 */
 	@Test
 	void bomWithInterpolatedVersionLinksToExtPropertyDeclaration() {
 
@@ -457,7 +368,6 @@ class VersionUpgradeLookupServiceTests {
 				}
 				""");
 
-		// ── BOM detection ──────────────────────────────────────────────────────────
 		List<GroovyDslUtils.VersionLocation> bomHits = findVersionLocations(file,
 				loc -> loc.artifactId().groupId().startsWith("org.springframework.modulith"));
 		assertThat(bomHits).as("exactly one hit for the spring-modulith-bom managed import").hasSize(1);
@@ -468,15 +378,12 @@ class VersionUpgradeLookupServiceTests {
 		assertThat(bomLoc.isPropertyReference()).as("version should be a property reference").isTrue();
 		assertThat(bomLoc.rawVersion()).as("property key stripped from ${…}").isEqualTo("springModulithVersion");
 
-		// ── Ext property detection ─────────────────────────────────────────────────
 		GroovyDslUtils.PropertyVersionLocation propLoc = findExtProperty(file, l -> "2.0.3".equals(l.propertyValue()));
 		assertThat(propLoc).as("PropertyVersionLocation for the ext set() declaration").isNotNull();
 		assertThat(propLoc.propertyKey()).isEqualTo("springModulithVersion");
 		assertThat(propLoc.propertyValue()).isEqualTo("2.0.3");
 
-		// ── Round-trip linkage ─────────────────────────────────────────────────────
-		assertThat(bomLoc.rawVersion())
-				.as("property key in VersionLocation must match the key in PropertyVersionLocation")
+		assertThat(bomLoc.rawVersion()).as("property key in VersionLocation must match the key in PropertyVersionLocation")
 				.isEqualTo(propLoc.propertyKey());
 	}
 

@@ -15,7 +15,23 @@
  */
 package biz.paluch.dap.maven;
 
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
+import biz.paluch.dap.artifact.RepositoryCredentials;
+
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BiConsumer;
+
+import org.jetbrains.idea.maven.model.MavenRemoteRepository;
+import org.jetbrains.idea.maven.project.MavenProject;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.StringUtils;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiDocumentManager;
@@ -60,4 +76,34 @@ public class MavenUtils {
 		String namespace = rootTag.getNamespace();
 		return namespace.isEmpty() || "http://maven.apache.org/POM/4.0.0".equals(namespace);
 	}
+
+	public static Set<RemoteRepository> getRemoteRepositories(Map<String, RepositoryCredentials> credentials,
+			MavenProject project) {
+
+		Set<RemoteRepository> urls = new LinkedHashSet<>();
+
+		forEach(project.getRemoteRepositories(), (id, url) -> urls.add(new RemoteRepository(id, url, credentials.get(id))));
+		forEach(project.getRemotePluginRepositories(),
+				(id, url) -> urls.add(new RemoteRepository(id, url, credentials.get(id))));
+
+		return urls;
+	}
+
+	public static void forEach(Collection<MavenRemoteRepository> repositories, BiConsumer<String, String> consumer) {
+		for (MavenRemoteRepository repo : repositories) {
+
+			String url = repo.getUrl();
+			if (StringUtils.hasText(url) && (url.startsWith("http://") || url.startsWith("https://"))) {
+				String repoId = repo.getId();
+				String urlToUse = url.endsWith("/") ? url : url + "/";
+
+				consumer.accept(repoId, urlToUse);
+			}
+		}
+	}
+
+	public static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> remoteRepositories) {
+		return remoteRepositories.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it).toList();
+	}
+
 }

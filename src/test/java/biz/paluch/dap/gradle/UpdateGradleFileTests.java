@@ -16,6 +16,7 @@
 package biz.paluch.dap.gradle;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.*;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -308,6 +310,65 @@ class UpdateGradleFileTests {
 		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
 	}
 
+	@Test
+	void kotlinExtraPropertyViaAlsoWithItIsUpdated() {
+
+		assumeTrue(GradleUtils.KOTLIN_AVAILABLE);
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				"3.5.0".also { extra["springVersion"] = it }
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${property("springVersion")}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("\"3.6.0\".also");
+	}
+
+	@Test
+	void kotlinExtraPropertyViaBuildStringIsUpdated() {
+
+		assumeTrue(GradleUtils.KOTLIN_AVAILABLE);
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				extra["springVersion"] = buildString {
+				        append("3.5.0")
+				    }
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${property("springVersion")}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("append(\"3.6.0\")");
+	}
+
+	@Test
+	void kotlinExtraPropertyViaTripleQuotedStringIsUpdated() {
+
+		assumeTrue(GradleUtils.KOTLIN_AVAILABLE);
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				extra["springVersion"] = \"""3.5.0\"""
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${property("springVersion")}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("\"\"\"3.6.0\"\"\"");
+	}
+
 	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 
@@ -322,6 +383,7 @@ class UpdateGradleFileTests {
 		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(), dep.getVersionSources());
 
 		new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile.getVirtualFile(), List.of(update));
+		PsiDocumentManager.getInstance(fixture.getProject()).commitAllDocuments();
 	}
 
 }

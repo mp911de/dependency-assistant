@@ -42,7 +42,7 @@ import com.intellij.testFramework.junit5.RunInEdt;
  * @author Mark Paluch
  */
 @RunInEdt(writeIntent = true)
-class GradleParserPsiTests {
+class GradleParserTests {
 
 	private CodeInsightTestFixture fixture;
 
@@ -266,7 +266,7 @@ class GradleParserPsiTests {
 		Dependency springBoot = collector.getDependency("org.springframework.boot", "spring-boot-starter");
 		assertThat(springBoot).as("spring-boot-starter from TOML").isNotNull();
 		assertThat(springBoot.getCurrentVersion().toString()).isEqualTo("3.5.0");
-		assertThat(springBoot.getVersionSources()).anyMatch(vs -> vs instanceof VersionSource.VersionPropertySource);
+		assertThat(springBoot.getVersionSources()).anyMatch(vs -> vs instanceof VersionSource.VersionCatalogProperty);
 
 		assertThat(collector.getDependency("org.apache.commons", "commons-lang3")).as("commons-lang3 from TOML")
 				.isNotNull();
@@ -347,6 +347,25 @@ class GradleParserPsiTests {
 		assertThat(bom).as("spring-modulith-bom").isNotNull();
 		assertThat(bom.getCurrentVersion().toString()).isEqualTo("2.0.4");
 		assertThat(bom.hasPropertyVersion()).isTrue();
+	}
+
+	@Test
+	void kotlinExtraPropertyAlternateFormatsAreCollected() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				"2.0.3".also { extra["springModulithVersion"] = it }
+
+				extra["buildStringKey"] = buildString {
+				        append("2.0.3")
+				    }
+
+				extra["tripleKey"] = \"""2.0.3\"""
+				""");
+
+		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
+
+		assertThat(props).containsEntry("springModulithVersion", "2.0.3").containsEntry("buildStringKey", "2.0.3")
+				.containsEntry("tripleKey", "2.0.3");
 	}
 
 }

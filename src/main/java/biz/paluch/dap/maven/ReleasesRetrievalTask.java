@@ -13,21 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.RepositoryCredentials;
+import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.support.DependencyCheckSupport;
 import biz.paluch.dap.support.ReleasesRetrievalTaskSupport;
 
-import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
-import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
-import org.jetbrains.plugins.gradle.settings.GradleSettings;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
 
 import com.intellij.openapi.application.ApplicationManager;
@@ -61,20 +63,21 @@ class ReleasesRetrievalTask extends ReleasesRetrievalTaskSupport {
 		long startNs = System.nanoTime();
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 2);
 
-		GradleSettings settings = GradleSettings.getInstance(project);
-		Collection<GradleProjectSettings> linkedProjects = settings.getLinkedProjectsSettings();
-		Set<RemoteRepository> repositories = new LinkedHashSet<>();
-		for (GradleProjectSettings linkedProject : linkedProjects) {
-			repositories
-					.addAll(GradleUtils.getRepositoriesFromImportedProject(project, linkedProject.getExternalProjectPath()));
+		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
+		Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
+		Set<RemoteRepository> remoteRepositories = new LinkedHashSet<>();
+
+		for (MavenProject mavenProject : manager.getProjects()) {
+			remoteRepositories.addAll(MavenUtils.getRemoteRepositories(credentials, mavenProject));
 		}
 
-		GradleDependencyCheckService service = new GradleDependencyCheckService(project);
+		MavenDependencyCheckService service = new MavenDependencyCheckService(project);
 		DependencyCollector allDependencies = ApplicationManager.getApplication()
 				.runReadAction((Computable<DependencyCollector>) () -> updateState.getAllDependencies(steps));
 		steps.nextStep();
 		updates = service.getDependencyUpdates(indicator, () -> allDependencies,
-				GradleProjectContext.getReleaseSources(repositories), DependencyCheckSupport.Consistency.NO_CACHE);
+				MavenUtils.getReleaseSources(remoteRepositories), DependencyCheckSupport.Consistency.NO_CACHE);
+
 		duration = TimeoutUtil.getDurationMillis(startNs);
 	}
 
@@ -87,5 +90,4 @@ class ReleasesRetrievalTask extends ReleasesRetrievalTaskSupport {
 	protected long getDuration() {
 		return duration;
 	}
-
 }

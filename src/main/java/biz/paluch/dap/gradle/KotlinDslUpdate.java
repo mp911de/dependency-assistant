@@ -21,7 +21,6 @@ import biz.paluch.dap.artifact.VersionSource;
 
 import java.util.Collection;
 
-import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
@@ -96,52 +95,37 @@ class KotlinDslUpdate {
 	}
 
 	/**
-	 * Finds and updates an {@code extra["key"] = "value"} assignment in a Kotlin DSL file.
+	 * Finds and updates an {@code extra["key"]} assignment in a Kotlin DSL file (plain string, triple-quoted string,
+	 * {@code "v".also { extra["k"] = it }}, or {@code buildString { append("v") }}).
 	 *
 	 * @return {@code true} if the property was found and updated
 	 */
 	static boolean updateExtraProperty(PsiFile file, String propertyKey, String newVersion) {
-		boolean[] found = { false };
-		file.accept(new PsiRecursiveElementVisitor() {
-			@Override
-			public void visitElement(PsiElement element) {
-				if (found[0]) {
-					return;
-				}
-				super.visitElement(element);
-				if (!(element instanceof KtBinaryExpression binExpr)) {
-					return;
-				}
-				if (!"=".equals(binExpr.getOperationReference().getText())) {
-					return;
-				}
-				KtExpression left = binExpr.getLeft();
-				KtExpression right = binExpr.getRight();
-				if (!(left instanceof KtArrayAccessExpression arrayAccess)) {
-					return;
-				}
-				KtExpression receiver = arrayAccess.getArrayExpression();
-				if (!(receiver instanceof KtNameReferenceExpression nameRef) || !"extra".equals(nameRef.getReferencedName())) {
-					return;
-				}
-				if (arrayAccess.getIndexExpressions().isEmpty()) {
-					return;
-				}
-				KtExpression indexExpr = arrayAccess.getIndexExpressions().get(0);
-				if (!(indexExpr instanceof KtStringTemplateExpression keyTemplate)) {
-					return;
-				}
-				String key = stripQuotes(keyTemplate.getText());
-				if (!propertyKey.equals(key)) {
-					return;
-				}
-				if (right instanceof KtStringTemplateExpression valueTemplate) {
-					replaceTemplateText(valueTemplate, newVersion);
-					found[0] = true;
-				}
+
+		KtBinaryExpression assign = KotlinDslExtraSupport.findExtraAssignment(file, propertyKey);
+		if (assign == null) {
+			return false;
+		}
+		KtExpression right = assign.getRight();
+		if (right instanceof KtStringTemplateExpression valueTemplate) {
+			replaceTemplateText(valueTemplate, newVersion);
+			return true;
+		}
+		if (right instanceof KtNameReferenceExpression ref && "it".equals(ref.getReferencedName())) {
+			KtStringTemplateExpression receiver = KotlinDslExtraSupport.findAlsoReceiverStringTemplate(ref);
+			if (receiver != null) {
+				replaceTemplateText(receiver, newVersion);
+				return true;
 			}
-		});
-		return found[0];
+		}
+		if (right instanceof KtCallExpression buildStringCall) {
+			KtStringTemplateExpression appendLit = KotlinDslExtraSupport.findBuildStringAppendLiteral(buildStringCall);
+			if (appendLit != null) {
+				replaceTemplateText(appendLit, newVersion);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// -------------------------------------------------------------------------
@@ -182,8 +166,13 @@ class KotlinDslUpdate {
 		if (text == null || text.length() < 2) {
 			return;
 		}
-		char quote = text.charAt(0);
-		String newText = quote + newContent + quote;
+		String newText;
+		if (text.length() >= 6 && text.startsWith("\"\"\"") && text.endsWith("\"\"\"")) {
+			newText = "\"\"\"" + newContent + "\"\"\"";
+		} else {
+			char quote = text.charAt(0);
+			newText = quote + newContent + quote;
+		}
 		try {
 			// Use the document to perform a text-level replacement; this keeps offsets valid
 			// because we immediately proceed to the next element (early return after found[0] = true).
@@ -205,6 +194,16 @@ class KotlinDslUpdate {
 	static @Nullable String stripQuotes(@Nullable String text) {
 		if (text == null || text.length() < 2) {
 			return null;
+		}
+		if (text.length() >= 6 && text.startsWith("\"\"\"") && text.endsWith("\"\"\"")) {
+			String inner = text.substring(3, text.length() - 3);
+			if (inner.startsWith("\n")) {
+				inner = inner.substring(1);
+			}
+			if (inner.endsWith("\n")) {
+				inner = inner.substring(0, inner.length() - 1);
+			}
+			return inner;
 		}
 		char open = text.charAt(0);
 		char close = text.charAt(text.length() - 1);

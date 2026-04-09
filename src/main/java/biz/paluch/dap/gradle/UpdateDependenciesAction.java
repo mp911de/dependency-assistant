@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
 
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
@@ -35,6 +36,11 @@ import com.intellij.psi.PsiFile;
  * @author Mark Paluch
  */
 public class UpdateDependenciesAction extends AnAction {
+
+	@Override
+	public ActionUpdateThread getActionUpdateThread() {
+		return ActionUpdateThread.BGT;
+	}
 
 	@Override
 	public void actionPerformed(AnActionEvent e) {

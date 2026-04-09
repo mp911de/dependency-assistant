@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
+import com.intellij.ide.nls.NlsMessages;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
@@ -57,20 +58,23 @@ public abstract class ReleasesRetrievalTaskSupport extends Task.Backgroundable {
 			return;
 		}
 		int count = result.updates().size();
+		String duration = NlsMessages.formatDuration(getDuration(), 1, true);
 		String detail = result.updates().stream().map(DependencyUpdateOption::getArtifactId).map(Object::toString)
 				.collect(Collectors.joining(System.lineSeparator()));
 		Notification notification = group.createNotification(MessageBundle.message("action.update.releases.done.title"),
-				MessageBundle.message("action.update.releases.done", count, detail), NotificationType.INFORMATION);
+				MessageBundle.message("action.update.releases.done", count, duration, detail), NotificationType.INFORMATION);
 		DaemonCodeAnalyzer.getInstance(project).restart(MessageBundle.message("action.update.releases.done.title"));
 		Notifications.Bus.notify(notification, project);
 	}
-
-	protected abstract @Nullable DependencyUpdates getUpdates();
 
 	@Override
 	public void onThrowable(Throwable error) {
 		Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.error", error.getMessage()),
 				MessageBundle.message("action.check.dependencies.error.title"), Messages.getErrorIcon());
 	}
+
+	protected abstract @Nullable DependencyUpdates getUpdates();
+
+	protected abstract long getDuration();
 
 }

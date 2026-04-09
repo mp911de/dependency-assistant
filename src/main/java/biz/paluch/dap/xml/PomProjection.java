@@ -16,7 +16,6 @@
 package biz.paluch.dap.xml;
 
 import java.util.List;
-import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 import org.xmlbeam.annotation.XBRead;
@@ -38,8 +37,8 @@ public interface PomProjection {
 	@Nullable
 	String getProperty(String propertyName);
 
-	@XBRead("/project/properties")
-	Map<String, String> getProperties();
+	@XBRead("/project/properties/*")
+	List<PomProperty> getProperties();
 
 	@XBRead("/project/dependencies/dependency")
 	List<PomDependency> getDependencies();

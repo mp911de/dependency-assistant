@@ -60,7 +60,7 @@ public class GradleDependencyCheckService extends DependencyCheckSupport {
 					List.of(MessageBundle.message("gradle.action.check.dependencies.noProject")));
 		}
 
-		return getDependencyUpdates(indicator, buildFile, buildContext);
+		return getDependencyUpdates(indicator, buildFile, buildContext, Consistency.CACHED);
 	}
 
 	/**

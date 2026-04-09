@@ -155,6 +155,65 @@ class UpdateKotlinGradleFileTests {
 	}
 
 	@Test
+	void kotlinExtraPropertyViaAlsoWithItIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				"3.5.0".also { extra["springVersion"] = it }
+				extra["lombokVersion"] = "1.18.36"
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${property("springVersion")}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("\"3.6.0\".also");
+		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+	}
+
+	@Test
+	void kotlinExtraPropertyViaBuildStringIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				extra["springVersion"] = buildString {
+				        append("3.5.0")
+				    }
+				extra["lombokVersion"] = "1.18.36"
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${property("springVersion")}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("append(\"3.6.0\")");
+		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+	}
+
+	@Test
+	void kotlinExtraPropertyViaTripleQuotedStringIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				extra["springVersion"] = \"""3.5.0\"""
+				extra["lombokVersion"] = "1.18.36"
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${property("springVersion")}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("\"\"\"3.6.0\"\"\"");
+		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+	}
+
+	@Test
 	void propertyInGradlePropertiesIsUpdatedFromKotlinBuildFile() {
 
 		// findProjectRoot falls back to the build file's parent when no settings file is present.

@@ -36,8 +36,11 @@ import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
 
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
@@ -60,6 +63,20 @@ class TomlParser extends GradleParserSupport {
 	public TomlParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
 		this.properties = properties;
+	}
+
+	public static @Nullable PsiFile findVersionCatalogToml(Project project, VirtualFile anchorFile) {
+
+		VirtualFile root = GradleUtils.findProjectRoot(anchorFile);
+		VirtualFile gradleDir = root.findChild("gradle");
+		if (gradleDir == null) {
+			return null;
+		}
+		VirtualFile toml = gradleDir.findChild(GradleUtils.LIBS_VERSIONS_TOML);
+		if (toml == null) {
+			return null;
+		}
+		return PsiManager.getInstance(project).findFile(toml);
 	}
 
 	// -------------------------------------------------------------------------
@@ -120,7 +137,7 @@ class TomlParser extends GradleParserSupport {
 			}
 			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
 				String key = getTomlKeyName(kv.getKey());
-				String val = tomlLiteralText(kv.getValue());
+				String val = getText(kv.getValue());
 				if (StringUtils.hasText(key) && StringUtils.hasText(val)) {
 					versions.put(key, val);
 				}
@@ -139,7 +156,7 @@ class TomlParser extends GradleParserSupport {
 
 		for (TomlKeyValue inner : PsiTreeUtil.getChildrenOfTypeAsList(inlineTable, TomlKeyValue.class)) {
 			String key = getTomlKeyName(inner.getKey());
-			String val = tomlLiteralText(inner.getValue());
+			String val = getText(inner.getValue());
 			switch (key) {
 				case "id" -> module = val;
 				case "module" -> module = val;
@@ -154,10 +171,10 @@ class TomlParser extends GradleParserSupport {
 
 		ArtifactId artifactId = artifactIdFunction.apply(module);
 		if (StringUtils.hasText(versionRef)) {
-			return new PropertyManagedDependency(artifactId, versionRef, VersionSource.property(versionRef));
+			return new PropertyManagedDependency(artifactId, versionRef, VersionSource.versionCatalogProperty(versionRef));
 		}
 
-		return new SimpleDependency(artifactId, version, VersionSource.declared(version));
+		return new SimpleDependency(artifactId, version, VersionSource.versionCatalog());
 	}
 
 	@Nullable
@@ -171,16 +188,16 @@ class TomlParser extends GradleParserSupport {
 		return properties.get(value);
 	}
 
-	private static @Nullable String getTomlTableName(TomlTable table) {
+	public static @Nullable String getTomlTableName(TomlTable table) {
 		TomlKey key = table.getHeader().getKey();
 		return key != null ? key.getText().replaceAll("\\s", "") : null;
 	}
 
-	private static String getTomlKeyName(TomlKey key) {
+	public static String getTomlKeyName(TomlKey key) {
 		return key.getText().trim();
 	}
 
-	private static @Nullable String tomlLiteralText(@Nullable PsiElement value) {
+	public static @Nullable String getText(@Nullable PsiElement value) {
 		if (value instanceof TomlLiteral lit) {
 			String text = lit.getText();
 			// Strip surrounding quotes

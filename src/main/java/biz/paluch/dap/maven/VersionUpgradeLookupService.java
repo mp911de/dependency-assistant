@@ -15,20 +15,21 @@
  */
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectCache;
 import biz.paluch.dap.state.Property;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
@@ -47,16 +48,17 @@ import com.intellij.psi.xml.XmlTokenType;
  */
 class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
-	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([^}]*)\\}");
-	private final ProjectBuildContext buildContext;
+	private final MavenProjectContext buildContext;
 	private final @Nullable XmlFile pom;
 	private final boolean candidate;
 	private final Cache cache;
+	private final MavenProperties properties;
 
-	public VersionUpgradeLookupService(Project project, ProjectBuildContext context, PsiFile pom) {
+	public VersionUpgradeLookupService(Project project, MavenProjectContext context, PsiFile pom) {
 
 		super(project, context);
 
+		this.properties = new MavenProperties(project);
 		this.buildContext = context;
 		this.pom = pom instanceof XmlFile xmlFile ? xmlFile : null;
 		this.candidate = MavenUtils.isMavenPomFile(pom);
@@ -73,136 +75,155 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return new VersionUpgradeLookupService(project, MavenProjectContext.of(project, pom), pom);
 	}
 
-	/**
-	 * Resolves the version upgrade result for a PSI element, or returns {@code null} if the element does not represent a
-	 * version value or no upgrade is available in the cache.
-	 */
-	public VersionUpgradeLookupService.@Nullable UpgradeSuggestion determineUpgrade(PsiElement element) {
+	@Override
+	public biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(PsiElement element) {
 
 		if (element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS || !candidate || pom == null
 				|| !buildContext.isAvailable()) {
-			return null;
+			return biz.paluch.dap.support.UpgradeSuggestion.none();
 		}
 
 		ProjectCache cache = this.cache.getProject(buildContext.getProjectId());
 
 		XmlTag versionTag = PomUtil.findVersionTag(element);
 		if (versionTag != null) {
-			return resolveVersionTag(versionTag);
+			return suggestUpgrades(resolveArtifactDeclaration(versionTag));
 		}
 
 		XmlTag propertyTag = PomUtil.findPropertyTag(element);
 		if (propertyTag != null) {
-			return resolvePropertyTag(cache, propertyTag);
+			return suggestUpgrades(resolveArtifactDeclaration(cache, propertyTag));
 		}
 
-		return null;
+		return biz.paluch.dap.support.UpgradeSuggestion.none();
 	}
 
-	private VersionUpgradeLookupService.@Nullable UpgradeSuggestion resolveVersionTag(XmlTag versionTag) {
+	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
 		ArtifactId artifactId = PomUtil.getArtifactId(parentTag);
 		if (artifactId == null) {
-			return null;
+			return ArtifactReference.unresolved();
 		}
-
-		ArtifactVersion currentVersion = getCurrentVersion(versionTag, artifactId);
-		if (currentVersion == null) {
-			return null;
-		}
-
-		List<Release> options = cache.getReleases(artifactId, false);
-		if (options.isEmpty()) {
-			return null;
-		}
-
-		return determineUpgrade(currentVersion, options);
-	}
-
-	public @Nullable ArtifactVersion getCurrentVersion(XmlTag versionTag, ArtifactId artifactId) {
 
 		String version = versionTag.getValue().getText().trim();
+		PropertyExpression expression = PropertyExpression.from(version);
 
-		if (version.contains("${")) {
-			version = resolveProperty(version);
+		if (expression.isProperty()) {
+
+			ResolvedProperty property = resolveProperty(expression);
+			return ArtifactReference.from(it -> {
+				it.artifact(artifactId).declarationElement(parentTag)
+						.versionSource(VersionSource.property(expression.getPropertyName()));
+				if (property != null) {
+					ArtifactVersion.from(property.value()).ifPresent(it::version);
+					it.versionLiteral(property.valueLiteral());
+				}
+			});
 		}
 
-		if (version != null && version.contains("${") && buildContext.isAvailable()) {
-			return getCurrentVersion(artifactId);
-		}
-
-		if (!StringUtils.hasText(version)) {
-			return null;
-		}
-
-		try {
-			return ArtifactVersion.of(version);
-		} catch (Exception e) {
-			return null;
-		}
+		return ArtifactReference.from(it -> {
+			it.artifact(artifactId).declarationElement(parentTag)
+					.versionSource(StringUtils.hasText(version) ? VersionSource.declared(version) : VersionSource.none());
+			ArtifactVersion.from(version).ifPresent(it::version);
+			it.versionLiteral(versionTag);
+		});
 	}
 
 	@Nullable
-	String resolveProperty(String expression) {
+	private ResolvedProperty resolveProperty(PropertyExpression expression) {
 
-		while (expression.contains("${")) {
+		XmlTag propertyValue = null;
+		while (expression.isProperty()) {
 
-			Matcher matcher = PROPERTY_PATTERN.matcher(expression);
-			if (!matcher.find()) {
-				break;
-			}
-
-			String propertyName = matcher.group(1);
-			String value = null;
-
-			if (pom != null && pom.getDocument() != null && pom.getDocument().getRootTag() != null) {
-				XmlTag properties = pom.getDocument().getRootTag().findFirstSubTag("properties");
-				if (properties != null) {
-					value = properties.getSubTagText(propertyName);
-				}
-			}
-
-			if (value == null && buildContext.isAvailable()) {
-				value = buildContext.getPropertyValue(propertyName);
-			}
-
-			if (value != null) {
-				value = resolveProperty(value.trim());
-			}
-
-			if (value == null) {
+			String propertyName = expression.getPropertyName();
+			propertyValue = properties.findProperty(buildContext.getMavenProject(), propertyName);
+			if (propertyValue != null) {
+				expression = PropertyExpression.from(propertyValue.getValue().getTrimmedText());
+			} else {
 				return null;
 			}
-
-			expression = matcher.replaceFirst(Matcher.quoteReplacement(value.trim()));
 		}
 
-		return expression;
+		if (propertyValue == null) {
+			return null;
+		}
+
+		return new ResolvedProperty(propertyValue.getValue().getTrimmedText(), propertyValue);
 	}
 
-	VersionUpgradeLookupService.@Nullable UpgradeSuggestion resolvePropertyTag(ProjectCache cache, XmlTag propertyTag) {
+	private ArtifactReference resolveArtifactDeclaration(ProjectCache cache, XmlTag propertyTag) {
 
 		Property property = findProperty(cache, propertyTag);
 		if (property == null) {
-			return null;
+			return ArtifactReference.unresolved();
 		}
 
 		ArtifactVersion currentVersion = getCurrentVersion(cache, propertyTag);
-		if (currentVersion == null) {
+		if (currentVersion == null || !property.hasArtifacts()) {
+			return ArtifactReference.unresolved();
+		}
+
+		String tagName = propertyTag.getLocalName();
+		ResolvedProperty resolvedProperty = resolveProperty(PropertyExpression.property(tagName));
+		CachedArtifact firstArtifact = property.artifacts().getFirst();
+
+		return ArtifactReference.from(it -> {
+			it.artifact(firstArtifact.toArtifactId()).declarationElement(propertyTag)
+					.versionSource(VersionSource.property(tagName)).version(currentVersion);
+
+			if (resolvedProperty != null) {
+				it.versionLiteral(resolvedProperty.valueLiteral());
+			}
+		});
+	}
+
+	private VersionUpgradeLookupService.@Nullable UpgradeSuggestion findSuggestions(ArtifactReference lookupResult) {
+
+		if (!lookupResult.isResolved()) {
 			return null;
 		}
 
-		CachedArtifact firstArtifact = property.artifacts().getFirst();
-		List<Release> options = this.cache.getReleases(firstArtifact.toArtifactId(), false);
+		ArtifactDeclaration declaration = lookupResult.getDeclaration();
+		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
+			return null;
+		}
+
+		List<Release> options = this.cache.getReleases(declaration.getArtifactId(), false);
 		if (options.isEmpty()) {
 			return null;
 		}
 
-		return determineUpgrade(currentVersion, options);
+		return determineUpgrade(declaration.getVersion(), options);
+	}
+
+	private biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(ArtifactReference artifactReference) {
+
+		if (!artifactReference.isResolved()) {
+			return biz.paluch.dap.support.UpgradeSuggestion.none();
+		}
+
+		ArtifactDeclaration declaration = artifactReference.getDeclaration();
+		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
+			return biz.paluch.dap.support.UpgradeSuggestion.none();
+		}
+
+		List<Release> options = this.cache.getReleases(declaration.getArtifactId(), false);
+		if (options.isEmpty()) {
+			return biz.paluch.dap.support.UpgradeSuggestion.none();
+		}
+
+		UpgradeSuggestion upgradeSuggestion = determineUpgrade(declaration.getVersion(), options);
+		if (upgradeSuggestion == null) {
+			return biz.paluch.dap.support.UpgradeSuggestion.none();
+		}
+
+		return biz.paluch.dap.support.UpgradeSuggestion.of(upgradeSuggestion.strategy(), upgradeSuggestion.bestOption(),
+				artifactReference);
 	}
 
 	private @Nullable Property findProperty(ProjectCache cache, XmlTag propertyTag) {
+
 		String propertyName = propertyTag.getLocalName();
 		Property property = cache.getProperty(propertyName);
 		if (property == null || property.artifacts().isEmpty()) {
@@ -239,6 +260,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	private record ResolvedProperty(String value, PsiElement valueLiteral) {
+
 	}
 
 }

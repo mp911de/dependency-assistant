@@ -6,6 +6,8 @@
 	<extensions defaultExtensionNs="com.intellij">
 		<projectService
 				serviceImplementation="biz.paluch.dap.maven.MavenDependencyCheckService"/>
+		<projectService serviceImplementation="biz.paluch.dap.maven.MavenPsiListener"/>
+		<postStartupActivity implementation="biz.paluch.dap.maven.MavenPostStartup"/>
 		<intentionAction>
 			<category>Maven</category>
 			<language>XML</language>
@@ -26,20 +28,17 @@
 				implementationClass="biz.paluch.dap.maven.NewerVersionLineMarkerProvider"/>
 		<annotator language="XML"
 		           implementationClass="biz.paluch.dap.maven.NewerVersionAnnotator"/>
-		<localInspection
-				language="XML"
-				shortName="PomArtifactCollection"
-				groupName="Maven"
-				enabledByDefault="true"
-				level="INFORMATION"
-				implementationClass="biz.paluch.dap.maven.PomArtifactCollectionInspection"
-				key="inspection.pom.artifact.collection.display.name"/>
 	</extensions>
 
 	<actions>
 		<action id="biz.paluch.dap.maven.UpdateDependencies"
 		        class="biz.paluch.dap.maven.UpdateDependenciesAction"
 		        text="Update Maven Plugins and Dependencies…">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+		<action id="biz.paluch.dap.maven.UpdateReleaseCache"
+		        class="biz.paluch.dap.maven.UpdateReleaseCacheAction"
+		        text="Update Dependency Releases">
 			<add-to-group group-id="ToolsMenu" anchor="last"/>
 		</action>
 	</actions>

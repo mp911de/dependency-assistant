@@ -67,7 +67,7 @@ public abstract class DependencyCheckSupport {
 	 * Runs the full version check for the Gradle build file currently open in the editor.
 	 */
 	protected DependencyUpdates getDependencyUpdates(ProgressIndicator indicator, PsiFile buildFile,
-			ProjectBuildContext buildContext) {
+			ProjectBuildContext buildContext, Consistency consistency) {
 
 		ProjectState projectState = service.getProjectState(buildContext.getProjectId());
 		Cache cache = service.getCache();
@@ -77,7 +77,7 @@ public abstract class DependencyCheckSupport {
 					.runReadAction((Computable<DependencyCollector>) () -> collectArtifacts(buildFile));
 			projectState.setDependencies(collector);
 			return collector;
-		}, buildContext.getReleaseSources(project));
+		}, buildContext.getReleaseSources(project), consistency);
 
 		cache.recordUpdate();
 
@@ -88,7 +88,7 @@ public abstract class DependencyCheckSupport {
 	 * Runs the full version check for the Gradle build file currently open in the editor.
 	 */
 	public DependencyUpdates getDependencyUpdates(ProgressIndicator indicator,
-			Supplier<DependencyCollector> dependencyCollector, List<ReleaseSource> sources) {
+			Supplier<DependencyCollector> dependencyCollector, List<ReleaseSource> sources, Consistency consistency) {
 
 		String projectName = project.getName();
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
@@ -113,10 +113,17 @@ public abstract class DependencyCheckSupport {
 		for (Dependency task : tasks) {
 			futures.add(executor.submit(() -> {
 				try {
-					List<Release> releases = cache.getReleases(task.getArtifactId(), true);
-					if (CollectionUtils.isEmpty(releases)) {
+					List<Release> releases;
+					if (consistency == Consistency.NO_CACHE) {
 						releases = resolver.getReleases(task.getArtifactId(), task.getCurrentVersion());
 						cache.putVersionOptions(task.getArtifactId(), releases);
+					} else {
+
+						releases = cache.getReleases(task.getArtifactId(), consistency == Consistency.CACHED);
+						if (CollectionUtils.isEmpty(releases)) {
+							releases = resolver.getReleases(task.getArtifactId(), task.getCurrentVersion());
+							cache.putVersionOptions(task.getArtifactId(), releases);
+						}
 					}
 					return new ResolverResult(null, releases);
 				} catch (Exception e) {
@@ -159,6 +166,27 @@ public abstract class DependencyCheckSupport {
 
 	private record ResolverResult(@Nullable String error, List<Release> releases) {
 
+	}
+
+	/**
+	 * Consistency of the dependency cache.
+	 */
+	public enum Consistency {
+
+		/**
+		 * Allow cached versions to be used.
+		 */
+		CACHED,
+
+		/**
+		 * Allow outdated cached versions to be used.
+		 */
+		CACHED_OUTDATED,
+
+		/**
+		 * Bypass the cache completely.
+		 */
+		NO_CACHE,
 	}
 
 }

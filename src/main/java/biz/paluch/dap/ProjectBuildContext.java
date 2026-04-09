@@ -16,8 +16,6 @@
 package biz.paluch.dap;
 
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.gradle.GradleProjectContext;
-import biz.paluch.dap.maven.MavenProjectContext;
 
 import java.util.List;
 
@@ -33,8 +31,6 @@ import com.intellij.openapi.project.Project;
  * Maven-specific or Gradle-specific APIs.
  *
  * @author Mark Paluch
- * @see MavenProjectContext
- * @see GradleProjectContext
  */
 public interface ProjectBuildContext {
 

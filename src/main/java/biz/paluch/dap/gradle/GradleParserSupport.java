@@ -27,6 +27,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.StringUtils;
 
 /**
+ * Common base class for Gradle build file parsers.
+ *
  * @author Mark Paluch
  */
 abstract class GradleParserSupport extends BuildFileParserSupport {
@@ -35,7 +37,7 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 		super(collector);
 	}
 
-	static ArtifactId parseArtifactId(String module) {
+	public static ArtifactId parseArtifactId(String module) {
 		String[] split = module.split(":");
 		return split.length >= 2 ? ArtifactId.of(split[0], split[1]) : ArtifactId.of(module, module);
 	}
@@ -117,7 +119,7 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 				.ifPresent(version -> getCollector().registerUpdateCandidate(id, version, declarationSource, versionSource));
 	}
 
-	GradleDependency toGradleDependency(GroovyDslUtils.VersionLocation versionLocation) {
+	static GradleDependency toGradleDependency(GroovyDslUtils.VersionLocation versionLocation) {
 
 		if (versionLocation.isPropertyReference()) {
 			return new PropertyManagedDependency(versionLocation.artifactId(), versionLocation.rawVersion(),

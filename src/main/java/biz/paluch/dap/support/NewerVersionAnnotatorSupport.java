@@ -24,7 +24,6 @@ import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 
@@ -50,25 +49,27 @@ public abstract class NewerVersionAnnotatorSupport implements Annotator {
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
 		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
-		VersionUpgradeLookupSupport.UpgradeAvailable availableUpgrade = service.findAvailableUpgrade(element);
-		if (availableUpgrade == null) {
+		UpgradeSuggestion suggestion = service.suggestUpgrades(element);
+
+		if (!suggestion.isPresent()) {
 			return;
 		}
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion upgradeSuggestion = availableUpgrade.suggestion();
-
 		IntentionAction action = this.action;
-		String message = upgradeSuggestion.getMessage();
-		if (availableUpgrade.metadata() != null && !availableUpgrade.metadata().localVersionDeclared()
-				&& availableUpgrade.metadata().versionLocation() != null) {
+		String message = suggestion.getMessage();
+		ArtifactDeclaration declaration = suggestion.getArtifactDeclaration();
+		if (!declaration.isVersionDefinedInSameFile()) {
 
-			LocalFileSystem lfs = LocalFileSystem.getInstance();
-			VirtualFile virtualFile = lfs.findFileByPath(availableUpgrade.metadata().versionLocation());
-			if (virtualFile != null) {
+			PsiElement versionLiteral = declaration.getVersionLiteral();
 
-				message = MessageBundle.message("gutter.declaration.file", virtualFile.getName()) + System.lineSeparator()
-						+ message;
-				action = null;
+			if (versionLiteral != null && versionLiteral.getContainingFile() != null) {
+				VirtualFile virtualFile = versionLiteral.getContainingFile().getVirtualFile();
+				if (virtualFile != null) {
+
+					message = MessageBundle.message("gutter.declaration.file", virtualFile.getName()) + System.lineSeparator()
+							+ message;
+					action = null;
+				}
 			}
 		}
 

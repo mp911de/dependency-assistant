@@ -37,15 +37,11 @@ import com.intellij.testFramework.junit5.RunInEdt;
 
 /**
  * PSI-level integration tests for {@link KotlinDslParser}.
- * <p>
- * Mirrors {@link GradleParserPsiTests} using Kotlin DSL syntax ({@code build.gradle.kts}, {@code settings.gradle.kts}).
- * Covers plugin discovery, direct dependency and managed BOM parsing, {@code extra} property collection and resolution,
- * and TOML version catalog parsing.
  *
  * @author Mark Paluch
  */
 @RunInEdt(writeIntent = true)
-class KotlinDslDependencyParserPsiTests {
+class KotlinDslDependencyParserTests {
 
 	private CodeInsightTestFixture fixture;
 
@@ -165,11 +161,49 @@ class KotlinDslDependencyParserPsiTests {
 	}
 
 	@Test
+	void extraPropertyViaAlsoWithItIsCollected() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				"2.0.3".also { extra["springModulithVersion"] = it }
+				""");
+
+		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
+
+		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
+	}
+
+	@Test
+	void extraPropertyViaBuildStringAppendIsCollected() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				extra["springModulithVersion"] = buildString {
+				        append("2.0.3")
+				    }
+				""");
+
+		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
+
+		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
+	}
+
+	@Test
+	void extraPropertyViaTripleQuotedStringIsCollected() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				extra["springModulithVersion"] = \"""2.0.3\"""
+				""");
+
+		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
+
+		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
+	}
+
+	@Test
 	void managedBomWithPropertyExpressionIsResolved() {
 
 		PsiFile file = fixture.configureByText("build.gradle.kts",
 				"""
-						extra["springModulithVersion"] = "2.0.4"
+						"2.0.4".also { extra["springModulithVersion"] = it }
 
 						dependencies {
 						    implementation(platform("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}"))

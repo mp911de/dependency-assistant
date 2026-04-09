@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.maven;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
@@ -61,7 +61,7 @@ public class UpdateReleaseCacheAction extends AnAction {
 			return;
 		}
 
-		presentation.setEnabledAndVisible(GradleProjectContext.isGradleProject(project));
+		presentation.setEnabledAndVisible(MavenProjectContext.isMavenProject(project));
 	}
 
 }

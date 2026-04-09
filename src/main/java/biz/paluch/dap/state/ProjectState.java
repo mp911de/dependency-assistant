@@ -68,8 +68,8 @@ public interface ProjectState {
 	/**
 	 * Find a property by its name that is used to define an artifact version.
 	 */
-	@Nullable
-	default ProjectProperty findProjectProperty(String propertyName) {
+
+	default @Nullable ProjectProperty findProjectProperty(String propertyName) {
 		return findProjectProperty(propertyName, Property::hasArtifacts);
 	}
 

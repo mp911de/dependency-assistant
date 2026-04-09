@@ -16,15 +16,23 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.support.PsiUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrParenthesizedExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.StringUtils;
 
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -78,7 +86,6 @@ class GroovyDslUtils {
 	 */
 	public static @Nullable PropertyVersionLocation findGroovyExtPropertyVersionElement(PsiElement element) {
 
-		PsiFile file = element.getContainingFile();
 		if (!(element instanceof GrLiteral literal)) {
 			return null;
 		}
@@ -103,7 +110,7 @@ class GroovyDslUtils {
 		}
 
 		// Walk up to the IProperty PSI element
-		IProperty property = PsiUtils.findParentOfType(element, IProperty.class);
+		IProperty property = PsiTreeUtil.getParentOfType(element, com.intellij.lang.properties.psi.Property.class);
 		if (property == null) {
 			return null;
 		}
@@ -111,7 +118,7 @@ class GroovyDslUtils {
 		// We only suggest versions for value elements (not key elements)
 		PsiElement psiElement = property.getPsiElement();
 		PsiElement valueElement = psiElement.getLastChild();
-		if (valueElement == null || !PsiUtils.isAncestor(valueElement, element)) {
+		if (valueElement == null || !PsiTreeUtil.isAncestor(valueElement, element, false)) {
 			return null;
 		}
 
@@ -308,6 +315,119 @@ class GroovyDslUtils {
 		}
 
 		return builder.toString();
+	}
+
+	// -------------------------------------------------------------------------
+	// Version catalog (Groovy {@code libs.…})
+	// -------------------------------------------------------------------------
+
+	static @Nullable GrExpression unwrapGroovyParentheses(@Nullable GrExpression expr) {
+
+		GrExpression e = expr;
+		while (e instanceof GrParenthesizedExpression p) {
+			e = p.getOperand();
+		}
+		return e;
+	}
+
+	/**
+	 * Innermost {@code alias}/{@code id}/{@code implementation}/… call whose first argument is a {@code libs.…} reference
+	 * chain and that contains {@code element}.
+	 */
+	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element) {
+
+		for (PsiElement p = element; p != null; p = p.getParent()) {
+			if (!(p instanceof GrMethodCall call)) {
+				continue;
+			}
+			if (!isGroovyCatalogConsumerCall(call)) {
+				continue;
+			}
+			GrExpression arg = getFirstGroovyCatalogArgumentExpression(call);
+			if (arg == null || !isGroovyLibsCatalogRootExpression(arg)) {
+				continue;
+			}
+			if (!PsiTreeUtil.isAncestor(arg, element, false)) {
+				continue;
+			}
+			return call;
+		}
+		return null;
+	}
+
+	private static boolean isGroovyCatalogConsumerCall(GrMethodCall call) {
+
+		String name = getGroovyMethodName(call);
+		if (!StringUtils.hasText(name)) {
+			return false;
+		}
+		if ("alias".equals(name)) {
+			return true;
+		}
+		if ("id".equals(name) && isInsideGradleBlock(call, "plugins")) {
+			return true;
+		}
+		return GradleUtils.DEPENDENCY_CONFIGS.contains(name) || GradleUtils.PLATFORM_FUNCTIONS.contains(name);
+	}
+
+	static @Nullable GrExpression getFirstGroovyCatalogArgumentExpression(GrMethodCall call) {
+
+		GrArgumentList argList = call.getArgumentList();
+		if (argList == null) {
+			return null;
+		}
+		for (PsiElement a : argList.getAllArguments()) {
+			if (a instanceof GrNamedArgument named) {
+				return unwrapGroovyParentheses(named.getExpression());
+			}
+			if (a instanceof GrExpression ex) {
+				return unwrapGroovyParentheses(ex);
+			}
+		}
+		return null;
+	}
+
+	static boolean isGroovyLibsCatalogRootExpression(GrExpression expr) {
+
+		List<String> segs = collectGroovyCatalogReferenceSegments(expr);
+		return segs != null && !segs.isEmpty() && "libs".equals(segs.get(0));
+	}
+
+	static @Nullable List<String> collectGroovyCatalogReferenceSegments(GrExpression expr) {
+
+		GrExpression e = unwrapGroovyParentheses(expr);
+		if (e == null) {
+			return null;
+		}
+		ArrayList<String> segments = new ArrayList<>();
+		GrExpression cur = e;
+		while (cur instanceof GrReferenceExpression ref) {
+			String name = ref.getReferenceName();
+			if (name == null) {
+				return null;
+			}
+			segments.add(name);
+			cur = ref.getQualifierExpression();
+		}
+		if (cur != null) {
+			return null;
+		}
+		Collections.reverse(segments);
+		return segments;
+	}
+
+	/**
+	 * {@code true} for PSI under a {@code libs.…} catalog argument except the root {@link GrExpression} of that argument
+	 * (avoids duplicate gutter/annotator hits per segment).
+	 */
+	static boolean isRedundantGroovyCatalogHighlightAnchor(PsiElement element) {
+
+		GrMethodCall catalogCall = findEnclosingGroovyCatalogAccessorCall(element);
+		if (catalogCall == null) {
+			return false;
+		}
+		GrExpression firstArg = getFirstGroovyCatalogArgumentExpression(catalogCall);
+		return firstArg != null && PsiTreeUtil.isAncestor(firstArg, element, false) && !firstArg.equals(element);
 	}
 
 	/**

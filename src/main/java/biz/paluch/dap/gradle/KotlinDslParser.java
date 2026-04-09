@@ -31,7 +31,6 @@ import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
-import org.jspecify.annotations.Nullable;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -70,11 +69,15 @@ class KotlinDslParser extends GradleParser {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Collects all {@code extra["key"] = "value"} property declarations from a Kotlin DSL file.
+	 * Collects {@code extra["key"]} property declarations from a Kotlin DSL file, including:
+	 * <ul>
+	 * <li>{@code extra["key"] = "value"} and {@code extra["key"] = """value"""}</li>
+	 * <li>{@code "value".also { extra["key"] = it }}</li>
+	 * <li>{@code extra["key"] = buildString { append("value") }}</li>
+	 * </ul>
 	 * <p>
-	 * This is the Kotlin DSL equivalent of {@code gradle.properties}: instead of a separate file, versions can be
-	 * declared inline in a {@code build.gradle.kts} script and referenced elsewhere via {@code property("key")} or
-	 * {@code extra["key"]}.
+	 * This is the Kotlin DSL equivalent of {@code gradle.properties}: versions can be declared inline in
+	 * {@code build.gradle.kts} and referenced via {@code property("key")} or {@code extra["key"]}.
 	 *
 	 * @param file the Kotlin build script ({@code .kts})
 	 * @return a map of property key to literal value; entries whose value contains interpolation are omitted
@@ -94,8 +97,7 @@ class KotlinDslParser extends GradleParser {
 	}
 
 	/**
-	 * If {@code expr} is an assignment of the form {@code extra["key"] = "literalValue"}, adds the key-value pair to
-	 * {@code result}.
+	 * If {@code expr} assigns a resolvable literal to {@code extra["key"]}, returns that key-value pair.
 	 */
 	private static Map<String, String> parseExtra(KtBinaryExpression expr) {
 
@@ -124,44 +126,17 @@ class KotlinDslParser extends GradleParser {
 		if (!(indexExpr instanceof KtStringTemplateExpression keyTemplate)) {
 			return Map.of();
 		}
-		String key = extractStringLiteral(keyTemplate);
+		String key = KotlinDslExtraSupport.getText(keyTemplate);
 		if (key == null) {
 			return Map.of();
 		}
 
-		// Right side must be a plain string literal (no interpolation)
-		if (!(right instanceof KtStringTemplateExpression valueTemplate)) {
-			return Map.of();
-		}
-		String value = extractStringLiteral(valueTemplate);
+		String value = KotlinDslExtraSupport.getText(right);
 		if (value != null) {
 			return Map.of(key, value);
 		}
 
 		return Map.of();
-	}
-
-	/**
-	 * Extracts the literal string value from a {@link KtStringTemplateExpression} that contains no template entries (no
-	 * {@code $name} or {@code ${expr}} interpolation). Returns {@code null} for interpolated or empty strings.
-	 */
-	private static @Nullable String extractStringLiteral(KtStringTemplateExpression template) {
-		String text = template.getText();
-		if (text == null || text.length() < 2) {
-			return null;
-		}
-		// Strip surrounding quotes
-		char open = text.charAt(0);
-		char close = text.charAt(text.length() - 1);
-		if (!((open == '"' && close == '"') || (open == '\'' && close == '\''))) {
-			return null;
-		}
-		String value = text.substring(1, text.length() - 1);
-		// Reject interpolated values — they would need recursive resolution
-		if (value.contains("${") || (value.contains("$") && value.matches(".*\\$[A-Za-z_].*"))) {
-			return null;
-		}
-		return value.isEmpty() ? null : value;
 	}
 
 	// -------------------------------------------------------------------------

@@ -24,14 +24,29 @@ public abstract class VersionSource {
 
 	private static final NoVersionSource NONE = new NoVersionSource();
 
+	private static final VersionCatalog CATALOG = new VersionCatalog();
+
+	public boolean isDefined() {
+		return this != NONE;
+	}
+
+	/**
+	 * No version source.
+	 */
 	public static VersionSource none() {
 		return NONE;
 	}
 
+	/**
+	 * Version from a version property.
+	 */
 	public static VersionSource property(String version) {
 		return new VersionPropertySource(version);
 	}
 
+	/**
+	 * Declared version.
+	 */
 	public static VersionSource declared(String version) {
 		return new DeclaredVersion(version);
 	}
@@ -40,6 +55,23 @@ public abstract class VersionSource {
 		return new VersionDeclarationSource(version);
 	}
 
+	/**
+	 * Version from a version catalog (i.e. TOML {@code dependencies.versions.foo}).
+	 */
+	public static VersionSource versionCatalog() {
+		return CATALOG;
+	}
+
+	/**
+	 * Version from a version property within a TOML version catalog.
+	 */
+	public static VersionSource versionCatalogProperty(String property) {
+		return new VersionCatalogProperty(property);
+	}
+
+	/**
+	 * Version from a version property within a profile.
+	 */
 	public static VersionSource profileProperty(String profile, String property) {
 		return new ProfilePropertySource(property, profile);
 	}
@@ -50,6 +82,7 @@ public abstract class VersionSource {
 		public String toString() {
 			return "none";
 		}
+
 	}
 
 	public static class VersionDeclarationSource extends VersionSource {
@@ -76,6 +109,7 @@ public abstract class VersionSource {
 		public int hashCode() {
 			return Objects.hashCode(declarationSource);
 		}
+
 	}
 
 	public static class DeclaredVersion extends VersionSource {
@@ -107,9 +141,59 @@ public abstract class VersionSource {
 		public int hashCode() {
 			return Objects.hashCode(version);
 		}
+
 	}
 
-	public static class VersionPropertySource extends VersionSource {
+	public static class VersionCatalog extends VersionSource {
+
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof VersionCatalog that)) {
+				return false;
+			}
+			return Objects.equals(getClass(), that.getClass());
+		}
+
+		@Override
+		public int hashCode() {
+			return 111;
+		}
+
+	}
+
+	public static class VersionCatalogProperty extends VersionSource implements VersionProperty {
+
+		private final String property;
+
+		public VersionCatalogProperty(String property) {
+			this.property = property;
+		}
+
+		public String getProperty() {
+			return property;
+		}
+
+		@Override
+		public String toString() {
+			return "${" + property + '}';
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof VersionCatalogProperty that)) {
+				return false;
+			}
+			return Objects.equals(getClass(), that.getClass()) && Objects.equals(property, that.property);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(property);
+		}
+
+	}
+
+	public static class VersionPropertySource extends VersionSource implements VersionProperty {
 
 		private final String property;
 
@@ -138,6 +222,7 @@ public abstract class VersionSource {
 		public int hashCode() {
 			return Objects.hashCode(property);
 		}
+
 	}
 
 	public static class ProfilePropertySource extends VersionPropertySource {
@@ -168,6 +253,19 @@ public abstract class VersionSource {
 		public int hashCode() {
 			return super.hashCode() * 31 + Objects.hashCode(profileId);
 		}
+
+	}
+
+	/**
+	 * Version sources that use a version property.
+	 */
+	public interface VersionProperty {
+
+		/**
+		 * The property name used to declare the version.
+		 */
+		String getProperty();
+
 	}
 
 }

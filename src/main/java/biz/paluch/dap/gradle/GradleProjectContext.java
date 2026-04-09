@@ -20,7 +20,6 @@ import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
-import biz.paluch.dap.maven.MavenProjectContext;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.Property;
@@ -51,16 +50,11 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 
 /**
- * {@link ProjectBuildContext} for Gradle projects. Mirrors the design of {@link MavenProjectContext}: a static
- * {@code of()} factory returns either a populated {@link GradleBuildContextImpl} or
- * {@link EmptyGradleBuildContext#INSTANCE} when the file is not in a linked Gradle project.
- * <p>
- * Repository sources always include Maven Central; Google Maven is also included as it is commonly used by Android
- * projects.
+ * {@link ProjectBuildContext} for Gradle projects.
  *
  * @author Mark Paluch
  */
-public interface GradleProjectContext extends ProjectBuildContext {
+interface GradleProjectContext extends ProjectBuildContext {
 
 	/**
 	 * Check whether the property is locally defined.

@@ -41,38 +41,6 @@
 		<codeInsight.lineMarkerProvider
 				language="TOML"
 				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
-		<localInspection
-				language="Groovy"
-				shortName="GradleArtifactCollection"
-				groupName="Gradle"
-				enabledByDefault="true"
-				level="INFORMATION"
-				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
-				key="inspection.gradle.artifact.collection.display.name"/>
-		<localInspection
-				language="kotlin"
-				shortName="GradleArtifactCollectionKts"
-				groupName="Gradle"
-				enabledByDefault="true"
-				level="INFORMATION"
-				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
-				key="inspection.gradle.artifact.collection.display.name"/>
-		<localInspection
-				language="Properties"
-				shortName="GradlePropertiesArtifactCollection"
-				groupName="Gradle"
-				enabledByDefault="true"
-				level="INFORMATION"
-				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
-				key="inspection.gradle.artifact.collection.display.name"/>
-		<localInspection
-				language="TOML"
-				shortName="GradleTomlArtifactCollection"
-				groupName="Gradle"
-				enabledByDefault="true"
-				level="INFORMATION"
-				implementationClass="biz.paluch.dap.gradle.GradleCollectionInspection"
-				key="inspection.gradle.artifact.collection.display.name"/>
 		<platform.backend.documentation.psiTargetProvider
 				implementation="biz.paluch.dap.gradle.PropertyVersionDocumentationProvider"/>
 		<intentionAction>

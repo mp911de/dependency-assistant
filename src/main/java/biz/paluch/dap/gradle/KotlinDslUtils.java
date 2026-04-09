@@ -17,6 +17,8 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -29,6 +31,7 @@ import org.springframework.util.StringUtils;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
@@ -147,6 +150,11 @@ class KotlinDslUtils {
 			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(raw, raw), rawVersion, isProperty);
 		}
 
+		// Infix plugin form: id("plugin.id") version "x.y.z" — parentCall may not be `plugins` depending on PSI shape.
+		if ("id".equals(getKotlinCallName(call)) && isInsideKotlinBlock(call, "plugins") && !raw.contains(":")) {
+			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(raw.trim(), raw.trim()), rawVersion, isProperty);
+		}
+
 		String[] parts = raw.split(":");
 		if (parts.length < 2) {
 			return null;
@@ -208,6 +216,10 @@ class KotlinDslUtils {
 				}
 			}
 		});
+
+		if (!StringUtils.hasText(rawVersion) && !StringUtils.hasText(property)) {
+			rawVersion.append(stringTemplate.getText());
+		}
 
 		return getVersionLocation(call, parentCall, raw.toString(), rawVersion.toString(), property.toString());
 	}
@@ -297,7 +309,10 @@ class KotlinDslUtils {
 			return false;
 		}
 
-		return GradleUtils.DEPENDENCY_CONFIGS.contains(methodName) || GradleUtils.PLATFORM_FUNCTIONS.contains(methodName);
+		if (GradleUtils.DEPENDENCY_CONFIGS.contains(methodName) || GradleUtils.PLATFORM_FUNCTIONS.contains(methodName)) {
+			return true;
+		}
+		return "id".equals(methodName) && isInsideKotlinBlock(call, "plugins");
 	}
 
 	/**
@@ -325,7 +340,7 @@ class KotlinDslUtils {
 
 		if (binary != null && binary != version) {
 			PsiElement previous = version.getPrevSibling();
-			while (previous != null) {
+			while (previous != null && !(previous instanceof PsiFile)) {
 
 				if (previous instanceof KtOperationReferenceExpression ops) {
 					if ("version".equals(ops.getReferencedName())) {
@@ -349,28 +364,90 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Find a {@link KtBinaryExpression} that is a property assignment to {@code extra}.
+	 * Find a {@link KtBinaryExpression} {@code extra["key"] = rhs} whose value is defined by the given PSI (direct string
+	 * RHS, inside {@code buildString { append("…") }}, triple-quoted literal, or {@code "….also { … = it }}).
 	 *
-	 * @param version version element that defines the dependency version.
-	 * @return
+	 * @param version a leaf or entry inside the version literal, or (for {@code it}-assignment) inside the receiver
+	 *          string of {@code .also}
 	 */
 	static @Nullable KtBinaryExpression findPropertyExpression(PsiElement version) {
 
 		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(version, KtBinaryExpression.class);
-
-		if (binary == null) {
-			return null;
+		while (binary != null) {
+			if (!"=".equals(binary.getOperationReference().getText())) {
+				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
+				continue;
+			}
+			KtExpression left = binary.getLeft();
+			if (!(left instanceof KtArrayAccessExpression arrayAccess)) {
+				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
+				continue;
+			}
+			KtExpression receiver = arrayAccess.getArrayExpression();
+			if (!(receiver instanceof KtNameReferenceExpression nameRef) || !"extra".equals(nameRef.getReferencedName())) {
+				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
+				continue;
+			}
+			KtExpression right = binary.getRight();
+			if (right == null) {
+				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
+				continue;
+			}
+			if (PsiTreeUtil.isAncestor(right, version, false)) {
+				return binary;
+			}
+			binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
 		}
+		// "v".also { extra["k"] = it } — version PSI lives in the receiver, not under the assignment RHS.
+		return findExtraItAssignmentFromAlsoReceiver(version);
+	}
 
-		PsiElement[] children = binary.getChildren();
-		if (children.length != 3 || !(children[0] instanceof KtArrayAccessExpression)) {
-			return null;
+	private static @Nullable KtBinaryExpression findExtraItAssignmentFromAlsoReceiver(PsiElement version) {
+
+		KtQualifiedExpression qual = PsiTreeUtil.getParentOfType(version, KtQualifiedExpression.class);
+		while (qual != null) {
+			KtExpression recv = qual.getReceiverExpression();
+			if (recv != null && PsiTreeUtil.isAncestor(recv, version, false)) {
+				KtExpression selector = qual.getSelectorExpression();
+				if (selector instanceof KtCallExpression alsoCall && "also".equals(getKotlinCallName(alsoCall))) {
+					KtLambdaExpression lambda = firstLambdaArgument(alsoCall);
+					if (lambda != null) {
+						KtExpression body = lambda.getBodyExpression();
+						if (body != null) {
+							for (KtBinaryExpression assign : PsiTreeUtil.collectElementsOfType(body, KtBinaryExpression.class)) {
+								if (!"=".equals(assign.getOperationReference().getText())) {
+									continue;
+								}
+								if (!(assign.getLeft() instanceof KtArrayAccessExpression arrayAccess)) {
+									continue;
+								}
+								KtExpression arrayExpr = arrayAccess.getArrayExpression();
+								if (!(arrayExpr instanceof KtNameReferenceExpression nr) || !"extra".equals(nr.getReferencedName())) {
+									continue;
+								}
+								if (assign.getRight() instanceof KtNameReferenceExpression ref
+										&& "it".equals(ref.getReferencedName())) {
+									return assign;
+								}
+							}
+						}
+					}
+				}
+				return null;
+			}
+			qual = PsiTreeUtil.getParentOfType(qual, KtQualifiedExpression.class);
 		}
+		return null;
+	}
 
-		if (children[2] == version.getParent()) {
-			return binary;
+	private static @Nullable KtLambdaExpression firstLambdaArgument(KtCallExpression call) {
+
+		for (ValueArgument va : call.getValueArguments()) {
+			KtExpression expr = va.getArgumentExpression();
+			if (expr instanceof KtLambdaExpression lam) {
+				return lam;
+			}
 		}
-
 		return null;
 	}
 
@@ -400,6 +477,134 @@ class KotlinDslUtils {
 				}
 			}
 			parent = parent.getParent();
+		}
+		return false;
+	}
+
+	// -------------------------------------------------------------------------
+	// Version catalog (Kotlin {@code libs.…})
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Innermost {@code alias}/{@code id}/{@code implementation}/… call whose first argument is a {@code libs.…} chain and
+	 * that contains {@code element}.
+	 */
+	static @Nullable KtCallExpression findEnclosingCatalogAccessorCall(PsiElement element) {
+
+		for (PsiElement p = element; p != null; p = p.getParent()) {
+			if (!(p instanceof KtCallExpression call)) {
+				continue;
+			}
+			if (!isKotlinCatalogConsumerCall(call)) {
+				continue;
+			}
+			KtExpression arg = getFirstCatalogValueArgument(call);
+			if (arg == null || !isKotlinLibsCatalogRootExpression(arg)) {
+				continue;
+			}
+			if (!PsiTreeUtil.isAncestor(arg, element, false)) {
+				continue;
+			}
+			return call;
+		}
+		return null;
+	}
+
+	private static boolean isKotlinCatalogConsumerCall(KtCallExpression call) {
+
+		String name = getKotlinCallName(call);
+		if (!StringUtils.hasText(name)) {
+			return false;
+		}
+		if ("alias".equals(name)) {
+			return true;
+		}
+		if ("id".equals(name) && isInsideKotlinBlock(call, "plugins")) {
+			return true;
+		}
+		if (GradleUtils.DEPENDENCY_CONFIGS.contains(name) || GradleUtils.PLATFORM_FUNCTIONS.contains(name)) {
+			return true;
+		}
+		return false;
+	}
+
+	static @Nullable KtExpression getFirstCatalogValueArgument(KtCallExpression call) {
+
+		for (ValueArgument va : call.getValueArguments()) {
+			return va.getArgumentExpression();
+		}
+		return null;
+	}
+
+	static boolean isKotlinLibsCatalogRootExpression(KtExpression expr) {
+
+		List<String> segs = collectKotlinCatalogDotSegments(expr);
+		return segs != null && !segs.isEmpty() && "libs".equals(segs.get(0));
+	}
+
+	static @Nullable List<String> collectKotlinCatalogDotSegments(KtExpression expr) {
+
+		ArrayList<String> reversed = new ArrayList<>();
+		KtExpression cur = expr;
+		while (cur instanceof KtDotQualifiedExpression dq) {
+			String seg = kotlinSelectorToSegment(dq.getSelectorExpression());
+			if (seg == null) {
+				return null;
+			}
+			reversed.add(seg);
+			cur = dq.getReceiverExpression();
+		}
+		if (cur instanceof KtNameReferenceExpression ref) {
+			reversed.add(ref.getReferencedName());
+		} else {
+			return null;
+		}
+		Collections.reverse(reversed);
+		return reversed;
+	}
+
+	private static @Nullable String kotlinSelectorToSegment(KtExpression selector) {
+
+		if (selector instanceof KtNameReferenceExpression ref) {
+			return ref.getReferencedName();
+		}
+		if (selector instanceof KtCallExpression call && call.getValueArguments().isEmpty()) {
+			return getKotlinCallName(call);
+		}
+		return null;
+	}
+
+	/**
+	 * {@code true} for PSI nodes that duplicate the same version hit as {@link KtLiteralStringTemplateEntry} (leaf tokens
+	 * under that entry, or the wrapping {@link KtStringTemplateExpression} when it has no {@code ${…}} segments).
+	 * <p>
+	 * Matches the Groovy rule that only
+	 * {@link org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral} is a version anchor,
+	 * not each leaf under it.
+	 */
+	static boolean isRedundantKotlinVersionHighlightAnchor(PsiElement element) {
+
+		if (element instanceof LeafPsiElement && element.getParent() instanceof KtLiteralStringTemplateEntry) {
+			return true;
+		}
+		if (element instanceof KtStringTemplateExpression st) {
+			KtStringTemplateEntry[] entries = st.getEntries();
+			if (entries.length == 0) {
+				return false;
+			}
+			for (KtStringTemplateEntry e : entries) {
+				if (e instanceof KtBlockStringTemplateEntry) {
+					return false;
+				}
+			}
+			return true;
+		}
+		KtCallExpression catalogCall = findEnclosingCatalogAccessorCall(element);
+		if (catalogCall != null) {
+			KtExpression firstArg = getFirstCatalogValueArgument(catalogCall);
+			if (firstArg != null && PsiTreeUtil.isAncestor(firstArg, element, false) && !firstArg.equals(element)) {
+				return true;
+			}
 		}
 		return false;
 	}

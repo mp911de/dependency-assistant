@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.maven;
 
 import biz.paluch.dap.state.DependencyAssistantService;
 
@@ -32,15 +32,15 @@ import com.intellij.psi.PsiTreeChangeEvent;
 import com.intellij.psi.PsiTreeChangeListener;
 
 /**
- * Listener that updates the dependency state for Gradle build files.
+ * Listener that updates the dependency state for POM build files.
  *
  * @author Mark Paluch
  */
-public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeChangeListener, AsyncFileListener {
+public class MavenPsiListener extends PsiTreeChangeAdapter implements PsiTreeChangeListener, AsyncFileListener {
 
 	private final UpdateProjectState updateProjectState;
 
-	public GradlePsiListener(Project project) {
+	public MavenPsiListener(Project project) {
 
 		VirtualFileManager vfm = VirtualFileManager.getInstance();
 		vfm.addAsyncFileListener(this, () -> {});
@@ -54,8 +54,8 @@ public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeCh
 	/**
 	 * Returns the service instance for the given project.
 	 */
-	public static GradlePsiListener getInstance(Project project) {
-		return project.getService(GradlePsiListener.class);
+	public static MavenPsiListener getInstance(Project project) {
+		return project.getService(MavenPsiListener.class);
 	}
 
 	@Override
@@ -67,7 +67,7 @@ public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeCh
 	public void childrenChanged(PsiTreeChangeEvent event) {
 
 		PsiFile file = event.getFile();
-		if (GradleUtils.isGradleFile(file)) {
+		if (MavenUtils.isMavenPomFile(file)) {
 			updateProjectState.readAndUpdate(file);
 		}
 	}

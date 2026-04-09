@@ -19,12 +19,10 @@ import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +30,6 @@ import java.util.WeakHashMap;
 import java.util.function.Function;
 
 import org.jetbrains.idea.maven.model.MavenId;
-import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
@@ -48,7 +45,7 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-public interface MavenProjectContext extends ProjectBuildContext {
+interface MavenProjectContext extends ProjectBuildContext {
 
 	/**
 	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and {@link VirtualFile}.
@@ -105,6 +102,8 @@ public interface MavenProjectContext extends ProjectBuildContext {
 	 */
 	MavenId getMavenId();
 
+	MavenProject getMavenProject();
+
 	/**
 	 * Execute the given action with the Maven project.
 	 */
@@ -136,6 +135,11 @@ public interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
+		public MavenProject getMavenProject() {
+			return mavenProject;
+		}
+
+		@Override
 		public ProjectId getProjectId() {
 			return ProjectId.of(id.getGroupId(), id.getArtifactId(), null);
 		}
@@ -144,25 +148,8 @@ public interface MavenProjectContext extends ProjectBuildContext {
 		public List<ReleaseSource> getReleaseSources(Project project) {
 
 			Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
-			Set<RemoteRepository> urls = new LinkedHashSet<>();
-
-			for (MavenRemoteRepository repo : mavenProject.getRemoteRepositories()) {
-				String url = repo.getUrl();
-				if (url != null && (url.startsWith("http://") || url.startsWith("https://"))) {
-					String repoId = repo.getId();
-					urls.add(new RemoteRepository(repoId, url.endsWith("/") ? url : url + "/", credentials.get(repoId)));
-				}
-			}
-
-			for (MavenRemoteRepository repo : mavenProject.getRemotePluginRepositories()) {
-				String url = repo.getUrl();
-				if (url != null && (url.startsWith("http://") || url.startsWith("https://"))) {
-					String repoId = repo.getId();
-					urls.add(new RemoteRepository(repoId, url.endsWith("/") ? url : url + "/", credentials.get(repoId)));
-				}
-			}
-
-			return urls.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it).toList();
+			Set<RemoteRepository> remoteRepositories = MavenUtils.getRemoteRepositories(credentials, mavenProject);
+			return MavenUtils.getReleaseSources(remoteRepositories);
 		}
 
 		@Override
@@ -191,6 +178,11 @@ public interface MavenProjectContext extends ProjectBuildContext {
 
 		@Override
 		public MavenId getMavenId() {
+			throw new IllegalStateException("Maven Context not available");
+		}
+
+		@Override
+		public MavenProject getMavenProject() {
 			throw new IllegalStateException("Maven Context not available");
 		}
 
