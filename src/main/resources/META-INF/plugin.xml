@@ -42,6 +42,7 @@
 
 
 	<depends>com.intellij.modules.xml</depends>
+	<depends>com.intellij.modules.java</depends>
 	<depends optional="true" config-file="maven-extensions.xml">org.jetbrains.idea.maven
 	</depends>
 	<depends optional="true" config-file="kotlin-extensions.xml">org.jetbrains.kotlin

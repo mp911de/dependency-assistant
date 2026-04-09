@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.VersionSource;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -44,11 +45,47 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
- * Parser for TOML version catalog ({@code libs.versions.toml}) files.
+ * Parser for TOML version catalog ({@code libs.versions.toml}) files, including mapping Gradle {@code libs.…} accessor
+ * chains to catalog table names and entry keys. For TOML PSI navigation helpers (entry lookup, version literals), see
+ * {@link GradleVersionCatalogAliasSupport}.
  *
  * @author Mark Paluch
  */
 class TomlParser extends GradleParserSupport {
+
+	/**
+	 * A catalog {@code [libraries]} or {@code [plugins]} table together with the TOML entry key (kebab-case).
+	 *
+	 * @param tableName {@code libraries} or {@code plugins}
+	 * @param entryKey kebab-case catalog entry key (e.g. {@code spring-dependency-management})
+	 */
+	record CatalogTableKey(String tableName, String entryKey) {
+	}
+
+	/**
+	 * Maps {@code libs.plugins.a.b} to {@code plugins} / {@code a-b}; {@code libs.a.b.c} to {@code libraries} /
+	 * {@code a-b-c}.
+	 */
+	static @Nullable CatalogTableKey catalogTableKeyFromLibsSegments(List<String> segments) {
+
+		if (segments.size() < 2 || !"libs".equals(segments.get(0))) {
+			return null;
+		}
+		if ("plugins".equals(segments.get(1))) {
+			if (segments.size() < 3) {
+				return null;
+			}
+			return new CatalogTableKey("plugins", String.join("-", segments.subList(2, segments.size())));
+		}
+		if ("versions".equals(segments.get(1)) || "bundles".equals(segments.get(1))) {
+			return null;
+		}
+		String libKey = String.join("-", segments.subList(1, segments.size()));
+		if (!StringUtils.hasText(libKey)) {
+			return null;
+		}
+		return new CatalogTableKey("libraries", libKey);
+	}
 
 	private final Map<String, String> properties;
 

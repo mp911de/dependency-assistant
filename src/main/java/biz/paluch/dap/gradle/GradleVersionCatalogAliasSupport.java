@@ -17,12 +17,9 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 
-import java.util.List;
 import java.util.function.Function;
 
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
 
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlInlineTable;
@@ -33,46 +30,16 @@ import org.toml.lang.psi.TomlTable;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
- * TOML helpers for Gradle {@code gradle/libs.versions.toml} version catalogs (entry lookup, version literals,
- * coordinate parsing). DSL-specific navigation (Kotlin {@code libs.…} chains, Groovy {@code libs.…} references) lives
- * in {@link KotlinDslUtils} and {@link GroovyDslUtils}.
+ * TOML PSI bridge for Gradle {@code gradle/libs.versions.toml}: finding entries, {@code [versions]} literals, and
+ * inline {@code version} keys. Mapping {@code libs.…} accessor segments to catalog tables lives in
+ * {@link TomlParser#catalogTableKeyFromLibsSegments}. Kotlin and Groovy {@code libs.…} navigation is in
+ * {@link KotlinDslUtils} and {@link GroovyDslUtils}.
  *
  * @author Mark Paluch
  */
 final class GradleVersionCatalogAliasSupport {
 
 	private GradleVersionCatalogAliasSupport() {}
-
-	/**
-	 * @param tableName {@code libraries} or {@code plugins}
-	 * @param entryKey kebab-case catalog entry key (e.g. {@code spring-dependency-management})
-	 */
-	record CatalogTableKey(String tableName, String entryKey) {
-	}
-
-	/**
-	 * Maps {@code libs.plugins.a.b} → plugins / {@code a-b}; {@code libs.a.b.c} → libraries / {@code a-b-c}.
-	 */
-	static @Nullable CatalogTableKey toCatalogTableKey(List<String> segments) {
-
-		if (segments.size() < 2 || !"libs".equals(segments.get(0))) {
-			return null;
-		}
-		if ("plugins".equals(segments.get(1))) {
-			if (segments.size() < 3) {
-				return null;
-			}
-			return new CatalogTableKey("plugins", String.join("-", segments.subList(2, segments.size())));
-		}
-		if ("versions".equals(segments.get(1)) || "bundles".equals(segments.get(1))) {
-			return null;
-		}
-		String libKey = String.join("-", segments.subList(1, segments.size()));
-		if (!StringUtils.hasText(libKey)) {
-			return null;
-		}
-		return new CatalogTableKey("libraries", libKey);
-	}
 
 	static @Nullable TomlKeyValue findCatalogEntryKeyValue(TomlFile tomlFile, String tableName, String entryKey) {
 

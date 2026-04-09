@@ -37,7 +37,7 @@ class MavenDependencyCollector {
 	/**
 	 * Collects artifact declarations from {@code buildFile}.
 	 *
-	 * @param buildFile the Gradle file.
+	 * @param buildFile the POM file.
 	 * @return a populated {@link DependencyCollector}
 	 */
 	public DependencyCollector collect(PsiFile buildFile) {

@@ -26,7 +26,7 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 
 /**
- * Menu action to refresh Gradle dependency versions.
+ * Menu action to refresh Maven dependency releases.
  *
  * @author Mark Paluch
  */

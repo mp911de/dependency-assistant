@@ -17,14 +17,7 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.state.DependencyAssistantService;
 
-import java.util.List;
-
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.AsyncFileListener;
-import com.intellij.openapi.vfs.VirtualFileManager;
-import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiTreeChangeAdapter;
@@ -36,14 +29,11 @@ import com.intellij.psi.PsiTreeChangeListener;
  *
  * @author Mark Paluch
  */
-public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeChangeListener, AsyncFileListener {
+public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeChangeListener {
 
 	private final UpdateProjectState updateProjectState;
 
 	public GradlePsiListener(Project project) {
-
-		VirtualFileManager vfm = VirtualFileManager.getInstance();
-		vfm.addAsyncFileListener(this, () -> {});
 
 		PsiManager psiManager = PsiManager.getInstance(project);
 		psiManager.addPsiTreeChangeListener(this, () -> {});
@@ -56,11 +46,6 @@ public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeCh
 	 */
 	public static GradlePsiListener getInstance(Project project) {
 		return project.getService(GradlePsiListener.class);
-	}
-
-	@Override
-	public @Nullable ChangeApplier prepareChange(List<? extends VFileEvent> list) {
-		return null;
 	}
 
 	@Override

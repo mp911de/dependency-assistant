@@ -37,7 +37,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 
 /**
- * Service to read Gradle build files and update the dependency state.
+ * Service to read Maven build files and update the dependency state.
  *
  * @author Mark Paluch
  */

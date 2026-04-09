@@ -239,9 +239,8 @@ public class UpdateGradleFile {
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
 
-			TomlKey headerKey = table.getHeader().getKey();
-			String tableName = headerKey != null ? headerKey.getText().trim() : "";
-			if (!"libraries".equals(tableName) && !"plugins".equals(tableName)) {
+			String tableName = TomlParser.getTomlTableName(table);
+			if (tableName == null || (!"libraries".equals(tableName) && !"plugins".equals(tableName))) {
 				continue;
 			}
 

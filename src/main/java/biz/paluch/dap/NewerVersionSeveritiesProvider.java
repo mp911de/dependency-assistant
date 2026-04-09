@@ -27,6 +27,11 @@ import com.intellij.openapi.editor.colors.TextAttributesKey;
 /**
  * {@link SeveritiesProvider} to install the severity for dependencies that have a newer version available. The severity
  * is used to apply a custom text attribute.
+ * <p>
+ * <strong>Platform coupling:</strong> extends types under {@code com.intellij.codeInsight.daemon.impl} (the supported
+ * extension point still lives in that package). Custom severities are ordered using
+ * {@code HighlightSeverity.INFORMATION.myVal} plus a fixed offset; re-check when upgrading the IDE baseline because
+ * that field is not a documented stable API.
  *
  * @author Mark Paluch
  */
@@ -49,6 +54,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 
 	public NewerVersionSeveritiesProvider() {}
 
+	@Override
 	public List<HighlightInfoType> getSeveritiesHighlightInfoTypes() {
 
 		class M extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {

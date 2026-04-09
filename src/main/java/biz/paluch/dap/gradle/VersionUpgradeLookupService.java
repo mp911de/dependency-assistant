@@ -25,13 +25,11 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.state.Property;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 
 import java.util.List;
-import java.util.function.Predicate;
 
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry;
@@ -46,23 +44,14 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.StringUtils;
 
-import org.toml.lang.psi.TomlFile;
-import org.toml.lang.psi.TomlInlineTable;
-import org.toml.lang.psi.TomlKey;
-import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
-import org.toml.lang.psi.TomlTable;
 
 import com.intellij.lang.properties.IProperty;
-import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
-import com.intellij.psi.PsiRecursiveElementVisitor;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 
@@ -89,23 +78,39 @@ import com.intellij.psi.util.PsiTreeUtil;
 class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GradleProjectContext buildContext;
+
 	private final boolean candidate;
+
 	private final @Nullable ProjectState projectState;
+
 	private final Cache cache;
+
 	private final PsiFile file;
 
+	private final GradlePropertyDeclarationPsi propertyPsi;
+
+	private final GradleVersionCatalogArtifactReferenceResolver catalogResolver;
+
 	public VersionUpgradeLookupService(Project project, PsiFile file) {
-		super(project, GradleProjectContext.of(project, file));
+		this(project, file, GradleProjectContext.of(project, file));
+	}
+
+	private VersionUpgradeLookupService(Project project, PsiFile file, GradleProjectContext ctx) {
+
+		super(project, ctx);
 
 		GradlePsiListener.getInstance(project);
 
 		this.file = file;
-		this.buildContext = GradleProjectContext.of(project, file);
+		this.buildContext = ctx;
 		this.candidate = GradleUtils.isGradleFile(file);
 
 		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
+		this.propertyPsi = new GradlePropertyDeclarationPsi(project, projectState);
+		this.catalogResolver = new GradleVersionCatalogArtifactReferenceResolver(project, file, buildContext, projectState,
+				propertyPsi);
 	}
 
 	@Override
@@ -156,17 +161,17 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		VirtualFile file = this.file.getVirtualFile();
+		VirtualFile vf = this.file.getVirtualFile();
 
-		if (GradleUtils.isVersionCatalog(file) && element instanceof TomlLiteral literal) {
-			return resolveReference(literal);
+		if (GradleUtils.isVersionCatalog(vf) && element instanceof TomlLiteral literal) {
+			return catalogResolver.resolveTomlLiteral(literal);
 		}
 
-		if (GradleUtils.isGradlePropertiesFile(file) && element instanceof PropertyValueImpl propertyValue) {
+		if (GradleUtils.isGradlePropertiesFile(vf) && element instanceof PropertyValueImpl propertyValue) {
 			return resolveReference(propertyValue);
 		}
 
-		if (GradleUtils.isGroovyDsl(file)) {
+		if (GradleUtils.isGroovyDsl(vf)) {
 			if (GroovyDslUtils.isRedundantGroovyCatalogHighlightAnchor(element)) {
 				return ArtifactReference.unresolved();
 			}
@@ -198,75 +203,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			}
 			return resolveExtProperty(groovyLiteral);
 		}
-		return ArtifactReference.unresolved();
-	}
-
-	private ArtifactReference resolveReference(TomlLiteral literal) {
-
-		TomlKeyValue kv = findParentTomlKeyValue(literal);
-		if (kv == null) {
-			return ArtifactReference.unresolved();
-		}
-
-		if (isInsideTable(literal, "versions"::equals)) {
-
-			String versionKey = kv.getKey().getText().trim();
-			String version = stripTomlQuotes(literal.getText());
-			if (version == null || projectState == null) {
-				return ArtifactReference.unresolved();
-			}
-
-			ProjectProperty projectProperty = projectState.findProjectProperty(versionKey);
-			if (projectProperty == null || projectProperty.property().artifacts().isEmpty()) {
-				return ArtifactReference.unresolved();
-			}
-
-			CachedArtifact first = projectProperty.property().artifacts().iterator().next();
-			return ArtifactReference.from(it -> {
-				it.artifact(first.toArtifactId()).declarationElement(kv).versionSource(VersionSource.property(versionKey));
-				ArtifactVersion.from(version).ifPresent(it::version);
-				it.versionLiteral(literal);
-			});
-		}
-
-		if (isInsideTable(literal, it -> it.equals("libraries") || it.equals("plugins"))
-				&& kv.getParent() instanceof TomlInlineTable inlineTable) {
-
-			PsiElement keyPsi = literal.getParent() != null ? literal.getParent().getFirstChild() : null;
-			if (keyPsi == null || !"version".equals(keyPsi.getText())) {
-				return ArtifactReference.unresolved();
-			}
-
-			GradleParser.GradleDependency dependency = TomlParser.parseTomlEntry(inlineTable, GradleParser::parseArtifactId);
-			TomlKeyValue libraryOrPluginKv = PsiTreeUtil.getParentOfType(inlineTable, TomlKeyValue.class);
-			if (libraryOrPluginKv == null) {
-				return ArtifactReference.unresolved();
-			}
-
-			if (dependency instanceof GradleParser.PropertyManagedDependency managed) {
-				String resolved = buildContext.getPropertyValue(managed.property());
-				TomlLiteral versionsLiteral = findTomlVersionsTableLiteral(managed.property());
-				PsiElement versionPsi = versionsLiteral != null ? versionsLiteral : findPropertyValuePsi(managed.property());
-				return ArtifactReference.from(it -> {
-					it.artifact(managed.getId()).declarationElement(libraryOrPluginKv).versionSource(managed.getVersionSource());
-					if (StringUtils.hasText(resolved)) {
-						ArtifactVersion.from(resolved).ifPresent(it::version);
-					}
-					if (versionPsi != null) {
-						it.versionLiteral(versionPsi);
-					}
-				});
-			}
-
-			if (dependency instanceof GradleParser.SimpleDependency simple) {
-				return ArtifactReference.from(it -> {
-					it.artifact(simple.getId()).declarationElement(libraryOrPluginKv).versionSource(simple.getVersionSource());
-					ArtifactVersion.from(simple.version()).ifPresent(it::version);
-					it.versionLiteral(literal);
-				});
-			}
-		}
-
 		return ArtifactReference.unresolved();
 	}
 
@@ -306,7 +242,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		GradleParser.GradleDependency gd = GradleParser.toGradleDependency(location);
 
 		if (gd instanceof GradleParser.PropertyManagedDependency managed) {
-			PsiElement versionPsi = findPropertyValuePsi(managed.property());
+			PsiElement versionPsi = propertyPsi.findPropertyValuePsi(managed.property());
 			return ArtifactReference.from(it -> {
 				it.artifact(managed.getId()).declarationElement(declarationCall).versionSource(managed.getVersionSource());
 				if (versionPsi != null) {
@@ -405,7 +341,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (segments == null) {
 			return ArtifactReference.unresolved();
 		}
-		return resolveCatalogReferenceFromSegments(segments, catalogCall);
+		return catalogResolver.resolveFromLibsSegments(segments, catalogCall);
 	}
 
 	private ArtifactReference resolveGroovyVersionCatalogReference(PsiElement element) {
@@ -422,74 +358,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (segments == null) {
 			return ArtifactReference.unresolved();
 		}
-		return resolveCatalogReferenceFromSegments(segments, catalogCall);
-	}
-
-	/**
-	 * Resolves a {@code libs.…} catalog accessor through {@code gradle/libs.versions.toml}.
-	 */
-	private ArtifactReference resolveCatalogReferenceFromSegments(List<String> segments, PsiElement declarationElement) {
-
-		GradleVersionCatalogAliasSupport.CatalogTableKey key = GradleVersionCatalogAliasSupport.toCatalogTableKey(segments);
-		if (key == null) {
-			return ArtifactReference.unresolved();
-		}
-		PsiFile catalogPsi = TomlParser.findVersionCatalogToml(file.getProject(), file.getVirtualFile());
-		if (!(catalogPsi instanceof TomlFile tomlFile)) {
-			return ArtifactReference.unresolved();
-		}
-		TomlKeyValue entryKv = GradleVersionCatalogAliasSupport.findCatalogEntryKeyValue(tomlFile, key.tableName(),
-				key.entryKey());
-		if (entryKv == null || !(entryKv.getValue() instanceof TomlInlineTable inline)) {
-			return ArtifactReference.unresolved();
-		}
-		GradleParser.GradleDependency dependency = TomlParser.parseTomlEntry(inline,
-				GradleVersionCatalogAliasSupport.idFunctionForTable(key.tableName()));
-		if (dependency == null) {
-			return ArtifactReference.unresolved();
-		}
-
-		if (dependency instanceof GradleParser.PropertyManagedDependency managed) {
-
-			String resolved = null;
-			if (buildContext.isAvailable()) {
-				resolved = buildContext.getPropertyValue(managed.property());
-			}
-
-			if (!StringUtils.hasText(resolved)) {
-				TomlLiteral versionsLit = GradleVersionCatalogAliasSupport.findVersionsTableLiteral(tomlFile,
-						managed.property());
-				if (versionsLit != null) {
-					resolved = TomlParser.getText(versionsLit);
-				}
-			}
-
-			TomlLiteral versionsLiteral = GradleVersionCatalogAliasSupport.findVersionsTableLiteral(tomlFile,
-					managed.property());
-			PsiElement versionPsi = versionsLiteral != null ? versionsLiteral : findPropertyValuePsi(managed.property());
-			String finalResolved = resolved;
-			return ArtifactReference.from(it -> {
-				it.artifact(managed.getId()).declarationElement(declarationElement).versionSource(managed.getVersionSource());
-				if (StringUtils.hasText(finalResolved)) {
-					ArtifactVersion.from(finalResolved).ifPresent(it::version);
-				}
-				if (versionPsi != null) {
-					it.versionLiteral(versionPsi);
-				}
-			});
-		}
-
-		if (dependency instanceof GradleParser.SimpleDependency simple) {
-			TomlLiteral inlineVersion = GradleVersionCatalogAliasSupport.findInlineVersionLiteral(inline);
-			return ArtifactReference.from(it -> {
-				it.artifact(simple.getId()).declarationElement(declarationElement).versionSource(simple.getVersionSource());
-				ArtifactVersion.from(simple.version()).ifPresent(it::version);
-				if (inlineVersion != null) {
-					it.versionLiteral(inlineVersion);
-				}
-			});
-		}
-		return ArtifactReference.unresolved();
+		return catalogResolver.resolveFromLibsSegments(segments, catalogCall);
 	}
 
 	private ArtifactReference resolveExtraProperty(KtBinaryExpression propertyExpression,
@@ -523,116 +392,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return ArtifactReference.unresolved();
 	}
 
-	private @Nullable TomlLiteral findTomlVersionsTableLiteral(String propertyKey) {
-
-		if (!(file instanceof TomlFile tomlFile)) {
-			return null;
-		}
-
-		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
-			TomlKey headerKey = table.getHeader().getKey();
-			if (headerKey == null || !"versions".equals(headerKey.getText().trim())) {
-				continue;
-			}
-			for (TomlKeyValue vkv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
-				if (propertyKey.equals(vkv.getKey().getText().trim()) && vkv.getValue() instanceof TomlLiteral lit) {
-					return lit;
-				}
-			}
-		}
-		return null;
-	}
-
-	private @Nullable PsiElement findPropertyValuePsi(String propertyName) {
-
-		if (projectState == null) {
-			return null;
-		}
-
-		ProjectProperty pp = projectState.findProjectProperty(propertyName, Property::isDeclared);
-		if (pp == null) {
-			return null;
-		}
-
-		String path = pp.id().buildFile();
-		if (!StringUtils.hasText(path)) {
-			return null;
-		}
-
-		VirtualFile vf = LocalFileSystem.getInstance().findFileByPath(path);
-		if (vf == null) {
-			return null;
-		}
-
-		Project ideaProject = file.getProject();
-		PsiFile psiFile = PsiManager.getInstance(ideaProject).findFile(vf);
-		if (psiFile == null) {
-			return null;
-		}
-
-		if (psiFile instanceof PropertiesFile props) {
-			IProperty ip = props.findPropertyByKey(propertyName);
-			if (ip != null) {
-				return ip.getPsiElement().getLastChild();
-			}
-			return null;
-		}
-
-		if (GradleUtils.isGroovyDsl(vf)) {
-			PsiElement[] found = { null };
-			psiFile.accept(new PsiRecursiveElementVisitor() {
-				@Override
-				public void visitElement(PsiElement e) {
-					super.visitElement(e);
-					if (found[0] != null) {
-						return;
-					}
-					if (e instanceof GrLiteral lit) {
-						GroovyDslUtils.PropertyVersionLocation pl = GroovyDslUtils.findGroovyExtPropertyVersionElement(lit);
-						if (pl != null && propertyName.equals(pl.propertyKey())) {
-							found[0] = lit;
-						}
-					}
-				}
-			});
-			return found[0];
-		}
-
-		if (GradleUtils.isKotlinDsl(vf) && GradleUtils.KOTLIN_AVAILABLE) {
-			PsiElement kotlinExtra = KotlinDslExtraSupport.findExtraPropertyValuePsi(psiFile, propertyName);
-			if (kotlinExtra != null) {
-				return kotlinExtra;
-			}
-		}
-
-		return null;
-	}
-
 	private static @Nullable IProperty findParentProperty(PsiElement element) {
 		return PsiTreeUtil.getParentOfType(element, com.intellij.lang.properties.psi.Property.class);
-	}
-
-	private static @Nullable TomlKeyValue findParentTomlKeyValue(PsiElement element) {
-		return PsiTreeUtil.getParentOfType(element, TomlKeyValue.class);
-	}
-
-	private static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
-		TomlTable table = PsiTreeUtil.getParentOfType(element, TomlTable.class);
-		if (table == null) {
-			return false;
-		}
-		TomlKey key = table.getHeader().getKey();
-		return key != null && predicate.test(key.getText().trim());
-	}
-
-	private static @Nullable String stripTomlQuotes(@Nullable String text) {
-		if (text == null) {
-			return null;
-		}
-		if ((text.startsWith("\"") && text.endsWith("\"")) || (text.startsWith("'") && text.endsWith("'"))) {
-			return text.length() > 2 ? text.substring(1, text.length() - 1) : "";
-		}
-		return text;
 	}
 
 }
