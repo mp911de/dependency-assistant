@@ -200,7 +200,7 @@ class MavenParserTests {
 	@Test
 	void parsePropertiesCollectsProjectAndProfileProperties() {
 
-		PsiFile file = fixture.configureByText("pom.xml", Pom.of("""
+		XmlFile file = (XmlFile) fixture.configureByText("pom.xml", Pom.of("""
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -217,7 +217,7 @@ class MavenParserTests {
 				</profiles>
 				"""));
 
-		Map<String, String> props = MavenParser.parseProperties(file);
+		Map<String, String> props = MavenParser.getProperties(file);
 
 		assertThat(props).containsEntry("root.prop", "root-value").containsEntry("profile.prop", "profile-value");
 	}

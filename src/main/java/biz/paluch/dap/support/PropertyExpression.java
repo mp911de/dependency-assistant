@@ -131,7 +131,7 @@ public abstract class PropertyExpression {
 		}
 
 		@Override
-		public @Nullable String getPropertyName() {
+		public String getPropertyName() {
 			throw new IllegalStateException("Not a property expression");
 		}
 

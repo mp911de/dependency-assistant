@@ -23,10 +23,7 @@ import java.util.Map;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -71,8 +68,8 @@ class MavenProperties {
 			MavenProject project = hierarchy.get(i);
 			PsiFile pomFile = psiManager.findFile(project.getFile());
 
-			if (pomFile != null) {
-				properties.putAll(MavenParser.parseProperties(pomFile));
+			if (pomFile instanceof XmlFile xmlFile) {
+				properties.putAll(MavenParser.getProperties(xmlFile));
 			}
 		}
 
@@ -88,9 +85,11 @@ class MavenProperties {
 			PsiFile pomFile = psiManager.findFile(project.getFile());
 
 			if (pomFile instanceof XmlFile xmlFile && xmlFile.getDocument() != null) {
-				XmlTag propertyValue = findProperty(xmlFile, property);
-				if (propertyValue != null) {
-					return propertyValue;
+
+				Map<String, MavenParser.MavenProperty> properties = MavenParser.parseProperties(xmlFile);
+				MavenParser.MavenProperty mavenProperty = properties.get(property);
+				if (mavenProperty != null) {
+					return mavenProperty.valueElement();
 				}
 			}
 		}
@@ -98,51 +97,7 @@ class MavenProperties {
 		return null;
 	}
 
-	public static @Nullable XmlTag findProperty(XmlFile xmlFile, String property) {
-
-		XmlTag rootTag = xmlFile.getDocument().getRootTag();
-		if (rootTag == null) {
-			return null;
-		}
-
-		XmlTag properties = rootTag.findFirstSubTag("properties");
-		XmlTag propertyValue = getProperty(properties, property);
-		if (propertyValue != null) {
-			return propertyValue;
-		}
-
-		XmlTag[] profiles = rootTag.findSubTags("profiles");
-
-		for (XmlTag profile : profiles) {
-
-			properties = profile.findFirstSubTag("properties");
-			propertyValue = getProperty(properties, property);
-			if (propertyValue != null) {
-				return propertyValue;
-			}
-		}
-
-		return null;
-	}
-
-	private static @Nullable XmlTag getProperty(@Nullable XmlTag properties, String property) {
-
-		if (properties == null) {
-			return null;
-		}
-		XmlTag subTag = properties.findFirstSubTag(property);
-		if (subTag == null) {
-			return null;
-		}
-		String text = subTag.getValue().getText();
-		if (StringUtils.hasText(text)) {
-			return subTag;
-		}
-
-		return null;
-	}
-
-	private @NonNull List<MavenProject> getProjects(MavenProject mavenProject) {
+	private List<MavenProject> getProjects(MavenProject mavenProject) {
 		List<MavenProject> hierarchy = new ArrayList<>();
 		MavenProject current = mavenProject;
 

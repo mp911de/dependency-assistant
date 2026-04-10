@@ -23,18 +23,15 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.xml.PomDependency;
-import biz.paluch.dap.xml.PomProfile;
-import biz.paluch.dap.xml.PomProjection;
-import biz.paluch.dap.xml.PomProperty;
-import biz.paluch.dap.xml.XmlBeamProjectorFactory;
+import biz.paluch.dap.support.PropertyExpression;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,40 +63,66 @@ class MavenParser {
 	/**
 	 * Parse Maven properties from the given {@link PsiFile}.
 	 */
-	public static Map<String, String> parseProperties(PsiFile pomFile) {
+	public static Map<String, MavenProperty> parseProperties(XmlFile pomFile) {
 
-		PomProjection pom = project(pomFile);
-		Map<String, String> result = new HashMap<>();
+		Map<String, MavenProperty> result = new LinkedHashMap<>();
+		XmlTag root = pomFile.getDocument().getRootTag();
+		if (root == null) {
+			return result;
+		}
 
-		for (PomProfile profile : pom.getProfiles()) {
-			for (PomProperty property : profile.getProperties()) {
-				result.put(property.getName().trim(), property.getValue().trim());
+		for (XmlTag profiles : root.findSubTags("profiles")) {
+			for (XmlTag profile : profiles.findSubTags("profile")) {
+				for (XmlTag properties : profile.findSubTags("properties")) {
+					collectProperties(properties, result);
+				}
 			}
 		}
 
-		for (PomProperty property : pom.getProperties()) {
-			result.put(property.getName().trim(), property.getValue().trim());
+		for (XmlTag properties : root.findSubTags("properties")) {
+			collectProperties(properties, result);
 		}
 
 		return result;
 	}
 
+	/**
+	 * Parse Maven properties from the given {@link PsiFile}.
+	 */
+	public static Map<String, String> getProperties(XmlFile pomFile) {
+
+		Map<String, String> result = new LinkedHashMap<>();
+		parseProperties(pomFile).forEach((k, v) -> result.put(k, v.value()));
+
+		return result;
+	}
+
+	private static void collectProperties(XmlTag properties, Map<String, MavenProperty> target) {
+
+		for (XmlTag child : properties.getSubTags()) {
+			String name = child.getLocalName();
+			if (!StringUtils.hasText(name)) {
+				continue;
+			}
+			target.put(name.trim(), new MavenProperty(name, child.getValue().getTrimmedText().trim(), child));
+		}
+	}
+
 	public void parsePomFile(Cache cache, XmlFile pomFile) {
 
-		Map<String, String> properties = parseProperties(pomFile);
+		Map<String, String> properties = getProperties(pomFile);
 		this.properties.putAll(properties);
 		collector.addProperties(properties.keySet());
 
 		PropertyResolver resolver = new PropertyResolver(pomFile, this.properties);
 
-		PomProjection projection = project(pomFile);
-		doWithArtifacts(resolver, projection, (coordinate, usage) -> {
+		doWithArtifacts(resolver, pomFile, (coordinate, usage) -> {
 
 			if (usage.version() instanceof VersionSource.VersionPropertySource vps) {
 
-				if (properties.containsKey(vps.getProperty())) {
+				if (this.properties.containsKey(vps.getProperty())) {
 
-					String version = properties.get(vps.getProperty());
+					String version = this.properties.get(vps.getProperty());
 					ArtifactVersion.from(version).ifPresent(it -> {
 						collector.registerUpdateCandidate(coordinate, it, usage.declaration(), vps);
 					});
@@ -132,34 +155,49 @@ class MavenParser {
 		});
 	}
 
-	private void doWithDependency(PropertyResolver resolver, PomDependency dependency,
-			DeclarationSource declarationSource,
+	public static @Nullable ArtifactId parseArtifactId(XmlTag tag, Function<String, String> propertyResolver) {
+		return parseArtifactId(tag.getSubTagText("groupId"), tag.getSubTagText("artifactId"), propertyResolver);
+	}
+
+	public static @Nullable ArtifactId parseArtifactId(@Nullable String groupId, @Nullable String artifactId,
+			Function<String, String> propertyResolver) {
+
+		if (!StringUtils.hasText(artifactId)) {
+			return null;
+		}
+
+		groupId = StringUtils.hasText(groupId) ? groupId : "org.apache.maven.plugins";
+
+		if (artifactId.contains("${") || artifactId.contains("}")) {
+			artifactId = propertyResolver.apply(artifactId);
+		}
+
+		if (groupId.contains("${") || groupId.contains("}")) {
+			groupId = propertyResolver.apply(groupId);
+		}
+
+		return ArtifactId.of(groupId, artifactId);
+	}
+
+	private void doWithDependency(PropertyResolver resolver, XmlTag tag, DeclarationSource declarationSource,
 			BiConsumer<ArtifactId, ArtifactUsage> callback) {
 
-		String g = dependency.getGroupId();
-		g = StringUtils.hasText(g) ? g : "org.apache.maven.plugins";
-		String a = dependency.getArtifactId();
+		ArtifactId artifactId = parseArtifactId(tag, resolver::resolvePropertyValue);
 
-		if (a != null && a.contains("${")) {
-			a = resolver.resolvePropertyValue(a);
+		if (artifactId == null) {
+			return;
 		}
 
-		if (g.contains("${")) {
-			g = resolver.resolvePropertyValue(g);
-		}
-
-		VersionSource versionSource = getVersionSource(dependency.getVersion());
-		if (a != null) {
-			callback.accept(ArtifactId.of(g, a), new ArtifactUsage(declarationSource, versionSource));
-		}
+		VersionSource versionSource = getVersionSource(tag.getSubTagText("version"));
+		callback.accept(artifactId, new ArtifactUsage(declarationSource, versionSource));
 	}
 
 	private VersionSource getVersionSource(@Nullable String version) {
 
 		if (StringUtils.hasText(version)) {
-			if (version.startsWith("${") && version.endsWith("}")) {
-				version = version.substring(2, version.length() - 1);
-				return VersionSource.property(version);
+			PropertyExpression expression = PropertyExpression.from(version);
+			if (expression.isProperty()) {
+				return VersionSource.property(expression.getPropertyName());
 			}
 			return VersionSource.declared(version);
 		}
@@ -167,48 +205,64 @@ class MavenParser {
 		return VersionSource.none();
 	}
 
-	private static PomProjection project(PsiFile pomFile) {
-		return XmlBeamProjectorFactory.INSTANCE.projectXMLString(pomFile.getText(), PomProjection.class);
-	}
-
-	private void doWithArtifacts(PropertyResolver resolver, PomProjection pom,
+	private void doWithArtifacts(PropertyResolver resolver, XmlFile pomFile,
 			BiConsumer<ArtifactId, ArtifactUsage> callback) {
 
-		for (PomDependency dep : pom.getDependencyManagementDependencies()) {
-			doWithDependency(resolver, dep, DeclarationSource.managed(), callback);
+		XmlTag root = pomFile.getDocument().getRootTag();
+		if (root == null) {
+			return;
 		}
 
-		for (PomDependency dep : pom.getDependencies()) {
-			doWithDependency(resolver, dep, DeclarationSource.dependency(), callback);
+		for (XmlTag dependencyManagement : root.findSubTags("dependencyManagement")) {
+			doWithDependencies(dependencyManagement, resolver, DeclarationSource.managed(), callback);
 		}
 
-		for (PomDependency plugin : pom.getBuildPluginManagementPlugins()) {
-			doWithDependency(resolver, plugin, DeclarationSource.pluginManagement(), callback);
-		}
+		doWithDependencies(root, resolver, DeclarationSource.dependency(), callback);
 
-		for (PomDependency plugin : pom.getBuildPlugins()) {
-			doWithDependency(resolver, plugin, DeclarationSource.plugin(), callback);
-		}
-
-		List<PomProfile> profiles = pom.getProfiles();
-		for (PomProfile profile : profiles) {
-
-			String id = profile.getId();
-
-			for (PomDependency dep : profile.getDependencyManagementDependencies()) {
-				doWithDependency(resolver, dep, DeclarationSource.profileManaged(id), callback);
+		for (XmlTag build : root.findSubTags("build")) {
+			for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
+				doWithPlugins(resolver, DeclarationSource.pluginManagement(), callback, pluginManagement);
 			}
+			doWithPlugins(resolver, DeclarationSource.plugin(), callback, build);
+		}
 
-			for (PomDependency dep : profile.getDependencies()) {
-				doWithDependency(resolver, dep, DeclarationSource.profileDependency(id), callback);
+		for (XmlTag profiles : root.findSubTags("profiles")) {
+			for (XmlTag profile : profiles.findSubTags("profiles")) {
+
+				String id = profile.getSubTagText("id");
+				if (!StringUtils.hasText(id)) {
+					continue;
+				}
+
+				for (XmlTag dependencyManagement : root.findSubTags("dependencyManagement")) {
+					doWithDependencies(dependencyManagement, resolver, DeclarationSource.profileManaged(id), callback);
+				}
+				doWithDependencies(root, resolver, DeclarationSource.profileDependency(id), callback);
+
+				for (XmlTag build : root.findSubTags("build")) {
+					for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
+						doWithPlugins(resolver, DeclarationSource.profilePluginManagement(id), callback, pluginManagement);
+					}
+					doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, build);
+				}
 			}
+		}
+	}
 
-			for (PomDependency plugin : profile.getBuildPluginManagementPlugins()) {
-				doWithDependency(resolver, plugin, DeclarationSource.profilePluginManagement(id), callback);
+	private void doWithDependencies(XmlTag root, PropertyResolver resolver, DeclarationSource declarationSource,
+			BiConsumer<ArtifactId, ArtifactUsage> callback) {
+		for (XmlTag dependencies : root.findSubTags("dependencies")) {
+			for (XmlTag dependency : dependencies.findSubTags("dependency")) {
+				doWithDependency(resolver, dependency, declarationSource, callback);
 			}
+		}
+	}
 
-			for (PomDependency plugin : profile.getBuildPlugins()) {
-				doWithDependency(resolver, plugin, DeclarationSource.profilePlugin(id), callback);
+	private void doWithPlugins(PropertyResolver resolver, DeclarationSource declarationSource,
+			BiConsumer<ArtifactId, ArtifactUsage> callback, XmlTag build) {
+		for (XmlTag plugins : build.findSubTags("plugins")) {
+			for (XmlTag plugin : plugins.findSubTags("plugin")) {
+				doWithDependency(resolver, plugin, declarationSource, callback);
 			}
 		}
 	}
@@ -219,19 +273,32 @@ class MavenParser {
 		}
 	}
 
+	/**
+	 * Property resolver within the scope of a single pom file.
+	 */
 	static class PropertyResolver {
 
-		private final Map<String, String> properties;
+		private final Function<String, @Nullable String> propertySource;
 
 		private final @Nullable String artifactId;
 		private final @Nullable String groupId;
 		private final @Nullable String version;
 
 		public PropertyResolver(XmlFile pom, Map<String, String> properties) {
+			this(pom, properties::get);
+		}
 
-			this.properties = properties;
+		public PropertyResolver(XmlFile pom, Function<String, @Nullable String> propertySource) {
+
+			this.propertySource = propertySource;
 
 			XmlTag rootTag = pom.getDocument().getRootTag();
+			if (rootTag == null) {
+				this.artifactId = null;
+				this.groupId = null;
+				this.version = null;
+				return;
+			}
 
 			String artifactId = rootTag.getSubTagText("artifactId");
 			String groupId = rootTag.getSubTagText("groupId");
@@ -251,48 +318,14 @@ class MavenParser {
 			this.version = version;
 		}
 
-		private MavenParser.@Nullable ResolvedProperty resolveProperty(String property) {
-			return resolveProperty(property, new LinkedHashSet<>());
-		}
-
-		private MavenParser.@Nullable ResolvedProperty resolveProperty(String property, Set<String> visited) {
-
-			if (property.startsWith("${") && property.endsWith("}")) {
-				property = property.substring(2, property.length() - 1);
-			}
-
-			if (!visited.add(property)) {
-				return null;
-			}
-
-			String s = properties.get(property);
-
-			if (s == null) {
-				s = resolveKnownProperty(property);
-			}
-
-			ResolvedProperty value = s != null ? new ResolvedProperty(property, s, VersionSource.property(property)) : null;
-
-			if (value != null) {
-
-				if (value.containsProperty()) {
-					return resolveProperty(value.value().trim(), visited);
-				}
-
-				return new ResolvedProperty(property, value.value().trim(), VersionSource.property(property));
-			}
-
-			return null;
-		}
-
-		private @Nullable String resolvePropertyValue(String property) {
+		public String resolvePropertyValue(String property) {
 
 			Matcher matcher = PROPERTY_PATTERN.matcher(property);
 			String result = property;
 			while (matcher.find()) {
 
 				String name = matcher.group(1);
-				ResolvedProperty pomProperty = resolveProperty(name);
+				ResolvedProperty pomProperty = resolveProperty(name, new LinkedHashSet<>());
 				if (pomProperty != null) {
 					result = matcher.replaceFirst(pomProperty.value());
 					matcher = PROPERTY_PATTERN.matcher(result);
@@ -302,22 +335,47 @@ class MavenParser {
 			return result;
 		}
 
-		private @Nullable String resolveKnownProperty(String property) {
+		private MavenParser.@Nullable ResolvedProperty resolveProperty(String property, Set<String> cycleGuard) {
 
-			if (property.equals("artifactId") || property.equals("project.artifactId")) {
-				return artifactId;
+			if (property.startsWith("${") && property.endsWith("}")) {
+				property = property.substring(2, property.length() - 1);
 			}
 
-			if (property.equals("groupId") || property.equals("project.groupId")) {
-				return groupId;
+			if (!cycleGuard.add(property)) {
+				return null;
 			}
 
-			if (property.equals("version") || property.equals("project.version")) {
-				return version;
+			String value = resolveKnownProperty(property);
+
+			if (value == null) {
+				value = propertySource.apply(property);
 			}
 
-			return null;
+			if (!StringUtils.hasText(value)) {
+				return null;
+			}
+
+			ResolvedProperty resolvedProperty = new ResolvedProperty(property, value, VersionSource.property(property));
+
+			if (resolvedProperty.containsProperty()) {
+				return resolveProperty(resolvedProperty.value().trim(), cycleGuard);
+			}
+
+			return new ResolvedProperty(property, resolvedProperty.value().trim(), VersionSource.property(property));
 		}
+
+		private @Nullable String resolveKnownProperty(String property) {
+			return switch (property) {
+				case "artifactId", "project.artifactId" -> artifactId;
+				case "groupId", "project.groupId" -> groupId;
+				case "version", "project.version" -> version;
+				default -> null;
+			};
+		}
+
+	}
+
+	record MavenProperty(String key, String value, XmlTag valueElement) {
 
 	}
 

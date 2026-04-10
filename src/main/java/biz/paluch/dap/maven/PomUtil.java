@@ -15,11 +15,7 @@
  */
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.artifact.ArtifactId;
-
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -83,24 +79,6 @@ public class PomUtil {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Return the artifact id of the given plugin or dependency.
-	 */
-	static @Nullable ArtifactId getArtifactId(@Nullable XmlTag pluginOrDependency) {
-
-		if (pluginOrDependency == null) {
-			return null;
-		}
-
-		String groupId = pluginOrDependency.getSubTagText("groupId");
-		String artifactId = pluginOrDependency.getSubTagText("artifactId");
-		if (!StringUtils.hasText(groupId) || !StringUtils.hasText(artifactId)) {
-			return null;
-		}
-
-		return ArtifactId.of(groupId, artifactId);
 	}
 
 }

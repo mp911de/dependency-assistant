@@ -101,7 +101,17 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
-		ArtifactId artifactId = PomUtil.getArtifactId(parentTag);
+		MavenParser.PropertyResolver resolver = new MavenParser.PropertyResolver((XmlFile) versionTag.getContainingFile(),
+				it -> {
+
+					ResolvedProperty property = resolveProperty(PropertyExpression.property(it));
+					if (property != null) {
+						return property.value();
+					}
+					return null;
+				});
+
+		ArtifactId artifactId = MavenParser.parseArtifactId(parentTag, resolver::resolvePropertyValue);
 		if (artifactId == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -176,25 +186,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				it.versionLiteral(resolvedProperty.valueLiteral());
 			}
 		});
-	}
-
-	private VersionUpgradeLookupService.@Nullable UpgradeSuggestion findSuggestions(ArtifactReference lookupResult) {
-
-		if (!lookupResult.isResolved()) {
-			return null;
-		}
-
-		ArtifactDeclaration declaration = lookupResult.getDeclaration();
-		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
-			return null;
-		}
-
-		List<Release> options = this.cache.getReleases(declaration.getArtifactId(), false);
-		if (options.isEmpty()) {
-			return null;
-		}
-
-		return determineUpgrade(declaration.getVersion(), options);
 	}
 
 	private biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(ArtifactReference artifactReference) {
