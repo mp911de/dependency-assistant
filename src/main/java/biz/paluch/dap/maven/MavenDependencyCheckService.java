@@ -74,7 +74,7 @@ public class MavenDependencyCheckService extends DependencyCheckSupport {
 		MavenProject currentProject = projectsManager.findProject(pomFile.getVirtualFile());
 		MavenProperties mavenProperties = new MavenProperties(project, projectsManager);
 		Map<String, String> allProperties = mavenProperties.getAllProperties(currentProject);
-		MavenDependencyCollector collector = new MavenDependencyCollector(allProperties);
+		MavenDependencyCollector collector = new MavenDependencyCollector(getCache(), allProperties);
 
 		return collector.collect(pomFile);
 	}

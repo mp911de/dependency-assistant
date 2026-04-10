@@ -63,6 +63,10 @@ public abstract class DependencyCheckSupport {
 		this.service = DependencyAssistantService.getInstance(project);
 	}
 
+	public Cache getCache() {
+		return service.getCache();
+	}
+
 	/**
 	 * Runs the full version check for the Gradle build file currently open in the editor.
 	 */

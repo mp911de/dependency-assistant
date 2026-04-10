@@ -16,10 +16,12 @@
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.state.Cache;
 
 import java.util.Map;
 
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.xml.XmlFile;
 
 /**
  * Collects dependency coordinates from Maven build files associated.
@@ -28,9 +30,11 @@ import com.intellij.psi.PsiFile;
  */
 class MavenDependencyCollector {
 
+	private final Cache cache;
 	private final Map<String, String> properties;
 
-	public MavenDependencyCollector(Map<String, String> properties) {
+	public MavenDependencyCollector(Cache cache, Map<String, String> properties) {
+		this.cache = cache;
 		this.properties = properties;
 	}
 
@@ -49,9 +53,9 @@ class MavenDependencyCollector {
 
 	protected void doCollect(PsiFile psiFile, DependencyCollector collector) {
 
-		if (MavenUtils.isMavenPomFile(psiFile)) {
+		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
 			MavenParser parser = new MavenParser(collector, properties);
-			parser.parsePomFile(psiFile);
+			parser.parsePomFile(cache, xmlFile);
 		}
 	}
 

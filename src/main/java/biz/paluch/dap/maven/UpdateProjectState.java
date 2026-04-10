@@ -46,7 +46,7 @@ class UpdateProjectState {
 	private final Project project;
 	private final DependencyAssistantService service;
 	private final PsiManager psiManager;
-	private final MavenDependencyCollector collector = new MavenDependencyCollector(Map.of());
+	private final MavenDependencyCollector collector;
 	private final MavenProjectsManager manager;
 
 	public UpdateProjectState(Project project) {
@@ -67,6 +67,7 @@ class UpdateProjectState {
 		this.service = service;
 		this.psiManager = psiManager;
 		this.manager = projectsManager;
+		this.collector = new MavenDependencyCollector(service.getCache(), Map.of());
 	}
 
 	public void readAndUpdate(PsiFile file) {
