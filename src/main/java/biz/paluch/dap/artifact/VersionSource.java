@@ -19,6 +19,8 @@ import java.util.Objects;
 
 /**
  * Where the version comes from.
+ * 
+ * @author Mark Paluch
  */
 public abstract class VersionSource {
 
@@ -26,8 +28,18 @@ public abstract class VersionSource {
 
 	private static final VersionCatalog CATALOG = new VersionCatalog();
 
+	/**
+	 * Return whether the version is defined.
+	 */
 	public boolean isDefined() {
 		return this != NONE;
+	}
+
+	/**
+	 * Return whether the version is a {@link VersionProperty}.
+	 */
+	public boolean isProperty() {
+		return this instanceof VersionProperty;
 	}
 
 	/**
@@ -144,7 +156,7 @@ public abstract class VersionSource {
 
 	}
 
-	public static class VersionCatalog extends VersionSource {
+	private static class VersionCatalog extends VersionSource {
 
 		@Override
 		public boolean equals(Object o) {
@@ -193,7 +205,7 @@ public abstract class VersionSource {
 
 	}
 
-	public static class VersionPropertySource extends VersionSource implements VersionProperty {
+	private static class VersionPropertySource extends VersionSource implements VersionProperty {
 
 		private final String property;
 
@@ -225,7 +237,7 @@ public abstract class VersionSource {
 
 	}
 
-	public static class ProfilePropertySource extends VersionPropertySource {
+	private static class ProfilePropertySource extends VersionPropertySource {
 
 		private final String profileId;
 
@@ -265,6 +277,18 @@ public abstract class VersionSource {
 		 * The property name used to declare the version.
 		 */
 		String getProperty();
+
+	}
+
+	/**
+	 * Artifact declared within a profile.
+	 */
+	public interface Profile {
+
+		/**
+		 * Return the profile identifier.
+		 */
+		String getProfileId();
 
 	}
 

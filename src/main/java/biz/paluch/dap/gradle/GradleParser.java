@@ -15,18 +15,24 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
-
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
+import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.lang.properties.IProperty;
+import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
@@ -36,21 +42,14 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrRefere
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.util.StringUtils;
-
-import com.intellij.lang.properties.IProperty;
-import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiRecursiveElementVisitor;
-
 /**
- * Parser that extracts Gradle dependency declarations from Groovy DSL ({@code build.gradle}), Kotlin DSL
- * ({@code build.gradle.kts}), properties ({@code gradle.properties}), and TOML version catalog
+ * Parser that extracts Gradle dependency declarations from Groovy DSL
+ * ({@code build.gradle}), Kotlin DSL ({@code build.gradle.kts}), properties
+ * ({@code gradle.properties}), and TOML version catalog
  * ({@code libs.versions.toml}) files.
- * <p>
- * Results are accumulated into a {@link DependencyCollector} using the same coordinate model as the Maven parser,
- * making the version-resolution and UI layers build-tool-agnostic.
+ * <p>Results are accumulated into a {@link DependencyCollector} using the same
+ * coordinate model as the Maven parser, making the version-resolution and UI
+ * layers build-tool-agnostic.
  *
  * @author Mark Paluch
  */
@@ -93,23 +92,15 @@ class GradleParser extends GradleParserSupport {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Parses a Groovy {@code build.gradle} or {@code settings.gradle} file and accumulates all resolvable dependency and
-	 * plugin declarations into {@code collector}.
+	 * Parses a Groovy {@code build.gradle} or {@code settings.gradle} file and
+	 * accumulates all resolvable dependency and plugin declarations into
+	 * {@code collector}.
 	 */
 	public void parseGroovyScript(PsiFile file) {
 
 		properties.putAll(GradleParser.parseExtProperties(file));
 		getCollector().addProperties(properties.keySet());
-
-		file.accept(new PsiRecursiveElementVisitor() {
-			@Override
-			public void visitElement(PsiElement element) {
-				if (element instanceof GrMethodCall call) {
-					handleGroovyCall(call);
-				}
-				super.visitElement(element);
-			}
-		});
+		file.accept(PsiVisitors.visitTree(GrMethodCall.class, this::handleGroovyCall));
 	}
 
 	private void handleGroovyCall(GrMethodCall call) {
@@ -120,38 +111,39 @@ class GradleParser extends GradleParserSupport {
 		boolean isDependencyConfig = GradleUtils.isDependencySection(methodName);
 		boolean isPlugin = GroovyDslUtils.isInsidePluginsBlock(call);
 
-		if (!isDependencyConfig && !isPlatform && !isPlugin) {
-			return;
-		}
-
-
 		if (isPlugin) {
 			// id('plugin.id') version 'x.y.z' — handled as a single binary expression,
 			GradleDependency dependency = parsePlugin(call);
 			if (dependency != null) {
 				register(dependency, DeclarationSource.plugin());
 			}
-		} else {
+			return;
+		}
 
-			// Try string notation first: implementation('group:artifact:version')
-			GradleDependency dependency = parseDependency(call);
-			DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed() : DeclarationSource.dependency();
+		if (!isDependencyConfig && !isPlatform) {
+			return;
+		}
 
-			if (dependency == null) {
-				// Try map notation: implementation(group: 'g', name: 'a', version: 'v')
-				GrNamedArgument[] named = call.getNamedArguments();
-				if (named.length >= 2) {
-					dependency = parseMapDependency(named);
-				}
+		// Try string notation first: implementation('group:artifact:version')
+		GradleDependency dependency = parseDependency(call);
+		DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed()
+				: DeclarationSource.dependency();
+
+		if (dependency == null) {
+			// Try map notation: implementation(group: 'g', name: 'a', version: 'v')
+			GrNamedArgument[] named = call.getNamedArguments();
+			if (named.length >= 2) {
+				dependency = parseMapDependency(named);
 			}
+		}
 
-			if (dependency != null) {
-				register(dependency, declarationSource);
-			}
+		if (dependency != null) {
+			register(dependency, declarationSource);
 		}
 	}
 
 	private @Nullable GradleDependency parseDependency(GrMethodCall call) {
+
 		PsiElement[] args = call.getArgumentList().getAllArguments();
 		for (PsiElement arg : args) {
 
@@ -190,67 +182,29 @@ class GradleParser extends GradleParserSupport {
 				artifact = resolveValue(strVal);
 			} else if ("version".equals(key)) {
 				version = strVal;
-				// TODO: handle property references here
 			}
 		}
 
-		if (!StringUtils.hasText(group) || !StringUtils.hasText(artifact) || !StringUtils.hasText(version)) {
+		if (StringUtils.isEmpty(group) || StringUtils.isEmpty(artifact) || StringUtils.isEmpty(version)) {
 			return null;
 		}
 
-		return new SimpleDependency(ArtifactId.of(group, artifact), version, VersionSource.declared(version));
+		return GradleDependency.of(group, artifact, version, this);
 	}
 
 	private @Nullable GradleDependency parsePlugin(GrMethodCall call) {
-		// Three forms appear in Gradle Groovy DSL plugins {} blocks:
-		//
-		// (1) Flat command args (non-chained):
-		// id 'x' version 'y' GrApplicationStatement(id, ['x', version_ref, 'y'])
-		//
-		// (2) Chained command expression (most common):
-		// id 'x' version 'y' inner GrApplicationStatement(id, ['x'])
-		// whose parent is GrReferenceExpression('version')
-		// whose parent is outer GrApplicationStatement(version, ['y'])
-		//
-		// (3) Explicit-paren + command chain:
-		// id('x') version 'y' same chained structure as (2) but inner uses explicit parens
-
-		PsiElement[] ownArgs = call.getArgumentList().getAllArguments();
-		String pluginId = GroovyDslUtils.firstLiteralString(ownArgs);
-		if (pluginId == null) {
+		PluginId id = PluginId.fromMethodCall(call);
+		if (id == null) {
 			return null;
 		}
 
-		// Form (1): version keyword + version literal in the flat arg list.
-		String version = findVersionAfterRef(ownArgs);
-
-		if (version == null) {
-			// Forms (2) & (3): the inner call is the qualifier of a GrReferenceExpression('version'),
-			// which is the invoked-expression of the outer GrApplicationStatement(['y']).
-			PsiElement parent = call.getParent();
-			if (parent instanceof GrReferenceExpression versionRef && "version".equals(versionRef.getReferenceName())
-					&& versionRef.getParent() instanceof GrMethodCall outerApp) {
-				// TODO: handle property references here
-				version = GroovyDslUtils.firstLiteralString(outerApp.getArgumentList().getAllArguments());
-			}
-			// Fallback: direct GrMethodCall parent whose args contain the version_ref + literal pattern.
-			else if (parent instanceof GrMethodCall outerApp) {
-				// TODO: handle property references here
-				version = findVersionAfterRef(outerApp.getArgumentList().getAllArguments());
-			}
-		}
-
-		if (!StringUtils.hasText(version)) {
-			return null;
-		}
-
-		return new SimpleDependency(ArtifactId.of(pluginId, pluginId), version, VersionSource.declared(version));
+		String version = id.getVersionAsString();
+		return new SimpleDependency(id.toArtifactId(), version, VersionSource.declared(version));
 	}
 
 	/**
 	 * Collects all Groovy {@code ext} property declarations from the given file.
-	 * <p>
-	 * Three forms are recognised:
+	 * <p>Three forms are recognised:
 	 *
 	 * <pre>
 	 * ext {
@@ -261,26 +215,24 @@ class GradleParser extends GradleParserSupport {
 	 * </pre>
 	 *
 	 * @param file a Groovy {@code .gradle} file
-	 * @return a map of property key to literal string value; entries whose value is not a plain string are omitted
+	 * @return a map of property key to literal string value; entries whose value is
+	 * not a plain string are omitted
 	 */
 	public static Map<String, String> parseExtProperties(PsiFile file) {
 
 		Map<String, String> result = new HashMap<>();
 
-		file.accept(new PsiRecursiveElementVisitor() {
-			@Override
-			public void visitElement(PsiElement element) {
-				super.visitElement(element);
-				// ext { key = 'value' } or ext { set('key', 'value') }
-				if (element instanceof GrMethodCall call && "ext".equals(GroovyDslUtils.getGroovyMethodName(call))) {
-					collectExtClosureProperties(call, result);
-				}
-				// ext.key = 'value'
-				if (element instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-					collectExtDotProperty(assign, result);
-				}
+		file.accept(PsiVisitors.recursive(element -> {
+
+			// ext { key = 'value' } or ext { set('key', 'value') }
+			if (element instanceof GrMethodCall call && "ext".equals(GroovyDslUtils.getGroovyMethodName(call))) {
+				collectExtClosureProperties(call, result);
 			}
-		});
+			// ext.key = 'value'
+			if (element instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
+				collectExtDotProperty(assign, result);
+			}
+		}));
 		return result;
 	}
 
@@ -302,9 +254,11 @@ class GradleParser extends GradleParserSupport {
 				}
 
 				// set() call form: set('springVersion', '6.1.0')
-				if (child instanceof GrMethodCall setCall && "set".equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
+				if (child instanceof GrMethodCall setCall
+						&& "set".equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
 					PsiElement[] args = setCall.getArgumentList().getAllArguments();
-					if (args.length >= 2 && args[0] instanceof GrLiteral keyLit && keyLit.getValue() instanceof String key
+					if (args.length >= 2 && args[0] instanceof GrLiteral keyLit
+							&& keyLit.getValue() instanceof String key
 							&& args[1] instanceof GrLiteral valLit && valLit.getValue() instanceof String val) {
 						result.put(key, val);
 					}
@@ -331,22 +285,6 @@ class GradleParser extends GradleParserSupport {
 		}
 	}
 
-	/**
-	 * Scans {@code args} for the pattern {@code version <literal>} and returns the literal value, or {@code null} if no
-	 * such pattern is found.
-	 */
-	private static @Nullable String findVersionAfterRef(PsiElement[] args) {
-		boolean sawVersion = false;
-		for (PsiElement arg : args) {
-			if (!sawVersion && arg instanceof GrReferenceExpression ref && "version".equals(ref.getText())) {
-				sawVersion = true;
-			} else if (sawVersion && arg instanceof GrLiteral lit && lit.getValue() instanceof String s) {
-				return s;
-			}
-		}
-		return null;
-	}
-
 	// -------------------------------------------------------------------------
 	// Gradle Properties
 	// -------------------------------------------------------------------------
@@ -357,16 +295,15 @@ class GradleParser extends GradleParserSupport {
 
 		cache.doWithProperties(property -> {
 			if (property.hasArtifacts()) {
-
 				String value = properties.get(property.name());
-
-				if (!StringUtils.hasText(value)) {
+				if (StringUtils.isEmpty(value)) {
 					return;
 				}
 
 				ArtifactVersion.from(value).ifPresent(version -> {
 					for (CachedArtifact artifact : property.artifacts()) {
-						getCollector().registerUpdateCandidate(artifact.toArtifactId(), version, DeclarationSource.managed(),
+						getCollector().registerUsage(artifact.toArtifactId(), version,
+								DeclarationSource.managed(),
 								VersionSource.property(property.name()));
 					}
 				});
@@ -385,7 +322,7 @@ class GradleParser extends GradleParserSupport {
 
 	@Override
 	@Nullable
-	String getProperty(@Nullable String value) {
+	public String getProperty(@Nullable String value) {
 		return properties.get(value);
 	}
 

@@ -15,18 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
-
 import java.util.Collection;
-
-import org.jetbrains.kotlin.psi.KtBinaryExpression;
-import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import org.toml.lang.psi.TomlLiteral;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -37,6 +26,15 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.junit5.RunInEdt;
+import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.toml.lang.psi.TomlLiteral;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Tests for Kotlin DSL via {@link VersionUpgradeLookupService}.
@@ -78,7 +76,7 @@ class KotlinVersionUpgradeLookupTests {
 		KtBinaryExpression propertyExpr = KotlinDslUtils.findPropertyExpression(versionEntry);
 		assertThat(propertyExpr).as("extra[…] = buildString { … }").isNotNull();
 		assertThat(KotlinDslUtils.findProperty(propertyExpr)).isEqualTo("springModulithVersion");
-		assertThat(KotlinDslExtraSupport.findExtraPropertyValuePsi(file, "springModulithVersion")).isNotNull();
+		assertThat(KotlinDslExtraSupport.findExtraPropertyLocation(file, "springModulithVersion")).isNotNull();
 	}
 
 	@Test
@@ -95,7 +93,7 @@ class KotlinVersionUpgradeLookupTests {
 		KtBinaryExpression propertyExpr = KotlinDslUtils.findPropertyExpression(versionEntry);
 		assertThat(propertyExpr).as("receiver of .also { extra[…] = it }").isNotNull();
 		assertThat(KotlinDslUtils.findProperty(propertyExpr)).isEqualTo("springModulithVersion");
-		assertThat(KotlinDslExtraSupport.findExtraPropertyValuePsi(file, "springModulithVersion"))
+		assertThat(KotlinDslExtraSupport.findExtraPropertyLocation(file, "springModulithVersion").element())
 				.isSameAs(versionEntry.getParent());
 	}
 
@@ -113,7 +111,7 @@ class KotlinVersionUpgradeLookupTests {
 		KtBinaryExpression propertyExpr = KotlinDslUtils.findPropertyExpression(versionEntry);
 		assertThat(propertyExpr).as("extra[…] = \"\"\"…\"\"\"").isNotNull();
 		assertThat(KotlinDslUtils.findProperty(propertyExpr)).isEqualTo("springModulithVersion");
-		assertThat(KotlinDslExtraSupport.findExtraPropertyValuePsi(file, "springModulithVersion")).isNotNull();
+		assertThat(KotlinDslExtraSupport.findExtraPropertyLocation(file, "springModulithVersion")).isNotNull();
 	}
 
 	@Test

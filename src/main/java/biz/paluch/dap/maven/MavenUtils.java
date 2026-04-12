@@ -15,11 +15,6 @@
  */
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
-import biz.paluch.dap.artifact.RepositoryCredentials;
-
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,18 +22,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
-import org.jetbrains.idea.maven.model.MavenRemoteRepository;
-import org.jetbrains.idea.maven.project.MavenProject;
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
+import biz.paluch.dap.artifact.RepositoryCredentials;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import org.jetbrains.idea.maven.model.MavenRemoteRepository;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jspecify.annotations.Nullable;
 
 /**
  * @author Mark Paluch

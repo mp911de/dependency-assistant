@@ -153,7 +153,7 @@ public class DependencyUpdateOption implements HasArtifactId {
 		return dependency.hasPropertyVersion();
 	}
 
-	public VersionSource.VersionPropertySource getPropertyVersion() {
+	public VersionSource.VersionProperty getPropertyVersion() {
 		return dependency.findPropertyVersion();
 	}
 

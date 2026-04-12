@@ -19,6 +19,8 @@ import java.util.Comparator;
 
 /**
  * Maven artifact coordinates.
+ * 
+ * @author Mark Paluch
  */
 public interface ArtifactId extends Comparable<ArtifactId> {
 

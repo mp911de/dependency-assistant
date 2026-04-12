@@ -18,16 +18,16 @@ package biz.paluch.dap.support;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
- * Value object representing either a property expression such as {@code ${name}} or a literal value.
- * <p>
- * Use {@link #from(String)} to create an instance and inspect its actual type through {@link #isProperty()} or subtype
- * checks.
+ * Value object representing either a property expression such as
+ * {@code ${name}} or a literal value.
+ * <p>Use {@link #from(String)} to create an instance and inspect its actual
+ * type through {@link #isProperty()} or subtype checks.
  *
  * @author Mark Paluch
  */
@@ -45,7 +45,8 @@ public abstract class PropertyExpression {
 	 * Create a {@link PropertyExpression} from the given value.
 	 *
 	 * @param value the source value
-	 * @return a {@link PropertyReference} if the value is a property expression; otherwise a {@link LiteralValue}
+	 * @return a {@link PropertyReference} if the value is a property expression;
+	 * otherwise a {@link LiteralValue}
 	 */
 	public static PropertyExpression from(@Nullable String value) {
 
@@ -79,7 +80,8 @@ public abstract class PropertyExpression {
 	/**
 	 * Return whether this value is a property expression.
 	 *
-	 * @return {@code true} if this value is a property expression; {@code false} otherwise
+	 * @return {@code true} if this value is a property expression; {@code false}
+	 * otherwise
 	 */
 	public abstract boolean isProperty();
 
@@ -90,13 +92,56 @@ public abstract class PropertyExpression {
 	 */
 	public abstract String getPropertyName();
 
+	/**
+	 * Resolve the value of this expression using the given
+	 * {@link PropertyResolver}. If this expression is a property reference, the
+	 * resolver will be used to resolve the property value; otherwise, the literal
+	 * value will be returned as-is.
+	 * @param propertyResolver the property resolve to use for resolving property
+	 * references.
+	 * @return the resolved value.
+	 */
+	public @Nullable String resolve(PropertyResolver propertyResolver) {
+
+		if (isProperty()) {
+			return propertyResolver.getProperty(getPropertyName());
+		}
+
+		return toString();
+	}
+
+	/**
+	 * Resolve the value of this expression using the given
+	 * {@link PropertyResolver}. If this expression is a property reference, the
+	 * resolver will be used to resolve the property value; otherwise, the literal
+	 * value will be returned as-is.
+	 * @param propertyResolver the property resolve to use for resolving property
+	 * references.
+	 * @return the resolved value.
+	 * @throws IllegalArgumentException if the expression is a property reference
+	 * but the resolver cannot resolve it.
+	 */
+	public String resolveRequired(PropertyResolver propertyResolver) {
+
+		if (isProperty()) {
+			String value = propertyResolver.getProperty(getPropertyName());
+			if (value == null) {
+				throw new IllegalStateException("Unable to resolve property '%s'".formatted(getPropertyName()));
+			}
+			return value;
+		}
+
+		return toString();
+	}
+
 	@Override
 	public String toString() {
 		return value;
 	}
 
 	/**
-	 * {@link PropertyExpression} representing a property reference such as {@code ${spring.version}}.
+	 * {@link PropertyExpression} representing a property reference such as
+	 * {@code ${spring.version}}.
 	 */
 	private static class PropertyReference extends PropertyExpression {
 

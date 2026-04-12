@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap.artifact;
 
-import org.springframework.util.StringUtils;
+import biz.paluch.dap.util.StringUtils;
 
 /**
  * Maven artifact coordinates (groupId + artifactId).

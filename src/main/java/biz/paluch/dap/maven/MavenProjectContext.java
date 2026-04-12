@@ -15,13 +15,6 @@
  */
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.ProjectBuildContext;
-import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RepositoryCredentials;
-import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,18 +22,24 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.Function;
 
+import biz.paluch.dap.ProjectBuildContext;
+import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.RepositoryCredentials;
+import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiFile;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
 
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiFile;
-
 /**
- * Maven project context. Implements {@link ProjectBuildContext} so that all IDE-integration code (annotators,
- * completion contributors, etc.) can work against the build-tool-agnostic interface while Maven-specific callers still
+ * Maven project context. Implements {@link ProjectBuildContext} so that all
+ * IDE-integration code (annotators, completion contributors, etc.) can work
+ * against the build-tool-agnostic interface while Maven-specific callers still
  * have access to {@link #getMavenId()} and {@link #doWithMaven(Function)}.
  *
  * @author Mark Paluch
@@ -48,7 +47,8 @@ import com.intellij.psi.PsiFile;
 interface MavenProjectContext extends ProjectBuildContext {
 
 	/**
-	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and {@link VirtualFile}.
+	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
+	 * {@link VirtualFile}.
 	 */
 	static MavenProjectContext of(Project project, @Nullable PsiFile file) {
 
@@ -60,7 +60,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and {@link VirtualFile}.
+	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
+	 * {@link VirtualFile}.
 	 */
 	static MavenProjectContext of(Project project, @Nullable VirtualFile file) {
 
@@ -112,10 +113,13 @@ interface MavenProjectContext extends ProjectBuildContext {
 	class MavenContextImpl implements MavenProjectContext {
 
 		static Map<Project, MavenProjectsManager> projectsManager = Collections.synchronizedMap(new WeakHashMap<>());
+
 		static Map<VirtualFile, MavenProjectContext> contexts = Collections.synchronizedMap(new WeakHashMap<>());
 
 		private final Project project;
+
 		private final MavenProject mavenProject;
+
 		private final MavenId id;
 
 		public MavenContextImpl(Project project, MavenProject mavenProject, MavenId id) {
@@ -207,4 +211,5 @@ interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 	}
+
 }

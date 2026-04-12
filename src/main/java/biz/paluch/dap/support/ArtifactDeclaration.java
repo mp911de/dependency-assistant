@@ -18,29 +18,32 @@ package biz.paluch.dap.support;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
-
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
-import com.intellij.psi.PsiElement;
-
 /**
- * Value object representing an artifact declaration and its associated metadata.
- * <p>
- * Captures the artifact identifier, the origin of the version, whether the version is defined in the same file, and
- * optional PSI elements for the declaration and version.
+ * Value object representing an artifact declaration and its associated
+ * metadata.
+ * <p>Captures the artifact identifier, the origin of the version, whether the
+ * version is defined in the same file, and optional PSI elements for the
+ * declaration and version.
  *
  * @author Mark Paluch
  */
 public class ArtifactDeclaration {
 
 	private final ArtifactId artifactId;
+
 	private final VersionSource versionSource;
+
 	private final boolean versionDefinedInSameFile;
 
 	private final @Nullable ArtifactVersion version;
+
 	private final @Nullable PsiElement declarationElement;
+
 	private final @Nullable PsiElement versionLiteral;
 
 	private ArtifactDeclaration(Builder builder) {
@@ -72,7 +75,8 @@ public class ArtifactDeclaration {
 	/**
 	 * Return whether the version is defined in the same file as the declaration.
 	 *
-	 * @return {@code true} if the version is defined in the same file; {@code false} otherwise.
+	 * @return {@code true} if the version is defined in the same file;
+	 * {@code false} otherwise.
 	 */
 	public boolean isVersionDefinedInSameFile() {
 		return versionDefinedInSameFile;
@@ -118,14 +122,19 @@ public class ArtifactDeclaration {
 	public static class Builder {
 
 		private @Nullable ArtifactId id;
+
 		private @Nullable VersionSource versionSource;
+
 		private boolean versionDefinedInSameFile;
 
 		private @Nullable ArtifactVersion version;
+
 		private @Nullable PsiElement declarationElement;
+
 		private @Nullable PsiElement versionLiteral;
 
-		private Builder() {}
+		private Builder() {
+		}
 
 		/**
 		 * Configure the artifact identifier.
@@ -197,7 +206,8 @@ public class ArtifactDeclaration {
 		}
 
 		/**
-		 * Configure the PSI element representing the version literal, e.g. the value of a version property or literal.
+		 * Configure the PSI element representing the version literal, e.g. the value of
+		 * a version property or literal.
 		 *
 		 * @param versionLiteral the version element.
 		 * @return {@code this} builder.
@@ -214,11 +224,12 @@ public class ArtifactDeclaration {
 
 		/**
 		 * Build a new {@link ArtifactDeclaration}.
-		 * <p>
-		 * Requires both {@link ArtifactId} and {@link VersionSource} to be configured.
+		 * <p>Requires both {@link ArtifactId} and {@link VersionSource} to be
+		 * configured.
 		 *
 		 * @return a new {@link ArtifactDeclaration}.
-		 * @throws IllegalArgumentException if {@code id} or {@code versionSource} is {@code null}.
+		 * @throws IllegalArgumentException if {@code id} or {@code versionSource} is
+		 * {@code null}.
 		 */
 		public ArtifactDeclaration build() {
 

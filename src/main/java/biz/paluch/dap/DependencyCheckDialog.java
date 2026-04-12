@@ -15,6 +15,24 @@
  */
 package biz.paluch.dap;
 
+import java.awt.*;
+import java.awt.event.ItemEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.TableModelEvent;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellEditor;
+import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumnModel;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -25,36 +43,6 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.BuildFileUpdateAction;
-import icons.MavenIcons;
-
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.event.ItemEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.TableModelEvent;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableColumnModel;
-
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionGroup;
@@ -74,6 +62,8 @@ import com.intellij.util.IconUtil;
 import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.ListTableModel;
+import icons.MavenIcons;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Dialog showing Maven dependency versions and update suggestions.
@@ -84,8 +74,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 	private static final int AVAILABLE_UPDATES_COLUMN_INDEX = 2;
 
 	private final Project project;
+
 	private final VirtualFile buildFile;
+
 	private final DependencyUpdateModel model;
+
 	private final BuildFileUpdateAction updateAction;
 
 	public DependencyCheckDialog(Project project, VirtualFile buildFile, DependencyUpdates updates,
@@ -211,20 +204,24 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		AnAction selectAllAction = new AnAction(MessageBundle.message("dialog.action.selectAll"),
 				MessageBundle.message("dialog.action.selectAll.description"), AllIcons.Actions.Selectall) {
+
 			@Override
 			public void actionPerformed(AnActionEvent e) {
 				model.setUpdateAll(true);
 				table.tableChanged(new TableModelEvent(table.getModel()));
 			}
+
 		};
 
 		AnAction deselectAllAction = new AnAction(MessageBundle.message("dialog.action.unselectAll"),
 				MessageBundle.message("dialog.action.unselectAll.description"), AllIcons.Actions.Unselectall) {
+
 			@Override
 			public void actionPerformed(AnActionEvent e) {
 				model.setUpdateAll(false);
 				table.tableChanged(new TableModelEvent(table.getModel()));
 			}
+
 		};
 
 		DefaultActionGroup toolbarGroup = new DefaultActionGroup();
@@ -304,8 +301,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	/**
-	 * Forwards tooltips and hand cursor for upgrade-target icon buttons (renderer stamps are not in the real component
-	 * tree, so the table must delegate).
+	 * Forwards tooltips and hand cursor for upgrade-target icon buttons (renderer
+	 * stamps are not in the real component tree, so the table must delegate).
 	 */
 	private static class DependencyUpdateTable extends TableView<DependencyUpdateOption> {
 
@@ -313,16 +310,20 @@ public class DependencyCheckDialog extends DialogWrapper {
 			super(model);
 			setToolTipText("");
 			addMouseMotionListener(new MouseMotionAdapter() {
+
 				@Override
 				public void mouseMoved(MouseEvent e) {
 					updateUpgradeTargetsHoverCursor(e);
 				}
+
 			});
 			addMouseListener(new MouseAdapter() {
+
 				@Override
 				public void mouseExited(MouseEvent e) {
 					setCursor(Cursor.getDefaultCursor());
 				}
+
 			});
 		}
 
@@ -392,18 +393,21 @@ public class DependencyCheckDialog extends DialogWrapper {
 			}
 			setCursor(c);
 		}
+
 	}
 
 	/**
-	 * One icon-button strip per {@link DependencyUpdateOption}, shared by renderer and editor (see
-	 * {@link UpdateToColumn}). {@link ActionToolbar} is unreliable inside JTable paint stamps (layout/async refresh), so
-	 * this uses plain {@link JButton}s with the same icons.
+	 * One icon-button strip per {@link DependencyUpdateOption}, shared by renderer
+	 * and editor (see {@link UpdateToColumn}). {@link ActionToolbar} is unreliable
+	 * inside JTable paint stamps (layout/async refresh), so this uses plain
+	 * {@link JButton}s with the same icons.
 	 */
 	private class UpgradeTargetsToolbarEditor extends DefaultCellEditor {
 
 		private final JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
 		private @Nullable JTable contextTable;
+
 		private int contextViewRow;
 
 		UpgradeTargetsToolbarEditor(DependencyUpdateOption option) {
@@ -472,6 +476,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public @Nullable Object getCellEditorValue() {
 			return null;
 		}
+
 	}
 
 	static class DependencyCoordinateColumn extends ColumnInfo<DependencyUpdateOption, ArtifactId> {
@@ -479,10 +484,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 		DefaultTableCellRenderer tcr = new DefaultTableCellRenderer() {
 
 			@Override
-			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+					boolean hasFocus,
 					int row, int column) {
 
-				Component tableCellRendererComponent = super.getTableCellRendererComponent(table, value, isSelected, hasFocus,
+				Component tableCellRendererComponent = super.getTableCellRendererComponent(table, value, isSelected,
+						hasFocus,
 						row, column);
 				DependencyUpdateOption option = ModelUtil.getOption(table, row);
 
@@ -490,9 +497,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 				String tooltip = artifactId;
 				boolean hasPropertyVersion = option.hasPropertyVersion();
 				if (hasPropertyVersion) {
-					VersionSource.VersionPropertySource propertyVersion = option.getPropertyVersion();
-					tooltip = MessageBundle.message("dialog.tooltip.property", propertyVersion);
-					if (propertyVersion instanceof VersionSource.ProfilePropertySource pps) {
+					VersionSource.VersionProperty versionProperty = option.getPropertyVersion();
+					tooltip = MessageBundle.message("dialog.tooltip.property", versionProperty);
+					if (versionProperty instanceof VersionSource.Profile pps) {
 						tooltip += MessageBundle.message("dialog.tooltip.profile", pps.getProfileId());
 					}
 				}
@@ -521,10 +528,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 				}
 				super.setValue(value);
 			}
+
 		};
 
 		/**
-		 * Plugin icon with a small property icon overlaid at the bottom-right (for plugin + ${property} version).
+		 * Plugin icon with a small property icon overlaid at the bottom-right (for
+		 * plugin + ${property} version).
 		 */
 		static Icon getIcon(DependencyUpdateOption option, JTable table) {
 
@@ -585,11 +594,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public Class<?> getColumnClass() {
 			return ArtifactVersion.class;
 		}
+
 	}
 
 	class Upgrades extends ColumnInfo<DependencyUpdateOption, Object> {
 
 		private final Map<DependencyUpdateOption, UpgradeTargetsToolbarEditor> editors = new ConcurrentHashMap<>();
+
 		private final Set<UpgradeTargetsToolbarEditor> listeners = ConcurrentHashMap.newKeySet();
 
 		Upgrades() {
@@ -646,11 +657,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public Class<?> getColumnClass() {
 			return Object.class;
 		}
+
 	}
 
 	class UpdateToColumn extends ColumnInfo<DependencyUpdateOption, ArtifactVersion> {
 
 		private final Map<DependencyUpdateOption, SuggestedVersionComboBoxEditor> editors = new ConcurrentHashMap<>();
+
 		private final Set<SuggestedVersionComboBoxEditor> listeners = ConcurrentHashMap.newKeySet();
 
 		UpdateToColumn() {
@@ -689,6 +702,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 					return editor.getTableCellEditorComponent(table, value, isSelected, row, column);
 				}
+
 			};
 
 		}
@@ -714,6 +728,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public Class<?> getColumnClass() {
 			return ArtifactVersion.class;
 		}
+
 	}
 
 	static class DoUpdateColumn extends ColumnInfo<DependencyUpdateOption, Boolean> {
@@ -761,10 +776,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public Class<?> getColumnClass() {
 			return Boolean.class;
 		}
+
 	}
 
 	/**
-	 * Single checkbox for the active editor cell only; selection is set from the row value when editing starts.
+	 * Single checkbox for the active editor cell only; selection is set from the
+	 * row value when editing starts.
 	 */
 	private static class ApplyUpdateCheckboxEditor extends AbstractCellEditor implements TableCellEditor {
 
@@ -788,6 +805,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public @Nullable Object getCellEditorValue() {
 			return checkBox.isSelected();
 		}
+
 	}
 
 }

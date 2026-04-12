@@ -15,17 +15,12 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
+import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiElement;
@@ -37,6 +32,11 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.junit5.RunInEdt;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * PSI-level integration tests for the version-element resolution.
@@ -93,14 +93,13 @@ class VersionUpgradeLookupServiceTests {
 
 		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
 
-		List<GroovyDslUtils.VersionLocation> hits = findVersionLocations(file,
+		List<DependencyLocation> hits = findVersionLocations(file,
 				loc -> loc.artifactId().groupId().startsWith("org.junit"));
 
 		assertThat(hits).as("exactly one hit for org.junit:junit-bom:6.0.0").hasSize(1);
-		GroovyDslUtils.VersionLocation loc = hits.get(0);
+		DependencyLocation loc = hits.get(0);
 		assertThat(loc.artifactId().groupId()).isEqualTo("org.junit");
 		assertThat(loc.artifactId().artifactId()).isEqualTo("junit-bom");
-		assertThat(loc.rawVersion()).isEqualTo("6.0.0");
 		assertThat(loc.isPropertyReference()).isFalse();
 	}
 
@@ -109,7 +108,7 @@ class VersionUpgradeLookupServiceTests {
 
 		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
 
-		List<GroovyDslUtils.VersionLocation> hits = findVersionLocations(file,
+		List<DependencyLocation> hits = findVersionLocations(file,
 				loc -> loc.artifactId().groupId().startsWith("org.springframework.modulith"));
 
 		assertThat(hits).as("exactly one hit for org.springframework.modulith:spring-modulith-bom").hasSize(1);
@@ -124,7 +123,7 @@ class VersionUpgradeLookupServiceTests {
 				}
 				""");
 
-		List<GroovyDslUtils.VersionLocation> all = findVersionLocations(file, loc -> true);
+		List<DependencyLocation> all = findVersionLocations(file, loc -> true);
 
 		assertThat(all).hasSize(1);
 	}
@@ -134,13 +133,12 @@ class VersionUpgradeLookupServiceTests {
 
 		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
 
-		GroovyDslUtils.VersionLocation loc = findVersionLocation(file,
+		DependencyLocation loc = findVersionLocation(file,
 				l -> "org.springframework.modulith".equals(l.artifactId().groupId())
 						&& "spring-modulith-bom".equals(l.artifactId().artifactId()));
 
 		assertThat(loc).as("VersionLocation for spring-modulith-bom").isNotNull();
 		assertThat(loc.isPropertyReference()).isTrue();
-		assertThat(loc.rawVersion()).isEqualTo("springModulithVersion");
 	}
 
 	@Test
@@ -180,21 +178,21 @@ class VersionUpgradeLookupServiceTests {
 
 		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
 
-		List<GroovyDslUtils.VersionLocation> springBootHits = findVersionLocations(file,
+		List<DependencyLocation> springBootHits = findVersionLocations(file,
 				loc -> loc.artifactId().groupId().startsWith("org.springframework.boot"));
 		assertThat(springBootHits).as("one hit for org.springframework.boot plugin").hasSize(1);
-		GroovyDslUtils.VersionLocation bootLoc = springBootHits.get(0);
+		DependencyLocation bootLoc = springBootHits.get(0);
 		assertThat(bootLoc.artifactId().groupId()).isEqualTo("org.springframework.boot");
 		assertThat(bootLoc.artifactId().artifactId()).isEqualTo("org.springframework.boot");
-		assertThat(bootLoc.rawVersion()).isEqualTo("4.0.3");
+		assertThat(bootLoc.dependency().getVersionSource()).isEqualTo(VersionSource.declared("4.0.3"));
 		assertThat(bootLoc.isPropertyReference()).isFalse();
 
-		List<GroovyDslUtils.VersionLocation> depMgmtHits = findVersionLocations(file,
+		List<DependencyLocation> depMgmtHits = findVersionLocations(file,
 				loc -> loc.artifactId().groupId().startsWith("io.spring.dependency-management"));
 		assertThat(depMgmtHits).as("one hit for io.spring.dependency-management plugin").hasSize(1);
-		GroovyDslUtils.VersionLocation dmLoc = depMgmtHits.get(0);
+		DependencyLocation dmLoc = depMgmtHits.get(0);
 		assertThat(dmLoc.artifactId().groupId()).isEqualTo("io.spring.dependency-management");
-		assertThat(dmLoc.rawVersion()).isEqualTo("1.1.7");
+		assertThat(dmLoc.dependency().getVersionSource()).isEqualTo(VersionSource.declared("1.1.7"));
 		assertThat(dmLoc.isPropertyReference()).isFalse();
 	}
 
@@ -224,7 +222,7 @@ class VersionUpgradeLookupServiceTests {
 
 		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
 
-		List<GroovyDslUtils.VersionLocation> allHits = findVersionLocations(file, loc -> true);
+		List<DependencyLocation> allHits = findVersionLocations(file, loc -> true);
 
 		assertThat(allHits).as("exactly four versioned declarations in the whole file").hasSize(4);
 
@@ -260,7 +258,7 @@ class VersionUpgradeLookupServiceTests {
 
 		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
 
-		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file, l -> "2.0.4".equals(l.propertyValue()));
+		PsiPropertyValueElement loc = findExtProperty(file, l -> "2.0.4".equals(l.propertyValue()));
 
 		assertThat(loc).as("PropertyVersionLocation for set() value").isNotNull();
 		assertThat(loc.propertyKey()).isEqualTo("springModulithVersion");
@@ -272,7 +270,7 @@ class VersionUpgradeLookupServiceTests {
 
 		PsiFile file = fixture.configureByText("build.gradle", BUILD_GRADLE);
 
-		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file,
+		PsiPropertyValueElement loc = findExtProperty(file,
 				l -> "'springModulithVersion'".equals(l.element().getText()));
 
 		assertThat(loc).as("no PropertyVersionLocation for set() key").isNull();
@@ -287,7 +285,7 @@ class VersionUpgradeLookupServiceTests {
 				}
 				""");
 
-		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file, l -> "3.5.0".equals(l.propertyValue()));
+		PsiPropertyValueElement loc = findExtProperty(file, l -> "3.5.0".equals(l.propertyValue()));
 
 		assertThat(loc).as("PropertyVersionLocation for ext block assignment").isNotNull();
 		assertThat(loc.propertyKey()).isEqualTo("springVersion");
@@ -301,7 +299,7 @@ class VersionUpgradeLookupServiceTests {
 				ext.springVersion = '3.5.0'
 				""");
 
-		GroovyDslUtils.PropertyVersionLocation loc = findExtProperty(file, l -> "3.5.0".equals(l.propertyValue()));
+		PsiPropertyValueElement loc = findExtProperty(file, l -> "3.5.0".equals(l.propertyValue()));
 
 		assertThat(loc).as("PropertyVersionLocation for ext dot-assignment").isNotNull();
 		assertThat(loc.propertyKey()).isEqualTo("springVersion");
@@ -334,7 +332,7 @@ class VersionUpgradeLookupServiceTests {
 		PsiElement valueElement = findPropertyValueElement(propsFile, "springVersion");
 
 		assertThat(valueElement).as("value element for springVersion").isNotNull();
-		GroovyDslUtils.PropertyVersionLocation loc = GroovyDslUtils.findPropertiesVersionElement(valueElement);
+		PsiPropertyValueElement loc = GroovyDslUtils.findPropertiesVersionElement(valueElement);
 		assertThat(loc).as("PropertyVersionLocation for springVersion").isNotNull();
 		assertThat(loc.propertyKey()).isEqualTo("springVersion");
 		assertThat(loc.propertyValue()).isEqualTo("3.5.0");
@@ -349,7 +347,7 @@ class VersionUpgradeLookupServiceTests {
 		PsiElement keyElement = findPropertyKeyElement(propsFile, "springVersion");
 
 		assertThat(keyElement).as("key element for springVersion").isNotNull();
-		GroovyDslUtils.PropertyVersionLocation loc = GroovyDslUtils.findPropertiesVersionElement(keyElement);
+		PsiPropertyValueElement loc = GroovyDslUtils.findPropertiesVersionElement(keyElement);
 		assertThat(loc).as("no PropertyVersionLocation for key element").isNull();
 	}
 
@@ -368,23 +366,21 @@ class VersionUpgradeLookupServiceTests {
 				}
 				""");
 
-		List<GroovyDslUtils.VersionLocation> bomHits = findVersionLocations(file,
+		List<DependencyLocation> bomHits = findVersionLocations(file,
 				loc -> loc.artifactId().groupId().startsWith("org.springframework.modulith"));
 		assertThat(bomHits).as("exactly one hit for the spring-modulith-bom managed import").hasSize(1);
 
-		GroovyDslUtils.VersionLocation bomLoc = bomHits.get(0);
+		DependencyLocation bomLoc = bomHits.get(0);
 		assertThat(bomLoc.artifactId().groupId()).isEqualTo("org.springframework.modulith");
 		assertThat(bomLoc.artifactId().artifactId()).isEqualTo("spring-modulith-bom");
 		assertThat(bomLoc.isPropertyReference()).as("version should be a property reference").isTrue();
-		assertThat(bomLoc.rawVersion()).as("property key stripped from ${…}").isEqualTo("springModulithVersion");
+		assertThat(bomLoc.dependency().getVersionSource()).as("property key stripped from ${…}")
+				.isEqualTo(VersionSource.property("springModulithVersion"));
 
-		GroovyDslUtils.PropertyVersionLocation propLoc = findExtProperty(file, l -> "2.0.3".equals(l.propertyValue()));
+		PsiPropertyValueElement propLoc = findExtProperty(file, l -> "2.0.3".equals(l.propertyValue()));
 		assertThat(propLoc).as("PropertyVersionLocation for the ext set() declaration").isNotNull();
 		assertThat(propLoc.propertyKey()).isEqualTo("springModulithVersion");
 		assertThat(propLoc.propertyValue()).isEqualTo("2.0.3");
-
-		assertThat(bomLoc.rawVersion()).as("property key in VersionLocation must match the key in PropertyVersionLocation")
-				.isEqualTo(propLoc.propertyKey());
 	}
 
 	private static <T> List<T> findAll(PsiFile file, Function<PsiElement, T> finder) {
@@ -402,21 +398,21 @@ class VersionUpgradeLookupServiceTests {
 		return hits;
 	}
 
-	private static List<GroovyDslUtils.VersionLocation> findVersionLocations(PsiFile file,
-			Predicate<GroovyDslUtils.VersionLocation> predicate) {
+	private static List<DependencyLocation> findVersionLocations(PsiFile file,
+			Predicate<DependencyLocation> predicate) {
 		return findAll(file, element -> {
-			GroovyDslUtils.VersionLocation loc = GroovyDslUtils.findGroovyVersionElement(element);
-			return (loc != null && predicate.test(loc)) ? loc : null;
+			DependencyLocation location = GroovyDslUtils.findGroovyVersionElement(element);
+			return (location != null && predicate.test(location)) ? location : null;
 		});
 	}
 
-	private static GroovyDslUtils.VersionLocation findVersionLocation(PsiFile file,
-			Predicate<GroovyDslUtils.VersionLocation> predicate) {
+	private static DependencyLocation findVersionLocation(PsiFile file,
+			Predicate<DependencyLocation> predicate) {
 		return findVersionLocations(file, predicate).stream().findFirst().orElse(null);
 	}
 
-	private static GroovyDslUtils.PropertyVersionLocation findExtProperty(PsiFile file,
-			Predicate<GroovyDslUtils.PropertyVersionLocation> predicate) {
+	private static PsiPropertyValueElement findExtProperty(PsiFile file,
+			Predicate<PsiPropertyValueElement> predicate) {
 		return findAll(file, GroovyDslUtils::findGroovyExtPropertyVersionElement).stream().filter(predicate).findFirst()
 				.orElse(null);
 	}

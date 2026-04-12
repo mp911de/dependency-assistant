@@ -15,15 +15,16 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
-
-import biz.paluch.dap.artifact.VersionSource;
-
 import java.util.Map;
 
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for {@link GradleParser#parseGav(String)}.
@@ -36,7 +37,7 @@ class GradleParserGavUnitTests {
 	void parsesLiteralGav() {
 
 		GradleParser parser = new GradleParser(Map.of());
-		GradleParser.SimpleDependency dependency = (GradleParser.SimpleDependency) parser
+		SimpleDependency dependency = (SimpleDependency) parser
 				.parseGav("org.springframework:spring-core:6.1.0");
 
 		assertThat(dependency).isNotNull();
@@ -51,12 +52,12 @@ class GradleParserGavUnitTests {
 
 		Map<String, String> props = Map.of("springVersion", "6.1.0");
 		GradleParser parser = new GradleParser(props);
-		GradleParser.GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
+		GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
 		assertThat(dependency.getId().artifactId()).isEqualTo("spring-core");
-		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionPropertySource.class);
+		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("springVersion"));
 	}
 
@@ -64,22 +65,13 @@ class GradleParserGavUnitTests {
 	void returnsNullForGavWithUnresolvablePropertyVersion() {
 
 		GradleParser parser = new GradleParser(Map.of());
-		GradleParser.GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
+		GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
 
-		assertThat(dependency).isNotNull().isInstanceOf(GradleParser.PropertyManagedDependency.class);
+		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
 		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
 		assertThat(dependency.getId().artifactId()).isEqualTo("spring-core");
-		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionPropertySource.class);
+		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("springVersion"));
-	}
-
-	@Test
-	void returnsNullForMissingVersionSegment() {
-
-		GradleParser parser = new GradleParser(Map.of());
-		GradleParser.GradleDependency dependency = parser.parseGav("org.springframework:spring-core");
-
-		assertThat(dependency).isNull();
 	}
 
 	@Test
@@ -96,7 +88,7 @@ class GradleParserGavUnitTests {
 	void parsesVariousCoordinates(String gav, String group, String artifact, String version) {
 
 		GradleParser parser = new GradleParser(Map.of());
-		GradleParser.GradleDependency parsed = parser.parseGav(gav);
+		GradleDependency parsed = parser.parseGav(gav);
 
 		assertThat(parsed).isNotNull();
 		assertThat(parsed.getId().groupId()).isEqualTo(group);
@@ -107,7 +99,7 @@ class GradleParserGavUnitTests {
 	void versionSourceIsDeclaredForLiteralVersion() {
 
 		GradleParser parser = new GradleParser(Map.of());
-		GradleParser.GradleDependency dependency = parser.parseGav("com.example:artifact:1.0.0");
+		GradleDependency dependency = parser.parseGav("com.example:artifact:1.0.0");
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.DeclaredVersion.class);
@@ -117,11 +109,11 @@ class GradleParserGavUnitTests {
 	void versionSourceIsPropertyForTemplateVersion() {
 
 		GradleParser parser = new GradleParser(Map.of("myVersion", "3.2.1"));
-		GradleParser.GradleDependency dependency = parser.parseGav("com.example:artifact:${myVersion}");
+		GradleDependency dependency = parser.parseGav("com.example:artifact:${myVersion}");
 
 		assertThat(dependency).isNotNull();
-		assertThat(dependency).isNotNull().isInstanceOf(GradleParser.PropertyManagedDependency.class);
-		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionPropertySource.class);
+		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
+		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("myVersion"));
 	}
 

@@ -15,17 +15,21 @@
  */
 package biz.paluch.dap.artifact;
 
-import static org.assertj.core.api.Assertions.*;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.assertj.core.api.Assertions.*;
+
 /**
  * Unit tests for {@link SemanticArtifactVersion}.
  */
 class SemanticArtifactVersionParseUnitTests {
+
+	static SemanticArtifactVersion version(String source) {
+		return SemanticArtifactVersion.of(source);
+	}
 
 	@Test
 	void parsesHyphenBetaBuildQualifierWithNumericTail() {
@@ -43,7 +47,7 @@ class SemanticArtifactVersionParseUnitTests {
 	@Test
 	void semverPathPassesFullQualifierToSuffixParse() {
 
-		SemanticArtifactVersion v = SemanticArtifactVersion.of("5.0.0-B02");
+		SemanticArtifactVersion v = version("5.0.0-B02");
 
 		assertThat(v.getSuffix()).isEqualTo("B2");
 		assertThat(v.toString()).isEqualTo("5.0.0-B02");
@@ -52,31 +56,31 @@ class SemanticArtifactVersionParseUnitTests {
 	@Test
 	void correctlyOrdersSemanticVersions() {
 
-		assertThat(SemanticArtifactVersion.of("5.0.0-B02")).isLessThan(SemanticArtifactVersion.of("5.0.0-B03"))
-				.isGreaterThan(SemanticArtifactVersion.of("5.0.0-B01"));
-		assertThat(SemanticArtifactVersion.of("5.0.0-B02")).isLessThan(SemanticArtifactVersion.of("5.0.0-RC1"));
+		assertThat(version("5.0.0-B02")).isLessThan(version("5.0.0-B03"))
+				.isGreaterThan(version("5.0.0-B01"));
+		assertThat(version("5.0.0-B02")).isLessThan(version("5.0.0-RC1"));
 	}
 
 	@Test
 	void parsesFinalAndPlainRelease() {
 
 		assertThat(SemanticArtifactVersion.isVersion("7.2.4.Final")).isTrue();
-		SemanticArtifactVersion finalV = SemanticArtifactVersion.of("7.2.4.Final");
+		SemanticArtifactVersion finalV = version("7.2.4.Final");
 		assertThat(finalV.isReleaseVersion()).isTrue();
 		assertThat(finalV).hasToString("7.2.4.Final");
 
 		assertThat(SemanticArtifactVersion.isVersion("1.4.5")).isTrue();
-		SemanticArtifactVersion plain = SemanticArtifactVersion.of("1.4.5");
+		SemanticArtifactVersion plain = version("1.4.5");
 		assertThat(plain.isReleaseVersion()).isTrue();
 		assertThat(plain).hasToString("1.4.5");
-		assertThat(plain.getNextDevelopmentVersion()).isEqualTo(SemanticArtifactVersion.of("1.4.6-SNAPSHOT"));
+		assertThat(plain.getNextDevelopmentVersion()).isEqualTo(version("1.4.6-SNAPSHOT"));
 	}
 
 	@Test
 	void parsesSnapshot() {
 
 		assertThat(SemanticArtifactVersion.isVersion("1.4.5-SNAPSHOT")).isTrue();
-		SemanticArtifactVersion v = SemanticArtifactVersion.of("1.4.5-SNAPSHOT");
+		SemanticArtifactVersion v = version("1.4.5-SNAPSHOT");
 		assertThat(v.isReleaseVersion()).isFalse();
 		assertThat(v.isSnapshotVersion()).isTrue();
 		assertThat(v).hasToString("1.4.5-SNAPSHOT");
@@ -88,14 +92,14 @@ class SemanticArtifactVersionParseUnitTests {
 					"1.5.1-native-mt", "0.0.0.1.3.0-HATEOAS-1417-SNAPSHOT.1", "0.1.0.20091028042923", "1.0" })
 	void parsesComplexVersionsWithRoundTripToString(String version) {
 
-		assertThat(SemanticArtifactVersion.of(version)).hasToString(version);
+		assertThat(version(version)).hasToString(version);
 	}
 
 	@ParameterizedTest(name = "{0}")
 	@ValueSource(strings = { "1.4.5.M1", "1.0.0-alpha-1", "2.1.0-alpha0", "2.0.64-beta", "1.0.0-beta.11" })
 	void parsesMilestone(String version) {
 
-		SemanticArtifactVersion v = SemanticArtifactVersion.of(version);
+		SemanticArtifactVersion v = version(version);
 		assertThat(v.isReleaseVersion()).isFalse();
 		assertThat(v.isMilestoneVersion()).isTrue();
 		assertThat(v).hasToString(version);
@@ -105,7 +109,7 @@ class SemanticArtifactVersionParseUnitTests {
 	@ValueSource(strings = { "1.15.0-rc1", "1.15.0-rc", "1.15.0-RC1" })
 	void parsesReleaseCandidate(String version) {
 
-		SemanticArtifactVersion v = SemanticArtifactVersion.of(version);
+		SemanticArtifactVersion v = version(version);
 		assertThat(v.isReleaseVersion()).isFalse();
 		assertThat(v.isMilestoneVersion()).isFalse();
 		assertThat(v.isReleaseCandidateVersion()).isTrue();
@@ -115,38 +119,38 @@ class SemanticArtifactVersionParseUnitTests {
 	@Test
 	void odersBetasAndRcAndReleases() {
 
-		assertThat(SemanticArtifactVersion.of("1.0.0-beta.11")).isGreaterThan(SemanticArtifactVersion.of("1.0.0-beta.2"));
+		assertThat(version("1.0.0-beta.11")).isGreaterThan(version("1.0.0-beta.2"));
 
-		assertThat(SemanticArtifactVersion.of("1.9.0.RELEASE")).isLessThan(SemanticArtifactVersion.of("1.10.0.RELEASE"));
-		assertThat(SemanticArtifactVersion.of("1.9.25.1.RELEASE"))
-				.isLessThan(SemanticArtifactVersion.of("1.9.25.2.RELEASE"));
-		assertThat(SemanticArtifactVersion.of("1.9.10.RELEASE")).isLessThan(SemanticArtifactVersion.of("1.9.11.RELEASE"))
-				.isGreaterThan(SemanticArtifactVersion.of("1.9.2.RELEASE"));
-		assertThat(SemanticArtifactVersion.of("1.9.0-M2")).isLessThan(SemanticArtifactVersion.of("1.9.0-M3"))
-				.isGreaterThan(SemanticArtifactVersion.of("1.9.0-M1"));
-		assertThat(SemanticArtifactVersion.of("1.9.0-M2")).isGreaterThan(SemanticArtifactVersion.of("1.9.0-SNAPSHOT"))
-				.isLessThan(SemanticArtifactVersion.of("1.9.0-RC1")).isLessThan(SemanticArtifactVersion.of("1.9.0"));
+		assertThat(version("1.9.0.RELEASE")).isLessThan(version("1.10.0.RELEASE"));
+		assertThat(version("1.9.25.1.RELEASE"))
+				.isLessThan(version("1.9.25.2.RELEASE"));
+		assertThat(version("1.9.10.RELEASE")).isLessThan(version("1.9.11.RELEASE"))
+				.isGreaterThan(version("1.9.2.RELEASE"));
+		assertThat(version("1.9.0-M2")).isLessThan(version("1.9.0-M3"))
+				.isGreaterThan(version("1.9.0-M1"));
+		assertThat(version("1.9.0-M2")).isGreaterThan(version("1.9.0-SNAPSHOT"))
+				.isLessThan(version("1.9.0-RC1")).isLessThan(version("1.9.0"));
 
-		assertThat(SemanticArtifactVersion.of("1.9.0.M1")).isLessThan(SemanticArtifactVersion.of("1.9.0"))
-				.isLessThan(SemanticArtifactVersion.of("1.9.0.RELEASE")).isLessThan(SemanticArtifactVersion.of("1.9.0-SR1"));
-		assertThat(SemanticArtifactVersion.of("1.9.0.RELEASE")).isGreaterThan(SemanticArtifactVersion.of("1.9.0.M1"));
+		assertThat(version("1.9.0.M1")).isLessThan(version("1.9.0"))
+				.isLessThan(version("1.9.0.RELEASE")).isLessThan(version("1.9.0-SR1"));
+		assertThat(version("1.9.0.RELEASE")).isGreaterThan(version("1.9.0.M1"));
 	}
 
 	@ParameterizedTest
 	@CsvSource({ "1.0.0, 1.0.1-SNAPSHOT", "1.0.0-M1, 1.0.0-SNAPSHOT", "1.0.1, 1.0.2-SNAPSHOT" })
 	void nextBugfixVersion(String current, String expected) {
 
-		SemanticArtifactVersion v = SemanticArtifactVersion.of(current);
-		assertThat(v.getNextBugfixVersion()).isEqualTo(SemanticArtifactVersion.of(expected));
+		SemanticArtifactVersion v = version(current);
+		assertThat(v.getNextBugfixVersion()).isEqualTo(version(expected));
 	}
 
 	@Test
 	void nextDevelopmentVersionForGa() {
 
-		SemanticArtifactVersion v = SemanticArtifactVersion.of("1.5.0");
+		SemanticArtifactVersion v = version("1.5.0");
 		assertThat(v.getNextDevelopmentVersion().isMilestoneVersion()).isFalse();
 		assertThat(v.getNextDevelopmentVersion().isReleaseVersion()).isFalse();
-		assertThat(v.getNextDevelopmentVersion()).isEqualTo(SemanticArtifactVersion.of("1.6.0-SNAPSHOT"));
+		assertThat(v.getNextDevelopmentVersion()).isEqualTo(version("1.6.0-SNAPSHOT"));
 	}
 
 }

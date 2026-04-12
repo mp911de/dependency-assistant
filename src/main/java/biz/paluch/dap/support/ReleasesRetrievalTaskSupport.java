@@ -15,14 +15,11 @@
  */
 package biz.paluch.dap.support;
 
+import java.util.stream.Collectors;
+
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.DependencyUpdates;
-
-import java.util.stream.Collectors;
-
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.ide.nls.NlsMessages;
 import com.intellij.notification.Notification;
@@ -33,6 +30,7 @@ import com.intellij.notification.Notifications;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Suppot class for a background task that refreshes the release state for each used dependency.
@@ -60,7 +58,7 @@ public abstract class ReleasesRetrievalTaskSupport extends Task.Backgroundable {
 		int count = result.updates().size();
 		String duration = NlsMessages.formatDuration(getDuration(), 1, true);
 		String detail = result.updates().stream().map(DependencyUpdateOption::getArtifactId).map(Object::toString)
-				.collect(Collectors.joining(System.lineSeparator()));
+				.collect(Collectors.joining(", "));
 		Notification notification = group.createNotification(MessageBundle.message("action.update.releases.done.title"),
 				MessageBundle.message("action.update.releases.done", count, duration, detail), NotificationType.INFORMATION);
 		DaemonCodeAnalyzer.getInstance(project).restart(MessageBundle.message("action.update.releases.done.title"));

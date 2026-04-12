@@ -20,7 +20,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.springframework.util.StringUtils;
+import biz.paluch.dap.util.StringUtils;
 
 /**
  * Version suffix such as {@code SNAPSHOT}, {@code M1}, {@code RC1} or {@code RELEASE}.
@@ -54,12 +54,12 @@ interface Suffix extends Comparable<Suffix> {
 	 */
 	static Suffix parse(String suffix) {
 
-		if (!StringUtils.hasText(suffix)) {
+		if (StringUtils.isEmpty(suffix)) {
 			return Release.INSTANCE;
 		}
 
 		suffix = suffix.strip();
-		if (!StringUtils.hasText(suffix)) {
+		if (StringUtils.isEmpty(suffix)) {
 			return Release.INSTANCE;
 		}
 
@@ -93,10 +93,10 @@ interface Suffix extends Comparable<Suffix> {
 			String type = semVerPattern.group(1);
 			String separator = semVerPattern.group(2);
 			String counterString = semVerPattern.group(3);
-			if (type.equalsIgnoreCase(SNAPSHOT_MODIFIER) && !StringUtils.hasText(counterString) && separator == null) {
+			if (type.equalsIgnoreCase(SNAPSHOT_MODIFIER) && StringUtils.isEmpty(counterString) && separator == null) {
 				return Snapshot.INSTANCE;
 			}
-			if (!StringUtils.hasText(counterString)) {
+			if (StringUtils.isEmpty(counterString)) {
 				return new SemVerSuffix(type, -1, separator, "");
 			}
 			return new SemVerSuffix(type, Integer.parseInt(counterString), separator, counterString);

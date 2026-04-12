@@ -17,7 +17,6 @@ package biz.paluch.dap.support;
 
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.NewerVersionSeveritiesProvider;
-
 import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
@@ -28,16 +27,18 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 
 /**
- * Annotator that applies a highlight to version text in a build file when a newer version is available in the cache.
- * <p>
- * Complements {@code NewerVersionLineMarkerProvider}: the gutter icon provides a click target while this annotation
- * draws the reader's eye directly to the outdated version string in the editor.
+ * Annotator that applies a highlight to version text in a build file when a
+ * newer version is available in the cache.
+ * <p>Complements {@code NewerVersionLineMarkerProvider}: the gutter icon
+ * provides a click target while this annotation draws the reader's eye directly
+ * to the outdated version string in the editor.
  *
  * @author Mark Paluch
  */
 public abstract class NewerVersionAnnotatorSupport implements Annotator {
 
 	private final IntentionAction action;
+
 	private final HighlightSeverity severity;
 
 	protected NewerVersionAnnotatorSupport(IntentionAction action, HighlightSeverity severity) {
@@ -66,7 +67,8 @@ public abstract class NewerVersionAnnotatorSupport implements Annotator {
 				VirtualFile virtualFile = versionLiteral.getContainingFile().getVirtualFile();
 				if (virtualFile != null) {
 
-					message = MessageBundle.message("gutter.declaration.file", virtualFile.getName()) + System.lineSeparator()
+					message = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
+							+ System.lineSeparator()
 							+ message;
 					action = null;
 				}

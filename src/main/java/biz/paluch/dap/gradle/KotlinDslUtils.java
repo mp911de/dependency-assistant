@@ -15,8 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,15 +23,14 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.jetbrains.kotlin.psi.*;
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.kotlin.psi.*;
+import org.jspecify.annotations.Nullable;
 
 /**
  * PSI navigation utilities for KotlinScript Gradle build files.
@@ -45,7 +42,8 @@ class KotlinDslUtils {
 	private static final Pattern GRADLE_DEPENDENCY_VERSION_PATTERN = Pattern
 			.compile("([\\w.]+):(\\w[\\w.-]*):(.+)(:(.+))?");
 
-	private KotlinDslUtils() {}
+	private KotlinDslUtils() {
+	}
 
 	// -------------------------------------------------------------------------
 	// Version element location
@@ -81,10 +79,11 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Returns the version segment {@link KtCallElement} if the caret is inside the version part of a Kotlin DSL
-	 * string-notation dependency ({@code "group:artifact:version"}), or {@code null}.
+	 * Returns the version segment {@link KtCallElement} if the caret is inside the
+	 * version part of a Kotlin DSL string-notation dependency
+	 * ({@code "group:artifact:version"}), or {@code null}.
 	 */
-	public static GroovyDslUtils.@Nullable VersionLocation findKotlinVersionElement(KtCallElement call) {
+	public static @Nullable DependencyLocation findKotlinVersionElement(KtCallElement call) {
 
 		PsiFile file = call.getContainingFile();
 		if (!GradleUtils.isGradleFile(file)) {
@@ -98,21 +97,20 @@ class KotlinDslUtils {
 		}
 
 		String methodName = getKotlinCallName(call);
-		if (!StringUtils.hasText(methodName) || !isDependencyCall(call)) {
+		if (StringUtils.isEmpty(methodName) || !isDependencyCall(call)) {
 			return null;
 		}
 		StringBuilder raw = new StringBuilder();
 		StringBuilder rawVersion = new StringBuilder();
 		StringBuilder property = new StringBuilder();
 
-		doWithStrings(call, text -> {
-			raw.append(text);
-		}, ktExpression -> {
+		doWithStrings(call, raw::append, ktExpression -> {
 
 			if (ktExpression instanceof KtCallExpression ktCall) {
 				String name = getKotlinCallName(ktCall);
 				if ("property".equals(name)) {
-					doWithStrings(ktExpression, property::append, e -> {});
+					doWithStrings(ktExpression, property::append, e -> {
+					});
 				}
 			}
 		});
@@ -126,60 +124,25 @@ class KotlinDslUtils {
 
 					if (ops.getReferencedName().equals("version") && children.length > i + 1
 							&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
-
-						for (KtStringTemplateEntry entry : versionExpr.getEntries()) {
-							rawVersion.append(entry.getText());
-						}
+						rawVersion.append(getText(versionExpr));
 					}
 				}
 			}
 		}
 
-		return getVersionLocation(call, parentCall, raw.toString(), rawVersion.toString(), property.toString());
-	}
+		PropertyExpression versionExpression = StringUtils.hasText(property)
+				? PropertyExpression.property(property.toString())
+				: PropertyExpression.from(rawVersion.toString());
 
-	private static GroovyDslUtils.@Nullable VersionLocation getVersionLocation(KtCallElement call,
-			KtCallExpression parentCall, String raw, String rawVersion, String property) {
-
-		boolean isProperty = StringUtils.hasText(property);
-		if (isProperty) {
-			rawVersion = property;
-		}
-
-		String kotlinCallName = getKotlinCallName(parentCall);
-		if (GradleUtils.isPluginSection(kotlinCallName)) {
-			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(raw, raw), rawVersion, isProperty);
-		}
-
-		// Infix plugin form: id("plugin.id") version "x.y.z" — parentCall may not be `plugins` depending on PSI shape.
-		if (GradleUtils.isPlugin(getKotlinCallName(call)) && isInsidePluginsBlock(call) && !raw.contains(":")) {
-			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(raw.trim(), raw.trim()), rawVersion, isProperty);
-		}
-
-		String[] parts = raw.split(":");
-		if (parts.length < 2) {
-			return null;
-		}
-
-		ArtifactId artifactId = ArtifactId.of(parts[0].trim(), parts[1].trim());
-
-		if (StringUtils.hasText(rawVersion)) {
-			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(parts[0].trim(), parts[1].trim()),
-					rawVersion.toString(), isProperty);
-		}
-
-		if (parts.length < 3) {
-			return null;
-		}
-
-		return new GroovyDslUtils.VersionLocation(call, artifactId, parts[2].trim(), false);
+		return getVersionLocation(call, parentCall, raw.toString(), versionExpression);
 	}
 
 	/**
-	 * Returns the version segment {@link KtCallElement} if the caret is inside the version part of a Kotlin DSL
-	 * string-notation dependency ({@code "group:artifact:version"}), or {@code null}.
+	 * Returns the version segment {@link KtCallElement} if the caret is inside the
+	 * version part of a Kotlin DSL string-notation dependency
+	 * ({@code "group:artifact:version"}), or {@code null}.
 	 */
-	public static GroovyDslUtils.@Nullable VersionLocation findKotlinVersionElement(KtCallElement call,
+	public static @Nullable DependencyLocation findKotlinVersionElement(KtCallElement call,
 			KtStringTemplateEntry stringTemplate) {
 
 		KtCallExpression parentCall = PsiTreeUtil.getParentOfType(call, KtCallExpression.class);
@@ -188,7 +151,7 @@ class KotlinDslUtils {
 		}
 
 		String methodName = getKotlinCallName(call);
-		if (!StringUtils.hasText(methodName) || !isDependencyCall(call)) {
+		if (StringUtils.isEmpty(methodName) || !isDependencyCall(call)) {
 			return null;
 		}
 		StringBuilder raw = new StringBuilder();
@@ -199,31 +162,66 @@ class KotlinDslUtils {
 		Matcher matcher = GRADLE_DEPENDENCY_VERSION_PATTERN.matcher(templateText);
 		if (matcher.find()) {
 
-			String groupId = matcher.group(1);
-			String artifactId = matcher.group(2);
-			String version = matcher.group(3);
+			GradleDependency dependency = GradleDependency.parse(templateText);
+			if (dependency == null) {
+				return null;
+			}
 
-			return new GroovyDslUtils.VersionLocation(call, ArtifactId.of(groupId, artifactId), version, false);
+			return new DependencyLocation(call, dependency);
 		}
 
-		doWithStrings(call, text -> {
-			raw.append(text);
-		}, ktExpression -> {
+		doWithStrings(call, raw::append, ktExpression -> {
 
 			if (ktExpression instanceof KtCallExpression ktCall) {
 				String name = getKotlinCallName(ktCall);
 				if ("property".equals(name)) {
-					doWithStrings(ktExpression, property::append, e -> {});
+					doWithStrings(ktExpression, property::append, e -> {
+					});
 				}
 			}
 		});
 
-		if (!StringUtils.hasText(rawVersion) && !StringUtils.hasText(property)) {
+		if (StringUtils.isEmpty(rawVersion) && StringUtils.isEmpty(property)) {
 			rawVersion.append(stringTemplate.getText());
 		}
 
-		return getVersionLocation(call, parentCall, raw.toString(), rawVersion.toString(), property.toString());
+		PropertyExpression versionExpression = StringUtils.hasText(property)
+				? PropertyExpression.property(property.toString())
+				: PropertyExpression.from(rawVersion.toString());
+
+		return getVersionLocation(call, parentCall, raw.toString(), versionExpression);
 	}
+
+	private static @Nullable DependencyLocation getVersionLocation(KtCallElement call,
+			KtCallExpression parentCall, String gav, PropertyExpression versionExpression) {
+
+		String kotlinCallName = getKotlinCallName(parentCall);
+		if (GradleUtils.isPluginSection(kotlinCallName)) {
+
+			GradlePlugin id = GradlePlugin.of(gav);
+			GradleDependency dependency = GradleDependency.of(id, versionExpression);
+			return new DependencyLocation(call, dependency);
+		}
+
+		// Infix plugin form: id("plugin.id") version "x.y.z" — parentCall may not be
+		// `plugins` depending on PSI shape.
+		if (GradleUtils.isPlugin(getKotlinCallName(call)) && isInsidePluginsBlock(call) && !gav.contains(":")) {
+			GradleDependency dependency = GradleDependency.of(GradlePlugin.of(gav), versionExpression);
+			return new DependencyLocation(call, dependency);
+		}
+
+		GradleDependency dependency = GradleDependency.parse(gav);
+		if (dependency == null) {
+			return null;
+		}
+
+		if (dependency.getVersionSource().isDefined()) {
+			return new DependencyLocation(call, dependency);
+		}
+
+		return new DependencyLocation(call, dependency.withVersion(versionExpression));
+	}
+
 
 	/**
 	 * Returns the property name.
@@ -236,67 +234,21 @@ class KotlinDslUtils {
 				KtExpression arrayExpression = array.getArrayExpression();
 				List<KtExpression> indexExpressions = array.getIndexExpressions();
 
-				if (arrayExpression == null || !"extra".equals(arrayExpression.getText()) || indexExpressions.size() != 1) {
+				if (arrayExpression == null || !"extra".equals(arrayExpression.getText())
+						|| indexExpressions.size() != 1) {
 					return null;
 				}
 
 				StringBuilder builder = new StringBuilder();
 				KtExpression indexExpression = indexExpressions.getFirst();
-				doWithStrings(indexExpression, builder::append, e -> {});
+				doWithStrings(indexExpression, builder::append, e -> {
+				});
 
 				return builder.toString();
 			}
 		}
 
 		return null;
-	}
-
-	/**
-	 * Returns the version segment {@link PsiElement} if the caret is inside the version part of a Kotlin DSL
-	 * string-notation dependency ({@code "group:artifact:version"}), or {@code null}.
-	 */
-	public static GroovyDslUtils.@Nullable VersionLocation findKotlinVersionElement(PsiElement element) {
-
-		PsiFile file = element.getContainingFile();
-		if (!GradleUtils.isGradleFile(file)) {
-			return null;
-		}
-
-		KtStringTemplateExpression strTemplate = PsiTreeUtil.getParentOfType(element, KtStringTemplateExpression.class);
-		if (strTemplate == null) {
-			return null;
-		}
-
-		KtCallExpression call = PsiTreeUtil.getParentOfType(strTemplate, KtCallExpression.class);
-		if (call == null) {
-			return null;
-		}
-
-		String methodName = getKotlinCallName(call);
-		if (!GradleUtils.isDependencySection(methodName)) {
-			return null;
-		}
-
-		PsiElement[] children = strTemplate.getChildren();
-		String raw;
-		if (children.length > 1 && children[1] instanceof KtStringTemplateExpression str) {
-			raw = str.getText();
-
-		} else {
-			raw = strTemplate.getText();
-			// Strip surrounding quotes
-			if (raw.startsWith("\"") && raw.endsWith("\"")) {
-				raw = raw.substring(1, raw.length() - 1);
-			}
-		}
-
-		String[] parts = raw.split(":");
-		if (parts.length < 3) {
-			return null;
-		}
-
-		return new GroovyDslUtils.VersionLocation(strTemplate, ArtifactId.of(parts[0].trim(), parts[1].trim()),
-				parts[2].trim(), false);
 	}
 
 	// -------------------------------------------------------------------------
@@ -306,7 +258,7 @@ class KotlinDslUtils {
 	static boolean isDependencyCall(KtCallElement call) {
 
 		String methodName = getKotlinCallName(call);
-		if (!StringUtils.hasText(methodName)) {
+		if (StringUtils.isEmpty(methodName)) {
 			return false;
 		}
 
@@ -365,16 +317,21 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Find a {@link KtBinaryExpression} {@code extra["key"] = rhs} whose value is defined by the given PSI (direct string
-	 * RHS, inside {@code buildString { append("…") }}, triple-quoted literal, or {@code "….also { … = it }}).
+	 * Find a {@link KtBinaryExpression} {@code extra["key"] = rhs} whose value is
+	 * defined by the given PSI (direct string RHS, inside {@code buildString {
+	 * append("…") }}, triple-quoted literal, or {@code "….also { … = it }}).
 	 *
-	 * @param version a leaf or entry inside the version literal, or (for {@code it}-assignment) inside the receiver
-	 *          string of {@code .also}
+	 * @param version a leaf or entry inside the version literal, or (for
+	 * {@code it}-assignment) inside the receiver string of {@code .also}
 	 */
 	static @Nullable KtBinaryExpression findPropertyExpression(PsiElement version) {
 
 		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(version, KtBinaryExpression.class);
 		while (binary != null) {
+
+			if (!isExtra(binary)) {
+				continue;
+			}
 			if (!"=".equals(binary.getOperationReference().getText())) {
 				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
 				continue;
@@ -385,7 +342,8 @@ class KotlinDslUtils {
 				continue;
 			}
 			KtExpression receiver = arrayAccess.getArrayExpression();
-			if (!(receiver instanceof KtNameReferenceExpression nameRef) || !"extra".equals(nameRef.getReferencedName())) {
+			if (!(receiver instanceof KtNameReferenceExpression nameRef)
+					|| !"extra".equals(nameRef.getReferencedName())) {
 				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
 				continue;
 			}
@@ -399,7 +357,9 @@ class KotlinDslUtils {
 			}
 			binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
 		}
-		// "v".also { extra["k"] = it } — version PSI lives in the receiver, not under the assignment RHS.
+
+		// "v".also { extra["k"] = it } — version PSI lives in the receiver, not under
+		// the assignment RHS.
 		return findExtraItAssignmentFromAlsoReceiver(version);
 	}
 
@@ -415,7 +375,8 @@ class KotlinDslUtils {
 					if (lambda != null) {
 						KtExpression body = lambda.getBodyExpression();
 						if (body != null) {
-							for (KtBinaryExpression assign : PsiTreeUtil.collectElementsOfType(body, KtBinaryExpression.class)) {
+							for (KtBinaryExpression assign : PsiTreeUtil.collectElementsOfType(body,
+									KtBinaryExpression.class)) {
 								if (!"=".equals(assign.getOperationReference().getText())) {
 									continue;
 								}
@@ -423,7 +384,8 @@ class KotlinDslUtils {
 									continue;
 								}
 								KtExpression arrayExpr = arrayAccess.getArrayExpression();
-								if (!(arrayExpr instanceof KtNameReferenceExpression nr) || !"extra".equals(nr.getReferencedName())) {
+								if (!(arrayExpr instanceof KtNameReferenceExpression nr)
+										|| !"extra".equals(nr.getReferencedName())) {
 									continue;
 								}
 								if (assign.getRight() instanceof KtNameReferenceExpression ref
@@ -439,6 +401,34 @@ class KotlinDslUtils {
 			qual = PsiTreeUtil.getParentOfType(qual, KtQualifiedExpression.class);
 		}
 		return null;
+	}
+
+	public static boolean isExtra(KtBinaryExpression expr) {
+
+		// Must be an assignment: operator text is "="
+		if (!"=".equals(expr.getOperationReference().getText())) {
+			return false;
+		}
+
+		KtExpression left = expr.getLeft();
+
+		// Left must be extra["key"]
+		if (!(left instanceof KtArrayAccessExpression arrayAccess)) {
+			return false;
+		}
+
+		KtExpression receiver = arrayAccess.getArrayExpression();
+		if (!(receiver instanceof KtNameReferenceExpression nameRef)
+				|| !"extra".equals(nameRef.getReferencedName())) {
+			return false;
+		}
+
+		// Index must be a plain string literal
+		if (arrayAccess.getIndexExpressions().isEmpty()) {
+			return false;
+		}
+
+		return true;
 	}
 
 	private static @Nullable KtLambdaExpression firstLambdaArgument(KtCallExpression call) {
@@ -486,13 +476,103 @@ class KotlinDslUtils {
 		return isInsideBlock(element, GradleUtils::isPluginSection);
 	}
 
+	/**
+	 * Resolves the string value assigned to an {@code extra[...]} expression, or
+	 * {@code null} if unsupported.
+	 */
+	static @Nullable String getText(@Nullable KtExpression expression) {
+
+		if (expression instanceof KtStringTemplateExpression st) {
+			StringBuilder builder = new StringBuilder();
+			doWithStrings(st, builder::append, builder::append);
+			return builder.toString();
+		}
+
+		if (expression instanceof KtNameReferenceExpression ref && "it".equals(ref.getReferencedName())) {
+			return extractAlsoReceiverStringLiteral(ref);
+		}
+
+		if (expression instanceof KtCallExpression call) {
+			KtStringTemplateExpression literal = findBuildStringAppendLiteral(call);
+			if (literal != null) {
+				return getText(literal);
+			}
+		}
+		return null;
+	}
+
+	private static @Nullable String extractAlsoReceiverStringLiteral(KtNameReferenceExpression itRef) {
+
+		KtStringTemplateExpression receiver = findAlsoReceiverStringTemplate(itRef);
+		return receiver != null ? getText(receiver) : null;
+	}
+
+	public static @Nullable KtStringTemplateExpression findAlsoReceiverStringTemplate(KtNameReferenceExpression itRef) {
+
+		KtLambdaExpression lambda = PsiTreeUtil.getParentOfType(itRef, KtLambdaExpression.class);
+		if (lambda == null) {
+			return null;
+		}
+		KtCallExpression alsoCall = PsiTreeUtil.getParentOfType(lambda, KtCallExpression.class);
+		if (alsoCall == null || !"also".equals(KotlinDslUtils.getKotlinCallName(alsoCall))) {
+			return null;
+		}
+		PsiElement parent = alsoCall.getParent();
+		if (parent instanceof KtQualifiedExpression dot) {
+			KtExpression recv = dot.getReceiverExpression();
+			if (recv instanceof KtStringTemplateExpression st) {
+				return st;
+			}
+		}
+		return null;
+	}
+
+	public static @Nullable KtStringTemplateExpression findBuildStringAppendLiteral(KtCallExpression buildStringCall) {
+
+		if (!"buildString".equals(KotlinDslUtils.getKotlinCallName(buildStringCall))) {
+			return null;
+		}
+
+		KtLambdaExpression lambda = findTrailingLambda(buildStringCall);
+		if (lambda == null) {
+			return null;
+		}
+		KtExpression body = lambda.getBodyExpression();
+		if (body == null) {
+			return null;
+		}
+		for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(body, KtCallExpression.class)) {
+			if (!"append".equals(KotlinDslUtils.getKotlinCallName(inner))) {
+				continue;
+			}
+			for (ValueArgument va : inner.getValueArguments()) {
+				KtExpression argExpr = va.getArgumentExpression();
+				if (argExpr instanceof KtStringTemplateExpression st) {
+					return st;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static @Nullable KtLambdaExpression findTrailingLambda(KtCallExpression call) {
+
+		for (ValueArgument va : call.getValueArguments()) {
+			KtExpression expr = va.getArgumentExpression();
+			if (expr instanceof KtLambdaExpression lambda) {
+				return lambda;
+			}
+		}
+		return null;
+	}
+
 	// -------------------------------------------------------------------------
 	// Version catalog (Kotlin {@code libs.…})
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Innermost {@code alias}/{@code id}/{@code implementation}/… call whose first argument is a {@code libs.…} chain and
-	 * that contains {@code element}.
+	 * Innermost {@code alias}/{@code id}/{@code implementation}/… call whose first
+	 * argument is a {@code libs.…} chain and that contains {@code element}.
 	 */
 	static @Nullable KtCallExpression findEnclosingCatalogAccessorCall(PsiElement element) {
 
@@ -523,7 +603,7 @@ class KotlinDslUtils {
 	private static boolean isKotlinCatalogConsumerCall(KtCallExpression call) {
 
 		String name = getKotlinCallName(call);
-		if (!StringUtils.hasText(name)) {
+		if (StringUtils.isEmpty(name)) {
 			return false;
 		}
 		if ("alias".equals(name)) {
@@ -585,12 +665,13 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * {@code true} for PSI nodes that duplicate the same version hit as {@link KtLiteralStringTemplateEntry} (leaf tokens
-	 * under that entry, or the wrapping {@link KtStringTemplateExpression} when it has no {@code ${…}} segments).
-	 * <p>
-	 * Matches the Groovy rule that only
-	 * {@link org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral} is a version anchor,
-	 * not each leaf under it.
+	 * {@code true} for PSI nodes that duplicate the same version hit as
+	 * {@link KtLiteralStringTemplateEntry} (leaf tokens under that entry, or the
+	 * wrapping {@link KtStringTemplateExpression} when it has no {@code ${…}}
+	 * segments).
+	 * <p>Matches the Groovy rule that only
+	 * {@link org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral}
+	 * is a version anchor, not each leaf under it.
 	 */
 	static boolean isRedundantKotlinVersionHighlightAnchor(PsiElement element) {
 

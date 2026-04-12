@@ -15,17 +15,13 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.Comparator;
+import java.util.List;
+
 import biz.paluch.dap.SuggestionProviderUtil;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.state.DependencyAssistantService;
-
-import java.util.Comparator;
-import java.util.List;
-
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
-
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -73,24 +69,6 @@ public class DependencyVersionCompletionContributor extends CompletionContributo
 		options.sort(Comparator.reverseOrder());
 
 		SuggestionProviderUtil.addSuggestions(options, versionsResult, id -> "", null);
-	}
-
-	private static GroovyDslUtils.VersionLocation resolveVersionLocation(PsiFile file, PsiElement element) {
-
-		if (element instanceof GrLiteral || (element.getParent() instanceof GrLiteral)) {
-			PsiElement target = element instanceof GrLiteral ? element : element.getParent();
-			return GroovyDslUtils.findGroovyVersionElement(target);
-		}
-
-		if (GradleUtils.KOTLIN_AVAILABLE) {
-
-			if (element instanceof KtStringTemplateExpression || element.getParent() instanceof KtStringTemplateExpression) {
-				PsiElement target = element instanceof KtStringTemplateExpression ? element : element.getParent();
-				return KotlinDslUtils.findKotlinVersionElement(target);
-			}
-		}
-
-		return null;
 	}
 
 }

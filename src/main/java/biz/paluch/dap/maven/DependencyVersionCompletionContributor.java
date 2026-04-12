@@ -15,7 +15,8 @@
  */
 package biz.paluch.dap.maven;
 
-import static com.intellij.patterns.PlatformPatterns.*;
+import java.util.Comparator;
+import java.util.List;
 
 import biz.paluch.dap.SuggestionProviderUtil;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -23,12 +24,7 @@ import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
-
-import java.util.Comparator;
-import java.util.List;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
@@ -39,6 +35,8 @@ import com.intellij.patterns.XmlPatterns;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTokenType;
 import com.intellij.util.ProcessingContext;
+
+import static com.intellij.patterns.PlatformPatterns.*;
 
 /**
  * Provides version auto-completion suggestions when editing a Maven {@code <version>} value.

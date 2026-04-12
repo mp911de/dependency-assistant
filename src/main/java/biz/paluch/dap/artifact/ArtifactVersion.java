@@ -17,9 +17,8 @@ package biz.paluch.dap.artifact;
 
 import java.util.Optional;
 
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
 
 /**
  * Interface representing an artifact version. Supports semantic versions (e.g. {@code 1.2.3.RELEASE}, {@code 2.0.0-M1})
@@ -63,7 +62,7 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	 */
 	static Optional<ArtifactVersion> from(@Nullable String version) {
 
-		if (!StringUtils.hasText(version)) {
+		if (StringUtils.isEmpty(version)) {
 			return Optional.empty();
 		}
 		try {

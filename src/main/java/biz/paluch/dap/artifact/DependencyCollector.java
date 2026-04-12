@@ -24,9 +24,6 @@ import java.util.function.BiConsumer;
 
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.util.MultiValueMap;
-import org.springframework.util.MultiValueMapAdapter;
-
 /**
  * Collects all dependencies and their usages.
  *
@@ -34,9 +31,9 @@ import org.springframework.util.MultiValueMapAdapter;
  */
 public class DependencyCollector {
 
-	private final MultiValueMap<ArtifactId, ArtifactUsage> allDependencies = new MultiValueMapAdapter<>(
-			new TreeMap<>());
-	private final Map<ArtifactId, Dependency> versionCheckCandidates = new TreeMap<>();
+	private final Map<ArtifactId, DeclaredDependency> declarations = new TreeMap<>();
+
+	private final Map<ArtifactId, Dependency> usages = new TreeMap<>();
 
 	/**
 	 * Properties defined in the scanned file.
@@ -44,12 +41,9 @@ public class DependencyCollector {
 	private final Set<String> properties = new TreeSet<>();
 
 	/**
-	 * Add a dependency usage.
+	 * Add properties defined in the scanned file.
+	 * @param propertyNames the property names defined in the scanned file.
 	 */
-	public void add(ArtifactId coordinate, ArtifactUsage usage) {
-		allDependencies.add(coordinate, usage);
-	}
-
 	public void addProperties(Collection<String> propertyNames) {
 		this.properties.addAll(propertyNames);
 	}
@@ -57,17 +51,38 @@ public class DependencyCollector {
 	/**
 	 * Execute the given callback for each dependency.
 	 */
-	public void doWithArtifacts(BiConsumer<ArtifactId, ArtifactUsage> callback) {
-		allDependencies.forEach((coordinate, usages) -> usages.forEach(usage -> callback.accept(coordinate, usage)));
+	public void doWithDeclarations(BiConsumer<ArtifactId, DeclaredDependency> callback) {
+		declarations.forEach(callback);
 	}
 
 	/**
-	 * Register an update candidate.
+	 * Register a dependency usage.
 	 */
-	public void registerUpdateCandidate(ArtifactId artifactId, ArtifactVersion currentVersion,
+	public void registerUsage(ArtifactId artifactId, ArtifactVersion currentVersion,
 			DeclarationSource declarationSource, VersionSource versionSource) {
+		usages.computeIfAbsent(artifactId, ac -> new Dependency(ac, currentVersion))
+				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
+	}
 
-		versionCheckCandidates.computeIfAbsent(artifactId, ac -> new Dependency(ac, currentVersion))
+	/**
+	 * Register dependency declaration and usage.
+	 */
+	public void register(ArtifactId artifactId, ArtifactVersion currentVersion,
+			DeclarationSource declarationSource, VersionSource versionSource) {
+		registerDeclaration(artifactId, declarationSource, versionSource);
+		usages.computeIfAbsent(artifactId, ac -> new Dependency(ac, currentVersion))
+				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
+	}
+
+	/**
+	 * Register a dependency declaration that is declared in the scanned file.
+	 * Declarations are not required to define a version but indicate the place
+	 * where a dependency has been declared. This allows to find usages that are not
+	 * declared in the scanned file but are transitively used by other dependencies.
+	 */
+	public void registerDeclaration(ArtifactId artifactId,
+			DeclarationSource declarationSource, VersionSource versionSource) {
+		declarations.computeIfAbsent(artifactId, DeclaredDependency::new)
 				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
 	}
 
@@ -75,14 +90,21 @@ public class DependencyCollector {
 	 * Return whether there are no update candidates.
 	 */
 	public boolean isEmpty() {
-		return versionCheckCandidates.isEmpty();
+		return usages.isEmpty();
 	}
 
 	/**
-	 * Return all update candidates.
+	 * Return all dependency declarations.
 	 */
-	public Collection<Dependency> getDependencies() {
-		return versionCheckCandidates.values();
+	public Collection<DeclaredDependency> getDeclarations() {
+		return declarations.values();
+	}
+
+	/**
+	 * Return all dependency usages.
+	 */
+	public Collection<Dependency> getUsages() {
+		return usages.values();
 	}
 
 	/**
@@ -95,15 +117,15 @@ public class DependencyCollector {
 	/**
 	 * Return the dependency for the given artifact id.
 	 */
-	public @Nullable Dependency getDependency(ArtifactId artifactId) {
-		return versionCheckCandidates.get(artifactId);
+	public @Nullable Dependency getUsage(ArtifactId artifactId) {
+		return usages.get(artifactId);
 	}
 
 	/**
 	 * Return the dependency for the given artifact id.
 	 */
-	public @Nullable Dependency getDependency(String groupId, String artifactId) {
-		return getDependency(ArtifactId.of(groupId, artifactId));
+	public @Nullable Dependency getUsage(String groupId, String artifactId) {
+		return getUsage(ArtifactId.of(groupId, artifactId));
 	}
 
 }

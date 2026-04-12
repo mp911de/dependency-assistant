@@ -15,20 +15,12 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.RemoteRepository;
-
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
-import org.jetbrains.plugins.gradle.settings.GradleSettings;
-import org.jetbrains.plugins.gradle.util.GradleConstants;
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.ClassUtils;
-
+import biz.paluch.dap.artifact.RemoteRepository;
 import com.intellij.externalSystem.MavenRepositoryData;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
@@ -38,6 +30,12 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
+import org.jetbrains.plugins.gradle.settings.GradleSettings;
+import org.jetbrains.plugins.gradle.util.GradleConstants;
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.ClassUtils;
 
 /**
  * PSI navigation utilities for Gradle build files.
@@ -219,7 +217,7 @@ class GradleUtils {
 	// Helpers
 	// -------------------------------------------------------------------------
 
-	static @Nullable String updateGavVersion(String gav, String newVersion) {
+	public static @Nullable String updateGavVersion(String gav, String newVersion) {
 		String[] parts = gav.split(":");
 		if (parts.length < 3) {
 			return null;

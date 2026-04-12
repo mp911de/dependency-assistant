@@ -15,20 +15,16 @@
  */
 package biz.paluch.dap.maven;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
-
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.diagnostic.Logger;
@@ -40,6 +36,7 @@ import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Applies selected dependency and plugin version updates to a POM file according to the {@link VersionSource} and
@@ -97,8 +94,8 @@ class UpdatePom {
 
 		for (VersionSource source : update.versionSources()) {
 
-			if (source instanceof VersionSource.VersionPropertySource vps) {
-				if (source instanceof VersionSource.ProfilePropertySource profileProperty) {
+			if (source instanceof VersionSource.VersionProperty vps) {
+				if (source instanceof VersionSource.Profile profileProperty) {
 
 					XmlTag profile = findProfile(projectTag, profileProperty.getProfileId());
 					if (profile != null) {

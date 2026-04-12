@@ -15,27 +15,25 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.support.DependencyCheckSupport;
 import biz.paluch.dap.support.ReleasesRetrievalTaskSupport;
-
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.Set;
-
-import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
-import org.jetbrains.plugins.gradle.settings.GradleSettings;
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.util.TimeoutUtil;
 import com.intellij.util.progress.StepsProgressIndicator;
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
+import org.jetbrains.plugins.gradle.settings.GradleSettings;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Background task that refreshes the release state for each used dependency.
@@ -69,7 +67,7 @@ class ReleasesRetrievalTask extends ReleasesRetrievalTaskSupport {
 					.addAll(GradleUtils.getRepositoriesFromImportedProject(project, linkedProject.getExternalProjectPath()));
 		}
 
-		GradleDependencyCheckService service = new GradleDependencyCheckService(project);
+		GradleDependencyCheckService service = GradleDependencyCheckService.getInstance(project);
 		DependencyCollector allDependencies = ApplicationManager.getApplication()
 				.runReadAction((Computable<DependencyCollector>) () -> updateState.getAllDependencies(steps));
 		steps.nextStep();

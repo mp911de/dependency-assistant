@@ -33,7 +33,9 @@ public class UpgradeSuggestion {
 			ArtifactReference.unresolved());
 
 	private final @Nullable UpgradeStrategy strategy;
+
 	private final @Nullable Release bestOption;
+
 	private final ArtifactReference artifactReference;
 
 	private UpgradeSuggestion(@Nullable UpgradeStrategy strategy, @Nullable Release bestOption,
@@ -51,7 +53,8 @@ public class UpgradeSuggestion {
 	}
 
 	/**
-	 * Create a new {@code QualifiedUpgradeSuggestion} for the given {@link UpgradeStrategy} and {@link Release}.
+	 * Create a new {@code QualifiedUpgradeSuggestion} for the given
+	 * {@link UpgradeStrategy} and {@link Release}.
 	 */
 	public static UpgradeSuggestion of(UpgradeStrategy strategy, Release bestOption,
 			ArtifactReference artifactReference) {
@@ -71,8 +74,8 @@ public class UpgradeSuggestion {
 	}
 
 	/**
-	 * Return the {@link UpgradeStrategy} for this suggestion or throw {@link IllegalStateException} if no suggestion is
-	 * present.
+	 * Return the {@link UpgradeStrategy} for this suggestion or throw
+	 * {@link IllegalStateException} if no suggestion is present.
 	 */
 	public UpgradeStrategy getStrategy() {
 		Assert.state(isPresent() && strategy != null, "No upgrade option available");
@@ -80,7 +83,8 @@ public class UpgradeSuggestion {
 	}
 
 	/**
-	 * Return the {@link Release} for this suggestion or throw {@link IllegalStateException} if no suggestion is present.
+	 * Return the {@link Release} for this suggestion or throw
+	 * {@link IllegalStateException} if no suggestion is present.
 	 */
 	public Release getRelease() {
 		Assert.state(isPresent() && bestOption != null, "No upgrade option available");

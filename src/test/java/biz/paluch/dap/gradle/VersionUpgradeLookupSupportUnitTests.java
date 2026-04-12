@@ -15,32 +15,38 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
+import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-
-import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.*;
+
 /**
- * Unit tests for {@link VersionUpgradeLookupSupport#determineUpgrade(ArtifactVersion, List)}.
+ * Unit tests for {@link VersionUpgradeLookupSupport}.
  *
  * @author Mark Paluch
  */
 class VersionUpgradeLookupSupportUnitTests {
 
+	ArtifactReference reference = ArtifactReference
+			.from(it -> it.artifact(ArtifactId.of("foo", "bar")).versionSource(VersionSource.none()));
+
 	@Test
 	void returnsNullWhenNoReleasesAvailable() {
 
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				List.of());
 
-		assertThat(result).isNull();
+		assertThat(result.isPresent()).isFalse();
 	}
 
 	@Test
@@ -49,10 +55,10 @@ class VersionUpgradeLookupSupportUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("2.0.0");
 		List<Release> releases = List.of(Release.of("1.5.0"), Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNull();
+		assertThat(result.isPresent()).isFalse();
 	}
 
 	@Test
@@ -61,13 +67,11 @@ class VersionUpgradeLookupSupportUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> releases = List.of(Release.of("1.0.1"), Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNotNull();
-		assertThat(result.strategy()).isEqualTo(UpgradeStrategy.PATCH);
-		assertThat(result.bestOption().version().toString()).isEqualTo("1.0.1");
-		assertThat(result.current()).isEqualTo(current);
+		assertThat(result.getStrategy()).isEqualTo(UpgradeStrategy.PATCH);
+		assertThat(result.getRelease().version().toString()).isEqualTo("1.0.1");
 	}
 
 	@Test
@@ -76,12 +80,11 @@ class VersionUpgradeLookupSupportUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> releases = List.of(Release.of("1.1.0"), Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNotNull();
-		assertThat(result.strategy()).isEqualTo(UpgradeStrategy.MINOR);
-		assertThat(result.bestOption().version().toString()).isEqualTo("1.1.0");
+		assertThat(result.getStrategy()).isEqualTo(UpgradeStrategy.MINOR);
+		assertThat(result.getRelease().version().toString()).isEqualTo("1.1.0");
 	}
 
 	@Test
@@ -90,12 +93,11 @@ class VersionUpgradeLookupSupportUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> releases = List.of(Release.of("2.0.0"), Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNotNull();
-		assertThat(result.strategy()).isEqualTo(UpgradeStrategy.MAJOR);
-		assertThat(result.bestOption().version().toString()).isEqualTo("2.0.0");
+		assertThat(result.getStrategy()).isEqualTo(UpgradeStrategy.MAJOR);
+		assertThat(result.getRelease().version().toString()).isEqualTo("2.0.0");
 	}
 
 	@Test
@@ -106,12 +108,11 @@ class VersionUpgradeLookupSupportUnitTests {
 		List<Release> releases = List.of(Release.of("2.0.0"), Release.of("1.1.0"), Release.of("1.0.1"),
 				Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNotNull();
-		assertThat(result.strategy()).isEqualTo(UpgradeStrategy.MAJOR);
-		assertThat(result.bestOption().version().toString()).isEqualTo("2.0.0");
+		assertThat(result.getStrategy()).isEqualTo(UpgradeStrategy.MAJOR);
+		assertThat(result.getRelease().version().toString()).isEqualTo("2.0.0");
 	}
 
 	@Test
@@ -120,12 +121,11 @@ class VersionUpgradeLookupSupportUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> releases = List.of(Release.of("1.2.0"), Release.of("1.0.1"), Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNotNull();
-		assertThat(result.strategy()).isEqualTo(UpgradeStrategy.MINOR);
-		assertThat(result.bestOption().version().toString()).isEqualTo("1.2.0");
+		assertThat(result.getStrategy()).isEqualTo(UpgradeStrategy.MINOR);
+		assertThat(result.getRelease().version().toString()).isEqualTo("1.2.0");
 	}
 
 	@Test
@@ -135,10 +135,10 @@ class VersionUpgradeLookupSupportUnitTests {
 		// Preview/milestone releases should not trigger an upgrade suggestion.
 		List<Release> releases = List.of(Release.of("2.0.0.M1"), Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNull();
+		assertThat(result.isPresent()).isFalse();
 	}
 
 	@Test
@@ -147,10 +147,9 @@ class VersionUpgradeLookupSupportUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> releases = List.of(Release.of("2.0.0"), Release.of("1.0.0"));
 
-		VersionUpgradeLookupSupport.UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(current,
+		UpgradeSuggestion result = VersionUpgradeLookupSupport.determineUpgrade(reference, current,
 				releases);
 
-		assertThat(result).isNotNull();
 		assertThat(result.getMessage()).isNotNull().isNotEmpty();
 	}
 

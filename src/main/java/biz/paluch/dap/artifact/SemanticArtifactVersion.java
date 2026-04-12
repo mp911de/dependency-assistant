@@ -15,14 +15,13 @@
  */
 package biz.paluch.dap.artifact;
 
-import biz.paluch.dap.artifact.Suffix.Release;
-import biz.paluch.dap.artifact.Suffix.SemVerSuffix;
-
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.springframework.util.Assert;
+import biz.paluch.dap.artifact.Suffix.Release;
+import biz.paluch.dap.artifact.Suffix.SemVerSuffix;
+import biz.paluch.dap.util.StringUtils;
 
 /**
  * Value object to represent version of a particular artifact.
@@ -75,32 +74,17 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	SemanticArtifactVersion(String rawVersion, NumericVersionComponents components, boolean modifierFormat,
 			Suffix suffix) {
 
-		Assert.notNull(rawVersion, "Raw version must not be null!");
-		Assert.notNull(components, "Version components must not be null!");
-		Assert.notNull(suffix, "Suffix must not be null!");
+		if (rawVersion == null) {
+			throw new IllegalArgumentException("Raw version must not be null!");
+		}
+		if (components == null) {
+			throw new IllegalArgumentException("Version components must not be null!");
+		}
+		if (suffix == null) {
+			throw new IllegalArgumentException("Suffix must not be null!");
+		}
 
 		this.version = rawVersion;
-		this.components = components;
-		this.modifierFormat = modifierFormat;
-		this.suffix = suffix;
-	}
-
-	/**
-	 * Creates a new {@link SemanticArtifactVersion} from the given logical {@link NumericVersionComponents}.
-	 *
-	 * @param version must not be {@literal null}.
-	 * @param components must not be {@literal null}.
-	 * @param modifierFormat
-	 */
-	private SemanticArtifactVersion(String version, NumericVersionComponents components, boolean modifierFormat,
-			boolean skipSeparator,
-			Suffix suffix) {
-
-		Assert.notNull(version, "Raw version must not be null!");
-		Assert.notNull(components, "Version components must not be null!");
-		Assert.notNull(suffix, "Suffix must not be null!");
-
-		this.version = version;
 		this.components = components;
 		this.modifierFormat = modifierFormat;
 		this.suffix = suffix;
@@ -114,7 +98,9 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	 */
 	public static SemanticArtifactVersion of(String source) {
 
-		Assert.hasText(source, "Version source must not be null or empty!");
+		if (StringUtils.isEmpty(source)) {
+			throw new IllegalArgumentException("Version source must not be null or empty!");
+		}
 
 		Matcher matcher = PATTERN.matcher(source);
 		if (matcher.matches()) {
@@ -124,7 +110,9 @@ class SemanticArtifactVersion implements ArtifactVersion {
 			NumericVersionComponents version = NumericVersionComponents.parse(source.substring(0, suffixStart));
 			String suffix = source.substring(suffixStart + 1);
 
-			Assert.isTrue(suffix.matches(Suffix.VALID_SUFFIX), String.format("Invalid version suffix: %s!", source));
+			if (!suffix.matches(Suffix.VALID_SUFFIX)) {
+				throw new IllegalArgumentException("Invalid version suffix: %s!".formatted(source));
+			}
 
 			return new SemanticArtifactVersion(source, version, false, Suffix.parse(suffix));
 		}
@@ -158,12 +146,11 @@ class SemanticArtifactVersion implements ArtifactVersion {
 			String modifierdelimiter = matcher.group(4);
 			String suffix = matcher.group(5);
 
-			return new SemanticArtifactVersion(source, version, "-".equals(modifierdelimiter),
-					!("-".equals(modifierdelimiter) || ".".equals(modifierdelimiter)), Suffix.parse(suffix));
+			return new SemanticArtifactVersion(source, version, "-".equals(modifierdelimiter), Suffix.parse(suffix));
 		}
 
 		throw new IllegalArgumentException(
-				String.format("Version %s does not match <version>.<modifier> nor <version>-<modifier> pattern", source));
+				"Version %s does not match <version>.<modifier> nor <version>-<modifier> pattern".formatted(source));
 	}
 
 	/**

@@ -15,22 +15,14 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
-
-import java.util.List;
-
-import org.toml.lang.psi.TomlFile;
-import org.toml.lang.psi.TomlInlineTable;
-import org.toml.lang.psi.TomlKey;
-import org.toml.lang.psi.TomlKeyValue;
-import org.toml.lang.psi.TomlLiteral;
-import org.toml.lang.psi.TomlPsiFactory;
-import org.toml.lang.psi.TomlTable;
-
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.application.ApplicationManager;
@@ -44,9 +36,17 @@ import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.toml.lang.psi.TomlFile;
+import org.toml.lang.psi.TomlInlineTable;
+import org.toml.lang.psi.TomlKey;
+import org.toml.lang.psi.TomlKeyValue;
+import org.toml.lang.psi.TomlLiteral;
+import org.toml.lang.psi.TomlPsiFactory;
+import org.toml.lang.psi.TomlTable;
 
 /**
- * Applies selected dependency version updates to Gradle build/property/TOML files.
+ * Applies selected dependency version updates to Gradle build/property/TOML
+ * files.
  *
  * @author Mark Paluch
  */
@@ -60,7 +60,7 @@ class UpdateGradleFile {
 
 	public UpdateGradleFile(Project project) {
 		this.project = project;
-		this.groovy = new UpdateGroovyDsl(project);
+		this.groovy = new UpdateGroovyDsl();
 	}
 
 	/**
@@ -107,7 +107,7 @@ class UpdateGradleFile {
 
 		for (VersionSource source : update.versionSources()) {
 
-			if (source instanceof VersionSource.VersionPropertySource vps) {
+			if (source instanceof VersionSource.VersionProperty vps) {
 				String propertyKey = vps.getProperty();
 				updateProperty(buildFile, propertyKey, newVersion);
 			}
@@ -125,7 +125,8 @@ class UpdateGradleFile {
 	}
 
 	/**
-	 * Updates a version entry inside the {@code [versions]} table of a {@code libs.versions.toml} catalog.
+	 * Updates a version entry inside the {@code [versions]} table of a
+	 * {@code libs.versions.toml} catalog.
 	 *
 	 * @return {@code true} if the key was found and updated
 	 */
@@ -145,14 +146,16 @@ class UpdateGradleFile {
 				if (!(kv.getValue() instanceof TomlLiteral literal)) {
 					continue;
 				}
-				TomlLiteral newLiteral = new TomlPsiFactory(project, false).createLiteral("\"%s\"".formatted(newVersion));
+				TomlLiteral newLiteral = new TomlPsiFactory(project, false)
+						.createLiteral("\"%s\"".formatted(newVersion));
 				literal.replace(newLiteral);
 			}
 		}
 	}
 
 	/**
-	 * Updates a property value in a properties file or Groovy/Kotlin ext/extra block.
+	 * Updates a property value in a properties file or Groovy/Kotlin ext/extra
+	 * block.
 	 *
 	 * @return {@code true} if the property was found and updated
 	 */
@@ -170,19 +173,21 @@ class UpdateGradleFile {
 			updateProperty(tf, propertyKey, newVersion);
 		}
 
-		// Groovy DSL: ext { key = 'value' } / ext.key = 'value' / ext { set('key', 'value') }
+		// Groovy DSL: ext { key = 'value' } / ext.key = 'value' / ext { set('key',
+		// 'value') }
 		if (GradleUtils.isGroovyDsl(file.getVirtualFile())) {
 			groovy.updateExtProperty(file, propertyKey, newVersion);
 		}
 
 		// Kotlin DSL: extra["key"] = "value"
 		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
-			KotlinDslUpdate.updateExtraProperty(file, propertyKey, newVersion);
+			new UpdateKotlinDsl().updateExtraProperty(file, propertyKey, newVersion);
 		}
 	}
 
 	/**
-	 * Updates the version in a dependency GAV string literal or map-notation {@code version:} argument.
+	 * Updates the version in a dependency GAV string literal or map-notation
+	 * {@code version:} argument.
 	 */
 	private void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
 
@@ -190,20 +195,20 @@ class UpdateGradleFile {
 		VirtualFile virtualFile = file.getVirtualFile();
 
 		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
-			updateTomlInlineVersion(tomlFile, artifactId, newVersion);
+			updarteDeclaration(tomlFile, artifactId, newVersion);
 			return;
 		}
 
 		// Groovy DSL
 		if (GradleUtils.isGroovyDsl(virtualFile)) {
-			groovy.applyUpdate(file, artifactId, newVersion);
+			groovy.updateDeclaration(file, artifactId, newVersion);
 			return;
 		}
 
 		// Kotlin DSL
 		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			KotlinDslUpdate.applyKotlinUpdate(file, artifactId, newVersion, List.of(VersionSource.declared(newVersion)),
-					List.of(DeclarationSource.dependency()));
+			new UpdateKotlinDsl().updateDeclaration(file, artifactId, newVersion,
+					DeclarationSource.dependency());
 		}
 	}
 
@@ -216,26 +221,27 @@ class UpdateGradleFile {
 		VirtualFile virtualFile = file.getVirtualFile();
 
 		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
-			updateTomlInlineVersion(tomlFile, id, newVersion);
+			updarteDeclaration(tomlFile, id, newVersion);
 		}
 
 		// Groovy DSL
 		if (GradleUtils.isGroovyDsl(virtualFile)) {
-			groovy.applyUpdate(file, id, newVersion);
+			groovy.updateDeclaration(file, id, newVersion);
 		}
 
 		// Kotlin DSL
 		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			KotlinDslUpdate.applyKotlinUpdate(file, id, newVersion, List.of(VersionSource.declared(newVersion)),
-					List.of(DeclarationSource.plugin()));
+			new UpdateKotlinDsl().updateDeclaration(file, id, newVersion,
+					DeclarationSource.plugin());
 		}
 	}
 
 	/**
-	 * Updates {@code version = "…"} inside a {@code [libraries]} or {@code [plugins]} inline table when the entry matches
-	 * {@code artifactId} and uses a literal version (not {@code version.ref}).
+	 * Updates {@code version = "…"} inside a {@code [libraries]} or
+	 * {@code [plugins]} inline table when the entry matches {@code artifactId} and
+	 * uses a literal version (not {@code version.ref}).
 	 */
-	private void updateTomlInlineVersion(TomlFile file, ArtifactId artifactId, String newVersion) {
+	private void updarteDeclaration(TomlFile file, ArtifactId artifactId, String newVersion) {
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
 
@@ -249,8 +255,8 @@ class UpdateGradleFile {
 					continue;
 				}
 
-				GradleParser.GradleDependency dep = TomlParser.parseTomlEntry(inline, GradleParser::parseArtifactId);
-				if (!(dep instanceof GradleParser.SimpleDependency sd)) {
+				GradleDependency dep = TomlParser.parseTomlEntry(inline, GradleParser::parseArtifactId);
+				if (!(dep instanceof SimpleDependency sd)) {
 					continue;
 				}
 
@@ -275,7 +281,8 @@ class UpdateGradleFile {
 
 			if (inner.getValue() instanceof TomlLiteral literal) {
 
-				TomlLiteral newLiteral = new TomlPsiFactory(project, false).createLiteral("\"%s\"".formatted(newVersion));
+				TomlLiteral newLiteral = new TomlPsiFactory(project, false)
+						.createLiteral("\"%s\"".formatted(newVersion));
 				literal.replace(newLiteral);
 				return;
 			}

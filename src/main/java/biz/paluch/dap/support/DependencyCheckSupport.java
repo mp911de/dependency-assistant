@@ -15,6 +15,14 @@
  */
 package biz.paluch.dap.support;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
+
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -28,25 +36,15 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.function.Supplier;
-
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.CollectionUtils;
-
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.concurrency.AppExecutorUtil;
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.CollectionUtils;
 
 /**
  * Service that runs a dependency check for a project.
@@ -112,7 +110,7 @@ public abstract class DependencyCheckSupport {
 		List<DependencyUpdateOption> items = new ArrayList<>();
 		List<String> errors = new ArrayList<>();
 		List<Future<ResolverResult>> futures = new ArrayList<>();
-		List<Dependency> tasks = new ArrayList<>(collector.getDependencies());
+		List<Dependency> tasks = new ArrayList<>(collector.getUsages());
 
 		for (Dependency task : tasks) {
 			futures.add(executor.submit(() -> {

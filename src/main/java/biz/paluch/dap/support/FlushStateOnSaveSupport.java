@@ -19,7 +19,6 @@ import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
-
 import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
@@ -32,8 +31,8 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 
 /**
- * Listener base class that invalidates and re-collects the dependency state for build files when they are saved or
- * reloaded.
+ * Listener base class that invalidates and re-collects the dependency state for
+ * build files when they are saved or reloaded.
  *
  * @author Mark Paluch
  */
@@ -56,13 +55,12 @@ public abstract class FlushStateOnSaveSupport extends ActionsOnSaveFileDocumentM
 			return;
 		}
 
-		ProjectState projectState = state.getProjectState(context.getProjectId());
-		projectState.invalidateDependencies();
-
 		ApplicationManager.getApplication().runReadAction(() -> {
 			PsiManager psiManager = PsiManager.getInstance(project);
 			PsiFile buildFile = psiManager.findFile(file);
 			if (buildFile != null) {
+				ProjectState projectState = state.getProjectState(context.getProjectId());
+				projectState.invalidateDependencies();
 				DependencyCollector collector = collectDependencies(project, buildFile);
 				projectState.setDependencies(collector);
 			}

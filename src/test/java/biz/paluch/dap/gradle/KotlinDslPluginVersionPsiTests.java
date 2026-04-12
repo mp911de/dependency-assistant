@@ -15,19 +15,8 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
-
-import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.support.UpgradeSuggestion;
-
-import java.util.Map;
-
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.LightProjectDescriptor;
@@ -36,6 +25,13 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.junit5.RunInEdt;
+import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * PSI tests for Kotlin DSL {@code plugins { id("…") version "…" }} version resolution used by
@@ -78,17 +74,15 @@ class KotlinDslPluginVersionPsiTests {
 		KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(versionEntry);
 		assertThat(dependencyExpression).as("id() call for plugins block").isNotNull();
 
-		GroovyDslUtils.VersionLocation vl = KotlinDslUtils.findKotlinVersionElement(dependencyExpression, versionEntry);
-		assertThat(vl).as("VersionLocation on plugin version literal").isNotNull();
-		assertThat(vl.artifactId().groupId()).isEqualTo("org.springframework.boot");
-		assertThat(vl.artifactId().artifactId()).isEqualTo("org.springframework.boot");
-		assertThat(vl.rawVersion()).isEqualTo("4.0.0");
-		assertThat(vl.isPropertyReference()).isFalse();
+		DependencyLocation location = KotlinDslUtils.findKotlinVersionElement(dependencyExpression, versionEntry);
+		assertThat(location).as("VersionLocation on plugin version literal").isNotNull();
+		assertThat(location.artifactId().groupId()).isEqualTo("org.springframework.boot");
+		assertThat(location.artifactId().artifactId()).isEqualTo("org.springframework.boot");
+		assertThat(location.isPropertyReference()).isFalse();
 
-		GradleParser parser = new GradleParser(new DependencyCollector(), Map.of());
-		GradleParser.GradleDependency gd = parser.toGradleDependency(vl);
-		assertThat(gd).isInstanceOf(GradleParserSupport.SimpleDependency.class);
-		GradleParserSupport.SimpleDependency simple = (GradleParserSupport.SimpleDependency) gd;
+		GradleDependency gd = location.dependency();
+		assertThat(gd).isInstanceOf(SimpleDependency.class);
+		SimpleDependency simple = (SimpleDependency) gd;
 		assertThat(simple.version()).isEqualTo("4.0.0");
 	}
 

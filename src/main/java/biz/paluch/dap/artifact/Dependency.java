@@ -15,68 +15,22 @@
  */
 package biz.paluch.dap.artifact;
 
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
-
-import org.jspecify.annotations.Nullable;
-
 /**
- * A project dependency with its declaration sources.
+ * A dependency that is being used in a build file.
  *
  * @author Mark Paluch
  */
-public class Dependency implements HasArtifactId {
+public class Dependency extends DeclaredDependency implements HasArtifactId {
 
-	private final ArtifactId artifactId;
 	private final ArtifactVersion currentVersion;
-	private final Set<VersionSource> versionSources = new LinkedHashSet<>();
-	private final Set<DeclarationSource> declarationSources = new LinkedHashSet<>();
 
 	public Dependency(ArtifactId artifactId, ArtifactVersion currentVersion) {
-		this.artifactId = artifactId;
+		super(artifactId);
 		this.currentVersion = currentVersion;
-	}
-
-	@Override
-	public ArtifactId getArtifactId() {
-		return artifactId;
 	}
 
 	public ArtifactVersion getCurrentVersion() {
 		return currentVersion;
 	}
 
-	public Set<VersionSource> getVersionSources() {
-		return Collections.unmodifiableSet(versionSources);
-	}
-
-	public Set<DeclarationSource> getDeclarationSources() {
-		return Collections.unmodifiableSet(declarationSources);
-	}
-
-	public Dependency addVersionSource(VersionSource versionSource) {
-		this.versionSources.add(versionSource);
-		return this;
-	}
-
-	public Dependency addDeclarationSource(DeclarationSource declarationSource) {
-		this.declarationSources.add(declarationSource);
-		return this;
-	}
-
-	public boolean hasPropertyVersion() {
-		return findPropertyVersion() != null;
-	}
-
-	public VersionSource.@Nullable VersionPropertySource findPropertyVersion() {
-
-		for (VersionSource versionSource : versionSources) {
-			if (versionSource instanceof VersionSource.VersionPropertySource) {
-				return (VersionSource.VersionPropertySource) versionSource;
-			}
-		}
-
-		return null;
-	}
 }

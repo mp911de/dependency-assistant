@@ -15,22 +15,31 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-
-import java.util.List;
-
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.lang.properties.IProperty;
+import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.impl.source.tree.LeafPsiElement;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry;
 import org.jetbrains.kotlin.psi.KtCallExpression;
@@ -41,36 +50,31 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpres
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
 import org.toml.lang.psi.TomlLiteral;
 
-import com.intellij.lang.properties.IProperty;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
-import com.intellij.psi.util.PsiTreeUtil;
-
 /**
- * Gradle-equivalent of {@link VersionUpgradeLookupSupport}. Determines whether the PSI element at the caret represents
- * a version value in a Gradle dependency declaration and returns an
- * {@link VersionUpgradeLookupSupport.UpgradeSuggestion} if a newer version is available.
- * <p>
- * Supported locations:
+ * Gradle implementation of {@link VersionUpgradeLookupSupport}. Determines
+ * whether the PSI element at the caret represents a version value in a Gradle
+ * dependency declaration and returns an {@link UpgradeSuggestion} if a newer
+ * version is available.
+ * <p>Supported locations:
  * <ul>
- * <li>Version part of a Groovy string-notation GAV literal ({@code 'group:artifact:version'})</li>
- * <li>Version part of a Kotlin DSL string template GAV literal ({@code "group:artifact:version"})</li>
- * <li>Kotlin {@code extra["key"]} version value: plain string, triple-quoted string, {@code buildString { append("…")
- * }}, or the receiver literal in {@code "….also { extra["key"] = it }}</li>
- * <li>Property value in {@code gradle.properties} that maps to a known artifact version</li>
- * <li>Version literal in a {@code libs.versions.toml} {@code [versions]} table</li>
- * <li>Version-catalog accessors in Groovy or Kotlin: {@code alias(libs.plugins.…)}, {@code id(libs.plugins.…)} (inside
- * {@code plugins { }}), and dependency configurations such as {@code implementation(libs.…)} /
- * {@code platform(libs.…)}, resolved via {@code gradle/libs.versions.toml}</li>
+ * <li>Version part of a Groovy string-notation GAV literal
+ * ({@code 'group:artifact:version'})</li>
+ * <li>Version part of a Kotlin DSL string template GAV literal
+ * ({@code "group:artifact:version"})</li>
+ * <li>Kotlin {@code extra["key"]} version value: plain string, triple-quoted
+ * string, {@code buildString { append("…") }}, or the receiver literal in
+ * {@code "….also { extra["key"] = it }}</li>
+ * <li>Property value in {@code gradle.properties} that maps to a known artifact
+ * version</li>
+ * <li>Version literal in a {@code libs.versions.toml} {@code [versions]}
+ * table</li>
+ * <li>Version-catalog accessors in Groovy or Kotlin:
+ * {@code alias(libs.plugins.…)}, {@code id(libs.plugins.…)} (inside
+ * {@code plugins { }}), and dependency configurations such as
+ * {@code implementation(libs.…)} / {@code platform(libs.…)}, resolved via
+ * {@code gradle/libs.versions.toml}</li>
  * </ul>
  *
  * @author Mark Paluch
@@ -99,8 +103,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		super(project, ctx);
 
-		GradlePsiListener.getInstance(project);
-
 		this.file = file;
 		this.buildContext = ctx;
 		this.candidate = GradleUtils.isGradleFile(file);
@@ -109,13 +111,14 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyPsi = new GradlePropertyDeclarationPsi(project, projectState);
-		this.catalogResolver = new GradleVersionCatalogArtifactReferenceResolver(project, file, buildContext, projectState,
+		this.catalogResolver = new GradleVersionCatalogArtifactReferenceResolver(project, file, buildContext,
+				projectState,
 				propertyPsi);
 	}
 
 	@Override
-	public biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(PsiElement element) {
-		return suggestUpgrades(resolveArtifactReference(element));
+	public UpgradeSuggestion suggestUpgrades(PsiElement element) {
+		return suggestUpgrades(this.cache, resolveArtifactReference(element));
 	}
 
 	public @Nullable Dependency findDependency(PsiElement element) {
@@ -127,32 +130,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		return projectState.findDependency(result.getArtifactId());
-	}
-
-	private biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(ArtifactReference artifactReference) {
-
-		if (!artifactReference.isResolved()) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		List<Release> options = cache.getReleases(declaration.getArtifactId(), false);
-		if (options.isEmpty()) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		UpgradeSuggestion upgradeSuggestion = VersionUpgradeLookupSupport.determineUpgrade(declaration.getVersion(),
-				options);
-		if (upgradeSuggestion == null) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		return biz.paluch.dap.support.UpgradeSuggestion.of(upgradeSuggestion.strategy(), upgradeSuggestion.bestOption(),
-				artifactReference);
 	}
 
 	protected ArtifactReference resolveArtifactReference(PsiElement element) {
@@ -192,9 +169,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	protected ArtifactReference resolveGroovyArtifactReference(PsiElement element) {
 
 		ArtifactReference fromCatalog = resolveGroovyVersionCatalogReference(element);
+
 		if (fromCatalog.isResolved()) {
 			return fromCatalog;
 		}
+
 		if (element instanceof GrLiteral groovyLiteral) {
 			ArtifactReference fromGav = resolveReference(GroovyDslUtils.findGroovyVersionElement(groovyLiteral),
 					GrMethodCall.class);
@@ -209,13 +188,13 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	private ArtifactReference resolveReference(PropertyValueImpl element) {
 
 		IProperty property = findParentProperty(element);
-		if (property == null || !StringUtils.hasText(property.getKey()) || projectState == null) {
+		if (property == null || StringUtils.isEmpty(property.getKey()) || projectState == null) {
 			return ArtifactReference.unresolved();
 		}
 
 		ArtifactId artifactId = projectState.findArtifactByPropertyName(property.getKey());
 		String version = property.getValue();
-		if (artifactId == null || !StringUtils.hasText(version)) {
+		if (artifactId == null || StringUtils.isEmpty(version)) {
 			return ArtifactReference.unresolved();
 		}
 
@@ -227,7 +206,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		});
 	}
 
-	private ArtifactReference resolveReference(GroovyDslUtils.@Nullable VersionLocation location,
+	private ArtifactReference resolveReference(@Nullable DependencyLocation location,
 			Class<? extends PsiElement> callType) {
 
 		if (location == null) {
@@ -239,22 +218,24 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		GradleParser.GradleDependency gd = GradleParser.toGradleDependency(location);
+		GradleDependency gd = location.dependency();
 
-		if (gd instanceof GradleParser.PropertyManagedDependency managed) {
-			PsiElement versionPsi = propertyPsi.findPropertyValuePsi(managed.property());
+		if (gd instanceof PropertyManagedDependency managed) {
+			PsiPropertyValueElement propertyLocation = propertyPsi.findPropertyValueElement(managed.property());
 			return ArtifactReference.from(it -> {
-				it.artifact(managed.getId()).declarationElement(declarationCall).versionSource(managed.getVersionSource());
-				if (versionPsi != null) {
-					ArtifactVersion.from(versionPsi.getText()).ifPresent(it::version);
-					it.versionLiteral(versionPsi);
+				it.artifact(managed.getId()).declarationElement(declarationCall)
+						.versionSource(managed.getVersionSource());
+				if (propertyLocation != null) {
+					ArtifactVersion.from(propertyLocation.propertyValue()).ifPresent(it::version);
+					it.versionLiteral(propertyLocation.element());
 				}
 			});
 		}
 
-		if (gd instanceof GradleParser.SimpleDependency simple) {
+		if (gd instanceof SimpleDependency simple) {
 			return ArtifactReference.from(it -> {
-				it.artifact(simple.getId()).declarationElement(declarationCall).versionSource(simple.getVersionSource());
+				it.artifact(simple.getId()).declarationElement(declarationCall)
+						.versionSource(simple.getVersionSource());
 				ArtifactVersion.from(simple.version()).ifPresent(it::version);
 				it.versionLiteral(location.element());
 			});
@@ -269,7 +250,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		GroovyDslUtils.PropertyVersionLocation propLoc = GroovyDslUtils.findGroovyExtPropertyVersionElement(literal);
+		PsiPropertyValueElement propLoc = GroovyDslUtils.findGroovyExtPropertyVersionElement(literal);
 		if (propLoc == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -283,7 +264,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			ArtifactId id = artifact.toArtifactId();
 			String version = propLoc.propertyValue();
 			return ArtifactReference.from(it -> {
-				it.artifact(id).declarationElement(literal).versionSource(VersionSource.property(propLoc.propertyKey()));
+				it.artifact(id).declarationElement(literal)
+						.versionSource(VersionSource.property(propLoc.propertyKey()));
 				ArtifactVersion.from(version).ifPresent(it::version);
 				it.versionLiteral(literal);
 			});
@@ -302,7 +284,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (element instanceof KtBlockStringTemplateEntry propertyCandidate) {
 			KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(propertyCandidate);
 			if (dependencyExpression != null) {
-				return resolveReference(KotlinDslUtils.findKotlinVersionElement(dependencyExpression, propertyCandidate),
+				return resolveReference(
+						KotlinDslUtils.findKotlinVersionElement(dependencyExpression, propertyCandidate),
 						KtCallExpression.class);
 			}
 		}

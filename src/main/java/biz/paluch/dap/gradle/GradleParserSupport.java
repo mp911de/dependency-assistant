@@ -16,22 +16,21 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactUsage;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.VersionSource;
-
+import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
 
 /**
  * Common base class for Gradle build file parsers.
  *
  * @author Mark Paluch
  */
-abstract class GradleParserSupport extends BuildFileParserSupport {
+abstract class GradleParserSupport extends BuildFileParserSupport implements PropertyResolver {
 
 	public GradleParserSupport(DependencyCollector collector) {
 		super(collector);
@@ -42,12 +41,18 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 		return split.length >= 2 ? ArtifactId.of(split[0], split[1]) : ArtifactId.of(module, module);
 	}
 
+	@Override
+	public @Nullable String getProperty(String key) {
+		return resolveValue(key);
+	}
+
 	// -------------------------------------------------------------------------
 	// Shared helpers
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Parses a {@code group:artifact:version} GAV string, resolving any {@code ${prop}} references.
+	 * Parses a {@code group:artifact:version} GAV string, resolving any
+	 * {@code ${prop}} references.
 	 */
 	@Nullable
 	GradleDependency parseGav(@Nullable String raw) {
@@ -56,113 +61,29 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 			return null;
 		}
 
-		String[] parts = raw.split(":");
-		if (parts.length < 3) {
-			return null;
-		}
-
-		String group = resolveValue(parts[0].trim());
-		String artifact = resolveValue(parts[1].trim());
-		String version = parts[2].trim();
-		String propertyName;
-
-		if (group == null || artifact == null || !StringUtils.hasText(version)) {
-			return null;
-		}
-
-		ArtifactId artifactId = ArtifactId.of(group, artifact);
-		if (version.startsWith("${") && version.endsWith("}")) {
-			propertyName = version.substring(2, version.length() - 1);
-			return new PropertyManagedDependency(artifactId, propertyName, VersionSource.property(propertyName));
-		}
-
-		return new SimpleDependency(artifactId, version, VersionSource.declared(version));
+		return GradleDependency.parse(raw, this);
 	}
 
 	void register(GradleDependency dependency, DeclarationSource declarationSource) {
 
 		if (dependency instanceof PropertyManagedDependency pmd) {
-			getCollector().add(pmd.id(), new ArtifactUsage(declarationSource, pmd.getVersionSource()));
 
 			String version = getProperty(pmd.property());
 			if (StringUtils.hasText(version)) {
-				register(pmd.id(), version, declarationSource, pmd.versionSource);
+				ArtifactVersion.from(version)
+						.ifPresent(it -> getCollector().registerUsage(pmd.id(), it, declarationSource,
+								pmd.versionSource()));
 			}
 		}
 
 		if (dependency instanceof SimpleDependency sd) {
-			register(sd.id(), sd.version(), declarationSource, sd.versionSource());
-		}
-	}
 
-	void register(ArtifactId id, @Nullable String version, DeclarationSource declarationSource) {
-
-		if (!StringUtils.hasText(version)) {
-			return;
+			ArtifactVersion.from(sd.version())
+					.ifPresent(it -> getCollector().registerUsage(sd.id(), it, declarationSource,
+							sd.versionSource()));
 		}
 
-		VersionSource versionSource = VersionSource.declared(version);
-		if (version.startsWith("${") && version.endsWith("}")) {
-			String property = version.substring(2, version.length() - 1);
-			version = resolveValue(property);
-
-			versionSource = VersionSource.property(version);
-			getCollector().add(id, new ArtifactUsage(declarationSource, versionSource));
-		}
-
-		register(id, version, declarationSource, versionSource);
-	}
-
-	private void register(ArtifactId id, String rawVersion, DeclarationSource declarationSource,
-			VersionSource versionSource) {
-		ArtifactVersion.from(rawVersion)
-				.ifPresent(version -> getCollector().registerUpdateCandidate(id, version, declarationSource, versionSource));
-	}
-
-	static GradleDependency toGradleDependency(GroovyDslUtils.VersionLocation versionLocation) {
-
-		if (versionLocation.isPropertyReference()) {
-			return new PropertyManagedDependency(versionLocation.artifactId(), versionLocation.rawVersion(),
-					VersionSource.property(versionLocation.rawVersion()));
-		}
-
-		return new SimpleDependency(versionLocation.artifactId(), versionLocation.rawVersion(),
-				VersionSource.declared(versionLocation.rawVersion()));
-	}
-
-	/**
-	 * Strategy interface for representing Gradle dependencies.
-	 */
-	interface GradleDependency {
-
-		ArtifactId getId();
-
-		VersionSource getVersionSource();
-	}
-
-	record SimpleDependency(ArtifactId id, String version, VersionSource versionSource) implements GradleDependency {
-		@Override
-		public ArtifactId getId() {
-			return id();
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource();
-		}
-	}
-
-	record PropertyManagedDependency(ArtifactId id, String property,
-			VersionSource versionSource) implements GradleDependency {
-		@Override
-		public ArtifactId getId() {
-			return id();
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource();
-		}
+		getCollector().registerDeclaration(dependency.getId(), declarationSource, dependency.getVersionSource());
 	}
 
 }

@@ -15,22 +15,20 @@
  */
 package biz.paluch.dap.state;
 
-import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyCollector;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.DependencyCollector;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.xmlb.XmlSerializerUtil;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Project-level service.
@@ -84,7 +82,7 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 				return null;
 			}
 
-			return dependencyCollector.getDependency(artifactId);
+			return dependencyCollector.getUsage(artifactId);
 		}
 
 		@Override

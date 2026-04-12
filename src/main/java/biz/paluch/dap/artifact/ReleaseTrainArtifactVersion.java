@@ -15,15 +15,13 @@
  */
 package biz.paluch.dap.artifact;
 
+import java.util.Objects;
+
 import biz.paluch.dap.artifact.Suffix.Release;
 import biz.paluch.dap.artifact.Suffix.SemVerSuffix;
 import biz.paluch.dap.artifact.Suffix.Snapshot;
-
-import java.util.Objects;
-
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
 
 /**
  * {@link ArtifactVersion} for release-train style versions such as {@code Aluminium-M1}, {@code Aluminium-RELEASE}, or
@@ -51,7 +49,7 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	@Nullable
 	static ArtifactVersion tryParse(String source) {
 
-		if (!StringUtils.hasText(source)) {
+		if (StringUtils.isEmpty(source)) {
 			return null;
 		}
 
@@ -62,7 +60,7 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 		}
 		String train = trimmed.substring(0, hyphen);
 		String suffixPart = trimmed.substring(hyphen + 1);
-		if (!StringUtils.hasText(train) || !StringUtils.hasText(suffixPart)) {
+		if (StringUtils.isEmpty(train) || StringUtils.isEmpty(suffixPart)) {
 			return null;
 		}
 		// Require train to start with a letter

@@ -15,12 +15,11 @@
  */
 package biz.paluch.dap.state;
 
-import biz.paluch.dap.artifact.ArtifactId;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.XCollection;
@@ -49,7 +48,7 @@ public class Property {
 
 	public void addArtifact(ArtifactId artifactId) {
 
-		synchronized (artifactId) {
+		synchronized (this.artifacts) {
 
 			for (CachedArtifact artifact : artifacts) {
 				if (artifact.matches(artifactId)) {
@@ -94,7 +93,7 @@ public class Property {
 		if (obj == null || obj.getClass() != this.getClass()) {
 			return false;
 		}
-		var that = (Property) obj;
+		Property that = (Property) obj;
 		return Objects.equals(this.name, that.name) && Objects.equals(this.artifacts, that.artifacts);
 	}
 

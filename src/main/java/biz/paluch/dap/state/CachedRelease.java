@@ -15,24 +15,27 @@
  */
 package biz.paluch.dap.state;
 
-import biz.paluch.dap.artifact.Release;
-
 import java.util.Objects;
 
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.artifact.Release;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
+import org.jspecify.annotations.Nullable;
 
 @Tag("release")
 public class CachedRelease {
 
-	@Attribute private String version;
-	@Attribute private @Nullable String date;
+	@Attribute
+	private String version;
+
+	@Attribute
+	private @Nullable String date;
+
 	private volatile @Nullable Release release;
 
-	public CachedRelease() {}
+	public CachedRelease() {
+	}
 
 	public CachedRelease(String version, @Nullable String date) {
 		this.version = version;

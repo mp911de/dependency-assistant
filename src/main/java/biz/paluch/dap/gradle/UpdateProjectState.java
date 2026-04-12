@@ -15,21 +15,16 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.MessageBundle;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.DependencyAssistantService;
-import biz.paluch.dap.state.ProjectState;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
-import org.jetbrains.plugins.gradle.settings.GradleSettings;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -38,6 +33,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.util.progress.StepsProgressIndicator;
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
+import org.jetbrains.plugins.gradle.settings.GradleSettings;
 
 /**
  * Service to read Gradle build files and update the dependency state.
@@ -118,7 +115,7 @@ class UpdateProjectState {
 					MessageBundle.message("action.check.dependencies.progress.collecting", setting.getExternalProjectPath()));
 
 			String path = setting.getExternalProjectPath();
-			if (!StringUtils.hasText(path)) {
+			if (StringUtils.isEmpty(path)) {
 				continue;
 			}
 			VirtualFile directory = lfs.findFileByPath(path);

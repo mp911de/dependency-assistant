@@ -15,6 +15,10 @@
  */
 package biz.paluch.dap.maven;
 
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.artifact.RemoteRepository;
@@ -23,21 +27,15 @@ import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.support.DependencyCheckSupport;
 import biz.paluch.dap.support.ReleasesRetrievalTaskSupport;
-
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-
-import org.jetbrains.idea.maven.project.MavenProject;
-import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.util.TimeoutUtil;
 import com.intellij.util.progress.StepsProgressIndicator;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Background task that refreshes the release state for each used dependency.
@@ -71,7 +69,7 @@ class ReleasesRetrievalTask extends ReleasesRetrievalTaskSupport {
 			remoteRepositories.addAll(MavenUtils.getRemoteRepositories(credentials, mavenProject));
 		}
 
-		MavenDependencyCheckService service = new MavenDependencyCheckService(project);
+		MavenDependencyCheckService service = MavenDependencyCheckService.getInstance(project);
 		DependencyCollector allDependencies = ApplicationManager.getApplication()
 				.runReadAction((Computable<DependencyCollector>) () -> updateState.getAllDependencies(steps));
 		steps.nextStep();

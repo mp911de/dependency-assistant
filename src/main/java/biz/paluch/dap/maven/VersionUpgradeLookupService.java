@@ -17,24 +17,17 @@ package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectCache;
 import biz.paluch.dap.state.Property;
-import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-
-import java.util.List;
-
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
@@ -42,16 +35,22 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTokenType;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Shared version-upgrade lookup used by both {@link NewerVersionLineMarkerProvider} and {@link NewerVersionAnnotator}.
+ * Shared version-upgrade lookup used by both
+ * {@link NewerVersionLineMarkerProvider} and {@link NewerVersionAnnotator}.
  */
 class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final MavenProjectContext buildContext;
+
 	private final @Nullable XmlFile pom;
+
 	private final boolean candidate;
+
 	private final Cache cache;
+
 	private final MavenProperties properties;
 
 	public VersionUpgradeLookupService(Project project, MavenProjectContext context, PsiFile pom) {
@@ -76,32 +75,33 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	@Override
-	public biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(PsiElement element) {
+	public UpgradeSuggestion suggestUpgrades(PsiElement element) {
 
 		if (element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS || !candidate || pom == null
 				|| !buildContext.isAvailable()) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
+			return UpgradeSuggestion.none();
 		}
 
 		ProjectCache cache = this.cache.getProject(buildContext.getProjectId());
 
 		XmlTag versionTag = PomUtil.findVersionTag(element);
 		if (versionTag != null) {
-			return suggestUpgrades(resolveArtifactDeclaration(versionTag));
+			return suggestUpgrades(this.cache, resolveArtifactDeclaration(versionTag));
 		}
 
 		XmlTag propertyTag = PomUtil.findPropertyTag(element);
 		if (propertyTag != null) {
-			return suggestUpgrades(resolveArtifactDeclaration(cache, propertyTag));
+			return suggestUpgrades(this.cache, resolveArtifactDeclaration(cache, propertyTag));
 		}
 
-		return biz.paluch.dap.support.UpgradeSuggestion.none();
+		return UpgradeSuggestion.none();
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
-		MavenParser.PropertyResolver resolver = new MavenParser.PropertyResolver((XmlFile) versionTag.getContainingFile(),
+		MavenParser.PropertyResolver resolver = new MavenParser.PropertyResolver(
+				(XmlFile) versionTag.getContainingFile(),
 				it -> {
 
 					ResolvedProperty property = resolveProperty(PropertyExpression.property(it));
@@ -134,7 +134,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(artifactId).declarationElement(parentTag)
-					.versionSource(StringUtils.hasText(version) ? VersionSource.declared(version) : VersionSource.none());
+					.versionSource(
+							StringUtils.hasText(version) ? VersionSource.declared(version) : VersionSource.none());
 			ArtifactVersion.from(version).ifPresent(it::version);
 			it.versionLiteral(versionTag);
 		});
@@ -188,31 +189,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		});
 	}
 
-	private biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(ArtifactReference artifactReference) {
-
-		if (!artifactReference.isResolved()) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		List<Release> options = this.cache.getReleases(declaration.getArtifactId(), false);
-		if (options.isEmpty()) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		UpgradeSuggestion upgradeSuggestion = determineUpgrade(declaration.getVersion(), options);
-		if (upgradeSuggestion == null) {
-			return biz.paluch.dap.support.UpgradeSuggestion.none();
-		}
-
-		return biz.paluch.dap.support.UpgradeSuggestion.of(upgradeSuggestion.strategy(), upgradeSuggestion.bestOption(),
-				artifactReference);
-	}
-
 	private @Nullable Property findProperty(ProjectCache cache, XmlTag propertyTag) {
 
 		String propertyName = propertyTag.getLocalName();
@@ -237,17 +213,17 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private @Nullable ArtifactVersion getCurrentVersion(Property property, XmlTag propertyTag) {
 
-		String currentVersionText = propertyTag.getValue().getText().trim();
-		if (currentVersionText.contains("${")) {
+		PropertyExpression expression = PropertyExpression.from(propertyTag.getValue().getText().trim());
+		if (expression.isProperty()) {
 			return null;
 		}
 
-		if (currentVersionText.contains(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED) && hasCachedState()) {
+		if (expression.toString().contains(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED) && hasCachedState()) {
 			return getCurrentVersion(property);
 		}
 
 		try {
-			return ArtifactVersion.of(currentVersionText);
+			return ArtifactVersion.of(expression.toString());
 		} catch (Exception e) {
 			return null;
 		}

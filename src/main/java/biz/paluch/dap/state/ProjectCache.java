@@ -15,25 +15,23 @@
  */
 package biz.paluch.dap.state;
 
-import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.VersionSource;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.ObjectUtils;
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.DeclaredDependency;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
 import com.intellij.util.xmlb.annotations.XCollection;
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.ObjectUtils;
 
 /**
  * Per-project cache entry that stores property-to-artifact mappings.
@@ -47,15 +45,18 @@ public class ProjectCache implements Comparator<ProjectCache> {
 			.thenComparing(ProjectCache::getSafeArtifactId).thenComparing(ProjectCache::getSafeDescriptor);
 
 	private @Attribute @Nullable String artifactId;
+
 	private @Attribute @Nullable String groupId;
+
 	private @Attribute @Nullable String descriptor;
 
-	private final @Tag @XCollection(propertyElementName = "properties", elementName = "property",
-			style = XCollection.Style.v2) List<Property> properties = new ArrayList<>();
+	private final @Tag @XCollection(propertyElementName = "properties", elementName = "property", style = XCollection.Style.v2) List<Property> properties = new ArrayList<>();
 
-	@Transient private final Map<String, Property> propertyMap = new java.util.TreeMap<>();
+	@Transient
+	private final Map<String, Property> propertyMap = new java.util.TreeMap<>();
 
-	public ProjectCache() {}
+	public ProjectCache() {
+	}
 
 	public ProjectCache(ProjectId identity) {
 		this.artifactId = identity.artifactId();
@@ -103,8 +104,8 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	}
 
 	/**
-	 * Returns all known property-to-artifact mappings. Each {@link Property} carries the property name and the
-	 * artifact(s) whose version it controls.
+	 * Returns all known property-to-artifact mappings. Each {@link Property}
+	 * carries the property name and the artifact(s) whose version it controls.
 	 */
 	public List<Property> getProperties() {
 		return List.copyOf(properties);
@@ -118,28 +119,20 @@ public class ProjectCache implements Comparator<ProjectCache> {
 
 		this.properties.clear();
 		this.propertyMap.clear();
+
 		synchronized (this) {
 
-			for (Dependency candidate : collector.getDependencies()) {
+			for (DeclaredDependency declaration : collector.getDeclarations()) {
 
-				for (VersionSource versionSource : candidate.getVersionSources()) {
-					if (versionSource instanceof VersionSource.VersionPropertySource vps) {
+				for (VersionSource versionSource : declaration.getVersionSources()) {
+					if (versionSource instanceof VersionSource.VersionProperty vps) {
 
 						Property property = propertyMap.computeIfAbsent(vps.getProperty(), Property::new);
 						property.setUsed(true);
-						property.addArtifact(candidate.getArtifactId());
+						property.addArtifact(declaration.getArtifactId());
 					}
 				}
 			}
-
-			collector.doWithArtifacts((artifactId, usage) -> {
-
-				if (usage.version() instanceof VersionSource.VersionPropertySource vps) {
-
-					Property property = propertyMap.computeIfAbsent(vps.getProperty(), Property::new);
-					property.addArtifact(artifactId);
-				}
-			});
 
 			this.properties.addAll(propertyMap.values());
 

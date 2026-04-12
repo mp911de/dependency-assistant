@@ -15,12 +15,11 @@
  */
 package biz.paluch.dap.state;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.Release;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.Release;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -30,12 +29,13 @@ import com.intellij.util.xmlb.annotations.XCollection;
 public class CachedArtifact {
 
 	private @Attribute String groupId;
+
 	private @Attribute String artifactId;
 
-	private final @XCollection(propertyElementName = "releases", elementName = "release",
-			style = XCollection.Style.v2) List<CachedRelease> releases = new ArrayList<>();
+	private final @XCollection(propertyElementName = "releases", elementName = "release", style = XCollection.Style.v2) List<CachedRelease> releases = new ArrayList<>();
 
-	public CachedArtifact() {}
+	public CachedArtifact() {
+	}
 
 	public CachedArtifact(String groupId, String artifactId) {
 		this.groupId = groupId;

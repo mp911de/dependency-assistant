@@ -15,9 +15,6 @@
  */
 package biz.paluch.dap.artifact;
 
-import biz.paluch.dap.xml.MavenMetadataProjection;
-import biz.paluch.dap.xml.XmlBeamProjectorFactory;
-
 import java.io.IOException;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
@@ -40,10 +37,9 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.util.StringUtils;
+import biz.paluch.dap.xml.MavenMetadataProjection;
+import biz.paluch.dap.xml.XmlBeamProjectorFactory;
 import com.intellij.credentialStore.Credentials;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
@@ -52,6 +48,7 @@ import com.intellij.openapi.application.ApplicationNamesInfo;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.net.JdkProxyProvider;
 import com.intellij.util.net.ProxyAuthentication;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Release source that fetches releases from a remote Maven repository.
@@ -101,7 +98,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		String xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true);
 		String directoryListing = fetchUrl(artifactId, directoryUri, repository.credentials(), false);
 
-		if (!StringUtils.hasText(xml)) {
+		if (StringUtils.isEmpty(xml)) {
 			return List.of();
 		}
 
@@ -146,7 +143,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 		Map<String, LocalDateTime> result = new HashMap<>();
 
-		if (!StringUtils.hasText(html)) {
+		if (StringUtils.isEmpty(html)) {
 			return result;
 		}
 

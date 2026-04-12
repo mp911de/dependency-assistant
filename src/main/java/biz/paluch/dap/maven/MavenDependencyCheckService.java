@@ -15,21 +15,18 @@
  */
 package biz.paluch.dap.maven;
 
+import java.util.List;
+import java.util.Map;
+
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.support.DependencyCheckSupport;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-
-import org.jetbrains.idea.maven.project.MavenProject;
-import org.jetbrains.idea.maven.project.MavenProjectsManager;
-
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
 
 /**
  * Service that runs dependency version check against Maven repositories.
@@ -52,8 +49,7 @@ public class MavenDependencyCheckService extends DependencyCheckSupport {
 		return project.getService(MavenDependencyCheckService.class);
 	}
 
-	public DependencyUpdates runCheck(ProgressIndicator indicator, PsiFile pomFile)
-			throws IOException {
+	public DependencyUpdates runCheck(ProgressIndicator indicator, PsiFile pomFile) {
 
 		String projectName = project.getName();
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));

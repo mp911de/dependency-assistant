@@ -18,12 +18,8 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.Property;
-
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
+import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.project.Project;
@@ -32,11 +28,13 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
-import com.intellij.psi.PsiRecursiveElementVisitor;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Locates PSI for Gradle property declarations referenced by name (e.g. {@code gradle.properties}, {@code extra["…"]}
- * in Groovy/Kotlin build scripts).
+ * Locates PSI for Gradle property declarations referenced by name (e.g.
+ * {@code gradle.properties}, {@code extra["…"]} in Groovy/Kotlin build
+ * scripts).
  *
  * @author Mark Paluch
  */
@@ -52,7 +50,7 @@ final class GradlePropertyDeclarationPsi {
 	}
 
 	@Nullable
-	PsiElement findPropertyValuePsi(String propertyName) {
+	PsiPropertyValueElement findPropertyValueElement(String propertyName) {
 
 		if (projectState == null) {
 			return null;
@@ -64,16 +62,16 @@ final class GradlePropertyDeclarationPsi {
 		}
 
 		String path = pp.id().buildFile();
-		if (!StringUtils.hasText(path)) {
+		if (StringUtils.isEmpty(path)) {
 			return null;
 		}
 
-		VirtualFile vf = LocalFileSystem.getInstance().findFileByPath(path);
-		if (vf == null) {
+		VirtualFile virtualFile = LocalFileSystem.getInstance().findFileByPath(path);
+		if (virtualFile == null) {
 			return null;
 		}
 
-		PsiFile psiFile = PsiManager.getInstance(project).findFile(vf);
+		PsiFile psiFile = PsiManager.getInstance(project).findFile(virtualFile);
 		if (psiFile == null) {
 			return null;
 		}
@@ -81,39 +79,45 @@ final class GradlePropertyDeclarationPsi {
 		if (psiFile instanceof PropertiesFile props) {
 			IProperty ip = props.findPropertyByKey(propertyName);
 			if (ip != null) {
-				return ip.getPsiElement().getLastChild();
+				PsiElement element = ip.getPsiElement().getLastChild();
+				return new PsiPropertyValueElement(element, propertyName, element.getText());
 			}
 			return null;
 		}
 
-		if (GradleUtils.isGroovyDsl(vf)) {
-			PsiElement[] found = { null };
-			psiFile.accept(new PsiRecursiveElementVisitor() {
-				@Override
-				public void visitElement(PsiElement e) {
-					super.visitElement(e);
-					if (found[0] != null) {
-						return;
-					}
-					if (e instanceof GrLiteral lit) {
-						GroovyDslUtils.PropertyVersionLocation pl = GroovyDslUtils.findGroovyExtPropertyVersionElement(lit);
-						if (pl != null && propertyName.equals(pl.propertyKey())) {
-							found[0] = lit;
-						}
-					}
-				}
-			});
-			return found[0];
+		if (GradleUtils.isGroovyDsl(virtualFile)) {
+			return findExPropertyLocation(propertyName, psiFile);
 		}
 
-		if (GradleUtils.isKotlinDsl(vf) && GradleUtils.KOTLIN_AVAILABLE) {
-			PsiElement kotlinExtra = KotlinDslExtraSupport.findExtraPropertyValuePsi(psiFile, propertyName);
-			if (kotlinExtra != null) {
-				return kotlinExtra;
-			}
+		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
+			return KotlinDslExtraSupport.findExtraPropertyLocation(psiFile, propertyName);
 		}
 
 		return null;
+	}
+
+	private @Nullable PsiPropertyValueElement findExPropertyLocation(String propertyName, PsiFile psiFile) {
+
+		@Nullable
+		PsiElement[] found = {null};
+		psiFile.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, literal -> {
+
+			PsiPropertyValueElement pl = GroovyDslUtils.findGroovyExtPropertyVersionElement(literal);
+			if (pl != null && propertyName.equals(pl.propertyKey())) {
+				found[0] = literal;
+				return true;
+			}
+
+			return false;
+		}));
+
+		PsiElement psiElement = found[0];
+		if (psiElement == null) {
+			return null;
+		}
+
+		return new PsiPropertyValueElement(found[0], propertyName,
+				psiElement instanceof GrLiteral literal ? GroovyDslUtils.toString(literal) : psiElement.getText());
 	}
 
 }

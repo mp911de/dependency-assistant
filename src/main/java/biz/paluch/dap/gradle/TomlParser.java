@@ -15,21 +15,26 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.VersionSource;
-
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKey;
@@ -37,40 +42,40 @@ import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
 
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
-import com.intellij.psi.util.PsiTreeUtil;
-
 /**
- * Parser for TOML version catalog ({@code libs.versions.toml}) files, including mapping Gradle {@code libs.…} accessor
- * chains to catalog table names and entry keys. For TOML PSI navigation helpers (entry lookup, version literals), see
- * {@link GradleVersionCatalogAliasSupport}.
+ * Parser for TOML version catalog ({@code libs.versions.toml}) files, including
+ * mapping Gradle {@code libs.…} accessor chains to catalog table names and
+ * entry keys. For TOML PSI navigation helpers (entry lookup, version literals),
+ * see {@link GradleVersionCatalogAliasSupport}.
  *
  * @author Mark Paluch
  */
 class TomlParser extends GradleParserSupport {
 
 	public static final String PLUGINS = "plugins";
+
 	public static final String BUNDLES = "bundles";
+
 	public static final String VERSIONS = "versions";
+
 	public static final String LIBS = "libs";
+
 	public static final String LIBRARIES = "libraries";
 
 	/**
-	 * A catalog {@code [libraries]} or {@code [plugins]} table together with the TOML entry key (kebab-case).
+	 * A catalog {@code [libraries]} or {@code [plugins]} table together with the
+	 * TOML entry key (kebab-case).
 	 *
 	 * @param tableName {@code libraries} or {@code plugins}
-	 * @param entryKey kebab-case catalog entry key (e.g. {@code spring-dependency-management})
+	 * @param entryKey kebab-case catalog entry key (e.g.
+	 * {@code spring-dependency-management})
 	 */
 	record CatalogTableKey(String tableName, String entryKey) {
 	}
 
 	/**
-	 * Maps {@code libs.plugins.a.b} to {@code plugins} / {@code a-b}; {@code libs.a.b.c} to {@code libraries} /
-	 * {@code a-b-c}.
+	 * Maps {@code libs.plugins.a.b} to {@code plugins} / {@code a-b};
+	 * {@code libs.a.b.c} to {@code libraries} / {@code a-b-c}.
 	 */
 	static @Nullable CatalogTableKey catalogTableKeyFromLibsSegments(List<String> segments) {
 
@@ -87,7 +92,7 @@ class TomlParser extends GradleParserSupport {
 			return null;
 		}
 		String libKey = String.join("-", segments.subList(1, segments.size()));
-		if (!StringUtils.hasText(libKey)) {
+		if (StringUtils.isEmpty(libKey)) {
 			return null;
 		}
 		return new CatalogTableKey(LIBRARIES, libKey);
@@ -97,10 +102,6 @@ class TomlParser extends GradleParserSupport {
 
 	public TomlParser(DependencyCollector collector) {
 		this(collector, new LinkedHashMap<>());
-	}
-
-	public TomlParser(Map<String, String> properties) {
-		this(new DependencyCollector(), properties);
 	}
 
 	public TomlParser(DependencyCollector collector, Map<String, String> properties) {
@@ -127,8 +128,8 @@ class TomlParser extends GradleParserSupport {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Parses a {@code libs.versions.toml} version catalog and populates {@code collector} with all libraries that have a
-	 * resolvable version.
+	 * Parses a {@code libs.versions.toml} version catalog and populates
+	 * {@code collector} with all libraries that have a resolvable version.
 	 */
 	public void parseVersionCatalog(PsiFile file) {
 
@@ -201,20 +202,21 @@ class TomlParser extends GradleParserSupport {
 			String key = getTomlKeyName(inner.getKey());
 			String val = getText(inner.getValue());
 			switch (key) {
-				case "id" -> module = val;
-				case "module" -> module = val;
-				case "version.ref" -> versionRef = val;
-				case "version" -> version = val;
+			case "id" -> module = val;
+			case "module" -> module = val;
+			case "version.ref" -> versionRef = val;
+			case "version" -> version = val;
 			}
 		}
 
-		if (!StringUtils.hasText(module)) {
+		if (StringUtils.isEmpty(module)) {
 			return null;
 		}
 
 		ArtifactId artifactId = artifactIdFunction.apply(module);
 		if (StringUtils.hasText(versionRef)) {
-			return new PropertyManagedDependency(artifactId, versionRef, VersionSource.versionCatalogProperty(versionRef));
+			return new PropertyManagedDependency(artifactId, versionRef,
+					VersionSource.versionCatalogProperty(versionRef));
 		}
 
 		return new SimpleDependency(artifactId, version, VersionSource.versionCatalog());
@@ -227,7 +229,7 @@ class TomlParser extends GradleParserSupport {
 
 	@Override
 	@Nullable
-	String getProperty(@Nullable String value) {
+	public String getProperty(@Nullable String value) {
 		return properties.get(value);
 	}
 

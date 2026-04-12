@@ -20,11 +20,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
+import biz.paluch.dap.util.StringUtils;
 
 /**
- * Value object to represent a Version consisting of major, minor and bugfix part.
+ * Value object to represent a Version consisting of major, minor and bugfix
+ * part.
  *
  * @author Mark Paluch
  */
@@ -33,8 +33,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	private final BigDecimal[] parts;
 
 	/**
-	 * Creates a new {@link NumericVersionComponents} from the given integer values. At least one value has to be given
-	 * but a maximum of 4.
+	 * Creates a new {@link NumericVersionComponents} from the given integer values.
+	 * At least one value has to be given but a maximum of 4.
 	 *
 	 * @param parts must not be {@literal null} or empty.
 	 */
@@ -43,8 +43,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Creates a new {@link NumericVersionComponents} from the given integer values. At least one value has to be given
-	 * but a maximum of 4.
+	 * Creates a new {@link NumericVersionComponents} from the given integer values.
+	 * At least one value has to be given but a maximum of 4.
 	 *
 	 * @param parts must not be {@literal null} or empty.
 	 */
@@ -53,35 +53,47 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Creates a new {@link NumericVersionComponents} from the given integer values. At least one value has to be given
-	 * but a maximum of 4.
+	 * Creates a new {@link NumericVersionComponents} from the given integer values.
+	 * At least one value has to be given but a maximum of 4.
 	 *
 	 * @param parts must not be {@literal null} or empty.
 	 */
 	private NumericVersionComponents(BigDecimal... parts) {
 
-		Assert.notNull(parts, "Parts must not be null!");
-		Assert.isTrue(parts.length > 0, "We need at least 1 part!");
+		if (parts == null) {
+			throw new IllegalArgumentException("Parts must not be null!");
+		}
+		if (parts.length == 0) {
+			throw new IllegalArgumentException("We need at least 1 part!");
+		}
 
 		this.parts = parts;
 
-		Assert.isTrue(getMajor() >= 0, "Major version must be greater or equal zero!");
-		Assert.isTrue(getMinor() >= 0, "Minor version must be greater or equal zero!");
+		if (getMajor() < 0) {
+			throw new IllegalArgumentException("Major version must be greater or equal zero!");
+		}
+		if (getMinor() < 0) {
+			throw new IllegalArgumentException("Minor version must be greater or equal zero!");
+		}
 	}
 
 	public static NumericVersionComponents of(int... parts) {
-		return new NumericVersionComponents(Arrays.stream(parts).mapToObj(BigDecimal::valueOf).toArray(BigDecimal[]::new));
+		return new NumericVersionComponents(
+				Arrays.stream(parts).mapToObj(BigDecimal::valueOf).toArray(BigDecimal[]::new));
 	}
 
 	/**
-	 * Parses the given string representation of a version into a {@link NumericVersionComponents} object.
+	 * Parses the given string representation of a version into a
+	 * {@link NumericVersionComponents} object.
 	 *
 	 * @param version must not be {@literal null} or empty.
 	 * @return
 	 */
 	public static NumericVersionComponents parse(String version) {
 
-		Assert.hasText(version, "Version must not be null or empty!");
+		if (StringUtils.isEmpty(version)) {
+			throw new IllegalArgumentException("Version must not be null or empty!");
+		}
 
 		String[] parts = version.trim().split("\\.");
 		BigDecimal[] intParts = new BigDecimal[parts.length];
@@ -114,7 +126,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Returns whether the current {@link NumericVersionComponents} is greater (newer) than the given one.
+	 * Returns whether the current {@link NumericVersionComponents} is greater
+	 * (newer) than the given one.
 	 *
 	 * @param version
 	 * @return
@@ -124,7 +137,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Returns whether the current {@link NumericVersionComponents} is greater (newer) or the same as the given one.
+	 * Returns whether the current {@link NumericVersionComponents} is greater
+	 * (newer) or the same as the given one.
 	 *
 	 * @param version
 	 * @return
@@ -134,7 +148,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Returns whether the current {@link NumericVersionComponents} is the same as the given one.
+	 * Returns whether the current {@link NumericVersionComponents} is the same as
+	 * the given one.
 	 *
 	 * @param version
 	 * @return
@@ -144,7 +159,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Returns whether the current {@link NumericVersionComponents} has the same major and minor version as the given one.
+	 * Returns whether the current {@link NumericVersionComponents} has the same
+	 * major and minor version as the given one.
 	 *
 	 * @param other
 	 * @return
@@ -154,7 +170,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Returns whether the current {@link NumericVersionComponents} is less (older) than the given one.
+	 * Returns whether the current {@link NumericVersionComponents} is less (older)
+	 * than the given one.
 	 *
 	 * @param version
 	 * @return
@@ -164,7 +181,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Returns whether the current {@link NumericVersionComponents} is less (older) or equal to the current one.
+	 * Returns whether the current {@link NumericVersionComponents} is less (older)
+	 * or equal to the current one.
 	 *
 	 * @param version
 	 * @return
@@ -194,15 +212,16 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	public String toMajorMinor() {
-		return String.format("%s.%s", getMajor(), getMinor());
+		return "%s.%s".formatted(getMajor(), getMinor());
 	}
 
 	public String toMajorMinorBugfix() {
-		return String.format("%s.%s.%s", getMajor(), getMinor(), getBugfix());
+		return "%s.%s.%s".formatted(getMajor(), getMinor(), getBugfix());
 	}
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Comparable#compareTo(java.lang.Object)
 	 */
 	public int compareTo(NumericVersionComponents that) {
@@ -229,6 +248,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
@@ -247,6 +267,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#hashCode()
 	 */
 	@Override
@@ -257,6 +278,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Object#toString()
 	 */
 	@Override
@@ -268,7 +290,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 			digits.add(BigDecimal.ZERO);
 		}
 
-		return StringUtils.collectionToDelimitedString(digits, ".");
+		return org.springframework.util.StringUtils.collectionToDelimitedString(digits, ".");
 	}
 
 }

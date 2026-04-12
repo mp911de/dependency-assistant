@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap;
 
-import javax.swing.Icon;
+import javax.swing.*;
 
 import com.intellij.openapi.util.IconLoader;
 
@@ -25,12 +25,15 @@ import com.intellij.openapi.util.IconLoader;
 public class DependencyAssistantIcons {
 
 	public static final Icon ICON = load("/META-INF/pluginIcon.svg");
+
 	public static final Icon DISABLED_ICON = IconLoader.getDisabledIcon(ICON);
 
 	public static final Icon MAVEN_ICON = load("/META-INF/upgrade-maven.svg");
+
 	public static final Icon MAVEN_TRANSPARENT_ICON = IconLoader.getTransparentIcon(MAVEN_ICON, 1);
 
 	public static final Icon GRADLE_ICON = load("/META-INF/upgrade-gradle.svg");
+
 	public static final Icon GRADLE_TRANSPARENT_ICON = IconLoader.getTransparentIcon(GRADLE_ICON, 1);
 
 	private static Icon load(String path) {

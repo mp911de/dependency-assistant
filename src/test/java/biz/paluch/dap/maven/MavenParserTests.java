@@ -15,21 +15,14 @@
  */
 package biz.paluch.dap.maven;
 
-import static org.assertj.core.api.Assertions.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.LightProjectDescriptor;
@@ -38,6 +31,11 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.junit5.RunInEdt;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link MavenParser}.
@@ -86,13 +84,13 @@ class MavenParserTests {
 
 		DependencyCollector collector = parse(file);
 
-		Dependency commonsLang = collector.getDependency("org.apache.commons", "commons-lang3");
+		Dependency commonsLang = collector.getUsage("org.apache.commons", "commons-lang3");
 		assertThat(commonsLang).as("commons-lang3").isNotNull();
 		assertThat(commonsLang.getCurrentVersion().toString()).isEqualTo("3.19.0");
 		assertThat(commonsLang.getDeclarationSources())
 				.anyMatch(ds -> ds instanceof DeclarationSource.Dependency && !(ds instanceof DeclarationSource.Managed));
 
-		assertThat(collector.getDependency("org.junit.jupiter", "junit-jupiter")).as("junit-jupiter").isNotNull();
+		assertThat(collector.getUsage("org.junit.jupiter", "junit-jupiter")).as("junit-jupiter").isNotNull();
 	}
 
 	@Test
@@ -117,7 +115,7 @@ class MavenParserTests {
 
 		DependencyCollector collector = parse(file);
 
-		Dependency bom = collector.getDependency("org.springframework.boot", "spring-boot-dependencies");
+		Dependency bom = collector.getUsage("org.springframework.boot", "spring-boot-dependencies");
 		assertThat(bom).as("spring-boot BOM").isNotNull();
 		assertThat(bom.getCurrentVersion().toString()).isEqualTo("3.5.0");
 		assertThat(bom.getDeclarationSources()).anyMatch(ds -> ds instanceof DeclarationSource.Managed);
@@ -144,7 +142,7 @@ class MavenParserTests {
 
 		DependencyCollector collector = parse(file);
 
-		Dependency dep = collector.getDependency("org.apache.commons", "commons-lang3");
+		Dependency dep = collector.getUsage("org.apache.commons", "commons-lang3");
 		assertThat(dep).as("commons-lang3 via property").isNotNull();
 		assertThat(dep.getCurrentVersion().toString()).isEqualTo("3.19.0");
 		assertThat(dep.hasPropertyVersion()).isTrue();
@@ -168,7 +166,7 @@ class MavenParserTests {
 
 		DependencyCollector collector = parse(file);
 
-		assertThat(collector.getDependencies()).isEmpty();
+		assertThat(collector.getDeclarations()).isEmpty();
 	}
 
 	@Test
@@ -190,7 +188,7 @@ class MavenParserTests {
 
 		DependencyCollector collector = parse(file);
 
-		Dependency plugin = collector.getDependency("org.apache.maven.plugins", "maven-compiler-plugin");
+		Dependency plugin = collector.getUsage("org.apache.maven.plugins", "maven-compiler-plugin");
 		assertThat(plugin).as("maven-compiler-plugin").isNotNull();
 		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("3.14.0");
 		assertThat(plugin.getDeclarationSources())
@@ -263,14 +261,14 @@ class MavenParserTests {
 
 		DependencyCollector collector = parse(file);
 
-		assertThat(collector.getDependency("org.apache.commons", "commons-lang3")).as("direct dependency").isNotNull();
+		assertThat(collector.getUsage("org.apache.commons", "commons-lang3")).as("direct dependency").isNotNull();
 
-		Dependency bom = collector.getDependency("org.springframework.modulith", "spring-modulith-bom");
+		Dependency bom = collector.getUsage("org.springframework.modulith", "spring-modulith-bom");
 		assertThat(bom).as("managed BOM").isNotNull();
 		assertThat(bom.getCurrentVersion().toString()).isEqualTo("2.0.4");
 		assertThat(bom.hasPropertyVersion()).isTrue();
 
-		assertThat(collector.getDependency("org.apache.maven.plugins", "maven-surefire-plugin")).as("plugin").isNotNull();
+		assertThat(collector.getUsage("org.apache.maven.plugins", "maven-surefire-plugin")).as("plugin").isNotNull();
 	}
 
 	@Test
@@ -311,7 +309,7 @@ class MavenParserTests {
 		parser = new MavenParser(collector, new HashMap<>());
 		parser.parsePomFile(cache, parent);
 
-		Dependency junit = collector.getDependency("org.junit.jupiter", "junit-jupiter");
+		Dependency junit = collector.getUsage("org.junit.jupiter", "junit-jupiter");
 		assertThat(junit).as("junit-jupiter resolved from parent property").isNotNull();
 		assertThat(junit.getCurrentVersion().toString()).isEqualTo("5.11.0");
 		assertThat(junit.hasPropertyVersion()).isTrue();
@@ -357,8 +355,8 @@ class MavenParserTests {
 		parser.parsePomFile(new Cache(), parent);
 		parser.parsePomFile(new Cache(), child);
 
-		assertThat(collector.getDependency("org.assertj", "assertj-core")).as("parent dependencyManagement").isNotNull();
-		assertThat(collector.getDependency("org.apache.commons", "commons-lang3")).as("child dependency").isNotNull();
+		assertThat(collector.getUsage("org.assertj", "assertj-core")).as("parent dependencyManagement").isNotNull();
+		assertThat(collector.getUsage("org.apache.commons", "commons-lang3")).as("child dependency").isNotNull();
 	}
 
 	private DependencyCollector parse(PsiFile pomFile) {

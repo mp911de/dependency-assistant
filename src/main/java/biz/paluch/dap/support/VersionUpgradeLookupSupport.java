@@ -15,26 +15,25 @@
  */
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.MessageBundle;
+import java.util.List;
+
 import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.Property;
-
-import java.util.List;
-
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Shared version-upgrade lookup used by both {@code NewerVersionLineMarkerProvider} and {@code NewerVersionAnnotator}.
+ * Shared version-upgrade lookup used by both
+ * {@code NewerVersionLineMarkerProvider} and {@code NewerVersionAnnotator}.
  */
 public abstract class VersionUpgradeLookupSupport {
 
@@ -51,13 +50,44 @@ public abstract class VersionUpgradeLookupSupport {
 	}
 
 	/**
-	 * Resolves the version upgrade result for a PSI element, or returns {@code null} if the element does not represent a
-	 * version value or no upgrade is available in the cache.
+	 * Resolves the version upgrade result for a PSI element, or returns
+	 * {@code null} if the element does not represent a version value or no upgrade
+	 * is available in the cache.
 	 */
-	public abstract biz.paluch.dap.support.UpgradeSuggestion suggestUpgrades(PsiElement element);
+	public abstract UpgradeSuggestion suggestUpgrades(PsiElement element);
 
 	/**
-	 * Resolves the property with the given name. Returns {@code null} if no such property exists in the project state.
+	 * Resolves upgrade suggestion from a resolved {@link ArtifactReference} using
+	 * releases from the given cache.
+	 *
+	 * @param cache must not be {@literal null}.
+	 * @param artifactReference the reference to evaluate
+	 * @return a present suggestion or
+	 * {@link biz.paluch.dap.support.UpgradeSuggestion#none()}
+	 */
+	protected UpgradeSuggestion suggestUpgrades(Cache cache,
+			ArtifactReference artifactReference) {
+
+		if (!artifactReference.isResolved()) {
+			return UpgradeSuggestion.none();
+		}
+
+		ArtifactDeclaration declaration = artifactReference.getDeclaration();
+		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
+			return UpgradeSuggestion.none();
+		}
+
+		List<Release> options = cache.getReleases(declaration.getArtifactId(), false);
+		if (options.isEmpty()) {
+			return UpgradeSuggestion.none();
+		}
+
+		return determineUpgrade(artifactReference, declaration.getVersion(), options);
+	}
+
+	/**
+	 * Resolves the property with the given name. Returns {@code null} if no such
+	 * property exists in the project state.
 	 *
 	 * @param propertyName the property name
 	 * @return
@@ -85,10 +115,10 @@ public abstract class VersionUpgradeLookupSupport {
 	}
 
 	/**
-	 * Determines the best available upgrade tier from the given options relative to the current version. Returns
-	 * {@code null} if no upgrade is available.
+	 * Determines the best available upgrade tier from the given options relative to
+	 * the current version.
 	 */
-	public static VersionUpgradeLookupSupport.@Nullable UpgradeSuggestion determineUpgrade(ArtifactVersion current,
+	public static UpgradeSuggestion determineUpgrade(ArtifactReference artifactReference, ArtifactVersion current,
 			List<Release> options) {
 
 		Release major = UpgradeStrategy.MAJOR.select(current, options);
@@ -96,7 +126,7 @@ public abstract class VersionUpgradeLookupSupport {
 		Release patch = UpgradeStrategy.PATCH.select(current, options);
 
 		if (major == null && minor == null && patch == null) {
-			return null;
+			return UpgradeSuggestion.none();
 		}
 
 		UpgradeStrategy strategy;
@@ -112,20 +142,8 @@ public abstract class VersionUpgradeLookupSupport {
 			bestOption = patch;
 		}
 
-		return new UpgradeSuggestion(strategy, bestOption, current);
+		return UpgradeSuggestion.of(strategy, bestOption, artifactReference);
 	}
 
-	/**
-	 * The outcome of a version lookup: the best available upgrade tier, the best candidate version, and the resolved
-	 * current version.
-	 */
-	public record UpgradeSuggestion(UpgradeStrategy strategy, Release bestOption, ArtifactVersion current) {
-
-		public String getMessage() {
-			String upgradeTarget = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
-			return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, bestOption().version().toString());
-		}
-
-	}
 
 }

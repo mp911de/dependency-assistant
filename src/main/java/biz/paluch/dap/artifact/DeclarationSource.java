@@ -47,7 +47,12 @@ public abstract class DeclarationSource {
 	 * Artifact declared within a profile.
 	 */
 	public interface Profile {
+
+		/**
+		 * Return the profile identifier.
+		 */
 		String getProfileId();
+
 	}
 
 	/**

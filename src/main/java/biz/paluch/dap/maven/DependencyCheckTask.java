@@ -15,17 +15,13 @@
  */
 package biz.paluch.dap.maven;
 
+import java.util.List;
+
 import biz.paluch.dap.DependencyCheckDialog;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.support.BuildFileUpdateAction;
-
-import java.io.IOException;
-import java.util.List;
-
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
@@ -33,6 +29,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Task to check Maven dependency and plugin updates.
@@ -56,11 +53,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 	@Override
 	public void run(ProgressIndicator indicator) {
-		try {
-			resultRef = MavenDependencyCheckService.getInstance(project).runCheck(indicator, pomFile);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		resultRef = MavenDependencyCheckService.getInstance(project).runCheck(indicator, pomFile);
 	}
 
 	@Override

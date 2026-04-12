@@ -19,9 +19,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
 
 /**
  * A release that consists of a version and an optional release date.

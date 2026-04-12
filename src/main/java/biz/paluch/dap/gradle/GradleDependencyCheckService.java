@@ -15,13 +15,12 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.support.DependencyCheckSupport;
-
-import java.util.List;
-
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -43,8 +42,7 @@ public class GradleDependencyCheckService extends DependencyCheckSupport {
 	}
 
 	public static GradleDependencyCheckService getInstance(Project project) {
-		GradleDependencyCheckService service = project.getServiceIfCreated(GradleDependencyCheckService.class);
-		return service != null ? service : new GradleDependencyCheckService(project);
+		return project.getService(GradleDependencyCheckService.class);
 	}
 
 	/**
@@ -66,6 +64,7 @@ public class GradleDependencyCheckService extends DependencyCheckSupport {
 	/**
 	 * Collects all dependency declarations from the given Gradle build file (and related files in the same project root).
 	 */
+	@Override
 	public DependencyCollector collectArtifacts(PsiFile buildFile) {
 		return new GradleDependencyCollector(project).collect(buildFile);
 	}

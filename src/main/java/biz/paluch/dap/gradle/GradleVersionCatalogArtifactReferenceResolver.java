@@ -15,34 +15,33 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+import java.util.function.Predicate;
+
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
+import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
-
-import java.util.List;
-import java.util.function.Predicate;
-
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.StringUtils;
-
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
 
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
-
 /**
- * Resolves {@link ArtifactReference} from version-catalog TOML and from {@code libs.…} accessors.
+ * Resolves {@link ArtifactReference} from version-catalog TOML and from
+ * {@code libs.…} accessors.
  *
  * @author Mark Paluch
  */
@@ -69,7 +68,7 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 
 	ArtifactReference resolveTomlLiteral(TomlLiteral literal) {
 
-		TomlKeyValue kv = findParentTomlKeyValue(literal);
+		TomlKeyValue kv = PsiTreeUtil.getParentOfType(literal, TomlKeyValue.class);
 		if (kv == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -89,7 +88,8 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 
 			CachedArtifact first = projectProperty.property().artifacts().iterator().next();
 			return ArtifactReference.from(it -> {
-				it.artifact(first.toArtifactId()).declarationElement(kv).versionSource(VersionSource.property(versionKey));
+				it.artifact(first.toArtifactId()).declarationElement(kv)
+						.versionSource(VersionSource.property(versionKey));
 				ArtifactVersion.from(version).ifPresent(it::version);
 				it.versionLiteral(literal);
 			});
@@ -103,24 +103,27 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 				return ArtifactReference.unresolved();
 			}
 
-			GradleParser.GradleDependency dependency = TomlParser.parseTomlEntry(inlineTable, GradleParser::parseArtifactId);
+			GradleDependency dependency = TomlParser.parseTomlEntry(inlineTable, GradleParser::parseArtifactId);
 			TomlKeyValue libraryOrPluginKv = PsiTreeUtil.getParentOfType(inlineTable, TomlKeyValue.class);
 			if (libraryOrPluginKv == null) {
 				return ArtifactReference.unresolved();
 			}
 
-			if (dependency instanceof GradleParser.PropertyManagedDependency managed) {
+			if (dependency instanceof PropertyManagedDependency managed) {
 				String resolved = buildContext.getPropertyValue(managed.property());
 				TomlLiteral versionsLiteral = null;
 				if (file instanceof TomlFile openCatalog) {
-					versionsLiteral = GradleVersionCatalogAliasSupport.findVersionsTableLiteral(openCatalog, managed.property());
+					versionsLiteral = GradleVersionCatalogAliasSupport.findVersionsTableLiteral(openCatalog,
+							managed.property());
 				}
-				PsiElement versionPsi = versionsLiteral != null ? versionsLiteral
-						: propertyPsi.findPropertyValuePsi(managed.property());
-				return fromPropertyManaged(managed, libraryOrPluginKv, resolved, versionPsi);
+				PsiPropertyValueElement versionPsi = propertyPsi.findPropertyValueElement(managed.property());
+				if (versionPsi != null) {
+					return fromPropertyManaged(managed, libraryOrPluginKv, resolved, versionPsi.element());
+				}
+				return fromPropertyManaged(managed, libraryOrPluginKv, resolved, versionsLiteral);
 			}
 
-			if (dependency instanceof GradleParser.SimpleDependency simple) {
+			if (dependency instanceof SimpleDependency simple) {
 				return fromSimple(simple, libraryOrPluginKv, literal);
 			}
 		}
@@ -129,7 +132,8 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 	}
 
 	/**
-	 * Resolves a {@code libs.…} catalog accessor through {@code gradle/libs.versions.toml}.
+	 * Resolves a {@code libs.…} catalog accessor through
+	 * {@code gradle/libs.versions.toml}.
 	 */
 	ArtifactReference resolveFromLibsSegments(List<String> segments, PsiElement declarationElement) {
 
@@ -150,13 +154,13 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 		if (entryKv == null || !(entryKv.getValue() instanceof TomlInlineTable inline)) {
 			return ArtifactReference.unresolved();
 		}
-		GradleParser.GradleDependency dependency = TomlParser.parseTomlEntry(inline,
+		GradleDependency dependency = TomlParser.parseTomlEntry(inline,
 				GradleVersionCatalogAliasSupport.idFunctionForTable(key.tableName()));
 		if (dependency == null) {
 			return ArtifactReference.unresolved();
 		}
 
-		if (dependency instanceof GradleParser.PropertyManagedDependency managed) {
+		if (dependency instanceof PropertyManagedDependency managed) {
 
 			String resolved = null;
 			if (buildContext.isAvailable()) {
@@ -165,27 +169,30 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 
 			TomlLiteral versionsFromCatalog = GradleVersionCatalogAliasSupport.findVersionsTableLiteral(tomlFile,
 					managed.property());
-			if (!StringUtils.hasText(resolved) && versionsFromCatalog != null) {
+			if (StringUtils.isEmpty(resolved) && versionsFromCatalog != null) {
 				resolved = TomlParser.getText(versionsFromCatalog);
 			}
 
-			PsiElement versionPsi = versionsFromCatalog != null ? versionsFromCatalog
-					: propertyPsi.findPropertyValuePsi(managed.property());
-			return fromPropertyManaged(managed, declarationElement, resolved, versionPsi);
+			PsiPropertyValueElement propertyElement = propertyPsi.findPropertyValueElement(managed.property());
+			if (propertyElement != null) {
+				return fromPropertyManaged(managed, declarationElement, resolved, propertyElement.element());
+			}
+			return fromPropertyManaged(managed, declarationElement, resolved, versionsFromCatalog);
 		}
 
-		if (dependency instanceof GradleParser.SimpleDependency simple) {
+		if (dependency instanceof SimpleDependency simple) {
 			TomlLiteral inlineVersion = GradleVersionCatalogAliasSupport.findInlineVersionLiteral(inline);
 			return fromSimple(simple, declarationElement, inlineVersion);
 		}
 		return ArtifactReference.unresolved();
 	}
 
-	private static ArtifactReference fromPropertyManaged(GradleParser.PropertyManagedDependency managed,
+	private static ArtifactReference fromPropertyManaged(PropertyManagedDependency managed,
 			PsiElement declarationElement, @Nullable String resolvedVersion, @Nullable PsiElement versionPsi) {
 
 		return ArtifactReference.from(it -> {
-			it.artifact(managed.getId()).declarationElement(declarationElement).versionSource(managed.getVersionSource());
+			it.artifact(managed.getId()).declarationElement(declarationElement)
+					.versionSource(managed.getVersionSource());
 			if (StringUtils.hasText(resolvedVersion)) {
 				ArtifactVersion.from(resolvedVersion).ifPresent(it::version);
 			}
@@ -195,7 +202,7 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 		});
 	}
 
-	private static ArtifactReference fromSimple(GradleParser.SimpleDependency simple, PsiElement declarationElement,
+	private static ArtifactReference fromSimple(SimpleDependency simple, PsiElement declarationElement,
 			@Nullable PsiElement versionPsi) {
 
 		return ArtifactReference.from(it -> {
@@ -205,10 +212,6 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 				it.versionLiteral(versionPsi);
 			}
 		});
-	}
-
-	private static @Nullable TomlKeyValue findParentTomlKeyValue(PsiElement element) {
-		return PsiTreeUtil.getParentOfType(element, TomlKeyValue.class);
 	}
 
 	private static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {

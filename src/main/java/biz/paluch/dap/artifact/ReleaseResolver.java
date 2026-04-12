@@ -18,15 +18,12 @@ package biz.paluch.dap.artifact;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Resolves available versions by fetching {@link Release}s from {@link ReleaseSource}s.
@@ -50,8 +47,6 @@ public class ReleaseResolver {
 			Future<List<Release>> future = executor.submit(() -> source.getReleases(artifactId));
 			futures.add(future);
 		}
-
-		Map<Class<? extends ReleaseSource>, AtomicInteger> failureCounter = new HashMap<>();
 
 		List<RuntimeException> errors = new ArrayList<>();
 
