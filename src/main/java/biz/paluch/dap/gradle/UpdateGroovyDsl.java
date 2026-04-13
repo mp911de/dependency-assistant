@@ -17,6 +17,7 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -75,6 +76,8 @@ class UpdateGroovyDsl {
 
 	private void updatePlugin(PsiFile file, ArtifactId id, String newVersion) {
 
+		PropertyResolver scriptProperties = GradlePropertyResolver.create(file);
+
 		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
 
 			if (!GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(call))
@@ -82,7 +85,7 @@ class UpdateGroovyDsl {
 				return false;
 			}
 
-			PluginId pluginId = PluginId.fromMethodCall(call, id);
+			PluginId pluginId = PluginId.fromMethodCall(call, id, scriptProperties);
 			if (pluginId == null) {
 				return false;
 			}

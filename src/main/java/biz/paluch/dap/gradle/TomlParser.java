@@ -222,15 +222,9 @@ class TomlParser extends GradleParserSupport {
 		return new SimpleDependency(artifactId, version, VersionSource.versionCatalog());
 	}
 
-	@Nullable
-	String resolveValue(@Nullable String value) {
-		return resolveValue(value, properties);
-	}
-
 	@Override
-	@Nullable
-	public String getProperty(@Nullable String value) {
-		return properties.get(value);
+	protected Map<String, String> getPropertyMap() {
+		return properties;
 	}
 
 	public static @Nullable String getTomlTableName(TomlTable table) {

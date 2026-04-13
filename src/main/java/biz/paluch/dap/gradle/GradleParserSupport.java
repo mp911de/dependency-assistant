@@ -15,6 +15,8 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.Map;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -36,6 +38,7 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 		super(collector);
 	}
 
+	// TODO
 	public static ArtifactId parseArtifactId(String module) {
 		String[] split = module.split(":");
 		return split.length >= 2 ? ArtifactId.of(split[0], split[1]) : ArtifactId.of(module, module);
@@ -43,8 +46,10 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 
 	@Override
 	public @Nullable String getProperty(String key) {
-		return resolveValue(key);
+		return getPropertyMap().get(key);
 	}
+
+	protected abstract Map<String, String> getPropertyMap();
 
 	// -------------------------------------------------------------------------
 	// Shared helpers

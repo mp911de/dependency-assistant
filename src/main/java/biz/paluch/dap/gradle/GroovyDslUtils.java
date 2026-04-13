@@ -22,9 +22,12 @@ import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Predicates;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -47,6 +50,8 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class GroovyDslUtils {
+
+	private static final Logger LOG = Logger.getInstance(GroovyDslUtils.class);
 
 	/**
 	 * Returns a {@link PsiPropertyValueElement} when {@code element} is the
@@ -108,7 +113,8 @@ class GroovyDslUtils {
 	 * ({@code 'group:artifact:version'}), or {@code null} if the element is not in
 	 * such a position.
 	 */
-	public static @Nullable DependencyLocation findGroovyVersionElement(PsiElement element) {
+	public static @Nullable DependencyLocation findGroovyVersionElement(PsiElement element,
+			PropertyResolver scriptProperties) {
 
 		// Only process the GrLiteral node itself. Accepting any descendant (e.g. the
 		// leaf
@@ -131,7 +137,7 @@ class GroovyDslUtils {
 		if (!GradleUtils.isDependencySection(callName) && !GradleUtils.isPlatformSection(callName)) {
 			// Not a standard dependency/platform call; check the plugin version pattern:
 			// id 'pluginId' version 'x.y.z'
-			return resolvePluginVersionLiteral(literal, call);
+			return resolvePluginVersionLiteral(literal, call, scriptProperties);
 		}
 
 		// Try getValue() first (fast path for single-quoted and non-interpolated
@@ -164,7 +170,8 @@ class GroovyDslUtils {
 	 * {@link ArtifactId#artifactId()}, matching the convention used throughout the
 	 * rest of the Gradle plugin support.
 	 */
-	public static @Nullable DependencyLocation resolvePluginVersionLiteral(GrLiteral literal, GrMethodCall call) {
+	public static @Nullable DependencyLocation resolvePluginVersionLiteral(GrLiteral literal, GrMethodCall call,
+			PropertyResolver scriptProperties) {
 		// The 'x.y.z' literal is an argument of the outer `version` method call.
 		// call.invokedExpression must be a `version` GrReferenceExpression whose
 		// qualifier
@@ -184,14 +191,18 @@ class GroovyDslUtils {
 			return null;
 		}
 
-		PluginId id = PluginId.fromMethodCall(idCall);
+		PluginId id = PluginId.fromMethodCall(idCall, scriptProperties);
 		if (id == null) {
+			return null;
+		}
+		ArtifactId artifactId = id.toValidatedArtifactId();
+		if (artifactId == null) {
 			return null;
 		}
 		String version = GroovyDslUtils.toString(id.version);
 		PropertyExpression versionExpression = PropertyExpression.from(version);
 
-		return new DependencyLocation(literal, GradleDependency.of(id.toArtifactId(), versionExpression));
+		return new DependencyLocation(literal, GradleDependency.of(artifactId, versionExpression));
 	}
 
 	public static @Nullable PsiPropertyValueElement resolvePropertyLocation(GrLiteral literal) {
@@ -442,7 +453,7 @@ class GroovyDslUtils {
 		lit.updateText(newLiteralText);
 	}
 
-	record PluginId(GrLiteral id, GrLiteral version) {
+	record PluginId(GrLiteral id, GrLiteral version, String resolvedPluginId) {
 
 		// Three forms appear in Gradle Groovy DSL plugins {} blocks:
 		//
@@ -457,31 +468,36 @@ class GroovyDslUtils {
 		// (3) Explicit-paren + command chain:
 		// id('x') version 'y' same chained structure as (2) but inner uses explicit
 		// parens
-		public static @Nullable PluginId fromMethodCall(GrMethodCall call) {
-			return fromMethodCall(call, Predicates.alwaysTrue());
+		public static @Nullable PluginId fromMethodCall(GrMethodCall call, PropertyResolver properties) {
+			return fromMethodCall(call, Predicates.alwaysTrue(), properties);
 		}
 
-		public static @Nullable PluginId fromMethodCall(GrMethodCall call, ArtifactId plugin) {
-			return fromMethodCall(call, id -> plugin.groupId().equals(id));
+		public static @Nullable PluginId fromMethodCall(GrMethodCall call, ArtifactId plugin,
+				PropertyResolver properties) {
+			return fromMethodCall(call, id -> plugin.groupId().equals(id), properties);
 		}
 
-		public static @Nullable PluginId fromMethodCall(GrMethodCall call, Predicate<String> idPredicate) {
+		public static @Nullable PluginId fromMethodCall(GrMethodCall call, Predicate<String> idPredicate,
+				PropertyResolver properties) {
 
-			GrLiteral id = null;
+			GrLiteral idLiteral = null;
+			String resolvedId = null;
 			GrLiteral version = null;
 			boolean sawVersion = false;
 
 			for (GroovyPsiElement arg : call.getArgumentList().getAllArguments()) {
 
-				if (id == null && arg instanceof GrLiteral literal) {
-					String text = GroovyDslUtils.toString(literal);
-					if (!idPredicate.test(text)) {
+				if (idLiteral == null && arg instanceof GrLiteral literal) {
+					String raw = GroovyDslUtils.toString(literal);
+					String resolved = BuildFileParserSupport.resolveChained(raw, properties);
+					if (resolved == null || !idPredicate.test(resolved)) {
 						return null;
 					}
-					id = literal;
+					idLiteral = literal;
+					resolvedId = resolved;
 				}
 
-				if (id != null && version == null) {
+				if (idLiteral != null && version == null) {
 					if (!sawVersion && arg instanceof GrReferenceExpression ref && "version".equals(ref.getText())) {
 						sawVersion = true;
 					} else if (sawVersion && arg instanceof GrLiteral literal) {
@@ -499,10 +515,10 @@ class GroovyDslUtils {
 				}
 			}
 
-			if (id == null || version == null) {
+			if (idLiteral == null || version == null || resolvedId == null) {
 				return null;
 			}
-			return new PluginId(id, version);
+			return new PluginId(idLiteral, version, resolvedId);
 		}
 
 
@@ -510,8 +526,19 @@ class GroovyDslUtils {
 			return GroovyDslUtils.toString(version);
 		}
 
-		public ArtifactId toArtifactId() {
-			return GradlePlugin.of(GroovyDslUtils.toString(id));
+		/**
+		 * Returns a plugin {@link ArtifactId} when {@link #resolvedPluginId()} is safe
+		 * to use as a coordinate, or {@code null} otherwise.
+		 */
+		@Nullable
+		ArtifactId toValidatedArtifactId() {
+
+			if (!BuildFileParserSupport.isValidPluginId(resolvedPluginId)
+					|| BuildFileParserSupport.hasUnresolvedPlaceholder(resolvedPluginId)) {
+				LOG.debug("Skipping plugin entry: cannot use resolved id '%s'".formatted(resolvedPluginId));
+				return null;
+			}
+			return GradlePlugin.of(resolvedPluginId);
 		}
 
 	}

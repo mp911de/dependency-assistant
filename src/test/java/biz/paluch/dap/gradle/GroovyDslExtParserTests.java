@@ -15,18 +15,15 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
-import biz.paluch.dap.support.UpgradeSuggestion;
+import java.util.Map;
+
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.junit5.RunInEdt;
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,13 +31,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * PSI tests for Kotlin DSL {@code plugins { id("…") version "…" }} version resolution used by
- * {@link VersionUpgradeLookupService} and {@link UpgradeSuggestion}.
- *
+ * Tests for {@link GroovyDslExtParser}.
  * @author Mark Paluch
  */
 @RunInEdt(writeIntent = true)
-class KotlinDslPluginVersionPsiTests {
+class GroovyDslExtParserTests {
 
 	private CodeInsightTestFixture fixture;
 
@@ -59,32 +54,44 @@ class KotlinDslPluginVersionPsiTests {
 	}
 
 	@Test
-	void pluginsIdVersionLiteralResolvesToVersionLocationAndQualifiedUpgradeSuggestion() {
+	void extSetPropertyIsCollected() {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("org.springframework.boot") version "4.0.0"
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext {
+				    set('springModulithVersion', "2.0.4")
 				}
 				""");
 
-		KtLiteralStringTemplateEntry versionEntry = PsiTreeUtil
-				.collectElementsOfType(file, KtLiteralStringTemplateEntry.class).stream()
-				.filter(e -> "4.0.0".equals(e.getText())).findFirst().orElseThrow();
+		Map<String, String> props = GroovyDslExtParser.getExtProperties(file);
 
-		KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(versionEntry);
-		assertThat(dependencyExpression).as("id() call for plugins block").isNotNull();
+		assertThat(props).containsEntry("springModulithVersion", "2.0.4");
+	}
 
-		DependencyLocation location = KotlinDslUtils.findKotlinVersionElement(dependencyExpression, versionEntry,
-				GradlePropertyResolver.create(file));
-		assertThat(location).as("VersionLocation on plugin version literal").isNotNull();
-		assertThat(location.artifactId().groupId()).isEqualTo("org.springframework.boot");
-		assertThat(location.artifactId().artifactId()).isEqualTo("org.springframework.boot");
-		assertThat(location.isPropertyReference()).isFalse();
+	@Test
+	void extAssignmentPropertyIsCollected() {
 
-		GradleDependency gd = location.dependency();
-		assertThat(gd).isInstanceOf(SimpleDependency.class);
-		SimpleDependency simple = (SimpleDependency) gd;
-		assertThat(simple.version()).isEqualTo("4.0.0");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext {
+				    springVersion = '6.1.0'
+				    lombokVersion = '1.18.36'
+				}
+				""");
+
+		Map<String, String> props = GroovyDslExtParser.getExtProperties(file);
+
+		assertThat(props).containsEntry("springVersion", "6.1.0").containsEntry("lombokVersion", "1.18.36");
+	}
+
+	@Test
+	void extDotAssignmentPropertyIsCollected() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext.springBootVersion = '3.5.0'
+				""");
+
+		Map<String, String> props = GroovyDslExtParser.getExtProperties(file);
+
+		assertThat(props).containsEntry("springBootVersion", "3.5.0");
 	}
 
 }

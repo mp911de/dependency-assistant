@@ -17,9 +17,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.ProjectId;
@@ -29,6 +27,7 @@ import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.Property;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.externalSystem.model.DataNode;
@@ -56,7 +55,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 	/**
 	 * Check whether the property is locally defined.
 	 */
-	boolean isLocalProperty(String name);
+	boolean isLocalProperty(String propertyKey);
 
 	/**
 	 * Looks up the {@link GradleProjectContext} for the given PSI file.
@@ -81,8 +80,9 @@ interface GradleProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Looks up the {@link GradleProjectContext} for the given virtual file, or returns
-	 * {@link EmptyGradleBuildContext#INSTANCE} when no linked Gradle project contains it.
+	 * Looks up the {@link GradleProjectContext} for the given virtual file, or
+	 * returns {@link EmptyGradleBuildContext#INSTANCE} when no linked Gradle
+	 * project contains it.
 	 */
 	static GradleProjectContext of(Project project, @Nullable VirtualFile file) {
 
@@ -124,8 +124,8 @@ interface GradleProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Resolves the Gradle project's {@code group} and {@code name} from the external system data cache to build a
-	 * {@link ProjectId}.
+	 * Resolves the Gradle project's {@code group} and {@code name} from the
+	 * external system data cache to build a {@link ProjectId}.
 	 */
 	private static @Nullable ProjectId resolveIdentity(Project project, PsiFile buildFile, String linkedPath) {
 
@@ -156,11 +156,18 @@ interface GradleProjectContext extends ProjectBuildContext {
 	class GradleBuildContextImpl implements GradleProjectContext {
 
 		private final DependencyAssistantService service;
+
 		private final PsiFile buildFile;
+
 		private final String linkedProjectPath;
+
 		private final ProjectId identity;
+
 		private final PsiManager psiManager;
-		private final Map<String, String> properties = new HashMap<>();
+
+		private final GradlePropertyResolver propertyResolver;
+
+		private final GradlePropertyResolver localProperties;
 
 		GradleBuildContextImpl(Project project, PsiFile buildFile, String linkedProjectPath, ProjectId identity) {
 
@@ -169,6 +176,8 @@ interface GradleProjectContext extends ProjectBuildContext {
 			this.linkedProjectPath = linkedProjectPath;
 			this.identity = identity;
 			this.psiManager = PsiManager.getInstance(project);
+			this.propertyResolver = GradlePropertyResolver.create(buildFile);
+			this.localProperties = GradlePropertyResolver.forFile(buildFile);
 		}
 
 		@Override
@@ -191,28 +200,16 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public boolean isLocalProperty(String name) {
-
-			Map<String, String> properties = new HashMap<>();
-			if (GradleUtils.isGroovyDsl(buildFile)) {
-				properties.putAll(GradleParser.parseExtProperties(buildFile));
-			}
-			if (GradleUtils.isKotlinDsl(buildFile) && GradleUtils.KOTLIN_AVAILABLE) {
-				properties.putAll(KotlinDslParser.parseExtraProperties(buildFile));
-			}
-
-			if (GradleUtils.isGradlePropertiesFile(buildFile)) {
-				properties.putAll(GradleParser.parseGradleProperties(buildFile));
-			}
-
-			return properties.containsKey(name);
+		public boolean isLocalProperty(String propertyKey) {
+			return localProperties.containsProperty(propertyKey);
 		}
 
 		@Override
 		public @Nullable String getPropertyValue(String name) {
 
-			if (properties.containsKey(name)) {
-				return properties.get(name);
+			String value = propertyResolver.getProperty(name);
+			if (value != null) {
+				return value;
 			}
 
 			ProjectProperty property = this.service.getCache().findProperty(name, Property::isDeclared);
@@ -227,27 +224,14 @@ interface GradleProjectContext extends ProjectBuildContext {
 				return null;
 			}
 
-			ApplicationManager.getApplication().runReadAction(() -> {
-
+			return ApplicationManager.getApplication().runReadAction((Computable<@Nullable String>) () -> {
 				PsiFile psiFile = psiManager.findFile(file);
-
 				if (psiFile == null) {
-					return;
+					return null;
 				}
-
-				if (GradleUtils.isGroovyDsl(file)) {
-					properties.putAll(GradleParser.parseExtProperties(psiFile));
-				}
-				if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
-					properties.putAll(KotlinDslParser.parseExtraProperties(psiFile));
-				}
-
-				if (GradleUtils.isGradlePropertiesFile(file)) {
-					properties.putAll(GradleParser.parseGradleProperties(psiFile));
-				}
+				PropertyResolver declaring = GradlePropertyResolver.create(psiFile);
+				return declaring.containsProperty(name) ? declaring.getProperty(name) : null;
 			});
-
-			return properties.get(name);
 		}
 
 	}
@@ -276,7 +260,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public boolean isLocalProperty(String name) {
+		public boolean isLocalProperty(String propertyKey) {
 			return false;
 		}
 
@@ -284,6 +268,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 		public @Nullable String getPropertyValue(String name) {
 			throw new IllegalStateException("Gradle BuildContext not available");
 		}
+
 	}
 
 }

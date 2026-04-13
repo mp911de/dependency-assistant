@@ -26,6 +26,8 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -57,13 +59,17 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 
 	private final GradlePropertyDeclarationPsi propertyPsi;
 
+	private final PropertyResolver propertyResolver;
+
 	GradleVersionCatalogArtifactReferenceResolver(Project project, PsiFile file, GradleProjectContext buildContext,
-			@Nullable ProjectState projectState, GradlePropertyDeclarationPsi propertyPsi) {
+			@Nullable ProjectState projectState, GradlePropertyDeclarationPsi propertyPsi,
+			PropertyResolver propertyResolver) {
 		this.project = project;
 		this.file = file;
 		this.buildContext = buildContext;
 		this.projectState = projectState;
 		this.propertyPsi = propertyPsi;
+		this.propertyResolver = propertyResolver;
 	}
 
 	ArtifactReference resolveTomlLiteral(TomlLiteral literal) {
@@ -116,7 +122,7 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 					versionsLiteral = GradleVersionCatalogAliasSupport.findVersionsTableLiteral(openCatalog,
 							managed.property());
 				}
-				PsiPropertyValueElement versionPsi = propertyPsi.findPropertyValueElement(managed.property());
+				PsiPropertyValueElement versionPsi = propertyValuePsi(managed.property());
 				if (versionPsi != null) {
 					return fromPropertyManaged(managed, libraryOrPluginKv, resolved, versionPsi.element());
 				}
@@ -156,6 +162,7 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 		}
 		GradleDependency dependency = TomlParser.parseTomlEntry(inline,
 				GradleVersionCatalogAliasSupport.idFunctionForTable(key.tableName()));
+
 		if (dependency == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -173,7 +180,7 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 				resolved = TomlParser.getText(versionsFromCatalog);
 			}
 
-			PsiPropertyValueElement propertyElement = propertyPsi.findPropertyValueElement(managed.property());
+			PsiPropertyValueElement propertyElement = propertyValuePsi(managed.property());
 			if (propertyElement != null) {
 				return fromPropertyManaged(managed, declarationElement, resolved, propertyElement.element());
 			}
@@ -222,6 +229,15 @@ final class GradleVersionCatalogArtifactReferenceResolver {
 		}
 		String name = TomlParser.getTomlTableName(table);
 		return name != null && predicate.test(name);
+	}
+
+	private @Nullable PsiPropertyValueElement propertyValuePsi(String propertyKey) {
+
+		PsiPropertyValueElement fromMerge = propertyResolver.getElement(propertyKey);
+		if (fromMerge != null) {
+			return fromMerge;
+		}
+		return propertyPsi.findPropertyValueElement(propertyKey);
 	}
 
 }

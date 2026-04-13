@@ -15,30 +15,24 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.lang.properties.IProperty;
-import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jspecify.annotations.Nullable;
 
@@ -55,7 +49,7 @@ import org.jspecify.annotations.Nullable;
  */
 class GradleParser extends GradleParserSupport {
 
-	private final Map<String, String> properties;
+	protected final Map<String, String> properties;
 
 	public GradleParser(DependencyCollector collector) {
 		this(collector, new LinkedHashMap<>());
@@ -67,24 +61,7 @@ class GradleParser extends GradleParserSupport {
 
 	public GradleParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
-		this.properties = properties;
-	}
-
-	/**
-	 * Loads all properties from a {@code gradle.properties} PSI file into a map.
-	 */
-	public static Map<String, String> parseGradleProperties(PsiFile file) {
-		Map<String, String> result = new HashMap<>();
-		if (file instanceof PropertiesFile propsFile) {
-			for (IProperty prop : propsFile.getProperties()) {
-				String key = prop.getKey();
-				String value = prop.getValue();
-				if (key != null && value != null) {
-					result.put(key, value);
-				}
-			}
-		}
-		return result;
+		this.properties = new LinkedHashMap<>(properties);
 	}
 
 	// -------------------------------------------------------------------------
@@ -98,7 +75,7 @@ class GradleParser extends GradleParserSupport {
 	 */
 	public void parseGroovyScript(PsiFile file) {
 
-		properties.putAll(GradleParser.parseExtProperties(file));
+		properties.putAll(GroovyDslExtParser.getExtProperties(file));
 		getCollector().addProperties(properties.keySet());
 		file.accept(PsiVisitors.visitTree(GrMethodCall.class, this::handleGroovyCall));
 	}
@@ -177,9 +154,9 @@ class GradleParser extends GradleParserSupport {
 			PsiElement val = arg.getExpression();
 			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.toString(lit) : null;
 			if ("group".equals(key)) {
-				group = resolveValue(strVal);
+				group = BuildFileParserSupport.resolveChained(strVal, this);
 			} else if ("name".equals(key)) {
-				artifact = resolveValue(strVal);
+				artifact = BuildFileParserSupport.resolveChained(strVal, this);
 			} else if ("version".equals(key)) {
 				version = strVal;
 			}
@@ -193,96 +170,18 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	private @Nullable GradleDependency parsePlugin(GrMethodCall call) {
-		PluginId id = PluginId.fromMethodCall(call);
+		PluginId id = PluginId.fromMethodCall(call, this);
 		if (id == null) {
 			return null;
 		}
 
-		String version = id.getVersionAsString();
-		return new SimpleDependency(id.toArtifactId(), version, VersionSource.declared(version));
-	}
-
-	/**
-	 * Collects all Groovy {@code ext} property declarations from the given file.
-	 * <p>Three forms are recognised:
-	 *
-	 * <pre>
-	 * ext {
-	 *     springVersion = '6.1.0'              // assignment form
-	 *     set('springVersion', '6.1.0')        // set() call form
-	 * }
-	 * ext.springVersion = '6.1.0'             // dot-qualified assignment form
-	 * </pre>
-	 *
-	 * @param file a Groovy {@code .gradle} file
-	 * @return a map of property key to literal string value; entries whose value is
-	 * not a plain string are omitted
-	 */
-	public static Map<String, String> parseExtProperties(PsiFile file) {
-
-		Map<String, String> result = new HashMap<>();
-
-		file.accept(PsiVisitors.recursive(element -> {
-
-			// ext { key = 'value' } or ext { set('key', 'value') }
-			if (element instanceof GrMethodCall call && "ext".equals(GroovyDslUtils.getGroovyMethodName(call))) {
-				collectExtClosureProperties(call, result);
-			}
-			// ext.key = 'value'
-			if (element instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-				collectExtDotProperty(assign, result);
-			}
-		}));
-		return result;
-	}
-
-	private static void collectExtClosureProperties(GrMethodCall extCall, Map<String, String> result) {
-
-		for (GrClosableBlock closure : extCall.getClosureArguments()) {
-			for (PsiElement child : closure.getChildren()) {
-				// Assignment form: springVersion = '6.1.0'
-
-				if (child instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-					GrExpression lhs = assign.getLValue();
-					GrExpression rhs = assign.getRValue();
-					if (lhs instanceof GrReferenceExpression ref && ref.getQualifierExpression() == null) {
-						String key = ref.getReferenceName();
-						if (key != null && rhs instanceof GrLiteral lit && lit.getValue() instanceof String s) {
-							result.put(key, s);
-						}
-					}
-				}
-
-				// set() call form: set('springVersion', '6.1.0')
-				if (child instanceof GrMethodCall setCall
-						&& "set".equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
-					PsiElement[] args = setCall.getArgumentList().getAllArguments();
-					if (args.length >= 2 && args[0] instanceof GrLiteral keyLit
-							&& keyLit.getValue() instanceof String key
-							&& args[1] instanceof GrLiteral valLit && valLit.getValue() instanceof String val) {
-						result.put(key, val);
-					}
-				}
-			}
-		}
-	}
-
-	private static void collectExtDotProperty(GrAssignmentExpression assign, Map<String, String> result) {
-
-		GrExpression lhs = assign.getLValue();
-		GrExpression rhs = assign.getRValue();
-
-		if (!(lhs instanceof GrReferenceExpression ref)) {
-			return;
+		ArtifactId artifactId = id.toValidatedArtifactId();
+		if (artifactId == null) {
+			return null;
 		}
 
-		GrExpression qualifier = ref.getQualifierExpression();
-		if (qualifier instanceof GrReferenceExpression qualRef && "ext".equals(qualRef.getReferenceName())) {
-			String key = ref.getReferenceName();
-			if (key != null && rhs instanceof GrLiteral lit && lit.getValue() instanceof String s) {
-				result.put(key, s);
-			}
-		}
+		String rawVersion = id.getVersionAsString();
+		return GradleDependency.of(artifactId, PropertyExpression.from(rawVersion));
 	}
 
 	// -------------------------------------------------------------------------
@@ -290,7 +189,7 @@ class GradleParser extends GradleParserSupport {
 	// -------------------------------------------------------------------------
 	public void parseGradleProperties(Cache cache, PsiFile file) {
 
-		Map<String, String> properties = parseGradleProperties(file);
+		Map<String, String> properties = GradlePropertiesParser.getGradleProperties(file);
 		getCollector().addProperties(properties.keySet());
 
 		cache.doWithProperties(property -> {
@@ -315,15 +214,10 @@ class GradleParser extends GradleParserSupport {
 	// Shared helpers
 	// -------------------------------------------------------------------------
 
-	@Nullable
-	String resolveValue(@Nullable String value) {
-		return resolveValue(value, properties);
-	}
-
 	@Override
-	@Nullable
-	public String getProperty(@Nullable String value) {
-		return properties.get(value);
+	protected Map<String, String> getPropertyMap() {
+		return properties;
 	}
 
 }
+

@@ -18,10 +18,9 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.Property;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.lang.properties.IProperty;
-import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -38,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-final class GradlePropertyDeclarationPsi {
+class GradlePropertyDeclarationPsi {
 
 	private final Project project;
 
@@ -76,24 +75,23 @@ final class GradlePropertyDeclarationPsi {
 			return null;
 		}
 
-		if (psiFile instanceof PropertiesFile props) {
-			IProperty ip = props.findPropertyByKey(propertyName);
-			if (ip != null) {
-				PsiElement element = ip.getPsiElement().getLastChild();
-				return new PsiPropertyValueElement(element, propertyName, element.getText());
-			}
-			return null;
-		}
-
-		if (GradleUtils.isGroovyDsl(virtualFile)) {
-			return findExPropertyLocation(propertyName, psiFile);
-		}
-
-		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			return KotlinDslExtraSupport.findExtraPropertyLocation(psiFile, propertyName);
-		}
-
-		return null;
+		return GradlePropertyResolver.forFile(psiFile).getElement(propertyName);
+		/*
+		 * if (psiFile instanceof PropertiesFile props) { IProperty ip =
+		 * props.findPropertyByKey(propertyName); if (ip != null) { PsiElement element =
+		 * ip.getPsiElement().getLastChild(); return new
+		 * PsiPropertyValueElement(element, propertyName, element.getText()); } return
+		 * null; }
+		 * 
+		 * if (GradleUtils.isGroovyDsl(virtualFile)) { return
+		 * findExPropertyLocation(propertyName, psiFile); }
+		 * 
+		 * if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
+		 * return KotlinDslExtraParser.findExtraPropertyLocation(psiFile, propertyName);
+		 * }
+		 * 
+		 * return null;
+		 */
 	}
 
 	private @Nullable PsiPropertyValueElement findExPropertyLocation(String propertyName, PsiFile psiFile) {

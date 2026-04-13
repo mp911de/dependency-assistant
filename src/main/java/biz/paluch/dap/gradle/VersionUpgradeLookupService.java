@@ -29,6 +29,7 @@ import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
@@ -95,6 +96,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GradleVersionCatalogArtifactReferenceResolver catalogResolver;
 
+	private final GradlePropertyResolver propertyResolver;
+
 	public VersionUpgradeLookupService(Project project, PsiFile file) {
 		this(project, file, GradleProjectContext.of(project, file));
 	}
@@ -111,9 +114,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyPsi = new GradlePropertyDeclarationPsi(project, projectState);
+		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.catalogResolver = new GradleVersionCatalogArtifactReferenceResolver(project, file, buildContext,
-				projectState,
-				propertyPsi);
+				projectState, propertyPsi, propertyResolver);
 	}
 
 	@Override
@@ -175,7 +178,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		if (element instanceof GrLiteral groovyLiteral) {
-			ArtifactReference fromGav = resolveReference(GroovyDslUtils.findGroovyVersionElement(groovyLiteral),
+			ArtifactReference fromGav = resolveReference(
+					GroovyDslUtils.findGroovyVersionElement(groovyLiteral, propertyResolver),
 					GrMethodCall.class);
 			if (fromGav.isResolved()) {
 				return fromGav;
@@ -221,7 +225,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		GradleDependency gd = location.dependency();
 
 		if (gd instanceof PropertyManagedDependency managed) {
-			PsiPropertyValueElement propertyLocation = propertyPsi.findPropertyValueElement(managed.property());
+			PsiPropertyValueElement fromMergedScript = propertyResolver.getElement(managed.property());
+			PsiPropertyValueElement propertyLocation = fromMergedScript != null ? fromMergedScript
+					: propertyPsi.findPropertyValueElement(managed.property());
 			return ArtifactReference.from(it -> {
 				it.artifact(managed.getId()).declarationElement(declarationCall)
 						.versionSource(managed.getVersionSource());
@@ -285,7 +291,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(propertyCandidate);
 			if (dependencyExpression != null) {
 				return resolveReference(
-						KotlinDslUtils.findKotlinVersionElement(dependencyExpression, propertyCandidate),
+						KotlinDslUtils.findKotlinVersionElement(dependencyExpression, propertyCandidate,
+								propertyResolver),
 						KtCallExpression.class);
 			}
 		}
@@ -298,7 +305,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (literalEntry != null) {
 			KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(literalEntry);
 			if (dependencyExpression != null) {
-				return resolveReference(KotlinDslUtils.findKotlinVersionElement(dependencyExpression, literalEntry),
+				return resolveReference(
+						KotlinDslUtils.findKotlinVersionElement(dependencyExpression, literalEntry,
+								propertyResolver),
 						KtCallExpression.class);
 			}
 			KtBinaryExpression propertyExpression = KotlinDslUtils.findPropertyExpression(literalEntry);

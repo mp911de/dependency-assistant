@@ -39,10 +39,10 @@ import org.springframework.util.ClassUtils;
 
 /**
  * PSI navigation utilities for Gradle build files.
- * <p>
- * Provides methods to locate the version element at the cursor position in a Groovy or Kotlin DSL dependency
- * declaration, and to resolve the artifact coordinates for that declaration. Gradle projects can declare dependencies
- * in multiple file types:
+ * <p>Provides methods to locate the version element at the cursor position in a
+ * Groovy or Kotlin DSL dependency declaration, and to resolve the artifact
+ * coordinates for that declaration. Gradle projects can declare dependencies in
+ * multiple file types:
  * <ul>
  * <li>{@code build.gradle} — Groovy DSL build script</li>
  * <li>{@code build.gradle.kts} — Kotlin DSL build script</li>
@@ -60,10 +60,15 @@ class GradleUtils {
 	static final boolean KOTLIN_AVAILABLE = ClassUtils.isPresent("org.jetbrains.kotlin.psi.KtStringTemplateExpression",
 			GradleUtils.class.getClassLoader());
 
-	/** Dependency configuration names that carry {@code group:artifact:version} strings. */
+	/**
+	 * Dependency configuration names that carry {@code group:artifact:version}
+	 * strings.
+	 */
 	static final Set<String> DEPENDENCY_CONFIGS = Set.of("implementation", "api", "runtimeOnly", "compileOnly",
-			"testImplementation", "testRuntimeOnly", "testCompileOnly", "androidTestImplementation", "debugImplementation",
-			"releaseImplementation", "annotationProcessor", "kapt", "ksp", "provided", "compile", "runtime", "testCompile",
+			"testImplementation", "testRuntimeOnly", "testCompileOnly", "androidTestImplementation",
+			"debugImplementation",
+			"releaseImplementation", "annotationProcessor", "kapt", "ksp", "provided", "compile", "runtime",
+			"testCompile",
 			"testRuntime", "classpath");
 
 	/** Configuration names that represent a BOM / platform import (managed). */
@@ -74,7 +79,8 @@ class GradleUtils {
 	 */
 	static final String PLUGINS = "plugins";
 
-	private GradleUtils() {}
+	private GradleUtils() {
+	}
 
 	/** Names of Gradle build/settings script files. */
 	public static final Set<String> GRADLE_SCRIPT_NAMES = Set.of("build.gradle", "build.gradle.kts", "settings.gradle",
@@ -87,15 +93,17 @@ class GradleUtils {
 	public static final String LIBS_VERSIONS_TOML = "libs.versions.toml";
 
 	/**
-	 * Returns {@code true} if the given {@link PsiFile} is a Gradle build or settings script, a {@code gradle.properties}
-	 * file, or a {@code libs.versions.toml} version catalog.
+	 * Returns {@code true} if the given {@link PsiFile} is a Gradle build or
+	 * settings script, a {@code gradle.properties} file, or a
+	 * {@code libs.versions.toml} version catalog.
 	 */
 	public static boolean isGradleFile(@Nullable PsiFile file) {
 		return file != null && isGradleFile(file.getVirtualFile());
 	}
 
 	/**
-	 * Returns {@code true} if the given {@link VirtualFile} is any Gradle-related build file.
+	 * Returns {@code true} if the given {@link VirtualFile} is any Gradle-related
+	 * build file.
 	 */
 	public static boolean isGradleFile(@Nullable VirtualFile file) {
 		if (file == null) {
@@ -105,16 +113,18 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file is a Gradle build or settings script ({@code build.gradle},
-	 * {@code build.gradle.kts}, {@code settings.gradle}, {@code settings.gradle.kts}).
+	 * Returns {@code true} if the file is a Gradle build or settings script
+	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
+	 * {@code settings.gradle.kts}).
 	 */
 	public static boolean isGradleScript(@Nullable VirtualFile file) {
 		return file != null && GRADLE_SCRIPT_NAMES.contains(file.getName());
 	}
 
 	/**
-	 * Returns {@code true} if the file is a Gradle build or settings script ({@code build.gradle},
-	 * {@code build.gradle.kts}, {@code settings.gradle}, {@code settings.gradle.kts}).
+	 * Returns {@code true} if the file is a Gradle build or settings script
+	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
+	 * {@code settings.gradle.kts}).
 	 */
 	public static boolean isGradleScript(@Nullable PsiFile file) {
 		return file != null && GRADLE_SCRIPT_NAMES.contains(file.getName());
@@ -135,43 +145,57 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file is a {@code libs.versions.toml} version catalog.
+	 * Returns {@code true} if the file is a {@code libs.versions.toml} version
+	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable VirtualFile file) {
 		return file != null && LIBS_VERSIONS_TOML.equals(file.getName());
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Kotlin DSL ({@code .kts} extension).
+	 * Returns {@code true} if the file is a {@code libs.versions.toml} version
+	 * catalog.
+	 */
+	public static boolean isVersionCatalog(@Nullable PsiFile file) {
+		return file != null && LIBS_VERSIONS_TOML.equals(file.getName());
+	}
+
+	/**
+	 * Returns {@code true} if the file uses the Kotlin DSL ({@code .kts}
+	 * extension).
 	 */
 	public static boolean isKotlinDsl(@Nullable VirtualFile file) {
 		return file != null && file.getName().endsWith(".kts");
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Kotlin DSL ({@code .kts} extension).
+	 * Returns {@code true} if the file uses the Kotlin DSL ({@code .kts}
+	 * extension).
 	 */
 	public static boolean isKotlinDsl(@Nullable PsiFile file) {
 		return file != null && file.getName().endsWith(".kts");
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Groovy DSL ({@code .gradle} without a {@code .kts} suffix).
+	 * Returns {@code true} if the file uses the Groovy DSL ({@code .gradle} without
+	 * a {@code .kts} suffix).
 	 */
 	public static boolean isGroovyDsl(@Nullable PsiFile file) {
 		return isGradleScript(file) && !isKotlinDsl(file);
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Groovy DSL ({@code .gradle} without a {@code .kts} suffix).
+	 * Returns {@code true} if the file uses the Groovy DSL ({@code .gradle} without
+	 * a {@code .kts} suffix).
 	 */
 	public static boolean isGroovyDsl(@Nullable VirtualFile file) {
 		return isGradleScript(file) && !isKotlinDsl(file);
 	}
 
 	/**
-	 * Locates the Gradle project root for the given file by walking up to the first ancestor that contains a settings
-	 * file or returns the parent directory if none is found.
+	 * Locates the Gradle project root for the given file by walking up to the first
+	 * ancestor that contains a settings file or returns the parent directory if
+	 * none is found.
 	 */
 	static VirtualFile findProjectRoot(VirtualFile file) {
 		VirtualFile dir = file.isDirectory() ? file : file.getParent();
@@ -227,7 +251,8 @@ class GradleUtils {
 	}
 
 	/**
-	 * Walks the ancestor directories of {@code file} until one of them matches a registered linked Gradle project root.
+	 * Walks the ancestor directories of {@code file} until one of them matches a
+	 * registered linked Gradle project root.
 	 */
 	public static @Nullable String findLinkedProjectPath(Project project, VirtualFile file) {
 
@@ -254,14 +279,15 @@ class GradleUtils {
 	}
 
 	/**
-	 * Read repositories from already-imported external project data. This is the direct consumer side of
-	 * MavenRepositoriesProjectResolver: that resolver has already written MavenRepositoryData nodes into the project
-	 * node.
+	 * Read repositories from already-imported external project data. This is the
+	 * direct consumer side of MavenRepositoriesProjectResolver: that resolver has
+	 * already written MavenRepositoryData nodes into the project node.
 	 */
 	public static List<RemoteRepository> getRepositoriesFromImportedProject(Project ideaProject,
 			String externalProjectPath) {
 
-		ExternalProjectInfo projectInfo = ExternalSystemUtil.getExternalProjectInfo(ideaProject, GradleConstants.SYSTEM_ID,
+		ExternalProjectInfo projectInfo = ExternalSystemUtil.getExternalProjectInfo(ideaProject,
+				GradleConstants.SYSTEM_ID,
 				externalProjectPath);
 
 		if (projectInfo == null) {
@@ -277,8 +303,8 @@ class GradleUtils {
 	}
 
 	/**
-	 * Read repositories from a ProjectData node. MavenRepositoriesProjectResolver stores MavenRepositoryData as direct
-	 * children of the project node.
+	 * Read repositories from a ProjectData node. MavenRepositoriesProjectResolver
+	 * stores MavenRepositoryData as direct children of the project node.
 	 */
 	public static List<RemoteRepository> getRepositories(DataNode<ProjectData> projectNode) {
 

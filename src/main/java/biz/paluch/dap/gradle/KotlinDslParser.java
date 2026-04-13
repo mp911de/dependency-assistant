@@ -15,7 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,13 +23,11 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
-import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Parser that extracts Gradle dependency declarations from Groovy DSL
@@ -45,78 +42,12 @@ import org.jetbrains.kotlin.psi.ValueArgument;
  */
 class KotlinDslParser extends GradleParser {
 
-	private final Map<String, String> properties;
-
 	public KotlinDslParser(DependencyCollector collector) {
 		this(collector, new LinkedHashMap<>());
 	}
 
 	public KotlinDslParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector, properties);
-		this.properties = properties;
-	}
-
-	// -------------------------------------------------------------------------
-	// Extra properties
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Collects {@code extra["key"]} property declarations from a Kotlin DSL file,
-	 * including:
-	 * <ul>
-	 * <li>{@code extra["key"] = "value"} and
-	 * {@code extra["key"] = """value"""}</li>
-	 * <li>{@code "value".also { extra["key"] = it }}</li>
-	 * <li>{@code extra["key"] = buildString { append("value") }}</li>
-	 * </ul>
-	 * <p>This is the Kotlin DSL equivalent of {@code gradle.properties}: versions
-	 * can be declared inline in {@code build.gradle.kts} and referenced via
-	 * {@code property("key")} or {@code extra["key"]}.
-	 *
-	 * @param file the Kotlin build script ({@code .kts})
-	 * @return a map of property key to literal value; entries whose value contains
-	 * interpolation are omitted
-	 */
-	public static Map<String, String> parseExtraProperties(PsiFile file) {
-
-		Map<String, String> result = new HashMap<>();
-
-		file.accept(PsiVisitors.conditionalVisitTree(KtBinaryExpression.class, KotlinDslUtils::isExtra,
-				expression -> {
-					result.putAll(parseExtra(expression));
-				}));
-		return result;
-	}
-
-	/**
-	 * If {@code expr} assigns a resolvable literal to {@code extra["key"]}, returns
-	 * that key-value pair.
-	 */
-	private static Map<String, String> parseExtra(KtBinaryExpression expr) {
-
-		KtExpression left = expr.getLeft();
-		KtExpression right = expr.getRight();
-
-		// Left must be extra["key"]
-		if (!(left instanceof KtArrayAccessExpression arrayAccess) || arrayAccess.getIndexExpressions().isEmpty()) {
-			return Map.of();
-		}
-
-		KtExpression indexExpr = arrayAccess.getIndexExpressions().get(0);
-		if (!(indexExpr instanceof KtStringTemplateExpression keyTemplate)) {
-			return Map.of();
-		}
-		String key = KotlinDslUtils.getText(keyTemplate);
-		if (key == null) {
-			return Map.of();
-		}
-
-		String value = KotlinDslUtils.getText(right);
-		if (value != null) {
-			return Map.of(key, value);
-		}
-
-		return Map.of();
 	}
 
 	// -------------------------------------------------------------------------
@@ -128,7 +59,7 @@ class KotlinDslParser extends GradleParser {
 	 */
 	public void parseKotlinScript(PsiFile file) {
 
-		properties.putAll(parseExtraProperties(file));
+		properties.putAll(KotlinDslExtraParser.getExtraProperties(file));
 		getCollector().addProperties(properties.keySet());
 
 		file.accept(PsiVisitors.visitTree(KtCallElement.class, this::handleKotlinCall));
@@ -145,7 +76,7 @@ class KotlinDslParser extends GradleParser {
 		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
 		boolean isPlugin = KotlinDslUtils.isInsidePluginsBlock(call);
 
-		DependencyLocation versionLocation = KotlinDslUtils.findKotlinVersionElement(call);
+		DependencyLocation versionLocation = KotlinDslUtils.findKotlinVersionElement(call, this);
 
 		if (isPlugin) {
 			if (versionLocation == null) {
@@ -185,8 +116,7 @@ class KotlinDslParser extends GradleParser {
 			PsiElement expr = arg.getArgumentExpression();
 
 			String strVal = expr instanceof KtStringTemplateExpression st ? resolveKotlinStringTemplate(st) : null;
-			String rendered = expr instanceof KtStringTemplateExpression st ? renderKotlinStringTemplate(st)
-					: null;
+			String rendered = expr instanceof KtStringTemplateExpression st ? renderKotlinStringTemplate(st) : null;
 			if ("group".equals(name)) {
 				group = strVal;
 			} else if ("name".equals(name)) {
@@ -203,23 +133,26 @@ class KotlinDslParser extends GradleParser {
 		register(GradleDependency.of(group, artifact, version, this), src);
 	}
 
-	private String resolveKotlinStringTemplate(KtStringTemplateExpression st) {
+	private @Nullable String resolveKotlinStringTemplate(KtStringTemplateExpression st) {
 
 		StringBuilder builder = new StringBuilder();
+		boolean[] failed = new boolean[1];
 		KotlinDslUtils.doWithStrings(st, builder::append, expression -> {
 
-			if (expression instanceof KtCallExpression ktCall) {
-				String name = KotlinDslUtils.getKotlinCallName(ktCall);
-				StringBuilder property = new StringBuilder();
-				if ("property".equals(name)) {
-					KotlinDslUtils.doWithStrings(ktCall, property::append, ignore -> {
-					});
-					builder.append(properties.getOrDefault(property.toString(), property.toString()));
-				}
+			String resolved = KotlinDslUtils.resolveKotlinExpression(expression, this);
+			if (resolved == null) {
+				failed[0] = true;
+			} else {
+				builder.append(resolved);
 			}
 		});
 
-		return builder.toString();
+		if (failed[0]) {
+			return null;
+		}
+		String merged = builder.toString();
+		String chained = BuildFileParserSupport.resolveChained(merged, this);
+		return chained != null ? chained : merged;
 	}
 
 	private String renderKotlinStringTemplate(KtStringTemplateExpression st) {
@@ -233,8 +166,8 @@ class KotlinDslParser extends GradleParser {
 				if ("property".equals(name)) {
 					KotlinDslUtils.doWithStrings(ktCall, property::append, ignore -> {
 					});
-					builder.append("${").append(properties.getOrDefault(property.toString(), property.toString()))
-							.append("}");
+					String key = property.toString();
+					builder.append("${").append(key).append("}");
 				}
 			}
 		});

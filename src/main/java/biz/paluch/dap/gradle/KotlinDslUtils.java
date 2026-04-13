@@ -24,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -59,6 +60,16 @@ class KotlinDslUtils {
 				for (KtExpression expression : block.getExpressions()) {
 					expressionConsumer.accept(expression);
 				}
+			} else if (child instanceof KtSimpleNameStringTemplateEntry simple) {
+				KtExpression expr = simple.getExpression();
+				if (expr == null) {
+					expr = PsiTreeUtil.getChildOfType(simple, KtNameReferenceExpression.class);
+				}
+				if (expr != null) {
+					expressionConsumer.accept(expr);
+				} else {
+					text.accept(child.getText());
+				}
 			} else {
 				text.accept(child.getText());
 			}
@@ -79,11 +90,43 @@ class KotlinDslUtils {
 	}
 
 	/**
+	 * Resolves a single expression found inside a Kotlin string template to a
+	 * string value. Handles {@code property("key")} and {@code $varName}
+	 * references.
+	 */
+	static @Nullable String resolveKotlinExpression(KtExpression expr, PropertyResolver properties) {
+
+		if (expr instanceof KtNameReferenceExpression ref) {
+			String name = ref.getReferencedName();
+			String value = properties.getProperty(name);
+			if (value == null) {
+				return null;
+			}
+			return BuildFileParserSupport.resolveChained(value, properties);
+		}
+
+		if (expr instanceof KtCallExpression call && "property".equals(getKotlinCallName(call))) {
+			StringBuilder key = new StringBuilder();
+			doWithStrings(call, key::append, e -> {
+			});
+			String k = key.toString();
+			String value = properties.getProperty(k);
+			if (value == null) {
+				return null;
+			}
+			return BuildFileParserSupport.resolveChained(value, properties);
+		}
+
+		return null;
+	}
+
+	/**
 	 * Returns the version segment {@link KtCallElement} if the caret is inside the
 	 * version part of a Kotlin DSL string-notation dependency
 	 * ({@code "group:artifact:version"}), or {@code null}.
 	 */
-	public static @Nullable DependencyLocation findKotlinVersionElement(KtCallElement call) {
+	public static @Nullable DependencyLocation findKotlinVersionElement(KtCallElement call,
+			PropertyResolver scriptProperties) {
 
 		PsiFile file = call.getContainingFile();
 		if (!GradleUtils.isGradleFile(file)) {
@@ -100,6 +143,11 @@ class KotlinDslUtils {
 		if (StringUtils.isEmpty(methodName) || !isDependencyCall(call)) {
 			return null;
 		}
+
+		if (GradleUtils.isPlugin(methodName) && isInsidePluginsBlock(call)) {
+			return findKotlinPluginLocation(call, be, scriptProperties);
+		}
+
 		StringBuilder raw = new StringBuilder();
 		StringBuilder rawVersion = new StringBuilder();
 		StringBuilder property = new StringBuilder();
@@ -137,13 +185,68 @@ class KotlinDslUtils {
 		return getVersionLocation(call, parentCall, raw.toString(), versionExpression);
 	}
 
+	private static @Nullable DependencyLocation findKotlinPluginLocation(KtCallElement call,
+			@Nullable KtBinaryExpression be, PropertyResolver scriptProperties) {
+
+		StringBuilder pluginId = new StringBuilder();
+		boolean[] failed = new boolean[1];
+		doWithStrings(call, pluginId::append, expr -> {
+			String resolved = resolveKotlinExpression(expr, scriptProperties);
+			if (resolved == null) {
+				failed[0] = true;
+			} else {
+				pluginId.append(resolved);
+			}
+		});
+
+		if (failed[0]) {
+			return null;
+		}
+
+		String idStr = BuildFileParserSupport.resolveChained(pluginId.toString(), scriptProperties);
+		if (idStr == null || !BuildFileParserSupport.isValidPluginId(idStr)
+				|| BuildFileParserSupport.hasUnresolvedPlaceholder(idStr)) {
+			return null;
+		}
+
+		StringBuilder rawVersion = new StringBuilder();
+		StringBuilder versionPropertyKey = new StringBuilder();
+		if (be != null) {
+			PsiElement[] children = be.getChildren();
+			for (int i = 0; i < children.length; i++) {
+				PsiElement child = children[i];
+				if (child instanceof KtOperationReferenceExpression ops && "version".equals(ops.getReferencedName())
+						&& children.length > i + 1
+						&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
+					rawVersion.append(getText(versionExpr));
+					doWithStrings(versionExpr, s -> {
+					}, ktExpression -> {
+						if (ktExpression instanceof KtCallExpression ktCall) {
+							String name = getKotlinCallName(ktCall);
+							if ("property".equals(name)) {
+								doWithStrings(ktExpression, versionPropertyKey::append, e -> {
+								});
+							}
+						}
+					});
+				}
+			}
+		}
+
+		PropertyExpression versionExpression = StringUtils.hasText(versionPropertyKey.toString())
+				? PropertyExpression.property(versionPropertyKey.toString())
+				: PropertyExpression.from(rawVersion.toString());
+
+		return new DependencyLocation(call, GradleDependency.of(GradlePlugin.of(idStr), versionExpression));
+	}
+
 	/**
 	 * Returns the version segment {@link KtCallElement} if the caret is inside the
 	 * version part of a Kotlin DSL string-notation dependency
 	 * ({@code "group:artifact:version"}), or {@code null}.
 	 */
 	public static @Nullable DependencyLocation findKotlinVersionElement(KtCallElement call,
-			KtStringTemplateEntry stringTemplate) {
+			KtStringTemplateEntry stringTemplate, PropertyResolver scriptProperties) {
 
 		KtCallExpression parentCall = PsiTreeUtil.getParentOfType(call, KtCallExpression.class);
 		if (parentCall == null) {
@@ -154,9 +257,6 @@ class KotlinDslUtils {
 		if (StringUtils.isEmpty(methodName) || !isDependencyCall(call)) {
 			return null;
 		}
-		StringBuilder raw = new StringBuilder();
-		StringBuilder property = new StringBuilder();
-		StringBuilder rawVersion = new StringBuilder();
 
 		String templateText = stringTemplate.getText();
 		Matcher matcher = GRADLE_DEPENDENCY_VERSION_PATTERN.matcher(templateText);
@@ -169,6 +269,15 @@ class KotlinDslUtils {
 
 			return new DependencyLocation(call, dependency);
 		}
+
+		KtBinaryExpression be = PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class);
+		if (GradleUtils.isPlugin(methodName) && isInsidePluginsBlock(call)) {
+			return findKotlinPluginLocation(call, be, scriptProperties);
+		}
+
+		StringBuilder raw = new StringBuilder();
+		StringBuilder property = new StringBuilder();
+		StringBuilder rawVersion = new StringBuilder();
 
 		doWithStrings(call, raw::append, ktExpression -> {
 
@@ -329,13 +438,14 @@ class KotlinDslUtils {
 		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(version, KtBinaryExpression.class);
 		while (binary != null) {
 
-			if (!isExtra(binary)) {
+			if (!KotlinDslExtraParser.isExtra(binary)) {
 				continue;
 			}
-			if (!"=".equals(binary.getOperationReference().getText())) {
-				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
-				continue;
+			KtStringTemplateExpression literalElement = KotlinDslExtraParser.getLiteralElement(binary);
+			if (literalElement != null) {
+				return binary;
 			}
+			// TODO
 			KtExpression left = binary.getLeft();
 			if (!(left instanceof KtArrayAccessExpression arrayAccess)) {
 				binary = PsiTreeUtil.getParentOfType(binary, KtBinaryExpression.class);
@@ -401,34 +511,6 @@ class KotlinDslUtils {
 			qual = PsiTreeUtil.getParentOfType(qual, KtQualifiedExpression.class);
 		}
 		return null;
-	}
-
-	public static boolean isExtra(KtBinaryExpression expr) {
-
-		// Must be an assignment: operator text is "="
-		if (!"=".equals(expr.getOperationReference().getText())) {
-			return false;
-		}
-
-		KtExpression left = expr.getLeft();
-
-		// Left must be extra["key"]
-		if (!(left instanceof KtArrayAccessExpression arrayAccess)) {
-			return false;
-		}
-
-		KtExpression receiver = arrayAccess.getArrayExpression();
-		if (!(receiver instanceof KtNameReferenceExpression nameRef)
-				|| !"extra".equals(nameRef.getReferencedName())) {
-			return false;
-		}
-
-		// Index must be a plain string literal
-		if (arrayAccess.getIndexExpressions().isEmpty()) {
-			return false;
-		}
-
-		return true;
 	}
 
 	private static @Nullable KtLambdaExpression firstLambdaArgument(KtCallExpression call) {

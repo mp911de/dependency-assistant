@@ -15,6 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.VersionSource;
@@ -115,6 +116,109 @@ class GradleParserGavUnitTests {
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("myVersion"));
+	}
+
+	@Test
+	void resolveInterpolated_singlePlaceholder() {
+		assertThat(
+				BuildFileParserSupport.resolveInterpolated("${a}", GradlePropertyResolver.wrap(Map.of("a", "org.foo"))))
+						.isEqualTo("org.foo");
+	}
+
+	@Test
+	void resolveInterpolated_mixedString() {
+		assertThat(
+				BuildFileParserSupport.resolveInterpolated("com.${a}", GradlePropertyResolver.wrap(Map.of("a", "foo"))))
+						.isEqualTo("com.foo");
+	}
+
+	@Test
+	void resolveInterpolated_unbracedPlaceholder() {
+		assertThat(
+				BuildFileParserSupport.resolveInterpolated("$a", GradlePropertyResolver.wrap(Map.of("a", "org.foo"))))
+						.isEqualTo("org.foo");
+	}
+
+	@Test
+	void resolveInterpolated_mixedBracedAndUnbraced() {
+		assertThat(BuildFileParserSupport.resolveInterpolated("$a.${b}",
+				GradlePropertyResolver.wrap(Map.of("a", "com", "b", "foo")))).isEqualTo("com.foo");
+	}
+
+	@Test
+	void resolveInterpolated_unknownPlaceholderLeftInPlace() {
+		assertThat(BuildFileParserSupport.resolveInterpolated("${missing}", GradlePropertyResolver.wrap(Map.of())))
+				.isEqualTo("${missing}");
+	}
+
+	@Test
+	void resolveInterpolated_unbracedUnknownLeftInPlace() {
+		assertThat(BuildFileParserSupport.resolveInterpolated("$missing", GradlePropertyResolver.wrap(Map.of())))
+				.isEqualTo("$missing");
+	}
+
+	@Test
+	void resolveInterpolated_emptyValueLeftAsEmpty() {
+		assertThat(BuildFileParserSupport.resolveInterpolated("${a}", GradlePropertyResolver.wrap(Map.of("a", ""))))
+				.isEmpty();
+	}
+
+	@Test
+	void resolveChained_twoHops() {
+		Map<String, String> props = Map.of("a", "${b}", "b", "org.foo");
+		assertThat(BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props)))
+				.isEqualTo("org.foo");
+	}
+
+	@Test
+	void resolveChained_threeHops() {
+		Map<String, String> props = Map.of("a", "${b}", "b", "${c}", "c", "org.foo");
+		assertThat(BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props)))
+				.isEqualTo("org.foo");
+	}
+
+	@Test
+	void resolveChained_cycle() {
+		Map<String, String> props = Map.of("a", "${b}", "b", "${a}");
+		String result = BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props));
+		assertThat(BuildFileParserSupport.hasUnresolvedPlaceholder(result)).isTrue();
+	}
+
+	@Test
+	void resolveChained_missingSecondHop() {
+		Map<String, String> props = Map.of("a", "${b}");
+		assertThat(BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props))).isEqualTo("${b}");
+	}
+
+	@Test
+	void resolveChained_depthCapReached() {
+		Map<String, String> props = new LinkedHashMap<>();
+		props.put("p12", "org.foo");
+		for (int i = 11; i >= 1; i--) {
+			props.put("p" + i, "${p" + (i + 1) + "}");
+		}
+		String result = BuildFileParserSupport.resolveChained("${p1}", GradlePropertyResolver.wrap(props));
+		assertThat(BuildFileParserSupport.hasUnresolvedPlaceholder(result)).isTrue();
+	}
+
+	@Test
+	void isValidPluginId_acceptsNormalId() {
+		assertThat(BuildFileParserSupport.isValidPluginId("org.springframework.boot")).isTrue();
+	}
+
+	@Test
+	void isValidPluginId_rejectsPathTraversal() {
+		assertThat(BuildFileParserSupport.isValidPluginId("../evil")).isFalse();
+	}
+
+	@Test
+	void isValidPluginId_rejectsEmpty() {
+		assertThat(BuildFileParserSupport.isValidPluginId("")).isFalse();
+	}
+
+	@Test
+	void isValidPluginId_rejectsUrlSpecial() {
+		assertThat(BuildFileParserSupport.isValidPluginId("org@attacker.com/x")).isFalse();
 	}
 
 }

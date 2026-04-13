@@ -15,6 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -147,47 +148,6 @@ class GradleParserTests {
 	}
 
 	@Test
-	void extSetPropertyIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle", """
-				ext {
-				    set('springModulithVersion', "2.0.4")
-				}
-				""");
-
-		Map<String, String> props = GradleParser.parseExtProperties(file);
-
-		assertThat(props).containsEntry("springModulithVersion", "2.0.4");
-	}
-
-	@Test
-	void extAssignmentPropertyIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle", """
-				ext {
-				    springVersion = '6.1.0'
-				    lombokVersion = '1.18.36'
-				}
-				""");
-
-		Map<String, String> props = GradleParser.parseExtProperties(file);
-
-		assertThat(props).containsEntry("springVersion", "6.1.0").containsEntry("lombokVersion", "1.18.36");
-	}
-
-	@Test
-	void extDotAssignmentPropertyIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle", """
-				ext.springBootVersion = '3.5.0'
-				""");
-
-		Map<String, String> props = GradleParser.parseExtProperties(file);
-
-		assertThat(props).containsEntry("springBootVersion", "3.5.0");
-	}
-
-	@Test
 	void managedBomWithPropertyExpressionIsResolved() {
 
 		PsiFile file = fixture.configureByText("build.gradle", """
@@ -202,7 +162,7 @@ class GradleParserTests {
 				}
 				""");
 
-		Map<String, String> extProps = GradleParser.parseExtProperties(file);
+		Map<String, String> extProps = GroovyDslExtParser.getExtProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, extProps);
 		parser.parseGroovyScript(file);
@@ -230,7 +190,7 @@ class GradleParserTests {
 				}
 				""");
 
-		Map<String, String> extProps = GradleParser.parseExtProperties(file);
+		Map<String, String> extProps = GroovyDslExtParser.getExtProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, extProps);
 		parser.parseGroovyScript(file);
@@ -245,17 +205,18 @@ class GradleParserTests {
 	@Test
 	void tomlVersionCatalogWithVersionRefs() {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[versions]
-				spring-boot = "3.5.0"
-				commons-lang = "3.17.0"
-				junit = "5.11.0"
+		PsiFile file = fixture.configureByText("libs.versions.toml",
+				"""
+						[versions]
+						spring-boot = "3.5.0"
+						commons-lang = "3.17.0"
+						junit = "5.11.0"
 
-				[libraries]
-				spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
-				commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang" }
-				junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
-				""");
+						[libraries]
+						spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+						commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang" }
+						junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+						""");
 
 		DependencyCollector collector = new DependencyCollector();
 		TomlParser parser = new TomlParser(collector);
@@ -326,7 +287,7 @@ class GradleParserTests {
 				}
 				""");
 
-		Map<String, String> extProps = GradleParser.parseExtProperties(file);
+		Map<String, String> extProps = GroovyDslExtParser.getExtProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, extProps);
 		parser.parseGroovyScript(file);
@@ -347,23 +308,280 @@ class GradleParserTests {
 		assertThat(bom.hasPropertyVersion()).isTrue();
 	}
 
+
 	@Test
-	void kotlinExtraPropertyAlternateFormatsAreCollected() {
+	void pluginIdFromGradlePropertyIsResolved() {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				"2.0.3".also { extra["springModulithVersion"] = it }
-
-				extra["buildStringKey"] = buildString {
-				        append("2.0.3")
-				    }
-
-				extra["tripleKey"] = \"""2.0.3\"""
+		Map<String, String> props = Map.of("myPlugin", "org.foo");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${myPlugin}" version "1.0"
+				}
 				""");
 
-		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
 
-		assertThat(props).containsEntry("springModulithVersion", "2.0.3").containsEntry("buildStringKey", "2.0.3")
-				.containsEntry("tripleKey", "2.0.3");
+		Dependency plugin = collector.getUsage("org.foo", "org.foo");
+		assertThat(plugin).isNotNull();
+		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("1.0");
+	}
+
+	@Test
+	void pluginIdFromExtPropertyIsResolved() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext { myPlugin = 'org.foo' }
+
+				plugins {
+				    id "${myPlugin}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		Dependency plugin = collector.getUsage("org.foo", "org.foo");
+		assertThat(plugin).isNotNull();
+		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("1.0");
+	}
+
+	@Test
+	void pluginIdUnbracedGStringIsResolved() {
+
+		Map<String, String> props = Map.of("myPlugin", "org.foo");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "$myPlugin" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void pluginIdMixedStringIsResolved() {
+
+		Map<String, String> props = Map.of("suffix", "bar");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "com.example.${suffix}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
+	}
+
+	@Test
+	void pluginIdChainedPropertyIsResolved() {
+
+		Map<String, String> props = Map.of("a", "${b}", "b", "org.foo");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${a}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void pluginIdChainLongerThanTwoHops() {
+
+		Map<String, String> props = Map.of("a", "${b}", "b", "${c}", "c", "org.foo");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${a}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void pluginIdCircularPropertySkipped() {
+
+		Map<String, String> props = Map.of("a", "${b}", "b", "${a}");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${a}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNull();
+	}
+
+	@Test
+	void pluginIdDepthCapSkipped() {
+
+		Map<String, String> props = new LinkedHashMap<>();
+		props.put("p12", "org.foo");
+		for (int i = 11; i >= 1; i--) {
+			props.put("p" + i, "${p" + (i + 1) + "}");
+		}
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${p1}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNull();
+	}
+
+	@Test
+	void pluginIdUnresolvablePropertySkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${missing}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void pluginIdEmptyValueSkipped() {
+
+		Map<String, String> props = Map.of("myPlugin", "");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${myPlugin}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void pluginIdInvalidFormatSkipped() {
+
+		Map<String, String> props = Map.of("myPlugin", "../evil");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${myPlugin}" version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void pluginIdLiteralUnchanged() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id 'org.foo' version '1.0'
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		Dependency plugin = collector.getUsage("org.foo", "org.foo");
+		assertThat(plugin).isNotNull();
+		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("1.0");
+		assertThat(plugin.hasPropertyVersion()).isFalse();
+	}
+
+	@Test
+	void pluginVersionPropertyResolvedInParsePlugin() {
+
+		Map<String, String> props = Map.of("fooVersion", "2.0");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id 'org.foo' version '${fooVersion}'
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		Dependency plugin = collector.getUsage("org.foo", "org.foo");
+		assertThat(plugin).isNotNull();
+		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("2.0");
+		assertThat(plugin.hasPropertyVersion()).isTrue();
+		assertThat(plugin.findPropertyVersion().getProperty()).isEqualTo("fooVersion");
+	}
+
+	@Test
+	void pluginIdAndVersionBothFromProperties() {
+
+		Map<String, String> props = Map.of("pluginId", "org.foo", "pluginVer", "3.0");
+		PsiFile file = fixture.configureByText("build.gradle", """
+				plugins {
+				    id "${pluginId}" version "${pluginVer}"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		Dependency plugin = collector.getUsage("org.foo", "org.foo");
+		assertThat(plugin).isNotNull();
+		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("3.0");
+		assertThat(plugin.hasPropertyVersion()).isTrue();
+	}
+
+	@Test
+	void settingsGroovyPluginManagementIdResolved() {
+
+		Map<String, String> props = Map.of("myPlugin", "org.foo");
+		PsiFile file = fixture.configureByText("settings.gradle", """
+				pluginManagement {
+				    plugins {
+				        id "${myPlugin}" version "1.0"
+				    }
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector, props);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
 	}
 
 }

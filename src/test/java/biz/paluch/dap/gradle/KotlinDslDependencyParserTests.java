@@ -146,57 +146,6 @@ class KotlinDslDependencyParserTests {
 	}
 
 	@Test
-	void extraPropertiesAreCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["springModulithVersion"] = "2.0.4"
-				extra["lombokVersion"] = "1.18.36"
-				""");
-
-		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
-
-		assertThat(props).containsEntry("springModulithVersion", "2.0.4").containsEntry("lombokVersion", "1.18.36");
-	}
-
-	@Test
-	void extraPropertyViaAlsoWithItIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				"2.0.3".also { extra["springModulithVersion"] = it }
-				""");
-
-		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
-
-		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
-	}
-
-	@Test
-	void extraPropertyViaBuildStringAppendIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["springModulithVersion"] = buildString {
-				        append("2.0.3")
-				    }
-				""");
-
-		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
-
-		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
-	}
-
-	@Test
-	void extraPropertyViaTripleQuotedStringIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["springModulithVersion"] = \"""2.0.3\"""
-				""");
-
-		Map<String, String> props = KotlinDslParser.parseExtraProperties(file);
-
-		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
-	}
-
-	@Test
 	void managedBomWithPropertyExpressionIsResolved() {
 
 		PsiFile file = fixture.configureByText("build.gradle.kts",
@@ -208,7 +157,7 @@ class KotlinDslDependencyParserTests {
 						}
 						""");
 
-		Map<String, String> extraProps = KotlinDslParser.parseExtraProperties(file);
+		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
 		parser.parseKotlinScript(file);
@@ -234,7 +183,7 @@ class KotlinDslDependencyParserTests {
 				}
 				""");
 
-		Map<String, String> extraProps = KotlinDslParser.parseExtraProperties(file);
+		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
 		parser.parseKotlinScript(file);
@@ -272,7 +221,7 @@ class KotlinDslDependencyParserTests {
 						}
 						""");
 
-		Map<String, String> extraProps = KotlinDslParser.parseExtraProperties(file);
+		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
 		parser.parseKotlinScript(file);
@@ -291,6 +240,219 @@ class KotlinDslDependencyParserTests {
 		assertThat(bom).as("spring-modulith-bom").isNotNull();
 		assertThat(bom.getCurrentVersion().toString()).isEqualTo("2.0.4");
 		assertThat(bom.hasPropertyVersion()).isTrue();
+	}
+
+	@Test
+	void pluginIdFromExtraPropertyIsResolved() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				extra["myPlugin"] = "org.foo"
+
+				plugins {
+				    id("${myPlugin}") version "1.0"
+				}
+				""");
+
+		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void pluginIdFromGradlePropertiesIsResolved() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("${myPlugin}") version "1.0"
+				}
+				""");
+
+		Map<String, String> props = Map.of("myPlugin", "org.foo");
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void pluginIdViaPropertyCallIsResolved() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("${property("myPlugin")}") version "1.0"
+				}
+				""");
+
+		Map<String, String> props = Map.of("myPlugin", "org.foo");
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void pluginIdMixedStringWithPropertyCallIsResolved() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("com.example.${property("suffix")}") version "1.0"
+				}
+				""");
+
+		Map<String, String> props = Map.of("suffix", "bar");
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
+	}
+
+	@Test
+	void pluginIdMixedStringWithVarRefIsResolved() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				extra["suffix"] = "bar"
+
+				plugins {
+				    id("com.example.${suffix}") version "1.0"
+				}
+				""");
+
+		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
+	}
+
+	@Test
+	void pluginIdBareVarRefIsResolved() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				extra["myPlugin"] = "org.foo"
+
+				plugins {
+				    id("$myPlugin") version "1.0"
+				}
+				""");
+
+		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void pluginIdUnresolvablePropertyCallSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("${property("missing")}") version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void pluginIdUnresolvableSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("${missing}") version "1.0"
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void pluginIdEmptyValueSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("${property("myPlugin")}") version "1.0"
+				}
+				""");
+
+		Map<String, String> props = Map.of("myPlugin", "");
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void pluginIdInvalidFormatSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("${property("myPlugin")}") version "1.0"
+				}
+				""");
+
+		Map<String, String> props = Map.of("myPlugin", "../evil");
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void pluginIdAndVersionBothFromPropertiesKotlin() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				plugins {
+				    id("${property("pluginId")}") version "${property("pluginVer")}"
+				}
+				""");
+
+		Map<String, String> props = Map.of("pluginId", "org.foo", "pluginVer", "3.0");
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		parser.parseKotlinScript(file);
+
+		Dependency plugin = collector.getUsage("org.foo", "org.foo");
+		assertThat(plugin).isNotNull();
+		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("3.0");
+		assertThat(plugin.hasPropertyVersion()).isTrue();
+	}
+
+	@Test
+	void settingsKotlinPluginManagementIdResolved() {
+
+		PsiFile file = fixture.configureByText("settings.gradle.kts", """
+				pluginManagement {
+				    plugins {
+				        id("${property("myPlugin")}") version "1.0"
+				    }
+				}
+				""");
+
+		Map<String, String> props = Map.of("myPlugin", "org.foo");
+		DependencyCollector collector = new DependencyCollector();
+		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		parser.parseKotlinScript(file);
+
+		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
 	}
 
 }

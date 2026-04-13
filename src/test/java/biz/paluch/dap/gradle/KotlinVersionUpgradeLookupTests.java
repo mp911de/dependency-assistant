@@ -76,7 +76,7 @@ class KotlinVersionUpgradeLookupTests {
 		KtBinaryExpression propertyExpr = KotlinDslUtils.findPropertyExpression(versionEntry);
 		assertThat(propertyExpr).as("extra[…] = buildString { … }").isNotNull();
 		assertThat(KotlinDslUtils.findProperty(propertyExpr)).isEqualTo("springModulithVersion");
-		assertThat(KotlinDslExtraSupport.findExtraPropertyLocation(file, "springModulithVersion")).isNotNull();
+		assertThat(KotlinDslExtraParser.findExtraPropertyLocation(file, "springModulithVersion")).isNotNull();
 	}
 
 	@Test
@@ -93,7 +93,7 @@ class KotlinVersionUpgradeLookupTests {
 		KtBinaryExpression propertyExpr = KotlinDslUtils.findPropertyExpression(versionEntry);
 		assertThat(propertyExpr).as("receiver of .also { extra[…] = it }").isNotNull();
 		assertThat(KotlinDslUtils.findProperty(propertyExpr)).isEqualTo("springModulithVersion");
-		assertThat(KotlinDslExtraSupport.findExtraPropertyLocation(file, "springModulithVersion").element())
+		assertThat(KotlinDslExtraParser.findExtraPropertyLocation(file, "springModulithVersion").element())
 				.isSameAs(versionEntry.getParent());
 	}
 
@@ -111,7 +111,7 @@ class KotlinVersionUpgradeLookupTests {
 		KtBinaryExpression propertyExpr = KotlinDslUtils.findPropertyExpression(versionEntry);
 		assertThat(propertyExpr).as("extra[…] = \"\"\"…\"\"\"").isNotNull();
 		assertThat(KotlinDslUtils.findProperty(propertyExpr)).isEqualTo("springModulithVersion");
-		assertThat(KotlinDslExtraSupport.findExtraPropertyLocation(file, "springModulithVersion")).isNotNull();
+		assertThat(KotlinDslExtraParser.findExtraPropertyLocation(file, "springModulithVersion")).isNotNull();
 	}
 
 	@Test

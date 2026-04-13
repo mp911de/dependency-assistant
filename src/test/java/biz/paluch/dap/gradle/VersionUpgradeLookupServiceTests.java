@@ -21,6 +21,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiElement;
@@ -401,7 +402,8 @@ class VersionUpgradeLookupServiceTests {
 	private static List<DependencyLocation> findVersionLocations(PsiFile file,
 			Predicate<DependencyLocation> predicate) {
 		return findAll(file, element -> {
-			DependencyLocation location = GroovyDslUtils.findGroovyVersionElement(element);
+			DependencyLocation location = GroovyDslUtils.findGroovyVersionElement(element,
+					GradlePropertyResolver.create(file));
 			return (location != null && predicate.test(location)) ? location : null;
 		});
 	}

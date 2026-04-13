@@ -17,13 +17,12 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 
 /**
@@ -89,34 +88,14 @@ class UpdateKotlinDsl {
 	 */
 	boolean updateExtraProperty(PsiFile file, String propertyKey, String newVersion) {
 
-		KtBinaryExpression assign = KotlinDslExtraSupport.findExtraAssignment(file, propertyKey);
-		if (assign == null) {
+		PsiPropertyValueElement element = KotlinDslExtraParser.findExtraPropertyLocation(file, propertyKey);
+		if (element == null) {
 			return false;
 		}
 
-		// extra["k"] = "v" / extra["k"] = """v"""
-		KtExpression right = assign.getRight();
-		if (right instanceof KtStringTemplateExpression valueTemplate) {
+		if (element.element() instanceof KtStringTemplateExpression valueTemplate) {
 			valueTemplate.updateText(newVersion);
 			return true;
-		}
-
-		// "v".also { extra["k"] = it }
-		if (right instanceof KtNameReferenceExpression ref && "it".equals(ref.getReferencedName())) {
-			KtStringTemplateExpression receiver = KotlinDslUtils.findAlsoReceiverStringTemplate(ref);
-			if (receiver != null) {
-				receiver.updateText(newVersion);
-				return true;
-			}
-		}
-
-		// append("v") in buildString { append("v") } / buildString { append("""v""") }
-		if (right instanceof KtCallExpression buildStringCall) {
-			KtStringTemplateExpression literal = KotlinDslUtils.findBuildStringAppendLiteral(buildStringCall);
-			if (literal != null) {
-				literal.updateText(newVersion);
-				return true;
-			}
 		}
 		return false;
 	}

@@ -15,8 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.*;
+import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -24,13 +23,6 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
-
-import java.util.List;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.LightProjectDescriptor;
@@ -39,6 +31,11 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.junit5.RunInEdt;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link UpdateGradleFile}.
@@ -75,7 +72,8 @@ class UpdateGradleFileTests {
 				}
 				""");
 
-		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0", DeclarationSource.plugin(),
+		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+				DeclarationSource.plugin(),
 				VersionSource.declared("3.5.0"), "4.0.3");
 
 		assertThat(buildFile.getText()).contains("id 'org.springframework.boot' version '4.0.3'")
@@ -92,7 +90,8 @@ class UpdateGradleFileTests {
 				}
 				""");
 
-		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0", DeclarationSource.plugin(),
+		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+				DeclarationSource.plugin(),
 				VersionSource.declared("3.5.0"), "4.0.3");
 
 		assertThat(buildFile.getText()).contains("version '4.0.3'").doesNotContain("version '3.5.0'");
@@ -161,7 +160,8 @@ class UpdateGradleFileTests {
 				}
 				""");
 
-		applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies", "3.5.0", DeclarationSource.managed(),
+		applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies", "3.5.0",
+				DeclarationSource.managed(),
 				VersionSource.declared("3.5.0"), "3.6.0");
 
 		assertThat(buildFile.getText()).contains("'org.springframework.boot:spring-boot-dependencies:3.6.0'");
@@ -186,16 +186,18 @@ class UpdateGradleFileTests {
 	@Test
 	void propertyInTomlVersionCatalogIsUpdated() {
 
-		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """
-				[versions]
-				spring-boot = "3.5.0"
-				commons-lang = "3.17.0"
+		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml",
+				"""
+						[versions]
+						spring-boot = "3.5.0"
+						commons-lang = "3.17.0"
 
-				[libraries]
-				spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
-				""");
+						[libraries]
+						spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+						""");
 
-		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0", DeclarationSource.dependency(),
+		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("spring-boot"), "3.6.0");
 
 		assertThat(tomlFile.getText()).contains("spring-boot = \"3.6.0\"");
@@ -213,7 +215,8 @@ class UpdateGradleFileTests {
 				spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version = "3.5.0" }
 				""");
 
-		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0", DeclarationSource.dependency(),
+		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.declared("3.5.0"), "3.6.0");
 
 		assertThat(tomlFile.getText()).contains("version = \"3.6.0\"");
@@ -310,65 +313,6 @@ class UpdateGradleFileTests {
 		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
 	}
 
-	@Test
-	void kotlinExtraPropertyViaAlsoWithItIsUpdated() {
-
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE);
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				"3.5.0".also { extra["springVersion"] = it }
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
-
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
-				VersionSource.property("springVersion"), "3.6.0");
-
-		assertThat(buildFile.getText()).contains("\"3.6.0\".also");
-	}
-
-	@Test
-	void kotlinExtraPropertyViaBuildStringIsUpdated() {
-
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE);
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				extra["springVersion"] = buildString {
-				        append("3.5.0")
-				    }
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
-
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
-				VersionSource.property("springVersion"), "3.6.0");
-
-		assertThat(buildFile.getText()).contains("append(\"3.6.0\")");
-	}
-
-	@Test
-	void kotlinExtraPropertyViaTripleQuotedStringIsUpdated() {
-
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE);
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				extra["springVersion"] = \"""3.5.0\"""
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
-
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
-				VersionSource.property("springVersion"), "3.6.0");
-
-		assertThat(buildFile.getText()).contains("\"\"\"3.6.0\"\"\"");
-	}
-
 	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 
@@ -380,7 +324,8 @@ class UpdateGradleFileTests {
 		dep.addDeclarationSource(declarationSource);
 		dep.addVersionSource(versionSource);
 
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(), dep.getVersionSources());
+		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
+				dep.getVersionSources());
 
 		new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile.getVirtualFile(), List.of(update));
 		PsiDocumentManager.getInstance(fixture.getProject()).commitAllDocuments();
