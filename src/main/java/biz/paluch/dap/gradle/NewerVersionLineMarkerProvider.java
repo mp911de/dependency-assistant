@@ -15,25 +15,44 @@
  */
 package biz.paluch.dap.gradle;
 
+import javax.swing.*;
+
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.NewerVersionLineMarkerProviderSupport;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import icons.GradleIcons;
-
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
+import icons.GradleIcons;
+import org.toml.lang.psi.TomlFile;
 
 /**
- * Gutter line marker for Gradle build files that indicates a newer dependency version is available. Clicking the icon
- * invokes the "Update Gradle Dependencies" action.
+ * Gutter line marker for Gradle build files that indicates a newer dependency
+ * version is available. Clicking the icon invokes the "Update Gradle
+ * Dependencies" action.
  *
  * @author Mark Paluch
  */
 public class NewerVersionLineMarkerProvider extends NewerVersionLineMarkerProviderSupport {
 
 	public NewerVersionLineMarkerProvider() {
-		super("biz.paluch.dap.gradle.UpdateDependencies", DependencyAssistantIcons.GRADLE_TRANSPARENT_ICON,
-				GradleIcons.GradleNavigate);
+		super("biz.paluch.dap.gradle.UpdateDependencies", DependencyAssistantIcons.GRADLE_TRANSPARENT_ICON);
+	}
+
+	@Override
+	protected Icon getNavigateIcon(ArtifactDeclaration declaration) {
+
+		if (declaration.getVersionLiteral() != null
+				&& declaration.getVersionLiteral().getContainingFile() instanceof TomlFile) {
+			return DependencyAssistantIcons.TOML_NAVIGATE;
+		}
+
+		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
+			return DependencyAssistantIcons.PROPERTY_NAVIGATE;
+		}
+
+		return GradleIcons.GradleNavigate;
 	}
 
 	@Override
@@ -45,4 +64,5 @@ public class NewerVersionLineMarkerProvider extends NewerVersionLineMarkerProvid
 	protected TextRange getTextRange(PsiElement element) {
 		return NewerVersionAnnotator.getRange(element);
 	}
+
 }

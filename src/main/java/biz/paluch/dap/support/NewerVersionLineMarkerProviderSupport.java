@@ -17,6 +17,7 @@ package biz.paluch.dap.support;
 
 import javax.swing.*;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProvider;
@@ -45,12 +46,9 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 
 	private final Icon icon;
 
-	private final Icon navigate;
-
-	protected NewerVersionLineMarkerProviderSupport(String actionId, Icon icon, Icon navigate) {
+	protected NewerVersionLineMarkerProviderSupport(String actionId, Icon icon) {
 		this.actionId = actionId;
 		this.icon = icon;
-		this.navigate = navigate;
 	}
 
 	@Override
@@ -77,7 +75,8 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 				String tooltipToUse = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
 						+ System.lineSeparator() + tooltip;
 
-				return new LineMarkerInfo<>(anchor, getTextRange(anchor), navigate, e -> tooltipToUse,
+				return new LineMarkerInfo<>(anchor, getTextRange(anchor), getNavigateIcon(declaration),
+						e -> tooltipToUse,
 						(mouseEvent, psiElement) -> {
 
 							OpenFileDescriptor descriptor = new OpenFileDescriptor(versionLiteral.getProject(),
@@ -96,6 +95,10 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 			}
 		}, GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 
+	}
+
+	protected Icon getNavigateIcon(ArtifactDeclaration declaration) {
+		return DependencyAssistantIcons.PROPERTY_NAVIGATE;
 	}
 
 	protected abstract VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element);

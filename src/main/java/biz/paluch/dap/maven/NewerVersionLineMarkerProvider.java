@@ -15,28 +15,41 @@
  */
 package biz.paluch.dap.maven;
 
+import javax.swing.*;
+
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.NewerVersionLineMarkerProviderSupport;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import com.intellij.psi.PsiElement;
 import icons.MavenIcons;
 
-import com.intellij.psi.PsiElement;
-
 /**
- * Gutter line marker that indicates a newer Maven dependency or plugin version in a {@code pom.xml}.
- * <p>
- * The marker appears on the line of the version value — either a literal {@code <version>} tag inside a
- * {@code <dependency>} or {@code <plugin>}, or a {@code <properties>} child tag whose name maps to a known artifact in
- * the cache. The icon reflects the highest available upgrade tier: patch, minor, or major.
- * <p>
- * Version resolution is delegated to {@link VersionUpgradeLookupService}. Clicking the gutter icon invokes the
- * {@link UpdateDependenciesAction}.
+ * Gutter line marker that indicates a newer Maven dependency or plugin version
+ * in a {@code pom.xml}.
+ * <p>The marker appears on the line of the version value — either a literal
+ * {@code <version>} tag inside a {@code <dependency>} or {@code <plugin>}, or a
+ * {@code <properties>} child tag whose name maps to a known artifact in the
+ * cache. The icon reflects the highest available upgrade tier: patch, minor, or
+ * major.
+ * <p>Version resolution is delegated to {@link VersionUpgradeLookupService}.
+ * Clicking the gutter icon invokes the {@link UpdateDependenciesAction}.
  */
 public class NewerVersionLineMarkerProvider extends NewerVersionLineMarkerProviderSupport {
 
 	public NewerVersionLineMarkerProvider() {
-		super("biz.paluch.dap.maven.UpdateDependencies", DependencyAssistantIcons.MAVEN_TRANSPARENT_ICON,
-				MavenIcons.ParentProject);
+		super("biz.paluch.dap.maven.UpdateDependencies", DependencyAssistantIcons.MAVEN_TRANSPARENT_ICON);
+	}
+
+	@Override
+	protected Icon getNavigateIcon(ArtifactDeclaration declaration) {
+
+		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
+			return DependencyAssistantIcons.PROPERTY_NAVIGATE;
+		}
+
+		return MavenIcons.ParentProject;
 	}
 
 	@Override

@@ -30,6 +30,10 @@ public class DependencyAssistantIcons {
 
 	public static final Icon MAVEN_ICON = load("/META-INF/upgrade-maven.svg");
 
+	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/propertyNavigate.svg");
+
+	public static final Icon TOML_NAVIGATE = load("/META-INF/tomlNavigate.svg");
+
 	public static final Icon MAVEN_TRANSPARENT_ICON = IconLoader.getTransparentIcon(MAVEN_ICON, 1);
 
 	public static final Icon GRADLE_ICON = load("/META-INF/upgrade-gradle.svg");
