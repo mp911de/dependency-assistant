@@ -16,20 +16,21 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.MessageBundle;
-import kotlin.Unit;
-import kotlin.coroutines.Continuation;
-
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.support.Notifications;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Startup activity that reads the Gradle build file and updates the project state.
+ * Startup activity that reads the Gradle build file and updates the project
+ * state.
  *
  * @author Mark Paluch
  */
@@ -38,17 +39,23 @@ public class GradlePostStartup implements ProjectActivity {
 	@Override
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
 
+		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
 		DumbService.getInstance(project).runWhenSmart(() -> {
 			ProgressManager.getInstance()
 					.run(new Task.Backgroundable(project, MessageBundle.message("gradle.indexing.project"), false) {
+
 						@Override
 						public void run(ProgressIndicator indicator) {
-							new UpdateProjectState(project).readAndUpdateAll(indicator);
+							new UpdateProjectState(project, service).readAndUpdateAll(indicator);
+							if (!service.getCache().hasReleases()) {
+								Notifications.releaseMetadataUnavailable(project, ReleasesRetrievalTask::new);
+							}
 						}
 					});
 		});
 
 		return null;
 	}
+
 
 }

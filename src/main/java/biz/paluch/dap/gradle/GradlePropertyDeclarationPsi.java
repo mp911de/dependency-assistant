@@ -19,15 +19,12 @@ import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.Property;
 import biz.paluch.dap.support.PsiPropertyValueElement;
-import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -76,46 +73,7 @@ class GradlePropertyDeclarationPsi {
 		}
 
 		return GradlePropertyResolver.forFile(psiFile).getElement(propertyName);
-		/*
-		 * if (psiFile instanceof PropertiesFile props) { IProperty ip =
-		 * props.findPropertyByKey(propertyName); if (ip != null) { PsiElement element =
-		 * ip.getPsiElement().getLastChild(); return new
-		 * PsiPropertyValueElement(element, propertyName, element.getText()); } return
-		 * null; }
-		 * 
-		 * if (GradleUtils.isGroovyDsl(virtualFile)) { return
-		 * findExPropertyLocation(propertyName, psiFile); }
-		 * 
-		 * if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-		 * return KotlinDslExtraParser.findExtraPropertyLocation(psiFile, propertyName);
-		 * }
-		 * 
-		 * return null;
-		 */
 	}
 
-	private @Nullable PsiPropertyValueElement findExPropertyLocation(String propertyName, PsiFile psiFile) {
-
-		@Nullable
-		PsiElement[] found = {null};
-		psiFile.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, literal -> {
-
-			PsiPropertyValueElement pl = GroovyDslUtils.findGroovyExtPropertyVersionElement(literal);
-			if (pl != null && propertyName.equals(pl.propertyKey())) {
-				found[0] = literal;
-				return true;
-			}
-
-			return false;
-		}));
-
-		PsiElement psiElement = found[0];
-		if (psiElement == null) {
-			return null;
-		}
-
-		return new PsiPropertyValueElement(found[0], propertyName,
-				psiElement instanceof GrLiteral literal ? GroovyDslUtils.toString(literal) : psiElement.getText());
-	}
 
 }

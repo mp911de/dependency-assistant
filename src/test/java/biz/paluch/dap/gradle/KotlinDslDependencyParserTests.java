@@ -157,9 +157,8 @@ class KotlinDslDependencyParserTests {
 						}
 						""");
 
-		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		KotlinDslParser parser = new KotlinDslParser(collector);
 		parser.parseKotlinScript(file);
 
 		Dependency bom = collector.getUsage("org.springframework.modulith", "spring-modulith-bom");
@@ -183,9 +182,8 @@ class KotlinDslDependencyParserTests {
 				}
 				""");
 
-		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		KotlinDslParser parser = new KotlinDslParser(collector);
 		parser.parseKotlinScript(file);
 
 		Dependency dep = collector.getUsage("org.apache.commons", "commons-lang3");
@@ -221,9 +219,8 @@ class KotlinDslDependencyParserTests {
 						}
 						""");
 
-		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		KotlinDslParser parser = new KotlinDslParser(collector);
 		parser.parseKotlinScript(file);
 
 		// Plugins with versions
@@ -253,9 +250,8 @@ class KotlinDslDependencyParserTests {
 				}
 				""");
 
-		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		KotlinDslParser parser = new KotlinDslParser(collector);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
@@ -272,7 +268,8 @@ class KotlinDslDependencyParserTests {
 
 		Map<String, String> props = Map.of("myPlugin", "org.foo");
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.getPropertyMap().putAll(props);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
@@ -289,7 +286,8 @@ class KotlinDslDependencyParserTests {
 
 		Map<String, String> props = Map.of("myPlugin", "org.foo");
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.getPropertyMap().putAll(props);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
@@ -306,7 +304,8 @@ class KotlinDslDependencyParserTests {
 
 		Map<String, String> props = Map.of("suffix", "bar");
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.getPropertyMap().putAll(props);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
@@ -323,9 +322,8 @@ class KotlinDslDependencyParserTests {
 				}
 				""");
 
-		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		KotlinDslParser parser = new KotlinDslParser(collector);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
@@ -342,9 +340,8 @@ class KotlinDslDependencyParserTests {
 				}
 				""");
 
-		Map<String, String> extraProps = KotlinDslExtraParser.getExtraProperties(file);
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, extraProps);
+		KotlinDslParser parser = new KotlinDslParser(collector);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
@@ -393,7 +390,8 @@ class KotlinDslDependencyParserTests {
 
 		Map<String, String> props = Map.of("myPlugin", "");
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.getPropertyMap().putAll(props);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsages()).isEmpty();
@@ -410,7 +408,8 @@ class KotlinDslDependencyParserTests {
 
 		Map<String, String> props = Map.of("myPlugin", "../evil");
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.getPropertyMap().putAll(props);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsages()).isEmpty();
@@ -427,7 +426,8 @@ class KotlinDslDependencyParserTests {
 
 		Map<String, String> props = Map.of("pluginId", "org.foo", "pluginVer", "3.0");
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.getPropertyMap().putAll(props);
 		parser.parseKotlinScript(file);
 
 		Dependency plugin = collector.getUsage("org.foo", "org.foo");
@@ -449,7 +449,8 @@ class KotlinDslDependencyParserTests {
 
 		Map<String, String> props = Map.of("myPlugin", "org.foo");
 		DependencyCollector collector = new DependencyCollector();
-		KotlinDslParser parser = new KotlinDslParser(collector, props);
+		KotlinDslParser parser = new KotlinDslParser(collector);
+		parser.getPropertyMap().putAll(props);
 		parser.parseKotlinScript(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();

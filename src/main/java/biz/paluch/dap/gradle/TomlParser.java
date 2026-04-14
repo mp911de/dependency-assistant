@@ -123,6 +123,11 @@ class TomlParser extends GradleParserSupport {
 		return PsiManager.getInstance(project).findFile(toml);
 	}
 
+	@Override
+	protected Map<String, String> getPropertyMap() {
+		return properties;
+	}
+
 	// -------------------------------------------------------------------------
 	// libs.versions.toml
 	// -------------------------------------------------------------------------
@@ -149,16 +154,19 @@ class TomlParser extends GradleParserSupport {
 
 			String tableName = getTomlTableName(table);
 			if (LIBRARIES.equals(tableName)) {
-				parseEntries(table, TomlParser::parseArtifactId, DeclarationSource.managed());
+				parseEntries(table, it -> {
+					GradleDependency dependency = parseGav(it);
+					return dependency == null ? null : dependency.getId();
+				}, DeclarationSource.managed());
 			}
 
 			if (PLUGINS.equals(tableName)) {
-				parseEntries(table, module -> ArtifactId.of(module, module), DeclarationSource.managed());
+				parseEntries(table, GradlePlugin::of, DeclarationSource.managed());
 			}
 		}
 	}
 
-	private void parseEntries(TomlTable table, Function<String, ArtifactId> idFunction,
+	private void parseEntries(TomlTable table, Function<String, @Nullable ArtifactId> idFunction,
 			DeclarationSource declarationSource) {
 		for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
 			if (kv.getValue() instanceof TomlInlineTable kvTable) {
@@ -192,7 +200,7 @@ class TomlParser extends GradleParserSupport {
 	}
 
 	static @Nullable GradleDependency parseTomlEntry(TomlInlineTable inlineTable,
-			Function<String, ArtifactId> artifactIdFunction) {
+			Function<String, @Nullable ArtifactId> artifactIdFunction) {
 
 		String module = null;
 		String versionRef = null;
@@ -214,17 +222,15 @@ class TomlParser extends GradleParserSupport {
 		}
 
 		ArtifactId artifactId = artifactIdFunction.apply(module);
+		if (artifactId == null) {
+			return null;
+		}
 		if (StringUtils.hasText(versionRef)) {
 			return new PropertyManagedDependency(artifactId, versionRef,
 					VersionSource.versionCatalogProperty(versionRef));
 		}
 
 		return new SimpleDependency(artifactId, version, VersionSource.versionCatalog());
-	}
-
-	@Override
-	protected Map<String, String> getPropertyMap() {
-		return properties;
 	}
 
 	public static @Nullable String getTomlTableName(TomlTable table) {

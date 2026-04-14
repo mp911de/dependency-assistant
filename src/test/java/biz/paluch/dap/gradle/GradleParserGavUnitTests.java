@@ -15,7 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.VersionSource;
@@ -37,7 +36,7 @@ class GradleParserGavUnitTests {
 	@Test
 	void parsesLiteralGav() {
 
-		GradleParser parser = new GradleParser(Map.of());
+		GradleParser parser = new GradleParser();
 		SimpleDependency dependency = (SimpleDependency) parser
 				.parseGav("org.springframework:spring-core:6.1.0");
 
@@ -52,7 +51,8 @@ class GradleParserGavUnitTests {
 	void parsesGavWithPropertyVersion() {
 
 		Map<String, String> props = Map.of("springVersion", "6.1.0");
-		GradleParser parser = new GradleParser(props);
+		GradleParser parser = new GradleParser();
+		parser.getPropertyMap().putAll(props);
 		GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
 
 		assertThat(dependency).isNotNull();
@@ -65,7 +65,7 @@ class GradleParserGavUnitTests {
 	@Test
 	void returnsNullForGavWithUnresolvablePropertyVersion() {
 
-		GradleParser parser = new GradleParser(Map.of());
+		GradleParser parser = new GradleParser();
 		GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
 
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
@@ -78,17 +78,17 @@ class GradleParserGavUnitTests {
 	@Test
 	void returnsNullForNullInput() {
 
-		GradleParser parser = new GradleParser(Map.of());
+		GradleParser parser = new GradleParser();
 
 		assertThat(parser.parseGav(null)).isNull();
 	}
 
 	@ParameterizedTest(name = "{0}")
-	@CsvSource({ "com.example:artifact:1.0.0, com.example, artifact, 1.0.0",
-			"org.example.group:my-artifact:2.3.4, org.example.group, my-artifact, 2.3.4" })
+	@CsvSource({"com.example:artifact:1.0.0, com.example, artifact, 1.0.0",
+			"org.example.group:my-artifact:2.3.4, org.example.group, my-artifact, 2.3.4"})
 	void parsesVariousCoordinates(String gav, String group, String artifact, String version) {
 
-		GradleParser parser = new GradleParser(Map.of());
+		GradleParser parser = new GradleParser();
 		GradleDependency parsed = parser.parseGav(gav);
 
 		assertThat(parsed).isNotNull();
@@ -99,7 +99,7 @@ class GradleParserGavUnitTests {
 	@Test
 	void versionSourceIsDeclaredForLiteralVersion() {
 
-		GradleParser parser = new GradleParser(Map.of());
+		GradleParser parser = new GradleParser();
 		GradleDependency dependency = parser.parseGav("com.example:artifact:1.0.0");
 
 		assertThat(dependency).isNotNull();
@@ -109,96 +109,14 @@ class GradleParserGavUnitTests {
 	@Test
 	void versionSourceIsPropertyForTemplateVersion() {
 
-		GradleParser parser = new GradleParser(Map.of("myVersion", "3.2.1"));
+		GradleParser parser = new GradleParser();
+		parser.getPropertyMap().putAll(Map.of("myVersion", "3.2.1"));
 		GradleDependency dependency = parser.parseGav("com.example:artifact:${myVersion}");
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("myVersion"));
-	}
-
-	@Test
-	void resolveInterpolated_singlePlaceholder() {
-		assertThat(
-				BuildFileParserSupport.resolveInterpolated("${a}", GradlePropertyResolver.wrap(Map.of("a", "org.foo"))))
-						.isEqualTo("org.foo");
-	}
-
-	@Test
-	void resolveInterpolated_mixedString() {
-		assertThat(
-				BuildFileParserSupport.resolveInterpolated("com.${a}", GradlePropertyResolver.wrap(Map.of("a", "foo"))))
-						.isEqualTo("com.foo");
-	}
-
-	@Test
-	void resolveInterpolated_unbracedPlaceholder() {
-		assertThat(
-				BuildFileParserSupport.resolveInterpolated("$a", GradlePropertyResolver.wrap(Map.of("a", "org.foo"))))
-						.isEqualTo("org.foo");
-	}
-
-	@Test
-	void resolveInterpolated_mixedBracedAndUnbraced() {
-		assertThat(BuildFileParserSupport.resolveInterpolated("$a.${b}",
-				GradlePropertyResolver.wrap(Map.of("a", "com", "b", "foo")))).isEqualTo("com.foo");
-	}
-
-	@Test
-	void resolveInterpolated_unknownPlaceholderLeftInPlace() {
-		assertThat(BuildFileParserSupport.resolveInterpolated("${missing}", GradlePropertyResolver.wrap(Map.of())))
-				.isEqualTo("${missing}");
-	}
-
-	@Test
-	void resolveInterpolated_unbracedUnknownLeftInPlace() {
-		assertThat(BuildFileParserSupport.resolveInterpolated("$missing", GradlePropertyResolver.wrap(Map.of())))
-				.isEqualTo("$missing");
-	}
-
-	@Test
-	void resolveInterpolated_emptyValueLeftAsEmpty() {
-		assertThat(BuildFileParserSupport.resolveInterpolated("${a}", GradlePropertyResolver.wrap(Map.of("a", ""))))
-				.isEmpty();
-	}
-
-	@Test
-	void resolveChained_twoHops() {
-		Map<String, String> props = Map.of("a", "${b}", "b", "org.foo");
-		assertThat(BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props)))
-				.isEqualTo("org.foo");
-	}
-
-	@Test
-	void resolveChained_threeHops() {
-		Map<String, String> props = Map.of("a", "${b}", "b", "${c}", "c", "org.foo");
-		assertThat(BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props)))
-				.isEqualTo("org.foo");
-	}
-
-	@Test
-	void resolveChained_cycle() {
-		Map<String, String> props = Map.of("a", "${b}", "b", "${a}");
-		String result = BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props));
-		assertThat(BuildFileParserSupport.hasUnresolvedPlaceholder(result)).isTrue();
-	}
-
-	@Test
-	void resolveChained_missingSecondHop() {
-		Map<String, String> props = Map.of("a", "${b}");
-		assertThat(BuildFileParserSupport.resolveChained("${a}", GradlePropertyResolver.wrap(props))).isEqualTo("${b}");
-	}
-
-	@Test
-	void resolveChained_depthCapReached() {
-		Map<String, String> props = new LinkedHashMap<>();
-		props.put("p12", "org.foo");
-		for (int i = 11; i >= 1; i--) {
-			props.put("p" + i, "${p" + (i + 1) + "}");
-		}
-		String result = BuildFileParserSupport.resolveChained("${p1}", GradlePropertyResolver.wrap(props));
-		assertThat(BuildFileParserSupport.hasUnresolvedPlaceholder(result)).isTrue();
 	}
 
 	@Test

@@ -49,19 +49,24 @@ import org.jspecify.annotations.Nullable;
  */
 class GradleParser extends GradleParserSupport {
 
-	protected final Map<String, String> properties;
+	private final Map<String, String> properties;
+
+	public GradleParser() {
+		this(new DependencyCollector(), new LinkedHashMap<>());
+	}
 
 	public GradleParser(DependencyCollector collector) {
 		this(collector, new LinkedHashMap<>());
 	}
 
-	public GradleParser(Map<String, String> properties) {
-		this(new DependencyCollector(), properties);
-	}
-
 	public GradleParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
 		this.properties = new LinkedHashMap<>(properties);
+	}
+
+	@Override
+	protected Map<String, String> getPropertyMap() {
+		return properties;
 	}
 
 	// -------------------------------------------------------------------------
@@ -153,11 +158,23 @@ class GradleParser extends GradleParserSupport {
 			String key = arg.getLabelName();
 			PsiElement val = arg.getExpression();
 			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.toString(lit) : null;
+
 			if ("group".equals(key)) {
-				group = BuildFileParserSupport.resolveChained(strVal, this);
+				if (StringUtils.isEmpty(strVal)) {
+					return null;
+				}
+				group = resolvePlaceholders(strVal);
 			} else if ("name".equals(key)) {
-				artifact = BuildFileParserSupport.resolveChained(strVal, this);
+
+				if (StringUtils.isEmpty(strVal)) {
+					return null;
+				}
+				artifact = resolvePlaceholders(strVal);
 			} else if ("version".equals(key)) {
+
+				if (StringUtils.isEmpty(strVal)) {
+					return null;
+				}
 				version = strVal;
 			}
 		}
@@ -208,15 +225,6 @@ class GradleParser extends GradleParserSupport {
 				});
 			}
 		});
-	}
-
-	// -------------------------------------------------------------------------
-	// Shared helpers
-	// -------------------------------------------------------------------------
-
-	@Override
-	protected Map<String, String> getPropertyMap() {
-		return properties;
 	}
 
 }

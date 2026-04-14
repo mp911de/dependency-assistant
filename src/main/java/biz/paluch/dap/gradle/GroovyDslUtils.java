@@ -489,8 +489,8 @@ class GroovyDslUtils {
 
 				if (idLiteral == null && arg instanceof GrLiteral literal) {
 					String raw = GroovyDslUtils.toString(literal);
-					String resolved = BuildFileParserSupport.resolveChained(raw, properties);
-					if (resolved == null || !idPredicate.test(resolved)) {
+					String resolved = properties.resolvePlaceholders(raw);
+					if (!idPredicate.test(resolved)) {
 						return null;
 					}
 					idLiteral = literal;
@@ -533,8 +533,7 @@ class GroovyDslUtils {
 		@Nullable
 		ArtifactId toValidatedArtifactId() {
 
-			if (!BuildFileParserSupport.isValidPluginId(resolvedPluginId)
-					|| BuildFileParserSupport.hasUnresolvedPlaceholder(resolvedPluginId)) {
+			if (!BuildFileParserSupport.isValidPluginId(resolvedPluginId)) {
 				LOG.debug("Skipping plugin entry: cannot use resolved id '%s'".formatted(resolvedPluginId));
 				return null;
 			}

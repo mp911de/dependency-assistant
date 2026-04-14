@@ -16,13 +16,12 @@
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SyntaxTraverser;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
@@ -43,11 +42,7 @@ import org.jspecify.annotations.Nullable;
 class KotlinDslParser extends GradleParser {
 
 	public KotlinDslParser(DependencyCollector collector) {
-		this(collector, new LinkedHashMap<>());
-	}
-
-	public KotlinDslParser(DependencyCollector collector, Map<String, String> properties) {
-		super(collector, properties);
+		super(collector, new LinkedHashMap<>());
 	}
 
 	// -------------------------------------------------------------------------
@@ -59,10 +54,10 @@ class KotlinDslParser extends GradleParser {
 	 */
 	public void parseKotlinScript(PsiFile file) {
 
-		properties.putAll(KotlinDslExtraParser.getExtraProperties(file));
-		getCollector().addProperties(properties.keySet());
+		getPropertyMap().putAll(KotlinDslExtraParser.getExtraProperties(file));
+		getCollector().addProperties(getPropertyMap().keySet());
 
-		file.accept(PsiVisitors.visitTree(KtCallElement.class, this::handleKotlinCall));
+		SyntaxTraverser.psiTraverser(file).filter(KtCallElement.class).forEach(this::handleKotlinCall);
 	}
 
 	private void handleKotlinCall(KtCallElement call) {
@@ -151,8 +146,7 @@ class KotlinDslParser extends GradleParser {
 			return null;
 		}
 		String merged = builder.toString();
-		String chained = BuildFileParserSupport.resolveChained(merged, this);
-		return chained != null ? chained : merged;
+		return this.resolvePlaceholders(merged);
 	}
 
 	private String renderKotlinStringTemplate(KtStringTemplateExpression st) {

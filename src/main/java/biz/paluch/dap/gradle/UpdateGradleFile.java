@@ -195,7 +195,7 @@ class UpdateGradleFile {
 		VirtualFile virtualFile = file.getVirtualFile();
 
 		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
-			updarteDeclaration(tomlFile, artifactId, newVersion);
+			updateDeclaration(tomlFile, artifactId, newVersion);
 			return;
 		}
 
@@ -221,7 +221,7 @@ class UpdateGradleFile {
 		VirtualFile virtualFile = file.getVirtualFile();
 
 		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
-			updarteDeclaration(tomlFile, id, newVersion);
+			updateDeclaration(tomlFile, id, newVersion);
 		}
 
 		// Groovy DSL
@@ -241,12 +241,14 @@ class UpdateGradleFile {
 	 * {@code [plugins]} inline table when the entry matches {@code artifactId} and
 	 * uses a literal version (not {@code version.ref}).
 	 */
-	private void updarteDeclaration(TomlFile file, ArtifactId artifactId, String newVersion) {
+	private void updateDeclaration(TomlFile file, ArtifactId artifactId, String newVersion) {
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
 
 			String tableName = TomlParser.getTomlTableName(table);
-			if ((!TomlParser.LIBRARIES.equals(tableName) && !TomlParser.PLUGINS.equals(tableName))) {
+			boolean isPlugin = TomlParser.PLUGINS.equals(tableName);
+			boolean isDependency = TomlParser.LIBRARIES.equals(tableName);
+			if ((!isDependency && !isPlugin)) {
 				continue;
 			}
 
@@ -255,12 +257,15 @@ class UpdateGradleFile {
 					continue;
 				}
 
-				GradleDependency dep = TomlParser.parseTomlEntry(inline, GradleParser::parseArtifactId);
-				if (!(dep instanceof SimpleDependency sd)) {
-					continue;
-				}
+				GradleDependency dep = TomlParser.parseTomlEntry(inline, it -> {
+					if (isPlugin) {
+						return GradlePlugin.of(it);
+					}
+					GradleDependency parsed = GradleDependency.parse(it);
+					return parsed != null ? parsed.getId() : null;
+				});
 
-				if (!sd.id().equals(artifactId)) {
+				if (!(dep instanceof SimpleDependency sd) || !sd.id().equals(artifactId)) {
 					continue;
 				}
 

@@ -15,25 +15,17 @@
  */
 package biz.paluch.dap.support;
 
-import java.util.stream.Collectors;
-
 import biz.paluch.dap.MessageBundle;
-import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
-import com.intellij.ide.nls.NlsMessages;
-import com.intellij.notification.Notification;
-import com.intellij.notification.NotificationGroup;
-import com.intellij.notification.NotificationGroupManager;
-import com.intellij.notification.NotificationType;
-import com.intellij.notification.Notifications;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Suppot class for a background task that refreshes the release state for each used dependency.
+ * Suppot class for a background task that refreshes the release state for each
+ * used dependency.
  *
  * @author Mark Paluch
  */
@@ -49,25 +41,19 @@ public abstract class ReleasesRetrievalTaskSupport extends Task.Backgroundable {
 	@Override
 	public void onSuccess() {
 
-		NotificationGroup group = NotificationGroupManager.getInstance()
-				.getNotificationGroup("biz.paluch.dependency-assistant.releases");
 		DependencyUpdates result = getUpdates();
-		if (result == null || project.isDisposed() || group == null) {
+		if (result == null || project.isDisposed()) {
 			return;
 		}
-		int count = result.updates().size();
-		String duration = NlsMessages.formatDuration(getDuration(), 1, true);
-		String detail = result.updates().stream().map(DependencyUpdateOption::getArtifactId).map(Object::toString)
-				.collect(Collectors.joining(", "));
-		Notification notification = group.createNotification(MessageBundle.message("action.update.releases.done.title"),
-				MessageBundle.message("action.update.releases.done", count, duration, detail), NotificationType.INFORMATION);
+
+		Notifications.releaseMetadataRefreshed(project, result, getDuration());
 		DaemonCodeAnalyzer.getInstance(project).restart(MessageBundle.message("action.update.releases.done.title"));
-		Notifications.Bus.notify(notification, project);
 	}
 
 	@Override
 	public void onThrowable(Throwable error) {
-		Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.error", error.getMessage()),
+		Messages.showMessageDialog(project,
+				MessageBundle.message("action.check.dependencies.error", error.getMessage()),
 				MessageBundle.message("action.check.dependencies.error.title"), Messages.getErrorIcon());
 	}
 

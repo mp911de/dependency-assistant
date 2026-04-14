@@ -17,6 +17,8 @@ package biz.paluch.dap.support;
 
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.util.Assert;
+
 /**
  * Resolves build-time property keys to string values and, when supported, to
  * the declaring PSI for documentation and navigation.
@@ -51,6 +53,23 @@ public interface PropertyResolver {
 	 */
 	default @Nullable PsiPropertyValueElement getElement(String propertyKey) {
 		return null;
+	}
+
+	/**
+	 * Resolve {@code ${...}} placeholders in the given text, replacing them with
+	 * corresponding property values as resolved by {@link #getProperty}.
+	 * Unresolvable placeholders with no default value are ignored and passed
+	 * through unchanged.
+	 * @param text the String to resolve
+	 * @return the resolved String (never {@code null})
+	 * @throws IllegalArgumentException if given text is {@code null}
+	 */
+	default String resolvePlaceholders(String text) {
+
+		Assert.notNull(text, "Text must not be null");
+
+		return PropertyResolverUtil.resolvePlaceholders(text, this);
+
 	}
 
 }

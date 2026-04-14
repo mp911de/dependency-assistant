@@ -16,20 +16,21 @@
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.MessageBundle;
-import kotlin.Unit;
-import kotlin.coroutines.Continuation;
-
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.support.Notifications;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
+import kotlin.Unit;
+import kotlin.coroutines.Continuation;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Startup activity that reads the Maven build files and updates the project state.
+ * Startup activity that reads the Maven build files and updates the project
+ * state.
  *
  * @author Mark Paluch
  */
@@ -41,10 +42,19 @@ public class MavenPostStartup implements ProjectActivity {
 		DumbService.getInstance(project).runWhenSmart(() -> {
 			ProgressManager.getInstance()
 					.run(new Task.Backgroundable(project, MessageBundle.message("maven.indexing.project"), false) {
+
 						@Override
 						public void run(ProgressIndicator indicator) {
-							new UpdateProjectState(project).readAndUpdateAll(indicator);
+
+							DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+							new UpdateProjectState(project, service).readAndUpdateAll(indicator);
+
+							if (!service.getCache().hasReleases()) {
+								Notifications.releaseMetadataUnavailable(project,
+										ReleasesRetrievalTask::new);
+							}
 						}
+
 					});
 		});
 

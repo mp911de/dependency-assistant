@@ -61,6 +61,9 @@
 		<notificationGroup id="biz.paluch.dependency-assistant.releases"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
+		<notificationGroup id="biz.paluch.dependency-assistant.releases-sticky"
+		                   displayType="STICKY_BALLOON"
+		                   bundle="messages.MessageBundle" key="plugin.name"/>
 		<additionalTextAttributes scheme="Default"
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
 		<additionalTextAttributes scheme="Darcula"

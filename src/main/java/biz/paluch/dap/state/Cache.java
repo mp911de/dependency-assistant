@@ -15,10 +15,6 @@
  */
 package biz.paluch.dap.state;
 
-import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.Release;
-
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -28,12 +24,14 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.Release;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
 import com.intellij.util.xmlb.annotations.XCollection;
+import org.jspecify.annotations.Nullable;
 
 @Tag("cache")
 public class Cache {
@@ -43,13 +41,16 @@ public class Cache {
 	private static final Duration CACHE_EXPIRATION = Duration.ofMinutes(10);
 
 	/**
-	 * Epoch-millisecond timestamp of the last successful update, or {@code 0} if no update has been applied yet.
+	 * Epoch-millisecond timestamp of the last successful update, or {@code 0} if no
+	 * update has been applied yet.
 	 */
-	@Attribute private long lastUpdateTimestamp = 0L;
-	private final @XCollection(propertyElementName = "artifacts", elementName = "artifact",
-			style = XCollection.Style.v2) List<CachedArtifact> artifacts = new ArrayList<>();
-	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project",
-			style = XCollection.Style.v2) List<ProjectCache> projects = Collections.synchronizedList(new ArrayList<>());
+	@Attribute
+	private long lastUpdateTimestamp = 0L;
+
+	private final @XCollection(propertyElementName = "artifacts", elementName = "artifact", style = XCollection.Style.v2) List<CachedArtifact> artifacts = new ArrayList<>();
+
+	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project", style = XCollection.Style.v2) List<ProjectCache> projects = Collections
+			.synchronizedList(new ArrayList<>());
 
 	public long getLastUpdateTimestamp() {
 		return lastUpdateTimestamp;
@@ -66,7 +67,8 @@ public class Cache {
 	}
 
 	/**
-	 * Load cached version options for the given artifact. Returns an empty list if the cache is expired.
+	 * Load cached version options for the given artifact. Returns an empty list if
+	 * the cache is expired.
 	 */
 	@Transient
 	public List<Release> getReleases(ArtifactId artifactId, boolean ensureRecent) {
@@ -165,4 +167,9 @@ public class Cache {
 	public void doWithProperties(Consumer<Property> propertyConsumer) {
 		getProjects().forEach(project -> project.getProperties().forEach(propertyConsumer));
 	}
+
+	public boolean hasReleases() {
+		return !artifacts.isEmpty();
+	}
+
 }

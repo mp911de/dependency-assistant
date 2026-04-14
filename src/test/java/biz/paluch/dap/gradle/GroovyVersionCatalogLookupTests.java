@@ -15,14 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
-
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.toml.lang.psi.TomlLiteral;
-
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -32,6 +24,13 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.testFramework.junit5.RunInEdt;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.toml.lang.psi.TomlLiteral;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Groovy DSL version-catalog accessors via {@link VersionUpgradeLookupService}.
@@ -85,7 +84,7 @@ class GroovyVersionCatalogLookupTests {
 		assertThat(ar.getArtifactId().artifactId()).isEqualTo("io.spring.dependency-management");
 		assertThat(ar.getDeclaration().getVersion().toString()).isEqualTo("1.1.7");
 		assertThat(ar.getDeclaration().getVersionLiteral()).isInstanceOf(TomlLiteral.class);
-		assertThat(TomlParser.getText((TomlLiteral) ar.getDeclaration().getVersionLiteral())).isEqualTo("1.1.7");
+		assertThat(TomlParser.getText(ar.getDeclaration().getVersionLiteral())).isEqualTo("1.1.7");
 		assertThat(ar.getDeclaration().getDeclarationElement().getText()).startsWith("alias(");
 	}
 

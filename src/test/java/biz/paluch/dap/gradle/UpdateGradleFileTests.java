@@ -235,7 +235,7 @@ class UpdateGradleFileTests {
 				""");
 
 		applyUpdate(tomlFile, "io.spring.dependency-management", "io.spring.dependency-management", "1.1.6",
-				DeclarationSource.dependency(), VersionSource.declared("1.1.6"), "1.1.7");
+				DeclarationSource.plugin(), VersionSource.declared("1.1.6"), "1.1.7");
 
 		assertThat(tomlFile.getText()).contains("version = \"1.1.7\"");
 		assertThat(tomlFile.getText()).contains("commons-lang = \"3.17.0\"");

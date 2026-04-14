@@ -242,26 +242,6 @@ class GradlePropertyResolver implements PropertyResolver {
 
 	}
 
-	/**
-	 * Returns a {@link PropertyResolver} backed by a fixed snapshot of
-	 * {@code properties} (e.g. tests or parser seed maps).
-	 */
-	public static PropertyResolver wrap(Map<String, String> properties) {
-
-		if (properties.isEmpty()) {
-			return ABSENT;
-		}
-		Map<String, String> frozen = Map.copyOf(properties);
-		return new PropertyResolver() {
-
-			@Override
-			public @Nullable String getProperty(String key) {
-				return frozen.get(key);
-			}
-
-		};
-	}
-
 	@Override
 	public @Nullable String getProperty(String key) {
 

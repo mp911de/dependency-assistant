@@ -15,31 +15,31 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
-
 import java.util.function.Function;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
-
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
 
-import com.intellij.psi.util.PsiTreeUtil;
-
 /**
- * TOML PSI bridge for Gradle {@code gradle/libs.versions.toml}: finding entries, {@code [versions]} literals, and
- * inline {@code version} keys. Mapping {@code libs.…} accessor segments to catalog tables lives in
- * {@link TomlParser#catalogTableKeyFromLibsSegments}. Kotlin and Groovy {@code libs.…} navigation is in
- * {@link KotlinDslUtils} and {@link GroovyDslUtils}.
+ * TOML PSI bridge for Gradle {@code gradle/libs.versions.toml}: finding
+ * entries, {@code [versions]} literals, and inline {@code version} keys.
+ * Mapping {@code libs.…} accessor segments to catalog tables lives in
+ * {@link TomlParser#catalogTableKeyFromLibsSegments}. Kotlin and Groovy
+ * {@code libs.…} navigation is in {@link KotlinDslUtils} and
+ * {@link GroovyDslUtils}.
  *
  * @author Mark Paluch
  */
-final class GradleVersionCatalogAliasSupport {
+class GradleVersionCatalogAliasSupport {
 
-	private GradleVersionCatalogAliasSupport() {}
+	private GradleVersionCatalogAliasSupport() {
+	}
 
 	static @Nullable TomlKeyValue findCatalogEntryKeyValue(TomlFile tomlFile, String tableName, String entryKey) {
 
@@ -65,7 +65,8 @@ final class GradleVersionCatalogAliasSupport {
 				continue;
 			}
 			for (TomlKeyValue vkv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
-				if (versionKey.equals(TomlParser.getTomlKeyName(vkv.getKey())) && vkv.getValue() instanceof TomlLiteral lit) {
+				if (versionKey.equals(TomlParser.getTomlKeyName(vkv.getKey()))
+						&& vkv.getValue() instanceof TomlLiteral lit) {
 					return lit;
 				}
 			}
@@ -86,8 +87,11 @@ final class GradleVersionCatalogAliasSupport {
 		return null;
 	}
 
-	static Function<String, ArtifactId> idFunctionForTable(String tableName) {
-		return "plugins".equals(tableName) ? m -> ArtifactId.of(m, m) : GradleParserSupport::parseArtifactId;
+	static Function<String, @Nullable ArtifactId> idFunctionForTable(String tableName) {
+		return "plugins".equals(tableName) ? GradlePlugin::of : it -> {
+			GradleDependency dependency = GradleDependency.parse(it);
+			return dependency != null ? dependency.getId() : null;
+		};
 	}
 
 }

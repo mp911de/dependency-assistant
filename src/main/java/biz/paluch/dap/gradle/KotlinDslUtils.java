@@ -102,19 +102,20 @@ class KotlinDslUtils {
 			if (value == null) {
 				return null;
 			}
-			return BuildFileParserSupport.resolveChained(value, properties);
+			return properties.resolvePlaceholders(value);
 		}
 
 		if (expr instanceof KtCallExpression call && "property".equals(getKotlinCallName(call))) {
 			StringBuilder key = new StringBuilder();
 			doWithStrings(call, key::append, e -> {
 			});
+
 			String k = key.toString();
 			String value = properties.getProperty(k);
 			if (value == null) {
 				return null;
 			}
-			return BuildFileParserSupport.resolveChained(value, properties);
+			return properties.resolvePlaceholders(value);
 		}
 
 		return null;
@@ -203,9 +204,8 @@ class KotlinDslUtils {
 			return null;
 		}
 
-		String idStr = BuildFileParserSupport.resolveChained(pluginId.toString(), scriptProperties);
-		if (idStr == null || !BuildFileParserSupport.isValidPluginId(idStr)
-				|| BuildFileParserSupport.hasUnresolvedPlaceholder(idStr)) {
+		String id = scriptProperties.resolvePlaceholders(pluginId.toString());
+		if (StringUtils.isEmpty(id) || !BuildFileParserSupport.isValidPluginId(id)) {
 			return null;
 		}
 
@@ -237,7 +237,7 @@ class KotlinDslUtils {
 				? PropertyExpression.property(versionPropertyKey.toString())
 				: PropertyExpression.from(rawVersion.toString());
 
-		return new DependencyLocation(call, GradleDependency.of(GradlePlugin.of(idStr), versionExpression));
+		return new DependencyLocation(call, GradleDependency.of(GradlePlugin.of(id), versionExpression));
 	}
 
 	/**
