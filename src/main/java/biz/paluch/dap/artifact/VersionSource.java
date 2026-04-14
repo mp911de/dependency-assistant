@@ -237,7 +237,7 @@ public abstract class VersionSource {
 
 	}
 
-	private static class ProfilePropertySource extends VersionPropertySource {
+	private static class ProfilePropertySource extends VersionPropertySource implements Profile {
 
 		private final String profileId;
 

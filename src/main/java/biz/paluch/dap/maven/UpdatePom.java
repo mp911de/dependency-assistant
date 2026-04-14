@@ -33,6 +33,7 @@ import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
@@ -67,7 +68,7 @@ class UpdatePom {
 				PsiDocumentManager.getInstance(project).commitDocument(document);
 			}
 
-			var psiFile = PsiManager.getInstance(project).findFile(pomFile);
+			PsiFile psiFile = PsiManager.getInstance(project).findFile(pomFile);
 			if (!(psiFile instanceof XmlFile file)) {
 				LOG.warn("Cannot update POM: PSI file is not XmlFile for " + pomFile.getPath());
 				return;
