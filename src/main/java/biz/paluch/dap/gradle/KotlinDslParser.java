@@ -71,7 +71,7 @@ class KotlinDslParser extends GradleParser {
 		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
 		boolean isPlugin = KotlinDslUtils.isInsidePluginsBlock(call);
 
-		DependencyLocation versionLocation = KotlinDslUtils.findKotlinVersionElement(call, this);
+		DependencyAndVersionLocation versionLocation = KotlinDslUtils.findKotlinVersionElement(call, this);
 
 		if (isPlugin) {
 			if (versionLocation == null) {

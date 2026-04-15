@@ -17,7 +17,6 @@ package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -113,7 +112,7 @@ class GroovyDslUtils {
 	 * ({@code 'group:artifact:version'}), or {@code null} if the element is not in
 	 * such a position.
 	 */
-	public static @Nullable DependencyLocation findGroovyVersionElement(PsiElement element,
+	public static @Nullable DependencyAndVersionLocation findGroovyVersionElement(PsiElement element,
 			PropertyResolver scriptProperties) {
 
 		// Only process the GrLiteral node itself. Accepting any descendant (e.g. the
@@ -158,19 +157,20 @@ class GroovyDslUtils {
 			return null;
 		}
 
-		return new DependencyLocation(literal, dependency);
+		return new DependencyAndVersionLocation(dependency, literal);
 	}
 
 	/**
-	 * Returns a {@link DependencyLocation} when {@code literal} is the version
-	 * value in a Groovy plugin declaration of the form
+	 * Returns a {@link DependencyAndVersionLocation} when {@code literal} is the
+	 * version value in a Groovy plugin declaration of the form
 	 * {@code id 'pluginId' version 'x.y.z'} inside a {@code plugins {}} block, or
 	 * {@code null} otherwise.
 	 * <p>The plugin ID is used as both {@link ArtifactId#groupId()} and
 	 * {@link ArtifactId#artifactId()}, matching the convention used throughout the
 	 * rest of the Gradle plugin support.
 	 */
-	public static @Nullable DependencyLocation resolvePluginVersionLiteral(GrLiteral literal, GrMethodCall call,
+	public static @Nullable DependencyAndVersionLocation resolvePluginVersionLiteral(GrLiteral literal,
+			GrMethodCall call,
 			PropertyResolver scriptProperties) {
 		// The 'x.y.z' literal is an argument of the outer `version` method call.
 		// call.invokedExpression must be a `version` GrReferenceExpression whose
@@ -202,7 +202,7 @@ class GroovyDslUtils {
 		String version = GroovyDslUtils.toString(id.version);
 		PropertyExpression versionExpression = PropertyExpression.from(version);
 
-		return new DependencyLocation(literal, GradleDependency.of(artifactId, versionExpression));
+		return new DependencyAndVersionLocation(GradleDependency.of(artifactId, versionExpression), literal);
 	}
 
 	public static @Nullable PsiPropertyValueElement resolvePropertyLocation(GrLiteral literal) {
@@ -393,11 +393,11 @@ class GroovyDslUtils {
 
 	static boolean isGroovyLibsCatalogRootExpression(GrExpression expr) {
 
-		List<String> segs = collectGroovyCatalogReferenceSegments(expr);
-		return segs != null && !segs.isEmpty() && "libs".equals(segs.get(0));
+		TomlReference reference = getTomlReference(expr);
+		return reference != null;
 	}
 
-	static @Nullable List<String> collectGroovyCatalogReferenceSegments(GrExpression expr) {
+	static @Nullable TomlReference getTomlReference(GrExpression expr) {
 
 		GrExpression e = unwrapGroovyParentheses(expr);
 		if (e == null) {
@@ -417,7 +417,7 @@ class GroovyDslUtils {
 			return null;
 		}
 		Collections.reverse(segments);
-		return segments;
+		return TomlReference.from(segments);
 	}
 
 	/**

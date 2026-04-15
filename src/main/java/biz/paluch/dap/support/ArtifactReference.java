@@ -15,10 +15,9 @@
  */
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.artifact.ArtifactId;
-
 import java.util.function.Consumer;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -46,8 +45,8 @@ public class ArtifactReference {
 	}
 
 	/**
-	 * Create an {@code ArtifactReference} from the given builder consumer. The consumer is used to populate the
-	 * {@link ArtifactDeclaration.Builder}.
+	 * Create an {@code ArtifactReference} from the given builder consumer. The
+	 * consumer is used to populate the {@link ArtifactDeclaration.Builder}.
 	 */
 	public static ArtifactReference from(Consumer<ArtifactDeclaration.Builder> builderConsumer) {
 		ArtifactDeclaration.Builder builder = ArtifactDeclaration.builder();
@@ -63,7 +62,8 @@ public class ArtifactReference {
 	}
 
 	/**
-	 * Returns the {@link ArtifactDeclaration} or throws an exception if none is present.
+	 * Returns the {@link ArtifactDeclaration} or throws an exception if none is
+	 * present.
 	 */
 	public ArtifactDeclaration getDeclaration() {
 
@@ -73,6 +73,16 @@ public class ArtifactReference {
 
 	public ArtifactId getArtifactId() {
 		return getDeclaration().getArtifactId();
+	}
+
+	@Override
+	public String toString() {
+
+		if (declaration == null) {
+			return "Unresolved";
+		}
+
+		return "Resolved: " + declaration;
 	}
 
 }

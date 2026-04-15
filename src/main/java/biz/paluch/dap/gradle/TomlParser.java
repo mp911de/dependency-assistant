@@ -17,9 +17,8 @@ package biz.paluch.dap.gradle;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -27,13 +26,17 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.util.containers.JBIterable;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlInlineTable;
@@ -41,12 +44,12 @@ import org.toml.lang.psi.TomlKey;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
+import org.toml.lang.psi.TomlValue;
 
 /**
  * Parser for TOML version catalog ({@code libs.versions.toml}) files, including
  * mapping Gradle {@code libs.…} accessor chains to catalog table names and
- * entry keys. For TOML PSI navigation helpers (entry lookup, version literals),
- * see {@link GradleVersionCatalogAliasSupport}.
+ * entry keys.
  *
  * @author Mark Paluch
  */
@@ -56,47 +59,13 @@ class TomlParser extends GradleParserSupport {
 
 	public static final String BUNDLES = "bundles";
 
+	public static final String VERSION = "version";
+
 	public static final String VERSIONS = "versions";
 
 	public static final String LIBS = "libs";
 
 	public static final String LIBRARIES = "libraries";
-
-	/**
-	 * A catalog {@code [libraries]} or {@code [plugins]} table together with the
-	 * TOML entry key (kebab-case).
-	 *
-	 * @param tableName {@code libraries} or {@code plugins}
-	 * @param entryKey kebab-case catalog entry key (e.g.
-	 * {@code spring-dependency-management})
-	 */
-	record CatalogTableKey(String tableName, String entryKey) {
-	}
-
-	/**
-	 * Maps {@code libs.plugins.a.b} to {@code plugins} / {@code a-b};
-	 * {@code libs.a.b.c} to {@code libraries} / {@code a-b-c}.
-	 */
-	static @Nullable CatalogTableKey catalogTableKeyFromLibsSegments(List<String> segments) {
-
-		if (segments.size() < 2 || !LIBS.equals(segments.get(0))) {
-			return null;
-		}
-		if (PLUGINS.equals(segments.get(1))) {
-			if (segments.size() < 3) {
-				return null;
-			}
-			return new CatalogTableKey(PLUGINS, String.join("-", segments.subList(2, segments.size())));
-		}
-		if (VERSIONS.equals(segments.get(1)) || BUNDLES.equals(segments.get(1))) {
-			return null;
-		}
-		String libKey = String.join("-", segments.subList(1, segments.size()));
-		if (StringUtils.isEmpty(libKey)) {
-			return null;
-		}
-		return new CatalogTableKey(LIBRARIES, libKey);
-	}
 
 	private final Map<String, String> properties;
 
@@ -128,10 +97,6 @@ class TomlParser extends GradleParserSupport {
 		return properties;
 	}
 
-	// -------------------------------------------------------------------------
-	// libs.versions.toml
-	// -------------------------------------------------------------------------
-
 	/**
 	 * Parses a {@code libs.versions.toml} version catalog and populates
 	 * {@code collector} with all libraries that have a resolvable version.
@@ -154,83 +119,137 @@ class TomlParser extends GradleParserSupport {
 
 			String tableName = getTomlTableName(table);
 			if (LIBRARIES.equals(tableName)) {
-				parseEntries(table, it -> {
-					GradleDependency dependency = parseGav(it);
-					return dependency == null ? null : dependency.getId();
-				}, DeclarationSource.managed());
+				parseEntries(table, (it) -> register(it.toDependency(), DeclarationSource.managed()));
 			}
 
 			if (PLUGINS.equals(tableName)) {
-				parseEntries(table, GradlePlugin::of, DeclarationSource.managed());
-			}
-		}
-	}
-
-	private void parseEntries(TomlTable table, Function<String, @Nullable ArtifactId> idFunction,
-			DeclarationSource declarationSource) {
-		for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
-			if (kv.getValue() instanceof TomlInlineTable kvTable) {
-				GradleDependency dependency = parseTomlEntry(kvTable, idFunction);
-				if (dependency != null) {
-					register(dependency, declarationSource);
-				}
+				parseEntries(table, (it) -> register(it.toDependency(), DeclarationSource.plugin()));
 			}
 		}
 	}
 
 	private static Map<String, String> parseTomlVersionProperties(TomlFile tomlFile) {
-
 		Map<String, String> versions = new HashMap<>();
-
-		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
-			String tableName = getTomlTableName(table);
-			if (!VERSIONS.equals(tableName)) {
-				continue;
-			}
-			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
-				String key = getTomlKeyName(kv.getKey());
-				String val = getText(kv.getValue());
-				if (StringUtils.hasText(key) && StringUtils.hasText(val)) {
-					versions.put(key, val);
-				}
-			}
-		}
-
+		parseTomlVersions(tomlFile).forEach((key, value) -> versions.put(key, value.propertyValue()));
 		return versions;
 	}
 
-	static @Nullable GradleDependency parseTomlEntry(TomlInlineTable inlineTable,
-			Function<String, @Nullable ArtifactId> artifactIdFunction) {
+	/**
+	 * Parse TOML {@code [versions]} table into a map of
+	 * {@link PsiPropertyValueElement}. We treat versions semantically as
+	 * properties.
+	 * 
+	 * @param tomlFile the file to parse.
+	 * @return map of {@link PsiPropertyValueElement} mapped to its version key.
+	 */
+	public static Map<String, PsiPropertyValueElement> parseTomlVersions(PsiFile tomlFile) {
 
+		Map<String, PsiPropertyValueElement> map = new LinkedHashMap<>();
+		SyntaxTraverser.psiTraverser(tomlFile)
+				.filter(TomlTable.class)
+				.flatMap(it -> {
+
+					String tableName = TomlParser.getTomlTableName(it);
+					if (tableName.equals(VERSIONS)) {
+						return SyntaxTraverser.psiTraverser(it).filter(TomlKeyValue.class);
+					}
+					return JBIterable.empty();
+				})
+				.forEach(kv -> {
+					String key = TomlParser.getTomlKeyName(kv.getKey());
+					PsiElement valuePsi = kv.getValue();
+					String value = TomlParser.getText(valuePsi);
+					if (StringUtils.hasText(key) && StringUtils.hasText(value)) {
+						map.put(key, new PsiPropertyValueElement(valuePsi, key, value));
+					}
+				});
+
+		return map;
+	}
+
+
+	public static void parseEntries(TomlTable table,
+			Consumer<TomlDeclarationEntry> action) {
+
+		// TODO: TomlInlineTable?
+		SyntaxTraverser.psiTraverser(table).filter(TomlKeyValue.class)
+				.forEach(it -> {
+					if (it.getValue() instanceof TomlInlineTable inlineTable) {
+						action.accept(parseTomlEntry(it, inlineTable));
+					}
+				});
+	}
+
+	record TomlDeclarationEntry(TomlFile file, String key, @Nullable String id, @Nullable String module,
+			@Nullable String versionRef,
+			@Nullable String version, @Nullable TomlValue versionLiteral) {
+
+		public GradleDependency toDependency() {
+
+			PropertyExpression versionExpression = StringUtils.hasText(version) ? PropertyExpression.from(version)
+					: PropertyExpression.property(versionRef);
+
+			if (StringUtils.hasText(id)) {
+				return of(GradlePlugin.of(id), versionExpression);
+			}
+
+			return of(GradleDependency.parse(module).getId(), versionExpression);
+		}
+
+		public static GradleDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
+
+			if (versionExpression.isProperty()) {
+				return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),
+						VersionSource.versionCatalogProperty(versionExpression.getPropertyName()));
+			}
+			return new SimpleDependency(artifactId, versionExpression.toString(),
+					VersionSource.versionCatalog());
+
+		}
+
+		/**
+		 * Check if the key matches the given {@link TomlReference}.
+		 */
+		public boolean hasKeyMatching(TomlReference tomlReference) {
+
+			if (StringUtils.hasText(id)) {
+				return TomlReference.plugin(key).equals(tomlReference);
+			}
+
+			return TomlReference.libs(key).equals(tomlReference);
+		}
+
+	}
+
+	static TomlDeclarationEntry parseTomlEntry(TomlKeyValue keyValue, TomlInlineTable inlineTable) {
+		return parseTomlEntry(getTomlKeyName(keyValue.getKey()), inlineTable);
+	}
+
+	static TomlDeclarationEntry parseTomlEntry(String entry, TomlInlineTable inlineTable) {
+
+		String id = null;
 		String module = null;
 		String versionRef = null;
 		String version = null;
+		TomlValue versionLiteral = null;
 
 		for (TomlKeyValue inner : PsiTreeUtil.getChildrenOfTypeAsList(inlineTable, TomlKeyValue.class)) {
 			String key = getTomlKeyName(inner.getKey());
 			String val = getText(inner.getValue());
 			switch (key) {
-			case "id" -> module = val;
+			case "id" -> id = val;
 			case "module" -> module = val;
 			case "version.ref" -> versionRef = val;
-			case "version" -> version = val;
+			case "version" -> {
+				version = val;
+				versionLiteral = inner.getValue();
+			}
 			}
 		}
 
-		if (StringUtils.isEmpty(module)) {
-			return null;
-		}
-
-		ArtifactId artifactId = artifactIdFunction.apply(module);
-		if (artifactId == null) {
-			return null;
-		}
-		if (StringUtils.hasText(versionRef)) {
-			return new PropertyManagedDependency(artifactId, versionRef,
-					VersionSource.versionCatalogProperty(versionRef));
-		}
-
-		return new SimpleDependency(artifactId, version, VersionSource.versionCatalog());
+		return new TomlDeclarationEntry((TomlFile) inlineTable.getContainingFile(), entry, id, module, versionRef,
+				version,
+				versionLiteral);
 	}
 
 	public static @Nullable String getTomlTableName(TomlTable table) {
@@ -253,5 +272,6 @@ class TomlParser extends GradleParserSupport {
 		}
 		return null;
 	}
+
 
 }

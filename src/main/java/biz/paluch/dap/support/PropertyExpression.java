@@ -19,6 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.util.StringUtils;
+import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -48,6 +49,7 @@ public abstract class PropertyExpression {
 	 * @return a {@link PropertyReference} if the value is a property expression;
 	 * otherwise a {@link LiteralValue}
 	 */
+	@Contract("null -> fail; _ -> new")
 	public static PropertyExpression from(@Nullable String value) {
 
 		Assert.notNull(value, "Value must not be null");
@@ -70,10 +72,10 @@ public abstract class PropertyExpression {
 	 *
 	 * @param value the source value.
 	 */
+	@Contract("null -> fail; _ -> new")
 	public static PropertyExpression property(@Nullable String value) {
 
 		Assert.notNull(value, "Value must not be null");
-
 		return new PropertyReference(value);
 	}
 

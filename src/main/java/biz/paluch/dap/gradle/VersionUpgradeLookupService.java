@@ -21,8 +21,6 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
-import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
@@ -94,7 +92,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GradlePropertyDeclarationPsi propertyPsi;
 
-	private final GradleVersionCatalogArtifactReferenceResolver catalogResolver;
+	private final TomlArtifactResolver tomlResolver;
 
 	private final GradlePropertyResolver propertyResolver;
 
@@ -115,8 +113,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyPsi = new GradlePropertyDeclarationPsi(project, projectState);
 		this.propertyResolver = GradlePropertyResolver.create(file);
-		this.catalogResolver = new GradleVersionCatalogArtifactReferenceResolver(project, file, buildContext,
-				projectState, propertyPsi, propertyResolver);
+		this.tomlResolver = new TomlArtifactResolver(project, file,
+				projectState);
 	}
 
 	@Override
@@ -144,7 +142,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		VirtualFile vf = this.file.getVirtualFile();
 
 		if (GradleUtils.isVersionCatalog(vf) && element instanceof TomlLiteral literal) {
-			return catalogResolver.resolveTomlLiteral(literal);
+			return tomlResolver.resolveTomlLiteral(literal);
 		}
 
 		if (GradleUtils.isGradlePropertiesFile(vf) && element instanceof PropertyValueImpl propertyValue) {
@@ -210,44 +208,19 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		});
 	}
 
-	private ArtifactReference resolveReference(@Nullable DependencyLocation location,
+	private ArtifactReference resolveReference(@Nullable DependencyAndVersionLocation location,
 			Class<? extends PsiElement> callType) {
 
 		if (location == null) {
 			return ArtifactReference.unresolved();
 		}
 
-		PsiElement declarationCall = PsiTreeUtil.getParentOfType(location.element(), callType);
+		PsiElement declarationCall = PsiTreeUtil.getParentOfType(location.version(), callType);
 		if (declarationCall == null) {
 			return ArtifactReference.unresolved();
 		}
 
-		GradleDependency gd = location.dependency();
-
-		if (gd instanceof PropertyManagedDependency managed) {
-			PsiPropertyValueElement fromMergedScript = propertyResolver.getElement(managed.property());
-			PsiPropertyValueElement propertyLocation = fromMergedScript != null ? fromMergedScript
-					: propertyPsi.findPropertyValueElement(managed.property());
-			return ArtifactReference.from(it -> {
-				it.artifact(managed.getId()).declarationElement(declarationCall)
-						.versionSource(managed.getVersionSource());
-				if (propertyLocation != null) {
-					ArtifactVersion.from(propertyLocation.propertyValue()).ifPresent(it::version);
-					it.versionLiteral(propertyLocation.element());
-				}
-			});
-		}
-
-		if (gd instanceof SimpleDependency simple) {
-			return ArtifactReference.from(it -> {
-				it.artifact(simple.getId()).declarationElement(declarationCall)
-						.versionSource(simple.getVersionSource());
-				ArtifactVersion.from(simple.version()).ifPresent(it::version);
-				it.versionLiteral(location.element());
-			});
-		}
-
-		return ArtifactReference.unresolved();
+		return ArtifactReferenceUtils.resolve(location, declarationCall, propertyResolver);
 	}
 
 	private ArtifactReference resolveExtProperty(GrLiteral literal) {
@@ -282,7 +255,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	protected ArtifactReference resolveKotlinArtifactReference(PsiElement element) {
 
-		ArtifactReference fromCatalog = resolveKotlinVersionCatalogReference(element);
+		ArtifactReference fromCatalog = resolveKotlinTomlReferenceReference(element);
 		if (fromCatalog.isResolved()) {
 			return fromCatalog;
 		}
@@ -319,7 +292,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return ArtifactReference.unresolved();
 	}
 
-	private ArtifactReference resolveKotlinVersionCatalogReference(PsiElement element) {
+	private ArtifactReference resolveKotlinTomlReferenceReference(PsiElement element) {
 
 		KtCallExpression catalogCall = KotlinDslUtils.findEnclosingCatalogAccessorCall(element);
 		if (catalogCall == null) {
@@ -330,10 +303,13 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 		List<String> segments = KotlinDslUtils.collectKotlinCatalogDotSegments(arg);
-		if (segments == null) {
+		TomlReference reference = TomlReference.from(segments);
+
+		if (reference == null) {
 			return ArtifactReference.unresolved();
 		}
-		return catalogResolver.resolveFromLibsSegments(segments, catalogCall);
+
+		return tomlResolver.resolveReference(reference, catalogCall);
 	}
 
 	private ArtifactReference resolveGroovyVersionCatalogReference(PsiElement element) {
@@ -346,11 +322,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (arg == null) {
 			return ArtifactReference.unresolved();
 		}
-		List<String> segments = GroovyDslUtils.collectGroovyCatalogReferenceSegments(arg);
-		if (segments == null) {
+		TomlReference reference = GroovyDslUtils.getTomlReference(arg);
+		if (reference == null) {
 			return ArtifactReference.unresolved();
 		}
-		return catalogResolver.resolveFromLibsSegments(segments, catalogCall);
+		return tomlResolver.resolveReference(reference, catalogCall);
 	}
 
 	private ArtifactReference resolveExtraProperty(KtBinaryExpression propertyExpression,

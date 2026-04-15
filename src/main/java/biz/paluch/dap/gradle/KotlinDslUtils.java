@@ -126,7 +126,7 @@ class KotlinDslUtils {
 	 * version part of a Kotlin DSL string-notation dependency
 	 * ({@code "group:artifact:version"}), or {@code null}.
 	 */
-	public static @Nullable DependencyLocation findKotlinVersionElement(KtCallElement call,
+	public static @Nullable DependencyAndVersionLocation findKotlinVersionElement(KtCallElement call,
 			PropertyResolver scriptProperties) {
 
 		PsiFile file = call.getContainingFile();
@@ -186,7 +186,7 @@ class KotlinDslUtils {
 		return getVersionLocation(call, parentCall, raw.toString(), versionExpression);
 	}
 
-	private static @Nullable DependencyLocation findKotlinPluginLocation(KtCallElement call,
+	private static @Nullable DependencyAndVersionLocation findKotlinPluginLocation(KtCallElement call,
 			@Nullable KtBinaryExpression be, PropertyResolver scriptProperties) {
 
 		StringBuilder pluginId = new StringBuilder();
@@ -237,7 +237,7 @@ class KotlinDslUtils {
 				? PropertyExpression.property(versionPropertyKey.toString())
 				: PropertyExpression.from(rawVersion.toString());
 
-		return new DependencyLocation(call, GradleDependency.of(GradlePlugin.of(id), versionExpression));
+		return new DependencyAndVersionLocation(GradleDependency.of(GradlePlugin.of(id), versionExpression), call);
 	}
 
 	/**
@@ -245,7 +245,7 @@ class KotlinDslUtils {
 	 * version part of a Kotlin DSL string-notation dependency
 	 * ({@code "group:artifact:version"}), or {@code null}.
 	 */
-	public static @Nullable DependencyLocation findKotlinVersionElement(KtCallElement call,
+	public static @Nullable DependencyAndVersionLocation findKotlinVersionElement(KtCallElement call,
 			KtStringTemplateEntry stringTemplate, PropertyResolver scriptProperties) {
 
 		KtCallExpression parentCall = PsiTreeUtil.getParentOfType(call, KtCallExpression.class);
@@ -267,7 +267,7 @@ class KotlinDslUtils {
 				return null;
 			}
 
-			return new DependencyLocation(call, dependency);
+			return new DependencyAndVersionLocation(dependency, call);
 		}
 
 		KtBinaryExpression be = PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class);
@@ -301,7 +301,7 @@ class KotlinDslUtils {
 		return getVersionLocation(call, parentCall, raw.toString(), versionExpression);
 	}
 
-	private static @Nullable DependencyLocation getVersionLocation(KtCallElement call,
+	private static @Nullable DependencyAndVersionLocation getVersionLocation(KtCallElement call,
 			KtCallExpression parentCall, String gav, PropertyExpression versionExpression) {
 
 		String kotlinCallName = getKotlinCallName(parentCall);
@@ -309,14 +309,14 @@ class KotlinDslUtils {
 
 			GradlePlugin id = GradlePlugin.of(gav);
 			GradleDependency dependency = GradleDependency.of(id, versionExpression);
-			return new DependencyLocation(call, dependency);
+			return new DependencyAndVersionLocation(dependency, call);
 		}
 
 		// Infix plugin form: id("plugin.id") version "x.y.z" — parentCall may not be
 		// `plugins` depending on PSI shape.
 		if (GradleUtils.isPlugin(getKotlinCallName(call)) && isInsidePluginsBlock(call) && !gav.contains(":")) {
 			GradleDependency dependency = GradleDependency.of(GradlePlugin.of(gav), versionExpression);
-			return new DependencyLocation(call, dependency);
+			return new DependencyAndVersionLocation(dependency, call);
 		}
 
 		GradleDependency dependency = GradleDependency.parse(gav);
@@ -325,10 +325,10 @@ class KotlinDslUtils {
 		}
 
 		if (dependency.getVersionSource().isDefined()) {
-			return new DependencyLocation(call, dependency);
+			return new DependencyAndVersionLocation(dependency, call);
 		}
 
-		return new DependencyLocation(call, dependency.withVersion(versionExpression));
+		return new DependencyAndVersionLocation(dependency.withVersion(versionExpression), call);
 	}
 
 
@@ -714,9 +714,9 @@ class KotlinDslUtils {
 		return segs != null && !segs.isEmpty() && "libs".equals(segs.get(0));
 	}
 
-	static @Nullable List<String> collectKotlinCatalogDotSegments(KtExpression expr) {
+	static List<String> collectKotlinCatalogDotSegments(KtExpression expr) {
 
-		ArrayList<String> reversed = new ArrayList<>();
+		List<String> reversed = new ArrayList<>();
 		KtExpression cur = expr;
 		while (cur instanceof KtDotQualifiedExpression dq) {
 			String seg = kotlinSelectorToSegment(dq.getSelectorExpression());
@@ -729,7 +729,7 @@ class KotlinDslUtils {
 		if (cur instanceof KtNameReferenceExpression ref) {
 			reversed.add(ref.getReferencedName());
 		} else {
-			return null;
+			return reversed;
 		}
 		Collections.reverse(reversed);
 		return reversed;

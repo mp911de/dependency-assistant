@@ -7,7 +7,7 @@ import com.intellij.psi.PsiElement;
 /**
  * Location of a version string in a dependency declaration.
  */
-record DependencyLocation(PsiElement element, GradleDependency dependency) {
+record DependencyAndVersionLocation(GradleDependency dependency, PsiElement version) {
 
 	public ArtifactId artifactId() {
 		return dependency.getId();

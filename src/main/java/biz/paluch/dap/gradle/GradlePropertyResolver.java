@@ -154,7 +154,7 @@ class GradlePropertyResolver implements PropertyResolver {
 		} else if (GradleUtils.isGradlePropertiesFile(file)) {
 			properties = GradlePropertiesParser.parseGradleProperties(file);
 		} else if (GradleUtils.isVersionCatalog(file)) {
-			// TODO
+			properties = TomlParser.parseTomlVersions(file);
 		}
 
 		return new GradlePropertyResolver(properties);

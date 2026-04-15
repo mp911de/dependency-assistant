@@ -74,7 +74,8 @@ class KotlinDslPluginVersionPsiTests {
 		KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(versionEntry);
 		assertThat(dependencyExpression).as("id() call for plugins block").isNotNull();
 
-		DependencyLocation location = KotlinDslUtils.findKotlinVersionElement(dependencyExpression, versionEntry,
+		DependencyAndVersionLocation location = KotlinDslUtils.findKotlinVersionElement(dependencyExpression,
+				versionEntry,
 				GradlePropertyResolver.create(file));
 		assertThat(location).as("VersionLocation on plugin version literal").isNotNull();
 		assertThat(location.artifactId().groupId()).isEqualTo("org.springframework.boot");

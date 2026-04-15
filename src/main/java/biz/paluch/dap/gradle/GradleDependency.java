@@ -66,6 +66,47 @@ interface GradleDependency {
 	}
 
 	/**
+	 * Parse a Gradle IDV string {@code pluginId} or {@code pluginId:version} into a
+	 * {@code GradleDependency}.
+	 *
+	 * @param idv the GAV string.
+	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
+	 * could not be parsed because of e.g. missing segments.
+	 */
+	static @Nullable GradleDependency parsePlugin(String idv) {
+		return parsePlugin(idv, new PropertyResolver() {
+
+			@Override
+			public boolean containsProperty(String key) {
+				return false;
+			}
+
+			@Override
+			public @Nullable String getProperty(String key) {
+				return null;
+			}
+
+		});
+	}
+
+	/**
+	 * Parse a Gradle IDV string {@code pluginId} or {@code pluginId:version} into a
+	 * {@code GradleDependency}. Parsing resolves {@code groupId} and
+	 * {@code artifactId} and returns the {@link VersionSource} accordingly if the
+	 * version is a property.
+	 *
+	 * @param gav the GAV string.
+	 * @param propertyResolver the property resolver to resolve properties.
+	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
+	 * could not be parsed because of e.g. missing segments.
+	 */
+	static @Nullable GradleDependency parsePlugin(String gav, PropertyResolver propertyResolver) {
+
+		String[] parts = gav.split(":");
+		return parts.length < 1 ? null : of(parts[0], parts[0], parts.length > 1 ? parts[1] : null, propertyResolver);
+	}
+
+	/**
 	 * Create a new {@code GradleDependency} from group, artifact, and version
 	 * strings.
 	 * @param g groupId.
@@ -108,7 +149,15 @@ interface GradleDependency {
 		return new DependencyReference(artifactId);
 	}
 
+	/**
+	 * Create a new {@code GradleDependency} using {@link ArtifactId} and a version
+	 * to determine whether it is a version-managed artifact.
+	 * @param artifactId artifact identifier.
+	 * @param versionExpression the property expression defining the version.
+	 * @return a new {@code GradleDependency}.
+	 */
 	static GradleDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
+
 		if (versionExpression.isProperty()) {
 			return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),
 					VersionSource.property(versionExpression.getPropertyName()));

@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.gradle.TomlParser.TomlDeclarationEntry;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.application.ApplicationManager;
@@ -38,7 +39,6 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlInlineTable;
-import org.toml.lang.psi.TomlKey;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlPsiFactory;
@@ -112,7 +112,8 @@ class UpdateGradleFile {
 				updateProperty(buildFile, propertyKey, newVersion);
 			}
 
-			if (source instanceof VersionSource.DeclaredVersion) {
+			if (source instanceof VersionSource.DeclaredVersion
+					|| source instanceof VersionSource.VersionCatalogProperty) {
 				for (DeclarationSource declSrc : update.declarationSources()) {
 					if (declSrc instanceof DeclarationSource.Plugin) {
 						updatePlugin(buildFile, update.coordinate(), newVersion);
@@ -257,39 +258,17 @@ class UpdateGradleFile {
 					continue;
 				}
 
-				GradleDependency dep = TomlParser.parseTomlEntry(inline, it -> {
-					if (isPlugin) {
-						return GradlePlugin.of(it);
-					}
-					GradleDependency parsed = GradleDependency.parse(it);
-					return parsed != null ? parsed.getId() : null;
-				});
+				TomlDeclarationEntry entry = TomlParser.parseTomlEntry(kv, inline);
+				GradleDependency dep = entry.toDependency();
 
-				if (!(dep instanceof SimpleDependency sd) || !sd.id().equals(artifactId)) {
+				if (!(dep instanceof SimpleDependency sd) || !sd.id().equals(artifactId)
+						|| entry.versionLiteral() == null) {
 					continue;
 				}
 
-				setVersion(inline, newVersion);
-			}
-		}
-	}
-
-	private void setVersion(TomlInlineTable inline, String newVersion) {
-
-		for (TomlKeyValue inner : PsiTreeUtil.getChildrenOfTypeAsList(inline, TomlKeyValue.class)) {
-
-			TomlKey k = inner.getKey();
-
-			if (!"version".equals(k.getText().trim())) {
-				continue;
-			}
-
-			if (inner.getValue() instanceof TomlLiteral literal) {
-
 				TomlLiteral newLiteral = new TomlPsiFactory(project, false)
 						.createLiteral("\"%s\"".formatted(newVersion));
-				literal.replace(newLiteral);
-				return;
+				entry.versionLiteral().replace(newLiteral);
 			}
 		}
 	}

@@ -56,6 +56,13 @@ public class ArtifactDeclaration {
 	}
 
 	/**
+	 * Create a new {@link ArtifactDeclaration.Builder}.
+	 */
+	public static Builder builder() {
+		return new Builder();
+	}
+
+	/**
 	 * Return the artifact identifier.
 	 *
 	 * @return the artifact identifier.
@@ -109,11 +116,12 @@ public class ArtifactDeclaration {
 		return versionLiteral;
 	}
 
-	/**
-	 * Create a new {@link ArtifactDeclaration.Builder}.
-	 */
-	public static Builder builder() {
-		return new Builder();
+	@Override
+	public String toString() {
+		return artifactId + " {" +
+				"versionSource=" + versionSource +
+				", version=" + version +
+				'}';
 	}
 
 	/**
