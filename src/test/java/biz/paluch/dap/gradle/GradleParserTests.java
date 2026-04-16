@@ -21,15 +21,9 @@ import java.util.Map;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.extension.CodeInsightFixture;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
-import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
-import com.intellij.testFramework.fixtures.TestFixtureBuilder;
-import com.intellij.testFramework.junit5.RunInEdt;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -39,24 +33,10 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@RunInEdt(writeIntent = true)
+@CodeInsightFixture
 class GradleParserTests {
 
 	private CodeInsightTestFixture fixture;
-
-	@BeforeEach
-	void setUp() throws Exception {
-		TestFixtureBuilder<IdeaProjectTestFixture> builder = IdeaTestFixtureFactory.getFixtureFactory()
-				.createLightFixtureBuilder(new LightProjectDescriptor(), getClass().getSimpleName());
-		fixture = IdeaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(builder.getFixture());
-		fixture.setUp();
-	}
-
-	@AfterEach
-	void tearDown() throws Exception {
-		fixture.tearDown();
-		fixture = null;
-	}
 
 	@Test
 	void pluginsWithVersionsAreDiscovered() {
@@ -532,6 +512,114 @@ class GradleParserTests {
 		parser.parseGroovyScript(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+	}
+
+	@Test
+	void mapNotationAbsentVersionProducesNoDependency() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation group: 'org.apache.groovy', name: 'groovy'
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void mapNotationNonCanonicalKeyOrderIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation name: 'guava', group: 'com.google.guava', version: '33.0.0-jre'
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		Dependency guava = collector.getUsage("com.google.guava", "guava");
+		assertThat(guava).as("guava non-canonical order").isNotNull();
+		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0.0-jre");
+	}
+
+	@Test
+	void mapNotationExtraKeyIsIgnored() {
+
+		PsiFile file = fixture.configureByText("build.gradle",
+				"""
+						dependencies {
+						    implementation group: 'com.google.guava', name: 'guava', version: '33.0.0-jre', classifier: 'android'
+						}
+						""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		Dependency guava = collector.getUsage("com.google.guava", "guava");
+		assertThat(guava).as("guava with extra classifier key").isNotNull();
+		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0.0-jre");
+	}
+
+	@Test
+	void mapNotationMissingGroupIsSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation name: 'guava', version: '33.0.0-jre'
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void mapNotationMissingNameIsSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation group: 'com.google.guava', version: '33.0.0-jre'
+				}
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		GradleParser parser = new GradleParser(collector);
+		parser.parseGroovyScript(file);
+
+		assertThat(collector.getUsages()).isEmpty();
+	}
+
+	@Test
+	void mapNotationPropertyVersionIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext {
+				    guavaVersion = '33.0.0-jre'
+				}
+
+				dependencies {
+				    implementation group: 'com.google.guava', name: 'guava', version: guavaVersion
+				}
+				""");
+
+		GradleParser parser = new GradleParser();
+		parser.parseGroovyScript(file);
+
+		Dependency guava = parser.getCollector().getUsage("com.google.guava", "guava");
+		assertThat(guava).as("guava with property version").isNotNull();
+		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0.0-jre");
+		assertThat(guava.hasPropertyVersion()).isTrue();
+		assertThat(guava.findPropertyVersion().getProperty()).isEqualTo("guavaVersion");
 	}
 
 }

@@ -130,11 +130,7 @@ interface GradleDependency {
 	 */
 	static GradleDependency of(String g, String a, @Nullable String v, PropertyResolver resolver) {
 
-		PropertyExpression group = PropertyExpression.from(g);
-		PropertyExpression artifact = PropertyExpression.from(a);
-
-		ArtifactId artifactId = ArtifactId.of(group.resolveRequired(resolver),
-				artifact.resolveRequired(resolver));
+		ArtifactId artifactId = getArtifactId(g, a, resolver);
 		if (StringUtils.hasText(v)) {
 
 			PropertyExpression expression = PropertyExpression.from(v);
@@ -147,6 +143,18 @@ interface GradleDependency {
 		}
 
 		return new DependencyReference(artifactId);
+	}
+
+	/**
+	 * Resolve the artifact id from the given group and artifact.
+	 */
+	public static ArtifactId getArtifactId(String g, String a, PropertyResolver resolver) {
+
+		PropertyExpression group = PropertyExpression.from(g);
+		PropertyExpression artifact = PropertyExpression.from(a);
+
+		return ArtifactId.of(group.resolveRequired(resolver),
+				artifact.resolveRequired(resolver));
 	}
 
 	/**

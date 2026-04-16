@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
@@ -40,6 +41,10 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class KotlinDslParser extends GradleParser {
+
+	public KotlinDslParser() {
+		super(new DependencyCollector(), new LinkedHashMap<>());
+	}
 
 	public KotlinDslParser(DependencyCollector collector) {
 		super(collector, new LinkedHashMap<>());
@@ -102,39 +107,56 @@ class KotlinDslParser extends GradleParser {
 
 	private void registerMapDeclaration(KtCallElement call, DeclarationSource src) {
 
+		NamedDependencyDeclaration entry = parseMapDeclaration(call, this);
+
+		if (entry.isDeclarationComplete()) {
+			register(entry.toDependency(this), src);
+		}
+	}
+
+	public static NamedDependencyDeclaration parseMapDeclaration(KtCallElement call,
+			PropertyResolver propertyResolver) {
+
 		String group = null;
 		String artifact = null;
 		String version = null;
+		PsiElement versionLiteral = null;
 
 		for (ValueArgument arg : call.getValueArguments()) {
 			String name = arg.getArgumentName() != null ? arg.getArgumentName().getAsName().asString() : null;
 			PsiElement expr = arg.getArgumentExpression();
+			String strVal = expr instanceof KtStringTemplateExpression st
+					? resolveKotlinStringTemplate(st, propertyResolver)
+					: null;
 
-			String strVal = expr instanceof KtStringTemplateExpression st ? resolveKotlinStringTemplate(st) : null;
-			String rendered = expr instanceof KtStringTemplateExpression st ? renderKotlinStringTemplate(st) : null;
 			if ("group".equals(name)) {
 				group = strVal;
 			} else if ("name".equals(name)) {
 				artifact = strVal;
 			} else if ("version".equals(name)) {
-				version = rendered;
+				version = expr instanceof KtStringTemplateExpression st
+						? renderKotlinStringTemplate(st)
+						: null;
+				versionLiteral = expr;
 			}
 		}
 
-		if (group == null || artifact == null || version == null) {
-			return;
-		}
-
-		register(GradleDependency.of(group, artifact, version, this), src);
+		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact, null, version, call,
+				versionLiteral);
 	}
 
 	private @Nullable String resolveKotlinStringTemplate(KtStringTemplateExpression st) {
+		return resolveKotlinStringTemplate(st, this);
+	}
+
+	private static @Nullable String resolveKotlinStringTemplate(KtStringTemplateExpression st,
+			PropertyResolver propertyResolver) {
 
 		StringBuilder builder = new StringBuilder();
 		boolean[] failed = new boolean[1];
 		KotlinDslUtils.doWithStrings(st, builder::append, expression -> {
 
-			String resolved = KotlinDslUtils.resolveKotlinExpression(expression, this);
+			String resolved = KotlinDslUtils.resolveKotlinExpression(expression, propertyResolver);
 			if (resolved == null) {
 				failed[0] = true;
 			} else {
@@ -146,10 +168,10 @@ class KotlinDslParser extends GradleParser {
 			return null;
 		}
 		String merged = builder.toString();
-		return this.resolvePlaceholders(merged);
+		return propertyResolver.resolvePlaceholders(merged);
 	}
 
-	private String renderKotlinStringTemplate(KtStringTemplateExpression st) {
+	private static String renderKotlinStringTemplate(KtStringTemplateExpression st) {
 
 		StringBuilder builder = new StringBuilder();
 		KotlinDslUtils.doWithStrings(st, builder::append, expression -> {

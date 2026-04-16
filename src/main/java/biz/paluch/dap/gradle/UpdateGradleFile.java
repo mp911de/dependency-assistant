@@ -56,11 +56,8 @@ class UpdateGradleFile {
 
 	private final Project project;
 
-	private final UpdateGroovyDsl groovy;
-
 	public UpdateGradleFile(Project project) {
 		this.project = project;
-		this.groovy = new UpdateGroovyDsl();
 	}
 
 	/**
@@ -87,8 +84,10 @@ class UpdateGradleFile {
 				return;
 			}
 
+			GradlePropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile);
+
 			for (DependencyUpdate update : updates) {
-				applyUpdate(psiFile, update);
+				applyUpdate(psiFile, propertyResolver, update);
 			}
 
 			Document after = PsiDocumentManager.getInstance(project).getDocument(psiFile);
@@ -101,7 +100,7 @@ class UpdateGradleFile {
 				applyAll, MessageBundle.message("command.update.title"), null));
 	}
 
-	private void applyUpdate(PsiFile buildFile, DependencyUpdate update) {
+	private void applyUpdate(PsiFile buildFile, GradlePropertyResolver propertyResolver, DependencyUpdate update) {
 
 		String newVersion = update.version().toString();
 
@@ -116,9 +115,9 @@ class UpdateGradleFile {
 					|| source instanceof VersionSource.VersionCatalogProperty) {
 				for (DeclarationSource declSrc : update.declarationSources()) {
 					if (declSrc instanceof DeclarationSource.Plugin) {
-						updatePlugin(buildFile, update.coordinate(), newVersion);
+						updatePlugin(buildFile, propertyResolver, update.coordinate(), newVersion);
 					} else {
-						updateDeclaration(buildFile, update.coordinate(), newVersion);
+						updateDeclaration(buildFile, propertyResolver, update.coordinate(), newVersion);
 					}
 				}
 			}
@@ -177,12 +176,12 @@ class UpdateGradleFile {
 		// Groovy DSL: ext { key = 'value' } / ext.key = 'value' / ext { set('key',
 		// 'value') }
 		if (GradleUtils.isGroovyDsl(file.getVirtualFile())) {
-			groovy.updateExtProperty(file, propertyKey, newVersion);
+			new UpdateGroovyDsl(property -> null).updateExtProperty(file, propertyKey, newVersion);
 		}
 
 		// Kotlin DSL: extra["key"] = "value"
 		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
-			new UpdateKotlinDsl().updateExtraProperty(file, propertyKey, newVersion);
+			new UpdateKotlinDsl(property -> null).updateExtraProperty(file, propertyKey, newVersion);
 		}
 	}
 
@@ -190,7 +189,8 @@ class UpdateGradleFile {
 	 * Updates the version in a dependency GAV string literal or map-notation
 	 * {@code version:} argument.
 	 */
-	private void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
+	private void updateDeclaration(PsiFile file, GradlePropertyResolver propertyResolver, ArtifactId artifactId,
+			String newVersion) {
 
 		// TOML
 		VirtualFile virtualFile = file.getVirtualFile();
@@ -202,13 +202,13 @@ class UpdateGradleFile {
 
 		// Groovy DSL
 		if (GradleUtils.isGroovyDsl(virtualFile)) {
-			groovy.updateDeclaration(file, artifactId, newVersion);
+			new UpdateGroovyDsl(propertyResolver).updateDeclaration(file, artifactId, newVersion);
 			return;
 		}
 
 		// Kotlin DSL
 		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			new UpdateKotlinDsl().updateDeclaration(file, artifactId, newVersion,
+			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, artifactId, newVersion,
 					DeclarationSource.dependency());
 		}
 	}
@@ -216,7 +216,7 @@ class UpdateGradleFile {
 	/**
 	 * Updates the plugin versions.
 	 */
-	private void updatePlugin(PsiFile file, ArtifactId id, String newVersion) {
+	private void updatePlugin(PsiFile file, GradlePropertyResolver propertyResolver, ArtifactId id, String newVersion) {
 
 		// TOML
 		VirtualFile virtualFile = file.getVirtualFile();
@@ -227,12 +227,12 @@ class UpdateGradleFile {
 
 		// Groovy DSL
 		if (GradleUtils.isGroovyDsl(virtualFile)) {
-			groovy.updateDeclaration(file, id, newVersion);
+			new UpdateGroovyDsl(propertyResolver).updateDeclaration(file, id, newVersion);
 		}
 
 		// Kotlin DSL
 		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			new UpdateKotlinDsl().updateDeclaration(file, id, newVersion,
+			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, id, newVersion,
 					DeclarationSource.plugin());
 		}
 	}

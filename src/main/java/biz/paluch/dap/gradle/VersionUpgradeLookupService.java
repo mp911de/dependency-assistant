@@ -90,8 +90,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final PsiFile file;
 
-	private final GradlePropertyDeclarationPsi propertyPsi;
-
 	private final TomlArtifactResolver tomlResolver;
 
 	private final GradlePropertyResolver propertyResolver;
@@ -111,7 +109,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
-		this.propertyPsi = new GradlePropertyDeclarationPsi(project, projectState);
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.tomlResolver = new TomlArtifactResolver(project, file,
 				projectState);

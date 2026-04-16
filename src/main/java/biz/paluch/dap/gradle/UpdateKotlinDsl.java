@@ -15,15 +15,21 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.ValueArgument;
 
 /**
  * Kotlin DSL specific update helpers. Locates and replaces version values in
@@ -32,6 +38,12 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
  * @author Mark Paluch
  */
 class UpdateKotlinDsl {
+
+	private final PropertyResolver propertyResolver;
+
+	public UpdateKotlinDsl(PropertyResolver propertyResolver) {
+		this.propertyResolver = propertyResolver;
+	}
 
 	/**
 	 * Applies a version update to a Kotlin DSL file, handling both
@@ -73,6 +85,33 @@ class UpdateKotlinDsl {
 					template.updateText(newGav);
 					return true;
 				}
+			}
+
+			return false;
+		}));
+
+		if (!isPlugin) {
+			updateMapSyntaxDeclaration(file, artifact, newVersion);
+		}
+	}
+
+	private void updateMapSyntaxDeclaration(PsiFile file, ArtifactId id, String newVersion) {
+
+		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
+
+			List<? extends ValueArgument> args = call.getValueArguments();
+			if (args.isEmpty()) {
+				return false;
+			}
+
+			NamedDependencyDeclaration entry = KotlinDslParser.parseMapDeclaration(call, propertyResolver);
+			if (!entry.isDeclarationComplete()) {
+				return false;
+			}
+
+			if (entry.matches(id) && entry.getRequiredVersionLiteral() instanceof KtStringTemplateExpression version) {
+				version.updateText(newVersion);
+				return true;
 			}
 
 			return false;

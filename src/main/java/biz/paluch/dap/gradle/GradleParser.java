@@ -27,12 +27,15 @@ import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jspecify.annotations.Nullable;
 
@@ -50,6 +53,8 @@ import org.jspecify.annotations.Nullable;
 class GradleParser extends GradleParserSupport {
 
 	private final Map<String, String> properties;
+
+	private final Map<String, PsiPropertyValueElement> propertyLookup = new LinkedHashMap<>();
 
 	public GradleParser() {
 		this(new DependencyCollector(), new LinkedHashMap<>());
@@ -69,6 +74,11 @@ class GradleParser extends GradleParserSupport {
 		return properties;
 	}
 
+	@Override
+	public @Nullable PsiPropertyValueElement getElement(String propertyKey) {
+		return this.propertyLookup.get(propertyKey);
+	}
+
 	// -------------------------------------------------------------------------
 	// Groovy DSL
 	// -------------------------------------------------------------------------
@@ -80,8 +90,12 @@ class GradleParser extends GradleParserSupport {
 	 */
 	public void parseGroovyScript(PsiFile file) {
 
-		properties.putAll(GroovyDslExtParser.getExtProperties(file));
-		getCollector().addProperties(properties.keySet());
+		Map<String, PsiPropertyValueElement> properties = GroovyDslExtParser.parseExtProperties(file);
+		this.propertyLookup.clear();
+		this.propertyLookup.putAll(properties);
+
+		properties.forEach((k, v) -> this.properties.put(k, v.propertyValue()));
+		getCollector().addProperties(this.properties.keySet());
 		file.accept(PsiVisitors.visitTree(GrMethodCall.class, this::handleGroovyCall));
 	}
 
@@ -115,7 +129,10 @@ class GradleParser extends GradleParserSupport {
 			// Try map notation: implementation(group: 'g', name: 'a', version: 'v')
 			GrNamedArgument[] named = call.getNamedArguments();
 			if (named.length >= 2) {
-				dependency = parseMapDependency(named);
+				NamedDependencyDeclaration entry = parseMapDependency(call, named, this);
+				if (entry.isDeclarationComplete()) {
+					dependency = entry.toDependency(this);
+				}
 			}
 		}
 
@@ -148,11 +165,17 @@ class GradleParser extends GradleParserSupport {
 		return null;
 	}
 
-	private @Nullable GradleDependency parseMapDependency(GrNamedArgument[] named) {
+	/**
+	 * Parse map-style dependency declarations.
+	 */
+	public static NamedDependencyDeclaration parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
+			PropertyResolver propertyResolver) {
 
 		String group = null;
 		String artifact = null;
 		String version = null;
+		String versionProperty = null;
+		PsiElement versionLiteral = null;
 
 		for (GrNamedArgument arg : named) {
 			String key = arg.getLabelName();
@@ -160,30 +183,30 @@ class GradleParser extends GradleParserSupport {
 			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.toString(lit) : null;
 
 			if ("group".equals(key)) {
-				if (StringUtils.isEmpty(strVal)) {
-					return null;
-				}
-				group = resolvePlaceholders(strVal);
+				group = StringUtils.isEmpty(strVal) ? strVal : propertyResolver.resolvePlaceholders(strVal);
 			} else if ("name".equals(key)) {
-
-				if (StringUtils.isEmpty(strVal)) {
-					return null;
-				}
-				artifact = resolvePlaceholders(strVal);
+				artifact = StringUtils.isEmpty(strVal) ? strVal : propertyResolver.resolvePlaceholders(strVal);
 			} else if ("version".equals(key)) {
 
-				if (StringUtils.isEmpty(strVal)) {
-					return null;
+				if (val instanceof GrReferenceExpression ref) {
+					String refName = ref.getReferenceName();
+					versionProperty = refName;
+					if (StringUtils.hasText(refName)) {
+						PsiPropertyValueElement element = propertyResolver.getElement(refName);
+						if (element != null) {
+							version = element.propertyValue();
+							versionLiteral = element.element();
+						}
+					}
+				} else if (!StringUtils.isEmpty(strVal)) {
+					version = strVal;
+					versionLiteral = val;
 				}
-				version = strVal;
 			}
 		}
 
-		if (StringUtils.isEmpty(group) || StringUtils.isEmpty(artifact) || StringUtils.isEmpty(version)) {
-			return null;
-		}
-
-		return GradleDependency.of(group, artifact, version, this);
+		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact,
+				versionProperty, version, call, versionLiteral);
 	}
 
 	private @Nullable GradleDependency parsePlugin(GrMethodCall call) {

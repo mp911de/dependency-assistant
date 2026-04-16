@@ -16,11 +16,13 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
 import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -34,6 +36,12 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class UpdateGroovyDsl {
+
+	private final PropertyResolver propertyResolver;
+
+	public UpdateGroovyDsl(PropertyResolver propertyResolver) {
+		this.propertyResolver = propertyResolver;
+	}
 
 	/**
 	 * Update {@code ext.propertyKey = 'newVersion'} or
@@ -114,6 +122,29 @@ class UpdateGroovyDsl {
 				GroovyDslUtils.updateText(lit, newGav);
 				return true;
 			}
+			return false;
+		}));
+
+		updateMapDependency(file, id, newVersion);
+	}
+
+	private void updateMapDependency(PsiFile file, ArtifactId id, String newVersion) {
+
+		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
+
+			GrNamedArgument[] named = call.getNamedArguments();
+			if (named.length < 2) {
+				return false;
+			}
+
+			NamedDependencyDeclaration entry = GradleParser.parseMapDependency(call, named, propertyResolver);
+
+			if (entry.isDeclarationComplete() && entry.matches(id)
+					&& entry.getRequiredVersionLiteral() instanceof GrLiteral literal) {
+				GroovyDslUtils.updateText(literal, newVersion);
+				return true;
+			}
+
 			return false;
 		}));
 	}

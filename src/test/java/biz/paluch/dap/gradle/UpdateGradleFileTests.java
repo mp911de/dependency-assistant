@@ -23,16 +23,10 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.extension.CodeInsightFixture;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
-import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
-import com.intellij.testFramework.fixtures.TestFixtureBuilder;
-import com.intellij.testFramework.junit5.RunInEdt;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -42,24 +36,10 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@RunInEdt(writeIntent = true)
+@CodeInsightFixture
 class UpdateGradleFileTests {
 
 	private CodeInsightTestFixture fixture;
-
-	@BeforeEach
-	void setUp() throws Exception {
-		TestFixtureBuilder<IdeaProjectTestFixture> builder = IdeaTestFixtureFactory.getFixtureFactory()
-				.createLightFixtureBuilder(new LightProjectDescriptor(), getClass().getSimpleName());
-		fixture = IdeaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(builder.getFixture());
-		fixture.setUp();
-	}
-
-	@AfterEach
-	void tearDown() throws Exception {
-		fixture.tearDown();
-		fixture = null;
-	}
 
 	@Test
 	void groovyPluginVersionIsUpdated() {
@@ -311,6 +291,80 @@ class UpdateGradleFileTests {
 				VersionSource.property("springVersion"), "3.6.0");
 
 		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
+	}
+
+	@Test
+	void groovyMapSyntaxVersionIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
+				dependencies {
+				    implementation group: 'com.google.guava', name: 'guava', version: '32.1.2-jre'
+				    implementation 'org.apache.commons:commons-lang3:3.19.0'
+				}
+				""");
+
+		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
+
+		assertThat(buildFile.getText()).contains("version: '33.0.0-jre'");
+		assertThat(buildFile.getText()).doesNotContain("version: '32.1.2-jre'");
+		assertThat(buildFile.getText()).contains("group: 'com.google.guava'");
+		assertThat(buildFile.getText()).contains("name: 'guava'");
+		assertThat(buildFile.getText()).contains("'org.apache.commons:commons-lang3:3.19.0'");
+	}
+
+	@Test
+	void groovyMapSyntaxExtraKeyIsPreserved() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle",
+				"""
+						dependencies {
+						    implementation group: 'com.google.guava', name: 'guava', version: '32.1.2-jre', classifier: 'android'
+						}
+						""");
+
+		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
+
+		assertThat(buildFile.getText()).contains("version: '33.0.0-jre'");
+		assertThat(buildFile.getText()).contains("classifier: 'android'");
+	}
+
+	@Test
+	void kotlinNamedArgVersionIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				dependencies {
+				    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre")
+				    implementation("org.apache.commons:commons-lang3:3.19.0")
+				}
+				""");
+
+		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
+
+		assertThat(buildFile.getText()).contains("version = \"33.0.0-jre\"");
+		assertThat(buildFile.getText()).doesNotContain("version = \"32.1.2-jre\"");
+		assertThat(buildFile.getText()).contains("group = \"com.google.guava\"");
+		assertThat(buildFile.getText()).contains("name = \"guava\"");
+		assertThat(buildFile.getText()).contains("\"org.apache.commons:commons-lang3:3.19.0\"");
+	}
+
+	@Test
+	void kotlinNamedArgExtraKeyIsPreserved() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts",
+				"""
+						dependencies {
+						    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre", classifier = "android")
+						}
+						""");
+
+		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
+
+		assertThat(buildFile.getText()).contains("version = \"33.0.0-jre\"");
+		assertThat(buildFile.getText()).contains("classifier = \"android\"");
 	}
 
 	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,

@@ -17,14 +17,20 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Common base class for Gradle build file parsers.
@@ -78,6 +84,65 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 		}
 
 		getCollector().registerDeclaration(dependency.getId(), declarationSource, dependency.getVersionSource());
+	}
+
+	/**
+	 * Map-style dependency declaration in the style of: <pre class="code">
+	 *     implementation group: 'com.google.guava', name: 'guava', version: '33.0.0-jre', classifier: 'android'
+	 * </pre>
+	 */
+	record NamedDependencyDeclaration(PsiFile buildFile, @Nullable String id, @Nullable String group,
+			@Nullable String artifact,
+			@Nullable String versionProperty,
+			@Nullable String version, PsiElement declaration, @Nullable PsiElement versionLiteral) {
+
+		/**
+		 * Check whether the declaration is complete (having id and version information
+		 * or group and artifact with version information).
+		 */
+		public boolean isDeclarationComplete() {
+
+			if (versionLiteral == null || (StringUtils.isEmpty(versionProperty) && StringUtils.isEmpty(version))) {
+				return false;
+			}
+
+			if (StringUtils.hasText(id)) {
+				return true;
+			}
+
+			return StringUtils.hasText(group) && StringUtils.hasText(artifact);
+		}
+
+		public PsiElement getRequiredVersionLiteral() {
+			Assert.state(versionLiteral != null, "Version literal must be set");
+			return versionLiteral;
+		}
+
+		public GradleDependency toDependency(PropertyResolver propertyResolver) {
+
+			Assert.state(group != null && artifact != null, "Group and name must be set");
+			Assert.hasText(version, "Version must be set");
+
+			if (StringUtils.hasText(versionProperty)) {
+				ArtifactId artifactId = GradleDependency.getArtifactId(group, artifact, propertyResolver);
+				return GradleDependency.of(artifactId, PropertyExpression.property(versionProperty));
+			}
+
+			return GradleDependency.of(group, artifact, version, propertyResolver);
+		}
+
+		/**
+		 * Check whether the given {@link ArtifactId} matches this declaration.
+		 */
+		public boolean matches(ArtifactId id) {
+
+			if (GradlePlugin.isPlugin(id) && id.artifactId().equals(this.id)) {
+				return true;
+			}
+
+			return id.artifactId().equals(this.artifact) && id.groupId().equals(this.group);
+		}
+
 	}
 
 }
