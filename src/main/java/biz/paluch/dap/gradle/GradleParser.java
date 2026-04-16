@@ -154,7 +154,7 @@ class GradleParser extends GradleParserSupport {
 			}
 
 			if (arg instanceof GrLiteral lit) {
-				String rawText = GroovyDslUtils.toString(lit);
+				String rawText = GroovyDslUtils.getText(lit);
 				GradleDependency dependency = parseGav(rawText);
 				if (dependency != null) {
 					return dependency;
@@ -180,7 +180,7 @@ class GradleParser extends GradleParserSupport {
 		for (GrNamedArgument arg : named) {
 			String key = arg.getLabelName();
 			PsiElement val = arg.getExpression();
-			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.toString(lit) : null;
+			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.getText(lit) : null;
 
 			if ("group".equals(key)) {
 				group = StringUtils.isEmpty(strVal) ? strVal : propertyResolver.resolvePlaceholders(strVal);
@@ -189,7 +189,7 @@ class GradleParser extends GradleParserSupport {
 			} else if ("version".equals(key)) {
 
 				if (val instanceof GrReferenceExpression ref) {
-					String refName = ref.getReferenceName();
+					String refName = GroovyDslUtils.getRequiredText(ref);
 					versionProperty = refName;
 					if (StringUtils.hasText(refName)) {
 						PsiPropertyValueElement element = propertyResolver.getElement(refName);

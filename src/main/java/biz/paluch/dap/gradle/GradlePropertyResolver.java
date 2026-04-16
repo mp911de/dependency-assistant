@@ -229,7 +229,7 @@ class GradlePropertyResolver implements PropertyResolver {
 			if (this == o) {
 				return true;
 			}
-			if (!(o instanceof TreeProvider that)) {
+			if (!(o instanceof FileProvider that)) {
 				return false;
 			}
 			return project.equals(that.project) && virtualFile.equals(that.virtualFile);

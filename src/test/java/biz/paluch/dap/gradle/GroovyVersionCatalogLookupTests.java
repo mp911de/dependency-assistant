@@ -115,16 +115,13 @@ class GroovyVersionCatalogLookupTests {
 
 		VersionUpgradeLookupService service = new VersionUpgradeLookupService(build.getProject(), build);
 
-		int nonRedundantResolved = 0;
+		int resolved = 0;
 		for (PsiElement e : PsiTreeUtil.collectElementsOfType(build, PsiElement.class)) {
-			if (GroovyDslUtils.isRedundantGroovyCatalogHighlightAnchor(e)) {
-				continue;
-			}
 			if (service.resolveGroovyArtifactReference(e).isResolved()) {
-				nonRedundantResolved++;
+				resolved++;
 			}
 		}
 
-		assertThat(nonRedundantResolved).isEqualTo(1);
+		assertThat(resolved).isEqualTo(1);
 	}
 }

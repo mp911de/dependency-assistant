@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Tests for {@link TomlParser}.
+ *
  * @author Mark Paluch
  */
 @CodeInsightFixtureTests
@@ -82,6 +83,136 @@ class TomlParserTests {
 		assertThat(log4j.getCurrentVersion().toString()).isEqualTo("2.24.3");
 		// Inline version is a declared version, not a property.
 		assertThat(log4j.hasPropertyVersion()).isFalse();
+	}
+
+	@Test
+	void gavStringLiteralInLibraries() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[libraries]
+				commons-lang3 = "org.apache.commons:commons-lang3:3.17.0"
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		Dependency dep = collector.getUsage("org.apache.commons", "commons-lang3");
+		assertThat(dep).isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("3.17.0");
+	}
+
+	@Test
+	void gavStringLiteralWithFewerThanThreeSegmentsIsIgnored() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[libraries]
+				bad-entry = "org.example:artifact"
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		assertThat(collector.getUsage("org.example", "artifact")).isNull();
+	}
+
+	@Test
+	void groupAndNameInlineTableNormalizesToModule() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[libraries]
+				guava = { group = "com.google.guava", name = "guava", version = "33.4.0-jre" }
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		Dependency dep = collector.getUsage("com.google.guava", "guava");
+		assertThat(dep).isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("33.4.0-jre");
+	}
+
+	@Test
+	void groupAndNameInlineTableWithVersionRef() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[versions]
+				guava = "33.4.0-jre"
+
+				[libraries]
+				guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		Dependency dep = collector.getUsage("com.google.guava", "guava");
+		assertThat(dep).isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("33.4.0-jre");
+	}
+
+	@Test
+	void pluginShortNotation() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[plugins]
+				spring-boot = "org.springframework.boot:4.0.0"
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		Dependency dep = collector.getUsage("org.springframework.boot", "org.springframework.boot");
+		assertThat(dep).isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("4.0.0");
+	}
+
+	@Test
+	void pluginShortNotationWithSingleSegmentIsIgnored() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[plugins]
+				spring-boot = "org.springframework.boot"
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		assertThat(collector.getUsage("org.springframework.boot", "org.springframework.boot")).isNull();
+	}
+
+	@Test
+	void pluginLongNotation() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[plugins]
+				long-notation = { id = "some.plugin.id", version = "1.4" }
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		Dependency dep = collector.getUsage("some.plugin.id", "some.plugin.id");
+		assertThat(dep).isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.4");
+	}
+
+	@Test
+	void pluginRefNotation() {
+
+		PsiFile file = fixture.configureByText("libs.versions.toml", """
+				[versions]
+				common = "2.0.0"
+
+				[plugins]
+				ref-notation = { id = "some.plugin.id", version.ref = "common" }
+				""");
+
+		DependencyCollector collector = new DependencyCollector();
+		new TomlParser(collector).parseVersionCatalog(file);
+
+		Dependency dep = collector.getUsage("some.plugin.id", "some.plugin.id");
+		assertThat(dep).isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("2.0.0");
 	}
 
 }

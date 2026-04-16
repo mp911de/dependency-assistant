@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
@@ -76,13 +77,21 @@ class TomlReference {
 		return from(split(identifier));
 	}
 
-
 	/**
-	 * Create a reference from a list of segments.
+	 * Create a reference from a list of segments using only the default
+	 * {@code libs} catalog alias.
 	 */
 	public static @Nullable TomlReference from(List<String> segments) {
+		return from(segments, Set.of(TomlParser.LIBS));
+	}
 
-		if (segments.size() < 2 || !TomlParser.LIBS.equals(segments.get(0))) {
+	/**
+	 * Create a reference from a list of segments, accepting the given set of known
+	 * catalog aliases as the first segment.
+	 */
+	static @Nullable TomlReference from(List<String> segments, Set<String> knownAliases) {
+
+		if (segments.size() < 2 || !knownAliases.contains(segments.get(0))) {
 			return null;
 		}
 		if (TomlParser.PLUGINS.equals(segments.get(1))) {
@@ -101,13 +110,27 @@ class TomlReference {
 	}
 
 	/**
+	 * Create a reference for the given alias, section, and dot/dash-separated key.
+	 */
+	static TomlReference of(String alias, @Nullable String section, String key) {
+		return new TomlReference(alias, section, split(key));
+	}
+
+	/**
 	 * @return the TOML table name such as {@code libraries} or {@code plugins}.
 	 */
 	public String getTableName() {
-		if (section == null && key.equals(TomlParser.LIBS)) {
+		if (section == null) {
 			return TomlParser.LIBRARIES;
 		}
-		return section == null ? key : section;
+		return section;
+	}
+
+	/**
+	 * @return the catalog alias (e.g. {@code libs} or {@code tools}).
+	 */
+	String getCatalogAlias() {
+		return key;
 	}
 
 	private boolean isPlugin() {

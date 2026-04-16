@@ -17,7 +17,6 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.DependencyAssistantService;
-
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -39,9 +38,11 @@ import com.intellij.psi.PsiFile;
  */
 class GradleDependencyCollector {
 
+	private final Project project;
 	private final DependencyAssistantService service;
 
 	public GradleDependencyCollector(Project project) {
+		this.project = project;
 		this.service = DependencyAssistantService.getInstance(project);
 	}
 

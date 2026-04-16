@@ -164,6 +164,9 @@ public abstract class DependencyCheckSupport {
 		return new DependencyUpdates(projectName, items, errors);
 	}
 
+	/**
+	 * Collect all dependency declarations from the given build file.
+	 */
 	public abstract DependencyCollector collectArtifacts(PsiFile buildFile);
 
 	private record ResolverResult(@Nullable String error, List<Release> releases) {

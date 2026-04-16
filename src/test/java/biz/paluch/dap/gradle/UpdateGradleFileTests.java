@@ -205,6 +205,38 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
+	void libraryLiteralVersionInTomlVersionCatalogIsUpdated() {
+
+		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """
+
+				[libraries]
+				spring-boot-starter = "org.springframework.boot:spring-boot-starter:3.5.0"
+				""");
+
+		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
+				DeclarationSource.dependency(),
+				VersionSource.declared("3.5.0"), "3.6.0");
+
+		assertThat(tomlFile.getText()).contains("org.springframework.boot:spring-boot-starter:3.6.0");
+	}
+
+	@Test
+	void pluginLiteralVersionInTomlVersionCatalogIsUpdated() {
+
+		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """
+
+				[plugins]
+				spring-boot = "org.springframework.boot:4.0.0"
+				""");
+
+		applyUpdate(tomlFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+				DeclarationSource.plugin(),
+				VersionSource.declared("3.5.0"), "4.0.0");
+
+		assertThat(tomlFile.getText()).contains("org.springframework.boot:4.0.0");
+	}
+
+	@Test
 	void pluginVersionInTomlVersionCatalogIsUpdated() {
 
 		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """

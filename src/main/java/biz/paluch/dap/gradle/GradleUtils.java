@@ -79,18 +79,28 @@ class GradleUtils {
 	 */
 	static final String PLUGINS = "plugins";
 
-	private GradleUtils() {
-	}
 
-	/** Names of Gradle build/settings script files. */
-	public static final Set<String> GRADLE_SCRIPT_NAMES = Set.of("build.gradle", "build.gradle.kts", "settings.gradle",
-			"settings.gradle.kts");
+	/** Name of the Gradle Settings file. */
+	public static final String GROOVY_SETTINGS = "settings.gradle";
+
+	/** Name of the Gradle Settings.kts file. */
+	public static final String KOTLIN_SETTINGS = "settings.gradle.kts";
 
 	/** Name of the Gradle properties file. */
 	public static final String GRADLE_PROPERTIES = "gradle.properties";
 
 	/** Name of the Gradle version catalog file. */
 	public static final String LIBS_VERSIONS_TOML = "libs.versions.toml";
+
+	/** Name of the Gradle version catalog file. */
+	public static final String DEFAULT_TOML_LOCATION = "gradle/" + GradleUtils.LIBS_VERSIONS_TOML;
+
+	/** Names of Gradle build/settings script files. */
+	public static final Set<String> GRADLE_SCRIPT_NAMES = Set.of("build.gradle", "build.gradle.kts", GROOVY_SETTINGS,
+			KOTLIN_SETTINGS);
+
+	private GradleUtils() {
+	}
 
 	/**
 	 * Returns {@code true} if the given {@link PsiFile} is a Gradle build or
@@ -145,19 +155,19 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file is a {@code libs.versions.toml} version
+	 * Returns {@code true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable VirtualFile file) {
-		return file != null && LIBS_VERSIONS_TOML.equals(file.getName());
+		return file != null && file.getName().endsWith(".versions.toml");
 	}
 
 	/**
-	 * Returns {@code true} if the file is a {@code libs.versions.toml} version
+	 * Returns {@code true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable PsiFile file) {
-		return file != null && LIBS_VERSIONS_TOML.equals(file.getName());
+		return file != null && file.getName().endsWith(".versions.toml");
 	}
 
 	/**
@@ -198,7 +208,9 @@ class GradleUtils {
 	 * none is found.
 	 */
 	static VirtualFile findProjectRoot(VirtualFile file) {
+
 		VirtualFile dir = file.isDirectory() ? file : file.getParent();
+
 		while (dir != null) {
 			if (dir.findChild("settings.gradle") != null || dir.findChild("settings.gradle.kts") != null) {
 				return dir;

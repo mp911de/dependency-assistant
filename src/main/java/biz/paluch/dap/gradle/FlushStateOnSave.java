@@ -18,7 +18,6 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.support.FlushStateOnSaveSupport;
-
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;

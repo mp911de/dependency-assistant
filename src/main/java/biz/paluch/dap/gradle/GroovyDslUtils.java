@@ -17,6 +17,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -43,6 +44,8 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrParent
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Utility methods for Groovy DSL.
@@ -135,7 +138,7 @@ class GroovyDslUtils {
 		// double-quoted literals).
 		// Fall back to toString() which preserves ${…} placeholders for interpolated
 		// GStrings.
-		String text = GroovyDslUtils.toString(literal);
+		String text = GroovyDslUtils.getText(literal);
 		if (StringUtils.isEmpty(text)) {
 			return null;
 		}
@@ -204,7 +207,7 @@ class GroovyDslUtils {
 		if (artifactId == null) {
 			return null;
 		}
-		String version = GroovyDslUtils.toString(id.version);
+		String version = GroovyDslUtils.getText(id.version);
 		PropertyExpression versionExpression = PropertyExpression.from(version);
 
 		return new DependencyAndVersionLocation(GradleDependency.of(artifactId, versionExpression), literal);
@@ -229,8 +232,8 @@ class GroovyDslUtils {
 			return null;
 		}
 
-		String key = toString(keyLiteral);
-		String value = GroovyDslUtils.toString(literal);
+		String key = getText(keyLiteral);
+		String value = GroovyDslUtils.getText(literal);
 		if (StringUtils.isEmpty(key) || StringUtils.isEmpty(value)) {
 			return null;
 		}
@@ -273,7 +276,7 @@ class GroovyDslUtils {
 			return null;
 		}
 
-		String value = literal.getValue() instanceof String v ? v : GroovyDslUtils.toString(literal);
+		String value = literal.getValue() instanceof String v ? v : GroovyDslUtils.getText(literal);
 		return new PsiPropertyValueElement(literal, key, value);
 	}
 
@@ -299,17 +302,87 @@ class GroovyDslUtils {
 		return false;
 	}
 
+	/**
+	 * Return the name of the Groovy method call.
+	 *
+	 * @param call method call.
+	 * @return the name of the method call.
+	 */
 	public static String getGroovyMethodName(GrMethodCall call) {
-		return call.getInvokedExpression().getText().trim();
+		return getRequiredText(call.getInvokedExpression()).trim();
+	}
+
+	/**
+	 * Returns the required text associated with {@code expression} or throw
+	 * {@link IllegalArgumentException} if the text could not be obtained.
+	 *
+	 * @return the required text.
+	 * @throws IllegalArgumentException if the expression is not supported.
+	 */
+	static String getRequiredText(GrExpression expression) {
+
+		Assert.notNull(expression, "Expression must not be null");
+
+		String text = getText(expression);
+
+		if (text == null) {
+			throw new IllegalArgumentException(
+					"Unexpected expression: %s (%s)".formatted(expression, expression.getClass()
+							.getName()));
+		}
+		return text;
+	}
+
+	/**
+	 * Return the text of a Groovy literal or expression.
+	 *
+	 * @param expression the expression to extract the text from.
+	 * @return the extracted text.
+	 * @throws IllegalArgumentException if {@code expression} is not a literal.
+	 */
+	public static @Nullable String getText(GrExpression expression) {
+
+		if (expression instanceof GrReferenceExpression ref) {
+			return ref.getReferenceName();
+		}
+
+		if (expression instanceof GrLiteral literal) {
+			return getText(literal);
+		}
+
+		throw new IllegalArgumentException("Expected GrLiteral, got %s (%s)".formatted(expression, expression.getClass()
+				.getName()));
+	}
+
+	/**
+	 * Check whether the given {@code GrExpression} contains actual <em>text</em>.
+	 *
+	 * @param expression the expression to check.
+	 * @return {@code true} if the expression contains actual text; {@code false}
+	 * otherwise.
+	 * @see StringUtils#hasText
+	 */
+	public static boolean hasText(@Nullable GrExpression expression) {
+
+		if (expression instanceof GrReferenceExpression ref && StringUtils.hasText(ref.getReferenceName())) {
+			return true;
+		}
+
+		if (expression instanceof GrLiteral literal && literal.getValue() instanceof String s
+				&& StringUtils.hasText(s)) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
 	 * Returns the string content of a Groovy literal, preserving any ${…}
 	 * placeholders in interpolated GStrings.
-	 * @param literal the literal to extract the string content from.
+	 * @param literal the literal to extract the text from.
 	 * @return the string value.
 	 */
-	public static String toString(GrLiteral literal) {
+	public static String getText(GrLiteral literal) {
 
 		if (literal.getValue() instanceof String s) {
 			return s;
@@ -342,26 +415,27 @@ class GroovyDslUtils {
 	 * argument is a {@code libs.…} reference chain and that contains
 	 * {@code element}.
 	 */
-	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element) {
+	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element,
+			VersionCatalogRegistry registry) {
 
-		for (PsiElement p = element; p != null && !(p instanceof PsiFile); p = p.getParent()) {
-
-			if (!(p instanceof GrMethodCall call)) {
-				continue;
-			}
-			if (!isGroovyCatalogConsumerCall(call)) {
-				continue;
-			}
-			GrExpression arg = getFirstGroovyCatalogArgumentExpression(call);
-			if (arg == null || !isGroovyLibsCatalogRootExpression(arg)) {
-				continue;
-			}
-			if (!PsiTreeUtil.isAncestor(arg, element, false)) {
-				continue;
-			}
-			return call;
+		if (!(element instanceof GrReferenceExpression) || !(element.getParent() instanceof GrArgumentList args)) {
+			return null;
 		}
-		return null;
+
+		if (!(args.getParent() instanceof GrMethodCall call)) {
+			return null;
+		}
+
+		if (!isGroovyCatalogConsumerCall(call)) {
+			return null;
+		}
+
+		GrExpression arg = getFirstGroovyCatalogArgumentExpression(call);
+		if (arg == null || !isGroovyLibsCatalogRootExpression(arg, registry)) {
+			return null;
+		}
+
+		return call;
 	}
 
 	private static boolean isGroovyCatalogConsumerCall(GrMethodCall call) {
@@ -396,13 +470,13 @@ class GroovyDslUtils {
 		return null;
 	}
 
-	static boolean isGroovyLibsCatalogRootExpression(GrExpression expr) {
+	static boolean isGroovyLibsCatalogRootExpression(GrExpression expr, VersionCatalogRegistry registry) {
 
-		TomlReference reference = getTomlReference(expr);
+		TomlReference reference = getTomlReference(expr, registry.catalogPaths().keySet());
 		return reference != null;
 	}
 
-	static @Nullable TomlReference getTomlReference(GrExpression expr) {
+	static @Nullable TomlReference getTomlReference(GrExpression expr, Set<String> knownAliases) {
 
 		GrExpression e = unwrapGroovyParentheses(expr);
 		if (e == null) {
@@ -411,7 +485,7 @@ class GroovyDslUtils {
 		ArrayList<String> segments = new ArrayList<>();
 		GrExpression cur = e;
 		while (cur instanceof GrReferenceExpression ref) {
-			String name = ref.getReferenceName();
+			String name = GroovyDslUtils.getText(ref);
 			if (name == null) {
 				return null;
 			}
@@ -422,22 +496,7 @@ class GroovyDslUtils {
 			return null;
 		}
 		Collections.reverse(segments);
-		return TomlReference.from(segments);
-	}
-
-	/**
-	 * {@code true} for PSI under a {@code libs.…} catalog argument except the root
-	 * {@link GrExpression} of that argument (avoids duplicate gutter/annotator hits
-	 * per segment).
-	 */
-	static boolean isRedundantGroovyCatalogHighlightAnchor(PsiElement element) {
-
-		GrMethodCall catalogCall = findEnclosingGroovyCatalogAccessorCall(element);
-		if (catalogCall == null) {
-			return false;
-		}
-		GrExpression firstArg = getFirstGroovyCatalogArgumentExpression(catalogCall);
-		return PsiTreeUtil.isAncestor(firstArg, element, false) && !firstArg.equals(element);
+		return TomlReference.from(segments, knownAliases);
 	}
 
 	/**
@@ -493,7 +552,7 @@ class GroovyDslUtils {
 			for (GroovyPsiElement arg : call.getArgumentList().getAllArguments()) {
 
 				if (idLiteral == null && arg instanceof GrLiteral literal) {
-					String raw = GroovyDslUtils.toString(literal);
+					String raw = GroovyDslUtils.getText(literal);
 					String resolved = properties.resolvePlaceholders(raw);
 					if (!idPredicate.test(resolved)) {
 						return null;
@@ -528,7 +587,7 @@ class GroovyDslUtils {
 
 
 		public String getVersionAsString() {
-			return GroovyDslUtils.toString(version);
+			return GroovyDslUtils.getText(version);
 		}
 
 		/**

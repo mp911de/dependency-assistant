@@ -16,6 +16,7 @@
 package biz.paluch.dap.gradle;
 
 import java.util.List;
+import java.util.Map;
 
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -23,7 +24,8 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
-import biz.paluch.dap.gradle.TomlParser.TomlDeclarationEntry;
+import biz.paluch.dap.gradle.TomlParser.TomlDependencyDeclaration;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.application.ApplicationManager;
@@ -38,7 +40,6 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.toml.lang.psi.TomlFile;
-import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlPsiFactory;
@@ -244,6 +245,7 @@ class UpdateGradleFile {
 	 */
 	private void updateDeclaration(TomlFile file, ArtifactId artifactId, String newVersion) {
 
+		Map<String, PsiPropertyValueElement> properties = TomlParser.parseTomlVersions(file);
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
 
 			String tableName = TomlParser.getTomlTableName(table);
@@ -254,11 +256,12 @@ class UpdateGradleFile {
 			}
 
 			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
-				if (!(kv.getValue() instanceof TomlInlineTable inline)) {
+
+				TomlDependencyDeclaration entry = TomlParser.parseTomlEntry(kv, properties);
+				if (!entry.isComplete()) {
 					continue;
 				}
 
-				TomlDeclarationEntry entry = TomlParser.parseTomlEntry(kv, inline);
 				GradleDependency dep = entry.toDependency();
 
 				if (!(dep instanceof SimpleDependency sd) || !sd.id().equals(artifactId)
@@ -266,8 +269,14 @@ class UpdateGradleFile {
 					continue;
 				}
 
+				String replacementText = newVersion;
+				if (kv.getValue() instanceof TomlLiteral) {
+					String text = TomlParser.getRequiredText(kv.getValue());
+					replacementText = text.replace(entry.version(), newVersion);
+				}
+
 				TomlLiteral newLiteral = new TomlPsiFactory(project, false)
-						.createLiteral("\"%s\"".formatted(newVersion));
+						.createLiteral("\"%s\"".formatted(replacementText));
 				entry.versionLiteral().replace(newLiteral);
 			}
 		}

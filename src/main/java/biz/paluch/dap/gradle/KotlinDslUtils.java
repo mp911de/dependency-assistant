@@ -29,10 +29,12 @@ import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.lang.Contract;
+import org.springframework.util.Assert;
 
 /**
  * PSI navigation utilities for KotlinScript Gradle build files.
@@ -373,7 +375,7 @@ class KotlinDslUtils {
 	// Helpers
 	// -------------------------------------------------------------------------
 
-	static boolean isDependencyCall(KtCallElement call) {
+	public static boolean isDependencyCall(KtCallElement call) {
 
 		String methodName = getKotlinCallName(call);
 		if (StringUtils.isEmpty(methodName)) {
@@ -392,7 +394,7 @@ class KotlinDslUtils {
 	 * @param version version element that defines the dependency version.
 	 * @return
 	 */
-	static @Nullable KtCallExpression findDependencyExpression(PsiElement version) {
+	public static @Nullable KtCallExpression findDependencyExpression(PsiElement version) {
 
 		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(version, KtBinaryExpression.class);
 		KtCallExpression call = PsiTreeUtil.getParentOfType(version, KtCallExpression.class);
@@ -457,7 +459,7 @@ class KotlinDslUtils {
 	 * @param version a leaf or entry inside the version literal, or (for
 	 * {@code it}-assignment) inside the receiver string of {@code .also}
 	 */
-	static @Nullable KtBinaryExpression findPropertyExpression(PsiElement version) {
+	public static @Nullable KtBinaryExpression findPropertyExpression(PsiElement version) {
 
 		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(version, KtBinaryExpression.class);
 		while (binary != null) {
@@ -548,12 +550,8 @@ class KotlinDslUtils {
 		return null;
 	}
 
-	static @Nullable String getKotlinCallName(KtCallExpression call) {
-		PsiElement callee = call.getCalleeExpression();
-		if (callee instanceof KtNameReferenceExpression ref) {
-			return ref.getReferencedName();
-		}
-		return callee != null ? callee.getText() : null;
+	public static @Nullable String getKotlinCallName(KtCallExpression call) {
+		return getText(call.getCalleeExpression());
 	}
 
 	static @Nullable String getKotlinCallName(KtCallElement call) {
@@ -583,28 +581,62 @@ class KotlinDslUtils {
 	}
 
 	/**
+	 * Returns the required text associated with {@code expression} or throw
+	 * {@link IllegalArgumentException} if the text could not be obtained.
+	 * @return the required text.
+	 * @throws IllegalArgumentException if the expression is not supported.
+	 */
+	static String getRequiredText(KtExpression expression) {
+
+		Assert.notNull(expression, "Expression must not be null");
+
+		String text = getText(expression);
+
+		if (text == null) {
+			throw new IllegalArgumentException(
+					"Unexpected expression: %s (%s)".formatted(expression, expression.getClass()
+							.getName()));
+		}
+		return text;
+	}
+
+	/**
 	 * Resolves the string value assigned to an {@code extra[...]} expression, or
 	 * {@code null} if unsupported.
+	 * @throws IllegalArgumentException if the expression is not supported.
 	 */
+	@Contract("null -> null")
 	static @Nullable String getText(@Nullable KtExpression expression) {
 
-		if (expression instanceof KtStringTemplateExpression st) {
+		switch (expression) {
+		case null -> {
+			return null;
+		}
+		case KtStringTemplateExpression st -> {
 			StringBuilder builder = new StringBuilder();
 			doWithStrings(st, builder::append, builder::append);
 			return builder.toString();
 		}
+		case KtNameReferenceExpression ref -> {
 
-		if (expression instanceof KtNameReferenceExpression ref && "it".equals(ref.getReferencedName())) {
-			return extractAlsoReceiverStringLiteral(ref);
+			if ("it".equals(ref.getReferencedName())) {
+				return extractAlsoReceiverStringLiteral(ref);
+			}
+
+			return ref.getReferencedName();
 		}
-
-		if (expression instanceof KtCallExpression call) {
+		case KtCallExpression call -> {
 			KtStringTemplateExpression literal = findBuildStringAppendLiteral(call);
 			if (literal != null) {
 				return getText(literal);
 			}
 		}
-		return null;
+		default -> {
+		}
+		}
+
+		throw new IllegalArgumentException(
+				"Unexpected expression: " + expression + " (" + expression.getClass().getName() + ")");
 	}
 
 	private static @Nullable String extractAlsoReceiverStringLiteral(KtNameReferenceExpression itRef) {
@@ -680,33 +712,33 @@ class KotlinDslUtils {
 	 * Innermost {@code alias}/{@code id}/{@code implementation}/… call whose first
 	 * argument is a {@code libs.…} chain and that contains {@code element}.
 	 */
-	static @Nullable KtCallExpression findEnclosingCatalogAccessorCall(PsiElement element) {
+	static @Nullable KtCallExpression findEnclosingCatalogAccessorCall(PsiElement element,
+			VersionCatalogRegistry registry) {
 
-		for (PsiElement p = element; p != null; p = p.getParent()) {
-
-			if (p instanceof PsiFile) {
-				return null;
-			}
-
-			if (!(p instanceof KtCallExpression call)) {
-				continue;
-			}
-			if (!isKotlinCatalogConsumerCall(call)) {
-				continue;
-			}
-			KtExpression arg = getFirstCatalogValueArgument(call);
-			if (arg == null || !isKotlinLibsCatalogRootExpression(arg)) {
-				continue;
-			}
-			if (!PsiTreeUtil.isAncestor(arg, element, false)) {
-				continue;
-			}
-			return call;
+		if (!(element instanceof KtExpression expression)) {
+			return null;
 		}
-		return null;
+
+		if (!(element instanceof KtDotQualifiedExpression dot) || !(element.getParent() instanceof KtValueArgument)) {
+			return null;
+		}
+
+		KtCallExpression call = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+		if (!isKotlinCatalogConsumerCall(call)) {
+			return null;
+		}
+
+		if (!isKotlinLibsCatalogRootExpression(expression, registry)) {
+			return null;
+		}
+		return call;
 	}
 
-	private static boolean isKotlinCatalogConsumerCall(KtCallExpression call) {
+	private static boolean isKotlinCatalogConsumerCall(@Nullable KtCallExpression call) {
+
+		if (call == null) {
+			return false;
+		}
 
 		String name = getKotlinCallName(call);
 		if (StringUtils.isEmpty(name)) {
@@ -732,10 +764,10 @@ class KotlinDslUtils {
 		return null;
 	}
 
-	static boolean isKotlinLibsCatalogRootExpression(KtExpression expr) {
+	static boolean isKotlinLibsCatalogRootExpression(KtExpression expr, VersionCatalogRegistry registry) {
 
 		List<String> segs = collectKotlinCatalogDotSegments(expr);
-		return segs != null && !segs.isEmpty() && "libs".equals(segs.get(0));
+		return !segs.isEmpty() && registry.containsAlias(segs.get(0));
 	}
 
 	static List<String> collectKotlinCatalogDotSegments(KtExpression expr) {
@@ -768,42 +800,6 @@ class KotlinDslUtils {
 			return getKotlinCallName(call);
 		}
 		return null;
-	}
-
-	/**
-	 * {@code true} for PSI nodes that duplicate the same version hit as
-	 * {@link KtLiteralStringTemplateEntry} (leaf tokens under that entry, or the
-	 * wrapping {@link KtStringTemplateExpression} when it has no {@code ${…}}
-	 * segments).
-	 * <p>Matches the Groovy rule that only
-	 * {@link org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral}
-	 * is a version anchor, not each leaf under it.
-	 */
-	static boolean isRedundantKotlinVersionHighlightAnchor(PsiElement element) {
-
-		if (element instanceof LeafPsiElement && element.getParent() instanceof KtLiteralStringTemplateEntry) {
-			return true;
-		}
-		if (element instanceof KtStringTemplateExpression st) {
-			KtStringTemplateEntry[] entries = st.getEntries();
-			if (entries.length == 0) {
-				return false;
-			}
-			for (KtStringTemplateEntry e : entries) {
-				if (e instanceof KtBlockStringTemplateEntry) {
-					return false;
-				}
-			}
-			return true;
-		}
-		KtCallExpression catalogCall = findEnclosingCatalogAccessorCall(element);
-		if (catalogCall != null) {
-			KtExpression firstArg = getFirstCatalogValueArgument(catalogCall);
-			if (firstArg != null && PsiTreeUtil.isAncestor(firstArg, element, false) && !firstArg.equals(element)) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 }

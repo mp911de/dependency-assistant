@@ -22,7 +22,7 @@ import biz.paluch.dap.support.PsiPropertyValueElement;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
+import com.intellij.util.containers.JBIterable;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -72,9 +72,7 @@ class GroovyDslExtParser {
 
 	/**
 	 * Parses all Groovy {@code ext} property declarations from the given file.
-	 * <p>Three forms are recognised:
-	 *
-	 * <pre>
+	 * <p>This method supports the following syntax variants: <pre>
 	 * ext {
 	 *     springVersion = '6.1.0'              // assignment form
 	 *     set('springVersion', '6.1.0')        // set() call form
@@ -97,33 +95,37 @@ class GroovyDslExtParser {
 
 		Map<String, PsiPropertyValueElement> elements = new LinkedHashMap<>();
 
-		for (GrClosableBlock closure : extCall.getClosureArguments()) {
-			for (PsiElement child : closure.getChildren()) {
-				// Assignment form: springVersion = '6.1.0'
+		JBIterable.of(extCall.getClosureArguments())
+				.flatMap(SyntaxTraverser::psiTraverser)
+				.forEach(child -> {
 
-				if (child instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-					GrExpression lhs = assign.getLValue();
-					GrExpression rhs = assign.getRValue();
-					if (lhs instanceof GrReferenceExpression ref && ref.getQualifierExpression() == null) {
-						String key = ref.getReferenceName();
-						if (key != null && rhs instanceof GrLiteral lit) {
-							elements.put(key, new PsiPropertyValueElement(lit, key, GroovyDslUtils.toString(lit)));
+
+					// Assignment form: springVersion = '6.1.0'
+					if (child instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
+						GrExpression lhs = assign.getLValue();
+						GrExpression rhs = assign.getRValue();
+						if (lhs instanceof GrReferenceExpression ref && ref.getQualifierExpression() == null) {
+							String key = ref.getReferenceName();
+							if (key != null && rhs instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
+								elements.put(key,
+										new PsiPropertyValueElement(literal, key,
+												GroovyDslUtils.getRequiredText(literal)));
+							}
 						}
 					}
-				}
 
-				// set() call form: set('springVersion', '6.1.0')
-				if (child instanceof GrMethodCall setCall
-						&& "set".equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
-					PsiElement[] args = setCall.getArgumentList().getAllArguments();
-					if (args.length >= 2 && args[0] instanceof GrLiteral keyLit
-							&& keyLit.getValue() instanceof String key
-							&& args[1] instanceof GrLiteral literal) {
-						elements.put(key, new PsiPropertyValueElement(literal, key, GroovyDslUtils.toString(literal)));
+					// set() call form: set('springVersion', '6.1.0')
+					if (child instanceof GrMethodCall setCall
+							&& "set".equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
+						PsiElement[] args = setCall.getArgumentList().getAllArguments();
+						if (args.length >= 2 && args[0] instanceof GrLiteral keyLit
+								&& keyLit.getValue() instanceof String key
+								&& args[1] instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
+							elements.put(key,
+									new PsiPropertyValueElement(literal, key, GroovyDslUtils.getRequiredText(literal)));
+						}
 					}
-				}
-			}
-		}
+				});
 
 		return elements;
 	}
@@ -141,8 +143,8 @@ class GroovyDslExtParser {
 		GrExpression qualifier = ref.getQualifierExpression();
 		if (qualifier instanceof GrReferenceExpression qualRef && "ext".equals(qualRef.getReferenceName())) {
 			String key = ref.getReferenceName();
-			if (key != null && rhs instanceof GrLiteral lit && lit.getValue() instanceof String s) {
-				elements.put(key, new PsiPropertyValueElement(lit, key, s));
+			if (key != null && rhs instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
+				elements.put(key, new PsiPropertyValueElement(literal, key, GroovyDslUtils.getRequiredText(literal)));
 			}
 		}
 

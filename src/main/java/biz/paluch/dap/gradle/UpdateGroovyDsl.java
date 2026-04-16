@@ -106,7 +106,7 @@ class UpdateGroovyDsl {
 	private void updateDependency(PsiFile file, ArtifactId id, String newVersion) {
 
 		file.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, lit -> {
-			String gav = GroovyDslUtils.toString(lit);
+			String gav = GroovyDslUtils.getText(lit);
 			GradleDependency dependency = GradleDependency.parse(gav);
 			if (dependency == null || !dependency.getVersionSource().isDefined()
 					|| dependency.getVersionSource().isProperty()) {

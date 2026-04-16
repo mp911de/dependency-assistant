@@ -118,6 +118,15 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 			return versionLiteral;
 		}
 
+		/**
+		 * Resolve a {@link GradleDependency} from this declaration by resolving
+		 * properties if used in group and artifact identifiers using
+		 * {@link PropertyResolver}.
+		 * <p>As declarations can be incomplete (e.g. missing version information), make
+		 * sure to check {@link #isComplete()} before calling this method.
+		 * @param propertyResolver property resolver to resolve properties.
+		 * @return the resolved dependency.
+		 */
 		public GradleDependency toDependency(PropertyResolver propertyResolver) {
 
 			Assert.state(group != null && artifact != null, "Group and name must be set");

@@ -24,8 +24,8 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
 import org.junit.jupiter.api.Test;
 import org.toml.lang.psi.TomlLiteral;
 
@@ -139,8 +139,8 @@ class KotlinVersionUpgradeLookupTests {
 				}
 				""");
 
-		KtNameReferenceExpression at = PsiTreeUtil.collectElementsOfType(build, KtNameReferenceExpression.class).stream()
-				.filter(r -> "management".equals(r.getReferencedName())).findFirst().orElseThrow();
+		KtExpression at = PsiTreeUtil.collectElementsOfType(build, KtExpression.class).stream()
+				.filter(r -> "libs.plugins.spring.dependency.management".equals(r.getText())).findFirst().orElseThrow();
 
 		VersionUpgradeLookupService service = new VersionUpgradeLookupService(build.getProject(), build);
 		var ar = service.resolveKotlinArtifactReference(at);
@@ -167,8 +167,8 @@ class KotlinVersionUpgradeLookupTests {
 				}
 				""");
 
-		KtNameReferenceExpression at = PsiTreeUtil.collectElementsOfType(build, KtNameReferenceExpression.class).stream()
-				.filter(r -> "lang3".equals(r.getReferencedName())).findFirst().orElseThrow();
+		KtExpression at = PsiTreeUtil.collectElementsOfType(build, KtExpression.class).stream()
+				.filter(r -> "libs.commons.lang3".equals(r.getText())).findFirst().orElseThrow();
 
 		VersionUpgradeLookupService service = new VersionUpgradeLookupService(build.getProject(), build);
 		var ar = service.resolveKotlinArtifactReference(at);
@@ -200,16 +200,13 @@ class KotlinVersionUpgradeLookupTests {
 
 		VersionUpgradeLookupService service = new VersionUpgradeLookupService(build.getProject(), build);
 
-		int nonRedundantResolved = 0;
+		int resolved = 0;
 		for (PsiElement e : PsiTreeUtil.collectElementsOfType(build, PsiElement.class)) {
-			if (KotlinDslUtils.isRedundantKotlinVersionHighlightAnchor(e)) {
-				continue;
-			}
 			if (service.resolveKotlinArtifactReference(e).isResolved()) {
-				nonRedundantResolved++;
+				resolved++;
 			}
 		}
 
-		assertThat(nonRedundantResolved).isEqualTo(1);
+		assertThat(resolved).isEqualTo(1);
 	}
 }

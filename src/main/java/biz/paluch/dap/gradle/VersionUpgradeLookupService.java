@@ -94,6 +94,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GradlePropertyResolver propertyResolver;
 
+	private final VersionCatalogRegistry registry;
+
 	public VersionUpgradeLookupService(Project project, PsiFile file) {
 		this(project, file, GradleProjectContext.of(project, file));
 	}
@@ -110,8 +112,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyResolver = GradlePropertyResolver.create(file);
-		this.tomlResolver = new TomlArtifactResolver(project, file,
-				projectState);
+		this.registry = VersionCatalogRegistry.from(file);
+		this.tomlResolver = new TomlArtifactResolver(project, file, projectState, this.registry);
 	}
 
 	@Override
@@ -144,17 +146,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		if (GradleUtils.isGroovyDsl(vf)) {
-			if (GroovyDslUtils.isRedundantGroovyCatalogHighlightAnchor(element)) {
-				return ArtifactReference.unresolved();
-			}
 			return resolveGroovyArtifactReference(element);
 		}
 
 		if (GradleUtils.KOTLIN_AVAILABLE) {
-
-			if (KotlinDslUtils.isRedundantKotlinVersionHighlightAnchor(element)) {
-				return ArtifactReference.unresolved();
-			}
 			return resolveKotlinArtifactReference(element);
 		}
 
@@ -288,7 +283,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private ArtifactReference resolveKotlinTomlReferenceReference(PsiElement element) {
 
-		KtCallExpression catalogCall = KotlinDslUtils.findEnclosingCatalogAccessorCall(element);
+		KtCallExpression catalogCall = KotlinDslUtils.findEnclosingCatalogAccessorCall(element, registry);
 		if (catalogCall == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -297,7 +292,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 		List<String> segments = KotlinDslUtils.collectKotlinCatalogDotSegments(arg);
-		TomlReference reference = TomlReference.from(segments);
+		TomlReference reference = TomlReference.from(segments, registry.catalogPaths().keySet());
 
 		if (reference == null) {
 			return ArtifactReference.unresolved();
@@ -308,7 +303,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private ArtifactReference resolveGroovyVersionCatalogReference(PsiElement element) {
 
-		GrMethodCall catalogCall = GroovyDslUtils.findEnclosingGroovyCatalogAccessorCall(element);
+		GrMethodCall catalogCall = GroovyDslUtils.findEnclosingGroovyCatalogAccessorCall(element, registry);
 		if (catalogCall == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -316,7 +311,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (arg == null) {
 			return ArtifactReference.unresolved();
 		}
-		TomlReference reference = GroovyDslUtils.getTomlReference(arg);
+		TomlReference reference = GroovyDslUtils.getTomlReference(arg, registry.catalogPaths().keySet());
 		if (reference == null) {
 			return ArtifactReference.unresolved();
 		}

@@ -17,6 +17,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -26,14 +27,15 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.PsiPropertyValueElement;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlFile;
-import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
@@ -54,12 +56,21 @@ class TomlArtifactResolver {
 
 	private final @Nullable ProjectState projectState;
 
+	private final @Nullable VersionCatalogRegistry registry;
+
 	TomlArtifactResolver(Project project, PsiFile file,
 			@Nullable ProjectState projectState) {
+		this(project, file, projectState, null);
+	}
+
+	TomlArtifactResolver(Project project, PsiFile file,
+			@Nullable ProjectState projectState,
+			@Nullable VersionCatalogRegistry registry) {
 
 		this.project = project;
 		this.file = file;
 		this.projectState = projectState;
+		this.registry = registry;
 	}
 
 	/**
@@ -109,16 +120,13 @@ class TomlArtifactResolver {
 
 	private ArtifactReference resolve(TomlKeyValue kv, TomlLiteral literal) {
 
-		if (!(kv.getParent() instanceof TomlInlineTable inlineTable)) {
-			return ArtifactReference.unresolved();
-		}
-
 		PsiElement keyPsi = literal.getParent() != null ? literal.getParent().getFirstChild() : null;
 		if (keyPsi == null || !VERSION.equals(keyPsi.getText().trim())) {
 			return ArtifactReference.unresolved();
 		}
 
-		TomlDeclarationEntry entry = TomlParser.parseTomlEntry(kv, inlineTable);
+		Map<String, PsiPropertyValueElement> properties = parseTomlVersions(kv.getContainingFile());
+		TomlDependencyDeclaration entry = TomlParser.parseTomlEntry(kv, properties);
 		return getArtifactReference(entry, kv);
 	}
 
@@ -137,20 +145,21 @@ class TomlArtifactResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		PsiFile catalogPsi = TomlParser.findVersionCatalogToml(project, virtualFile);
+		PsiFile catalogPsi = findCatalogForReference(tomlReference, virtualFile);
 		if (!(catalogPsi instanceof TomlFile tomlFile)) {
 			return ArtifactReference.unresolved();
 		}
 
-		List<TomlDeclarationEntry> dependencies = new ArrayList<>();
+		List<TomlDependencyDeclaration> dependencies = new ArrayList<>();
+		Map<String, PsiPropertyValueElement> properties = parseTomlVersions(tomlFile);
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
 			if (tomlReference.getTableName().equals(getTomlTableName(table))) {
-				TomlParser.parseEntries(table, dependencies::add);
+				TomlParser.parseEntries(table, properties, dependencies::add);
 			}
 		}
 
-		for (TomlDeclarationEntry declaration : dependencies) {
+		for (TomlDependencyDeclaration declaration : dependencies) {
 			if (!declaration.hasKeyMatching(tomlReference)) {
 				continue;
 			}
@@ -161,7 +170,30 @@ class TomlArtifactResolver {
 		return ArtifactReference.unresolved();
 	}
 
-	private ArtifactReference getArtifactReference(TomlDeclarationEntry declaration, PsiElement usage) {
+	@Nullable
+	PsiFile findCatalogForReference(TomlReference tomlReference, VirtualFile virtualFile) {
+
+		if (registry != null) {
+			String path = registry.pathForAlias(tomlReference.getCatalogAlias());
+			if (path == null) {
+				return null;
+			}
+			VirtualFile root = GradleUtils.findProjectRoot(virtualFile);
+			VirtualFile catalogFile = root.findFileByRelativePath(path);
+			if (catalogFile != null) {
+				return PsiManager.getInstance(project).findFile(catalogFile);
+			}
+			return null;
+		}
+
+		return TomlParser.findVersionCatalogToml(project, virtualFile);
+	}
+
+	private ArtifactReference getArtifactReference(TomlDependencyDeclaration declaration, PsiElement usage) {
+
+		if (!declaration.isComplete()) {
+			return ArtifactReference.unresolved();
+		}
 
 		GradleDependency dependency = declaration.toDependency();
 		DependencyAndVersionLocation location = new DependencyAndVersionLocation(dependency,
