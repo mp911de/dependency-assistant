@@ -120,13 +120,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	public @Nullable Dependency findDependency(PsiElement element) {
-
 		ArtifactReference result = resolveArtifactReference(element);
-
 		if (!result.isResolved() || projectState == null) {
 			return null;
 		}
-
 		return projectState.findDependency(result.getArtifactId());
 	}
 

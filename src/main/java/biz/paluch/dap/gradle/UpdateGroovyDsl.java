@@ -139,7 +139,7 @@ class UpdateGroovyDsl {
 
 			NamedDependencyDeclaration entry = GradleParser.parseMapDependency(call, named, propertyResolver);
 
-			if (entry.isDeclarationComplete() && entry.matches(id)
+			if (entry.isComplete() && entry.matches(id)
 					&& entry.getRequiredVersionLiteral() instanceof GrLiteral literal) {
 				GroovyDslUtils.updateText(literal, newVersion);
 				return true;

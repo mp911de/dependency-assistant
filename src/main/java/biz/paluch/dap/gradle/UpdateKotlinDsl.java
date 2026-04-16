@@ -105,7 +105,7 @@ class UpdateKotlinDsl {
 			}
 
 			NamedDependencyDeclaration entry = KotlinDslParser.parseMapDeclaration(call, propertyResolver);
-			if (!entry.isDeclarationComplete()) {
+			if (!entry.isComplete()) {
 				return false;
 			}
 

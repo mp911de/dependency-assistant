@@ -100,7 +100,7 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 		 * Check whether the declaration is complete (having id and version information
 		 * or group and artifact with version information).
 		 */
-		public boolean isDeclarationComplete() {
+		public boolean isComplete() {
 
 			if (versionLiteral == null || (StringUtils.isEmpty(versionProperty) && StringUtils.isEmpty(version))) {
 				return false;

@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PsiPropertyValueElement;
@@ -115,15 +116,6 @@ class GroovyDslUtils {
 	public static @Nullable DependencyAndVersionLocation findGroovyVersionElement(PsiElement element,
 			PropertyResolver scriptProperties) {
 
-		// Only process the GrLiteral node itself. Accepting any descendant (e.g. the
-		// leaf
-		// token inside a single-quoted string) would produce multiple hits per
-		// dependency
-		// declaration when iterating all PSI elements, leading to duplicate annotations
-		// and
-		// gutter icons. Callers that receive a leaf token (cursor position, completion)
-		// must
-		// first walk up to the containing GrLiteral before invoking this method.
 		if (!(element instanceof GrLiteral literal)) {
 			return null;
 		}
@@ -146,6 +138,19 @@ class GroovyDslUtils {
 		String text = GroovyDslUtils.toString(literal);
 		if (StringUtils.isEmpty(text)) {
 			return null;
+		}
+
+		GrNamedArgument[] namedArguments = call.getNamedArguments();
+		if (namedArguments.length > 2 && literal.getParent() instanceof GrNamedArgument namedArgument) {
+			String labelName = namedArgument.getLabelName();
+			if ("version".equals(labelName)) {
+				NamedDependencyDeclaration declaration = GradleParser.parseMapDependency(call, namedArguments,
+						scriptProperties);
+				if (declaration.isComplete()) {
+					GradleDependency dependency = declaration.toDependency(scriptProperties);
+					return new DependencyAndVersionLocation(dependency, declaration.getRequiredVersionLiteral());
+				}
+			}
 		}
 
 		String[] parts = text.split(":");

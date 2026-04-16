@@ -130,7 +130,7 @@ class GradleParser extends GradleParserSupport {
 			GrNamedArgument[] named = call.getNamedArguments();
 			if (named.length >= 2) {
 				NamedDependencyDeclaration entry = parseMapDependency(call, named, this);
-				if (entry.isDeclarationComplete()) {
+				if (entry.isComplete()) {
 					dependency = entry.toDependency(this);
 				}
 			}

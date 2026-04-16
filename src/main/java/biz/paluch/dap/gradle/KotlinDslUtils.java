@@ -23,6 +23,7 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
@@ -258,6 +259,14 @@ class KotlinDslUtils {
 			return null;
 		}
 
+		KtValueArgumentList arguments = call.getValueArgumentList();
+		if (arguments != null && arguments.getArguments().size() > 1) {
+			NamedDependencyDeclaration declaration = KotlinDslParser.parseMapDeclaration(call, scriptProperties);
+			if (declaration.isComplete()) {
+				return new DependencyAndVersionLocation(declaration.toDependency(scriptProperties), stringTemplate);
+			}
+		}
+
 		String templateText = stringTemplate.getText();
 		Matcher matcher = GRADLE_DEPENDENCY_VERSION_PATTERN.matcher(templateText);
 		if (matcher.find()) {
@@ -390,6 +399,21 @@ class KotlinDslUtils {
 		if (binary == null && call != null && isDependencyCall(call)) {
 
 			if (version.getNextSibling() instanceof KtBlockStringTemplateEntry entry) {
+				return null;
+			}
+
+			if (call.getValueArguments().size() == 1) {
+				return call;
+			}
+
+			if (version.getParent().getParent() instanceof KtValueArgument valueArgument
+					&& valueArgument.getArgumentName() instanceof KtValueArgumentName argumentName) {
+
+				String name = argumentName.getAsName().asString();
+				if ("version".equals(name)) {
+					return call;
+				}
+
 				return null;
 			}
 

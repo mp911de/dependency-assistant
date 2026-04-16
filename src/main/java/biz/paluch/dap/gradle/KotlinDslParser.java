@@ -109,7 +109,7 @@ class KotlinDslParser extends GradleParser {
 
 		NamedDependencyDeclaration entry = parseMapDeclaration(call, this);
 
-		if (entry.isDeclarationComplete()) {
+		if (entry.isComplete()) {
 			register(entry.toDependency(this), src);
 		}
 	}
