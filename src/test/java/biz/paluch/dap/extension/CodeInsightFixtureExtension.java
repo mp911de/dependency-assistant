@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2026 the original author or authors.
  *
@@ -19,15 +18,15 @@ package biz.paluch.dap.extension;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
+import com.intellij.testFramework.EdtTestUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
+import com.intellij.testFramework.fixtures.impl.LightTempDirTestFixtureImpl;
 import com.intellij.util.Function;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -62,6 +61,12 @@ class CodeInsightFixtureExtension
 
 	@Override
 	public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
+
+		if (!context.getTestClass().isPresent()
+				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+			return;
+		}
+
 		for (Field field : findInjectableFields(testInstance.getClass())) {
 			validateField(field);
 		}
@@ -69,12 +74,23 @@ class CodeInsightFixtureExtension
 
 	@Override
 	public void beforeEach(ExtensionContext context) {
+
+		if (!context.getTestClass().isPresent()
+				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+			return;
+		}
+
 		FixtureResource resource = getOrCreateResource(context);
 		injectFields(context.getRequiredTestInstance(), resource);
 	}
 
 	@Override
 	public void afterEach(ExtensionContext context) throws Exception {
+
+		if (!context.getTestClass().isPresent()
+				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+			return;
+		}
 
 		Exception failure = null;
 
@@ -104,6 +120,12 @@ class CodeInsightFixtureExtension
 
 	@Override
 	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+
+		if (!extensionContext.getTestClass().isPresent()
+				|| !extensionContext.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+			return false;
+		}
+
 		if (parameterContext.getDeclaringExecutable() instanceof Constructor<?>) {
 			return false;
 		}
@@ -112,6 +134,12 @@ class CodeInsightFixtureExtension
 
 	@Override
 	public Object resolveParameter(ParameterContext parameterContext, ExtensionContext context) {
+
+		if (!context.getTestClass().isPresent()
+				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+			return null;
+		}
+
 		Class<?> parameterType = parameterContext.getParameter().getType();
 		try {
 			FixtureResource resource = getOrCreateResource(context);
@@ -134,29 +162,30 @@ class CodeInsightFixtureExtension
 
 	private FixtureResource createResource(ExtensionContext context) {
 
-		CodeInsightFixture configuration = findConfiguration(context);
+		CodeInsightFixtureTests configuration = findConfiguration(context);
 
 		String fixtureName = configuration.fixtureName().isBlank()
 				? context.getRequiredTestClass().getSimpleName() + "#" + context.getRequiredTestMethod().getName()
 				: configuration.fixtureName();
 
-		TestFixtureBuilder<IdeaProjectTestFixture> builder = IdeaTestFixtureFactory.getFixtureFactory()
-				.createLightFixtureBuilder(fixtureName);
+		IdeaTestFixtureFactory factory = IdeaTestFixtureFactory.getFixtureFactory();
+		TestFixtureBuilder<IdeaProjectTestFixture> builder = factory.createLightFixtureBuilder(fixtureName);
 
 		IdeaProjectTestFixture ideaProjectFixture = builder.getFixture();
-		CodeInsightTestFixture codeInsightFixture = IdeaTestFixtureFactory.getFixtureFactory()
-				.createCodeInsightFixture(ideaProjectFixture);
+		CodeInsightTestFixture codeInsightFixture = factory.createCodeInsightFixture(ideaProjectFixture,
+				new LightTempDirTestFixtureImpl(true));
+
 
 		try {
-			codeInsightFixture.setUp();
-			return new FixtureResource(ideaProjectFixture, codeInsightFixture);
+			EdtTestUtil.runInEdtAndWait(codeInsightFixture::setUp);
+			return new FixtureResource(codeInsightFixture);
 		} catch (Exception ex) {
 			try {
-				codeInsightFixture.tearDown();
+				EdtTestUtil.runInEdtAndWait(codeInsightFixture::tearDown);
 			} catch (Exception tearDownEx) {
 				ex.addSuppressed(tearDownEx);
 			}
-			throw new UndeclaredThrowableException(ex);
+			throw new ExtensionConfigurationException("Failed to create CodeInsightTestFixture", ex);
 		}
 	}
 
@@ -185,18 +214,16 @@ class CodeInsightFixtureExtension
 		if (requestedType.isInstance(resource.codeInsightFixture)) {
 			return resource.codeInsightFixture;
 		}
-		if (requestedType.isInstance(resource.ideaProjectFixture)) {
-			return resource.ideaProjectFixture;
-		}
 		throw new ExtensionConfigurationException(
 				"Unsupported injection target type: " + requestedType.getName());
 	}
 
-	private CodeInsightFixture findConfiguration(ExtensionContext context) {
-		CodeInsightFixture annotation = context.getRequiredTestClass().getAnnotation(CodeInsightFixture.class);
+	private CodeInsightFixtureTests findConfiguration(ExtensionContext context) {
+		CodeInsightFixtureTests annotation = context.getRequiredTestClass()
+				.getAnnotation(CodeInsightFixtureTests.class);
 		if (annotation == null) {
 			throw new ExtensionConfigurationException(
-					"@" + CodeInsightFixture.class.getSimpleName() + " must be present on the test class");
+					"@" + CodeInsightFixtureTests.class.getSimpleName() + " must be present on the test class");
 		}
 		return annotation;
 	}
@@ -211,7 +238,8 @@ class CodeInsightFixtureExtension
 		Class<?> current = testClass;
 		while (current != null && current != Object.class) {
 			for (Field field : current.getDeclaredFields()) {
-				if (!field.isSynthetic() && isSupportedType(field.getType())) {
+				if (!field.isSynthetic()
+						&& isSupportedType(field.getType()) && field.isAnnotationPresent(TestFixture.class)) {
 					fields.add(field);
 				}
 			}
@@ -232,19 +260,12 @@ class CodeInsightFixtureExtension
 		}
 	}
 
-	private record FixtureResource(IdeaProjectTestFixture ideaProjectFixture,
+	private record FixtureResource(
 			CodeInsightTestFixture codeInsightFixture) {
 
-		private FixtureResource(
-				IdeaProjectTestFixture ideaProjectFixture,
-				CodeInsightTestFixture codeInsightFixture) {
-
-			this.ideaProjectFixture = Objects.requireNonNull(ideaProjectFixture, "ideaProjectFixture must not be null");
-			this.codeInsightFixture = Objects.requireNonNull(codeInsightFixture, "codeInsightFixture must not be null");
-		}
 
 		private void close() throws Exception {
-			codeInsightFixture.tearDown();
+			EdtTestUtil.runInEdtAndWait(codeInsightFixture::tearDown);
 		}
 
 	}

@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap.maven;
 
-import static org.assertj.core.api.Assertions.*;
+import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -23,45 +23,24 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
-
-import java.util.List;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
+import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
-import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
-import com.intellij.testFramework.fixtures.TestFixtureBuilder;
-import com.intellij.testFramework.junit5.RunInEdt;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link UpdatePom}.
  *
  * @author Mark Paluch
  */
-@RunInEdt(writeIntent = true)
+@CodeInsightFixtureTests
 class UpdatePomTests {
 
-	private CodeInsightTestFixture fixture;
-
-	@BeforeEach
-	void setUp() throws Exception {
-		TestFixtureBuilder<IdeaProjectTestFixture> builder = IdeaTestFixtureFactory.getFixtureFactory()
-				.createLightFixtureBuilder(new LightProjectDescriptor(), getClass().getSimpleName());
-		fixture = IdeaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(builder.getFixture());
-		fixture.setUp();
-	}
-
-	@AfterEach
-	void tearDown() throws Exception {
-		fixture.tearDown();
-		fixture = null;
-	}
+	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
 	void dependencyInlineVersionIsUpdated() {

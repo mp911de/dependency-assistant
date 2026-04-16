@@ -22,17 +22,12 @@ import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.state.Cache;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
-import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
-import com.intellij.testFramework.fixtures.TestFixtureBuilder;
-import com.intellij.testFramework.junit5.RunInEdt;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -42,24 +37,10 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@RunInEdt(writeIntent = true)
+@CodeInsightFixtureTests
 class MavenParserTests {
 
-	private CodeInsightTestFixture fixture;
-
-	@BeforeEach
-	void setUp() throws Exception {
-		TestFixtureBuilder<IdeaProjectTestFixture> builder = IdeaTestFixtureFactory.getFixtureFactory()
-				.createLightFixtureBuilder(new LightProjectDescriptor(), getClass().getSimpleName());
-		fixture = IdeaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(builder.getFixture());
-		fixture.setUp();
-	}
-
-	@AfterEach
-	void tearDown() throws Exception {
-		fixture.tearDown();
-		fixture = null;
-	}
+	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
 	void directDependenciesWithInlineVersionsAreDiscovered() {

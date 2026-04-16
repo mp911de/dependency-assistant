@@ -24,7 +24,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.intellij.testFramework.junit5.RunInEdt;
-import com.intellij.testFramework.junit5.TestApplication;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
@@ -43,10 +42,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
-@TestApplication
 @RunInEdt(writeIntent = true)
 @ExtendWith(CodeInsightFixtureExtension.class)
-public @interface CodeInsightFixture {
+public @interface CodeInsightFixtureTests {
 
 	/**
 	 * Optional fixture name. If left blank, the extension will derive one from the

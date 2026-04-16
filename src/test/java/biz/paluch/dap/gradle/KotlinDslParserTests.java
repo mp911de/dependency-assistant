@@ -20,7 +20,8 @@ import java.util.Map;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.extension.CodeInsightFixture;
+import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
@@ -32,10 +33,10 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixture
+@CodeInsightFixtureTests
 class KotlinDslParserTests {
 
-	private CodeInsightTestFixture fixture;
+	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
 	void pluginsWithVersionsAreDiscovered() {

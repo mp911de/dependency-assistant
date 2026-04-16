@@ -21,20 +21,15 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.support.PsiPropertyValueElement;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiRecursiveElementVisitor;
-import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
-import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
-import com.intellij.testFramework.fixtures.TestFixtureBuilder;
-import com.intellij.testFramework.junit5.RunInEdt;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -44,7 +39,7 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@RunInEdt(writeIntent = true)
+@CodeInsightFixtureTests
 class VersionUpgradeLookupServiceTests {
 
 	/**
@@ -73,21 +68,7 @@ class VersionUpgradeLookupServiceTests {
 			}
 			""";
 
-	private CodeInsightTestFixture fixture;
-
-	@BeforeEach
-	void setUp() throws Exception {
-		TestFixtureBuilder<IdeaProjectTestFixture> builder = IdeaTestFixtureFactory.getFixtureFactory()
-				.createLightFixtureBuilder(new LightProjectDescriptor(), getClass().getSimpleName());
-		fixture = IdeaTestFixtureFactory.getFixtureFactory().createCodeInsightFixture(builder.getFixture());
-		fixture.setUp();
-	}
-
-	@AfterEach
-	void tearDown() throws Exception {
-		fixture.tearDown();
-		fixture = null;
-	}
+	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
 	void junitBomInlineVersionYieldsSingleHit() {

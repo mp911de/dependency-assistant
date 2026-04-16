@@ -15,14 +15,13 @@
  */
 package biz.paluch.dap.gradle;
 
-import static org.assertj.core.api.Assertions.*;
-
-import biz.paluch.dap.ProjectId;
-
 import java.util.HashMap;
 import java.util.Map;
 
+import biz.paluch.dap.ProjectId;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for {@link ProjectId}.
