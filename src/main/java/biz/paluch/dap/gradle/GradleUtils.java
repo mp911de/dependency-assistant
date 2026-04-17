@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.externalSystem.MavenRepositoryData;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
@@ -28,11 +29,15 @@ import com.intellij.openapi.externalSystem.model.project.ProjectData;
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.ClassUtils;
@@ -206,18 +211,81 @@ class GradleUtils {
 	 * Locates the Gradle project root for the given file by walking up to the first
 	 * ancestor that contains a settings file or returns the parent directory if
 	 * none is found.
+	 * <p>When a linked Gradle project root can be resolved for the file, any
+	 * {@code settings.gradle} found above that boundary is ignored so a stray
+	 * settings file cannot widen resolution scope.
 	 */
-	static VirtualFile findProjectRoot(VirtualFile file) {
+	static VirtualFile findProjectRoot(PsiFile file) {
+		return findProjectRoot(file.getProject(), file.getVirtualFile());
+	}
 
+	/**
+	 * Locates the Gradle project root for the given file by walking up to the first
+	 * ancestor that contains a settings file or returns the parent directory if
+	 * none is found.
+	 * <p>When a linked Gradle project root can be resolved for the file, any
+	 * {@code settings.gradle} found above that boundary is ignored so a stray
+	 * settings file cannot widen resolution scope.
+	 */
+	static VirtualFile findProjectRoot(Project project, VirtualFile file) {
+
+		String name = "ROOT: " + file.getCanonicalPath();
+		Key<VirtualFile> ROOT = (Key) Key.findKeyByName(name);
+		if (ROOT == null) {
+			ROOT = Key.create(name);
+		}
+
+		VirtualFile root = project.getUserData(ROOT);
+		if (root == null) {
+			root = doFindProjectRoot(project, file);
+			project.putUserData(ROOT, root);
+		} else {
+			return root;
+		}
+
+		return root;
+	}
+
+	private static @NonNull VirtualFile doFindProjectRoot(Project project, VirtualFile file) {
+
+		VirtualFile ceiling = resolveGradleProjectCeiling(project, file);
 		VirtualFile dir = file.isDirectory() ? file : file.getParent();
 
 		while (dir != null) {
-			if (dir.findChild("settings.gradle") != null || dir.findChild("settings.gradle.kts") != null) {
+			boolean hasSettings = dir.findChild("settings.gradle") != null
+					|| dir.findChild("settings.gradle.kts") != null;
+			if (hasSettings && (VfsUtil.isAncestor(ceiling, dir, false) || dir.equals(ceiling))) {
 				return dir;
 			}
-			dir = dir.getParent();
+			VirtualFile parent = dir.getParent();
+			if (parent != null && !VfsUtil.isAncestor(ceiling, parent, false)) {
+				break;
+			}
+			dir = parent;
 		}
-		// Fall back to the immediate parent directory.
+
+		VirtualFile fallback = file.getParent();
+		if (fallback != null && !VfsUtil.isAncestor(ceiling, fallback, false)) {
+			return ceiling;
+		}
+
+		if (fallback == null) {
+			throw new IllegalStateException("Could not find linked project root for " + project);
+		}
+		return fallback;
+	}
+
+	private static VirtualFile resolveGradleProjectCeiling(Project project, VirtualFile file) {
+
+		String linked = findLinkedProjectPath(project, file);
+		if (StringUtils.isEmpty(linked)) {
+			return file.getParent();
+		}
+		VirtualFile linkedRoot = LocalFileSystem.getInstance().findFileByPath(linked);
+		if (linkedRoot != null) {
+			return linkedRoot;
+		}
+
 		return file.getParent();
 	}
 
@@ -326,10 +394,15 @@ class GradleUtils {
 		Set<RemoteRepository> repositories = new LinkedHashSet<>();
 		for (DataNode<MavenRepositoryData> repoNode : repoNodes) {
 			MavenRepositoryData data = repoNode.getData();
-			if (data.getUrl().equals(RemoteRepository.mavenCentral().url())) {
+			String url = data.getUrl();
+			if (!StringUtils.hasText(url) || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+				continue;
+			}
+			if (url.equals(RemoteRepository.mavenCentral().url())) {
 				repositories.add(RemoteRepository.mavenCentral());
 			} else {
-				RemoteRepository repo = new RemoteRepository(data.getName(), data.getUrl(), null);
+				String urlToUse = url.endsWith("/") ? url : url + "/";
+				RemoteRepository repo = new RemoteRepository(data.getName(), urlToUse, null);
 				repositories.add(repo);
 			}
 		}

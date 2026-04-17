@@ -15,6 +15,10 @@
  */
 package biz.paluch.dap.xml;
 
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.xmlbeam.XBProjector;
 import org.xmlbeam.config.DefaultXMLFactoriesConfig;
 
@@ -28,11 +32,57 @@ public class XmlBeamProjectorFactory {
 	private XmlBeamProjectorFactory() {}
 
 	private static XBProjector create() {
-		DefaultXMLFactoriesConfig config = new DefaultXMLFactoriesConfig();
+		SecureXmlFactoriesConfig config = new SecureXmlFactoriesConfig();
 		config.setNamespacePhilosophy(DefaultXMLFactoriesConfig.NamespacePhilosophy.AGNOSTIC);
 		config.setOmitXMLDeclaration(false);
 		config.setPrettyPrinting(false);
+		config.setNoEntityResolving(true);
+		config.setExpandEntityReferences(false);
 		return new XBProjector(config, XBProjector.Flags.TO_STRING_RENDERS_XML);
+	}
+
+	private static final class SecureXmlFactoriesConfig extends DefaultXMLFactoriesConfig {
+
+		@Override
+		public DocumentBuilderFactory createDocumentBuilderFactory() {
+
+			try {
+				DocumentBuilderFactory factory = super.createDocumentBuilderFactory();
+				configureSecureXmlProcessing(factory);
+				return factory;
+			} catch (ParserConfigurationException e) {
+				throw new IllegalStateException("Cannot create secure DocumentBuilderFactory", e);
+			}
+		}
+
+	}
+
+	private static void configureSecureXmlProcessing(DocumentBuilderFactory factory)
+			throws ParserConfigurationException {
+
+		factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+		try {
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+			factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+		} catch (IllegalArgumentException ignored) {
+		}
+		try {
+			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+		} catch (ParserConfigurationException ignored) {
+		}
+		try {
+			factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+		} catch (ParserConfigurationException ignored) {
+		}
+		try {
+			factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+		} catch (ParserConfigurationException ignored) {
+		}
+		try {
+			factory.setXIncludeAware(false);
+		} catch (IllegalArgumentException ignored) {
+		}
+		factory.setExpandEntityReferences(false);
 	}
 
 }

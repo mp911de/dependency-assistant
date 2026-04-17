@@ -330,7 +330,7 @@ class MavenParser {
 				String name = matcher.group(1);
 				ResolvedProperty pomProperty = resolveProperty(name, new LinkedHashSet<>());
 				if (pomProperty != null) {
-					result = matcher.replaceFirst(pomProperty.value());
+					result = matcher.replaceFirst(Matcher.quoteReplacement(pomProperty.value()));
 					matcher = PROPERTY_PATTERN.matcher(result);
 				}
 			}

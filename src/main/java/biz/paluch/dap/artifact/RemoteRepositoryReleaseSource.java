@@ -15,23 +15,30 @@
  */
 package biz.paluch.dap.artifact;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.Authenticator;
 import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandler;
+import java.net.http.HttpResponse.BodySubscribers;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -74,6 +81,10 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	private static final DateTimeFormatter DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER = DateTimeFormatter
 			.ofPattern("dd-MMM-uuuu HH:mm", Locale.ENGLISH);
 
+	private static final long MAX_RESPONSE_BODY_BYTES = 5 * 1024 * 1024;
+
+	private static final int MAX_REDIRECT_HOPS = 10;
+
 	private static final String USER_AGENT = getUserAgent();
 
 	private final RemoteRepository repository;
@@ -93,10 +104,12 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 		String baseUrl = repository.url();
 		String base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-		URI metadataUri = URI.create(base).resolve(metadataPath);
-		URI directoryUri = URI.create(base).resolve(path);
-		String xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true);
-		String directoryListing = fetchUrl(artifactId, directoryUri, repository.credentials(), false);
+		URI repositoryBaseUri = URI.create(base).normalize();
+		URI metadataUri = repositoryBaseUri.resolve(metadataPath);
+		URI directoryUri = repositoryBaseUri.resolve(path);
+		String xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true, repositoryBaseUri);
+		String directoryListing = fetchUrl(artifactId, directoryUri, repository.credentials(), false,
+				repositoryBaseUri);
 
 		if (StringUtils.isEmpty(xml)) {
 			return List.of();
@@ -185,34 +198,20 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	}
 
 	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri, @Nullable RepositoryCredentials credentials,
-			boolean failOnNotFound) {
+			boolean failOnNotFound, URI repositoryBaseUri) {
 
 		String url = uri.toASCIIString();
 		try {
-			HttpClient client = HttpClient.newBuilder() //
-					.proxy(JdkProxyProvider.getInstance().getProxySelector()) //
-					.authenticator(new RepositoryAuthenticator(credentials)) //
-					.connectTimeout(Duration.ofSeconds(10)) //
-					.followRedirects(HttpClient.Redirect.NORMAL) //
-					.build();
-
-			HttpRequest request = HttpRequest.newBuilder(uri).header("User-Agent", USER_AGENT).timeout(Duration.ofSeconds(10))
-					.GET().build();
-
-			HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
-			if (response.statusCode() >= 200 && response.statusCode() < 300) {
-				return response.body();
+			if (credentials != null) {
+				return fetchWithCredentialBinding(artifactId, uri, credentials, failOnNotFound, repositoryBaseUri);
 			}
-
-			if (failOnNotFound && response.statusCode() == 404) {
-				throw new ArtifactNotFoundException(uri + ": HTTP Status 404", artifactId);
-			}
-			LOG.debug("HTTP " + response.statusCode() + " fetching: " + url);
-			return null;
+			return fetchWithStandardRedirects(artifactId, uri, failOnNotFound);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			LOG.debug("HTTP fetch interrupted: " + url, e);
+			return null;
+		} catch (UncheckedIOException e) {
+			LOG.debug("HTTP fetch failed: " + url, e.getCause() != null ? e.getCause() : e);
 			return null;
 		} catch (IOException e) {
 			LOG.debug("HTTP fetch failed: " + url, e);
@@ -220,13 +219,160 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		}
 	}
 
+	private static @Nullable String fetchWithStandardRedirects(ArtifactId artifactId, URI uri, boolean failOnNotFound)
+			throws IOException, InterruptedException {
+
+		HttpClient client = HttpClient.newBuilder() //
+				.proxy(JdkProxyProvider.getInstance().getProxySelector()) //
+				.authenticator(new RepositoryAuthenticator()) //
+				.connectTimeout(Duration.ofSeconds(10)) //
+				.followRedirects(HttpClient.Redirect.NORMAL) //
+				.build();
+
+		HttpRequest request = HttpRequest.newBuilder(uri).header("User-Agent", USER_AGENT)
+				.timeout(Duration.ofSeconds(10))
+				.GET().build();
+
+		HttpResponse<String> response = client.send(request, cappedUtf8BodyHandler());
+
+		if (response.statusCode() >= 200 && response.statusCode() < 300) {
+			return response.body();
+		}
+
+		if (failOnNotFound && response.statusCode() == 404) {
+			throw new ArtifactNotFoundException(uri + ": HTTP Status 404", artifactId);
+		}
+		LOG.debug("HTTP " + response.statusCode() + " fetching: " + uri);
+		return null;
+	}
+
+	private static @Nullable String fetchWithCredentialBinding(ArtifactId artifactId, URI uri,
+			RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri)
+			throws IOException, InterruptedException {
+
+		HttpClient client = HttpClient.newBuilder() //
+				.proxy(JdkProxyProvider.getInstance().getProxySelector()) //
+				.authenticator(new RepositoryAuthenticator()) //
+				.connectTimeout(Duration.ofSeconds(10)) //
+				.followRedirects(HttpClient.Redirect.NEVER) //
+				.build();
+
+		URI current = uri;
+		for (int hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
+
+			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(current).header("User-Agent", USER_AGENT)
+					.timeout(Duration.ofSeconds(10)).GET();
+
+			if (repositoryCredentialHostMatches(repositoryBaseUri, current)) {
+				requestBuilder.header("Authorization", basicAuthHeader(credentials));
+			}
+
+			HttpResponse<String> response = client.send(requestBuilder.build(), cappedUtf8BodyHandler());
+			int status = response.statusCode();
+
+			if (status >= 200 && status < 300) {
+				return response.body();
+			}
+
+			if (failOnNotFound && status == 404) {
+				throw new ArtifactNotFoundException(current + ": HTTP Status 404", artifactId);
+			}
+
+			if (status >= 300 && status < 400) {
+				Optional<String> location = response.headers().firstValue("location");
+				if (location.isEmpty()) {
+					LOG.debug("HTTP " + status + " without Location header fetching: " + current);
+					return null;
+				}
+				URI next = current.resolve(URI.create(location.get().trim()));
+				if (!repositoryCredentialHostMatches(repositoryBaseUri, next)) {
+					LOG.debug("Refusing cross-host redirect from " + current + " to " + next);
+					return null;
+				}
+				current = next;
+				continue;
+			}
+
+			LOG.debug("HTTP " + status + " fetching: " + current);
+			return null;
+		}
+
+		LOG.debug("Too many redirects fetching: " + uri);
+		return null;
+	}
+
+	private static BodyHandler<String> cappedUtf8BodyHandler() {
+
+		return responseInfo -> BodySubscribers.mapping(BodySubscribers.ofInputStream(), in -> {
+			try {
+				return readUtf8StreamCapped(in, MAX_RESPONSE_BODY_BYTES);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		});
+	}
+
+	private static String readUtf8StreamCapped(InputStream in, long maxBytes) throws IOException {
+
+		try (in) {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			byte[] buf = new byte[16384];
+			long total = 0;
+			while (true) {
+				int n = in.read(buf);
+				if (n == -1) {
+					break;
+				}
+				total += n;
+				if (total > maxBytes) {
+					throw new IOException("Response body exceeds maximum size");
+				}
+				out.write(buf, 0, n);
+			}
+			return out.toString(StandardCharsets.UTF_8);
+		}
+	}
+
+	private static boolean repositoryCredentialHostMatches(URI repositoryBase, URI requestTarget) {
+
+		String baseHost = repositoryBase.getHost();
+		String targetHost = requestTarget.getHost();
+		if (baseHost == null || targetHost == null) {
+			return false;
+		}
+		if (!baseHost.equalsIgnoreCase(targetHost)) {
+			return false;
+		}
+		return effectivePort(repositoryBase) == effectivePort(requestTarget);
+	}
+
+	private static int effectivePort(URI uri) {
+
+		int port = uri.getPort();
+		if (port != -1) {
+			return port;
+		}
+		String scheme = uri.getScheme();
+		if ("https".equalsIgnoreCase(scheme)) {
+			return 443;
+		}
+		if ("http".equalsIgnoreCase(scheme)) {
+			return 80;
+		}
+		return -1;
+	}
+
+	private static String basicAuthHeader(RepositoryCredentials credentials) {
+
+		String raw = credentials.username() + ":" + credentials.password();
+		return "Basic " + Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+	}
+
 	private static class RepositoryAuthenticator extends Authenticator {
 
-		private final @Nullable RepositoryCredentials credentials;
 		private final ProxyAuthentication proxyAuthentication = ProxyAuthentication.getInstance();
 
-		RepositoryAuthenticator(@Nullable RepositoryCredentials credentials) {
-			this.credentials = credentials;
+		RepositoryAuthenticator() {
 		}
 
 		@Override
@@ -244,10 +390,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 						knownAuthentication.getPassword() != null ? knownAuthentication.getPassword().toCharArray() : new char[0]);
 			}
 
-			if (getRequestorType() == RequestorType.SERVER && credentials != null) {
-				return new PasswordAuthentication(credentials.username(), credentials.password().toCharArray());
-			}
-
 			return null;
 		}
 
@@ -263,11 +405,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			userAgent = productName + '/' + version;
 		} else {
 			userAgent = "IntelliJ";
-		}
-
-		String currentBuildUrl = System.getenv("BUILD_URL");
-		if (currentBuildUrl != null) {
-			userAgent += " (" + currentBuildUrl + ")";
 		}
 
 		return userAgent;

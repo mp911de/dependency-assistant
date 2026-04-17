@@ -79,9 +79,10 @@ public class MavenUtils {
 
 		Set<RemoteRepository> urls = new LinkedHashSet<>();
 
-		forEach(project.getRemoteRepositories(), (id, url) -> urls.add(new RemoteRepository(id, url, credentials.get(id))));
+		forEach(project.getRemoteRepositories(),
+				(id, url) -> urls.add(remoteRepository(id, url, credentials.get(id))));
 		forEach(project.getRemotePluginRepositories(),
-				(id, url) -> urls.add(new RemoteRepository(id, url, credentials.get(id))));
+				(id, url) -> urls.add(remoteRepository(id, url, credentials.get(id))));
 
 		return urls;
 	}
@@ -101,6 +102,15 @@ public class MavenUtils {
 
 	public static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> remoteRepositories) {
 		return remoteRepositories.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it).toList();
+	}
+
+	private static RemoteRepository remoteRepository(String id, String url,
+			@Nullable RepositoryCredentials credentials) {
+
+		if (credentials != null && !credentials.allowsRepositoryUrl(url)) {
+			credentials = null;
+		}
+		return new RemoteRepository(id, url, credentials);
 	}
 
 }

@@ -82,7 +82,7 @@ class TomlParser extends GradleParserSupport {
 
 	public static @Nullable PsiFile findVersionCatalogToml(Project project, VirtualFile anchorFile) {
 
-		VirtualFile root = GradleUtils.findProjectRoot(anchorFile);
+		VirtualFile root = GradleUtils.findProjectRoot(project, anchorFile);
 		VirtualFile gradleDir = root.findChild("gradle");
 		if (gradleDir == null) {
 			return null;

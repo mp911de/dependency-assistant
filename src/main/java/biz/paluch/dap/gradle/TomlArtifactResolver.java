@@ -29,6 +29,7 @@ import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PsiPropertyValueElement;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -178,15 +179,35 @@ class TomlArtifactResolver {
 			if (path == null) {
 				return null;
 			}
-			VirtualFile root = GradleUtils.findProjectRoot(virtualFile);
+			if (!isSafeCatalogRelativePath(path)) {
+				return null;
+			}
+			VirtualFile root = GradleUtils.findProjectRoot(project, virtualFile);
 			VirtualFile catalogFile = root.findFileByRelativePath(path);
-			if (catalogFile != null) {
+			if (catalogFile != null && VfsUtil.isAncestor(root, catalogFile, false)) {
 				return PsiManager.getInstance(project).findFile(catalogFile);
 			}
 			return null;
 		}
 
 		return TomlParser.findVersionCatalogToml(project, virtualFile);
+	}
+
+	private static boolean isSafeCatalogRelativePath(String path) {
+
+		if (path.isBlank()) {
+			return false;
+		}
+		String normalized = path.replace('\\', '/');
+		if (normalized.startsWith("/")) {
+			return false;
+		}
+		for (String segment : normalized.split("/")) {
+			if ("..".equals(segment)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private ArtifactReference getArtifactReference(TomlDependencyDeclaration declaration, PsiElement usage) {

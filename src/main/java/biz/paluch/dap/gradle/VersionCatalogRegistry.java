@@ -62,10 +62,14 @@ class VersionCatalogRegistry {
 		Project project = file.getProject();
 		VirtualFile virtualFile = file.getVirtualFile();
 		PsiManager psiManager = PsiManager.getInstance(file.getProject());
-		VirtualFile projectRoot = GradleUtils.findProjectRoot(virtualFile);
+		if (virtualFile == null) {
+			return ABSENT;
+		}
 
+		VirtualFile projectRoot = GradleUtils.findProjectRoot(file);
 		VirtualFile kotlin = projectRoot.findChild(GradleUtils.KOTLIN_SETTINGS);
 		VirtualFile groovy = projectRoot.findChild(GradleUtils.GROOVY_SETTINGS);
+
 		if (kotlin != null && GradleUtils.KOTLIN_AVAILABLE) {
 			PsiFile settings = psiManager.findFile(kotlin);
 			if (settings != null) {

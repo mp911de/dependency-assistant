@@ -20,23 +20,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.project.Project;
 import org.jetbrains.idea.maven.project.MavenHomeKt;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jetbrains.idea.maven.project.StaticResolvedMavenHomeType;
 import org.jetbrains.idea.maven.utils.MavenUtil;
-
-import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.project.Project;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Reads Maven {@code settings.xml} for the active project and returns a map of server-id to
@@ -202,6 +204,8 @@ public class SettingsXmlCredentialsLoader {
 	private static Map<String, RepositoryCredentials> extractCredentials(URLClassLoader loader, Object settingsObj,
 			String securityFilePath) throws Exception {
 
+		Map<String, List<URI>> repositoryBindings = extractServerRepositoryBindings(loader, settingsObj);
+
 		Class<?> cipherClass = loader.loadClass("org.sonatype.plexus.components.cipher.DefaultPlexusCipher");
 		Object cipher = cipherClass.getConstructor().newInstance();
 
@@ -251,10 +255,86 @@ public class SettingsXmlCredentialsLoader {
 				continue;
 			}
 
-			credentials.put(id.trim(), new RepositoryCredentials(id, username.trim(), password.trim()));
+			String trimmedId = id.trim();
+			List<URI> boundUris = repositoryBindings.get(trimmedId);
+			if (boundUris == null && "central".equalsIgnoreCase(trimmedId)) {
+				boundUris = List.of(URI.create("https://repo1.maven.org/maven2/"),
+						URI.create("https://repo.maven.apache.org/maven2/"));
+			}
+			List<URI> bases = boundUris == null ? null : List.copyOf(boundUris);
+			credentials.put(trimmedId, new RepositoryCredentials(trimmedId, username.trim(), password.trim(), bases));
 		}
 
 		return credentials;
+	}
+
+	private static Map<String, List<URI>> extractServerRepositoryBindings(URLClassLoader loader, Object settingsObj)
+			throws Exception {
+
+		Map<String, List<URI>> byId = new LinkedHashMap<>();
+
+		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
+		Method getMirrors = settingsClass.getMethod("getMirrors");
+		@SuppressWarnings("unchecked")
+		List<Object> mirrors = (List<Object>) getMirrors.invoke(settingsObj);
+
+		Class<?> mirrorClass = loader.loadClass("org.apache.maven.settings.Mirror");
+		if (mirrors != null) {
+			Method mirrorGetId = mirrorClass.getMethod("getId");
+			Method mirrorGetUrl = mirrorClass.getMethod("getUrl");
+			for (Object mirror : mirrors) {
+				addRepositoryBinding(byId, (String) mirrorGetId.invoke(mirror), (String) mirrorGetUrl.invoke(mirror));
+			}
+		}
+
+		Method getProfiles = settingsClass.getMethod("getProfiles");
+		@SuppressWarnings("unchecked")
+		List<Object> profiles = (List<Object>) getProfiles.invoke(settingsObj);
+
+		if (profiles != null) {
+			Class<?> profileClass = loader.loadClass("org.apache.maven.settings.Profile");
+			Method getRepositories = profileClass.getMethod("getRepositories");
+			Method getPluginRepositories = profileClass.getMethod("getPluginRepositories");
+			Class<?> repoClass = loader.loadClass("org.apache.maven.settings.Repository");
+			Method repoGetId = repoClass.getMethod("getId");
+			Method repoGetUrl = repoClass.getMethod("getUrl");
+
+			for (Object profile : profiles) {
+				collectRepositoryBindings(byId, repoGetId, repoGetUrl, getRepositories.invoke(profile));
+				collectRepositoryBindings(byId, repoGetId, repoGetUrl, getPluginRepositories.invoke(profile));
+			}
+		}
+
+		return byId;
+	}
+
+	private static void collectRepositoryBindings(Map<String, List<URI>> byId, Method repoGetId, Method repoGetUrl,
+			@Nullable Object repositoryList) throws Exception {
+
+		if (repositoryList == null) {
+			return;
+		}
+		@SuppressWarnings("unchecked")
+		List<Object> repositories = (List<Object>) repositoryList;
+		for (Object repository : repositories) {
+			addRepositoryBinding(byId, (String) repoGetId.invoke(repository), (String) repoGetUrl.invoke(repository));
+		}
+	}
+
+	private static void addRepositoryBinding(Map<String, List<URI>> byId, @Nullable String id, @Nullable String url) {
+
+		if (id == null || id.isBlank() || url == null || url.isBlank()) {
+			return;
+		}
+		if (!url.startsWith("http://") && !url.startsWith("https://")) {
+			return;
+		}
+		try {
+			URI uri = URI.create(url.endsWith("/") ? url : url + "/").normalize();
+			byId.computeIfAbsent(id.trim(), k -> new ArrayList<>()).add(uri);
+		} catch (IllegalArgumentException e) {
+			LOG.debug("Skipping invalid repository URL in settings for server id " + id, e);
+		}
 	}
 
 	// -------------------------------------------------------------------------

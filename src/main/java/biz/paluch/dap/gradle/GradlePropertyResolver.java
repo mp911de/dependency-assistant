@@ -89,9 +89,9 @@ class GradlePropertyResolver implements PropertyResolver {
 			return ABSENT;
 		}
 
-		VirtualFile root = GradleUtils.findProjectRoot(virtualFile);
+		VirtualFile root = GradleUtils.findProjectRoot(file);
 		VirtualFile scriptDir = virtualFile.getParent();
-		if (scriptDir == null || root == null) {
+		if (scriptDir == null) {
 			return ABSENT;
 		}
 
