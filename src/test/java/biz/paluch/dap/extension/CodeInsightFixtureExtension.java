@@ -26,7 +26,6 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
-import com.intellij.testFramework.fixtures.impl.LightTempDirTestFixtureImpl;
 import com.intellij.util.Function;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -58,6 +57,21 @@ class CodeInsightFixtureExtension
 			.create(CodeInsightFixtureExtension.class);
 
 	private static final String STORE_KEY = "codeInsightFixtureResource";
+
+	/**
+	 * Package-private accessor for use by collaborating extensions that require the
+	 * fixture after it has been set up by this extension's {@code beforeEach}.
+	 */
+	static CodeInsightTestFixture getFixture(ExtensionContext context) {
+		FixtureResource resource = context.getStore(NAMESPACE).get(STORE_KEY, FixtureResource.class);
+		if (resource == null) {
+			throw new ExtensionConfigurationException(
+					"No CodeInsightTestFixture available in current extension context — "
+							+ "ensure @CodeInsightFixtureTests is present and "
+							+ CodeInsightFixtureExtension.class.getSimpleName() + " has run beforeEach");
+		}
+		return resource.codeInsightFixture();
+	}
 
 	@Override
 	public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
@@ -170,11 +184,8 @@ class CodeInsightFixtureExtension
 
 		IdeaTestFixtureFactory factory = IdeaTestFixtureFactory.getFixtureFactory();
 		TestFixtureBuilder<IdeaProjectTestFixture> builder = factory.createLightFixtureBuilder(fixtureName);
-
 		IdeaProjectTestFixture ideaProjectFixture = builder.getFixture();
-		CodeInsightTestFixture codeInsightFixture = factory.createCodeInsightFixture(ideaProjectFixture,
-				new LightTempDirTestFixtureImpl(true));
-
+		CodeInsightTestFixture codeInsightFixture = factory.createCodeInsightFixture(ideaProjectFixture);
 
 		try {
 			EdtTestUtil.runInEdtAndWait(codeInsightFixture::setUp);

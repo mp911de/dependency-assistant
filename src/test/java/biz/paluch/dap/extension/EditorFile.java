@@ -13,43 +13,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package biz.paluch.dap.extension;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.intellij.testFramework.junit5.RunInEdt;
-import org.junit.jupiter.api.extension.ExtendWith;
-
 /**
- * Composed annotation for IntelliJ Code Insight tests running on JUnit 5.
+ * Configures the editor with a named file via
+ * {@link com.intellij.testFramework.fixtures.CodeInsightTestFixture#configureByText}.
  *
- * <p>Includes:
- * <ul>
- * <li>IntelliJ test application bootstrap</li>
- * <li>EDT execution with write intent</li>
- * <li>Automatic {@code CodeInsightTestFixture} lifecycle management</li>
- * </ul>
+ * <p>Only one {@code @EditorFile} per test method is supported. The resulting
+ * {@link com.intellij.psi.PsiFile} is registered under its name and
+ * participates in name-based {@link ProjectFile} parameter lookup.
  *
  * @author Mark Paluch
+ * @see ProjectFile
+ * @see ProjectFileExtension
  */
-@Target(ElementType.TYPE)
+@Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Inherited
-@RunInEdt(writeIntent = true)
-@ExtendWith({CodeInsightFixtureExtension.class, ProjectFileExtension.class})
-public @interface CodeInsightFixtureTests {
+public @interface EditorFile {
 
 	/**
-	 * Optional fixture name. If left blank, the extension will derive one from the
-	 * test class and method.
+	 * The file name passed to
+	 * {@link com.intellij.testFramework.fixtures.CodeInsightTestFixture#configureByText}.
 	 */
-	String fixtureName() default "";
+	String name();
+
+	/**
+	 * The file content.
+	 */
+	String content() default "";
 
 }
