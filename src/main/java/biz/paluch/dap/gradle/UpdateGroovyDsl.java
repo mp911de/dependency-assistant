@@ -39,7 +39,7 @@ class UpdateGroovyDsl {
 
 	private final PropertyResolver propertyResolver;
 
-	public UpdateGroovyDsl(PropertyResolver propertyResolver) {
+	UpdateGroovyDsl(PropertyResolver propertyResolver) {
 		this.propertyResolver = propertyResolver;
 	}
 
@@ -126,6 +126,22 @@ class UpdateGroovyDsl {
 		}));
 
 		updateMapDependency(file, id, newVersion);
+		updateVersionBlock(file, id, newVersion);
+	}
+
+	private void updateVersionBlock(PsiFile file, ArtifactId id, String newVersion) {
+
+		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
+			NamedDependencyDeclaration decl = GradleParser.parseVersionBlockDependency(call);
+			if (decl == null || !decl.isComplete() || !decl.matches(id)) {
+				return false;
+			}
+			if (decl.getRequiredVersionLiteral() instanceof GrLiteral lit) {
+				GroovyDslUtils.updateText(lit, newVersion);
+				return true;
+			}
+			return false;
+		}));
 	}
 
 	private void updateMapDependency(PsiFile file, ArtifactId id, String newVersion) {

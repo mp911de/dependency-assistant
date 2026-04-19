@@ -52,7 +52,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		// Versioned plugins are registered as update candidates.
 		Dependency boot = collector.getUsage("org.springframework.boot", "org.springframework.boot");
@@ -81,7 +81,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency commonsLang = collector.getUsage("org.apache.commons", "commons-lang3");
 		assertThat(commonsLang).as("commons-lang3").isNotNull();
@@ -103,7 +103,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency groovy = collector.getUsage("org.apache.groovy", "groovy");
 		assertThat(groovy).as("groovy map-notation").isNotNull();
@@ -122,7 +122,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsages()).isEmpty();
 	}
@@ -145,7 +145,7 @@ class GradleParserTests {
 		Map<String, String> extProps = GroovyDslExtParser.getExtProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, extProps);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency bom = collector.getUsage("org.springframework.modulith", "spring-modulith-bom");
 		assertThat(bom).as("spring-modulith-bom").isNotNull();
@@ -173,7 +173,7 @@ class GradleParserTests {
 		Map<String, String> extProps = GroovyDslExtParser.getExtProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, extProps);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency dep = collector.getUsage("org.apache.commons", "commons-lang3");
 		assertThat(dep).as("commons-lang3 via ext property").isNotNull();
@@ -221,7 +221,7 @@ class GradleParserTests {
 		Map<String, String> extProps = GroovyDslExtParser.getExtProperties(file);
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, extProps);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		// Plugins with versions
 		assertThat(collector.getUsage("org.springframework.boot", "org.springframework.boot")).as("boot plugin")
@@ -252,7 +252,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency plugin = collector.getUsage("org.foo", "org.foo");
 		assertThat(plugin).isNotNull();
@@ -272,7 +272,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency plugin = collector.getUsage("org.foo", "org.foo");
 		assertThat(plugin).isNotNull();
@@ -291,7 +291,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
 	}
@@ -308,7 +308,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
 	}
@@ -325,7 +325,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
 	}
@@ -342,7 +342,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
 	}
@@ -359,7 +359,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNull();
 	}
@@ -381,7 +381,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNull();
 	}
@@ -397,7 +397,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsages()).isEmpty();
 	}
@@ -414,7 +414,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsages()).isEmpty();
 	}
@@ -431,7 +431,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsages()).isEmpty();
 	}
@@ -447,7 +447,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency plugin = collector.getUsage("org.foo", "org.foo");
 		assertThat(plugin).isNotNull();
@@ -467,7 +467,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency plugin = collector.getUsage("org.foo", "org.foo");
 		assertThat(plugin).isNotNull();
@@ -488,7 +488,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency plugin = collector.getUsage("org.foo", "org.foo");
 		assertThat(plugin).isNotNull();
@@ -510,7 +510,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector, props);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
 	}
@@ -526,7 +526,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsages()).isEmpty();
 	}
@@ -542,7 +542,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency guava = collector.getUsage("com.google.guava", "guava");
 		assertThat(guava).as("guava non-canonical order").isNotNull();
@@ -561,7 +561,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency guava = collector.getUsage("com.google.guava", "guava");
 		assertThat(guava).as("guava with extra classifier key").isNotNull();
@@ -579,7 +579,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsages()).isEmpty();
 	}
@@ -595,7 +595,7 @@ class GradleParserTests {
 
 		DependencyCollector collector = new DependencyCollector();
 		GradleParser parser = new GradleParser(collector);
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		assertThat(collector.getUsages()).isEmpty();
 	}
@@ -614,11 +614,117 @@ class GradleParserTests {
 				""");
 
 		GradleParser parser = new GradleParser();
-		parser.parseGroovyScript(file);
+		parser.parseGroovyDsl(file);
 
 		Dependency guava = parser.getCollector().getUsage("com.google.guava", "guava");
 		assertThat(guava).as("guava with property version").isNotNull();
 		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0.0-jre");
+		assertThat(guava.hasPropertyVersion()).isTrue();
+		assertThat(guava.findPropertyVersion().getProperty()).isEqualTo("guavaVersion");
+	}
+
+	@Test
+	void versionBlockWithPreferAndStrictlyIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation('org.slf4j:slf4j-api') {
+				        version {
+				            strictly '[1,2['
+				            prefer '1.7.25'
+				        }
+				    }
+				}
+				""");
+
+		GradleParser parser = new GradleParser();
+		parser.parseGroovyDsl(file);
+
+		Dependency dep = parser.getCollector().getUsage("org.slf4j", "slf4j-api");
+		assertThat(dep).as("slf4j-api version block with prefer").isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+	}
+
+	@Test
+	void versionBlockWithPreferOnlyIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation('org.slf4j:slf4j-api') {
+				        version {
+				            prefer '1.7.25'
+				        }
+				    }
+				}
+				""");
+
+		GradleParser parser = new GradleParser();
+		parser.parseGroovyDsl(file);
+
+		Dependency dep = parser.getCollector().getUsage("org.slf4j", "slf4j-api");
+		assertThat(dep).as("slf4j-api version block with prefer only").isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+	}
+
+	@Test
+	void versionBlockWithRangeOnlyIsSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation('org.slf4j:slf4j-api') {
+				        version {
+				            strictly '[1,2['
+				        }
+				    }
+				}
+				""");
+
+		GradleParser parser = new GradleParser();
+		parser.parseGroovyDsl(file);
+
+		assertThat(parser.getCollector().getUsages()).as("range-only version block must not be collected").isEmpty();
+	}
+
+	@Test
+	void versionBlockWithExactStrictlyNoPreferIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation('org.slf4j:slf4j-api') {
+				        version {
+				            strictly '1.7.25'
+				        }
+				    }
+				}
+				""");
+
+		GradleParser parser = new GradleParser();
+		parser.parseGroovyDsl(file);
+
+		Dependency dep = parser.getCollector().getUsage("org.slf4j", "slf4j-api");
+		assertThat(dep).as("slf4j-api with exact strictly and no prefer").isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+	}
+
+	@Test
+	void mapDependencyWithGStringVersionIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				ext {
+				    guavaVersion = '33.0-jre'
+				}
+
+				dependencies {
+				    implementation(group: 'com.google.guava', name: 'guava', version: "${guavaVersion}")
+				}
+				""");
+
+		GradleParser parser = new GradleParser();
+		parser.parseGroovyDsl(file);
+
+		Dependency guava = parser.getCollector().getUsage("com.google.guava", "guava");
+		assertThat(guava).as("guava with GString version").isNotNull();
+		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0-jre");
 		assertThat(guava.hasPropertyVersion()).isTrue();
 		assertThat(guava.findPropertyVersion().getProperty()).isEqualTo("guavaVersion");
 	}

@@ -400,6 +400,88 @@ class UpdateGradleFileTests {
 		assertThat(buildFile.getText()).contains("classifier = \"android\"");
 	}
 
+	@Test
+	void groovyVersionBlockPreferIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
+				dependencies {
+				    implementation('org.slf4j:slf4j-api') {
+				        version {
+				            strictly '[1.7, 1.8['
+				            prefer '1.7.25'
+				        }
+				    }
+				}
+				""");
+
+		applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25", DeclarationSource.dependency(),
+				VersionSource.declared("1.7.25"), "1.8.0");
+
+		assertThat(buildFile.getText()).contains("prefer '1.8.0'");
+		assertThat(buildFile.getText()).contains("strictly '[1.7, 1.8['");
+		assertThat(buildFile.getText()).doesNotContain("prefer '1.7.25'");
+	}
+
+	@Test
+	void kotlinVersionBlockPreferIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				dependencies {
+				    implementation("org.slf4j:slf4j-api") {
+				        version {
+				            strictly("[1.7, 1.8[")
+				            prefer("1.7.25")
+				        }
+				    }
+				}
+				""");
+
+		applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25", DeclarationSource.dependency(),
+				VersionSource.declared("1.7.25"), "1.8.0");
+
+		assertThat(buildFile.getText()).contains("prefer(\"1.8.0\")");
+		assertThat(buildFile.getText()).contains("strictly(\"[1.7, 1.8[\")");
+		assertThat(buildFile.getText()).doesNotContain("prefer(\"1.7.25\")");
+	}
+
+	@Test
+	void groovyMapGStringVersionIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
+				ext {
+				    guavaVersion = '33.0-jre'
+				}
+
+				dependencies {
+				    implementation(group: 'com.google.guava', name: 'guava', version: "${guavaVersion}")
+				}
+				""");
+
+		applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre", DeclarationSource.dependency(),
+				VersionSource.property("guavaVersion"), "33.1.0-jre");
+
+		assertThat(buildFile.getText()).contains("guavaVersion = '33.1.0-jre'");
+		assertThat(buildFile.getText()).doesNotContain("guavaVersion = '33.0-jre'");
+	}
+
+	@Test
+	void kotlinMapBareRefVersionIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				val guavaVersion = "33.0-jre"
+
+				dependencies {
+				    implementation(group = "com.google.guava", name = "guava", version = guavaVersion)
+				}
+				""");
+
+		applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre", DeclarationSource.dependency(),
+				VersionSource.property("guavaVersion"), "33.1.0-jre");
+
+		assertThat(buildFile.getText()).contains("val guavaVersion = \"33.1.0-jre\"");
+		assertThat(buildFile.getText()).doesNotContain("val guavaVersion = \"33.0-jre\"");
+	}
+
 	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 

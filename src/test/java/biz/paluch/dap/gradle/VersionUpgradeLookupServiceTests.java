@@ -29,7 +29,9 @@ import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiRecursiveElementVisitor;
+import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.jetbrains.kotlin.psi.KtCallElement;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -335,6 +337,54 @@ class VersionUpgradeLookupServiceTests {
 	}
 
 	@Test
+	void groovyVersionBlockPreferLiteralResolvesToCorrectArtifact() {
+
+		PsiFile file = fixture.configureByText("build.gradle", """
+				dependencies {
+				    implementation('org.slf4j:slf4j-api') {
+				        version {
+				            strictly '[1.7, 1.8['
+				            prefer '1.7.25'
+				        }
+				    }
+				}
+				""");
+
+		List<DependencyAndVersionLocation> hits = findVersionLocations(file,
+				loc -> "org.slf4j".equals(loc.artifactId().groupId()));
+
+		assertThat(hits).hasSize(1);
+		DependencyAndVersionLocation loc = hits.get(0);
+		assertThat(loc.artifactId().groupId()).isEqualTo("org.slf4j");
+		assertThat(loc.artifactId().artifactId()).isEqualTo("slf4j-api");
+		assertThat(loc.isPropertyReference()).isFalse();
+	}
+
+	@Test
+	void kotlinVersionBlockPreferLiteralResolvesToCorrectArtifact() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				dependencies {
+				    implementation("org.slf4j:slf4j-api") {
+				        version {
+				            strictly("[1.7, 1.8[")
+				            prefer("1.7.25")
+				        }
+				    }
+				}
+				""");
+
+		List<DependencyAndVersionLocation> hits = findKotlinVersionLocations(file,
+				loc -> "org.slf4j".equals(loc.artifactId().groupId()));
+
+		assertThat(hits).hasSize(1);
+		DependencyAndVersionLocation loc = hits.get(0);
+		assertThat(loc.artifactId().groupId()).isEqualTo("org.slf4j");
+		assertThat(loc.artifactId().artifactId()).isEqualTo("slf4j-api");
+		assertThat(loc.isPropertyReference()).isFalse();
+	}
+
+	@Test
 	void bomWithInterpolatedVersionLinksToExtPropertyDeclaration() {
 
 		PsiFile file = fixture.configureByText("build.gradle", """
@@ -388,6 +438,19 @@ class VersionUpgradeLookupServiceTests {
 					GradlePropertyResolver.create(file));
 			return (location != null && predicate.test(location)) ? location : null;
 		});
+	}
+
+	private static List<DependencyAndVersionLocation> findKotlinVersionLocations(PsiFile file,
+			Predicate<DependencyAndVersionLocation> predicate) {
+		List<DependencyAndVersionLocation> hits = new ArrayList<>();
+		GradlePropertyResolver resolver = GradlePropertyResolver.create(file);
+		SyntaxTraverser.psiTraverser(file).filter(KtCallElement.class).forEach(call -> {
+			DependencyAndVersionLocation location = KotlinDslUtils.findKotlinVersionElement(call, resolver);
+			if (location != null && predicate.test(location)) {
+				hits.add(location);
+			}
+		});
+		return hits;
 	}
 
 	private static DependencyAndVersionLocation findVersionLocation(PsiFile file,

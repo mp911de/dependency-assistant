@@ -453,6 +453,105 @@ class KotlinDslParserTests {
 		assertThat(collector.getUsages()).isEmpty();
 	}
 
+	@Test
+	void versionBlockWithPreferAndStrictlyIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				dependencies {
+				    implementation("org.slf4j:slf4j-api") {
+				        version {
+				            strictly("[1.7, 1.8[")
+				            prefer("1.7.25")
+				        }
+				    }
+				}
+				""");
+
+		DependencyCollector collector = parse(file);
+
+		Dependency dep = collector.getUsage("org.slf4j", "slf4j-api");
+		assertThat(dep).as("slf4j-api version block with prefer").isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+	}
+
+	@Test
+	void versionBlockWithPreferOnlyIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				dependencies {
+				    implementation("org.slf4j:slf4j-api") {
+				        version {
+				            prefer("1.7.25")
+				        }
+				    }
+				}
+				""");
+
+		DependencyCollector collector = parse(file);
+
+		Dependency dep = collector.getUsage("org.slf4j", "slf4j-api");
+		assertThat(dep).as("slf4j-api version block with prefer only").isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+	}
+
+	@Test
+	void versionBlockWithExactStrictlyNoPreferIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				dependencies {
+				    implementation("org.slf4j:slf4j-api") {
+				        version {
+				            strictly("1.7.25")
+				        }
+				    }
+				}
+				""");
+
+		DependencyCollector collector = parse(file);
+
+		Dependency dep = collector.getUsage("org.slf4j", "slf4j-api");
+		assertThat(dep).isNotNull();
+		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+	}
+
+	@Test
+	void versionBlockWithRangeOnlyIsSkipped() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				dependencies {
+				    implementation("org.slf4j:slf4j-api") {
+				        version {
+				            strictly("[1.7, 1.8[")
+				        }
+				    }
+				}
+				""");
+
+		DependencyCollector collector = parse(file);
+
+		assertThat(collector.getUsages()).as("range-only version block must not be collected").isEmpty();
+	}
+
+	@Test
+	void mapDependencyWithBareVariableVersionIsDiscovered() {
+
+		PsiFile file = fixture.configureByText("build.gradle.kts", """
+				val guavaVersion = "33.0-jre"
+
+				dependencies {
+				    implementation(group = "com.google.guava", name = "guava", version = guavaVersion)
+				}
+				""");
+
+		DependencyCollector collector = parse(file);
+
+		Dependency guava = collector.getUsage("com.google.guava", "guava");
+		assertThat(guava).as("guava with bare val reference").isNotNull();
+		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0-jre");
+		assertThat(guava.hasPropertyVersion()).isTrue();
+		assertThat(guava.findPropertyVersion().getProperty()).isEqualTo("guavaVersion");
+	}
+
 
 	private static DependencyCollector parse(PsiFile file) {
 		KotlinDslParser parser = new KotlinDslParser();

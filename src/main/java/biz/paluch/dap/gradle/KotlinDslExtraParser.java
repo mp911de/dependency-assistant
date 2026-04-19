@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.jetbrains.kotlin.psi.KtProperty;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jspecify.annotations.Nullable;
 
@@ -103,6 +104,44 @@ class KotlinDslExtraParser {
 					if (element != null) {
 						result.put(element.propertyKey(), element.propertyValue());
 					}
+				});
+
+		return result;
+	}
+
+	/**
+	 * Parses top-level {@code val key = "value"} property declarations from a
+	 * Kotlin DSL file and returns them as {@link PsiPropertyValueElement} entries.
+	 * <p>Only plain string-literal initialisers are recognised; complex expressions
+	 * are ignored.
+	 *
+	 * @param file the Kotlin build script ({@code .kts})
+	 * @return a map of variable name to literal value element.
+	 */
+	public static Map<String, PsiPropertyValueElement> parseValProperties(PsiFile file) {
+
+		Map<String, PsiPropertyValueElement> result = new HashMap<>();
+
+		SyntaxTraverser.psiTraverser(file)
+				.filter(KtProperty.class)
+				.forEach(property -> {
+
+					String name = property.getName();
+					if (StringUtils.isEmpty(name)) {
+						return;
+					}
+
+					KtExpression initializer = property.getInitializer();
+					if (!(initializer instanceof KtStringTemplateExpression st)) {
+						return;
+					}
+
+					String value = KotlinDslUtils.getText(st);
+					if (StringUtils.isEmpty(value)) {
+						return;
+					}
+
+					result.put(name, new PsiPropertyValueElement(st, name, value));
 				});
 
 		return result;

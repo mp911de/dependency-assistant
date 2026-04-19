@@ -37,6 +37,7 @@ import org.jspecify.annotations.Nullable;
 public class DependencyAssistantService implements PersistentStateComponent<DependencyAssistantState> {
 
 	private final DependencyAssistantState state = new DependencyAssistantState();
+
 	private final Map<ProjectId, DependencyCollector> dependencies = new ConcurrentHashMap<>();
 
 	/**
@@ -55,6 +56,10 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 		return state.getCache();
 	}
 
+	public void setCache(Cache cache) {
+		state.setCache(cache);
+	}
+
 	@Override
 	public void loadState(DependencyAssistantState state) {
 		XmlSerializerUtil.copyBean(state, this.state);
@@ -67,6 +72,7 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 	class DefaultProjectState implements ProjectState {
 
 		private final ProjectId identity;
+
 		private final ProjectCache projectCache;
 
 		public DefaultProjectState(ProjectId identity) {

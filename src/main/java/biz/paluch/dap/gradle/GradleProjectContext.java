@@ -36,6 +36,7 @@ import com.intellij.openapi.externalSystem.model.project.ProjectData;
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -52,6 +53,8 @@ import org.jspecify.annotations.Nullable;
  */
 interface GradleProjectContext extends ProjectBuildContext {
 
+	Key<GradleProjectContext> KEY = Key.create("GradleProjectContext");
+
 	/**
 	 * Check whether the property is locally defined.
 	 */
@@ -64,6 +67,11 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 		if (file == null) {
 			return EmptyGradleBuildContext.INSTANCE;
+		}
+
+		GradleProjectContext context = file.getUserData(KEY);
+		if (context != null) {
+			return context;
 		}
 
 		String linkedPath = GradleUtils.findLinkedProjectPath(project, file.getVirtualFile());

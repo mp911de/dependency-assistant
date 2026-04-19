@@ -33,10 +33,15 @@ import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.util.ArrayUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrString;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrStringInjection;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -56,15 +61,15 @@ class GradleParser extends GradleParserSupport {
 
 	private final Map<String, PsiPropertyValueElement> propertyLookup = new LinkedHashMap<>();
 
-	public GradleParser() {
+	GradleParser() {
 		this(new DependencyCollector(), new LinkedHashMap<>());
 	}
 
-	public GradleParser(DependencyCollector collector) {
+	GradleParser(DependencyCollector collector) {
 		this(collector, new LinkedHashMap<>());
 	}
 
-	public GradleParser(DependencyCollector collector, Map<String, String> properties) {
+	GradleParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
 		this.properties = new LinkedHashMap<>(properties);
 	}
@@ -79,6 +84,10 @@ class GradleParser extends GradleParserSupport {
 		return this.propertyLookup.get(propertyKey);
 	}
 
+	protected Map<String, PsiPropertyValueElement> getPropertyLookup() {
+		return this.propertyLookup;
+	}
+
 	// -------------------------------------------------------------------------
 	// Groovy DSL
 	// -------------------------------------------------------------------------
@@ -88,7 +97,7 @@ class GradleParser extends GradleParserSupport {
 	 * accumulates all resolvable dependency and plugin declarations into
 	 * {@code collector}.
 	 */
-	public void parseGroovyScript(PsiFile file) {
+	public void parseGroovyDsl(PsiFile file) {
 
 		Map<String, PsiPropertyValueElement> properties = GroovyDslExtParser.parseExtProperties(file);
 		this.propertyLookup.clear();
@@ -124,6 +133,15 @@ class GradleParser extends GradleParserSupport {
 		GradleDependency dependency = parseDependency(call);
 		DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed()
 				: DeclarationSource.dependency();
+
+		if (dependency == null || dependency instanceof GradleDependency.DependencyReference) {
+			// Try version block notation: implementation('g:a') { version { prefer '1.0' }
+			// }
+			NamedDependencyDeclaration versionBlockEntry = parseVersionBlockDependency(call);
+			if (versionBlockEntry != null && versionBlockEntry.isComplete()) {
+				dependency = versionBlockEntry.toDependency(this);
+			}
+		}
 
 		if (dependency == null) {
 			// Try map notation: implementation(group: 'g', name: 'a', version: 'v')
@@ -166,9 +184,121 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
+	 * Parses a version-block dependency of the form: <pre class="code">
+	 * implementation('group:artifact') {
+	 *     version {
+	 *         strictly '[1.7, 1.8['
+	 *         prefer '1.7.25'
+	 *     }
+	 * }
+	 * </pre> Returns a {@link NamedDependencyDeclaration} when a usable version can
+	 * be extracted, or {@code null} otherwise.
+	 */
+	@Nullable
+	static NamedDependencyDeclaration parseVersionBlockDependency(GrMethodCall call) {
+
+		GrLiteral gavLiteral = null;
+
+		for (PsiElement arg : call.getArgumentList().getAllArguments()) {
+			if (arg instanceof GrLiteral lit) {
+				String text = GroovyDslUtils.getText(lit);
+				if (text != null && text.split(":").length == 2) {
+					gavLiteral = lit;
+				}
+			}
+		}
+
+		if (gavLiteral == null) {
+			return null;
+		}
+
+		GrClosableBlock depClosure = ArrayUtil.getFirstElement(call.getClosureArguments());
+		if (depClosure == null) {
+			return null;
+		}
+
+		GrMethodCall versionCall = null;
+		for (PsiElement stmt : depClosure.getStatements()) {
+			if (stmt instanceof GrMethodCall mc && "version".equals(GroovyDslUtils.getGroovyMethodName(mc))) {
+				versionCall = mc;
+				break;
+			}
+		}
+
+		if (versionCall == null) {
+			return null;
+		}
+
+		GrClosableBlock versionClosure = ArrayUtil.getFirstElement(versionCall.getClosureArguments());
+		if (versionClosure == null) {
+			return null;
+		}
+
+		GrLiteral preferLiteral = null;
+		GrLiteral strictlyLiteral = null;
+
+		for (PsiElement stmt : versionClosure.getStatements()) {
+			if (!(stmt instanceof GrMethodCall mc)) {
+				continue;
+			}
+			String name = GroovyDslUtils.getGroovyMethodName(mc);
+			GrLiteral firstArg = PsiTreeUtil.getChildOfType(mc.getArgumentList(), GrLiteral.class);
+			if (firstArg == null) {
+				continue;
+			}
+
+			if ("prefer".equals(name) && preferLiteral == null) {
+				preferLiteral = firstArg;
+			} else if ("strictly".equals(name) && strictlyLiteral == null) {
+				strictlyLiteral = firstArg;
+			}
+		}
+
+		GrLiteral versionLiteral;
+		if (preferLiteral != null) {
+			versionLiteral = preferLiteral;
+		} else if (strictlyLiteral != null) {
+			String strictlyText = GroovyDslUtils.getText(strictlyLiteral);
+			if (isVersionRange(strictlyText)) {
+				return null;
+			}
+			versionLiteral = strictlyLiteral;
+		} else {
+			return null;
+		}
+
+		String version = GroovyDslUtils.getText(versionLiteral);
+		if (StringUtils.isEmpty(version)) {
+			return null;
+		}
+
+		String gavText = GroovyDslUtils.getText(gavLiteral);
+		if (gavText == null) {
+			return null;
+		}
+		String[] parts = gavText.split(":");
+		String group = parts[0];
+		String artifact = parts[1];
+
+		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact, null, version, call,
+				versionLiteral);
+	}
+
+	/**
+	 * Returns {@code true} if {@code version} contains range syntax characters.
+	 */
+	static boolean isVersionRange(@Nullable String version) {
+		if (version == null) {
+			return false;
+		}
+		return version.contains("[") || version.contains("]") || version.contains("(") || version.contains(")")
+				|| version.contains(",");
+	}
+
+	/**
 	 * Parse map-style dependency declarations.
 	 */
-	public static NamedDependencyDeclaration parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
+	static NamedDependencyDeclaration parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
 			PropertyResolver propertyResolver) {
 
 		String group = null;
@@ -183,9 +313,9 @@ class GradleParser extends GradleParserSupport {
 			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.getText(lit) : null;
 
 			if ("group".equals(key)) {
-				group = StringUtils.isEmpty(strVal) ? strVal : propertyResolver.resolvePlaceholders(strVal);
+				group = !StringUtils.isEmpty(strVal) ? propertyResolver.resolvePlaceholders(strVal) : strVal;
 			} else if ("name".equals(key)) {
-				artifact = StringUtils.isEmpty(strVal) ? strVal : propertyResolver.resolvePlaceholders(strVal);
+				artifact = !StringUtils.isEmpty(strVal) ? propertyResolver.resolvePlaceholders(strVal) : strVal;
 			} else if ("version".equals(key)) {
 
 				if (val instanceof GrReferenceExpression ref) {
@@ -196,6 +326,21 @@ class GradleParser extends GradleParserSupport {
 						if (element != null) {
 							version = element.propertyValue();
 							versionLiteral = element.element();
+						}
+					}
+				} else if (val instanceof GrString gstr) {
+					GrStringInjection[] injections = gstr.getInjections();
+					if (injections.length == 1) {
+						GrReferenceExpression ref = PsiTreeUtil.findChildOfType(injections[0],
+								GrReferenceExpression.class);
+						if (ref != null) {
+							String refName = ref.getReferenceName();
+							versionProperty = refName;
+							PsiPropertyValueElement element = propertyResolver.getElement(refName);
+							if (element != null) {
+								version = element.propertyValue();
+								versionLiteral = element.element();
+							}
 						}
 					}
 				} else if (!StringUtils.isEmpty(strVal)) {

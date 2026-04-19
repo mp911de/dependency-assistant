@@ -180,9 +180,12 @@ class UpdateGradleFile {
 			new UpdateGroovyDsl(property -> null).updateExtProperty(file, propertyKey, newVersion);
 		}
 
-		// Kotlin DSL: extra["key"] = "value"
+		// Kotlin DSL: extra["key"] = "value" or val key = "value"
 		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
-			new UpdateKotlinDsl(property -> null).updateExtraProperty(file, propertyKey, newVersion);
+			UpdateKotlinDsl kotlinDsl = new UpdateKotlinDsl(property -> null);
+			if (!kotlinDsl.updateExtraProperty(file, propertyKey, newVersion)) {
+				kotlinDsl.updateValProperty(file, propertyKey, newVersion);
+			}
 		}
 	}
 

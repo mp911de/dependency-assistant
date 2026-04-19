@@ -28,6 +28,7 @@ import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtProperty;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
 
@@ -41,7 +42,7 @@ class UpdateKotlinDsl {
 
 	private final PropertyResolver propertyResolver;
 
-	public UpdateKotlinDsl(PropertyResolver propertyResolver) {
+	UpdateKotlinDsl(PropertyResolver propertyResolver) {
 		this.propertyResolver = propertyResolver;
 	}
 
@@ -92,6 +93,7 @@ class UpdateKotlinDsl {
 
 		if (!isPlugin) {
 			updateMapSyntaxDeclaration(file, artifact, newVersion);
+			updateVersionBlock(file, artifact, newVersion);
 		}
 	}
 
@@ -118,6 +120,21 @@ class UpdateKotlinDsl {
 		}));
 	}
 
+	private void updateVersionBlock(PsiFile file, ArtifactId id, String newVersion) {
+
+		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
+			NamedDependencyDeclaration decl = KotlinDslParser.parseVersionBlockDependency(call, propertyResolver);
+			if (decl == null || !decl.isComplete() || !decl.matches(id)) {
+				return false;
+			}
+			if (decl.getRequiredVersionLiteral() instanceof KtStringTemplateExpression version) {
+				version.updateText(newVersion);
+				return true;
+			}
+			return false;
+		}));
+	}
+
 	/**
 	 * Finds and updates an {@code extra["key"]} assignment in a Kotlin DSL file
 	 * (plain string, triple-quoted string, {@code "v".also { extra["k"] = it }}, or
@@ -129,7 +146,7 @@ class UpdateKotlinDsl {
 
 		PsiPropertyValueElement element = KotlinDslExtraParser.findExtraPropertyLocation(file, propertyKey);
 		if (element == null) {
-			return false;
+			return updateValProperty(file, propertyKey, newVersion);
 		}
 
 		if (element.element() instanceof KtStringTemplateExpression valueTemplate) {
@@ -137,6 +154,29 @@ class UpdateKotlinDsl {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Finds and updates a {@code val key = "value"} declaration in a Kotlin DSL
+	 * file.
+	 *
+	 * @return {@code true} if the property was found and updated
+	 */
+	boolean updateValProperty(PsiFile file, String propertyKey, String newVersion) {
+
+		boolean[] updated = {false};
+		file.accept(PsiVisitors.visitTreeUntil(KtProperty.class, property -> {
+			if (!propertyKey.equals(property.getName())) {
+				return false;
+			}
+			if (property.getInitializer() instanceof KtStringTemplateExpression template) {
+				template.updateText(newVersion);
+				updated[0] = true;
+				return true;
+			}
+			return false;
+		}));
+		return updated[0];
 	}
 
 	// -------------------------------------------------------------------------
@@ -153,20 +193,17 @@ class UpdateKotlinDsl {
 		if (!(parent instanceof KtBinaryExpression binary)) {
 			return false;
 		}
-		PsiElement[] children = binary.getChildren();
-		// children[0] = call expression, children[1] = "version" ref, children[2] =
-		// template
-		if (children.length < 3) {
+		if (binary.getRight() != template) {
 			return false;
 		}
-		if (template != children[children.length - 1]) {
+		if (!(binary.getLeft() instanceof KtCallExpression callExpr)) {
 			return false;
 		}
-		// Verify the call expression contains the expected plugin id
-		PsiElement callPart = children[0];
-		if (callPart instanceof KtCallExpression callExpr) {
-			String callText = callExpr.getText();
-			return callText.contains(pluginId);
+		for (ValueArgument va : callExpr.getValueArguments()) {
+			if (va.getArgumentExpression() instanceof KtStringTemplateExpression st
+					&& pluginId.equals(KotlinDslUtils.getText(st))) {
+				return true;
+			}
 		}
 		return false;
 	}

@@ -19,6 +19,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
@@ -92,6 +93,16 @@ public class Cache {
 		}
 
 		return List.of();
+	}
+
+	/**
+	 * Add artifacts to the cache.
+	 */
+	public void addArtifacts(Collection<CachedArtifact> artifacts) {
+
+		synchronized (this.artifacts) {
+			this.artifacts.addAll(artifacts);
+		}
 	}
 
 	/**

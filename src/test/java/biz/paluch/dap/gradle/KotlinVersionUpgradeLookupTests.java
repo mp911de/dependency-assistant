@@ -24,6 +24,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
 import org.junit.jupiter.api.Test;
@@ -114,7 +115,8 @@ class KotlinVersionUpgradeLookupTests {
 
 		int hits = 0;
 		for (PsiElement element : list) {
-			if (service.resolveKotlinArtifactReference(element).isResolved()) {
+			if (element instanceof KtElement ktElement
+					&& service.resolveKotlinArtifactReference(ktElement).isResolved()) {
 				hits++;
 			}
 		}
@@ -202,7 +204,7 @@ class KotlinVersionUpgradeLookupTests {
 
 		int resolved = 0;
 		for (PsiElement e : PsiTreeUtil.collectElementsOfType(build, PsiElement.class)) {
-			if (service.resolveKotlinArtifactReference(e).isResolved()) {
+			if (e instanceof KtElement element && service.resolveKotlinArtifactReference(element).isResolved()) {
 				resolved++;
 			}
 		}

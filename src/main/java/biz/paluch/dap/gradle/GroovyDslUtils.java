@@ -123,6 +123,13 @@ class GroovyDslUtils {
 			return null;
 		}
 
+		// Check if this literal is inside a prefer/strictly call inside a version {}
+		// closure
+		DependencyAndVersionLocation versionBlockLocation = resolveVersionBlockLiteral(literal, scriptProperties);
+		if (versionBlockLocation != null) {
+			return versionBlockLocation;
+		}
+
 		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
 		if (call == null) {
 			return null;
@@ -211,6 +218,104 @@ class GroovyDslUtils {
 		PropertyExpression versionExpression = PropertyExpression.from(version);
 
 		return new DependencyAndVersionLocation(GradleDependency.of(artifactId, versionExpression), literal);
+	}
+
+	/**
+	 * Returns a {@link DependencyAndVersionLocation} when {@code literal} is the
+	 * version value inside a {@code prefer} or {@code strictly} call within a
+	 * {@code version {}} block of a Groovy dependency declaration, or {@code null}
+	 * otherwise.
+	 */
+	private static @Nullable DependencyAndVersionLocation resolveVersionBlockLiteral(GrLiteral literal,
+			PropertyResolver scriptProperties) {
+
+		GrMethodCall preferOrStrictlyCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
+		if (preferOrStrictlyCall == null) {
+			return null;
+		}
+		String innerName = getGroovyMethodName(preferOrStrictlyCall);
+		if (!"prefer".equals(innerName) && !"strictly".equals(innerName)) {
+			return null;
+		}
+
+		if ("strictly".equals(innerName)) {
+			String text = getText(literal);
+			if (GradleParser.isVersionRange(text)) {
+				return null;
+			}
+		}
+
+		GrMethodCall depCall = findVersionBlockDependencyCall(preferOrStrictlyCall);
+		if (depCall == null) {
+			return null;
+		}
+
+		GrLiteral gavLiteral = null;
+		for (PsiElement arg : depCall.getArgumentList().getAllArguments()) {
+			if (arg instanceof GrLiteral lit) {
+				String text = getText(lit);
+				if (text != null && text.split(":").length == 2) {
+					gavLiteral = lit;
+					break;
+				}
+			}
+		}
+
+		if (gavLiteral == null) {
+			return null;
+		}
+
+		String gavText = getText(gavLiteral);
+		if (gavText == null) {
+			return null;
+		}
+		String[] parts = gavText.split(":");
+		String group = parts[0];
+		String artifact = parts[1];
+		String version = getText(literal);
+
+		GradleDependency dependency = GradleDependency.of(group, artifact, version);
+		return new DependencyAndVersionLocation(dependency, literal);
+	}
+
+	/**
+	 * Walks up from a {@code prefer} or {@code strictly} call to the enclosing
+	 * dependency method call, returning the outer {@link GrMethodCall} when the
+	 * full version-block structure is present, or {@code null} otherwise.
+	 * <p>The expected structure is: <pre class="code">
+	 * depCall("g:a") {          // outer GrMethodCall (returned)
+	 *     version {             // version call inside dep closure
+	 *         prefer "1.0"      // preferOrStrictlyCall (starting point)
+	 *     }
+	 * }
+	 * </pre>
+	 */
+	private static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
+
+		GrClosableBlock versionClosure = PsiTreeUtil.getParentOfType(preferOrStrictlyCall, GrClosableBlock.class);
+		if (versionClosure == null) {
+			return null;
+		}
+
+		GrMethodCall versionCall = PsiTreeUtil.getParentOfType(versionClosure, GrMethodCall.class);
+		if (versionCall == null || !"version".equals(getGroovyMethodName(versionCall))) {
+			return null;
+		}
+
+		GrClosableBlock depClosure = PsiTreeUtil.getParentOfType(versionCall, GrClosableBlock.class);
+		if (depClosure == null) {
+			return null;
+		}
+
+		GrMethodCall depCall = PsiTreeUtil.getParentOfType(depClosure, GrMethodCall.class);
+		if (depCall == null) {
+			return null;
+		}
+		String depCallName = getGroovyMethodName(depCall);
+		if (!GradleUtils.isDependencySection(depCallName) && !GradleUtils.isPlatformSection(depCallName)) {
+			return null;
+		}
+		return depCall;
 	}
 
 	public static @Nullable PsiPropertyValueElement resolvePropertyLocation(GrLiteral literal) {

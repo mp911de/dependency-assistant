@@ -74,7 +74,7 @@ class GradleDependencyCollector {
 			parser.parseKotlinScript(psiFile);
 		} else {
 			GradleParser parser = new GradleParser(collector);
-			parser.parseGroovyScript(psiFile);
+			parser.parseGroovyDsl(psiFile);
 		}
 	}
 

@@ -18,15 +18,20 @@ package biz.paluch.dap.state;
 import com.intellij.util.xmlb.annotations.Tag;
 
 /**
- * Persistent state model for the Dependency Assistant plugin. IntelliJ serializes public fields to XML automatically
- * via {@code XmlSerializer}, so fields must remain public.
+ * Persistent state model for the Dependency Assistant plugin. IntelliJ
+ * serializes public fields to XML automatically via {@code XmlSerializer}, so
+ * fields must remain public.
  */
 public class DependencyAssistantState {
 
-	private final @Tag Cache cache = new Cache();
+	private @Tag Cache cache = new Cache();
 
 	public Cache getCache() {
-		return cache;
+		return this.cache;
+	}
+
+	public void setCache(Cache cache) {
+		this.cache = cache;
 	}
 
 }

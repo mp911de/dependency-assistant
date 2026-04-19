@@ -42,6 +42,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry;
 import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
 import org.jetbrains.kotlin.psi.KtStringTemplateEntry;
@@ -149,8 +150,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return resolveGroovyArtifactReference(element);
 		}
 
-		if (GradleUtils.KOTLIN_AVAILABLE) {
-			return resolveKotlinArtifactReference(element);
+		if (GradleUtils.KOTLIN_AVAILABLE && element instanceof KtElement ktElement) {
+			return resolveKotlinArtifactReference(ktElement);
 		}
 
 		return ArtifactReference.unresolved();
@@ -242,7 +243,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return ArtifactReference.unresolved();
 	}
 
-	protected ArtifactReference resolveKotlinArtifactReference(PsiElement element) {
+	protected ArtifactReference resolveKotlinArtifactReference(KtElement element) {
 
 		ArtifactReference fromCatalog = resolveKotlinTomlReferenceReference(element);
 		if (fromCatalog.isResolved()) {

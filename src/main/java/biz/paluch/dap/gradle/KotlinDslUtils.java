@@ -137,6 +137,13 @@ class KotlinDslUtils {
 			return null;
 		}
 
+		// Check if this call is prefer/strictly inside a version {} block of a
+		// dependency
+		DependencyAndVersionLocation versionBlockLocation = findKotlinVersionBlockLocation(call);
+		if (versionBlockLocation != null) {
+			return versionBlockLocation;
+		}
+
 		KtBinaryExpression be = PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class);
 		KtCallExpression parentCall = PsiTreeUtil.getParentOfType(call, KtCallExpression.class);
 		if (parentCall == null) {
@@ -187,6 +194,88 @@ class KotlinDslUtils {
 				: PropertyExpression.from(rawVersion.toString());
 
 		return getVersionLocation(call, parentCall, raw.toString(), versionExpression);
+	}
+
+	private static @Nullable DependencyAndVersionLocation findKotlinVersionBlockLocation(KtCallElement call) {
+
+		String callName = getKotlinCallName(call);
+		if (!"prefer".equals(callName) && !"strictly".equals(callName)) {
+			return null;
+		}
+
+		KtStringTemplateExpression versionTemplate = null;
+		for (ValueArgument va : call.getValueArguments()) {
+			if (va.getArgumentExpression() instanceof KtStringTemplateExpression st) {
+				versionTemplate = st;
+				break;
+			}
+		}
+
+		if (versionTemplate == null) {
+			return null;
+		}
+
+		if ("strictly".equals(callName)) {
+			String text = getText(versionTemplate);
+			if (GradleParser.isVersionRange(text)) {
+				return null;
+			}
+		}
+
+		// Walk up: prefer/strictly → lambda body → lambda → lambda arg → version call
+		KtLambdaExpression versionLambda = PsiTreeUtil.getParentOfType(call, KtLambdaExpression.class);
+		if (versionLambda == null) {
+			return null;
+		}
+
+		KtCallExpression versionCall = PsiTreeUtil.getParentOfType(versionLambda, KtCallExpression.class);
+		if (versionCall == null || !"version".equals(getKotlinCallName(versionCall))) {
+			return null;
+		}
+
+		// versionCall is inside the dep closure lambda
+		KtLambdaExpression depLambda = PsiTreeUtil.getParentOfType(versionCall, KtLambdaExpression.class);
+		if (depLambda == null) {
+			return null;
+		}
+
+		KtCallExpression depCall = PsiTreeUtil.getParentOfType(depLambda, KtCallExpression.class);
+		if (depCall == null) {
+			return null;
+		}
+
+		String depCallName = getKotlinCallName(depCall);
+		if (!GradleUtils.isDependencySection(depCallName) && !GradleUtils.isPlatformSection(depCallName)) {
+			return null;
+		}
+
+		KtStringTemplateExpression gavTemplate = null;
+		for (ValueArgument va : depCall.getValueArguments()) {
+			if (va instanceof KtLambdaArgument) {
+				continue;
+			}
+			if (va.getArgumentExpression() instanceof KtStringTemplateExpression st) {
+				String text = getText(st);
+				if (text != null && text.split(":").length == 2) {
+					gavTemplate = st;
+					break;
+				}
+			}
+		}
+
+		if (gavTemplate == null) {
+			return null;
+		}
+
+		String gavText = getText(gavTemplate);
+		if (gavText == null) {
+			return null;
+		}
+
+		String[] parts = gavText.split(":");
+		String version = getText(versionTemplate);
+		GradleDependency dependency = GradleDependency.of(parts[0], parts[1], version);
+		return new DependencyAndVersionLocation(dependency, versionTemplate);
 	}
 
 	private static @Nullable DependencyAndVersionLocation findKotlinPluginLocation(KtCallElement call,
@@ -339,6 +428,10 @@ class KotlinDslUtils {
 			return new DependencyAndVersionLocation(dependency, call);
 		}
 
+		if (!versionExpression.isProperty() && !StringUtils.hasText(versionExpression.toString())) {
+			return null;
+		}
+
 		return new DependencyAndVersionLocation(dependency.withVersion(versionExpression), call);
 	}
 
@@ -465,7 +558,7 @@ class KotlinDslUtils {
 		while (binary != null) {
 
 			if (!KotlinDslExtraParser.isExtra(binary)) {
-				continue;
+				break;
 			}
 			KtStringTemplateExpression literalElement = KotlinDslExtraParser.getLiteralElement(binary);
 			if (literalElement != null) {
@@ -636,7 +729,7 @@ class KotlinDslUtils {
 		}
 
 		throw new IllegalArgumentException(
-				"Unexpected expression: " + expression + " (" + expression.getClass().getName() + ")");
+				"Unexpected expression: %s (%s)".formatted(expression, expression.getClass().getName()));
 	}
 
 	private static @Nullable String extractAlsoReceiverStringLiteral(KtNameReferenceExpression itRef) {
@@ -777,7 +870,7 @@ class KotlinDslUtils {
 		while (cur instanceof KtDotQualifiedExpression dq) {
 			String seg = kotlinSelectorToSegment(dq.getSelectorExpression());
 			if (seg == null) {
-				return null;
+				return List.of();
 			}
 			reversed.add(seg);
 			cur = dq.getReceiverExpression();

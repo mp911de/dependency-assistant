@@ -15,10 +15,12 @@
  */
 package biz.paluch.dap.support;
 
+import java.awt.event.MouseEvent;
 import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
+import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProvider;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -88,12 +90,9 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 			}
 		}
 
-		return new LineMarkerInfo<>(anchor, getTextRange(anchor), icon, e -> tooltip, (mouseEvent, psiElement) -> {
-			AnAction action = ActionManager.getInstance().getAction(actionId);
-			if (action != null) {
-				ActionManager.getInstance().tryToExecute(action, mouseEvent, null, null, true);
-			}
-		}, GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
+
+		return new LineMarkerInfo<>(anchor, getTextRange(anchor), icon, e -> tooltip,
+				new ActionNavigationHandler(actionId), GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 
 	}
 
@@ -105,6 +104,19 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 
 	protected TextRange getTextRange(PsiElement element) {
 		return element.getTextRange();
+	}
+
+
+	public record ActionNavigationHandler(String actionId) implements GutterIconNavigationHandler<PsiElement> {
+
+		@Override
+		public void navigate(MouseEvent mouseEvent, PsiElement psiElement) {
+			AnAction action = ActionManager.getInstance().getAction(actionId);
+			if (action != null) {
+				ActionManager.getInstance().tryToExecute(action, mouseEvent, null, null, true);
+			}
+		}
+
 	}
 
 }
