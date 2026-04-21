@@ -44,10 +44,10 @@ import org.jspecify.annotations.Nullable;
 class GradlePropertyResolver implements PropertyResolver {
 
 	private static final Key<CachedValue<GradlePropertyResolver>> TREE = Key
-			.create("biz.paluch.dap.gradle.CACHED_GRADLE_PROPERTY_RESOLVER");
+			.create("biz.paluch.dap.gradle.CACHED_GRADLE_PROPERTY_RESOLVER_TREE");
 
 	private static final Key<CachedValue<GradlePropertyResolver>> FILE = Key
-			.create("biz.paluch.dap.gradle.CACHED_GRADLE_PROPERTY_RESOLVER");
+			.create("biz.paluch.dap.gradle.CACHED_GRADLE_PROPERTY_RESOLVER_FILE");
 
 	private static final GradlePropertyResolver ABSENT = new GradlePropertyResolver(Map.of());
 
@@ -132,9 +132,11 @@ class GradlePropertyResolver implements PropertyResolver {
 					continue;
 				}
 				if (GradleUtils.isGroovyDsl(psiFile)) {
-					properties.putAll(GroovyDslExtParser.parseExtProperties(file));
+					properties.putAll(GroovyDslExtParser.parseLocalVariables(psiFile));
+					properties.putAll(GroovyDslExtParser.parseExtProperties(psiFile));
 				} else if (GradleUtils.isKotlinDsl(psiFile) && GradleUtils.KOTLIN_AVAILABLE) {
 					properties.putAll(KotlinDslExtraParser.parseExtraProperties(psiFile));
+					properties.putAll(KotlinDslExtraParser.parseValProperties(psiFile));
 				}
 			}
 
@@ -148,9 +150,11 @@ class GradlePropertyResolver implements PropertyResolver {
 		Map<String, PsiPropertyValueElement> properties = new LinkedHashMap<>();
 
 		if (GradleUtils.isGroovyDsl(file)) {
+			properties.putAll(GroovyDslExtParser.parseLocalVariables(file));
 			properties.putAll(GroovyDslExtParser.parseExtProperties(file));
 		} else if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
 			properties.putAll(KotlinDslExtraParser.parseExtraProperties(file));
+			properties.putAll(KotlinDslExtraParser.parseValProperties(file));
 		} else if (GradleUtils.isGradlePropertiesFile(file)) {
 			properties = GradlePropertiesParser.parseGradleProperties(file);
 		} else if (GradleUtils.isVersionCatalog(file)) {

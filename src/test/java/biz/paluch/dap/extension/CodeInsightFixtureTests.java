@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,16 +27,14 @@ import com.intellij.testFramework.junit5.RunInEdt;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
- * Composed annotation for IntelliJ Code Insight tests running on JUnit 5.
- *
- * <p>Includes:
- * <ul>
- * <li>IntelliJ test application bootstrap</li>
- * <li>EDT execution with write intent</li>
- * <li>Automatic {@code CodeInsightTestFixture} lifecycle management</li>
- * </ul>
+ * Composed annotation for IntelliJ Code Insight tests based on JUnit Jupiter.
+ * <p>Applying this annotation activates the extension infrastructure required
+ * for fixture-driven PSI tests: IntelliJ test bootstrap, EDT execution with
+ * write-intent, and automatic fixture lifecycle management.
  *
  * @author Mark Paluch
+ * @see CodeInsightFixtureExtension
+ * @see ProjectFileExtension
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -47,8 +45,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public @interface CodeInsightFixtureTests {
 
 	/**
-	 * Optional fixture name. If left blank, the extension will derive one from the
-	 * test class and method.
+	 * Configure the fixture name to use for the current test.
+	 * <p>Defaults {@code Class.getSimpleName() + "#" + method().getName()} if
+	 * empty.
 	 */
 	String fixtureName() default "";
 

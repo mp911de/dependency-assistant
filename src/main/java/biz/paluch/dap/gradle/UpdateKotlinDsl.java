@@ -25,9 +25,12 @@ import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtLambdaArgument;
+import org.jetbrains.kotlin.psi.KtLambdaExpression;
 import org.jetbrains.kotlin.psi.KtProperty;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
@@ -123,15 +126,98 @@ class UpdateKotlinDsl {
 	private void updateVersionBlock(PsiFile file, ArtifactId id, String newVersion) {
 
 		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
-			NamedDependencyDeclaration decl = KotlinDslParser.parseVersionBlockDependency(call, propertyResolver);
-			if (decl == null || !decl.isComplete() || !decl.matches(id)) {
+
+			KtStringTemplateExpression gavTemplate = null;
+			for (ValueArgument arg : call.getValueArguments()) {
+				if (arg instanceof KtLambdaArgument) {
+					continue;
+				}
+				if (!(arg.getArgumentExpression() instanceof KtStringTemplateExpression st)) {
+					continue;
+				}
+				String text = KotlinDslUtils.getText(st);
+				if (text == null) {
+					continue;
+				}
+				String[] parts = text.split(":");
+				if (parts.length == 2 && id.groupId().equals(parts[0]) && id.artifactId().equals(parts[1])) {
+					gavTemplate = st;
+					break;
+				}
+			}
+
+			if (gavTemplate == null) {
 				return false;
 			}
-			if (decl.getRequiredVersionLiteral() instanceof KtStringTemplateExpression version) {
-				version.updateText(newVersion);
-				return true;
+
+			KtLambdaExpression trailingLambda = null;
+			for (ValueArgument arg : call.getValueArguments()) {
+				if (arg instanceof KtLambdaArgument la
+						&& la.getArgumentExpression() instanceof KtLambdaExpression lam) {
+					trailingLambda = lam;
+					break;
+				}
 			}
-			return false;
+
+			if (trailingLambda == null || trailingLambda.getBodyExpression() == null) {
+				return false;
+			}
+
+			KtCallExpression versionCall = null;
+			for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(trailingLambda.getBodyExpression(),
+					KtCallExpression.class)) {
+				if ("version".equals(KotlinDslUtils.getKotlinCallName(inner))) {
+					versionCall = inner;
+					break;
+				}
+			}
+
+			if (versionCall == null) {
+				return false;
+			}
+
+			KtLambdaExpression versionLambda = null;
+			for (ValueArgument arg : versionCall.getValueArguments()) {
+				if (arg instanceof KtLambdaArgument la
+						&& la.getArgumentExpression() instanceof KtLambdaExpression lam) {
+					versionLambda = lam;
+					break;
+				}
+			}
+
+			if (versionLambda == null || versionLambda.getBodyExpression() == null) {
+				return false;
+			}
+
+			KtStringTemplateExpression preferTemplate = null;
+			KtStringTemplateExpression strictlyTemplate = null;
+
+			for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(versionLambda.getBodyExpression(),
+					KtCallExpression.class)) {
+				String name = KotlinDslUtils.getKotlinCallName(inner);
+				for (ValueArgument va : inner.getValueArguments()) {
+					if (va.getArgumentExpression() instanceof KtStringTemplateExpression st) {
+						if (GradleVersionConstraint.PREFER.equals(name) && preferTemplate == null) {
+							preferTemplate = st;
+						} else if (GradleVersionConstraint.STRICTLY.equals(name) && strictlyTemplate == null) {
+							strictlyTemplate = st;
+						}
+					}
+				}
+			}
+
+			KtStringTemplateExpression target;
+			if (preferTemplate != null) {
+				target = preferTemplate;
+			} else if (strictlyTemplate != null
+					&& !GradleUtils.isVersionRange(KotlinDslUtils.getText(strictlyTemplate))) {
+				target = strictlyTemplate;
+			} else {
+				return false;
+			}
+
+			target.updateText(newVersion);
+			return true;
 		}));
 	}
 
@@ -157,8 +243,8 @@ class UpdateKotlinDsl {
 	}
 
 	/**
-	 * Finds and updates a {@code val key = "value"} declaration in a Kotlin DSL
-	 * file.
+	 * Finds and updates a {@code val key = "value"} or
+	 * {@code val key by extra("value")} declaration in a Kotlin DSL file.
 	 *
 	 * @return {@code true} if the property was found and updated
 	 */
@@ -173,6 +259,17 @@ class UpdateKotlinDsl {
 				template.updateText(newVersion);
 				updated[0] = true;
 				return true;
+			}
+			if (property.hasDelegateExpression()
+					&& property.getDelegateExpression() instanceof KtCallExpression delegateCall
+					&& "extra".equals(KotlinDslUtils.getKotlinCallName(delegateCall))) {
+				for (ValueArgument va : delegateCall.getValueArguments()) {
+					if (va.getArgumentExpression() instanceof KtStringTemplateExpression argTemplate) {
+						argTemplate.updateText(newVersion);
+						updated[0] = true;
+						return true;
+					}
+				}
 			}
 			return false;
 		}));

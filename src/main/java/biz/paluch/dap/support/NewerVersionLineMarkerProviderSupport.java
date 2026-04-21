@@ -16,7 +16,8 @@
 package biz.paluch.dap.support;
 
 import java.awt.event.MouseEvent;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
@@ -91,6 +92,7 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 		}
 
 
+		// TODO
 		return new LineMarkerInfo<>(anchor, getTextRange(anchor), icon, e -> tooltip,
 				new ActionNavigationHandler(actionId), GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 

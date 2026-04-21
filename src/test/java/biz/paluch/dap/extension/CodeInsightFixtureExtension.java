@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.util.Function;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
@@ -76,7 +77,7 @@ class CodeInsightFixtureExtension
 	@Override
 	public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
 
-		if (!context.getTestClass().isPresent()
+		if (context.getTestClass().isEmpty()
 				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
 			return;
 		}
@@ -89,7 +90,7 @@ class CodeInsightFixtureExtension
 	@Override
 	public void beforeEach(ExtensionContext context) {
 
-		if (!context.getTestClass().isPresent()
+		if (context.getTestClass().isEmpty()
 				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
 			return;
 		}
@@ -101,7 +102,7 @@ class CodeInsightFixtureExtension
 	@Override
 	public void afterEach(ExtensionContext context) throws Exception {
 
-		if (!context.getTestClass().isPresent()
+		if (context.getTestClass().isEmpty()
 				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
 			return;
 		}
@@ -135,7 +136,7 @@ class CodeInsightFixtureExtension
 	@Override
 	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
 
-		if (!extensionContext.getTestClass().isPresent()
+		if (extensionContext.getTestClass().isEmpty()
 				|| !extensionContext.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
 			return false;
 		}
@@ -147,9 +148,9 @@ class CodeInsightFixtureExtension
 	}
 
 	@Override
-	public Object resolveParameter(ParameterContext parameterContext, ExtensionContext context) {
+	public @Nullable Object resolveParameter(ParameterContext parameterContext, ExtensionContext context) {
 
-		if (!context.getTestClass().isPresent()
+		if (context.getTestClass().isEmpty()
 				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
 			return null;
 		}
@@ -170,7 +171,7 @@ class CodeInsightFixtureExtension
 				FixtureResource.class);
 	}
 
-	private FixtureResource removeResource(ExtensionContext context) {
+	private @Nullable FixtureResource removeResource(ExtensionContext context) {
 		return context.getStore(NAMESPACE).remove(STORE_KEY, FixtureResource.class);
 	}
 
@@ -208,8 +209,7 @@ class CodeInsightFixtureExtension
 		setFields(testInstance, field -> null);
 	}
 
-	private void setFields(Object testInstance, Function<Field, Object> valueProvider) {
-
+	private void setFields(Object testInstance, Function<Field, @Nullable Object> valueProvider) {
 
 		for (Field field : findInjectableFields(testInstance.getClass())) {
 			ReflectionUtils.makeAccessible(field);
@@ -273,7 +273,6 @@ class CodeInsightFixtureExtension
 
 	private record FixtureResource(
 			CodeInsightTestFixture codeInsightFixture) {
-
 
 		private void close() throws Exception {
 			EdtTestUtil.runInEdtAndWait(codeInsightFixture::tearDown);

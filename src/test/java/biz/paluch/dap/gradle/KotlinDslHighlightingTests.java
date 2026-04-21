@@ -52,7 +52,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void suggestsPluginUpgrade(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "4.0.5");
 	}
 
@@ -63,7 +65,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gav(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
@@ -74,7 +78,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavPlatform(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
@@ -94,7 +100,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStrictly(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
@@ -110,7 +118,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyPrefer(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
@@ -126,7 +136,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyFunctionPrefer(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().tooltipContains("Patch", "6.0.3")
 				.hasPsiElementTextContaining("6.0.0");
 	}
@@ -138,7 +150,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void mapNotationWithVersionLiteral(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().tooltipContains("Patch", "6.0.3")
 				.hasPsiElementTextContaining("6.0.0");
 	}
@@ -151,7 +165,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void mapNotationWithVersionVariable(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
@@ -167,11 +183,12 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void dependencyConstraintLiteral(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().tooltipContains("Patch", "6.0.3")
 				.hasPsiElementTextContaining("6.0.0");
 	}
-
 
 	// -------------------------------------------------------------------------
 	// Properties
@@ -189,7 +206,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gradlePropertyViaProperty(PsiFile properties, @ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
 		GradleFixtures.analyze(properties, buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
 	}
 
@@ -205,7 +224,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gradlePropertyViaProjectProperty(PsiFile properties, @ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
 		GradleFixtures.analyze(properties, buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
 	}
 
@@ -222,7 +243,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gradlePropertyByProjectDelegate(PsiFile properties, @ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
 		GradleFixtures.analyze(properties, buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNavigation();
@@ -239,7 +262,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void extraPropertyByDelegate(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// same file
@@ -256,7 +281,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void extraPropertyWithDefault(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// same file
@@ -273,7 +300,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void extPropertySet(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// same file
@@ -288,7 +317,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void mapNotationWithVersionProperty(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
@@ -310,7 +341,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyWithVersionProperty(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
@@ -328,7 +361,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyWithVersionVariable(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
@@ -348,7 +383,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyPreferWithVersionProperty(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
@@ -367,7 +404,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyPreferWithVersionVariable(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
@@ -382,7 +421,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStringInterpolationNoBraces(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
@@ -397,7 +438,9 @@ class KotlinDslHighlightingTests {
 			}
 			""")
 	void gavStringInterpolationWithBraces(PsiFile buildFile) {
+
 		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
@@ -418,10 +461,49 @@ class KotlinDslHighlightingTests {
 			""")
 	void dependencyConstraintWithProjectDelegate(
 			PsiFile properties, @ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
 		GradleFixtures.analyze(properties, buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSize(2);
 		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
 		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNavigation();
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-dependency-management = "1.1.6"
+
+			[plugins]
+			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+			""")
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+				    alias(libs.plugins.spring.dependency.management)
+				}
+			""")
+	void tomlPluginReference(PsiFile toml, @ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		GradleFixtures.analyze(toml, buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+				junit = { module = "org.junit:junit-bom", version = "6.0.0" }
+			""")
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+				    implementation(libs.junit)
+				}
+			""")
+	void tomlDependencyReference(PsiFile toml, @ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		GradleFixtures.analyze(toml, buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
 	}
 
 }

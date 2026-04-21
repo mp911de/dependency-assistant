@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,16 +15,14 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.EditorFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Tests for {@link TomlParser}.
@@ -34,185 +32,155 @@ import static org.assertj.core.api.Assertions.*;
 @CodeInsightFixtureTests
 class TomlParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@Test
-	void tomlVersionCatalogWithVersionRefs() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[versions]
+			spring-boot = "3.5.0"
+			commons-lang = "3.17.0"
+			junit = "5.11.0"
 
-		PsiFile file = fixture.configureByText("libs.versions.toml",
-				"""
-						[versions]
-						spring-boot = "3.5.0"
-						commons-lang = "3.17.0"
-						junit = "5.11.0"
+			[libraries]
+			spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+			commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang" }
+			junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+			""")
+	void tomlVersionCatalogWithVersionRefs(PsiFile buildFile) {
 
-						[libraries]
-						spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
-						commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang" }
-						junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
-						""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		TomlParser parser = new TomlParser(collector);
-		parser.parseVersionCatalog(file);
-
-		Dependency springBoot = collector.getUsage("org.springframework.boot", "spring-boot-starter");
-		assertThat(springBoot).as("spring-boot-starter from TOML").isNotNull();
-		assertThat(springBoot.getCurrentVersion().toString()).isEqualTo("3.5.0");
-		assertThat(springBoot.getVersionSources()).anyMatch(vs -> vs instanceof VersionSource.VersionCatalogProperty);
-
-		assertThat(collector.getUsage("org.apache.commons", "commons-lang3")).as("commons-lang3 from TOML")
-				.isNotNull();
-		assertThat(collector.getUsage("org.junit.jupiter", "junit-jupiter")).as("junit-jupiter from TOML").isNotNull();
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.boot", "spring-boot-starter")
+				.hasVersion("3.5.0")
+				.hasVersionSource(VersionSource.VersionCatalogProperty.class);
+		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3").hasVersion("3.17.0");
+		assertThat(collector).hasDependencyUsage("org.junit.jupiter", "junit-jupiter").hasVersion("5.11.0");
 	}
 
 	@Test
-	void tomlVersionCatalogWithInlineVersions() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[libraries]
+			log4j-core = { module = "org.apache.logging.log4j:log4j-core", version = "2.24.3" }
+			""")
+	void tomlVersionCatalogWithInlineVersions(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[libraries]
-				log4j-core = { module = "org.apache.logging.log4j:log4j-core", version = "2.24.3" }
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		TomlParser parser = new TomlParser(collector);
-		parser.parseVersionCatalog(file);
-
-		Dependency log4j = collector.getUsage("org.apache.logging.log4j", "log4j-core");
-		assertThat(log4j).as("log4j-core inline version").isNotNull();
-		assertThat(log4j.getCurrentVersion().toString()).isEqualTo("2.24.3");
-		// Inline version is a declared version, not a property.
-		assertThat(log4j.hasPropertyVersion()).isFalse();
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.logging.log4j", "log4j-core")
+				.hasVersion("2.24.3")
+				.hasNoPropertyVersion();
 	}
 
 	@Test
-	void gavStringLiteralInLibraries() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[libraries]
+			commons-lang3 = "org.apache.commons:commons-lang3:3.17.0"
+			""")
+	void gavStringLiteralInLibraries(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[libraries]
-				commons-lang3 = "org.apache.commons:commons-lang3:3.17.0"
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		Dependency dep = collector.getUsage("org.apache.commons", "commons-lang3");
-		assertThat(dep).isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("3.17.0");
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.commons", "commons-lang3")
+				.hasVersion("3.17.0");
 	}
 
 	@Test
-	void gavStringLiteralWithFewerThanThreeSegmentsIsIgnored() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[libraries]
+			bad-entry = "org.example:artifact"
+			""")
+	void gavStringLiteralWithFewerThanThreeSegmentsIsIgnored(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[libraries]
-				bad-entry = "org.example:artifact"
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		assertThat(collector.getUsage("org.example", "artifact")).isNull();
+		assertThat(collector).hasNoDependencyUsage("org.example", "artifact");
 	}
 
 	@Test
-	void groupAndNameInlineTableNormalizesToModule() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[libraries]
+			guava = { group = "com.google.guava", name = "guava", version = "33.4.0-jre" }
+			""")
+	void groupAndNameInlineTableNormalizesToModule(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[libraries]
-				guava = { group = "com.google.guava", name = "guava", version = "33.4.0-jre" }
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		Dependency dep = collector.getUsage("com.google.guava", "guava");
-		assertThat(dep).isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("33.4.0-jre");
+		assertThat(collector)
+				.hasDependencyUsage("com.google.guava", "guava")
+				.hasVersion("33.4.0-jre");
 	}
 
 	@Test
-	void groupAndNameInlineTableWithVersionRef() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[versions]
+			guava = "33.4.0-jre"
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[versions]
-				guava = "33.4.0-jre"
+			[libraries]
+			guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
+			""")
+	void groupAndNameInlineTableWithVersionRef(PsiFile buildFile) {
 
-				[libraries]
-				guava = { group = "com.google.guava", name = "guava", version.ref = "guava" }
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		Dependency dep = collector.getUsage("com.google.guava", "guava");
-		assertThat(dep).isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("33.4.0-jre");
+		assertThat(collector)
+				.hasDependencyUsage("com.google.guava", "guava")
+				.hasVersion("33.4.0-jre");
 	}
 
 	@Test
-	void pluginShortNotation() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[plugins]
+			spring-boot = "org.springframework.boot:4.0.0"
+			""")
+	void pluginShortNotation(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[plugins]
-				spring-boot = "org.springframework.boot:4.0.0"
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		Dependency dep = collector.getUsage("org.springframework.boot", "org.springframework.boot");
-		assertThat(dep).isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("4.0.0");
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.boot")
+				.hasVersion("4.0.0");
 	}
 
 	@Test
-	void pluginShortNotationWithSingleSegmentIsIgnored() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[plugins]
+			spring-boot = "org.springframework.boot"
+			""")
+	void pluginShortNotationWithSingleSegmentIsIgnored(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[plugins]
-				spring-boot = "org.springframework.boot"
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		assertThat(collector.getUsage("org.springframework.boot", "org.springframework.boot")).isNull();
+		assertThat(collector).hasNoDependencyUsage("org.springframework.boot");
 	}
 
 	@Test
-	void pluginLongNotation() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[plugins]
+			long-notation = { id = "some.plugin.id", version = "1.4" }
+			""")
+	void pluginLongNotation(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[plugins]
-				long-notation = { id = "some.plugin.id", version = "1.4" }
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		Dependency dep = collector.getUsage("some.plugin.id", "some.plugin.id");
-		assertThat(dep).isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.4");
+		assertThat(collector).hasDependencyUsage("some.plugin.id")
+				.hasVersion("1.4");
 	}
 
 	@Test
-	void pluginRefNotation() {
+	@EditorFile(name = "libs.versions.toml", content = """
+			[versions]
+			common = "2.0.0"
 
-		PsiFile file = fixture.configureByText("libs.versions.toml", """
-				[versions]
-				common = "2.0.0"
+			[plugins]
+			ref-notation = { id = "some.plugin.id", version.ref = "common" }
+			""")
+	void pluginRefNotation(PsiFile buildFile) {
 
-				[plugins]
-				ref-notation = { id = "some.plugin.id", version.ref = "common" }
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = new DependencyCollector();
-		new TomlParser(collector).parseVersionCatalog(file);
-
-		Dependency dep = collector.getUsage("some.plugin.id", "some.plugin.id");
-		assertThat(dep).isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("2.0.0");
+		assertThat(collector).hasDependencyUsage("some.plugin.id")
+				.hasVersion("2.0.0");
 	}
 
 }

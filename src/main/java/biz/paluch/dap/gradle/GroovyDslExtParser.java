@@ -23,6 +23,9 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.util.containers.JBIterable;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -87,6 +90,44 @@ class GroovyDslExtParser {
 
 		Map<String, String> elements = new LinkedHashMap<>();
 		parseExtProperties(file).forEach((k, v) -> elements.put(k, v.propertyValue()));
+
+		return elements;
+	}
+
+	/**
+	 * Parses script-level variable declarations from the given file.
+	 * <p>Recognised forms:
+	 *
+	 * <pre class="code">
+	 * def springVersion = '6.1.0'
+	 * val springVersion = '6.1.0'
+	 * String springVersion = '6.1.0'
+	 * </pre>
+	 *
+	 * @param file a Groovy {@code .gradle} file
+	 * @return a map of variable name to its literal string value.
+	 */
+	public static Map<String, PsiPropertyValueElement> parseLocalVariables(PsiFile file) {
+
+		Map<String, PsiPropertyValueElement> elements = new LinkedHashMap<>();
+		SyntaxTraverser.psiTraverser(file)
+				.filter(GrVariableDeclaration.class)
+				.forEach(decl -> {
+
+					if (!(decl.getParent() instanceof GroovyFile)) {
+						return;
+					}
+
+					for (GrVariable variable : decl.getVariables()) {
+						String name = variable.getName();
+						GrExpression initializer = variable.getInitializerGroovy();
+						if (name != null && initializer instanceof GrLiteral literal
+								&& GroovyDslUtils.hasText(literal)) {
+							elements.put(name, new PsiPropertyValueElement(literal, name,
+									GroovyDslUtils.getRequiredText(literal)));
+						}
+					}
+				});
 
 		return elements;
 	}

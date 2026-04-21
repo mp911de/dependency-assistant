@@ -76,4 +76,9 @@ public class DeclaredDependency implements HasArtifactId {
 		return null;
 	}
 
+	@Override
+	public String toString() {
+		return getArtifactId().toString();
+	}
+
 }

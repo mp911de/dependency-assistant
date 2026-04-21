@@ -37,8 +37,8 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * PSI-level integration tests for the version-element resolution.
- *
+ * PSI-level integration tests for the version-element resolution. TODO: Merge
+ * with highlight tests
  * @author Mark Paluch
  */
 @CodeInsightFixtureTests
@@ -445,7 +445,7 @@ class VersionUpgradeLookupServiceTests {
 		List<DependencyAndVersionLocation> hits = new ArrayList<>();
 		GradlePropertyResolver resolver = GradlePropertyResolver.create(file);
 		SyntaxTraverser.psiTraverser(file).filter(KtCallElement.class).forEach(call -> {
-			DependencyAndVersionLocation location = KotlinDslUtils.findKotlinVersionElement(call, resolver);
+			DependencyAndVersionLocation location = KotlinDslParser.findKotlinVersionElement(call, resolver);
 			if (location != null && predicate.test(location)) {
 				hits.add(location);
 			}

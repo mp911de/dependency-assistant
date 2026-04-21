@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.EdtTestUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -34,30 +35,19 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
 /**
- * JUnit Jupiter extension that registers {@link ProjectFile} and
- * {@link EditorFile} test method annotations with the
- * {@link CodeInsightTestFixture} and resolves the resulting {@link PsiFile}
- * instances as test method parameters.
- *
- * <p>File registration order:
- * <ol>
- * <li>All {@link ProjectFile} declarations, in annotation order, via
- * {@link CodeInsightTestFixture#addFileToProject}.</li>
- * <li>The {@link EditorFile} declaration, if present, via
- * {@link CodeInsightTestFixture#configureByText}.</li>
- * </ol>
- *
- * <p>Parameter resolution rules for {@link PsiFile} parameters:
- * <ul>
- * <li>Parameters annotated with {@code @ProjectFile("name")} are resolved by
- * name from the full registry (project files and the editor file).</li>
- * <li>Unannotated {@link PsiFile} parameters are resolved positionally from the
- * ordered list of project files only.</li>
- * </ul>
- *
- * <p>This extension is activated automatically when the test class carries
- * {@link CodeInsightFixtureTests} and must be registered after
- * {@link CodeInsightFixtureExtension} to guarantee fixture availability.
+ * JUnit Jupiter extension that registers project files for fixture-driven PSI
+ * tests.
+ * <p>This extension processes {@link ProjectFile} and {@link EditorFile}
+ * declarations on a test method, registers corresponding files with the active
+ * {@link CodeInsightTestFixture}, and resolves {@link PsiFile} parameters for
+ * the same method invocation.
+ * <p>Resolution semantics mirror annotation intent: named lookup via
+ * {@code @ProjectFile("name")} against the complete registry and positional
+ * lookup for unannotated {@link PsiFile} parameters against project files in
+ * declaration order.
+ * <p>The extension is active only for test classes annotated with
+ * {@link CodeInsightFixtureTests} and assumes that
+ * {@link CodeInsightFixtureExtension} has already initialized the fixture.
  *
  * @author Mark Paluch
  * @see ProjectFile
@@ -138,7 +128,6 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 		return resolveByPosition(parameterContext, files);
 	}
 
-
 	private PsiFile resolveByName(ProjectFile lookup, RegisteredFiles files) {
 		String name = resolveName(lookup);
 		PsiFile file = files.byName().get(name);
@@ -151,7 +140,7 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 	}
 
 	private PsiFile resolveByPosition(ParameterContext parameterContext, RegisteredFiles files) {
-		int positionalIndex = countPrecedingPositionalPsiParameters(parameterContext);
+		int positionalIndex = getFileIndex(parameterContext);
 		List<PsiFile> projectFiles = files.projectFiles();
 		if (positionalIndex >= projectFiles.size()) {
 			throw new ParameterResolutionException(
@@ -162,7 +151,7 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 		return projectFiles.get(positionalIndex);
 	}
 
-	private int countPrecedingPositionalPsiParameters(ParameterContext parameterContext) {
+	private int getFileIndex(ParameterContext parameterContext) {
 		Parameter[] parameters = parameterContext.getDeclaringExecutable().getParameters();
 		int count = 0;
 		for (int i = 0; i < parameterContext.getIndex(); i++) {
@@ -178,13 +167,13 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 	private static String resolveName(ProjectFile annotation) {
 		String value = annotation.value();
 		String name = annotation.name();
-		if (!value.isBlank() && !name.isBlank() && !value.equals(name)) {
+		if (StringUtils.hasText(value) && StringUtils.hasText(name) && !value.equals(name)) {
 			throw new ExtensionConfigurationException(
 					"@ProjectFile 'value' and 'name' must not both be set to different values: "
 							+ "value='%s', name='%s'".formatted(value, name));
 		}
-		String resolved = value.isBlank() ? name : value;
-		if (resolved.isBlank()) {
+		String resolved = StringUtils.isEmpty(value) ? name : value;
+		if (StringUtils.isEmpty(resolved)) {
 			throw new ExtensionConfigurationException(
 					"@ProjectFile requires either 'value' or 'name' to be set");
 		}

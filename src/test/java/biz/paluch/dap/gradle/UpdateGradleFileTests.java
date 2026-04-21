@@ -482,6 +482,72 @@ class UpdateGradleFileTests {
 		assertThat(buildFile.getText()).doesNotContain("val guavaVersion = \"33.0-jre\"");
 	}
 
+	@Test
+	void groovyLocalVariableVersionIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
+				def junitVersion = '6.0.0'
+				def otherVersion = '1.0.0'
+
+				dependencies {
+				    implementation group: 'org.junit', name: 'junit-bom', version: junitVersion
+				}
+				""");
+
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+				VersionSource.property("junitVersion"), "6.0.3");
+
+		assertThat(buildFile.getText()).contains("def junitVersion = '6.0.3'");
+		assertThat(buildFile.getText()).doesNotContain("def junitVersion = '6.0.0'");
+		assertThat(buildFile.getText()).contains("def otherVersion = '1.0.0'");
+	}
+
+	@Test
+	void groovyVersionBlockStrictlyVariableIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
+				def junitVersion = '6.0.0'
+
+				dependencies {
+				    implementation('org.junit:junit-bom') {
+				        version {
+				            strictly junitVersion
+				        }
+				    }
+				}
+				""");
+
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+				VersionSource.property("junitVersion"), "6.0.3");
+
+		assertThat(buildFile.getText()).contains("def junitVersion = '6.0.3'");
+		assertThat(buildFile.getText()).doesNotContain("def junitVersion = '6.0.0'");
+	}
+
+	@Test
+	void groovyVersionBlockPreferVariableIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
+				def junitVersion = '6.0.0'
+
+				dependencies {
+				    implementation('org.junit:junit-bom') {
+				        version {
+				            strictly '[5.0, 7.0['
+				            prefer junitVersion
+				        }
+				    }
+				}
+				""");
+
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+				VersionSource.property("junitVersion"), "6.0.3");
+
+		assertThat(buildFile.getText()).contains("def junitVersion = '6.0.3'");
+		assertThat(buildFile.getText()).doesNotContain("def junitVersion = '6.0.0'");
+		assertThat(buildFile.getText()).contains("strictly '[5.0, 7.0['");
+	}
+
 	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 

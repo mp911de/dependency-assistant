@@ -16,6 +16,7 @@
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -33,8 +34,8 @@ import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.util.ArrayUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -99,11 +100,13 @@ class GradleParser extends GradleParserSupport {
 	 */
 	public void parseGroovyDsl(PsiFile file) {
 
-		Map<String, PsiPropertyValueElement> properties = GroovyDslExtParser.parseExtProperties(file);
+		Map<String, PsiPropertyValueElement> extProperties = GroovyDslExtParser.parseExtProperties(file);
+		Map<String, PsiPropertyValueElement> localVars = GroovyDslExtParser.parseLocalVariables(file);
 		this.propertyLookup.clear();
-		this.propertyLookup.putAll(properties);
+		this.propertyLookup.putAll(localVars);
+		this.propertyLookup.putAll(extProperties);
 
-		properties.forEach((k, v) -> this.properties.put(k, v.propertyValue()));
+		this.propertyLookup.forEach((k, v) -> this.properties.put(k, v.propertyValue()));
 		getCollector().addProperties(this.properties.keySet());
 		file.accept(PsiVisitors.visitTree(GrMethodCall.class, this::handleGroovyCall));
 	}
@@ -117,7 +120,6 @@ class GradleParser extends GradleParserSupport {
 		boolean isPlugin = GroovyDslUtils.isInsidePluginsBlock(call);
 
 		if (isPlugin) {
-			// id('plugin.id') version 'x.y.z' — handled as a single binary expression,
 			GradleDependency dependency = parsePlugin(call);
 			if (dependency != null) {
 				register(dependency, DeclarationSource.plugin());
@@ -129,7 +131,6 @@ class GradleParser extends GradleParserSupport {
 			return;
 		}
 
-		// Try string notation first: implementation('group:artifact:version')
 		GradleDependency dependency = parseDependency(call);
 		DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed()
 				: DeclarationSource.dependency();
@@ -144,7 +145,6 @@ class GradleParser extends GradleParserSupport {
 		}
 
 		if (dependency == null) {
-			// Try map notation: implementation(group: 'g', name: 'a', version: 'v')
 			GrNamedArgument[] named = call.getNamedArguments();
 			if (named.length >= 2) {
 				NamedDependencyDeclaration entry = parseMapDependency(call, named, this);
@@ -194,10 +194,30 @@ class GradleParser extends GradleParserSupport {
 	 * </pre> Returns a {@link NamedDependencyDeclaration} when a usable version can
 	 * be extracted, or {@code null} otherwise.
 	 */
+	private @Nullable NamedDependencyDeclaration parseVersionBlockDependency(GrMethodCall call) {
+		return parseVersionBlockDependency(call, null);
+	}
+
+	/**
+	 * Parses a version-block dependency of the form: <pre class="code">
+	 * implementation('group:artifact') {
+	 *     version {
+	 *         strictly '[1.7, 1.8['
+	 *         prefer '1.7.25'
+	 *     }
+	 * }
+	 * </pre>
+	 * <p>When {@code propertyResolver} is provided, bare variable references such
+	 * as {@code prefer varName} are resolved through it.
+	 * <p>Returns a {@link NamedDependencyDeclaration} when a usable version can be
+	 * extracted, or {@code null} otherwise.
+	 */
 	@Nullable
-	static NamedDependencyDeclaration parseVersionBlockDependency(GrMethodCall call) {
+	static NamedDependencyDeclaration parseVersionBlockDependency(GrMethodCall call,
+			@Nullable PropertyResolver propertyResolver) {
 
 		GrLiteral gavLiteral = null;
+		GrClosableBlock depClosure = null;
 
 		for (PsiElement arg : call.getArgumentList().getAllArguments()) {
 			if (arg instanceof GrLiteral lit) {
@@ -212,14 +232,21 @@ class GradleParser extends GradleParserSupport {
 			return null;
 		}
 
-		GrClosableBlock depClosure = ArrayUtil.getFirstElement(call.getClosureArguments());
+		for (GrClosableBlock closure : call.getClosureArguments()) {
+			depClosure = closure;
+			break;
+		}
+
+
 		if (depClosure == null) {
 			return null;
 		}
 
 		GrMethodCall versionCall = null;
-		for (PsiElement stmt : depClosure.getStatements()) {
-			if (stmt instanceof GrMethodCall mc && "version".equals(GroovyDslUtils.getGroovyMethodName(mc))) {
+		List<GrMethodCall> depCallChildren = SyntaxTraverser.psiTraverser(depClosure)
+				.filter(GrMethodCall.class).toList();
+		for (GrMethodCall mc : depCallChildren) {
+			if ("version".equals(GroovyDslUtils.getGroovyMethodName(mc))) {
 				versionCall = mc;
 				break;
 			}
@@ -229,45 +256,84 @@ class GradleParser extends GradleParserSupport {
 			return null;
 		}
 
-		GrClosableBlock versionClosure = ArrayUtil.getFirstElement(versionCall.getClosureArguments());
+		GrClosableBlock versionClosure = null;
+		for (GrClosableBlock closure : versionCall.getClosureArguments()) {
+			versionClosure = closure;
+			break;
+		}
+
+
 		if (versionClosure == null) {
 			return null;
 		}
 
 		GrLiteral preferLiteral = null;
 		GrLiteral strictlyLiteral = null;
+		PsiElement preferRef = null;
+		PsiElement strictlyRef = null;
+		String preferVarName = null;
+		String strictlyVarName = null;
 
-		for (PsiElement stmt : versionClosure.getStatements()) {
-			if (!(stmt instanceof GrMethodCall mc)) {
-				continue;
-			}
+		for (GrMethodCall mc : SyntaxTraverser.psiTraverser(versionClosure).filter(GrMethodCall.class)) {
 			String name = GroovyDslUtils.getGroovyMethodName(mc);
 			GrLiteral firstArg = PsiTreeUtil.getChildOfType(mc.getArgumentList(), GrLiteral.class);
-			if (firstArg == null) {
-				continue;
-			}
 
-			if ("prefer".equals(name) && preferLiteral == null) {
-				preferLiteral = firstArg;
-			} else if ("strictly".equals(name) && strictlyLiteral == null) {
-				strictlyLiteral = firstArg;
+			if (GradleVersionConstraint.PREFER.equals(name) && preferLiteral == null) {
+				if (firstArg != null) {
+					preferLiteral = firstArg;
+				} else if (propertyResolver != null) {
+					GrReferenceExpression refArg = PsiTreeUtil.getChildOfType(mc.getArgumentList(),
+							GrReferenceExpression.class);
+					if (refArg != null) {
+						preferVarName = refArg.getReferenceName();
+						preferRef = refArg;
+					}
+				}
+			} else if (GradleVersionConstraint.STRICTLY.equals(name) && strictlyLiteral == null) {
+				if (firstArg != null) {
+					strictlyLiteral = firstArg;
+				} else if (propertyResolver != null) {
+					GrReferenceExpression refArg = PsiTreeUtil.getChildOfType(mc.getArgumentList(),
+							GrReferenceExpression.class);
+					if (refArg != null) {
+						strictlyVarName = refArg.getReferenceName();
+						strictlyRef = refArg;
+					}
+				}
 			}
 		}
 
-		GrLiteral versionLiteral;
+		String version;
+		PsiElement versionElement;
+
 		if (preferLiteral != null) {
-			versionLiteral = preferLiteral;
-		} else if (strictlyLiteral != null) {
-			String strictlyText = GroovyDslUtils.getText(strictlyLiteral);
-			if (isVersionRange(strictlyText)) {
+			version = GroovyDslUtils.getText(preferLiteral);
+			versionElement = preferLiteral;
+		} else if (preferVarName != null && propertyResolver != null) {
+			PsiPropertyValueElement resolved = propertyResolver.getElement(preferVarName);
+			if (resolved == null) {
 				return null;
 			}
-			versionLiteral = strictlyLiteral;
+			version = resolved.propertyValue();
+			versionElement = resolved.element();
+		} else if (strictlyLiteral != null) {
+			String strictlyText = GroovyDslUtils.getText(strictlyLiteral);
+			if (GradleUtils.isVersionRange(strictlyText)) {
+				return null;
+			}
+			version = strictlyText;
+			versionElement = strictlyLiteral;
+		} else if (strictlyVarName != null && propertyResolver != null) {
+			PsiPropertyValueElement resolved = propertyResolver.getElement(strictlyVarName);
+			if (resolved == null) {
+				return null;
+			}
+			version = resolved.propertyValue();
+			versionElement = resolved.element();
 		} else {
 			return null;
 		}
 
-		String version = GroovyDslUtils.getText(versionLiteral);
 		if (StringUtils.isEmpty(version)) {
 			return null;
 		}
@@ -280,19 +346,9 @@ class GradleParser extends GradleParserSupport {
 		String group = parts[0];
 		String artifact = parts[1];
 
-		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact, null, version, call,
-				versionLiteral);
-	}
-
-	/**
-	 * Returns {@code true} if {@code version} contains range syntax characters.
-	 */
-	static boolean isVersionRange(@Nullable String version) {
-		if (version == null) {
-			return false;
-		}
-		return version.contains("[") || version.contains("]") || version.contains("(") || version.contains(")")
-				|| version.contains(",");
+		String varName = preferVarName != null ? preferVarName : strictlyVarName;
+		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact, varName, version, call,
+				versionElement);
 	}
 
 	/**

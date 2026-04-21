@@ -251,7 +251,11 @@ class KotlinDslExtraParser {
 		return propertyKey.equals(key);
 	}
 
-	public static boolean isExtra(KtBinaryExpression expr) {
+	public static boolean isExtra(@Nullable KtBinaryExpression expr) {
+
+		if (expr == null) {
+			return false;
+		}
 
 		// Must be an assignment: operator text is "="
 		if (!"=".equals(expr.getOperationReference().getText())) {

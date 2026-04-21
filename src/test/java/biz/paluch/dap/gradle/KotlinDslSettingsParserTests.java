@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,11 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.EditorFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assumptions.*;
 
 /**
  * PSI-level tests for {@link KotlinDslSettingsParser}.
@@ -32,42 +30,34 @@ import static org.junit.jupiter.api.Assumptions.*;
 @CodeInsightFixtureTests
 class KotlinDslSettingsParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@Test
-	void singleCatalogIsRegistered() {
+	@EditorFile(name = "settings.gradle.kts", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        create("libs") { from(files("gradle/libs.versions.toml")) }
+			    }
+			}
+			""")
+	void singleCatalogIsRegistered(PsiFile buildFile) {
 
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE, "Kotlin plugin not available");
-
-		PsiFile file = fixture.configureByText("settings.gradle.kts", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				        create("libs") { from(files("gradle/libs.versions.toml")) }
-				    }
-				}
-				""");
-
-		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry.containsAlias("libs")).isTrue();
 		assertThat(registry.pathForAlias("libs")).isEqualTo("gradle/libs.versions.toml");
 	}
 
 	@Test
-	void multipleCatalogsAreRegistered() {
+	@EditorFile(name = "settings.gradle.kts", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        create("libs") { from(files("gradle/libs.versions.toml")) }
+			        create("tools") { from(files("gradle/tools.versions.toml")) }
+			    }
+			}
+			""")
+	void multipleCatalogsAreRegistered(PsiFile buildFile) {
 
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE, "Kotlin plugin not available");
-
-		PsiFile file = fixture.configureByText("settings.gradle.kts", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				        create("libs") { from(files("gradle/libs.versions.toml")) }
-				        create("tools") { from(files("gradle/tools.versions.toml")) }
-				    }
-				}
-				""");
-
-		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry.containsAlias("libs")).isTrue();
 		assertThat(registry.pathForAlias("libs")).isEqualTo("gradle/libs.versions.toml");
@@ -76,52 +66,43 @@ class KotlinDslSettingsParserTests {
 	}
 
 	@Test
-	void defaultLibrariesExtensionNameIsRespected() {
+	@EditorFile(name = "settings.gradle.kts", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        create("projectLibs") { from(files("gradle/libs.versions.toml")) }
+			    }
+			    defaultLibrariesExtensionName = "projectLibs"
+			}
+			""")
+	void defaultLibrariesExtensionNameIsRespected(PsiFile buildFile) {
 
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE, "Kotlin plugin not available");
-
-		PsiFile file = fixture.configureByText("settings.gradle.kts", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				        create("projectLibs") { from(files("gradle/libs.versions.toml")) }
-				    }
-				    defaultLibrariesExtensionName = "projectLibs"
-				}
-				""");
-
-		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry.defaultAlias()).isEqualTo("projectLibs");
 		assertThat(registry.containsAlias("projectLibs")).isTrue();
 	}
 
 	@Test
-	void noBlockFallsBackToDefaults() {
+	@EditorFile(name = "settings.gradle.kts", content = """
+			rootProject.name = "my-project"
+			""")
+	void noBlockFallsBackToDefaults(PsiFile buildFile) {
 
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE, "Kotlin plugin not available");
-
-		PsiFile file = fixture.configureByText("settings.gradle.kts", """
-				rootProject.name = "my-project"
-				""");
-
-		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry).isEqualTo(VersionCatalogRegistry.defaults());
 	}
 
 	@Test
-	void emptyVersionCatalogsFallsBackToDefaults() {
+	@EditorFile(name = "settings.gradle.kts", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			    }
+			}
+			""")
+	void emptyVersionCatalogsFallsBackToDefaults(PsiFile buildFile) {
 
-		assumeTrue(GradleUtils.KOTLIN_AVAILABLE, "Kotlin plugin not available");
-
-		PsiFile file = fixture.configureByText("settings.gradle.kts", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				    }
-				}
-				""");
-
-		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry).isEqualTo(VersionCatalogRegistry.defaults());
 	}

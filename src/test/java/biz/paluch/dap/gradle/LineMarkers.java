@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.ArrayList;
 import java.util.List;
 
-import biz.paluch.dap.assertions.Assertions.CodeInsightAssertions.GutterMarksAssert;
+import biz.paluch.dap.assertions.CodeInsightAssertions.GutterMarksAssert;
 import com.intellij.codeInsight.daemon.GutterMark;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.openapi.util.Key;

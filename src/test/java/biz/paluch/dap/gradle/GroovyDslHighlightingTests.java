@@ -15,16 +15,11 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +42,7 @@ class GroovyDslHighlightingTests {
 	}
 
 	// -------------------------------------------------------------------------
-	// GAV style
+	// Plugins
 	// -------------------------------------------------------------------------
 
 	@Test
@@ -57,9 +52,15 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void suggestsPluginUpgrade(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "4.0.5");
 	}
+
+	// -------------------------------------------------------------------------
+	// GAV style
+	// -------------------------------------------------------------------------
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
@@ -68,7 +69,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gav(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
@@ -87,7 +90,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gavStrictly(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
@@ -103,11 +108,11 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyPrefer(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
-		List<LineMarkerInfo<?>> lineMarkerInfos = collectMarkers(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
 	}
-
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
@@ -121,7 +126,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyFunctionPrefer(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).hasSingleGutter().tooltipContains("Patch", "6.0.3").hasPsiElementTextContaining("6.0.0");
 	}
 
@@ -132,7 +139,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void mapNotationWithVersionLiteral(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).hasSingleGutter().tooltipContains("Patch", "6.0.3").hasPsiElementTextContaining("6.0.0");
 	}
 
@@ -144,7 +153,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void mapNotationWithVersionVariable(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
@@ -167,7 +178,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gradleProperty(PsiFile properties, @ProjectFile("build.gradle") PsiFile buildFile) {
+
 		GradleFixtures.analyze(properties, buildFile);
+
 		assertThat(fixture).hasSingleGutter().hasPsiElementTextContaining("${junit}").hasNavigation();
 	}
 
@@ -183,7 +196,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void extPropertySet(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		assertThat(fixture).gutter(1).hasNoNavigation();
@@ -201,7 +216,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void extPropertyAssignment(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		assertThat(fixture).gutter(1).hasNoNavigation();
@@ -218,7 +235,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void extProperty(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		assertThat(fixture).gutter(1).hasNoNavigation();
@@ -232,7 +251,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void mapNotationWithVersionProperty(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		assertThat(fixture).gutter(1).hasNoNavigation();
@@ -248,13 +269,15 @@ class GroovyDslHighlightingTests {
 			dependencies {
 			    implementation('org.junit:junit-bom') {
 			        version {
-			            strictly "${junit}
+			            strictly "${junit}"
 			        }
 			    }
 			}
 			""")
 	void gavStrictlyWithVersionProperty(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		assertThat(fixture).gutter(1).hasNoNavigation();
@@ -272,7 +295,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyWithVersionVariable(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
@@ -292,7 +317,9 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyPreferWithVersionProperty(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		assertThat(fixture).gutter(1).hasNoNavigation();
@@ -311,26 +338,13 @@ class GroovyDslHighlightingTests {
 			}
 			""")
 	void gavStrictlyPreferWithVersionVariable(PsiFile buildFile) {
-		GradleFixtures.analyzeGroovyDsl(buildFile);
+
+		GradleFixtures.analyze(buildFile);
+
 		assertThat(fixture).gutters().hasSize(2);
 		assertThat(fixture).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
 		assertThat(fixture).gutter(1).hasNoNavigation();
-	}
-
-	private static List<LineMarkerInfo<?>> collectMarkers(
-			PsiFile file) {
-		List<LineMarkerInfo<?>> result = new ArrayList<>();
-
-		NewerVersionLineMarkerProvider provider = new NewerVersionLineMarkerProvider();
-		SyntaxTraverser.psiTraverser(file).forEach(it -> {
-			LineMarkerInfo<?> lineMarkerInfo = provider.getLineMarkerInfo(it);
-			if (lineMarkerInfo != null) {
-				result.add(lineMarkerInfo);
-			}
-		});
-
-		return result;
 	}
 
 }

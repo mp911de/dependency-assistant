@@ -15,6 +15,9 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.DependencyAssistantService;
 import com.intellij.openapi.project.Project;
@@ -22,16 +25,16 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Collects dependency coordinates from Gradle build files associated with the project root that contains the given
- * anchor file.
- * <p>
- * The collection process:
+ * Collects dependency coordinates from Gradle build files associated with the
+ * project root that contains the given anchor file.
+ * <p>The collection process:
  * <ol>
- * <li>Loads {@code gradle.properties} from the project root to build a property map.</li>
- * <li>Parses the anchor file itself (the file currently open in the editor) using the appropriate parser (Groovy,
- * Kotlin, Properties, or TOML).</li>
- * <li>If the anchor file is not a {@code build.gradle(.kts)}, also scans for {@code gradle/libs.versions.toml} if it
- * exists.</li>
+ * <li>Loads {@code gradle.properties} from the project root to build a property
+ * map.</li>
+ * <li>Parses the anchor file itself (the file currently open in the editor)
+ * using the appropriate parser (Groovy, Kotlin, Properties, or TOML).</li>
+ * <li>If the anchor file is not a {@code build.gradle(.kts)}, also scans for
+ * {@code gradle/libs.versions.toml} if it exists.</li>
  * </ol>
  *
  * @author Mark Paluch
@@ -39,16 +42,25 @@ import com.intellij.psi.PsiFile;
 class GradleDependencyCollector {
 
 	private final Project project;
+
+	private final Map<String, String> properties;
+
 	private final DependencyAssistantService service;
 
 	public GradleDependencyCollector(Project project) {
+		this(project, Map.of());
+	}
+
+	public GradleDependencyCollector(Project project, Map<String, String> properties) {
 		this.project = project;
 		this.service = DependencyAssistantService.getInstance(project);
+		this.properties = properties;
 	}
 
 	/**
-	 * Collects artifact declarations from {@code buildFile} (and any sibling files such as {@code gradle.properties} or
-	 * {@code libs.versions.toml} in the same directory tree).
+	 * Collects artifact declarations from {@code buildFile} (and any sibling files
+	 * such as {@code gradle.properties} or {@code libs.versions.toml} in the same
+	 * directory tree).
 	 *
 	 * @param buildFile the Gradle file.
 	 * @return a populated {@link DependencyCollector}
@@ -64,16 +76,16 @@ class GradleDependencyCollector {
 
 		VirtualFile file = psiFile.getVirtualFile();
 		if (GradleUtils.isVersionCatalog(file)) {
-			TomlParser parser = new TomlParser(collector);
+			TomlParser parser = new TomlParser(collector, new LinkedHashMap<>(properties));
 			parser.parseVersionCatalog(psiFile);
 		} else if (GradleUtils.isGradlePropertiesFile(file)) {
-			GradleParser parser = new GradleParser(collector);
+			GradleParser parser = new GradleParser(collector, new LinkedHashMap<>(properties));
 			parser.parseGradleProperties(service.getCache(), psiFile);
 		} else if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
-			KotlinDslParser parser = new KotlinDslParser(collector);
+			KotlinDslParser parser = new KotlinDslParser(collector, new LinkedHashMap<>(properties));
 			parser.parseKotlinScript(psiFile);
 		} else {
-			GradleParser parser = new GradleParser(collector);
+			GradleParser parser = new GradleParser(collector, new LinkedHashMap<>(properties));
 			parser.parseGroovyDsl(psiFile);
 		}
 	}

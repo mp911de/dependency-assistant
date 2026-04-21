@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,9 +16,8 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.EditorFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -31,38 +30,34 @@ import static org.assertj.core.api.Assertions.*;
 @CodeInsightFixtureTests
 class GroovyDslSettingsParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@Test
-	void singleCatalogIsRegistered() {
+	@EditorFile(name = "settings.gradle", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        libs { from(files("gradle/libs.versions.toml")) }
+			    }
+			}
+			""")
+	void singleCatalogIsRegistered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("settings.gradle", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				        libs { from(files("gradle/libs.versions.toml")) }
-				    }
-				}
-				""");
-
-		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry.containsAlias("libs")).isTrue();
 		assertThat(registry.pathForAlias("libs")).isEqualTo("gradle/libs.versions.toml");
 	}
 
 	@Test
-	void multipleCatalogsAreRegistered() {
+	@EditorFile(name = "settings.gradle", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        libs { from(files("gradle/libs.versions.toml")) }
+			        tools { from(files("gradle/tools.versions.toml")) }
+			    }
+			}
+			""")
+	void multipleCatalogsAreRegistered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("settings.gradle", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				        libs { from(files("gradle/libs.versions.toml")) }
-				        tools { from(files("gradle/tools.versions.toml")) }
-				    }
-				}
-				""");
-
-		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry.containsAlias("libs")).isTrue();
 		assertThat(registry.pathForAlias("libs")).isEqualTo("gradle/libs.versions.toml");
@@ -71,18 +66,17 @@ class GroovyDslSettingsParserTests {
 	}
 
 	@Test
-	void multipleCatalogsCallSyntaxAreRegistered() {
+	@EditorFile(name = "settings.gradle", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        create("libs") { from(files("gradle/libs.versions.toml")) }
+			        create("tools") { from(files("gradle/tools.versions.toml")) }
+			    }
+			}
+			""")
+	void multipleCatalogsCallSyntaxAreRegistered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("settings.gradle", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				        create("libs") { from(files("gradle/libs.versions.toml")) }
-				        create("tools") { from(files("gradle/tools.versions.toml")) }
-				    }
-				}
-				""");
-
-		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry.containsAlias("libs")).isTrue();
 		assertThat(registry.pathForAlias("libs")).isEqualTo("gradle/libs.versions.toml");
@@ -91,46 +85,43 @@ class GroovyDslSettingsParserTests {
 	}
 
 	@Test
-	void defaultLibrariesExtensionNameIsRespected() {
+	@EditorFile(name = "settings.gradle", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        projectLibs { from(files("gradle/libs.versions.toml")) }
+			    }
+			    defaultLibrariesExtensionName = 'projectLibs'
+			}
+			""")
+	void defaultLibrariesExtensionNameIsRespected(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("settings.gradle", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				        projectLibs { from(files("gradle/libs.versions.toml")) }
-				    }
-				    defaultLibrariesExtensionName = 'projectLibs'
-				}
-				""");
-
-		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry.defaultAlias()).isEqualTo("projectLibs");
 		assertThat(registry.containsAlias("projectLibs")).isTrue();
 	}
 
 	@Test
-	void noBlockFallsBackToDefaults() {
+	@EditorFile(name = "settings.gradle", content = """
+			rootProject.name = 'my-project'
+			""")
+	void noBlockFallsBackToDefaults(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("settings.gradle", """
-				rootProject.name = 'my-project'
-				""");
-
-		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry).isEqualTo(VersionCatalogRegistry.defaults());
 	}
 
 	@Test
-	void emptyVersionCatalogsFallsBackToDefaults() {
+	@EditorFile(name = "settings.gradle", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			    }
+			}
+			""")
+	void emptyVersionCatalogsFallsBackToDefaults(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("settings.gradle", """
-				dependencyResolutionManagement {
-				    versionCatalogs {
-				    }
-				}
-				""");
-
-		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(file);
+		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(buildFile);
 
 		assertThat(registry).isEqualTo(VersionCatalogRegistry.defaults());
 	}

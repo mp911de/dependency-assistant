@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,9 +24,8 @@ import java.lang.annotation.Target;
 /**
  * Configures the editor with a named file via
  * {@link com.intellij.testFramework.fixtures.CodeInsightTestFixture#configureByText}.
- *
- * <p>Only one {@code @EditorFile} per test method is supported. The resulting
- * {@link com.intellij.psi.PsiFile} is registered under its name and
+ * <p>Only one {@code @EditorFile} declaration per test method is supported. The
+ * resulting {@link com.intellij.psi.PsiFile} is registered under its name and
  * participates in name-based {@link ProjectFile} parameter lookup.
  *
  * @author Mark Paluch
@@ -41,11 +40,15 @@ public @interface EditorFile {
 	/**
 	 * The file name passed to
 	 * {@link com.intellij.testFramework.fixtures.CodeInsightTestFixture#configureByText}.
+	 *
+	 * @return the editor file name; must not be {@literal null} or empty.
 	 */
 	String name();
 
 	/**
 	 * The file content.
+	 *
+	 * @return the editor file content; defaults to an empty file.
 	 */
 	String content() default "";
 

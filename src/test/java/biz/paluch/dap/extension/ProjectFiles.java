@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,9 +22,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Container annotation for repeatable {@link ProjectFile} declarations.
+ * Container annotation that aggregates repeatable {@link ProjectFile}
+ * declarations.
+ * <p>This annotation is used implicitly by Java's repeatable annotation support
+ * when multiple {@link ProjectFile} declarations are declared on a single test
+ * method.
  *
  * @author Mark Paluch
+ * @see ProjectFile
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,9 +18,8 @@ package biz.paluch.dap.gradle;
 import java.util.Map;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.EditorFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -32,45 +31,40 @@ import static org.assertj.core.api.Assertions.*;
 @CodeInsightFixtureTests
 class GroovyDslExtParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@Test
-	void extSetPropertyIsCollected() {
+	@EditorFile(name = "build.gradle", content = """
+			ext {
+			    set('springModulithVersion', "2.0.4")
+			}
+			""")
+	void extSetPropertyIsCollected(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle", """
-				ext {
-				    set('springModulithVersion', "2.0.4")
-				}
-				""");
-
-		Map<String, String> props = GroovyDslExtParser.getExtProperties(file);
+		Map<String, String> props = GroovyDslExtParser.getExtProperties(buildFile);
 
 		assertThat(props).containsEntry("springModulithVersion", "2.0.4");
 	}
 
 	@Test
-	void extAssignmentPropertyIsCollected() {
+	@EditorFile(name = "build.gradle", content = """
+			ext {
+			    springVersion = '6.1.0'
+			    lombokVersion = '1.18.36'
+			}
+			""")
+	void extAssignmentPropertyIsCollected(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle", """
-				ext {
-				    springVersion = '6.1.0'
-				    lombokVersion = '1.18.36'
-				}
-				""");
-
-		Map<String, String> props = GroovyDslExtParser.getExtProperties(file);
+		Map<String, String> props = GroovyDslExtParser.getExtProperties(buildFile);
 
 		assertThat(props).containsEntry("springVersion", "6.1.0").containsEntry("lombokVersion", "1.18.36");
 	}
 
 	@Test
-	void extDotAssignmentPropertyIsCollected() {
+	@EditorFile(name = "build.gradle", content = """
+			ext.springBootVersion = '3.5.0'
+			""")
+	void extDotAssignmentPropertyIsCollected(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle", """
-				ext.springBootVersion = '3.5.0'
-				""");
-
-		Map<String, String> props = GroovyDslExtParser.getExtProperties(file);
+		Map<String, String> props = GroovyDslExtParser.getExtProperties(buildFile);
 
 		assertThat(props).containsEntry("springBootVersion", "3.5.0");
 	}

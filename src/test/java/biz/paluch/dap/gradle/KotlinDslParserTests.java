@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,18 +18,21 @@ package biz.paluch.dap.gradle;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * PSI-level integration tests for {@link KotlinDslParser}.
+ * PSI-level integration tests for {@link KotlinDslParser} and
+ * {@link DependencyCollector} (property maps, {@code extra},
+ * {@code property(...)}).
  *
  * @author Mark Paluch
  */
@@ -38,532 +41,745 @@ class KotlinDslParserTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
-	@Test
-	void pluginsWithVersionsAreDiscovered() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    kotlin("jvm")
-				    id("org.springframework.boot") version "4.0.3"
-				    id("io.spring.dependency-management") version "1.1.7"
-				}
-				""");
-
-		DependencyCollector collector = parse(file);
-
-		// Versioned plugins are registered as update candidates.
-		Dependency boot = collector.getUsage("org.springframework.boot", "org.springframework.boot");
-		assertThat(boot).as("org.springframework.boot plugin").isNotNull();
-		assertThat(boot.getCurrentVersion().toString()).isEqualTo("4.0.3");
-		assertThat(boot.getDeclarationSources()).anyMatch(ds -> ds instanceof DeclarationSource.Plugin);
-
-		Dependency depMgmt = collector.getUsage("io.spring.dependency-management", "io.spring.dependency-management");
-		assertThat(depMgmt).as("io.spring.dependency-management plugin").isNotNull();
-		assertThat(depMgmt.getCurrentVersion().toString()).isEqualTo("1.1.7");
-
-		// Plugin without a version is not an update candidate.
-		assertThat(collector.getUsage("jvm", "jvm")).isNull();
+	@BeforeEach
+	void setUp() {
+		GradleFixtures.setup(fixture.getProject());
 	}
 
+	// -------------------------------------------------------------------------
+	// GAV style
+	// -------------------------------------------------------------------------
+
 	@Test
-	void pluginIdFromExtraPropertyIsResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    kotlin("jvm")
+			    id("org.springframework.boot") version "4.0.3"
+			    id("io.spring.dependency-management") version "1.1.7"
+			}
+			""")
+	void pluginsWithVersionsAreDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["myPlugin"] = "org.foo"
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-				plugins {
-				    id("${myPlugin}") version "1.0"
-				}
-				""");
-
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+		assertThat(collector).hasDependencyUsage("org.springframework.boot")
+				.hasVersion("4.0.3");
+		assertThat(collector).hasDependencyUsage("io.spring.dependency-management")
+				.hasVersion("1.1.7");
+		assertThat(collector).hasNoDependencyUsage("jvm");
 	}
 
 	@Test
-	void pluginIdFromGradlePropertiesIsResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:6.0.0")
+			}
+			""")
+	void gavWithVersionIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("${myPlugin}") version "1.0"
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		Map<String, String> props = Map.of("myPlugin", "org.foo");
-		DependencyCollector collector = parse(props, file);
-
-		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
 	}
 
 	@Test
-	void pluginIdViaPropertyCallIsResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:6.0.0"))
+			}
+			""")
+	void gavPlatformIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("${property("myPlugin")}") version "1.0"
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		Map<String, String> props = Map.of("myPlugin", "org.foo");
-		DependencyCollector collector = parse(props, file);
-
-		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasDeclaration(DeclarationSource.managed());
 	}
 
 	@Test
-	void pluginIdMixedStringWithPropertyCallIsResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(group = "org.junit", name = "junit-bom", version = "6.0.0")
+			}
+			""")
+	void directDependencyInNamedArgNotationIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("com.example.${property("suffix")}") version "1.0"
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		Map<String, String> props = Map.of("suffix", "bar");
-		DependencyCollector collector = parse(props, file);
-
-		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
 	}
 
 	@Test
-	void pluginIdMixedStringWithVarRefIsResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.apache.groovy:groovy")
+			    implementation("org.springframework.modulith:spring-modulith-starter-core")
+			}
+			""")
+	void dependenciesWithoutVersionAreNotCollected(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
+	}
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["suffix"] = "bar"
+	// -------------------------------------------------------------------------
+	// Constraints
+	// -------------------------------------------------------------------------
 
-				plugins {
-				    id("com.example.${suffix}") version "1.0"
-				}
-				""");
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom") {
+			        version {
+			            strictly("[5.0, 6.1[")
+			            prefer("6.0.0")
+			        }
+			    }
+			}
+			""")
+	void versionBlockWithPreferAndStrictlyIsDiscovered(PsiFile buildFile) {
 
-		DependencyCollector collector = parse(file);
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		assertThat(collector.getUsage("com.example.bar", "com.example.bar")).isNotNull();
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
 	}
 
 	@Test
-	void pluginIdBareVarRefIsResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    constraints {
+			        implementation("org.junit:junit-bom:6.0.0")
+			    }
+			}
+			""")
+	void dependencyConstraintLiteralIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["myPlugin"] = "org.foo"
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-				plugins {
-				    id("$myPlugin") version "1.0"
-				}
-				""");
-
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
 	}
 
 	@Test
-	void pluginIdUnresolvablePropertyCallSkipped() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.slf4j:slf4j-api") {
+			        version {
+			            prefer("1.7.25")
+			        }
+			    }
+			}
+			""")
+	void versionBlockWithPreferOnlyIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("${property("missing")}") version "1.0"
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsages()).isEmpty();
+		assertThat(collector).hasDependencyUsage("org.slf4j", "slf4j-api")
+				.hasVersion("1.7.25");
 	}
 
 	@Test
-	void pluginIdUnresolvableSkipped() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("${missing}") version "1.0"
-				}
-				""");
-
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsages()).isEmpty();
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.slf4j:slf4j-api") {
+			        version {
+			            strictly("[1.7, 1.8[")
+			        }
+			    }
+			}
+			""")
+	void versionBlockWithRangeOnlyIsSkipped(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
 	}
 
 	@Test
-	void pluginIdEmptyValueSkipped() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom") {
+			        version {
+			            strictly("6.0.0")
+			        }
+			    }
+			}
+			""")
+	void versionBlockWithExactStrictlyNoPreferIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("${property("myPlugin")}") version "1.0"
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		Map<String, String> props = Map.of("myPlugin", "");
-		DependencyCollector collector = parse(props, file);
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
 
-		assertThat(collector.getUsages()).isEmpty();
+	// -------------------------------------------------------------------------
+	// Properties
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			"2.0.4".also { extra["springModulithVersion"] = it }
+
+			dependencies {
+			    implementation(platform("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}"))
+			}
+			""")
+	void managedBomWithPropertyExpressionIsResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.modulith", "spring-modulith-bom")
+				.hasVersion("2.0.4")
+				.hasDeclaration(DeclarationSource.dependency())
+				.hasPropertyVersion("springModulithVersion");
 	}
 
 	@Test
-	void pluginIdInvalidFormatSkipped() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencyManagement {
+			    imports {
+			        mavenBom("org.junit:junit-bom:${property("junit")}")
+			    }
+			}
+			""")
+	void mavenBomGradlePropertyViaPropertyIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("${property("myPlugin")}") version "1.0"
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		Map<String, String> props = Map.of("myPlugin", "../evil");
-		DependencyCollector collector = parse(props, file);
-
-		assertThat(collector.getUsages()).isEmpty();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasDeclaration(DeclarationSource.managed())
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void pluginIdAndVersionBothFromPropertiesKotlin() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencyManagement {
+			    imports {
+			        mavenBom("org.junit:junit-bom:${project.property("junit")}")
+			    }
+			}
+			""")
+	void mavenBomGradlePropertyViaProjectPropertyIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				plugins {
-				    id("${property("pluginId")}") version "${property("pluginVer")}"
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		Map<String, String> props = Map.of("pluginId", "org.foo", "pluginVer", "3.0");
-		DependencyCollector collector = parse(props, file);
-
-		Dependency plugin = collector.getUsage("org.foo", "org.foo");
-		assertThat(plugin).isNotNull();
-		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("3.0");
-		assertThat(plugin.hasPropertyVersion()).isTrue();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void settingsKotlinPluginManagementIdResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			val junit: String by project
+			dependencyManagement {
+			    imports {
+			        mavenBom("org.junit:junit-bom:${junit}")
+			    }
+			}
+			""")
+	void mavenBomGradlePropertyByProjectDelegateIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("settings.gradle.kts", """
-				pluginManagement {
-				    plugins {
-				        id("${property("myPlugin")}") version "1.0"
-				    }
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		Map<String, String> props = Map.of("myPlugin", "org.foo");
-		DependencyCollector collector = parse(props, file);
-
-		assertThat(collector.getUsage("org.foo", "org.foo")).isNotNull();
-	}
-
-
-	@Test
-	void gavWithVersionIsDiscovered() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation("org.apache.commons:commons-lang3:3.19.0") {
-				            because ('comment')
-				    }
-				    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
-				    compileOnly("org.projectlombok:lombok:1.18.36")
-				}
-				""");
-
-		DependencyCollector collector = parse(file);
-
-		Dependency commonsLang = collector.getUsage("org.apache.commons", "commons-lang3");
-		assertThat(commonsLang).as("commons-lang3").isNotNull();
-		assertThat(commonsLang.getCurrentVersion().toString()).isEqualTo("3.19.0");
-		assertThat(commonsLang.getDeclarationSources()).anyMatch(ds -> ds instanceof DeclarationSource.Dependency);
-
-		assertThat(collector.getUsage("org.junit.jupiter", "junit-jupiter")).as("junit-jupiter").isNotNull();
-		assertThat(collector.getUsage("org.projectlombok", "lombok")).as("lombok").isNotNull();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void directDependencyInNamedArgNotationIsDiscovered() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["junit"] = "6.0.0"
+			val junit: String by extra
+			dependencyManagement {
+			    imports {
+			        mavenBom("org.junit:junit-bom:${junit}")
+			    }
+			}
+			""")
+	void mavenBomExtraPropertyByDelegateIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation(group = "org.apache.groovy", name = "groovy", version = "4.0.25")
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		DependencyCollector collector = parse(file);
-
-		Dependency groovy = collector.getUsage("org.apache.groovy", "groovy");
-		assertThat(groovy).as("groovy named-arg notation").isNotNull();
-		assertThat(groovy.getCurrentVersion().toString()).isEqualTo("4.0.25");
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void dependenciesWithoutVersionAreNotCollected() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			val junit by extra("6.0.0")
+			dependencyManagement {
+			    imports {
+			        mavenBom("org.junit:junit-bom:${junit}")
+			    }
+			}
+			""")
+	void mavenBomExtraPropertyWithDefaultIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation("org.apache.groovy:groovy")
-				    implementation("org.springframework.modulith:spring-modulith-starter-core")
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsages()).isEmpty();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void managedBomWithPropertyExpressionIsResolved() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["junit"] = "6.0.0"
+			dependencyManagement {
+			    imports {
+			        mavenBom("org.junit:junit-bom:${extra["junit"]}")
+			    }
+			}
+			""")
+	void mavenBomExtPropertySetViaExtraIndexIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts",
-				"""
-						"2.0.4".also { extra["springModulithVersion"] = it }
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-						dependencies {
-						    implementation(platform("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}"))
-						}
-						""");
-
-		DependencyCollector collector = parse(file);
-
-		Dependency bom = collector.getUsage("org.springframework.modulith", "spring-modulith-bom");
-		assertThat(bom).as("spring-modulith-bom").isNotNull();
-		assertThat(bom.getCurrentVersion().toString()).isEqualTo("2.0.4");
-		assertThat(bom.getDeclarationSources()).hasAtLeastOneElementOfType(DeclarationSource.Dependency.class);
-
-		// Version is tracked as a property reference, not an inline literal.
-		assertThat(bom.hasPropertyVersion()).isTrue();
-		assertThat(bom.findPropertyVersion().getProperty()).isEqualTo("springModulithVersion");
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void dependencyVersionResolvedViaExtraProperty() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["junit"] = "6.0.0"
+			dependencies {
+			    implementation(group = "org.junit", name = "junit-bom", version = "${extra["junit"]}")
+			}
+			""")
+	void mapNotationWithVersionPropertyFromExtraIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["commonsVersion"] = "3.19.0"
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-				dependencies {
-				    implementation("org.apache.commons:commons-lang3:${property("commonsVersion")}")
-				}
-				""");
-
-		DependencyCollector collector = parse(file);
-
-		Dependency dep = collector.getUsage("org.apache.commons", "commons-lang3");
-		assertThat(dep).as("commons-lang3 via extra property").isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("3.19.0");
-		assertThat(dep.findPropertyVersion()).isNotNull();
-		assertThat(dep.findPropertyVersion().getProperty()).isEqualTo("commonsVersion");
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void fullKotlinBuildFileDiscovery() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["commonsVersion"] = "3.19.0"
 
-		PsiFile file = fixture.configureByText("build.gradle.kts",
-				"""
-						plugins {
-						    kotlin("jvm")
-						    id("org.springframework.boot") version "4.0.3"
-						    id("io.spring.dependency-management") version "1.1.7"
-						}
+			dependencies {
+			    implementation("org.apache.commons:commons-lang3:${property("commonsVersion")}")
+			}
+			""")
+	void dependencyVersionResolvedViaExtraProperty(PsiFile buildFile) {
 
-						group = "com.example"
-						version = "0.0.1-SNAPSHOT"
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-						extra["springModulithVersion"] = "2.0.4"
-
-						dependencies {
-						    implementation("org.apache.groovy:groovy")
-						    implementation("org.apache.commons:commons-lang3:3.19.0")
-						    implementation("org.springframework.modulith:spring-modulith-starter-core")
-						    testImplementation("org.springframework.boot:spring-boot-starter-test")
-						    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-						    implementation(platform("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}"))
-						}
-						""");
-
-		DependencyCollector collector = parse(file);
-
-		// Plugins with versions
-		assertThat(collector.getUsage("org.springframework.boot", "org.springframework.boot")).as("boot plugin")
-				.isNotNull();
-		assertThat(collector.getUsage("io.spring.dependency-management", "io.spring.dependency-management"))
-				.as("dep-mgmt plugin").isNotNull();
-
-		// Direct dependency with inline version
-		assertThat(collector.getUsage("org.apache.commons", "commons-lang3")).as("commons-lang3").isNotNull();
-
-		// Managed BOM resolved via extra property
-		Dependency bom = collector.getUsage("org.springframework.modulith", "spring-modulith-bom");
-		assertThat(bom).as("spring-modulith-bom").isNotNull();
-		assertThat(bom.getCurrentVersion().toString()).isEqualTo("2.0.4");
-		assertThat(bom.hasPropertyVersion()).isTrue();
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.commons", "commons-lang3")
+				.hasVersion("3.19.0")
+				.hasPropertyVersion("commonsVersion");
 	}
 
 	@Test
-	void parsesMapSyntaxDependencyCorrectly() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			val junit = "6.0.0"
+			dependencies {
+			    implementation(group = "org.junit", name = "junit-bom", version = junit)
+			}
+			""")
+	void mapDependencyWithBareVariableVersionIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation(name = "guava", group = "com.google.guava", version = "33.0.0-jre")
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = parse(file);
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
+	}
 
-		Dependency guava = collector.getUsage("com.google.guava", "guava");
-		assertThat(guava).as("guava non-canonical order").isNotNull();
-		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0.0-jre");
+	// -------------------------------------------------------------------------
+	// Constraints + Properties
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["junit"] = "6.0.0"
+			dependencies {
+			    implementation("org.junit:junit-bom") {
+			        version {
+			            strictly("${extra["junit"]}")
+			        }
+			    }
+			}
+			""")
+	void gavStrictlyWithVersionPropertyIsDiscovered(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
+
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void skipsMissingGroup() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			val junit = "6.0.0"
+			dependencies {
+			    implementation("org.junit:junit-bom") {
+			        version {
+			            strictly(junit)
+			        }
+			    }
+			}
+			""")
+	void gavStrictlyWithVersionVariableIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation(name = "guava", version = "33.0.0-jre")
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsages()).isEmpty();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void skipsMissingVersion() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["junit"] = "6.0.0"
+			dependencies {
+			    implementation("org.junit:junit-bom") {
+			        version {
+			            strictly("[5.0, 6.1[")
+			            prefer("${extra["junit"]}")
+			        }
+			    }
+			}
+			""")
+	void gavStrictlyPreferWithVersionPropertyIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation(group = "com.google.guava", name = "guava")
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsages()).isEmpty();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void skipsMissingName() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			val junit = "6.0.0"
+			dependencies {
+			    implementation("org.junit:junit-bom") {
+			        version {
+			            strictly("[5.0, 6.1[")
+			            prefer(junit)
+			        }
+			    }
+			}
+			""")
+	void gavStrictlyPreferWithVersionVariableIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation(group = "com.google.guava", version = "33.0.0-jre")
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsages()).isEmpty();
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void versionBlockWithPreferAndStrictlyIsDiscovered() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			val junit = "6.0.0"
+			dependencies {
+			    implementation("org.junit:junit-bom:$junit")
+			}
+			""")
+	void gavStringInterpolationNoBracesIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation("org.slf4j:slf4j-api") {
-				        version {
-				            strictly("[1.7, 1.8[")
-				            prefer("1.7.25")
-				        }
-				    }
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		DependencyCollector collector = parse(file);
-
-		Dependency dep = collector.getUsage("org.slf4j", "slf4j-api");
-		assertThat(dep).as("slf4j-api version block with prefer").isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
 	}
 
 	@Test
-	void versionBlockWithPreferOnlyIsDiscovered() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			val junit = "6.0.0"
+			dependencies {
+			    implementation("org.junit:junit-bom:${junit}")
+			}
+			""")
+	void gavStringInterpolationWithBracesIsDiscovered(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation("org.slf4j:slf4j-api") {
-				        version {
-				            prefer("1.7.25")
-				        }
-				    }
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
-		DependencyCollector collector = parse(file);
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
+	}
 
-		Dependency dep = collector.getUsage("org.slf4j", "slf4j-api");
-		assertThat(dep).as("slf4j-api version block with prefer only").isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+	// -------------------------------------------------------------------------
+	// Plugins (plugin ID resolution)
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["myPlugin"] = "org.foo"
+
+			plugins {
+			    id("${myPlugin}") version "1.0"
+			}
+			""")
+	void pluginIdFromExtraPropertyIsResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.foo").hasVersion("1.0");
 	}
 
 	@Test
-	void versionBlockWithExactStrictlyNoPreferIsDiscovered() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("${property("myPlugin")}") version "1.0"
+			}
+			""")
+	void pluginIdFromGradlePropertiesIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation("org.slf4j:slf4j-api") {
-				        version {
-				            strictly("1.7.25")
-				        }
-				    }
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("myPlugin", "org.foo"));
 
-		DependencyCollector collector = parse(file);
-
-		Dependency dep = collector.getUsage("org.slf4j", "slf4j-api");
-		assertThat(dep).isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("1.7.25");
+		assertThat(collector)
+				.hasDependencyUsage("org.foo")
+				.hasVersion("1.0");
 	}
 
 	@Test
-	void versionBlockWithRangeOnlyIsSkipped() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("${property("myPlugin")}") version "1.0"
+			}
+			""")
+	void pluginIdViaPropertyCallIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				dependencies {
-				    implementation("org.slf4j:slf4j-api") {
-				        version {
-				            strictly("[1.7, 1.8[")
-				        }
-				    }
-				}
-				""");
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("myPlugin", "org.foo"));
 
-		DependencyCollector collector = parse(file);
-
-		assertThat(collector.getUsages()).as("range-only version block must not be collected").isEmpty();
+		assertThat(collector)
+				.hasDependencyUsage("org.foo")
+				.hasVersion("1.0");
 	}
 
 	@Test
-	void mapDependencyWithBareVariableVersionIsDiscovered() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("com.example.${property("suffix")}") version "1.0"
+			}
+			""")
+	void pluginIdMixedStringWithPropertyCallIsResolved(PsiFile buildFile) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				val guavaVersion = "33.0-jre"
+		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("suffix", "bar"));
 
-				dependencies {
-				    implementation(group = "com.google.guava", name = "guava", version = guavaVersion)
-				}
-				""");
-
-		DependencyCollector collector = parse(file);
-
-		Dependency guava = collector.getUsage("com.google.guava", "guava");
-		assertThat(guava).as("guava with bare val reference").isNotNull();
-		assertThat(guava.getCurrentVersion().toString()).isEqualTo("33.0-jre");
-		assertThat(guava.hasPropertyVersion()).isTrue();
-		assertThat(guava.findPropertyVersion().getProperty()).isEqualTo("guavaVersion");
+		assertThat(collector)
+				.hasDependencyUsage("com.example.bar")
+				.hasVersion("1.0");
 	}
 
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["suffix"] = "bar"
 
-	private static DependencyCollector parse(PsiFile file) {
-		KotlinDslParser parser = new KotlinDslParser();
-		parser.parseKotlinScript(file);
-		return parser.getCollector();
+			plugins {
+			    id("com.example.${suffix}") version "1.0"
+			}
+			""")
+	void pluginIdMixedStringWithVarRefIsResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("com.example.bar")
+				.hasVersion("1.0");
 	}
 
-	private DependencyCollector parse(Map<String, String> props, PsiFile file) {
-		KotlinDslParser parser = new KotlinDslParser();
-		parser.getPropertyMap().putAll(props);
-		parser.parseKotlinScript(file);
-		return parser.getCollector();
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["myPlugin"] = "org.foo"
+
+			plugins {
+			    id("$myPlugin") version "1.0"
+			}
+			""")
+	void pluginIdBareVarRefIsResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.foo", "org.foo")
+				.hasVersion("1.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("${property("missing")}") version "1.0"
+			}
+			""")
+	void pluginIdUnresolvablePropertyCallSkipped(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("${missing}") version "1.0"
+			}
+			""")
+	void pluginIdUnresolvableSkipped(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("${property("myPlugin")}") version "1.0"
+			}
+			""")
+	void pluginIdEmptyValueSkipped(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile, Map.of("myPlugin", ""))).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("${property("myPlugin")}") version "1.0"
+			}
+			""")
+	void pluginIdInvalidFormatSkipped(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile, Map.of("myPlugin", "../evil"))).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    id("${property("pluginId")}") version "${property("pluginVer")}"
+			}
+			""")
+	void pluginIdAndVersionBothFromPropertiesKotlin(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile,
+				Map.of("pluginId", "org.foo", "pluginVer", "3.0"));
+
+		assertThat(collector)
+				.hasDependencyUsage("org.foo", "org.foo")
+				.hasVersion("3.0")
+				.hasPropertyVersion("pluginVer");
+	}
+
+	// -------------------------------------------------------------------------
+	// Settings
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "settings.gradle.kts", content = """
+			pluginManagement {
+			    plugins {
+			        id("${property("myPlugin")}") version "1.0"
+			    }
+			}
+			""")
+	void settingsKotlinPluginManagementIdResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile,
+				Map.of("myPlugin", "org.foo"));
+
+		assertThat(collector)
+				.hasDependencyUsage("org.foo", "org.foo")
+				.hasVersion("1.0");
+	}
+
+	// -------------------------------------------------------------------------
+	// Map notation (edge cases)
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(name = "guava", group = "com.google.guava", version = "33.0.0-jre")
+			}
+			""")
+	void parsesMapSyntaxDependencyCorrectly(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("com.google.guava", "guava").hasVersion("33.0.0-jre");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(name = "guava", version = "33.0.0-jre")
+			}
+			""")
+	void skipsMissingGroup(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(group = "com.google.guava", name = "guava")
+			}
+			""")
+	void skipsMissingVersion(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(group = "com.google.guava", version = "33.0.0-jre")
+			}
+			""")
+	void skipsMissingName(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
+	}
+
+	// -------------------------------------------------------------------------
+	// Full build file
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			plugins {
+			    kotlin("jvm")
+			    id("org.springframework.boot") version "4.0.3"
+			    id("io.spring.dependency-management") version "1.1.7"
+			}
+
+			group = "com.example"
+			version = "0.0.1-SNAPSHOT"
+
+			extra["springModulithVersion"] = "2.0.4"
+
+			dependencies {
+			    implementation("org.apache.groovy:groovy")
+			    implementation("org.apache.commons:commons-lang3:3.19.0")
+			    implementation("org.springframework.modulith:spring-modulith-starter-core")
+			    testImplementation("org.springframework.boot:spring-boot-starter-test")
+			    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+			    implementation(platform("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}"))
+			}
+			""")
+	void fullKotlinBuildFileDiscovery(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.springframework.boot", "org.springframework.boot");
+		assertThat(collector).hasDependencyUsage("io.spring.dependency-management", "io.spring.dependency-management");
+		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3");
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.modulith", "spring-modulith-bom")
+				.hasVersion("2.0.4")
+				.hasPropertyVersion("springModulithVersion");
 	}
 
 }

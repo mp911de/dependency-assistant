@@ -243,6 +243,62 @@ class UpdateKotlinDslTests {
 		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
 	}
 
+	@Test
+	void kotlinValLiteralPropertyIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				val springVersion = "3.5.0"
+				val otherVersion = "1.1.7"
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${springVersion}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("val springVersion = \"3.6.0\"");
+		assertThat(buildFile.getText()).contains("val otherVersion = \"1.1.7\"");
+	}
+
+	@Test
+	void kotlinValByExtraDefaultIsUpdated() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				val springVersion by extra("3.5.0")
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${springVersion}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("val springVersion by extra(\"3.6.0\")");
+	}
+
+	@Test
+	void kotlinValByExtraDelegateRoutesThroughExtra() {
+
+		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
+				extra["springVersion"] = "3.5.0"
+				extra["lombokVersion"] = "1.18.36"
+				val springVersion: String by extra
+
+				dependencies {
+				    implementation("org.springframework:spring-core:${property("springVersion")}")
+				}
+				""");
+
+		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+				VersionSource.property("springVersion"), "3.6.0");
+
+		assertThat(buildFile.getText()).contains("extra[\"springVersion\"] = \"3.6.0\"");
+		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+	}
+
 	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 

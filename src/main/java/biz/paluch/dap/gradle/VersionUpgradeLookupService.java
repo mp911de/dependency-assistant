@@ -21,6 +21,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
@@ -37,18 +38,14 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.kotlin.psi.KtBinaryExpression;
-import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtElement;
-import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtStringTemplateEntry;
+import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrStringInjection;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlLiteral;
 
@@ -166,14 +163,75 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		if (element instanceof GrLiteral groovyLiteral) {
-			ArtifactReference fromGav = resolveReference(
-					GroovyDslUtils.findGroovyVersionElement(groovyLiteral, propertyResolver),
-					GrMethodCall.class);
+			DependencyAndVersionLocation location = GroovyDslUtils.findGroovyVersionElement(groovyLiteral,
+					propertyResolver);
+			ArtifactReference fromGav = resolveReference(location, GrMethodCall.class);
 			if (fromGav.isResolved()) {
 				return fromGav;
 			}
+			if (location != null) {
+				GrMethodCall fallbackCall = PsiTreeUtil.getParentOfType(groovyLiteral, GrMethodCall.class);
+				if (fallbackCall != null) {
+					fromGav = ArtifactReferenceUtils.resolve(location, fallbackCall, propertyResolver);
+					if (fromGav.isResolved()) {
+						return fromGav;
+					}
+				}
+			}
 			return resolveExtProperty(groovyLiteral);
 		}
+
+		GrReferenceExpression refExpr = element instanceof GrReferenceExpression ref ? ref
+				: PsiTreeUtil.getParentOfType(element, GrReferenceExpression.class);
+		if (refExpr != null && PsiTreeUtil.getParentOfType(refExpr, GrStringInjection.class) == null) {
+			return resolveGroovyVariableReference(refExpr);
+		}
+
+		return ArtifactReference.unresolved();
+	}
+
+	private ArtifactReference resolveGroovyVariableReference(GrReferenceExpression refExpr) {
+
+		String refName = refExpr.getReferenceName();
+		if (StringUtils.isEmpty(refName)) {
+			return ArtifactReference.unresolved();
+		}
+
+		PsiPropertyValueElement resolved = propertyResolver.getElement(refName);
+		if (resolved == null) {
+			return ArtifactReference.unresolved();
+		}
+
+		GrMethodCall ancestor = PsiTreeUtil.getParentOfType(refExpr, GrMethodCall.class);
+		while (ancestor != null) {
+			NamedDependencyDeclaration decl = GradleParser.parseVersionBlockDependency(ancestor, propertyResolver);
+			if (decl != null && decl.isComplete()) {
+				GrMethodCall depCall = ancestor;
+				return ArtifactReference.from(it -> {
+					ArtifactId id = ArtifactId.of(decl.group(), decl.artifact());
+					it.artifact(id).declarationElement(depCall)
+							.versionSource(VersionSource.property(refName));
+					ArtifactVersion.from(resolved.propertyValue()).ifPresent(it::version);
+					it.versionLiteral(resolved.element());
+				});
+			}
+			GrNamedArgument[] named = ancestor.getNamedArguments();
+			if (named.length >= 2) {
+				NamedDependencyDeclaration mapDecl = GradleParser.parseMapDependency(ancestor, named, propertyResolver);
+				if (mapDecl.isComplete()) {
+					GrMethodCall depCall = ancestor;
+					return ArtifactReference.from(it -> {
+						ArtifactId id = ArtifactId.of(mapDecl.group(), mapDecl.artifact());
+						it.artifact(id).declarationElement(depCall)
+								.versionSource(VersionSource.property(refName));
+						ArtifactVersion.from(resolved.propertyValue()).ifPresent(it::version);
+						it.versionLiteral(resolved.element());
+					});
+				}
+			}
+			ancestor = PsiTreeUtil.getParentOfType(ancestor, GrMethodCall.class);
+		}
+
 		return ArtifactReference.unresolved();
 	}
 
@@ -207,6 +265,16 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		PsiElement declarationCall = PsiTreeUtil.getParentOfType(location.version(), callType);
 		if (declarationCall == null) {
+			return ArtifactReference.unresolved();
+		}
+
+		return ArtifactReferenceUtils.resolve(location, declarationCall, propertyResolver);
+	}
+
+	private ArtifactReference resolveReference(KtCallExpression declarationCall,
+			@Nullable DependencyAndVersionLocation location) {
+
+		if (location == null) {
 			return ArtifactReference.unresolved();
 		}
 
@@ -250,32 +318,94 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return fromCatalog;
 		}
 
-		if (element instanceof KtBlockStringTemplateEntry propertyCandidate) {
-			KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(propertyCandidate);
-			if (dependencyExpression != null) {
-				return resolveReference(
-						KotlinDslUtils.findKotlinVersionElement(dependencyExpression, propertyCandidate,
-								propertyResolver),
-						KtCallExpression.class);
+		// value in extra["key"] = …
+		if (element instanceof KtStringTemplateExpression propertyCandidate) {
+			KtBinaryExpression propertyExpression = KotlinDslUtils.findPropertyExpression(propertyCandidate);
+			if (KotlinDslExtraParser.isExtra(propertyExpression)) {
+				return resolveExtraProperty(propertyExpression, element);
 			}
 		}
 
-		KtLiteralStringTemplateEntry literalEntry = element instanceof KtLiteralStringTemplateEntry le ? le : null;
-		if (literalEntry == null && element instanceof LeafPsiElement
-				&& element.getParent() instanceof KtLiteralStringTemplateEntry le) {
-			literalEntry = le;
-		}
-		if (literalEntry != null) {
-			KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(literalEntry);
-			if (dependencyExpression != null) {
-				return resolveReference(
-						KotlinDslUtils.findKotlinVersionElement(dependencyExpression, literalEntry,
-								propertyResolver),
-						KtCallExpression.class);
+		if (element instanceof KtBlockStringTemplateEntry propertyCandidate) {
+
+			// KtStringTemplateExpression
+			KtLiterals literals = KtLiterals.from(propertyCandidate);
+			if (literals.hasProperty()) {
+				KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(propertyCandidate);
+				if (dependencyExpression != null) {
+					return resolveProperty(literals.getProperty(), dependencyExpression);
+				}
 			}
-			KtBinaryExpression propertyExpression = KotlinDslUtils.findPropertyExpression(literalEntry);
-			if (propertyExpression != null) {
-				return resolveExtraProperty(propertyExpression, literalEntry);
+
+			KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(propertyCandidate);
+			if (dependencyExpression != null) {
+				return resolveReference(dependencyExpression,
+						KotlinDslParser.findKotlinVersionElement(dependencyExpression,
+								propertyResolver));
+			}
+		}
+
+		if (element instanceof KtStringTemplateEntry versionCandidate) {
+
+			KtProperty property = KotlinDslUtils.findProperty(versionCandidate);
+			if (property != null && StringUtils.hasText(property.getName())) {
+				return resolveProperty(property.getName(), property);
+			}
+
+			if (versionCandidate.getParent() instanceof KtStringTemplateExpression expr) {
+				PsiElement[] children = expr.getChildren();
+				// prevent identifying org.junit:junit-bom: from org.junit:junit-bom:$junit
+				if (children.length > 1 && children[0] == element) {
+					return ArtifactReference.unresolved();
+				}
+			}
+
+			KtBinaryExpression propertyExpression = KotlinDslUtils.findPropertyExpression(versionCandidate);
+			if (KotlinDslExtraParser.isExtra(propertyExpression)) {
+				return resolveExtraProperty(propertyExpression, element);
+			}
+
+			KtCallExpression declaration = KotlinDslUtils.findDependencyExpression(versionCandidate);
+			if (declaration != null) {
+
+				DependencyAndVersionLocation location = KotlinDslParser
+						.findDependencyAndVersionLocationFromMapDeclaration(declaration,
+								versionCandidate,
+								propertyResolver);
+
+				if (location != null) {
+					return resolveReference(declaration,
+							location);
+				}
+
+				return resolveReference(declaration,
+						KotlinDslParser.findKotlinVersionElement(declaration,
+								propertyResolver));
+			}
+		}
+
+
+		// Map-style
+		// implementation(group = "org.junit", name = "junit-bom", version = junit)
+		if (element instanceof KtNameReferenceExpression propertyCandidate
+				&& element.getParent() instanceof ValueArgument va) {
+			if (GradleUtils.isDependencySection(propertyCandidate.getReferencedName())) {
+				return ArtifactReference.unresolved();
+			}
+
+			KtCallExpression declaration = KotlinDslUtils.findDependencyExpression(propertyCandidate);
+
+			if (declaration != null && element.getParent().getParent().getParent() instanceof KtCallElement call) {
+				if (GradleVersionConstraint.isConstraint(KotlinDslUtils.getKotlinCallName(call))) {
+					return resolveReference(declaration,
+							KotlinDslParser.findKotlinVersionElement(declaration,
+									propertyResolver));
+				}
+			}
+
+			if (declaration != null) {
+				return resolveReference(KotlinDslParser.findDependencyAndVersionLocationFromMapDeclaration(declaration,
+						propertyCandidate, propertyResolver), KtCallExpression.class);
 			}
 		}
 
@@ -288,7 +418,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (catalogCall == null) {
 			return ArtifactReference.unresolved();
 		}
-		KtExpression arg = KotlinDslUtils.getFirstCatalogValueArgument(catalogCall);
+		KtExpression arg = KotlinDslUtils.getFirstValueArgument(catalogCall);
 		if (arg == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -320,7 +450,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	private ArtifactReference resolveExtraProperty(KtBinaryExpression propertyExpression,
-			KtStringTemplateEntry versionEntry) {
+			KtElement versionEntry) {
 
 		if (projectState == null) {
 			return ArtifactReference.unresolved();
@@ -344,6 +474,32 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 						.versionSource(VersionSource.property(property));
 				ArtifactVersion.from(rawVersion).ifPresent(it::version);
 				it.versionLiteral(versionEntry);
+			});
+		}
+
+		return ArtifactReference.unresolved();
+	}
+
+	private ArtifactReference resolveProperty(String property, KtExpression declaration) {
+
+		if (projectState == null) {
+			return ArtifactReference.unresolved();
+		}
+
+		PsiPropertyValueElement element = propertyResolver.getElement(property);
+		ProjectProperty projectProperty = projectState.findProjectProperty(property);
+		if (projectProperty == null || element == null) {
+			return ArtifactReference.unresolved();
+		}
+
+		String rawVersion = element.propertyValue();
+
+		for (CachedArtifact artifact : projectProperty.property().artifacts()) {
+			return ArtifactReference.from(it -> {
+				it.artifact(artifact.toArtifactId()).declarationElement(declaration)
+						.versionSource(VersionSource.property(property));
+				ArtifactVersion.from(rawVersion).ifPresent(it::version);
+				it.versionLiteral(element.element());
 			});
 		}
 

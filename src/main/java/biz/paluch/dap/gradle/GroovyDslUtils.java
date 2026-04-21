@@ -234,13 +234,13 @@ class GroovyDslUtils {
 			return null;
 		}
 		String innerName = getGroovyMethodName(preferOrStrictlyCall);
-		if (!"prefer".equals(innerName) && !"strictly".equals(innerName)) {
+		if (!GradleVersionConstraint.PREFER.equals(innerName) && !GradleVersionConstraint.STRICTLY.equals(innerName)) {
 			return null;
 		}
 
-		if ("strictly".equals(innerName)) {
+		if (GradleVersionConstraint.STRICTLY.equals(innerName)) {
 			String text = getText(literal);
-			if (GradleParser.isVersionRange(text)) {
+			if (GradleUtils.isVersionRange(text)) {
 				return null;
 			}
 		}
@@ -317,6 +317,7 @@ class GroovyDslUtils {
 		}
 		return depCall;
 	}
+
 
 	public static @Nullable PsiPropertyValueElement resolvePropertyLocation(GrLiteral literal) {
 

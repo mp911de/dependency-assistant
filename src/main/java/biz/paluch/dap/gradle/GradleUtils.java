@@ -410,4 +410,15 @@ class GradleUtils {
 		return List.copyOf(repositories);
 	}
 
+	/**
+	 * Returns {@code true} if {@code version} contains range syntax characters.
+	 */
+	static boolean isVersionRange(@Nullable String version) {
+		if (version == null) {
+			return false;
+		}
+		return version.contains("[") || version.contains("]") || version.contains("(") || version.contains(")")
+				|| version.contains(",") || version.endsWith(".+");
+	}
+
 }
