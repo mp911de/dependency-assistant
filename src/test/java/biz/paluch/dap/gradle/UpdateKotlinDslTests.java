@@ -285,6 +285,42 @@ class UpdateKotlinDslTests {
 		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
 	}
 
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom") {
+			        version {
+			            strictly("6.0.0")
+			        }
+			    }
+			}
+			""")
+	void kotlinVersionBlockStrictlyLiteralIsUpdated(PsiFile buildFile) {
+
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+				VersionSource.declared("6.0.0"), "6.0.3");
+
+		assertThat(buildFile.getText()).contains("strictly(\"6.0.3\")");
+		assertThat(buildFile.getText()).doesNotContain("strictly(\"6.0.0\")");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    constraints {
+			        implementation("org.junit:junit-bom:6.0.0")
+			    }
+			}
+			""")
+	void kotlinDependencyConstraintVersionIsUpdated(PsiFile buildFile) {
+
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+				VersionSource.declared("6.0.0"), "6.0.3");
+
+		assertThat(buildFile.getText()).contains("\"org.junit:junit-bom:6.0.3\"");
+		assertThat(buildFile.getText()).doesNotContain("\"org.junit:junit-bom:6.0.0\"");
+	}
+
 	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 
