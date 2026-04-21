@@ -255,8 +255,8 @@ class GroovyDslHighlightingTests {
 		GradleFixtures.analyze(buildFile);
 
 		assertThat(fixture).gutters().hasSize(2);
-		assertThat(fixture).gutter(0).hasNoNavigation();
-		assertThat(fixture).gutter(1).hasNoNavigation();
+		assertThat(fixture).gutter(0).hasNoNavigation(); // ext.junit
+		assertThat(fixture).gutter(1).hasNoNavigation(); // ${junit}
 	}
 
 	// -------------------------------------------------------------------------

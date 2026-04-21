@@ -246,6 +246,33 @@ class KtVersion {
 	}
 
 	/**
+	 * Return the PSI element that contributes the effective version value.
+	 * <p>A directly declared version/property expression takes precedence.
+	 * Otherwise, the first non-range constraint value is returned in declaration
+	 * order.
+	 *
+	 * @return the contributing version element, or {@code null} if no effective
+	 * version is available.
+	 */
+	public @Nullable KtExpression getVersionElement() {
+
+		if (versionLiteral != null) {
+			return versionLiteral;
+		}
+
+		for (Constraint value : constraints.values()) {
+			if (value.literals.hasProperty()) {
+				return value.version();
+			}
+			if (value.hasText() && !value.isRange()) {
+				return value.version();
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Return whether the declaration contains any usable version information.
 	 * <p>This includes a direct version/property expression or a constraint-backed
 	 * version/property.

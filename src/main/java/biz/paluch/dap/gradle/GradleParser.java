@@ -269,8 +269,6 @@ class GradleParser extends GradleParserSupport {
 
 		GrLiteral preferLiteral = null;
 		GrLiteral strictlyLiteral = null;
-		PsiElement preferRef = null;
-		PsiElement strictlyRef = null;
 		String preferVarName = null;
 		String strictlyVarName = null;
 
@@ -286,7 +284,6 @@ class GradleParser extends GradleParserSupport {
 							GrReferenceExpression.class);
 					if (refArg != null) {
 						preferVarName = refArg.getReferenceName();
-						preferRef = refArg;
 					}
 				}
 			} else if (GradleVersionConstraint.STRICTLY.equals(name) && strictlyLiteral == null) {
@@ -297,7 +294,6 @@ class GradleParser extends GradleParserSupport {
 							GrReferenceExpression.class);
 					if (refArg != null) {
 						strictlyVarName = refArg.getReferenceName();
-						strictlyRef = refArg;
 					}
 				}
 			}

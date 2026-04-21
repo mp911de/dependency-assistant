@@ -15,17 +15,12 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.PsiVisitors;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtProperty;
@@ -40,10 +35,10 @@ import org.jetbrains.kotlin.psi.ValueArgument;
  */
 class UpdateKotlinDsl {
 
-	private final PropertyResolver propertyResolver;
+	private final KotlinVersionSiteLocator siteLocator;
 
 	UpdateKotlinDsl(PropertyResolver propertyResolver) {
-		this.propertyResolver = propertyResolver;
+		this.siteLocator = new KotlinVersionSiteLocator(propertyResolver);
 	}
 
 	/**
@@ -60,81 +55,14 @@ class UpdateKotlinDsl {
 	void updateDeclaration(PsiFile file, ArtifactId artifact, String newVersion,
 			DeclarationSource declarationSource) {
 
-		boolean isPlugin = declarationSource instanceof DeclarationSource.Plugin;
-
-		file.accept(PsiVisitors.visitTreeUntil(KtStringTemplateExpression.class, template -> {
-
-			String templateText = KotlinDslUtils.getText(template);
-
-			if (isPlugin) {
-				// plugin: id("pluginId") version "oldVersion"
-				if (isInsideVersionSuffix(template, artifact.groupId())) {
-					template.updateText(newVersion);
-					return true;
-				}
-			}
-
-			GradleDependency dependency = GradleDependency.parse(templateText);
-			if (dependency == null || !dependency.getVersionSource().isDefined()
-					|| dependency.getVersionSource().isProperty()) {
-				return false;
-			}
-
-			if (dependency.getId().equals(artifact)) {
-				String newGav = GradleUtils.updateGavVersion(templateText, newVersion);
-				if (newGav != null) {
-					template.updateText(newGav);
-					return true;
-				}
-			}
-
-			return false;
-		}));
-
-		if (!isPlugin) {
-			updateMapSyntaxDeclaration(file, artifact, newVersion);
-			updateVersionBlock(file, artifact, newVersion);
-		}
-	}
-
-	private void updateMapSyntaxDeclaration(PsiFile file, ArtifactId id, String newVersion) {
-
 		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
 
-			List<? extends ValueArgument> args = call.getValueArguments();
-			if (args.isEmpty()) {
+			GradleDeclarationSite site = siteLocator.locateDeclaration(call);
+			if (site == null || !site.isUpdateable() || !site.matches(artifact)) {
 				return false;
 			}
 
-			NamedDependencyDeclaration entry = KotlinDslParser.parseMapDeclaration(call, propertyResolver);
-			if (!entry.isComplete()) {
-				return false;
-			}
-
-			if (entry.matches(id) && entry.getRequiredVersionLiteral() instanceof KtStringTemplateExpression version) {
-				version.updateText(newVersion);
-				return true;
-			}
-
-			return false;
-		}));
-	}
-
-	private void updateVersionBlock(PsiFile file, ArtifactId id, String newVersion) {
-
-		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
-
-			NamedDependencyDeclaration entry = KotlinDslParser.parseVersionBlockDependency(call, this.propertyResolver);
-			if (entry == null || !entry.isComplete() || !entry.matches(id)) {
-				return false;
-			}
-
-			if (entry.getRequiredVersionLiteral() instanceof KtStringTemplateExpression versionLiteral) {
-				versionLiteral.updateText(newVersion);
-				return true;
-			}
-
-			return false;
+			return site.updateVersion(newVersion);
 		}));
 	}
 
@@ -191,35 +119,6 @@ class UpdateKotlinDsl {
 			return false;
 		}));
 		return updated[0];
-	}
-
-	// -------------------------------------------------------------------------
-	// Helpers
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Returns {@code true} if the given string template is the version value in a
-	 * {@code id("pluginId") version "x.y.z"} expression, where the plugin ID
-	 * matches {@code pluginId}.
-	 */
-	private static boolean isInsideVersionSuffix(KtStringTemplateExpression template, String pluginId) {
-		PsiElement parent = template.getParent();
-		if (!(parent instanceof KtBinaryExpression binary)) {
-			return false;
-		}
-		if (binary.getRight() != template) {
-			return false;
-		}
-		if (!(binary.getLeft() instanceof KtCallExpression callExpr)) {
-			return false;
-		}
-		for (ValueArgument va : callExpr.getValueArguments()) {
-			if (va.getArgumentExpression() instanceof KtStringTemplateExpression st
-					&& pluginId.equals(KotlinDslUtils.getText(st))) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 }

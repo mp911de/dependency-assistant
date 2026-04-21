@@ -1,8 +1,12 @@
 package biz.paluch.dap.gradle;
 
+import java.util.regex.Pattern;
+
 import biz.paluch.dap.artifact.ArtifactId;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * Extension to {@link ArtifactId} representing a Gradle plugin.
@@ -11,6 +15,16 @@ import org.springframework.util.Assert;
  * @author Mark Paluch
  */
 interface GradlePlugin extends ArtifactId {
+
+	Pattern PLUGIN_ID_PATTERN = Pattern.compile("[a-zA-Z0-9._-]+");
+
+	/**
+	 * Returns {@literal true} if {@code id} is a safe, well-formed Gradle plugin
+	 * ID.
+	 */
+	static boolean isValidPluginId(@Nullable String id) {
+		return StringUtils.hasText(id) && PLUGIN_ID_PATTERN.matcher(id).matches();
+	}
 
 	/**
 	 * Create a new plugin {@link ArtifactId}.

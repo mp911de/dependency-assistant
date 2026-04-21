@@ -720,7 +720,7 @@ class GroovyDslUtils {
 		@Nullable
 		ArtifactId toValidatedArtifactId() {
 
-			if (!BuildFileParserSupport.isValidPluginId(resolvedPluginId)) {
+			if (!GradlePlugin.isValidPluginId(resolvedPluginId)) {
 				LOG.debug("Skipping plugin entry: cannot use resolved id '%s'".formatted(resolvedPluginId));
 				return null;
 			}

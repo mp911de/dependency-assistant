@@ -121,22 +121,22 @@ class GradleParserGavUnitTests {
 
 	@Test
 	void isValidPluginId_acceptsNormalId() {
-		assertThat(BuildFileParserSupport.isValidPluginId("org.springframework.boot")).isTrue();
+		assertThat(GradlePlugin.isValidPluginId("org.springframework.boot")).isTrue();
 	}
 
 	@Test
 	void isValidPluginId_rejectsPathTraversal() {
-		assertThat(BuildFileParserSupport.isValidPluginId("../evil")).isFalse();
+		assertThat(GradlePlugin.isValidPluginId("../evil")).isFalse();
 	}
 
 	@Test
 	void isValidPluginId_rejectsEmpty() {
-		assertThat(BuildFileParserSupport.isValidPluginId("")).isFalse();
+		assertThat(GradlePlugin.isValidPluginId("")).isFalse();
 	}
 
 	@Test
 	void isValidPluginId_rejectsUrlSpecial() {
-		assertThat(BuildFileParserSupport.isValidPluginId("org@attacker.com/x")).isFalse();
+		assertThat(GradlePlugin.isValidPluginId("org@attacker.com/x")).isFalse();
 	}
 
 }

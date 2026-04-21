@@ -245,9 +245,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(properties, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNavigation();
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
 	}
 
 	@Test
@@ -463,9 +461,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(properties, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNavigation();
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
 	}
 
 	@Test

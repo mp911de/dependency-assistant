@@ -60,7 +60,7 @@ class KotlinDslParser extends GradleParser {
 	 * version part of a Kotlin DSL string-notation dependency
 	 * ({@code "group:artifact:version"}), or {@code null}.
 	 */
-	public static @Nullable DependencyAndVersionLocation findKotlinVersionElement(KtCallElement call,
+	public static GradleLookupSite.@Nullable GradleVersionSite findKotlinVersionElement(KtCallElement call,
 			PropertyResolver scriptProperties) {
 
 		PsiFile file = call.getContainingFile();
@@ -70,11 +70,9 @@ class KotlinDslParser extends GradleParser {
 
 		// Check if this call is prefer/strictly inside a version {} block of a
 		// dependency
-
-		KtVersion ktVersion = KtVersion.fromDependency(call);
-		KtBinaryExpression be = PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class);
-		KtCallExpression parentCall = PsiTreeUtil.getParentOfType(call, KtCallExpression.class);
-		if (parentCall == null) {
+		KtCallExpression declaration = call instanceof KtCallExpression expression ? expression
+				: PsiTreeUtil.getParentOfType(call, KtCallExpression.class);
+		if (declaration == null) {
 			return null;
 		}
 
@@ -84,37 +82,43 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		if (GradleUtils.isPlugin(methodName) && KotlinDslUtils.isInsidePluginsBlock(call)) {
-			return KotlinDslUtils.findKotlinPluginLocation(call, be, scriptProperties);
+			return KotlinDslUtils.findKotlinPluginLocation(call,
+					PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class),
+					scriptProperties);
 		}
 
-		KtLiterals literals = KtLiterals.from(call.getValueArgumentList());
-		PropertyExpression versionExpression = null;
-		PsiElement versionElement = call;
-		if (ktVersion != null) {
-
-			// e.g. implementation("org.slf4j:slf4j-api") { version { strictly(range) }}
-			if (!ktVersion.containsVersion()) {
-				return null;
-			}
-
-			if (ktVersion.hasProperty()) {
-				versionExpression = PropertyExpression.property(ktVersion.getProperty());
-				PsiPropertyValueElement version = scriptProperties.getElement(ktVersion.getProperty());
-				if (version != null) {
-					versionElement = version.element();
-				}
-			} else {
-				versionExpression = PropertyExpression.from(ktVersion.getVersion());
-			}
+		KtStringTemplateExpression directNotation = findDirectDependencyLiteral(call, scriptProperties);
+		if (directNotation != null) {
+			return KotlinDslUtils.getVersionLocation(declaration, directNotation,
+					KtLiterals.from(call.getValueArgumentList()).toString(), null);
 		}
 
-		return KotlinDslUtils.getVersionLocation(parentCall, versionElement, literals.toString(), versionExpression);
+		KtVersion ktVersion = KtVersion.fromDependency(call);
+		if (ktVersion == null || !ktVersion.containsVersion()) {
+			return null;
+		}
+
+		PropertyExpression versionExpression;
+		PsiElement versionElement = ktVersion.getVersionElement();
+		if (ktVersion.hasProperty()) {
+			String property = ktVersion.getProperty();
+			versionExpression = PropertyExpression.property(property);
+			PsiPropertyValueElement version = scriptProperties.getElement(property);
+			if (version != null) {
+				versionElement = version.element();
+			}
+		} else {
+			versionExpression = PropertyExpression.from(ktVersion.getVersion());
+		}
+
+		return KotlinDslUtils.getVersionLocation(declaration, versionElement != null ? versionElement : call,
+				KtLiterals.from(call.getValueArgumentList()).toString(), versionExpression);
 	}
 
 	/**
 	 * implementation(group = "org.junit", name = "junit-bom", version = junit)
 	 */
-	public static @Nullable DependencyAndVersionLocation findDependencyAndVersionLocationFromMapDeclaration(
+	public static GradleLookupSite.@Nullable GradleVersionSite findDependencyAndVersionLocationFromMapDeclaration(
 			KtCallElement call,
 			KtElement versionElement, PropertyResolver scriptProperties) {
 
@@ -132,7 +136,7 @@ class KotlinDslParser extends GradleParser {
 				NamedDependencyDeclaration namedDependencyDeclaration = parseMapDeclaration(call, scriptProperties);
 				if (namedDependencyDeclaration.isComplete()) {
 					GradleDependency dependency = namedDependencyDeclaration.toDependency(scriptProperties);
-					return new DependencyAndVersionLocation(dependency, versionElement);
+					return new GradleLookupSite.GradleVersionSite(dependency, call, versionElement);
 				}
 			}
 		}
@@ -145,7 +149,7 @@ class KotlinDslParser extends GradleParser {
 				NamedDependencyDeclaration namedDependencyDeclaration = parseMapDeclaration(call, scriptProperties);
 				if (namedDependencyDeclaration.isComplete()) {
 					GradleDependency dependency = namedDependencyDeclaration.toDependency(scriptProperties);
-					return new DependencyAndVersionLocation(dependency, versionElement);
+					return new GradleLookupSite.GradleVersionSite(dependency, call, versionElement);
 				}
 			}
 		}
@@ -257,7 +261,7 @@ class KotlinDslParser extends GradleParser {
 		if (!isDependencyConfig && !isPlatform && !isPlugin) {
 			return;
 		}
-		DependencyAndVersionLocation versionLocation = findKotlinVersionElement(call, this);
+		GradleLookupSite.GradleVersionSite versionLocation = findKotlinVersionElement(call, this);
 
 		if (isPlugin) {
 			if (versionLocation == null) {
@@ -465,6 +469,31 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		return propertyResolver.getElement(refName);
+	}
+
+	private static @Nullable KtStringTemplateExpression findDirectDependencyLiteral(KtCallElement call,
+			PropertyResolver propertyResolver) {
+
+		for (ValueArgument valueArgument : call.getValueArguments()) {
+			KtExpression expression = valueArgument.getArgumentExpression();
+			if (expression instanceof KtStringTemplateExpression template) {
+				GradleDependency dependency = GradleDependency.parse(KtLiterals.from(template).toString(),
+						propertyResolver);
+				if (dependency != null && dependency.getVersionSource().isDefined()) {
+					return template;
+				}
+			}
+
+			if (expression instanceof KtCallElement nested
+					&& GradleUtils.isPlatformSection(KotlinDslUtils.getKotlinCallName(nested))) {
+				KtStringTemplateExpression nestedTemplate = findDirectDependencyLiteral(nested, propertyResolver);
+				if (nestedTemplate != null) {
+					return nestedTemplate;
+				}
+			}
+		}
+
+		return null;
 	}
 
 	private void registerMapDeclaration(KtCallElement call, DeclarationSource src) {

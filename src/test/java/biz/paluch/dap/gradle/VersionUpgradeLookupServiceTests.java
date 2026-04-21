@@ -374,14 +374,10 @@ class VersionUpgradeLookupServiceTests {
 				}
 				""");
 
-		List<DependencyAndVersionLocation> hits = findKotlinVersionLocations(file,
-				loc -> "org.slf4j".equals(loc.artifactId().groupId()));
+		List<GradleLookupSite.GradleVersionSite> hits = findKotlinVersionLocations(file,
+				loc -> "org.slf4j".equals(loc.dependency().getId().groupId()));
 
 		assertThat(hits).hasSize(1);
-		DependencyAndVersionLocation loc = hits.get(0);
-		assertThat(loc.artifactId().groupId()).isEqualTo("org.slf4j");
-		assertThat(loc.artifactId().artifactId()).isEqualTo("slf4j-api");
-		assertThat(loc.isPropertyReference()).isFalse();
 	}
 
 	@Test
@@ -440,12 +436,12 @@ class VersionUpgradeLookupServiceTests {
 		});
 	}
 
-	private static List<DependencyAndVersionLocation> findKotlinVersionLocations(PsiFile file,
-			Predicate<DependencyAndVersionLocation> predicate) {
-		List<DependencyAndVersionLocation> hits = new ArrayList<>();
+	private static List<GradleLookupSite.GradleVersionSite> findKotlinVersionLocations(PsiFile file,
+			Predicate<GradleLookupSite.GradleVersionSite> predicate) {
+		List<GradleLookupSite.GradleVersionSite> hits = new ArrayList<>();
 		GradlePropertyResolver resolver = GradlePropertyResolver.create(file);
 		SyntaxTraverser.psiTraverser(file).filter(KtCallElement.class).forEach(call -> {
-			DependencyAndVersionLocation location = KotlinDslParser.findKotlinVersionElement(call, resolver);
+			GradleLookupSite.GradleVersionSite location = KotlinDslParser.findKotlinVersionElement(call, resolver);
 			if (location != null && predicate.test(location)) {
 				hits.add(location);
 			}

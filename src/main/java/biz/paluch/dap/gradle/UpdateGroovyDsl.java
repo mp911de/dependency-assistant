@@ -16,8 +16,6 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
-import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
@@ -25,7 +23,6 @@ import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -40,10 +37,10 @@ import org.jspecify.annotations.Nullable;
  */
 class UpdateGroovyDsl {
 
-	private final PropertyResolver propertyResolver;
+	private final GroovyVersionSiteLocator siteLocator;
 
 	UpdateGroovyDsl(PropertyResolver propertyResolver) {
-		this.propertyResolver = propertyResolver;
+		this.siteLocator = new GroovyVersionSiteLocator(propertyResolver);
 	}
 
 	/**
@@ -87,102 +84,14 @@ class UpdateGroovyDsl {
 	}
 
 	public void updateDeclaration(PsiFile file, ArtifactId id, String newVersion) {
-		if (GradlePlugin.isPlugin(id)) {
-			updatePlugin(file, id, newVersion);
-		} else {
-			updateDependency(file, id, newVersion);
-		}
-	}
-
-	private void updatePlugin(PsiFile file, ArtifactId id, String newVersion) {
-
-		PropertyResolver scriptProperties = GradlePropertyResolver.create(file);
-
 		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
 
-			if (!GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(call))
-					|| !GroovyDslUtils.isInsidePluginsBlock(call)) {
+			GradleDeclarationSite site = siteLocator.locateDeclaration(call);
+			if (site == null || !site.isUpdateable() || !site.matches(id)) {
 				return false;
 			}
 
-			PluginId pluginId = PluginId.fromMethodCall(call, id, scriptProperties);
-			if (pluginId == null) {
-				return false;
-			}
-
-			GroovyDslUtils.updateText(pluginId.version(), newVersion);
-			return true;
-		}));
-	}
-
-	private void updateDependency(PsiFile file, ArtifactId id, String newVersion) {
-
-		file.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, lit -> {
-			if (!(lit.getValue() instanceof String)) {
-				return false;
-			}
-
-			String gav = GroovyDslUtils.getText(lit);
-			GradleDependency dependency = GradleDependency.parse(gav);
-			if (dependency == null || !dependency.getVersionSource().isDefined()
-					|| dependency.getVersionSource().isProperty()) {
-				return false;
-			}
-
-			if (!dependency.getId().equals(id)) {
-				return false;
-			}
-
-			String newGav = GradleUtils.updateGavVersion(gav, newVersion);
-			if (newGav != null) {
-				GroovyDslUtils.updateText(lit, newGav);
-				return true;
-			}
-			return false;
-		}));
-
-		updateMapDependency(file, id, newVersion);
-		updateVersionBlock(file, id, newVersion);
-	}
-
-	private void updateVersionBlock(PsiFile file, ArtifactId id, String newVersion) {
-
-		PropertyResolver fileResolver = GradlePropertyResolver.forFile(file);
-
-		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
-
-			NamedDependencyDeclaration entry = GradleParser.parseVersionBlockDependency(call, fileResolver);
-			if (entry == null || !entry.isComplete() || !entry.matches(id)) {
-				return false;
-			}
-
-			if (entry.getRequiredVersionLiteral() instanceof GrLiteral literal) {
-				GroovyDslUtils.updateText(literal, newVersion);
-				return true;
-			}
-
-			return false;
-		}));
-	}
-
-	private void updateMapDependency(PsiFile file, ArtifactId id, String newVersion) {
-
-		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
-
-			GrNamedArgument[] named = call.getNamedArguments();
-			if (named.length < 2) {
-				return false;
-			}
-
-			NamedDependencyDeclaration entry = GradleParser.parseMapDependency(call, named, propertyResolver);
-
-			if (entry.isComplete() && entry.matches(id)
-					&& entry.getRequiredVersionLiteral() instanceof GrLiteral literal) {
-				GroovyDslUtils.updateText(literal, newVersion);
-				return true;
-			}
-
-			return false;
+			return site.updateVersion(newVersion);
 		}));
 	}
 

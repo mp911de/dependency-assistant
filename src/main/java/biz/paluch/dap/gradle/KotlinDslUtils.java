@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 import biz.paluch.dap.gradle.KtVersion.Constraint;
 import biz.paluch.dap.support.PropertyExpression;
@@ -41,9 +40,6 @@ import org.springframework.util.Assert;
  * @author Mark Paluch
  */
 class KotlinDslUtils {
-
-	private static final Pattern GRADLE_DEPENDENCY_VERSION_PATTERN = Pattern
-			.compile("([\\w.]+):(\\w[\\w.-]*):(.+)(:(.+))?");
 
 	private KotlinDslUtils() {
 	}
@@ -198,7 +194,7 @@ class KotlinDslUtils {
 		return StringUtils.hasText(property) ? property.toString() : null;
 	}
 
-	public static @Nullable DependencyAndVersionLocation findKotlinPluginLocation(KtCallElement call,
+	public static GradleLookupSite.@Nullable GradleVersionSite findKotlinPluginLocation(KtCallElement call,
 			@Nullable KtBinaryExpression be, PropertyResolver scriptProperties) {
 
 		StringBuilder pluginId = new StringBuilder();
@@ -217,12 +213,13 @@ class KotlinDslUtils {
 		}
 
 		String id = scriptProperties.resolvePlaceholders(pluginId.toString());
-		if (StringUtils.isEmpty(id) || !BuildFileParserSupport.isValidPluginId(id)) {
+		if (!GradlePlugin.isValidPluginId(id)) {
 			return null;
 		}
 
-		StringBuilder rawVersion = new StringBuilder();
-		StringBuilder versionPropertyKey = new StringBuilder();
+		String versionText = null;
+		String versionPropertyKey = null;
+		PsiElement versionElement = null;
 		if (be != null) {
 			PsiElement[] children = be.getChildren();
 			for (int i = 0; i < children.length; i++) {
@@ -230,29 +227,40 @@ class KotlinDslUtils {
 				if (child instanceof KtOperationReferenceExpression ops && "version".equals(ops.getReferencedName())
 						&& children.length > i + 1
 						&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
-					rawVersion.append(getText(versionExpr));
-					doWithStrings(versionExpr, s -> {
-					}, ktExpression -> {
-						if (ktExpression instanceof KtCallExpression ktCall) {
-							String name = getKotlinCallName(ktCall);
-							if ("property".equals(name)) {
-								doWithStrings(ktExpression, versionPropertyKey::append, e -> {
-								});
-							}
+					KtLiterals literals = KtLiterals.from(versionExpr);
+					if (!literals.hasText()) {
+						return null;
+					}
+
+					versionElement = versionExpr;
+					versionText = literals.toString();
+					if (literals.hasProperty() && literals.size() == 1) {
+						versionPropertyKey = literals.getProperty();
+						PsiElement resolvedElement = scriptProperties.getElement(versionPropertyKey) != null
+								? scriptProperties.getElement(versionPropertyKey).element()
+								: null;
+						if (resolvedElement != null) {
+							versionElement = resolvedElement;
 						}
-					});
+					}
+					break;
 				}
 			}
 		}
 
-		PropertyExpression versionExpression = StringUtils.hasText(versionPropertyKey.toString())
-				? PropertyExpression.property(versionPropertyKey.toString())
-				: PropertyExpression.from(rawVersion.toString());
+		if (!StringUtils.hasText(versionText)) {
+			return null;
+		}
 
-		return new DependencyAndVersionLocation(GradleDependency.of(GradlePlugin.of(id), versionExpression), call);
+		PropertyExpression versionExpression = StringUtils.hasText(versionPropertyKey)
+				? PropertyExpression.property(versionPropertyKey)
+				: PropertyExpression.from(versionText);
+
+		return GradleLookupSite.of(GradleDependency.of(GradlePlugin.of(id), versionExpression), call,
+				versionElement);
 	}
 
-	public static @Nullable DependencyAndVersionLocation getVersionLocation(KtCallElement declaration,
+	public static GradleLookupSite.@Nullable GradleVersionSite getVersionLocation(KtCallElement declaration,
 			PsiElement version,
 			String gav, @Nullable PropertyExpression versionExpression) {
 
@@ -261,7 +269,7 @@ class KotlinDslUtils {
 
 			GradlePlugin id = GradlePlugin.of(gav);
 			GradleDependency dependency = GradleDependency.of(id, versionExpression);
-			return new DependencyAndVersionLocation(dependency, version);
+			return GradleLookupSite.of(dependency, declaration, version);
 		}
 
 		// Infix plugin form: id("plugin.id") version "x.y.z" — declaration may not be
@@ -270,7 +278,7 @@ class KotlinDslUtils {
 				&& isInsidePluginsBlock(version) && !gav.contains(":")
 				&& versionExpression != null) {
 			GradleDependency dependency = GradleDependency.of(GradlePlugin.of(gav), versionExpression);
-			return new DependencyAndVersionLocation(dependency, version);
+			return GradleLookupSite.of(dependency, declaration, version);
 		}
 
 		GradleDependency dependency = GradleDependency.parse(gav);
@@ -279,7 +287,7 @@ class KotlinDslUtils {
 		}
 
 		if (dependency.getVersionSource().isDefined()) {
-			return new DependencyAndVersionLocation(dependency, version);
+			return GradleLookupSite.of(dependency, declaration, version);
 		}
 
 		if (versionExpression == null
@@ -287,7 +295,7 @@ class KotlinDslUtils {
 			return null;
 		}
 
-		return new DependencyAndVersionLocation(dependency.withVersion(versionExpression), version);
+		return GradleLookupSite.of(dependency.withVersion(versionExpression), declaration, version);
 	}
 
 
@@ -714,53 +722,6 @@ class KotlinDslUtils {
 	// Version catalog (Kotlin {@code libs.…})
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Innermost {@code alias}/{@code id}/{@code implementation}/… call whose first
-	 * argument is a {@code libs.…} chain and that contains {@code element}.
-	 */
-	static @Nullable KtCallExpression findEnclosingCatalogAccessorCall(PsiElement element,
-			VersionCatalogRegistry registry) {
-
-		if (!(element instanceof KtExpression expression)) {
-			return null;
-		}
-
-		if (!(element instanceof KtDotQualifiedExpression dot) || !(element.getParent() instanceof KtValueArgument)) {
-			return null;
-		}
-
-		KtCallExpression call = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
-		if (!isKotlinCatalogConsumerCall(call)) {
-			return null;
-		}
-
-		if (!isKotlinLibsCatalogRootExpression(expression, registry)) {
-			return null;
-		}
-		return call;
-	}
-
-	private static boolean isKotlinCatalogConsumerCall(@Nullable KtCallExpression call) {
-
-		if (call == null) {
-			return false;
-		}
-
-		String name = getKotlinCallName(call);
-		if (StringUtils.isEmpty(name)) {
-			return false;
-		}
-		if ("alias".equals(name)) {
-			return true;
-		}
-		if (GradleUtils.isPlugin(name) && isInsidePluginsBlock(call)) {
-			return true;
-		}
-		if (GradleUtils.isDependencySection(name) || GradleUtils.isPlatformSection(name)) {
-			return true;
-		}
-		return false;
-	}
 
 	static @Nullable KtExpression getFirstValueArgument(KtCallElement call) {
 
@@ -768,12 +729,6 @@ class KotlinDslUtils {
 			return va.getArgumentExpression();
 		}
 		return null;
-	}
-
-	static boolean isKotlinLibsCatalogRootExpression(KtExpression expr, VersionCatalogRegistry registry) {
-
-		List<String> segs = collectKotlinCatalogDotSegments(expr);
-		return !segs.isEmpty() && registry.containsAlias(segs.get(0));
 	}
 
 	static List<String> collectKotlinCatalogDotSegments(KtExpression expr) {

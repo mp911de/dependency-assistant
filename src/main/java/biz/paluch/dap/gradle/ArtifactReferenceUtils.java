@@ -16,9 +16,14 @@
 
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.ProjectProperty;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PsiPropertyValueElement;
@@ -32,6 +37,49 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class ArtifactReferenceUtils {
+
+	public static ArtifactReference resolve(GradleLookupSite.GradleVersionSite site,
+			PropertyResolver propertyResolver) {
+
+		if (site.dependency() instanceof PropertyManagedDependency managed) {
+
+			PsiPropertyValueElement element = propertyResolver.getElement(managed.property());
+			return fromPropertyManaged(managed, site.declarationElement(),
+					element == null ? null : element.propertyValue(),
+					element == null ? null : element.element());
+		}
+
+		if (site.dependency() instanceof SimpleDependency simple) {
+			return fromSimple(simple, site.declarationElement(), site.versionElement());
+		}
+
+		return ArtifactReference.unresolved();
+	}
+
+	public static ArtifactReference resolve(GradlePropertySite site, @Nullable ProjectState projectState) {
+
+		ArtifactId artifactId = site.artifactId();
+		if (artifactId == null) {
+			if (projectState == null) {
+				return ArtifactReference.unresolved();
+			}
+
+			ProjectProperty projectProperty = projectState.findProjectProperty(site.propertyName());
+			CachedArtifact artifact = getFirstArtifact(projectProperty);
+			if (artifact == null) {
+				return ArtifactReference.unresolved();
+			}
+			artifactId = artifact.toArtifactId();
+		}
+
+		ArtifactId resolvedArtifactId = artifactId;
+		return ArtifactReference.from(it -> {
+			it.artifact(resolvedArtifactId).declarationElement(site.declarationElement())
+					.versionSource(VersionSource.property(site.propertyName()));
+			ArtifactVersion.from(site.version()).ifPresent(it::version);
+			it.versionLiteral(site.versionElement());
+		});
+	}
 
 	/**
 	 * Resolve the given {@link DependencyAndVersionLocation} to an
@@ -91,6 +139,15 @@ class ArtifactReferenceUtils {
 				it.versionLiteral(versionPsi);
 			}
 		});
+	}
+
+	private static @Nullable CachedArtifact getFirstArtifact(@Nullable ProjectProperty property) {
+
+		if (property == null || property.property().artifacts().isEmpty()) {
+			return null;
+		}
+
+		return property.property().artifacts().getFirst();
 	}
 
 }

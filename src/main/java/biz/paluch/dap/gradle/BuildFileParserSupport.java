@@ -15,10 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.regex.Pattern;
-
 import biz.paluch.dap.artifact.DependencyCollector;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Support class for build file parser implementations.
@@ -26,9 +23,6 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 abstract class BuildFileParserSupport {
-
-
-	private static final Pattern PLUGIN_ID_PATTERN = Pattern.compile("[a-zA-Z0-9._-]+");
 
 	private final DependencyCollector collector;
 
@@ -38,14 +32,6 @@ abstract class BuildFileParserSupport {
 
 	public DependencyCollector getCollector() {
 		return collector;
-	}
-
-	/**
-	 * Returns {@literal true} if {@code id} is a safe, well-formed Gradle plugin
-	 * ID.
-	 */
-	static boolean isValidPluginId(@Nullable String id) {
-		return id != null && !id.isEmpty() && PLUGIN_ID_PATTERN.matcher(id).matches();
 	}
 
 }
