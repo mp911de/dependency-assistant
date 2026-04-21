@@ -233,6 +233,23 @@ class KotlinDslParserTests {
 
 	@Test
 	@EditorFile(name = "build.gradle.kts", content = """
+			val junit by extra("6.0.0")
+			dependencyManagement {
+			    imports {
+			        mavenBom("org.junit:junit-bom:${junit}")
+			    }
+			}
+			""")
+	void extraPropertyWithDefault(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasPropertyVersion("junit")
+				.hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
 			dependencyManagement {
 			    imports {
 			        mavenBom("org.junit:junit-bom:${property("junit")}")
@@ -277,7 +294,7 @@ class KotlinDslParserTests {
 			    }
 			}
 			""")
-	void mavenBomGradlePropertyByProjectDelegateIsResolved(PsiFile buildFile) {
+	void gradlePropertyByProjectDelegateIsResolved(PsiFile buildFile) {
 
 		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 
@@ -297,26 +314,7 @@ class KotlinDslParserTests {
 			    }
 			}
 			""")
-	void mavenBomExtraPropertyByDelegateIsResolved(PsiFile buildFile) {
-
-		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
-
-		assertThat(collector)
-				.hasDependencyUsage("org.junit", "junit-bom")
-				.hasVersion("6.0.0")
-				.hasPropertyVersion("junit");
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
-			val junit by extra("6.0.0")
-			dependencyManagement {
-			    imports {
-			        mavenBom("org.junit:junit-bom:${junit}")
-			    }
-			}
-			""")
-	void mavenBomExtraPropertyWithDefaultIsResolved(PsiFile buildFile) {
+	void extraPropertyByDelegateIsResolved(PsiFile buildFile) {
 
 		DependencyCollector collector = GradleFixtures.analyze(buildFile, Map.of("junit", "6.0.0"));
 

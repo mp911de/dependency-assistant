@@ -18,34 +18,31 @@ package biz.paluch.dap.gradle;
 import java.util.Map;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.EditorFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
 
 /**
  * Tests for {@link KotlinDslExtraParser}.
+ *
  * @author Mark Paluch
  */
 @CodeInsightFixtureTests
 class KotlinDslExtraParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@Test
-	void kotlinExtraPropertyAlternateFormatsAreCollected() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			"2.0.3".also { extra["springModulithVersion"] = it }
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				"2.0.3".also { extra["springModulithVersion"] = it }
+			extra["buildStringKey"] = buildString {
+			        append("2.0.3")
+			    }
 
-				extra["buildStringKey"] = buildString {
-				        append("2.0.3")
-				    }
-
-				extra["tripleKey"] = \"""2.0.3\"""
-				""");
+			extra["tripleKey"] = \"""2.0.3\"""
+			""")
+	void kotlinExtraPropertyAlternateFormatsAreCollected(PsiFile file) {
 
 		Map<String, String> props = KotlinDslExtraParser.getExtraProperties(file);
 
@@ -54,12 +51,11 @@ class KotlinDslExtraParserTests {
 	}
 
 	@Test
-	void extraPropertiesAreCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["springModulithVersion"] = "2.0.4"
-				extra["lombokVersion"] = "1.18.36"
-				""");
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["springModulithVersion"] = "2.0.4"
+			extra["lombokVersion"] = "1.18.36"
+			""")
+	void extraPropertiesAreCollected(PsiFile file) {
 
 		Map<String, String> props = KotlinDslExtraParser.getExtraProperties(file);
 
@@ -67,25 +63,10 @@ class KotlinDslExtraParserTests {
 	}
 
 	@Test
-	void extraPropertyViaAlsoWithItIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				"2.0.3".also { extra["springModulithVersion"] = it }
-				""");
-
-		Map<String, String> props = KotlinDslExtraParser.getExtraProperties(file);
-
-		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
-	}
-
-	@Test
-	void extraPropertyViaBuildStringAppendIsCollected() {
-
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["springModulithVersion"] = buildString {
-				        append("2.0.3")
-				    }
-				""");
+	@EditorFile(name = "build.gradle.kts", content = """
+			"2.0.3".also { extra["springModulithVersion"] = it }
+			""")
+	void extraPropertyViaAlsoWithItIsCollected(PsiFile file) {
 
 		Map<String, String> props = KotlinDslExtraParser.getExtraProperties(file);
 
@@ -93,11 +74,23 @@ class KotlinDslExtraParserTests {
 	}
 
 	@Test
-	void extraPropertyViaTripleQuotedStringIsCollected() {
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["springModulithVersion"] = buildString {
+			        append("2.0.3")
+			    }
+			""")
+	void extraPropertyViaBuildStringAppendIsCollected(PsiFile file) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", """
-				extra["springModulithVersion"] = \"""2.0.3\"""
-				""");
+		Map<String, String> props = KotlinDslExtraParser.getExtraProperties(file);
+
+		assertThat(props).containsEntry("springModulithVersion", "2.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			extra["springModulithVersion"] = \"""2.0.3\"""
+			""")
+	void extraPropertyViaTripleQuotedStringIsCollected(PsiFile file) {
 
 		Map<String, String> props = KotlinDslExtraParser.getExtraProperties(file);
 

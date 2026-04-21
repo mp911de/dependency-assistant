@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
@@ -43,15 +44,14 @@ class UpdateKotlinDslTests {
 	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
-	void kotlinPluginVersionIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				plugins {
-				    kotlin("jvm")
-				    id("org.springframework.boot") version "3.5.0"
-				    id("io.spring.dependency-management") version "1.1.7"
-				}
-				""");
+	@ProjectFile(name = "build.gradle.kts", content = """
+			plugins {
+			    kotlin("jvm")
+			    id("org.springframework.boot") version "3.5.0"
+			    id("io.spring.dependency-management") version "1.1.7"
+			}
+			""")
+	void kotlinPluginVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
 				DeclarationSource.plugin(),
@@ -63,16 +63,15 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void settingsKtsPluginVersionIsUpdated() {
-
-		PsiFile settingsFile = fixture.addFileToProject("settings.gradle.kts", """
-				pluginManagement {
-				    plugins {
-				        id("org.springframework.boot") version "3.5.0"
-				    }
-				}
-				rootProject.name = "demo"
-				""");
+	@ProjectFile(name = "settings.gradle.kts", content = """
+			pluginManagement {
+			    plugins {
+			        id("org.springframework.boot") version "3.5.0"
+			    }
+			}
+			rootProject.name = "demo"
+			""")
+	void settingsKtsPluginVersionIsUpdated(PsiFile settingsFile) {
 
 		applyUpdate(settingsFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
 				DeclarationSource.plugin(), VersionSource.declared("3.5.0"), "4.0.3");
@@ -82,14 +81,13 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinDependencyVersionIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				dependencies {
-				    implementation("org.apache.commons:commons-lang3:3.19.0")
-				    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
-				}
-				""");
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.apache.commons:commons-lang3:3.19.0")
+			    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+			}
+			""")
+	void kotlinDependencyVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0", DeclarationSource.dependency(),
 				VersionSource.declared("3.19.0"), "3.20.0");
@@ -99,14 +97,13 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinManagedDependencyVersionIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				dependencies {
-				    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.5.0"))
-				    implementation(platform("io.micrometer:micrometer-bom:1.14.0"))
-				}
-				""");
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.5.0"))
+			    implementation(platform("io.micrometer:micrometer-bom:1.14.0"))
+			}
+			""")
+	void kotlinManagedDependencyVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies", "3.5.0",
 				DeclarationSource.managed(),
@@ -117,16 +114,15 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinExtraPropertyIsUpdated() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			extra["springVersion"] = "3.5.0"
+			extra["lombokVersion"] = "1.18.36"
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				extra["springVersion"] = "3.5.0"
-				extra["lombokVersion"] = "1.18.36"
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
+			dependencies {
+			    implementation("org.springframework:spring-core:${property("springVersion")}")
+			}
+			""")
+	void kotlinExtraPropertyIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -136,16 +132,15 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinExtraPropertyViaAlsoWithItIsUpdated() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			"3.5.0".also { extra["springVersion"] = it }
+			extra["lombokVersion"] = "1.18.36"
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				"3.5.0".also { extra["springVersion"] = it }
-				extra["lombokVersion"] = "1.18.36"
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
+			dependencies {
+			    implementation("org.springframework:spring-core:${property("springVersion")}")
+			}
+			""")
+	void kotlinExtraPropertyViaAlsoWithItIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -155,18 +150,17 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinExtraPropertyViaBuildStringIsUpdated() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			extra["springVersion"] = buildString {
+			        append("3.5.0")
+			    }
+			extra["lombokVersion"] = "1.18.36"
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				extra["springVersion"] = buildString {
-				        append("3.5.0")
-				    }
-				extra["lombokVersion"] = "1.18.36"
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
+			dependencies {
+			    implementation("org.springframework:spring-core:${property("springVersion")}")
+			}
+			""")
+	void kotlinExtraPropertyViaBuildStringIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -176,16 +170,15 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinExtraPropertyViaTripleQuotedStringIsUpdated() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			extra["springVersion"] = \"""3.5.0\"""
+			extra["lombokVersion"] = "1.18.36"
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				extra["springVersion"] = \"""3.5.0\"""
-				extra["lombokVersion"] = "1.18.36"
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
+			dependencies {
+			    implementation("org.springframework:spring-core:${property("springVersion")}")
+			}
+			""")
+	void kotlinExtraPropertyViaTripleQuotedStringIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -195,15 +188,14 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void propertyInGradlePropertiesIsUpdatedFromKotlinBuildFile() {
+	@ProjectFile(name = "gradle.properties", content = """
+			springVersion=3.5.0
+			lombokVersion=1.18.36
+			""")
+	void propertyInGradlePropertiesIsUpdatedFromKotlinBuildFile(PsiFile propsFile) {
 
 		// findProjectRoot falls back to the build file's parent when no settings file
 		// is present.
-		PsiFile propsFile = fixture.addFileToProject("gradle.properties", """
-				springVersion=3.5.0
-				lombokVersion=1.18.36
-				""");
-
 		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
@@ -212,17 +204,15 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void propertyInTomlVersionCatalogIsUpdatedFromKotlinBuildFile() {
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-boot = "3.5.0"
+			commons-lang = "3.17.0"
 
-		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml",
-				"""
-						[versions]
-						spring-boot = "3.5.0"
-						commons-lang = "3.17.0"
-
-						[libraries]
-						spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
-						""");
+			[libraries]
+			spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+			""")
+	void propertyInTomlVersionCatalogIsUpdatedFromKotlinBuildFile(PsiFile tomlFile) {
 
 		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
@@ -233,9 +223,8 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void gradlePropertiesTakesPriorityOverExtraBlock() {
-
-		PsiFile propsFile = fixture.addFileToProject("gradle.properties", "springVersion=3.5.0\n");
+	@ProjectFile(name = "gradle.properties", content = "springVersion=3.5.0\n")
+	void gradlePropertiesTakesPriorityOverExtraBlock(PsiFile propsFile) {
 
 		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -244,16 +233,15 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinValLiteralPropertyIsUpdated() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			val springVersion = "3.5.0"
+			val otherVersion = "1.1.7"
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				val springVersion = "3.5.0"
-				val otherVersion = "1.1.7"
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${springVersion}")
-				}
-				""");
+			dependencies {
+			    implementation("org.springframework:spring-core:${springVersion}")
+			}
+			""")
+	void kotlinValLiteralPropertyIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -263,15 +251,14 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinValByExtraDefaultIsUpdated() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			val springVersion by extra("3.5.0")
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				val springVersion by extra("3.5.0")
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${springVersion}")
-				}
-				""");
+			dependencies {
+			    implementation("org.springframework:spring-core:${springVersion}")
+			}
+			""")
+	void kotlinValByExtraDefaultIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -280,17 +267,16 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	void kotlinValByExtraDelegateRoutesThroughExtra() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			extra["springVersion"] = "3.5.0"
+			extra["lombokVersion"] = "1.18.36"
+			val springVersion: String by extra
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				extra["springVersion"] = "3.5.0"
-				extra["lombokVersion"] = "1.18.36"
-				val springVersion: String by extra
-
-				dependencies {
-				    implementation("org.springframework:spring-core:${property("springVersion")}")
-				}
-				""");
+			dependencies {
+			    implementation("org.springframework:spring-core:${property("springVersion")}")
+			}
+			""")
+	void kotlinValByExtraDelegateRoutesThroughExtra(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");

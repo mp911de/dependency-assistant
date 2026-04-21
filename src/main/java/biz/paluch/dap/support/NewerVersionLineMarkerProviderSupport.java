@@ -91,8 +91,6 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 			}
 		}
 
-
-		// TODO
 		return new LineMarkerInfo<>(anchor, getTextRange(anchor), icon, e -> tooltip,
 				new ActionNavigationHandler(actionId), GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 

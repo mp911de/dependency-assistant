@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
@@ -43,15 +44,14 @@ class UpdateGradleFileTests {
 	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
-	void groovyPluginVersionIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				plugins {
-				    id 'groovy'
-				    id 'org.springframework.boot' version '3.5.0'
-				    id 'io.spring.dependency-management' version '1.1.7'
-				}
-				""");
+	@ProjectFile(name = "build.gradle", content = """
+			plugins {
+			    id 'groovy'
+			    id 'org.springframework.boot' version '3.5.0'
+			    id 'io.spring.dependency-management' version '1.1.7'
+			}
+			""")
+	void groovyPluginVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
 				DeclarationSource.plugin(),
@@ -63,13 +63,12 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyPluginVersionInParenthesisStyleIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				plugins {
-				    id('org.springframework.boot') version '3.5.0'
-				}
-				""");
+	@ProjectFile(name = "build.gradle", content = """
+			plugins {
+			    id('org.springframework.boot') version '3.5.0'
+			}
+			""")
+	void groovyPluginVersionInParenthesisStyleIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
 				DeclarationSource.plugin(),
@@ -79,16 +78,15 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void settingsGradlePluginVersionIsUpdated() {
-
-		PsiFile settingsFile = fixture.addFileToProject("settings.gradle", """
-				pluginManagement {
-				    plugins {
-				        id 'org.springframework.boot' version '3.5.0'
-				    }
-				}
-				rootProject.name = 'demo'
-				""");
+	@ProjectFile(name = "settings.gradle", content = """
+			pluginManagement {
+			    plugins {
+			        id 'org.springframework.boot' version '3.5.0'
+			    }
+			}
+			rootProject.name = 'demo'
+			""")
+	void settingsGradlePluginVersionIsUpdated(PsiFile settingsFile) {
 
 		applyUpdate(settingsFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
 				DeclarationSource.plugin(), VersionSource.declared("3.5.0"), "4.0.3");
@@ -98,14 +96,13 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyDependencyVersionInSingleQuotesIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				dependencies {
-				    implementation 'org.apache.commons:commons-lang3:3.19.0'
-				    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
-				}
-				""");
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.apache.commons:commons-lang3:3.19.0'
+			    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+			}
+			""")
+	void groovyDependencyVersionInSingleQuotesIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0", DeclarationSource.dependency(),
 				VersionSource.declared("3.19.0"), "3.20.0");
@@ -115,13 +112,12 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyDependencyVersionInDoubleQuotesIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				dependencies {
-				    implementation "org.apache.commons:commons-lang3:3.19.0"
-				}
-				""");
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation "org.apache.commons:commons-lang3:3.19.0"
+			}
+			""")
+	void groovyDependencyVersionInDoubleQuotesIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0", DeclarationSource.dependency(),
 				VersionSource.declared("3.19.0"), "3.20.0");
@@ -130,16 +126,15 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyManagedDependencyVersionIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				dependencyManagement {
-				    imports {
-				        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.0'
-				        mavenBom 'io.micrometer:micrometer-bom:1.14.0'
-				    }
-				}
-				""");
+	@ProjectFile(name = "build.gradle", content = """
+			dependencyManagement {
+			    imports {
+			        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.0'
+			        mavenBom 'io.micrometer:micrometer-bom:1.14.0'
+			    }
+			}
+			""")
+	void groovyManagedDependencyVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies", "3.5.0",
 				DeclarationSource.managed(),
@@ -150,12 +145,11 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void propertyInGradlePropertiesIsUpdated() {
-
-		PsiFile propsFile = fixture.addFileToProject("gradle.properties", """
-				springVersion=3.5.0
-				lombokVersion=1.18.36
-				""");
+	@ProjectFile(name = "gradle.properties", content = """
+			springVersion=3.5.0
+			lombokVersion=1.18.36
+			""")
+	void propertyInGradlePropertiesIsUpdated(PsiFile propsFile) {
 
 		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -165,17 +159,15 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void propertyInTomlVersionCatalogIsUpdated() {
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-boot = "3.5.0"
+			commons-lang = "3.17.0"
 
-		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml",
-				"""
-						[versions]
-						spring-boot = "3.5.0"
-						commons-lang = "3.17.0"
-
-						[libraries]
-						spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
-						""");
+			[libraries]
+			spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
+			""")
+	void propertyInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
@@ -186,15 +178,14 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void libraryVersionInTomlVersionCatalogIsUpdated() {
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			commons-lang = "3.17.0"
 
-		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """
-				[versions]
-				commons-lang = "3.17.0"
-
-				[libraries]
-				spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version = "3.5.0" }
-				""");
+			[libraries]
+			spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version = "3.5.0" }
+			""")
+	void libraryVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
@@ -205,13 +196,12 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void libraryLiteralVersionInTomlVersionCatalogIsUpdated() {
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
 
-		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """
-
-				[libraries]
-				spring-boot-starter = "org.springframework.boot:spring-boot-starter:3.5.0"
-				""");
+			[libraries]
+			spring-boot-starter = "org.springframework.boot:spring-boot-starter:3.5.0"
+			""")
+	void libraryLiteralVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
@@ -221,13 +211,12 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void pluginLiteralVersionInTomlVersionCatalogIsUpdated() {
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
 
-		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """
-
-				[plugins]
-				spring-boot = "org.springframework.boot:4.0.0"
-				""");
+			[plugins]
+			spring-boot = "org.springframework.boot:4.0.0"
+			""")
+	void pluginLiteralVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		applyUpdate(tomlFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
 				DeclarationSource.plugin(),
@@ -237,15 +226,14 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void pluginVersionInTomlVersionCatalogIsUpdated() {
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			commons-lang = "3.17.0"
 
-		PsiFile tomlFile = fixture.addFileToProject("gradle/libs.versions.toml", """
-				[versions]
-				commons-lang = "3.17.0"
-
-				[plugins]
-				spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.6" }
-				""");
+			[plugins]
+			spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.6" }
+			""")
+	void pluginVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		applyUpdate(tomlFile, "io.spring.dependency-management", "io.spring.dependency-management", "1.1.6",
 				DeclarationSource.plugin(), VersionSource.declared("1.1.6"), "1.1.7");
@@ -255,18 +243,17 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void propertyInGroovyExtBlockIsUpdated() {
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    springVersion = '3.5.0'
+			    lombokVersion = '1.18.36'
+			}
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				ext {
-				    springVersion = '3.5.0'
-				    lombokVersion = '1.18.36'
-				}
-
-				dependencies {
-				    implementation "org.springframework:spring-core:${springVersion}"
-				}
-				""");
+			dependencies {
+			    implementation "org.springframework:spring-core:${springVersion}"
+			}
+			""")
+	void propertyInGroovyExtBlockIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -276,16 +263,15 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void propertyInGroovyExtDotAssignmentIsUpdated() {
+	@ProjectFile(name = "build.gradle", content = """
+			ext.springVersion = '3.5.0'
+			ext.lombokVersion = '1.18.36'
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				ext.springVersion = '3.5.0'
-				ext.lombokVersion = '1.18.36'
-
-				dependencies {
-				    implementation "org.springframework:spring-core:${springVersion}"
-				}
-				""");
+			dependencies {
+			    implementation "org.springframework:spring-core:${springVersion}"
+			}
+			""")
+	void propertyInGroovyExtDotAssignmentIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -295,18 +281,17 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void propertyInGroovyExtSetCallIsUpdated() {
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    set('springVersion', "2.0.4")
+			    set('lombokVersion', "1.18.36")
+			}
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				ext {
-				    set('springVersion', "2.0.4")
-				    set('lombokVersion', "1.18.36")
-				}
-
-				dependencies {
-				    implementation "org.springframework:spring-core:${springVersion}"
-				}
-				""");
+			dependencies {
+			    implementation "org.springframework:spring-core:${springVersion}"
+			}
+			""")
+	void propertyInGroovyExtSetCallIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.springframework", "spring-core", "2.0.4", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.5.0");
@@ -316,9 +301,8 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void gradlePropertiesTakesPriorityOverExtBlock() {
-
-		PsiFile propsFile = fixture.addFileToProject("gradle.properties", "springVersion=3.5.0\n");
+	@ProjectFile(name = "gradle.properties", content = "springVersion=3.5.0\n")
+	void gradlePropertiesTakesPriorityOverExtBlock(PsiFile propsFile) {
 
 		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
@@ -327,14 +311,13 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyMapSyntaxVersionIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				dependencies {
-				    implementation group: 'com.google.guava', name: 'guava', version: '32.1.2-jre'
-				    implementation 'org.apache.commons:commons-lang3:3.19.0'
-				}
-				""");
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation group: 'com.google.guava', name: 'guava', version: '32.1.2-jre'
+			    implementation 'org.apache.commons:commons-lang3:3.19.0'
+			}
+			""")
+	void groovyMapSyntaxVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
@@ -347,14 +330,12 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyMapSyntaxExtraKeyIsPreserved() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle",
-				"""
-						dependencies {
-						    implementation group: 'com.google.guava', name: 'guava', version: '32.1.2-jre', classifier: 'android'
-						}
-						""");
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation group: 'com.google.guava', name: 'guava', version: '32.1.2-jre', classifier: 'android'
+			}
+			""")
+	void groovyMapSyntaxExtraKeyIsPreserved(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
@@ -364,14 +345,13 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void kotlinNamedArgVersionIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				dependencies {
-				    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre")
-				    implementation("org.apache.commons:commons-lang3:3.19.0")
-				}
-				""");
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre")
+			    implementation("org.apache.commons:commons-lang3:3.19.0")
+			}
+			""")
+	void kotlinNamedArgVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
@@ -384,14 +364,12 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void kotlinNamedArgExtraKeyIsPreserved() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts",
-				"""
-						dependencies {
-						    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre", classifier = "android")
-						}
-						""");
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre", classifier = "android")
+			}
+			""")
+	void kotlinNamedArgExtraKeyIsPreserved(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
@@ -401,18 +379,17 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyVersionBlockPreferIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				dependencies {
-				    implementation('org.slf4j:slf4j-api') {
-				        version {
-				            strictly '[1.7, 1.8['
-				            prefer '1.7.25'
-				        }
-				    }
-				}
-				""");
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation('org.slf4j:slf4j-api') {
+			        version {
+			            strictly '[1.7, 1.8['
+			            prefer '1.7.25'
+			        }
+			    }
+			}
+			""")
+	void groovyVersionBlockPreferIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25", DeclarationSource.dependency(),
 				VersionSource.declared("1.7.25"), "1.8.0");
@@ -423,18 +400,17 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void kotlinVersionBlockPreferIsUpdated() {
-
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				dependencies {
-				    implementation("org.slf4j:slf4j-api") {
-				        version {
-				            strictly("[1.7, 1.8[")
-				            prefer("1.7.25")
-				        }
-				    }
-				}
-				""");
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.slf4j:slf4j-api") {
+			        version {
+			            strictly("[1.7, 1.8[")
+			            prefer("1.7.25")
+			        }
+			    }
+			}
+			""")
+	void kotlinVersionBlockPreferIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25", DeclarationSource.dependency(),
 				VersionSource.declared("1.7.25"), "1.8.0");
@@ -445,17 +421,16 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyMapGStringVersionIsUpdated() {
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    guavaVersion = '33.0-jre'
+			}
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				ext {
-				    guavaVersion = '33.0-jre'
-				}
-
-				dependencies {
-				    implementation(group: 'com.google.guava', name: 'guava', version: "${guavaVersion}")
-				}
-				""");
+			dependencies {
+			    implementation(group: 'com.google.guava', name: 'guava', version: "${guavaVersion}")
+			}
+			""")
+	void groovyMapGStringVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre", DeclarationSource.dependency(),
 				VersionSource.property("guavaVersion"), "33.1.0-jre");
@@ -465,15 +440,14 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void kotlinMapBareRefVersionIsUpdated() {
+	@ProjectFile(name = "build.gradle.kts", content = """
+			val guavaVersion = "33.0-jre"
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle.kts", """
-				val guavaVersion = "33.0-jre"
-
-				dependencies {
-				    implementation(group = "com.google.guava", name = "guava", version = guavaVersion)
-				}
-				""");
+			dependencies {
+			    implementation(group = "com.google.guava", name = "guava", version = guavaVersion)
+			}
+			""")
+	void kotlinMapBareRefVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre", DeclarationSource.dependency(),
 				VersionSource.property("guavaVersion"), "33.1.0-jre");
@@ -483,16 +457,15 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyLocalVariableVersionIsUpdated() {
+	@ProjectFile(name = "build.gradle", content = """
+			def junitVersion = '6.0.0'
+			def otherVersion = '1.0.0'
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				def junitVersion = '6.0.0'
-				def otherVersion = '1.0.0'
-
-				dependencies {
-				    implementation group: 'org.junit', name: 'junit-bom', version: junitVersion
-				}
-				""");
+			dependencies {
+			    implementation group: 'org.junit', name: 'junit-bom', version: junitVersion
+			}
+			""")
+	void groovyLocalVariableVersionIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
 				VersionSource.property("junitVersion"), "6.0.3");
@@ -503,19 +476,18 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyVersionBlockStrictlyVariableIsUpdated() {
+	@ProjectFile(name = "build.gradle", content = """
+			def junitVersion = '6.0.0'
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				def junitVersion = '6.0.0'
-
-				dependencies {
-				    implementation('org.junit:junit-bom') {
-				        version {
-				            strictly junitVersion
-				        }
-				    }
-				}
-				""");
+			dependencies {
+			    implementation('org.junit:junit-bom') {
+			        version {
+			            strictly junitVersion
+			        }
+			    }
+			}
+			""")
+	void groovyVersionBlockStrictlyVariableIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
 				VersionSource.property("junitVersion"), "6.0.3");
@@ -525,20 +497,19 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	void groovyVersionBlockPreferVariableIsUpdated() {
+	@ProjectFile(name = "build.gradle", content = """
+			def junitVersion = '6.0.0'
 
-		PsiFile buildFile = fixture.addFileToProject("build.gradle", """
-				def junitVersion = '6.0.0'
-
-				dependencies {
-				    implementation('org.junit:junit-bom') {
-				        version {
-				            strictly '[5.0, 7.0['
-				            prefer junitVersion
-				        }
-				    }
-				}
-				""");
+			dependencies {
+			    implementation('org.junit:junit-bom') {
+			        version {
+			            strictly '[5.0, 7.0['
+			            prefer junitVersion
+			        }
+			    }
+			}
+			""")
+	void groovyVersionBlockPreferVariableIsUpdated(PsiFile buildFile) {
 
 		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
 				VersionSource.property("junitVersion"), "6.0.3");

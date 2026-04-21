@@ -84,7 +84,6 @@ class KotlinDslHighlightingTests {
 		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
-
 	// -------------------------------------------------------------------------
 	// Constraints
 	// -------------------------------------------------------------------------
