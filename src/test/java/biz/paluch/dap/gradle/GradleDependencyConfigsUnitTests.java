@@ -45,14 +45,14 @@ class GradleDependencyConfigsUnitTests {
 
 	@Test
 	void dependencyConfigsAreImmutable() {
-		assertThatThrownBy(() -> GradleUtils.DEPENDENCY_CONFIGS.add("unknown"))
-				.isInstanceOf(UnsupportedOperationException.class);
+		assertThatExceptionOfType(UnsupportedOperationException.class)
+				.isThrownBy(() -> GradleUtils.DEPENDENCY_CONFIGS.add("unknown"));
 	}
 
 	@Test
 	void platformFunctionsAreImmutable() {
-		assertThatThrownBy(() -> GradleUtils.PLATFORM_FUNCTIONS.add("unknown"))
-				.isInstanceOf(UnsupportedOperationException.class);
+		assertThatExceptionOfType(UnsupportedOperationException.class)
+				.isThrownBy(() -> GradleUtils.PLATFORM_FUNCTIONS.add("unknown"));
 	}
 
 	@Test

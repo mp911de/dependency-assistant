@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.psi.KtExpression;
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
 import org.jetbrains.kotlin.psi.KtProperty;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -132,16 +133,35 @@ class KotlinDslExtraParser {
 					}
 
 					KtExpression initializer = property.getInitializer();
-					if (!(initializer instanceof KtStringTemplateExpression st)) {
+					if (initializer instanceof KtStringTemplateExpression st) {
+						String value = KotlinDslUtils.getText(st);
+						if (StringUtils.isEmpty(value)) {
+							return;
+						}
+
+						result.put(name, new PsiPropertyValueElement(st, name, value));
 						return;
 					}
 
-					String value = KotlinDslUtils.getText(st);
-					if (StringUtils.isEmpty(value)) {
+					if (!property.hasDelegateExpression()
+							|| !(property.getDelegateExpression() instanceof KtCallExpression delegateCall)
+							|| !"extra".equals(KotlinDslUtils.getKotlinCallName(delegateCall))) {
 						return;
 					}
 
-					result.put(name, new PsiPropertyValueElement(st, name, value));
+					for (ValueArgument argument : delegateCall.getValueArguments()) {
+						if (!(argument.getArgumentExpression() instanceof KtStringTemplateExpression argTemplate)) {
+							continue;
+						}
+
+						String value = KotlinDslUtils.getText(argTemplate);
+						if (StringUtils.isEmpty(value)) {
+							return;
+						}
+
+						result.put(name, new PsiPropertyValueElement(argTemplate, name, value));
+						return;
+					}
 				});
 
 		return result;

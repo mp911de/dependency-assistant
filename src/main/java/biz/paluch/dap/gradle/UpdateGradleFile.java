@@ -108,18 +108,19 @@ class UpdateGradleFile {
 		for (VersionSource source : update.versionSources()) {
 
 			if (source instanceof VersionSource.VersionProperty vps) {
-				String propertyKey = vps.getProperty();
-				updateProperty(buildFile, propertyKey, newVersion);
+				updateProperty(buildFile, vps.getProperty(), newVersion);
+				continue;
 			}
 
-			if (source instanceof VersionSource.DeclaredVersion
-					|| source instanceof VersionSource.VersionCatalogProperty) {
-				for (DeclarationSource declSrc : update.declarationSources()) {
-					if (declSrc instanceof DeclarationSource.Plugin) {
-						updatePlugin(buildFile, propertyResolver, update.coordinate(), newVersion);
-					} else {
-						updateDeclaration(buildFile, propertyResolver, update.coordinate(), newVersion);
-					}
+			if (!(source instanceof VersionSource.DeclaredVersion)) {
+				continue;
+			}
+
+			for (DeclarationSource declSrc : update.declarationSources()) {
+				if (declSrc instanceof DeclarationSource.Plugin) {
+					updatePlugin(buildFile, propertyResolver, update.coordinate(), newVersion);
+				} else {
+					updateDeclaration(buildFile, propertyResolver, update.coordinate(), newVersion);
 				}
 			}
 		}
@@ -227,11 +228,13 @@ class UpdateGradleFile {
 
 		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
 			updateDeclaration(tomlFile, id, newVersion);
+			return;
 		}
 
 		// Groovy DSL
 		if (GradleUtils.isGroovyDsl(virtualFile)) {
 			new UpdateGroovyDsl(propertyResolver).updateDeclaration(file, id, newVersion);
+			return;
 		}
 
 		// Kotlin DSL

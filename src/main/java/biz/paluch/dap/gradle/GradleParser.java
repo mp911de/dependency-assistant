@@ -172,7 +172,7 @@ class GradleParser extends GradleParserSupport {
 			}
 
 			if (arg instanceof GrLiteral lit) {
-				String rawText = GroovyDslUtils.getText(lit);
+				String rawText = GroovyDslUtils.renderText(lit);
 				GradleDependency dependency = parseGav(rawText);
 				if (dependency != null) {
 					return dependency;
@@ -221,7 +221,7 @@ class GradleParser extends GradleParserSupport {
 
 		for (PsiElement arg : call.getArgumentList().getAllArguments()) {
 			if (arg instanceof GrLiteral lit) {
-				String text = GroovyDslUtils.getText(lit);
+				String text = GroovyDslUtils.renderText(lit);
 				if (text != null && text.split(":").length == 2) {
 					gavLiteral = lit;
 				}
@@ -307,7 +307,7 @@ class GradleParser extends GradleParserSupport {
 		PsiElement versionElement;
 
 		if (preferLiteral != null) {
-			version = GroovyDslUtils.getText(preferLiteral);
+			version = GroovyDslUtils.renderText(preferLiteral);
 			versionElement = preferLiteral;
 		} else if (preferVarName != null && propertyResolver != null) {
 			PsiPropertyValueElement resolved = propertyResolver.getElement(preferVarName);
@@ -317,7 +317,7 @@ class GradleParser extends GradleParserSupport {
 			version = resolved.propertyValue();
 			versionElement = resolved.element();
 		} else if (strictlyLiteral != null) {
-			String strictlyText = GroovyDslUtils.getText(strictlyLiteral);
+			String strictlyText = GroovyDslUtils.renderText(strictlyLiteral);
 			if (GradleUtils.isVersionRange(strictlyText)) {
 				return null;
 			}
@@ -338,7 +338,7 @@ class GradleParser extends GradleParserSupport {
 			return null;
 		}
 
-		String gavText = GroovyDslUtils.getText(gavLiteral);
+		String gavText = GroovyDslUtils.renderText(gavLiteral);
 		if (gavText == null) {
 			return null;
 		}
@@ -366,7 +366,7 @@ class GradleParser extends GradleParserSupport {
 		for (GrNamedArgument arg : named) {
 			String key = arg.getLabelName();
 			PsiElement val = arg.getExpression();
-			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.getText(lit) : null;
+			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.renderText(lit) : null;
 
 			if ("group".equals(key)) {
 				group = !StringUtils.isEmpty(strVal) ? propertyResolver.resolvePlaceholders(strVal) : strVal;
@@ -452,4 +452,3 @@ class GradleParser extends GradleParserSupport {
 	}
 
 }
-

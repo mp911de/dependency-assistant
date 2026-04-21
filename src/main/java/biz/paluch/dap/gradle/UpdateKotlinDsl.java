@@ -25,12 +25,9 @@ import biz.paluch.dap.support.PsiPropertyValueElement;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtLambdaArgument;
-import org.jetbrains.kotlin.psi.KtLambdaExpression;
 import org.jetbrains.kotlin.psi.KtProperty;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
@@ -127,97 +124,17 @@ class UpdateKotlinDsl {
 
 		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
 
-			KtStringTemplateExpression gavTemplate = null;
-			for (ValueArgument arg : call.getValueArguments()) {
-				if (arg instanceof KtLambdaArgument) {
-					continue;
-				}
-				if (!(arg.getArgumentExpression() instanceof KtStringTemplateExpression st)) {
-					continue;
-				}
-				String text = KotlinDslUtils.getText(st);
-				if (text == null) {
-					continue;
-				}
-				String[] parts = text.split(":");
-				if (parts.length == 2 && id.groupId().equals(parts[0]) && id.artifactId().equals(parts[1])) {
-					gavTemplate = st;
-					break;
-				}
-			}
-
-			if (gavTemplate == null) {
+			NamedDependencyDeclaration entry = KotlinDslParser.parseVersionBlockDependency(call, this.propertyResolver);
+			if (entry == null || !entry.isComplete() || !entry.matches(id)) {
 				return false;
 			}
 
-			KtLambdaExpression trailingLambda = null;
-			for (ValueArgument arg : call.getValueArguments()) {
-				if (arg instanceof KtLambdaArgument la
-						&& la.getArgumentExpression() instanceof KtLambdaExpression lam) {
-					trailingLambda = lam;
-					break;
-				}
+			if (entry.getRequiredVersionLiteral() instanceof KtStringTemplateExpression versionLiteral) {
+				versionLiteral.updateText(newVersion);
+				return true;
 			}
 
-			if (trailingLambda == null || trailingLambda.getBodyExpression() == null) {
-				return false;
-			}
-
-			KtCallExpression versionCall = null;
-			for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(trailingLambda.getBodyExpression(),
-					KtCallExpression.class)) {
-				if ("version".equals(KotlinDslUtils.getKotlinCallName(inner))) {
-					versionCall = inner;
-					break;
-				}
-			}
-
-			if (versionCall == null) {
-				return false;
-			}
-
-			KtLambdaExpression versionLambda = null;
-			for (ValueArgument arg : versionCall.getValueArguments()) {
-				if (arg instanceof KtLambdaArgument la
-						&& la.getArgumentExpression() instanceof KtLambdaExpression lam) {
-					versionLambda = lam;
-					break;
-				}
-			}
-
-			if (versionLambda == null || versionLambda.getBodyExpression() == null) {
-				return false;
-			}
-
-			KtStringTemplateExpression preferTemplate = null;
-			KtStringTemplateExpression strictlyTemplate = null;
-
-			for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(versionLambda.getBodyExpression(),
-					KtCallExpression.class)) {
-				String name = KotlinDslUtils.getKotlinCallName(inner);
-				for (ValueArgument va : inner.getValueArguments()) {
-					if (va.getArgumentExpression() instanceof KtStringTemplateExpression st) {
-						if (GradleVersionConstraint.PREFER.equals(name) && preferTemplate == null) {
-							preferTemplate = st;
-						} else if (GradleVersionConstraint.STRICTLY.equals(name) && strictlyTemplate == null) {
-							strictlyTemplate = st;
-						}
-					}
-				}
-			}
-
-			KtStringTemplateExpression target;
-			if (preferTemplate != null) {
-				target = preferTemplate;
-			} else if (strictlyTemplate != null
-					&& !GradleUtils.isVersionRange(KotlinDslUtils.getText(strictlyTemplate))) {
-				target = strictlyTemplate;
-			} else {
-				return false;
-			}
-
-			target.updateText(newVersion);
-			return true;
+			return false;
 		}));
 	}
 

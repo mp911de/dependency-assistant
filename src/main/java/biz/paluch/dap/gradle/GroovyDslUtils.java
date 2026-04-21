@@ -145,7 +145,7 @@ class GroovyDslUtils {
 		// double-quoted literals).
 		// Fall back to toString() which preserves ${…} placeholders for interpolated
 		// GStrings.
-		String text = GroovyDslUtils.getText(literal);
+		String text = GroovyDslUtils.renderText(literal);
 		if (StringUtils.isEmpty(text)) {
 			return null;
 		}
@@ -214,7 +214,7 @@ class GroovyDslUtils {
 		if (artifactId == null) {
 			return null;
 		}
-		String version = GroovyDslUtils.getText(id.version);
+		String version = GroovyDslUtils.renderText(id.version);
 		PropertyExpression versionExpression = PropertyExpression.from(version);
 
 		return new DependencyAndVersionLocation(GradleDependency.of(artifactId, versionExpression), literal);
@@ -239,7 +239,7 @@ class GroovyDslUtils {
 		}
 
 		if (GradleVersionConstraint.STRICTLY.equals(innerName)) {
-			String text = getText(literal);
+			String text = renderText(literal);
 			if (GradleUtils.isVersionRange(text)) {
 				return null;
 			}
@@ -253,7 +253,7 @@ class GroovyDslUtils {
 		GrLiteral gavLiteral = null;
 		for (PsiElement arg : depCall.getArgumentList().getAllArguments()) {
 			if (arg instanceof GrLiteral lit) {
-				String text = getText(lit);
+				String text = renderText(lit);
 				if (text != null && text.split(":").length == 2) {
 					gavLiteral = lit;
 					break;
@@ -265,14 +265,14 @@ class GroovyDslUtils {
 			return null;
 		}
 
-		String gavText = getText(gavLiteral);
+		String gavText = renderText(gavLiteral);
 		if (gavText == null) {
 			return null;
 		}
 		String[] parts = gavText.split(":");
 		String group = parts[0];
 		String artifact = parts[1];
-		String version = getText(literal);
+		String version = renderText(literal);
 
 		GradleDependency dependency = GradleDependency.of(group, artifact, version);
 		return new DependencyAndVersionLocation(dependency, literal);
@@ -290,7 +290,7 @@ class GroovyDslUtils {
 	 * }
 	 * </pre>
 	 */
-	private static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
+	static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
 
 		GrClosableBlock versionClosure = PsiTreeUtil.getParentOfType(preferOrStrictlyCall, GrClosableBlock.class);
 		if (versionClosure == null) {
@@ -483,12 +483,29 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Returns the string content of a Groovy literal, preserving any ${…}
-	 * placeholders in interpolated GStrings.
+	 * Returns the plain string content of a Groovy literal.
+	 * <p>For interpolated GStrings, use {@link #renderText(GrLiteral)} when the
+	 * caller intentionally wants the raw placeholder form such as
+	 * {@code org.foo:bar:${version}}.
 	 * @param literal the literal to extract the text from.
 	 * @return the string value.
 	 */
 	public static String getText(GrLiteral literal) {
+
+		if (literal.getValue() instanceof String s) {
+			return s;
+		}
+
+		return renderText(literal);
+	}
+
+	/**
+	 * Renders the raw textual form of a Groovy literal, preserving any
+	 * {@code ${...}} placeholders from interpolated GStrings.
+	 * @param literal the literal to render.
+	 * @return the rendered literal text.
+	 */
+	public static String renderText(GrLiteral literal) {
 
 		if (literal.getValue() instanceof String s) {
 			return s;
@@ -658,7 +675,7 @@ class GroovyDslUtils {
 			for (GroovyPsiElement arg : call.getArgumentList().getAllArguments()) {
 
 				if (idLiteral == null && arg instanceof GrLiteral literal) {
-					String raw = GroovyDslUtils.getText(literal);
+					String raw = GroovyDslUtils.renderText(literal);
 					String resolved = properties.resolvePlaceholders(raw);
 					if (!idPredicate.test(resolved)) {
 						return null;
@@ -693,7 +710,7 @@ class GroovyDslUtils {
 
 
 		public String getVersionAsString() {
-			return GroovyDslUtils.getText(version);
+			return GroovyDslUtils.renderText(version);
 		}
 
 		/**

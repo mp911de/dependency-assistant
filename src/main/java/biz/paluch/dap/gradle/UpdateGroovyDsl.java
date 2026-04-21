@@ -22,13 +22,10 @@ import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -121,6 +118,10 @@ class UpdateGroovyDsl {
 	private void updateDependency(PsiFile file, ArtifactId id, String newVersion) {
 
 		file.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, lit -> {
+			if (!(lit.getValue() instanceof String)) {
+				return false;
+			}
+
 			String gav = GroovyDslUtils.getText(lit);
 			GradleDependency dependency = GradleDependency.parse(gav);
 			if (dependency == null || !dependency.getVersionSource().isDefined()
@@ -150,62 +151,14 @@ class UpdateGroovyDsl {
 
 		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
 
-			GrLiteral gavLiteral = null;
-			for (PsiElement arg : call.getArgumentList().getAllArguments()) {
-				if (arg instanceof GrLiteral lit) {
-					String text = GroovyDslUtils.getText(lit);
-					if (text != null && text.split(":").length == 2) {
-						String[] parts = text.split(":");
-						if (id.groupId().equals(parts[0]) && id.artifactId().equals(parts[1])) {
-							gavLiteral = lit;
-							break;
-						}
-					}
-				}
-			}
-
-			if (gavLiteral == null) {
+			NamedDependencyDeclaration entry = GradleParser.parseVersionBlockDependency(call, fileResolver);
+			if (entry == null || !entry.isComplete() || !entry.matches(id)) {
 				return false;
 			}
 
-			for (GrClosableBlock depClosure : call.getClosureArguments()) {
-				GrMethodCall versionCall = null;
-				for (GrMethodCall mc : SyntaxTraverser.psiTraverser(depClosure).filter(GrMethodCall.class)) {
-					if ("version".equals(GroovyDslUtils.getGroovyMethodName(mc))) {
-						versionCall = mc;
-						break;
-					}
-				}
-				if (versionCall == null) {
-					continue;
-				}
-				for (GrClosableBlock versionClosure : versionCall.getClosureArguments()) {
-					GrLiteral preferLiteral = null;
-					GrLiteral strictlyLiteral = null;
-					for (GrMethodCall mc : SyntaxTraverser.psiTraverser(versionClosure).filter(GrMethodCall.class)) {
-						String name = GroovyDslUtils.getGroovyMethodName(mc);
-						GrLiteral firstArg = PsiTreeUtil.getChildOfType(mc.getArgumentList(), GrLiteral.class);
-						if (firstArg == null) {
-							continue;
-						}
-						if (GradleVersionConstraint.PREFER.equals(name) && preferLiteral == null) {
-							preferLiteral = firstArg;
-						} else if (GradleVersionConstraint.STRICTLY.equals(name) && strictlyLiteral == null) {
-							strictlyLiteral = firstArg;
-						}
-					}
-					GrLiteral target;
-					if (preferLiteral != null) {
-						target = preferLiteral;
-					} else if (strictlyLiteral != null
-							&& !GradleUtils.isVersionRange(GroovyDslUtils.getText(strictlyLiteral))) {
-						target = strictlyLiteral;
-					} else {
-						return false;
-					}
-					GroovyDslUtils.updateText(target, newVersion);
-					return true;
-				}
+			if (entry.getRequiredVersionLiteral() instanceof GrLiteral literal) {
+				GroovyDslUtils.updateText(literal, newVersion);
+				return true;
 			}
 
 			return false;
