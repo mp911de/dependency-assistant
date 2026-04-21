@@ -31,7 +31,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link UpdateGradleFile} using Kotlin DSL.
@@ -53,13 +53,13 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinPluginVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot",
+				"3.5.0",
 				DeclarationSource.plugin(),
 				VersionSource.declared("3.5.0"), "4.0.3");
 
-		assertThat(buildFile.getText()).contains("id(\"org.springframework.boot\") version \"4.0.3\"")
-				.doesNotContain("version \"3.5.0\"");
-		assertThat(buildFile.getText()).contains("version \"1.1.7\"");
+		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
+		assertThat(updated).hasDependency("io.spring.dependency-management", "1.1.7");
 	}
 
 	@Test
@@ -73,11 +73,11 @@ class UpdateKotlinDslTests {
 			""")
 	void settingsKtsPluginVersionIsUpdated(PsiFile settingsFile) {
 
-		applyUpdate(settingsFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(settingsFile, "org.springframework.boot", "org.springframework.boot",
+				"3.5.0",
 				DeclarationSource.plugin(), VersionSource.declared("3.5.0"), "4.0.3");
 
-		assertThat(settingsFile.getText()).contains("id(\"org.springframework.boot\") version \"4.0.3\"")
-				.doesNotContain("version \"3.5.0\"");
+		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 	}
 
 	@Test
@@ -89,11 +89,12 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinDependencyVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0",
+				DeclarationSource.dependency(),
 				VersionSource.declared("3.19.0"), "3.20.0");
 
-		assertThat(buildFile.getText()).contains("\"org.apache.commons:commons-lang3:3.20.0\"");
-		assertThat(buildFile.getText()).contains("\"org.junit.jupiter:junit-jupiter:5.11.0\"");
+		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
+		assertThat(updated).hasDependency("junit-jupiter", "5.11.0");
 	}
 
 	@Test
@@ -105,12 +106,13 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinManagedDependencyVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies",
+				"3.5.0",
 				DeclarationSource.managed(),
 				VersionSource.declared("3.5.0"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("\"org.springframework.boot:spring-boot-dependencies:3.6.0\"");
-		assertThat(buildFile.getText()).contains("\"io.micrometer:micrometer-bom:1.14.0\"");
+		assertThat(updated).hasDependency("spring-boot-dependencies", "3.6.0");
+		assertThat(updated).hasDependency("micrometer-bom", "1.14.0");
 	}
 
 	@Test
@@ -124,11 +126,12 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinExtraPropertyIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("extra[\"springVersion\"] = \"3.6.0\"");
-		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -142,11 +145,12 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinExtraPropertyViaAlsoWithItIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("\"3.6.0\".also");
-		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -162,11 +166,12 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinExtraPropertyViaBuildStringIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("append(\"3.6.0\")");
-		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -180,11 +185,12 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinExtraPropertyViaTripleQuotedStringIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("\"\"\"3.6.0\"\"\"");
-		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -196,11 +202,12 @@ class UpdateKotlinDslTests {
 
 		// findProjectRoot falls back to the build file's parent when no settings file
 		// is present.
-		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
-		assertThat(propsFile.getText()).contains("lombokVersion=1.18.36");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -214,22 +221,23 @@ class UpdateKotlinDslTests {
 			""")
 	void propertyInTomlVersionCatalogIsUpdatedFromKotlinBuildFile(PsiFile tomlFile) {
 
-		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
 				VersionSource.property("spring-boot"), "3.6.0");
 
-		assertThat(tomlFile.getText()).contains("spring-boot = \"3.6.0\"");
-		assertThat(tomlFile.getText()).contains("commons-lang = \"3.17.0\"");
+		assertThat(updated).hasProperty("spring-boot", "3.6.0").hasProperty("commons-lang",
+				"3.17.0");
 	}
 
 	@Test
 	@ProjectFile(name = "gradle.properties", content = "springVersion=3.5.0\n")
 	void gradlePropertiesTakesPriorityOverExtraBlock(PsiFile propsFile) {
 
-		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
+		assertThat(updated).hasProperty("springVersion", "3.6.0");
 	}
 
 	@Test
@@ -243,11 +251,12 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinValLiteralPropertyIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("val springVersion = \"3.6.0\"");
-		assertThat(buildFile.getText()).contains("val otherVersion = \"1.1.7\"");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("otherVersion",
+				"1.1.7");
 	}
 
 	@Test
@@ -260,10 +269,11 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinValByExtraDefaultIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("val springVersion by extra(\"3.6.0\")");
+		assertThat(updated).hasProperty("springVersion", "3.6.0");
 	}
 
 	@Test
@@ -278,11 +288,12 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinValByExtraDelegateRoutesThroughExtra(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("extra[\"springVersion\"] = \"3.6.0\"");
-		assertThat(buildFile.getText()).contains("extra[\"lombokVersion\"] = \"1.18.36\"");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -297,11 +308,11 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinVersionBlockStrictlyLiteralIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
 				VersionSource.declared("6.0.0"), "6.0.3");
 
-		assertThat(buildFile.getText()).contains("strictly(\"6.0.3\")");
-		assertThat(buildFile.getText()).doesNotContain("strictly(\"6.0.0\")");
+		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 	}
 
 	@Test
@@ -314,14 +325,14 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinDependencyConstraintVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
 				VersionSource.declared("6.0.0"), "6.0.3");
 
-		assertThat(buildFile.getText()).contains("\"org.junit:junit-bom:6.0.3\"");
-		assertThat(buildFile.getText()).doesNotContain("\"org.junit:junit-bom:6.0.0\"");
+		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 	}
 
-	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
+	private UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
@@ -337,6 +348,7 @@ class UpdateKotlinDslTests {
 
 		new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile.getVirtualFile(), List.of(update));
 		PsiDocumentManager.getInstance(fixture.getProject()).commitAllDocuments();
+		return UpdatedBuildFile.of(targetFile);
 	}
 
 }

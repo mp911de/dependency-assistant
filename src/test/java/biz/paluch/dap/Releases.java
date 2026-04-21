@@ -128,7 +128,7 @@ public final class Releases {
 	 * Fluent collector for {@link CachedRelease} entries on a single
 	 * {@link CachedArtifact}.
 	 */
-	static final class ReleaseBuilder {
+	static class ReleaseBuilder {
 
 		private final List<CachedRelease> releases;
 

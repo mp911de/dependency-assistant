@@ -31,7 +31,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link UpdateGradleFile}.
@@ -53,13 +53,13 @@ class UpdateGradleFileTests {
 			""")
 	void groovyPluginVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot",
+				"3.5.0",
 				DeclarationSource.plugin(),
 				VersionSource.declared("3.5.0"), "4.0.3");
 
-		assertThat(buildFile.getText()).contains("id 'org.springframework.boot' version '4.0.3'")
-				.doesNotContain("version '3.5.0'");
-		assertThat(buildFile.getText()).contains("version '1.1.7'");
+		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
+		assertThat(updated).hasDependency("io.spring.dependency-management", "1.1.7");
 	}
 
 	@Test
@@ -70,11 +70,12 @@ class UpdateGradleFileTests {
 			""")
 	void groovyPluginVersionInParenthesisStyleIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework.boot", "org.springframework.boot",
+				"3.5.0",
 				DeclarationSource.plugin(),
 				VersionSource.declared("3.5.0"), "4.0.3");
 
-		assertThat(buildFile.getText()).contains("version '4.0.3'").doesNotContain("version '3.5.0'");
+		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 	}
 
 	@Test
@@ -88,11 +89,11 @@ class UpdateGradleFileTests {
 			""")
 	void settingsGradlePluginVersionIsUpdated(PsiFile settingsFile) {
 
-		applyUpdate(settingsFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(settingsFile, "org.springframework.boot", "org.springframework.boot",
+				"3.5.0",
 				DeclarationSource.plugin(), VersionSource.declared("3.5.0"), "4.0.3");
 
-		assertThat(settingsFile.getText()).contains("id 'org.springframework.boot' version '4.0.3'")
-				.doesNotContain("version '3.5.0'");
+		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 	}
 
 	@Test
@@ -104,11 +105,12 @@ class UpdateGradleFileTests {
 			""")
 	void groovyDependencyVersionInSingleQuotesIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0",
+				DeclarationSource.dependency(),
 				VersionSource.declared("3.19.0"), "3.20.0");
 
-		assertThat(buildFile.getText()).contains("'org.apache.commons:commons-lang3:3.20.0'");
-		assertThat(buildFile.getText()).contains("'org.junit.jupiter:junit-jupiter:5.11.0'");
+		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
+		assertThat(updated).hasDependency("junit-jupiter", "5.11.0");
 	}
 
 	@Test
@@ -119,10 +121,11 @@ class UpdateGradleFileTests {
 			""")
 	void groovyDependencyVersionInDoubleQuotesIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0",
+				DeclarationSource.dependency(),
 				VersionSource.declared("3.19.0"), "3.20.0");
 
-		assertThat(buildFile.getText()).contains("\"org.apache.commons:commons-lang3:3.20.0\"");
+		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
 	}
 
 	@Test
@@ -136,12 +139,13 @@ class UpdateGradleFileTests {
 			""")
 	void groovyManagedDependencyVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies",
+				"3.5.0",
 				DeclarationSource.managed(),
 				VersionSource.declared("3.5.0"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("'org.springframework.boot:spring-boot-dependencies:3.6.0'");
-		assertThat(buildFile.getText()).contains("'io.micrometer:micrometer-bom:1.14.0'");
+		assertThat(updated).hasDependency("spring-boot-dependencies", "3.6.0");
+		assertThat(updated).hasDependency("micrometer-bom", "1.14.0");
 	}
 
 	@Test
@@ -151,11 +155,12 @@ class UpdateGradleFileTests {
 			""")
 	void propertyInGradlePropertiesIsUpdated(PsiFile propsFile) {
 
-		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
-		assertThat(propsFile.getText()).contains("lombokVersion=1.18.36");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -169,12 +174,12 @@ class UpdateGradleFileTests {
 			""")
 	void propertyInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
-		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
 				VersionSource.property("spring-boot"), "3.6.0");
 
-		assertThat(tomlFile.getText()).contains("spring-boot = \"3.6.0\"");
-		assertThat(tomlFile.getText()).contains("commons-lang = \"3.17.0\"");
+		assertThat(updated).hasProperty("spring-boot", "3.6.0").hasProperty("commons-lang",
+				"3.17.0");
 	}
 
 	@Test
@@ -187,12 +192,12 @@ class UpdateGradleFileTests {
 			""")
 	void libraryVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
-		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
 				VersionSource.declared("3.5.0"), "3.6.0");
 
-		assertThat(tomlFile.getText()).contains("version = \"3.6.0\"");
-		assertThat(tomlFile.getText()).contains("commons-lang = \"3.17.0\"");
+		assertThat(updated).hasDependency("spring-boot-starter", "3.6.0");
+		assertThat(updated).hasProperty("commons-lang", "3.17.0");
 	}
 
 	@Test
@@ -203,11 +208,11 @@ class UpdateGradleFileTests {
 			""")
 	void libraryLiteralVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
-		applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
 				DeclarationSource.dependency(),
 				VersionSource.declared("3.5.0"), "3.6.0");
 
-		assertThat(tomlFile.getText()).contains("org.springframework.boot:spring-boot-starter:3.6.0");
+		assertThat(updated).hasDependency("spring-boot-starter", "3.6.0");
 	}
 
 	@Test
@@ -218,11 +223,12 @@ class UpdateGradleFileTests {
 			""")
 	void pluginLiteralVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
-		applyUpdate(tomlFile, "org.springframework.boot", "org.springframework.boot", "3.5.0",
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "org.springframework.boot",
+				"3.5.0",
 				DeclarationSource.plugin(),
 				VersionSource.declared("3.5.0"), "4.0.0");
 
-		assertThat(tomlFile.getText()).contains("org.springframework.boot:4.0.0");
+		assertThat(updated).hasDependency("org.springframework.boot", "4.0.0");
 	}
 
 	@Test
@@ -235,11 +241,12 @@ class UpdateGradleFileTests {
 			""")
 	void pluginVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
-		applyUpdate(tomlFile, "io.spring.dependency-management", "io.spring.dependency-management", "1.1.6",
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "io.spring.dependency-management",
+				"io.spring.dependency-management", "1.1.6",
 				DeclarationSource.plugin(), VersionSource.declared("1.1.6"), "1.1.7");
 
-		assertThat(tomlFile.getText()).contains("version = \"1.1.7\"");
-		assertThat(tomlFile.getText()).contains("commons-lang = \"3.17.0\"");
+		assertThat(updated).hasDependency("io.spring.dependency-management", "1.1.7");
+		assertThat(updated).hasProperty("commons-lang", "3.17.0");
 	}
 
 	@Test
@@ -255,11 +262,12 @@ class UpdateGradleFileTests {
 			""")
 	void propertyInGroovyExtBlockIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("springVersion = '3.6.0'");
-		assertThat(buildFile.getText()).contains("lombokVersion = '1.18.36'");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -273,11 +281,12 @@ class UpdateGradleFileTests {
 			""")
 	void propertyInGroovyExtDotAssignmentIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(buildFile.getText()).contains("ext.springVersion = '3.6.0'");
-		assertThat(buildFile.getText()).contains("ext.lombokVersion = '1.18.36'");
+		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
@@ -293,21 +302,23 @@ class UpdateGradleFileTests {
 			""")
 	void propertyInGroovyExtSetCallIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.springframework", "spring-core", "2.0.4", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework", "spring-core", "2.0.4",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.5.0");
 
-		assertThat(buildFile.getText()).contains("set('springVersion', \"3.5.0\")");
-		assertThat(buildFile.getText()).contains("set('lombokVersion', \"1.18.36\")");
+		assertThat(updated).hasProperty("springVersion", "3.5.0").hasProperty("lombokVersion",
+				"1.18.36");
 	}
 
 	@Test
 	@ProjectFile(name = "gradle.properties", content = "springVersion=3.5.0\n")
 	void gradlePropertiesTakesPriorityOverExtBlock(PsiFile propsFile) {
 
-		applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("springVersion"), "3.6.0");
 
-		assertThat(propsFile.getText()).contains("springVersion=3.6.0");
+		assertThat(updated).hasProperty("springVersion", "3.6.0");
 	}
 
 	@Test
@@ -319,11 +330,11 @@ class UpdateGradleFileTests {
 			""")
 	void groovyMapSyntaxVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
+				DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
 
-		assertThat(buildFile.getText()).contains("version: '33.0.0-jre'");
-		assertThat(buildFile.getText()).doesNotContain("version: '32.1.2-jre'");
+		assertThat(updated).hasDependency("guava", "33.0.0-jre");
 		assertThat(buildFile.getText()).contains("group: 'com.google.guava'");
 		assertThat(buildFile.getText()).contains("name: 'guava'");
 		assertThat(buildFile.getText()).contains("'org.apache.commons:commons-lang3:3.19.0'");
@@ -337,10 +348,11 @@ class UpdateGradleFileTests {
 			""")
 	void groovyMapSyntaxExtraKeyIsPreserved(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
+				DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
 
-		assertThat(buildFile.getText()).contains("version: '33.0.0-jre'");
+		assertThat(updated).hasDependency("guava", "33.0.0-jre");
 		assertThat(buildFile.getText()).contains("classifier: 'android'");
 	}
 
@@ -353,11 +365,11 @@ class UpdateGradleFileTests {
 			""")
 	void kotlinNamedArgVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
+				DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
 
-		assertThat(buildFile.getText()).contains("version = \"33.0.0-jre\"");
-		assertThat(buildFile.getText()).doesNotContain("version = \"32.1.2-jre\"");
+		assertThat(updated).hasDependency("guava", "33.0.0-jre");
 		assertThat(buildFile.getText()).contains("group = \"com.google.guava\"");
 		assertThat(buildFile.getText()).contains("name = \"guava\"");
 		assertThat(buildFile.getText()).contains("\"org.apache.commons:commons-lang3:3.19.0\"");
@@ -371,10 +383,11 @@ class UpdateGradleFileTests {
 			""")
 	void kotlinNamedArgExtraKeyIsPreserved(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
+				DeclarationSource.dependency(),
 				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
 
-		assertThat(buildFile.getText()).contains("version = \"33.0.0-jre\"");
+		assertThat(updated).hasDependency("guava", "33.0.0-jre");
 		assertThat(buildFile.getText()).contains("classifier = \"android\"");
 	}
 
@@ -391,12 +404,12 @@ class UpdateGradleFileTests {
 			""")
 	void groovyVersionBlockPreferIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25",
+				DeclarationSource.dependency(),
 				VersionSource.declared("1.7.25"), "1.8.0");
 
-		assertThat(buildFile.getText()).contains("prefer '1.8.0'");
+		assertThat(updated).hasDependency("slf4j-api", "1.8.0");
 		assertThat(buildFile.getText()).contains("strictly '[1.7, 1.8['");
-		assertThat(buildFile.getText()).doesNotContain("prefer '1.7.25'");
 	}
 
 	@Test
@@ -412,12 +425,12 @@ class UpdateGradleFileTests {
 			""")
 	void kotlinVersionBlockPreferIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25",
+				DeclarationSource.dependency(),
 				VersionSource.declared("1.7.25"), "1.8.0");
 
-		assertThat(buildFile.getText()).contains("prefer(\"1.8.0\")");
+		assertThat(updated).hasDependency("slf4j-api", "1.8.0");
 		assertThat(buildFile.getText()).contains("strictly(\"[1.7, 1.8[\")");
-		assertThat(buildFile.getText()).doesNotContain("prefer(\"1.7.25\")");
 	}
 
 	@Test
@@ -432,11 +445,11 @@ class UpdateGradleFileTests {
 			""")
 	void groovyMapGStringVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre",
+				DeclarationSource.dependency(),
 				VersionSource.property("guavaVersion"), "33.1.0-jre");
 
-		assertThat(buildFile.getText()).contains("guavaVersion = '33.1.0-jre'");
-		assertThat(buildFile.getText()).doesNotContain("guavaVersion = '33.0-jre'");
+		assertThat(updated).hasProperty("guavaVersion", "33.1.0-jre");
 	}
 
 	@Test
@@ -449,11 +462,11 @@ class UpdateGradleFileTests {
 			""")
 	void kotlinMapBareRefVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre",
+				DeclarationSource.dependency(),
 				VersionSource.property("guavaVersion"), "33.1.0-jre");
 
-		assertThat(buildFile.getText()).contains("val guavaVersion = \"33.1.0-jre\"");
-		assertThat(buildFile.getText()).doesNotContain("val guavaVersion = \"33.0-jre\"");
+		assertThat(updated).hasProperty("guavaVersion", "33.1.0-jre");
 	}
 
 	@Test
@@ -467,12 +480,12 @@ class UpdateGradleFileTests {
 			""")
 	void groovyLocalVariableVersionIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("junitVersion"), "6.0.3");
 
-		assertThat(buildFile.getText()).contains("def junitVersion = '6.0.3'");
-		assertThat(buildFile.getText()).doesNotContain("def junitVersion = '6.0.0'");
-		assertThat(buildFile.getText()).contains("def otherVersion = '1.0.0'");
+		assertThat(updated).hasProperty("junitVersion", "6.0.3").hasProperty("otherVersion",
+				"1.0.0");
 	}
 
 	@Test
@@ -489,11 +502,11 @@ class UpdateGradleFileTests {
 			""")
 	void groovyVersionBlockStrictlyVariableIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("junitVersion"), "6.0.3");
 
-		assertThat(buildFile.getText()).contains("def junitVersion = '6.0.3'");
-		assertThat(buildFile.getText()).doesNotContain("def junitVersion = '6.0.0'");
+		assertThat(updated).hasProperty("junitVersion", "6.0.3");
 	}
 
 	@Test
@@ -511,15 +524,15 @@ class UpdateGradleFileTests {
 			""")
 	void groovyVersionBlockPreferVariableIsUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
 				VersionSource.property("junitVersion"), "6.0.3");
 
-		assertThat(buildFile.getText()).contains("def junitVersion = '6.0.3'");
-		assertThat(buildFile.getText()).doesNotContain("def junitVersion = '6.0.0'");
+		assertThat(updated).hasProperty("junitVersion", "6.0.3");
 		assertThat(buildFile.getText()).contains("strictly '[5.0, 7.0['");
 	}
 
-	private void applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
+	private UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
@@ -535,6 +548,7 @@ class UpdateGradleFileTests {
 
 		new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile.getVirtualFile(), List.of(update));
 		PsiDocumentManager.getInstance(fixture.getProject()).commitAllDocuments();
+		return UpdatedBuildFile.of(targetFile);
 	}
 
 }

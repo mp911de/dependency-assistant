@@ -41,7 +41,7 @@ public class XmlBeamProjectorFactory {
 		return new XBProjector(config, XBProjector.Flags.TO_STRING_RENDERS_XML);
 	}
 
-	private static final class SecureXmlFactoriesConfig extends DefaultXMLFactoriesConfig {
+	private static class SecureXmlFactoriesConfig extends DefaultXMLFactoriesConfig {
 
 		@Override
 		public DocumentBuilderFactory createDocumentBuilderFactory() {

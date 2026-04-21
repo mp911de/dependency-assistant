@@ -17,6 +17,8 @@ package biz.paluch.dap.assertions;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.assertions.CodeInsightAssertions.CodeInsightFixtureAssert;
+import biz.paluch.dap.gradle.UpdatedBuildFile;
+import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 
 /**
@@ -38,6 +40,14 @@ public class Assertions extends org.assertj.core.api.Assertions {
 	 */
 	public static DependencyCollectorAssert assertThat(DependencyCollector collector) {
 		return new DependencyCollectorAssert(collector);
+	}
+
+	/**
+	 * Capture the updated state of the given Gradle-related file for semantic
+	 * assertions.
+	 */
+	public static UpdatedBuildFile updated(PsiFile file) {
+		return UpdatedBuildFile.of(file);
 	}
 
 }
