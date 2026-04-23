@@ -15,10 +15,16 @@
  */
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.LookupSite.ResolvedSite;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Resolves semantic Gradle lookup sites to {@link ArtifactReference}s.
@@ -40,26 +46,35 @@ class GradleLookupSiteResolver {
 		this.tomlResolver = tomlResolver;
 	}
 
-	ArtifactReference resolve(@Nullable GradleLookupSite site) {
+	public ArtifactReference resolve(LookupSite site) {
 
-		if (site == null) {
+		Assert.notNull(site, "Lookup site must not be null");
+		if (site.isAbsent()) {
 			return ArtifactReference.unresolved();
 		}
 
-		if (site instanceof GradleLookupSite.GradleVersionSite versionSite) {
-			return ArtifactReferenceUtils.resolve(versionSite, propertyResolver);
-		}
-
-		if (site instanceof GradlePropertySite propertySite) {
+		if (site instanceof LookupSite.PropertyLookupSite propertySite) {
 			return ArtifactReferenceUtils.resolve(propertySite, projectState);
 		}
 
-		if (site instanceof GradleCatalogReferenceSite catalogReferenceSite) {
-			return tomlResolver.resolveReference(catalogReferenceSite.reference(),
-					catalogReferenceSite.declarationElement());
+		if (site instanceof LookupSite.DependencyLookupSite(GradleDependency dependency, PsiElement declarationElement, PsiElement versionElement)) {
+			return ArtifactReferenceUtils.resolve(dependency, declarationElement, versionElement, propertyResolver);
 		}
 
-		return ArtifactReference.unresolved();
+		if (site instanceof LookupSite.ArtifactIdLookupSite(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement, @Nullable PsiElement versionElement)) {
+			return ArtifactReferenceUtils.resolve(artifactId, versionSource, declarationElement, versionElement,
+					propertyResolver);
+		}
+
+		if (site instanceof LookupSite.TomlCatalogLookupSite(TomlReference reference, PsiElement declarationElement)) {
+			return tomlResolver.resolveReference(reference, declarationElement);
+		}
+
+		if (site instanceof ResolvedSite resolvedSite) {
+			return ArtifactReferenceUtils.resolve(resolvedSite);
+		}
+
+		throw new IllegalStateException("Unsupported dependency site: " + site);
 	}
 
 }

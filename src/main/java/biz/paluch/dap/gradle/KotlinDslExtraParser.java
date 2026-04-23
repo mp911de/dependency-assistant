@@ -18,7 +18,7 @@ package biz.paluch.dap.gradle;
 import java.util.HashMap;
 import java.util.Map;
 
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
@@ -44,7 +44,7 @@ class KotlinDslExtraParser {
 
 	/**
 	 * Parses {@code extra["key"]} property declarations from a Kotlin DSL file to
-	 * {@link PsiPropertyValueElement} for declarations of the form:
+	 * {@link PropertyValue} for declarations of the form:
 	 * <ul>
 	 * <li>{@code extra["key"] = "value"} and
 	 * {@code extra["key"] = """value"""}</li>
@@ -58,16 +58,16 @@ class KotlinDslExtraParser {
 	 * @param file the Kotlin build script ({@code .kts})
 	 * @return a map of property key to literal value.
 	 */
-	public static Map<String, PsiPropertyValueElement> parseExtraProperties(PsiFile file) {
+	public static Map<String, PropertyValue> parseExtraProperties(PsiFile file) {
 
-		Map<String, PsiPropertyValueElement> result = new HashMap<>();
+		Map<String, PropertyValue> result = new HashMap<>();
 
 		SyntaxTraverser.psiTraverser(file)
 				.filter(KtBinaryExpression.class)
 				.filter(KotlinDslExtraParser::isExtra)
 				.forEach(it -> {
 
-					PsiPropertyValueElement element = parseExtra(it);
+					PropertyValue element = parseExtra(it);
 					if (element != null) {
 						result.put(element.propertyKey(), element);
 					}
@@ -101,7 +101,7 @@ class KotlinDslExtraParser {
 				.filter(KotlinDslExtraParser::isExtra)
 				.forEach(it -> {
 
-					PsiPropertyValueElement element = parseExtra(it);
+					PropertyValue element = parseExtra(it);
 					if (element != null) {
 						result.put(element.propertyKey(), element.propertyValue());
 					}
@@ -112,16 +112,16 @@ class KotlinDslExtraParser {
 
 	/**
 	 * Parses top-level {@code val key = "value"} property declarations from a
-	 * Kotlin DSL file and returns them as {@link PsiPropertyValueElement} entries.
+	 * Kotlin DSL file and returns them as {@link PropertyValue} entries.
 	 * <p>Only plain string-literal initialisers are recognised; complex expressions
 	 * are ignored.
 	 *
 	 * @param file the Kotlin build script ({@code .kts})
 	 * @return a map of variable name to literal value element.
 	 */
-	public static Map<String, PsiPropertyValueElement> parseValProperties(PsiFile file) {
+	public static Map<String, PropertyValue> parseValProperties(PsiFile file) {
 
-		Map<String, PsiPropertyValueElement> result = new HashMap<>();
+		Map<String, PropertyValue> result = new HashMap<>();
 
 		SyntaxTraverser.psiTraverser(file)
 				.filter(KtProperty.class)
@@ -139,7 +139,7 @@ class KotlinDslExtraParser {
 							return;
 						}
 
-						result.put(name, new PsiPropertyValueElement(st, name, value));
+						result.put(name, new PropertyValue(st, name, value));
 						return;
 					}
 
@@ -159,7 +159,7 @@ class KotlinDslExtraParser {
 							return;
 						}
 
-						result.put(name, new PsiPropertyValueElement(argTemplate, name, value));
+						result.put(name, new PropertyValue(argTemplate, name, value));
 						return;
 					}
 				});
@@ -171,7 +171,7 @@ class KotlinDslExtraParser {
 	 * If {@code expr} assigns a resolvable literal to {@code extra["key"]}, returns
 	 * that key-value pair.
 	 */
-	private static @Nullable PsiPropertyValueElement parseExtra(KtBinaryExpression expr) {
+	private static @Nullable PropertyValue parseExtra(KtBinaryExpression expr) {
 
 		KtStringTemplateExpression keyTemplate = getKeyAssignment(expr);
 		if (keyTemplate == null) {
@@ -210,7 +210,7 @@ class KotlinDslExtraParser {
 	 * Locates the PSI element whose text should be updated or highlighted as the
 	 * declared value for {@code propertyKey}.
 	 */
-	public static @Nullable PsiPropertyValueElement findExtraPropertyLocation(PsiFile file, String propertyKey) {
+	public static @Nullable PropertyValue findExtraPropertyLocation(PsiFile file, String propertyKey) {
 
 		KtBinaryExpression extraAssignment = findExtraAssignment(file, propertyKey);
 		if (extraAssignment != null) {
@@ -219,7 +219,7 @@ class KotlinDslExtraParser {
 		return null;
 	}
 
-	private static @Nullable PsiPropertyValueElement getValueElement(@Nullable KtExpression assignment, String key) {
+	private static @Nullable PropertyValue getValueElement(@Nullable KtExpression assignment, String key) {
 
 		if (assignment == null) {
 			return null;
@@ -228,7 +228,7 @@ class KotlinDslExtraParser {
 		KtStringTemplateExpression literalElement = getLiteralElement(assignment);
 		String value = KotlinDslUtils.getText(literalElement);
 		if (literalElement != null && value != null) {
-			return new PsiPropertyValueElement(literalElement, key, value);
+			return new PropertyValue(literalElement, key, value);
 		}
 		return null;
 	}

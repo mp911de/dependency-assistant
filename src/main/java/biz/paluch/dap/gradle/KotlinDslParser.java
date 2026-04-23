@@ -16,14 +16,14 @@
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -55,108 +55,6 @@ class KotlinDslParser extends GradleParser {
 		super(collector, properties);
 	}
 
-	/**
-	 * Returns the version segment {@link KtCallElement} if the caret is inside the
-	 * version part of a Kotlin DSL string-notation dependency
-	 * ({@code "group:artifact:version"}), or {@code null}.
-	 */
-	public static GradleLookupSite.@Nullable GradleVersionSite findKotlinVersionElement(KtCallElement call,
-			PropertyResolver scriptProperties) {
-
-		PsiFile file = call.getContainingFile();
-		if (!GradleUtils.isGradleFile(file)) {
-			return null;
-		}
-
-		// Check if this call is prefer/strictly inside a version {} block of a
-		// dependency
-		KtCallExpression declaration = call instanceof KtCallExpression expression ? expression
-				: PsiTreeUtil.getParentOfType(call, KtCallExpression.class);
-		if (declaration == null) {
-			return null;
-		}
-
-		String methodName = KotlinDslUtils.getKotlinCallName(call);
-		if (StringUtils.isEmpty(methodName) || !KotlinDslUtils.isDependencyCall(call)) {
-			return null;
-		}
-
-		if (GradleUtils.isPlugin(methodName) && KotlinDslUtils.isInsidePluginsBlock(call)) {
-			return KotlinDslUtils.findKotlinPluginLocation(call,
-					PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class),
-					scriptProperties);
-		}
-
-		KtStringTemplateExpression directNotation = findDirectDependencyLiteral(call, scriptProperties);
-		if (directNotation != null) {
-			return KotlinDslUtils.getVersionLocation(declaration, directNotation,
-					KtLiterals.from(call.getValueArgumentList()).toString(), null);
-		}
-
-		KtVersion ktVersion = KtVersion.fromDependency(call);
-		if (ktVersion == null || !ktVersion.containsVersion()) {
-			return null;
-		}
-
-		PropertyExpression versionExpression;
-		PsiElement versionElement = ktVersion.getVersionElement();
-		if (ktVersion.hasProperty()) {
-			String property = ktVersion.getProperty();
-			versionExpression = PropertyExpression.property(property);
-			PsiPropertyValueElement version = scriptProperties.getElement(property);
-			if (version != null) {
-				versionElement = version.element();
-			}
-		} else {
-			versionExpression = PropertyExpression.from(ktVersion.getVersion());
-		}
-
-		return KotlinDslUtils.getVersionLocation(declaration, versionElement != null ? versionElement : call,
-				KtLiterals.from(call.getValueArgumentList()).toString(), versionExpression);
-	}
-
-	/**
-	 * implementation(group = "org.junit", name = "junit-bom", version = junit)
-	 */
-	public static GradleLookupSite.@Nullable GradleVersionSite findDependencyAndVersionLocationFromMapDeclaration(
-			KtCallElement call,
-			KtElement versionElement, PropertyResolver scriptProperties) {
-
-		String methodName = KotlinDslUtils.getKotlinCallName(call);
-		if (StringUtils.isEmpty(methodName) || !KotlinDslUtils.isDependencyCall(call)) {
-			return null;
-		}
-
-		if (versionElement instanceof KtNameReferenceExpression referenceExpression) {
-
-			String propertyName = referenceExpression.getReferencedName();
-
-			PsiPropertyValueElement version = scriptProperties.getElement(propertyName);
-			if (version != null) {
-				NamedDependencyDeclaration namedDependencyDeclaration = parseMapDeclaration(call, scriptProperties);
-				if (namedDependencyDeclaration.isComplete()) {
-					GradleDependency dependency = namedDependencyDeclaration.toDependency(scriptProperties);
-					return new GradleLookupSite.GradleVersionSite(dependency, call, versionElement);
-				}
-			}
-		}
-
-		if (versionElement instanceof KtLiteralStringTemplateEntry entry) {
-
-			KtLiterals literals = KtLiterals.from(entry);
-			if (literals.hasText() && !literals.hasProperty()) {
-
-				NamedDependencyDeclaration namedDependencyDeclaration = parseMapDeclaration(call, scriptProperties);
-				if (namedDependencyDeclaration.isComplete()) {
-					GradleDependency dependency = namedDependencyDeclaration.toDependency(scriptProperties);
-					return new GradleLookupSite.GradleVersionSite(dependency, call, versionElement);
-				}
-			}
-		}
-
-		return null;
-	}
-
 	// -------------------------------------------------------------------------
 	// Kotlin DSL
 	// -------------------------------------------------------------------------
@@ -167,7 +65,7 @@ class KotlinDslParser extends GradleParser {
 	public void parseKotlinScript(PsiFile file) {
 
 		getPropertyMap().putAll(KotlinDslExtraParser.getExtraProperties(file));
-		Map<String, PsiPropertyValueElement> valProperties = parseValProperties(file);
+		Map<String, PropertyValue> valProperties = parseValProperties(file);
 		valProperties.forEach((k, v) -> {
 			getPropertyMap().putIfAbsent(k, v.propertyValue());
 			getPropertyLookup().putIfAbsent(k, v);
@@ -179,7 +77,7 @@ class KotlinDslParser extends GradleParser {
 
 	/**
 	 * Parses top-level {@code val} declarations from a Kotlin DSL file and returns
-	 * them as {@link PsiPropertyValueElement} instances. Handles:
+	 * them as {@link PropertyValue} instances. Handles:
 	 * <ul>
 	 * <li>{@code val key = "value"} — plain string literal initialiser</li>
 	 * <li>{@code val key: T by project} — value from injected Gradle
@@ -190,9 +88,9 @@ class KotlinDslParser extends GradleParser {
 	 * argument</li>
 	 * </ul>
 	 */
-	Map<String, PsiPropertyValueElement> parseValProperties(PsiFile file) {
+	Map<String, PropertyValue> parseValProperties(PsiFile file) {
 
-		Map<String, PsiPropertyValueElement> result = new LinkedHashMap<>();
+		Map<String, PropertyValue> result = new LinkedHashMap<>();
 		SyntaxTraverser.psiTraverser(file)
 				.filter(KtProperty.class)
 				.forEach(property -> {
@@ -204,7 +102,7 @@ class KotlinDslParser extends GradleParser {
 					if (property.getInitializer() instanceof KtStringTemplateExpression template) {
 						String value = KotlinDslUtils.getText(template);
 						if (value != null) {
-							result.put(name, new PsiPropertyValueElement(template, name, value));
+							result.put(name, new PropertyValue(template, name, value));
 						}
 						return;
 					}
@@ -220,15 +118,15 @@ class KotlinDslParser extends GradleParser {
 						if ("project".equals(delegateName)) {
 							String value = getPropertyMap().get(name);
 							if (value != null) {
-								result.put(name, new PsiPropertyValueElement(property, name, value));
+								result.put(name, new PropertyValue(property, name, value));
 							}
 						} else if ("extra".equals(delegateName)) {
 							String value = getPropertyMap().get(name);
 							if (value != null) {
-								PsiPropertyValueElement extraLocation = KotlinDslExtraParser
+								PropertyValue extraLocation = KotlinDslExtraParser
 										.findExtraPropertyLocation(file, name);
 								PsiElement psiElement = extraLocation != null ? extraLocation.element() : property;
-								result.put(name, new PsiPropertyValueElement(psiElement, name, value));
+								result.put(name, new PropertyValue(psiElement, name, value));
 							}
 						}
 					} else if (delegateExpr instanceof KtCallExpression delegateCall
@@ -237,7 +135,7 @@ class KotlinDslParser extends GradleParser {
 							if (va.getArgumentExpression() instanceof KtStringTemplateExpression argTemplate) {
 								String value = KotlinDslUtils.getText(argTemplate);
 								if (value != null) {
-									result.put(name, new PsiPropertyValueElement(argTemplate, name, value));
+									result.put(name, new PropertyValue(argTemplate, name, value));
 								}
 								break;
 							}
@@ -261,55 +159,66 @@ class KotlinDslParser extends GradleParser {
 		if (!isDependencyConfig && !isPlatform && !isPlugin) {
 			return;
 		}
-		GradleLookupSite.GradleVersionSite versionLocation = findKotlinVersionElement(call, this);
 
-		if (isPlugin) {
-			if (versionLocation == null) {
-				return;
-			}
+		DeclarationSource declarationSource = isPlugin ? DeclarationSource.plugin()
+				: isPlatform ? DeclarationSource.managed() : DeclarationSource.dependency();
+		DependencySite site = parseDependencySite(call, isPlugin, isPlatform, this);
+		if (site != null) {
+			register(site, declarationSource);
+		}
+	}
 
-			register(versionLocation.dependency(), DeclarationSource.plugin());
-			return;
+	public static @Nullable DependencySite parseDependencySite(KtCallElement call, PropertyResolver propertyResolver) {
+
+		String methodName = KotlinDslUtils.getKotlinCallName(call);
+		if (methodName == null) {
+			return null;
 		}
 
-		if (!isDependencyConfig && !isPlatform) {
-			return;
+		boolean isDependencyConfig = GradleUtils.isDependencySection(methodName);
+		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
+		boolean isPlugin = KotlinDslUtils.isInsidePluginsBlock(call);
+
+		if (!isDependencyConfig && !isPlatform && !isPlugin) {
+			return null;
+		}
+		return parseDependencySite(call, isPlugin, isPlatform, propertyResolver);
+	}
+
+	private static @Nullable DependencySite parseDependencySite(KtCallElement call, boolean isPlugin,
+			boolean isPlatform, PropertyResolver propertyResolver) {
+
+
+		if (isMapStyleDeclarationCandidate(call)) {
+
+			// Named arguments: group = "g", name = "a", version = "v"
+			NamedDependencyDeclaration entry = parseMapDeclaration(call, propertyResolver);
+			if (entry.isComplete()) {
+				return entry.toDependencySite(propertyResolver);
+			}
+		}
+
+		DependencySite site = findDependencySite(call, propertyResolver);
+
+		if (isPlugin) {
+			return site;
 		}
 
 		if (!KotlinDslUtils.isInsideBlock(call, "dependencies"::equals) && !isPlatform) {
-			return;
+			return null;
 		}
 
-		DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed() : DeclarationSource.dependency();
-		if (versionLocation != null) {
-			register(versionLocation.dependency(), declarationSource);
-			return;
+		if (site != null) {
+			return site;
 		}
 
 		// Try version block: implementation("g:a") { version { prefer("1.0") } }
-		NamedDependencyDeclaration versionBlockEntry = parseVersionBlockDependency(call);
+		NamedDependencyDeclaration versionBlockEntry = parseVersionBlockDependency(call, propertyResolver);
 		if (versionBlockEntry != null && versionBlockEntry.isComplete()) {
-			register(versionBlockEntry.toDependency(this), declarationSource);
-			return;
+			return versionBlockEntry.toDependencySite(propertyResolver);
 		}
 
-		// Named arguments: group = "g", name = "a", version = "v"
-		registerMapDeclaration(call, declarationSource);
-	}
-
-	/**
-	 * Parses a version-block dependency of the form: <pre class="code">
-	 * implementation("group:artifact") {
-	 *     version {
-	 *         strictly("[1.7, 1.8[")
-	 *         prefer("1.7.25")
-	 *     }
-	 * }
-	 * </pre> Returns a {@link NamedDependencyDeclaration} when a usable version can
-	 * be extracted, or {@code null} otherwise.
-	 */
-	private @Nullable NamedDependencyDeclaration parseVersionBlockDependency(KtCallElement call) {
-		return parseVersionBlockDependency(call, this);
+		return null;
 	}
 
 	/**
@@ -416,7 +325,7 @@ class KotlinDslParser extends GradleParser {
 			versionProperty = extractTemplatePropertyKey(preferTemplate);
 		} else if (preferNameRef != null) {
 			String refName = preferNameRef.getReferencedName();
-			PsiPropertyValueElement resolved = resolveVersionProperty(propertyResolver, refName);
+			PropertyValue resolved = resolveVersionProperty(propertyResolver, refName);
 			if (resolved == null) {
 				return null;
 			}
@@ -433,7 +342,7 @@ class KotlinDslParser extends GradleParser {
 			versionProperty = extractTemplatePropertyKey(strictlyTemplate);
 		} else if (strictlyNameRef != null) {
 			String refName = strictlyNameRef.getReferencedName();
-			PsiPropertyValueElement resolved = resolveVersionProperty(propertyResolver, refName);
+			PropertyValue resolved = resolveVersionProperty(propertyResolver, refName);
 			if (resolved == null) {
 				return null;
 			}
@@ -461,7 +370,7 @@ class KotlinDslParser extends GradleParser {
 				call, versionLiteralElement);
 	}
 
-	private static @Nullable PsiPropertyValueElement resolveVersionProperty(PropertyResolver propertyResolver,
+	private static @Nullable PropertyValue resolveVersionProperty(PropertyResolver propertyResolver,
 			String refName) {
 
 		if (!StringUtils.hasText(refName)) {
@@ -471,7 +380,7 @@ class KotlinDslParser extends GradleParser {
 		return propertyResolver.getElement(refName);
 	}
 
-	private static @Nullable KtStringTemplateExpression findDirectDependencyLiteral(KtCallElement call,
+	private static @Nullable KtStringTemplateExpression findInlineDependencyLiteral(KtCallElement call,
 			PropertyResolver propertyResolver) {
 
 		for (ValueArgument valueArgument : call.getValueArguments()) {
@@ -486,7 +395,7 @@ class KotlinDslParser extends GradleParser {
 
 			if (expression instanceof KtCallElement nested
 					&& GradleUtils.isPlatformSection(KotlinDslUtils.getKotlinCallName(nested))) {
-				KtStringTemplateExpression nestedTemplate = findDirectDependencyLiteral(nested, propertyResolver);
+				KtStringTemplateExpression nestedTemplate = findInlineDependencyLiteral(nested, propertyResolver);
 				if (nestedTemplate != null) {
 					return nestedTemplate;
 				}
@@ -496,13 +405,65 @@ class KotlinDslParser extends GradleParser {
 		return null;
 	}
 
-	private void registerMapDeclaration(KtCallElement call, DeclarationSource src) {
+	public static @Nullable DependencySite findDependencySite(KtCallElement call,
+			PropertyResolver scriptProperties) {
 
-		NamedDependencyDeclaration entry = parseMapDeclaration(call, this);
-
-		if (entry.isComplete()) {
-			register(entry.toDependency(this), src);
+		PsiFile file = call.getContainingFile();
+		if (!GradleUtils.isKotlinDsl(file)) {
+			return null;
 		}
+
+		String methodName = KotlinDslUtils.getKotlinCallName(call);
+		if (StringUtils.isEmpty(methodName) || !KotlinDslUtils.isDependencyCall(call)) {
+			return null;
+		}
+
+		if (GradleUtils.isPlugin(methodName) && KotlinDslUtils.isInsidePluginsBlock(call)) {
+			return KotlinDslUtils.findPluginSite(call,
+					PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class),
+					scriptProperties);
+		}
+
+		KtStringTemplateExpression directNotation = findInlineDependencyLiteral(call, scriptProperties);
+		if (directNotation != null) {
+			return KotlinDslUtils.getDependencySite(call, directNotation,
+					KtLiterals.from(call.getValueArgumentList()).toString(), null);
+		}
+
+		KtVersion ktVersion = KtVersion.fromDependency(call);
+		if (ktVersion == null || !ktVersion.containsVersion()) {
+			return null;
+		}
+
+		PropertyExpression versionExpression;
+		PsiElement versionElement = ktVersion.getVersionElement();
+		if (ktVersion.hasProperty()) {
+			String property = ktVersion.getProperty();
+			versionExpression = PropertyExpression.property(property);
+			PropertyValue version = scriptProperties.getElement(property);
+			if (version != null) {
+				versionElement = version.element();
+			}
+		} else {
+			versionExpression = PropertyExpression.from(ktVersion.getVersion());
+		}
+
+		return KotlinDslUtils.getDependencySite(call, versionElement != null ? versionElement : call,
+				KtLiterals.from(call.getValueArgumentList()).toString(), versionExpression);
+	}
+
+	/**
+	 * Return whether the given call is a map-style declaration candidate
+	 * {@code implementation(group = "org.junit", name = "junit-bom", …)}.
+	 */
+	public static boolean isMapStyleDeclarationCandidate(KtCallElement call) {
+
+		KtValueArgumentList valueArgumentList = call.getValueArgumentList();
+		if (valueArgumentList != null) {
+			return valueArgumentList.getArguments().size() > 1;
+		}
+
+		return false;
 	}
 
 	static NamedDependencyDeclaration parseMapDeclaration(KtCallElement call,
@@ -538,7 +499,7 @@ class KotlinDslParser extends GradleParser {
 					}
 				} else if (expr instanceof KtNameReferenceExpression ref) {
 					String refName = ref.getReferencedName();
-					PsiPropertyValueElement element = propertyResolver.getElement(refName);
+					PropertyValue element = propertyResolver.getElement(refName);
 					if (element != null) {
 						version = element.propertyValue();
 						versionLiteral = element.element();
@@ -569,31 +530,9 @@ class KotlinDslParser extends GradleParser {
 				hasLiteral[0] = true;
 			}
 		}, expression -> {
-			if (expression instanceof KtNameReferenceExpression ref) {
-				result[0] = ref.getReferencedName();
-			} else if (expression instanceof KtCallExpression call
-					&& "property".equals(KotlinDslUtils.getKotlinCallName(call))) {
-				StringBuilder key = new StringBuilder();
-				KotlinDslUtils.doWithStrings(call, key::append, e -> {
-				});
-				result[0] = key.toString();
-			} else if (expression instanceof KtArrayAccessExpression arrayAccess
-					&& arrayAccess.getArrayExpression() != null
-					&& "extra".equals(arrayAccess.getArrayExpression().getText())) {
-				List<KtExpression> indices = arrayAccess.getIndexExpressions();
-				if (!indices.isEmpty()) {
-					StringBuilder key = new StringBuilder();
-					KotlinDslUtils.doWithStrings(indices.get(0), key::append, e -> {
-					});
-					result[0] = key.toString();
-				}
-			} else if (expression instanceof KtDotQualifiedExpression dotQualified
-					&& dotQualified.getSelectorExpression() instanceof KtCallExpression selectorCall
-					&& "property".equals(KotlinDslUtils.getKotlinCallName(selectorCall))) {
-				StringBuilder key = new StringBuilder();
-				KotlinDslUtils.doWithStrings(selectorCall, key::append, e -> {
-				});
-				result[0] = key.toString();
+			String key = KotlinDslUtils.getPropertyName(expression);
+			if (StringUtils.hasText(key)) {
+				result[0] = key;
 			}
 		});
 
@@ -648,5 +587,6 @@ class KotlinDslParser extends GradleParser {
 
 		return builder.toString();
 	}
+
 
 }

@@ -55,6 +55,19 @@ public class ArtifactReference {
 	}
 
 	/**
+	 * Create an {@code ArtifactReference} from the given
+	 * {@link VersionedDependencySite}.
+	 */
+	public static ArtifactReference from(VersionedDependencySite dependencySite) {
+		return from(it -> {
+			it.artifact(dependencySite.getArtifactId()).version(dependencySite.getVersion())
+					.versionSource(dependencySite.getVersionSource())
+					.declarationElement(dependencySite.getDeclarationElement())
+					.versionLiteral(dependencySite.getVersionElement());
+		});
+	}
+
+	/**
 	 * Returns whether the artifact reference is present and resolved.
 	 */
 	public boolean isResolved() {

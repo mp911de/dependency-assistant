@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.gradle.KtVersion.Constraint;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
@@ -35,7 +36,12 @@ import org.springframework.lang.Contract;
 import org.springframework.util.Assert;
 
 /**
- * PSI navigation utilities for KotlinScript Gradle build files.
+ * Internal Kotlin DSL PSI helpers used by parsers, lookup-site locators, and
+ * update routines.
+ *
+ * <p>This class centralizes Kotlin build-script traversal rules shared across
+ * parser infrastructure. It is not intended as a general-purpose Kotlin PSI
+ * abstraction.
  *
  * @author Mark Paluch
  */
@@ -88,10 +94,8 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Resolves a single expression found inside a Kotlin string template to a
-	 * string value. Handles {@code property("key")},
-	 * {@code project.property("key")}, {@code extra["key"]}, and {@code $varName}
-	 * references.
+	 * Resolve a Kotlin string-template expression against script properties.
+	 * <p>Used when parsing interpolated plugin ids and version literals.
 	 */
 	static @Nullable String resolveKotlinExpression(KtExpression expr, PropertyResolver properties) {
 
@@ -153,6 +157,11 @@ class KotlinDslUtils {
 		return null;
 	}
 
+	/**
+	 * Extract a property name from a supported Kotlin property expression.
+	 * <p>Supports {@code property("...")}, {@code project.property("...")},
+	 * {@code extra["..."]}, and direct name references.
+	 */
 	public static @Nullable String getPropertyName(KtExpression ktExpression) {
 
 		StringBuilder property = new StringBuilder();
@@ -194,11 +203,17 @@ class KotlinDslUtils {
 		return StringUtils.hasText(property) ? property.toString() : null;
 	}
 
-	public static GradleLookupSite.@Nullable GradleVersionSite findKotlinPluginLocation(KtCallElement call,
+	/**
+	 * Create a {@link DependencySite} for a Kotlin plugin declaration.
+	 * <p>Used for plugin ids declared in {@code plugins { }} blocks and infix
+	 * {@code version} declarations.
+	 */
+	public static @Nullable DependencySite findPluginSite(KtCallElement call,
 			@Nullable KtBinaryExpression be, PropertyResolver scriptProperties) {
 
 		StringBuilder pluginId = new StringBuilder();
 		boolean[] failed = new boolean[1];
+
 		doWithStrings(call, pluginId::append, expr -> {
 			String resolved = resolveKotlinExpression(expr, scriptProperties);
 			if (resolved == null) {
@@ -256,21 +271,17 @@ class KotlinDslUtils {
 				? PropertyExpression.property(versionPropertyKey)
 				: PropertyExpression.from(versionText);
 
-		return GradleLookupSite.of(GradleDependency.of(GradlePlugin.of(id), versionExpression), call,
+		return GradleDependency.of(GradlePlugin.of(id), versionExpression).toDependencySite(call,
 				versionElement);
 	}
 
-	public static GradleLookupSite.@Nullable GradleVersionSite getVersionLocation(KtCallElement declaration,
-			PsiElement version,
-			String gav, @Nullable PropertyExpression versionExpression) {
-
-		String kotlinCallName = getKotlinCallName(declaration);
-		if (GradleUtils.isPluginSection(kotlinCallName) && versionExpression != null) {
-
-			GradlePlugin id = GradlePlugin.of(gav);
-			GradleDependency dependency = GradleDependency.of(id, versionExpression);
-			return GradleLookupSite.of(dependency, declaration, version);
-		}
+	/**
+	 * Create a {@link DependencySite} from parsed Kotlin DSL dependency data.
+	 * <p>The supplied {@code declaration} and {@code version} elements are reused
+	 * as the PSI anchors for the resulting site.
+	 */
+	public static @Nullable DependencySite getDependencySite(KtCallElement declaration,
+			PsiElement version, String gav, @Nullable PropertyExpression versionExpression) {
 
 		// Infix plugin form: id("plugin.id") version "x.y.z" — declaration may not be
 		// `plugins` depending on PSI shape.
@@ -278,7 +289,7 @@ class KotlinDslUtils {
 				&& isInsidePluginsBlock(version) && !gav.contains(":")
 				&& versionExpression != null) {
 			GradleDependency dependency = GradleDependency.of(GradlePlugin.of(gav), versionExpression);
-			return GradleLookupSite.of(dependency, declaration, version);
+			return dependency.toDependencySite(declaration, version);
 		}
 
 		GradleDependency dependency = GradleDependency.parse(gav);
@@ -287,7 +298,7 @@ class KotlinDslUtils {
 		}
 
 		if (dependency.getVersionSource().isDefined()) {
-			return GradleLookupSite.of(dependency, declaration, version);
+			return dependency.toDependencySite(declaration, version);
 		}
 
 		if (versionExpression == null
@@ -295,14 +306,18 @@ class KotlinDslUtils {
 			return null;
 		}
 
-		return GradleLookupSite.of(dependency.withVersion(versionExpression), declaration, version);
+		return dependency.withVersion(versionExpression).toDependencySite(declaration, version);
 	}
 
-
 	/**
-	 * Returns the property name.
+	 * Extract the property key from an {@code extra["key"] = ...} assignment.
 	 */
-	public static @Nullable String findProperty(KtBinaryExpression element) {
+	@Contract("null -> null")
+	public static @Nullable String findProperty(@Nullable KtBinaryExpression element) {
+
+		if (element == null) {
+			return null;
+		}
 
 		for (PsiElement child : element.getChildren()) {
 
@@ -345,10 +360,9 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Find a {@link KtCallExpression} that is a dependency declaration.
-	 *
-	 * @param element element that defines the dependency element.
-	 * @return
+	 * Find the dependency call that owns the given PSI element.
+	 * <p>Used by lookup-site resolution to map version literals, named arguments,
+	 * and version-constraint entries back to their declaration call.
 	 */
 	public static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
 
@@ -466,12 +480,8 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Find a {@link KtBinaryExpression} {@code extra["key"] = rhs} whose value is
-	 * defined by the given PSI (direct string RHS, inside {@code buildString {
-	 * append("…") }}, triple-quoted literal, or {@code "….also { … = it }}).
-	 *
-	 * @param element a leaf or entry inside the element literal, or (for
-	 * {@code it}-assignment) inside the receiver string of {@code .also}
+	 * Find the Kotlin property declaration that owns the given PSI element.
+	 * <p>Used for literal entries nested within property initializers.
 	 */
 	public static @Nullable KtProperty findProperty(KtElement element) {
 
@@ -483,12 +493,8 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Find a {@link KtBinaryExpression} {@code extra["key"] = rhs} whose value is
-	 * defined by the given PSI (direct string RHS, inside {@code buildString {
-	 * append("…") }}, triple-quoted literal, or {@code "….also { … = it }}).
-	 *
-	 * @param element a leaf or entry inside the element literal, or (for
-	 * {@code it}-assignment) inside the receiver string of {@code .also}
+	 * Find the {@code extra["key"] = ...} assignment that owns the given value PSI.
+	 * <p>Also supports the {@code "value".also { extra["key"] = it }} form.
 	 */
 	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
 
@@ -592,10 +598,9 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Returns the required text associated with {@code expression} or throw
-	 * {@link IllegalArgumentException} if the text could not be obtained.
-	 * @return the required text.
-	 * @throws IllegalArgumentException if the expression is not supported.
+	 * Return text for a supported Kotlin DSL expression.
+	 * @throws IllegalArgumentException if the expression cannot be converted to
+	 * text by {@link #getText(KtElement)}
 	 */
 	static String getRequiredText(KtExpression expression) {
 
@@ -612,9 +617,10 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Resolves the string value assigned to an {@code extra[...]} expression, or
-	 * {@code null} if unsupported.
-	 * @throws IllegalArgumentException if the expression is not supported.
+	 * Extract text from supported Kotlin DSL literal forms.
+	 * <p>Used for property keys, dependency coordinates, and simple synthesized
+	 * string values.
+	 * @throws IllegalArgumentException if the element type is not supported
 	 */
 	@Contract("null -> null")
 	static @Nullable String getText(@Nullable KtElement element) {
@@ -659,6 +665,10 @@ class KotlinDslUtils {
 		return receiver != null ? getText(receiver) : null;
 	}
 
+	/**
+	 * Return the receiver string template for an {@code also { ... = it }}
+	 * assignment.
+	 */
 	public static @Nullable KtStringTemplateExpression findAlsoReceiverStringTemplate(KtNameReferenceExpression itRef) {
 
 		KtLambdaExpression lambda = PsiTreeUtil.getParentOfType(itRef, KtLambdaExpression.class);
@@ -679,6 +689,10 @@ class KotlinDslUtils {
 		return null;
 	}
 
+	/**
+	 * Return the first string template appended within a {@code buildString { }}
+	 * call.
+	 */
 	public static @Nullable KtStringTemplateExpression findBuildStringAppendLiteral(KtCallExpression buildStringCall) {
 
 		if (!"buildString".equals(KotlinDslUtils.getKotlinCallName(buildStringCall))) {
@@ -722,6 +736,21 @@ class KotlinDslUtils {
 	// Version catalog (Kotlin {@code libs.…})
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Unwrap nested {@link KtParenthesizedExpression} nodes.
+	 */
+	static KtExpression unwrapParenthesizedExpression(KtExpression expression) {
+
+		KtExpression e = expression;
+		while (e instanceof KtParenthesizedExpression paren) {
+			KtExpression inner = paren.getExpression();
+			if (inner == null) {
+				break;
+			}
+			e = inner;
+		}
+		return e;
+	}
 
 	static @Nullable KtExpression getFirstValueArgument(KtCallElement call) {
 

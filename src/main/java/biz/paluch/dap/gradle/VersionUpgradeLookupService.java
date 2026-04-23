@@ -15,7 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
@@ -24,7 +23,7 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.lang.properties.IProperty;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -32,6 +31,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtElement;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlLiteral;
 
@@ -82,7 +82,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GroovyVersionSiteLocator groovySiteLocator;
 
-	private final KotlinVersionSiteLocator kotlinSiteLocator;
+	private final KotlinLookupSiteLocator kotlinSiteLocator;
 
 	private final TomlVersionSiteLocator tomlSiteLocator;
 
@@ -107,7 +107,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.registry = VersionCatalogRegistry.from(file);
 		this.tomlResolver = new TomlArtifactResolver(project, file, projectState, this.registry);
 		this.groovySiteLocator = new GroovyVersionSiteLocator(this.propertyResolver, this.registry);
-		this.kotlinSiteLocator = new KotlinVersionSiteLocator(this.propertyResolver, this.registry);
+		this.kotlinSiteLocator = new KotlinLookupSiteLocator(this.propertyResolver, this.registry);
 		this.tomlSiteLocator = new TomlVersionSiteLocator();
 		this.lookupSiteResolver = new GradleLookupSiteResolver(this.propertyResolver, this.projectState,
 				this.tomlResolver);
@@ -142,8 +142,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return lookupSiteResolver.resolve(locateGradlePropertySite(propertyValue));
 		}
 
-		if (GradleUtils.isGroovyDsl(vf)) {
-			return lookupSiteResolver.resolve(groovySiteLocator.locate(element));
+		if (GradleUtils.isGroovyDsl(vf) && element instanceof GroovyPsiElement groovyElement) {
+			return lookupSiteResolver.resolve(groovySiteLocator.locate(groovyElement));
 		}
 
 		if (GradleUtils.KOTLIN_AVAILABLE && element instanceof KtElement ktElement) {
@@ -153,24 +153,12 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return ArtifactReference.unresolved();
 	}
 
-	private @Nullable GradleLookupSite locateGradlePropertySite(PropertyValueImpl element) {
-
-		IProperty property = findParentProperty(element);
+	private LookupSite locateGradlePropertySite(PropertyValueImpl element) {
+		Property property = PsiTreeUtil.getParentOfType(element, Property.class);
 		if (property == null || StringUtils.isEmpty(property.getKey()) || projectState == null) {
-			return null;
+			return LookupSite.absent();
 		}
-
-		ArtifactId artifactId = projectState.findArtifactByPropertyName(property.getKey());
-		String version = property.getValue();
-		if (artifactId == null || StringUtils.isEmpty(version)) {
-			return null;
-		}
-
-		return GradleLookupSite.property(property.getKey(), version, property.getPsiElement(), element, artifactId);
-	}
-
-	private static @Nullable IProperty findParentProperty(PsiElement element) {
-		return PsiTreeUtil.getParentOfType(element, com.intellij.lang.properties.psi.Property.class);
+		return LookupSite.findProperty(property.getName(), property.getValue(), property, element);
 	}
 
 }

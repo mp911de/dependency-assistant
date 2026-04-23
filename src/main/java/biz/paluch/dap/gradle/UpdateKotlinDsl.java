@@ -17,8 +17,10 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtCallElement;
@@ -35,10 +37,10 @@ import org.jetbrains.kotlin.psi.ValueArgument;
  */
 class UpdateKotlinDsl {
 
-	private final KotlinVersionSiteLocator siteLocator;
+	private final KotlinLookupSiteLocator siteLocator;
 
 	UpdateKotlinDsl(PropertyResolver propertyResolver) {
-		this.siteLocator = new KotlinVersionSiteLocator(propertyResolver);
+		this.siteLocator = new KotlinLookupSiteLocator(propertyResolver);
 	}
 
 	/**
@@ -47,24 +49,31 @@ class UpdateKotlinDsl {
 	 * {@code "group:artifact:version"} string-notation dependency declarations.
 	 *
 	 * @param file the Kotlin DSL build file.
-	 * @param artifact the artifact whose version is being updated.
+	 * @param artifactId the artifact whose version is being updated.
 	 * @param newVersion the new version string.
 	 * @param declarationSource the declaration source that describe where the
 	 * dependency appears.
 	 */
-	void updateDeclaration(PsiFile file, ArtifactId artifact, String newVersion,
+	void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion,
 			DeclarationSource declarationSource) {
 
 		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
 
-			GradleDeclarationSite site = siteLocator.locateDeclaration(call);
-			if (site == null || !site.isUpdateable() || !site.matches(artifact)) {
+			DependencySite site = siteLocator.locateDeclaration(call);
+			if (!(site instanceof VersionedDependencySite versioned) || !site.getArtifactId()
+					.equals(artifactId)) {
 				return false;
 			}
 
-			return site.updateVersion(newVersion);
+			if (versioned.getVersionElement() instanceof KtStringTemplateExpression template) {
+				GradleUtils.updateVersion(KotlinDslUtils.getText(template), newVersion, template::updateText);
+				return true;
+			}
+
+			return false;
 		}));
 	}
+
 
 	/**
 	 * Finds and updates an {@code extra["key"]} assignment in a Kotlin DSL file
@@ -75,7 +84,7 @@ class UpdateKotlinDsl {
 	 */
 	boolean updateExtraProperty(PsiFile file, String propertyKey, String newVersion) {
 
-		PsiPropertyValueElement element = KotlinDslExtraParser.findExtraPropertyLocation(file, propertyKey);
+		PropertyValue element = KotlinDslExtraParser.findExtraPropertyLocation(file, propertyKey);
 		if (element == null) {
 			return updateValProperty(file, propertyKey, newVersion);
 		}

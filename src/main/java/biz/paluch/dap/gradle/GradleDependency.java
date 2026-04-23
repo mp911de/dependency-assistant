@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,16 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.Optional;
+
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -199,6 +204,10 @@ interface GradleDependency {
 		return of(getId(), versionExpression);
 	}
 
+	default DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
+		return DependencySite.of(getId(), getVersionSource(), declaration);
+	}
+
 	record DependencyReference(ArtifactId id) implements GradleDependency {
 
 		@Override
@@ -223,6 +232,17 @@ interface GradleDependency {
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource();
+		}
+
+		@Override
+		public DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
+
+			DependencySite dependencySite = GradleDependency.super.toDependencySite(declaration, version);
+			Optional<ArtifactVersion> optional = ArtifactVersion.from(version());
+			if (optional.isPresent()) {
+				return dependencySite.withVersion(optional.get(), version);
+			}
+			return dependencySite;
 		}
 
 	}

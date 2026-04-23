@@ -22,17 +22,20 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValue;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -51,10 +54,10 @@ class GradlePropertyResolver implements PropertyResolver {
 
 	private static final GradlePropertyResolver ABSENT = new GradlePropertyResolver(Map.of());
 
-	private final Map<String, PsiPropertyValueElement> propertyElements;
+	private final Map<String, PropertyValue> propertyElements;
 
 	public GradlePropertyResolver(
-			Map<String, PsiPropertyValueElement> propertyElements) {
+			Map<String, PropertyValue> propertyElements) {
 		this.propertyElements = propertyElements;
 	}
 
@@ -110,7 +113,7 @@ class GradlePropertyResolver implements PropertyResolver {
 		}
 		Collections.reverse(dirsLeafToRoot);
 
-		Map<String, PsiPropertyValueElement> properties = new LinkedHashMap<>();
+		Map<String, PropertyValue> properties = new LinkedHashMap<>();
 		for (VirtualFile directory : dirsLeafToRoot) {
 			VirtualFile gradleProps = directory.findChild(GradleUtils.GRADLE_PROPERTIES);
 			if (gradleProps != null) {
@@ -147,7 +150,7 @@ class GradlePropertyResolver implements PropertyResolver {
 
 	private static GradlePropertyResolver parseFile(PsiFile file) {
 
-		Map<String, PsiPropertyValueElement> properties = new LinkedHashMap<>();
+		Map<String, PropertyValue> properties = new LinkedHashMap<>();
 
 		if (GradleUtils.isGroovyDsl(file)) {
 			properties.putAll(GroovyDslExtParser.parseLocalVariables(file));
@@ -249,7 +252,7 @@ class GradlePropertyResolver implements PropertyResolver {
 	@Override
 	public @Nullable String getProperty(String key) {
 
-		PsiPropertyValueElement element = getElement(key);
+		PropertyValue element = getElement(key);
 		if (element != null) {
 			return element.propertyValue();
 		}
@@ -257,8 +260,35 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	@Override
-	public @Nullable PsiPropertyValueElement getElement(String key) {
+	public @Nullable PropertyValue getElement(String key) {
 		return propertyElements.get(key);
+	}
+
+	/**
+	 * Finds a cached property binding whose value PSI matches or encloses
+	 * {@code literal}.
+	 */
+	public @Nullable PropertyValue findBindingForValueLiteral(PsiElement literal) {
+
+		for (PropertyValue binding : propertyElements.values()) {
+			PsiElement psi = binding.element();
+			if (psi == null) {
+				continue;
+			}
+			if (psi.equals(literal) || PsiTreeUtil.isAncestor(psi, literal, false)
+					|| literal.getManager().areElementsEquivalent(psi, literal)) {
+				return binding;
+			}
+
+			TextRange lr = literal.getTextRange();
+			TextRange pr = psi.getTextRange();
+			if (lr != null && pr != null && pr.getStartOffset() <= lr.getStartOffset()
+					&& lr.getEndOffset() <= pr.getEndOffset()) {
+				return binding;
+			}
+
+		}
+		return null;
 	}
 
 }

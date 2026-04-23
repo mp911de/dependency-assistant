@@ -32,7 +32,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class ArtifactDeclaration {
+public class ArtifactDeclaration implements DependencySite {
 
 	private final ArtifactId artifactId;
 
@@ -42,17 +42,18 @@ public class ArtifactDeclaration {
 
 	private final @Nullable ArtifactVersion version;
 
-	private final @Nullable PsiElement declarationElement;
+	private final PsiElement declarationElement;
 
 	private final @Nullable PsiElement versionLiteral;
 
-	private ArtifactDeclaration(Builder builder) {
-		this.artifactId = builder.id;
-		this.versionSource = builder.versionSource;
-		this.versionDefinedInSameFile = builder.versionDefinedInSameFile;
-		this.version = builder.version;
-		this.declarationElement = builder.declarationElement;
-		this.versionLiteral = builder.versionLiteral;
+	private ArtifactDeclaration(ArtifactId artifactId, VersionSource versionSource, boolean versionDefinedInSameFile,
+			@Nullable ArtifactVersion version, PsiElement declarationElement, @Nullable PsiElement versionLiteral) {
+		this.artifactId = artifactId;
+		this.versionSource = versionSource;
+		this.versionDefinedInSameFile = versionDefinedInSameFile;
+		this.version = version;
+		this.declarationElement = declarationElement;
+		this.versionLiteral = versionLiteral;
 	}
 
 	/**
@@ -103,7 +104,7 @@ public class ArtifactDeclaration {
 	 *
 	 * @return the declaration element, or {@code null} if not available.
 	 */
-	public @Nullable PsiElement getDeclarationElement() {
+	public PsiElement getDeclarationElement() {
 		return declarationElement;
 	}
 
@@ -243,8 +244,10 @@ public class ArtifactDeclaration {
 
 			Assert.notNull(id, "ArtifactId must not be null");
 			Assert.notNull(versionSource, "VersionSource must not be null");
+			Assert.notNull(declarationElement, "Declaration element must not be null");
 
-			return new ArtifactDeclaration(this);
+			return new ArtifactDeclaration(id, versionSource, versionDefinedInSameFile, version, declarationElement,
+					versionLiteral);
 		}
 
 	}

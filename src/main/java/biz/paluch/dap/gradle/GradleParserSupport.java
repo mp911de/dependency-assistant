@@ -16,15 +16,20 @@
 package biz.paluch.dap.gradle;
 
 import java.util.Map;
+import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -64,6 +69,25 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 		return GradleDependency.parse(raw, this);
 	}
 
+	void register(DependencySite site, DeclarationSource declarationSource) {
+
+		if (site instanceof VersionedDependencySite versioned) {
+			getCollector().registerUsage(versioned.getArtifactId(), versioned.getVersion(), declarationSource,
+					versioned.getVersionSource());
+		} else if (site.getVersionSource() instanceof VersionSource.VersionProperty property) {
+
+			String version = getProperty(property.getProperty());
+			if (StringUtils.hasText(version)) {
+				ArtifactVersion.from(version)
+						.ifPresent(it -> getCollector().registerUsage(site.getArtifactId(), it, declarationSource,
+								site.getVersionSource()));
+			}
+		}
+
+		getCollector().registerDeclaration(site.getArtifactId(), declarationSource, site.getVersionSource());
+	}
+
+
 	void register(GradleDependency dependency, DeclarationSource declarationSource) {
 
 		if (dependency instanceof PropertyManagedDependency pmd) {
@@ -95,6 +119,10 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 			@Nullable String artifact,
 			@Nullable String versionProperty,
 			@Nullable String version, PsiElement declaration, @Nullable PsiElement versionLiteral) {
+
+		public NamedDependencyDeclaration(PsiFile containingFile) {
+			this(containingFile, null, null, null, null, null, null, null);
+		}
 
 		/**
 		 * Check whether the declaration is complete (having id and version information
@@ -138,6 +166,34 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 			}
 
 			return GradleDependency.of(group, artifact, version, propertyResolver);
+		}
+
+		public DependencySite toDependencySite(PropertyResolver propertyResolver) {
+
+			Assert.state(isComplete(), "Declaration must be complete");
+
+			GradleDependency dependency = toDependency(propertyResolver);
+
+			if (StringUtils.hasText(versionProperty)) {
+				PropertyValue element = propertyResolver.getElement(versionProperty);
+				if (element != null) {
+					Optional<ArtifactVersion> version = ArtifactVersion.from(element.propertyValue());
+					if (version.isPresent()) {
+						return VersionedDependencySite.of(dependency.getId(), version
+								.get(), VersionSource.property(versionProperty), element.element(), declaration);
+					}
+				}
+				if (StringUtils.hasText(version)) {
+					Optional<ArtifactVersion> version = ArtifactVersion.from(version());
+					if (version.isPresent()) {
+						return VersionedDependencySite.of(dependency.getId(), version.get(),
+								VersionSource.property(versionProperty), declaration, versionLiteral);
+					}
+				}
+			}
+
+			return GradleDependency.of(group, artifact, version, propertyResolver).toDependencySite(declaration,
+					versionLiteral);
 		}
 
 		/**

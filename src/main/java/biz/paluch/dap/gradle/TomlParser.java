@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -27,7 +28,7 @@ import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -38,6 +39,7 @@ import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.containers.JBIterable;
 import org.jspecify.annotations.Nullable;
+import org.toml.lang.psi.TomlElement;
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKey;
@@ -94,6 +96,23 @@ class TomlParser extends GradleParserSupport {
 		return PsiManager.getInstance(project).findFile(toml);
 	}
 
+	public static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
+
+		// TODO
+		return SyntaxTraverser.revPsiTraverser().api.parents(element).filter(TomlTable.class).filter(it -> {
+			String tomlTableName = getTomlTableName(it);
+			return org.springframework.util.StringUtils.hasText(tomlTableName) && predicate.test(tomlTableName);
+		}).first() != null;
+
+		/*
+		 * TomlTable table = PsiTreeUtil.getParentOfType(element, TomlTable.class); if
+		 * (table == null) { return false; }
+		 *
+		 * String tableName = TomlParser.getTomlTableName(table); return tableName !=
+		 * null && predicate.test(tableName);
+		 */
+	}
+
 	@Override
 	protected Map<String, String> getPropertyMap() {
 		return properties;
@@ -109,21 +128,21 @@ class TomlParser extends GradleParserSupport {
 			return;
 		}
 
-		Map<String, PsiPropertyValueElement> properties = parseTomlVersions(tomlFile);
+		Map<String, PropertyValue> properties = parseTomlVersions(tomlFile);
 		properties.forEach((key, value) -> {
 			this.properties.put(key, value.propertyValue());
 		});
 
-		parseToml(tomlFile, properties);
+		parseToml(tomlFile, PropertyResolver.fromMap(properties));
 	}
 
-	private void parseToml(TomlFile tomlFile, Map<String, PsiPropertyValueElement> properties) {
+	private void parseToml(TomlFile tomlFile, PropertyResolver propertyResolver) {
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
 
 			String tableName = getTomlTableName(table);
 			if (LIBRARIES.equals(tableName)) {
-				parseEntries(table, properties, (it) -> {
+				parseEntries(table, propertyResolver, (it) -> {
 					if (it.isComplete()) {
 						register(it.toDependency(), DeclarationSource.managed());
 					}
@@ -131,7 +150,7 @@ class TomlParser extends GradleParserSupport {
 			}
 
 			if (PLUGINS.equals(tableName)) {
-				parseEntries(table, properties, (it) -> {
+				parseEntries(table, propertyResolver, (it) -> {
 					if (it.isComplete()) {
 						register(it.toDependency(), DeclarationSource.plugin());
 					}
@@ -141,16 +160,15 @@ class TomlParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Parse TOML {@code [versions]} table into a map of
-	 * {@link PsiPropertyValueElement}. We treat versions semantically as
-	 * properties.
+	 * Parse TOML {@code [versions]} table into a map of {@link PropertyValue}. We
+	 * treat versions semantically as properties.
 	 *
 	 * @param tomlFile the file to parse.
-	 * @return map of {@link PsiPropertyValueElement} mapped to its version key.
+	 * @return map of {@link PropertyValue} mapped to its version key.
 	 */
-	public static Map<String, PsiPropertyValueElement> parseTomlVersions(PsiFile tomlFile) {
+	public static Map<String, PropertyValue> parseTomlVersions(PsiFile tomlFile) {
 
-		Map<String, PsiPropertyValueElement> map = new LinkedHashMap<>();
+		Map<String, PropertyValue> map = new LinkedHashMap<>();
 		SyntaxTraverser.psiTraverser(tomlFile)
 				.filter(TomlTable.class)
 				.flatMap(it -> {
@@ -166,18 +184,17 @@ class TomlParser extends GradleParserSupport {
 					PsiElement valuePsi = kv.getValue();
 					String value = TomlParser.getText(valuePsi);
 					if (StringUtils.hasText(key) && StringUtils.hasText(value)) {
-						map.put(key, new PsiPropertyValueElement(valuePsi, key, value));
+						map.put(key, new PropertyValue(valuePsi, key, value));
 					}
 				});
 
 		return map;
 	}
 
-
 	public static void parseEntries(TomlTable table,
-			Map<String, PsiPropertyValueElement> properties, Consumer<TomlDependencyDeclaration> action) {
+			PropertyResolver propertyResolver, Consumer<TomlDependencyDeclaration> action) {
 		for (TomlKeyValue child : PsiTreeUtil.findChildrenOfType(table, TomlKeyValue.class)) {
-			TomlDependencyDeclaration declaration = parseTomlEntry(child, properties);
+			TomlDependencyDeclaration declaration = parseTomlEntry(child, propertyResolver);
 			if (declaration.isComplete()) {
 				action.accept(declaration);
 			}
@@ -185,7 +202,7 @@ class TomlParser extends GradleParserSupport {
 	}
 
 	static TomlDependencyDeclaration parseTomlEntry(TomlKeyValue keyValue,
-			Map<String, PsiPropertyValueElement> properties) {
+			Map<String, PropertyValue> properties) {
 
 		String key = getTomlKeyName(keyValue.getKey());
 		if (keyValue.getValue() instanceof TomlInlineTable inlineTable) {
@@ -194,12 +211,26 @@ class TomlParser extends GradleParserSupport {
 			return parseTomlEntry(key, literal);
 		}
 
-		return new TomlDependencyDeclaration((TomlFile) keyValue.getContainingFile(), key, null, null, null, null,
+		return new TomlDependencyDeclaration(keyValue, key, null, null, null, null,
+				null);
+	}
+
+	static TomlDependencyDeclaration parseTomlEntry(TomlKeyValue keyValue,
+			PropertyResolver propertyResolver) {
+
+		String key = getTomlKeyName(keyValue.getKey());
+		if (keyValue.getValue() instanceof TomlInlineTable inlineTable) {
+			return parseTomlEntry(key, inlineTable, propertyResolver);
+		} else if (keyValue.getValue() instanceof TomlLiteral literal) {
+			return parseTomlEntry(key, literal);
+		}
+
+		return new TomlDependencyDeclaration(keyValue, key, null, null, null, null,
 				null);
 	}
 
 	static TomlDependencyDeclaration parseTomlEntry(String entry, TomlInlineTable inlineTable,
-			Map<String, PsiPropertyValueElement> properties) {
+			Map<String, PropertyValue> properties) {
 
 		String id = null;
 		String module = null;
@@ -230,11 +261,51 @@ class TomlParser extends GradleParserSupport {
 		}
 
 		if (versionRef != null && versionLiteral == null && properties.containsKey(versionRef)) {
-			PsiPropertyValueElement p = properties.get(versionRef);
+			PropertyValue p = properties.get(versionRef);
 			versionLiteral = (TomlValue) p.element();
 		}
 
-		return new TomlDependencyDeclaration((TomlFile) inlineTable.getContainingFile(), entry, id, module, versionRef,
+		return new TomlDependencyDeclaration(inlineTable, entry, id, module, versionRef,
+				version, versionLiteral);
+	}
+
+	static TomlDependencyDeclaration parseTomlEntry(String entry, TomlInlineTable inlineTable,
+			PropertyResolver propertyResolver) {
+
+		String id = null;
+		String module = null;
+		String group = null;
+		String name = null;
+		String versionRef = null;
+		String version = null;
+		TomlValue versionLiteral = null;
+
+		for (TomlKeyValue inner : PsiTreeUtil.getChildrenOfTypeAsList(inlineTable, TomlKeyValue.class)) {
+			String key = getTomlKeyName(inner.getKey());
+			String val = getText(inner.getValue());
+			switch (key) {
+			case "id" -> id = val;
+			case "module" -> module = val;
+			case "group" -> group = val;
+			case "name" -> name = val;
+			case "version.ref" -> versionRef = val;
+			case "version" -> {
+				version = val;
+				versionLiteral = inner.getValue();
+			}
+			}
+		}
+
+		if (module == null && group != null && name != null) {
+			module = group + ":" + name;
+		}
+
+		if (versionRef != null && versionLiteral == null && propertyResolver.containsProperty(versionRef)) {
+			PropertyValue p = propertyResolver.getElement(versionRef);
+			versionLiteral = (TomlValue) p.element();
+		}
+
+		return new TomlDependencyDeclaration(inlineTable, entry, id, module, versionRef,
 				version, versionLiteral);
 	}
 
@@ -245,19 +316,19 @@ class TomlParser extends GradleParserSupport {
 			GradleDependency dependency = GradleDependency.parse(text);
 			// plugin
 			if (dependency instanceof GradleDependency.DependencyReference reference) {
-				return new TomlDependencyDeclaration((TomlFile) literal.getContainingFile(), entry,
+				return new TomlDependencyDeclaration(literal, entry,
 						reference.id().groupId(), null, null,
 						reference.id().artifactId(), literal);
 			}
 
 			if (dependency instanceof SimpleDependency simple) {
-				return new TomlDependencyDeclaration((TomlFile) literal.getContainingFile(), entry, null,
+				return new TomlDependencyDeclaration(literal, entry, null,
 						simple.id().toString(), null,
 						simple.version(), literal);
 			}
 		}
 
-		return new TomlDependencyDeclaration((TomlFile) literal.getContainingFile(), entry, text, text, null,
+		return new TomlDependencyDeclaration(literal, entry, text, text, null,
 				null, literal);
 	}
 
@@ -312,7 +383,7 @@ class TomlParser extends GradleParserSupport {
 		return null;
 	}
 
-	record TomlDependencyDeclaration(TomlFile file, String key, @Nullable String id, @Nullable String module,
+	record TomlDependencyDeclaration(TomlElement element, String key, @Nullable String id, @Nullable String module,
 			@Nullable String versionRef,
 			@Nullable String version, @Nullable TomlValue versionLiteral) {
 
@@ -331,6 +402,15 @@ class TomlParser extends GradleParserSupport {
 			}
 
 			return StringUtils.hasText(module);
+		}
+
+		/**
+		 * Return the required {@link TomlLiteral} for the version or throw
+		 * {@link IllegalArgumentException} if no literal is available.
+		 */
+		public TomlValue getRequiredVersionLiteral() {
+			Assert.state(versionLiteral != null, "No version literal set");
+			return versionLiteral;
 		}
 
 		/**

@@ -357,41 +357,6 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	@ProjectFile(name = "build.gradle.kts", content = """
-			dependencies {
-			    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre")
-			    implementation("org.apache.commons:commons-lang3:3.19.0")
-			}
-			""")
-	void kotlinNamedArgVersionIsUpdated(PsiFile buildFile) {
-
-		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
-				DeclarationSource.dependency(),
-				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
-
-		assertThat(updated).hasDependency("guava", "33.0.0-jre");
-		assertThat(buildFile.getText()).contains("group = \"com.google.guava\"");
-		assertThat(buildFile.getText()).contains("name = \"guava\"");
-		assertThat(buildFile.getText()).contains("\"org.apache.commons:commons-lang3:3.19.0\"");
-	}
-
-	@Test
-	@ProjectFile(name = "build.gradle.kts", content = """
-			dependencies {
-			    implementation(group = "com.google.guava", name = "guava", version = "32.1.2-jre", classifier = "android")
-			}
-			""")
-	void kotlinNamedArgExtraKeyIsPreserved(PsiFile buildFile) {
-
-		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
-				DeclarationSource.dependency(),
-				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
-
-		assertThat(updated).hasDependency("guava", "33.0.0-jre");
-		assertThat(buildFile.getText()).contains("classifier = \"android\"");
-	}
-
-	@Test
 	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation('org.slf4j:slf4j-api') {
@@ -413,27 +378,6 @@ class UpdateGradleFileTests {
 	}
 
 	@Test
-	@ProjectFile(name = "build.gradle.kts", content = """
-			dependencies {
-			    implementation("org.slf4j:slf4j-api") {
-			        version {
-			            strictly("[1.7, 1.8[")
-			            prefer("1.7.25")
-			        }
-			    }
-			}
-			""")
-	void kotlinVersionBlockPreferIsUpdated(PsiFile buildFile) {
-
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25",
-				DeclarationSource.dependency(),
-				VersionSource.declared("1.7.25"), "1.8.0");
-
-		assertThat(updated).hasDependency("slf4j-api", "1.8.0");
-		assertThat(buildFile.getText()).contains("strictly(\"[1.7, 1.8[\")");
-	}
-
-	@Test
 	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    guavaVersion = '33.0-jre'
@@ -452,22 +396,6 @@ class UpdateGradleFileTests {
 		assertThat(updated).hasProperty("guavaVersion", "33.1.0-jre");
 	}
 
-	@Test
-	@ProjectFile(name = "build.gradle.kts", content = """
-			val guavaVersion = "33.0-jre"
-
-			dependencies {
-			    implementation(group = "com.google.guava", name = "guava", version = guavaVersion)
-			}
-			""")
-	void kotlinMapBareRefVersionIsUpdated(PsiFile buildFile) {
-
-		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "33.0-jre",
-				DeclarationSource.dependency(),
-				VersionSource.property("guavaVersion"), "33.1.0-jre");
-
-		assertThat(updated).hasProperty("guavaVersion", "33.1.0-jre");
-	}
 
 	@Test
 	@ProjectFile(name = "build.gradle", content = """

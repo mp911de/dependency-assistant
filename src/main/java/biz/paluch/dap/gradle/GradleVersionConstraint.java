@@ -20,18 +20,26 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
+ * A Gradle version constraint such as {@code prefer} or {@code strictly}.
+ *
  * @author Mark Paluch
  */
 interface GradleVersionConstraint {
 
-	public static final String PREFER = "prefer";
+	String PREFER = "prefer";
 
-	public static final String STRICTLY = "strictly";
+	String STRICTLY = "strictly";
 
-	public static boolean isConstraint(@Nullable String call) {
+	/**
+	 * Return whether the given call is a constraint.
+	 */
+	static boolean isConstraint(@Nullable String call) {
 		return PREFER.equals(call) || STRICTLY.equals(call);
 	}
 
+	/**
+	 * Return the version text.
+	 */
 	String getVersion();
 
 	default boolean hasText() {

@@ -18,7 +18,6 @@ package biz.paluch.dap.gradle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
@@ -27,7 +26,8 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -126,7 +126,7 @@ class TomlArtifactResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		Map<String, PsiPropertyValueElement> properties = parseTomlVersions(kv.getContainingFile());
+		Map<String, PropertyValue> properties = parseTomlVersions(kv.getContainingFile());
 		TomlDependencyDeclaration entry = TomlParser.parseTomlEntry(kv, properties);
 		return getArtifactReference(entry, kv);
 	}
@@ -152,11 +152,11 @@ class TomlArtifactResolver {
 		}
 
 		List<TomlDependencyDeclaration> dependencies = new ArrayList<>();
-		Map<String, PsiPropertyValueElement> properties = parseTomlVersions(tomlFile);
+		PropertyResolver propertyResolver = PropertyResolver.fromMap(parseTomlVersions(tomlFile));
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
 			if (tomlReference.getTableName().equals(getTomlTableName(table))) {
-				TomlParser.parseEntries(table, properties, dependencies::add);
+				TomlParser.parseEntries(table, propertyResolver, dependencies::add);
 			}
 		}
 
@@ -217,25 +217,13 @@ class TomlArtifactResolver {
 		}
 
 		GradleDependency dependency = declaration.toDependency();
-		DependencyAndVersionLocation location = new DependencyAndVersionLocation(dependency,
-				declaration.versionLiteral());
 
 		if (dependency instanceof PropertyManagedDependency) {
-			return ArtifactReferenceUtils.resolve(location, usage, GradlePropertyResolver.forFile(declaration.file()));
+			return ArtifactReferenceUtils.resolve(dependency, usage, declaration.getRequiredVersionLiteral(),
+					GradlePropertyResolver.forFile(declaration.element().getContainingFile()));
 		}
 
-		return ArtifactReferenceUtils.resolve(location, usage, it -> null);
+		return ArtifactReferenceUtils.resolve(dependency, declaration.getRequiredVersionLiteral(), usage, it -> null);
 	}
-
-	private static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
-
-		TomlTable table = PsiTreeUtil.getParentOfType(element, TomlTable.class);
-		if (table == null) {
-			return false;
-		}
-		String name = getTomlTableName(table);
-		return name != null && predicate.test(name);
-	}
-
 
 }

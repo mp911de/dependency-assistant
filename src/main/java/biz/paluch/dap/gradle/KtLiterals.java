@@ -118,7 +118,10 @@ class KtLiterals {
 				&& "extra".equals(arrayAccess.getArrayExpression().getText()) -> {
 			List<KtExpression> indices = arrayAccess.getIndexExpressions();
 			if (!indices.isEmpty()) {
-				return KtLiterals.fromExtraArray(indices.get(0));
+				String extraKey = KotlinDslUtils.getPropertyName(arrayAccess);
+				if (StringUtils.hasText(extraKey)) {
+					return KtLiterals.property(extraKey, indices.get(0));
+				}
 			}
 		}
 		case KtReferenceExpression nameRef -> {
@@ -183,17 +186,6 @@ class KtLiterals {
 	 */
 	public static KtLiterals property(String propertyName, KtElement element) {
 		return new KtLiterals(new KtLiteral(null, propertyName, element));
-	}
-
-	/**
-	 * Create a property-backed {@link KtLiterals} from an {@code extra["..."]}
-	 * access expression.
-	 *
-	 * @param ktExpression the index expression declaring the property name.
-	 * @return a {@link KtLiterals} containing a single property fragment.
-	 */
-	public static KtLiterals fromExtraArray(KtExpression ktExpression) {
-		return property(KotlinDslUtils.getRequiredText(ktExpression), ktExpression);
 	}
 
 	/**

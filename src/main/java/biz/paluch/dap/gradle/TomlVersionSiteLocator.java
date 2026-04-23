@@ -15,56 +15,51 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.Map;
-import java.util.function.Predicate;
-
-import biz.paluch.dap.support.PsiPropertyValueElement;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
-import org.toml.lang.psi.TomlTable;
 
 /**
  * TOML PSI locator for semantic version and property sites.
  *
  * @author Mark Paluch
  */
-class TomlVersionSiteLocator {
+class TomlVersionSiteLocator implements LookupSiteLocator<TomlLiteral> {
 
-	@Nullable
-	GradleLookupSite locate(TomlLiteral literal) {
+	@Override
+	public LookupSite locate(TomlLiteral literal) {
 
 		TomlKeyValue keyValue = PsiTreeUtil.getParentOfType(literal, TomlKeyValue.class);
 		if (keyValue == null) {
-			return null;
+			return LookupSite.absent();
 		}
 
-		if (isInsideTable(literal, TomlParser.VERSIONS::equals)) {
+		if (TomlParser.isInsideTable(literal, TomlParser.VERSIONS::equals)) {
 			String propertyName = TomlParser.getTomlKeyName(keyValue.getKey());
 			String rawVersion = TomlParser.getText(literal);
 			if (rawVersion == null) {
-				return null;
+				return LookupSite.absent();
 			}
-			return GradleLookupSite.property(propertyName, rawVersion, keyValue, literal, null);
+			return LookupSite.ofProperty(propertyName, rawVersion, keyValue, literal);
 		}
 
-		if (!isInsideTable(literal, it -> TomlParser.LIBRARIES.equals(it) || TomlParser.PLUGINS.equals(it))) {
-			return null;
+		if (TomlParser.isInsideTable(literal, it -> TomlParser.LIBRARIES.equals(it) || TomlParser.PLUGINS.equals(it))) {
+
+			if (keyValue.getValue() != literal && !isInlineVersionLiteral(literal)) {
+				return LookupSite.absent();
+			}
+
+			GradlePropertyResolver propertyResolver = GradlePropertyResolver.forFile(keyValue.getContainingFile());
+			TomlParser.TomlDependencyDeclaration declaration = TomlParser.parseTomlEntry(keyValue, propertyResolver);
+			if (!declaration.isComplete() || declaration.versionLiteral() != literal) {
+				return LookupSite.absent();
+			}
+
+			return LookupSite.ofDependency(declaration.toDependency(), keyValue, literal);
 		}
 
-		if (keyValue.getValue() != literal && !isInlineVersionLiteral(literal)) {
-			return null;
-		}
-
-		Map<String, PsiPropertyValueElement> properties = TomlParser.parseTomlVersions(keyValue.getContainingFile());
-		TomlParser.TomlDependencyDeclaration declaration = TomlParser.parseTomlEntry(keyValue, properties);
-		if (!declaration.isComplete() || declaration.versionLiteral() != literal) {
-			return null;
-		}
-
-		return new GradleLookupSite.GradleVersionSite(declaration.toDependency(), keyValue, literal);
+		return LookupSite.absent();
 	}
 
 	private static boolean isInlineVersionLiteral(TomlLiteral literal) {
@@ -72,17 +67,6 @@ class TomlVersionSiteLocator {
 		PsiElement parent = literal.getParent();
 		return parent != null && parent.getFirstChild() != null
 				&& TomlParser.VERSION.equals(parent.getFirstChild().getText().trim());
-	}
-
-	private static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
-
-		TomlTable table = PsiTreeUtil.getParentOfType(element, TomlTable.class);
-		if (table == null) {
-			return false;
-		}
-
-		String tableName = TomlParser.getTomlTableName(table);
-		return tableName != null && predicate.test(tableName);
 	}
 
 }

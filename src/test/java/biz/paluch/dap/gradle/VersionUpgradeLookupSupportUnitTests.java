@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import com.intellij.mock.MockPsiElement;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -37,7 +38,9 @@ import static org.assertj.core.api.Assertions.*;
 class VersionUpgradeLookupSupportUnitTests {
 
 	ArtifactReference reference = ArtifactReference
-			.from(it -> it.artifact(ArtifactId.of("foo", "bar")).versionSource(VersionSource.none()));
+			.from(it -> it.artifact(ArtifactId.of("foo", "bar")).versionSource(VersionSource.none())
+					.declarationElement(new MockPsiElement(() -> {
+					})));
 
 	@Test
 	void returnsNullWhenNoReleasesAvailable() {

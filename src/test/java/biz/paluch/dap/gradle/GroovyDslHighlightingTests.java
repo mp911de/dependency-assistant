@@ -298,10 +298,7 @@ class GroovyDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(fixture).gutters().hasSize(2);
-		assertThat(fixture).gutter(0).hasNoNavigation();
-		// variables are treated like local properties
-		assertThat(fixture).gutter(1).hasNoNavigation();
+		assertThat(fixture).hasSingleGutter().hasNoNavigation();
 	}
 
 	@Test
@@ -341,10 +338,7 @@ class GroovyDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(fixture).gutters().hasSize(2);
-		assertThat(fixture).gutter(0).hasNoNavigation();
-		// variables are treated like local properties
-		assertThat(fixture).gutter(1).hasNoNavigation();
+		assertThat(fixture).hasSingleGutter().hasNoNavigation();
 	}
 
 }

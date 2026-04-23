@@ -19,7 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiElement;
@@ -35,13 +35,13 @@ class GradlePropertiesParser {
 	/**
 	 * Loads all properties from a {@code gradle.properties} PSI file into a map.
 	 */
-	public static Map<String, PsiPropertyValueElement> parseGradleProperties(PsiFile file) {
+	public static Map<String, PropertyValue> parseGradleProperties(PsiFile file) {
 
 		if (!(file instanceof PropertiesFile propsFile)) {
 			return Map.of();
 		}
 
-		Map<String, PsiPropertyValueElement> result = new LinkedHashMap<>();
+		Map<String, PropertyValue> result = new LinkedHashMap<>();
 		doParseProperties(propsFile, it -> result.put(it.propertyKey(), it));
 		return result;
 	}
@@ -60,7 +60,7 @@ class GradlePropertiesParser {
 		return result;
 	}
 
-	private static void doParseProperties(PropertiesFile propsFile, Consumer<PsiPropertyValueElement> action) {
+	private static void doParseProperties(PropertiesFile propsFile, Consumer<PropertyValue> action) {
 
 		for (IProperty prop : propsFile.getProperties()) {
 			String key = prop.getKey();
@@ -68,7 +68,7 @@ class GradlePropertiesParser {
 			if (key != null && value != null) {
 				PsiElement propPsi = prop.getPsiElement();
 				PsiElement valuePsi = propPsi.getLastChild();
-				action.accept(new PsiPropertyValueElement(valuePsi, key, value));
+				action.accept(new PropertyValue(valuePsi, key, value));
 			}
 		}
 	}

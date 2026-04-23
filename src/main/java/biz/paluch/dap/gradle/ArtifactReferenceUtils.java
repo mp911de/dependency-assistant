@@ -13,20 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.VersionSource.VersionProperty;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.gradle.LookupSite.ResolvedSite;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
@@ -38,73 +39,93 @@ import org.jspecify.annotations.Nullable;
  */
 class ArtifactReferenceUtils {
 
-	public static ArtifactReference resolve(GradleLookupSite.GradleVersionSite site,
-			PropertyResolver propertyResolver) {
+	public static ArtifactReference resolve(LookupSite.PropertyLookupSite site, @Nullable ProjectState projectState) {
 
-		if (site.dependency() instanceof PropertyManagedDependency managed) {
-
-			PsiPropertyValueElement element = propertyResolver.getElement(managed.property());
-			return fromPropertyManaged(managed, site.declarationElement(),
-					element == null ? null : element.propertyValue(),
-					element == null ? null : element.element());
+		if (projectState == null) {
+			return ArtifactReference.unresolved();
 		}
 
-		if (site.dependency() instanceof SimpleDependency simple) {
-			return fromSimple(simple, site.declarationElement(), site.versionElement());
+		ProjectProperty projectProperty = projectState.findProjectProperty(site.propertyName());
+		CachedArtifact artifact = getFirstArtifact(projectProperty);
+		if (artifact == null) {
+			return ArtifactReference.unresolved();
 		}
 
-		return ArtifactReference.unresolved();
-	}
-
-	public static ArtifactReference resolve(GradlePropertySite site, @Nullable ProjectState projectState) {
-
-		ArtifactId artifactId = site.artifactId();
-		if (artifactId == null) {
-			if (projectState == null) {
-				return ArtifactReference.unresolved();
-			}
-
-			ProjectProperty projectProperty = projectState.findProjectProperty(site.propertyName());
-			CachedArtifact artifact = getFirstArtifact(projectProperty);
-			if (artifact == null) {
-				return ArtifactReference.unresolved();
-			}
-			artifactId = artifact.toArtifactId();
-		}
-
-		ArtifactId resolvedArtifactId = artifactId;
 		return ArtifactReference.from(it -> {
-			it.artifact(resolvedArtifactId).declarationElement(site.declarationElement())
-					.versionSource(VersionSource.property(site.propertyName()));
+			it.artifact(artifact.toArtifactId()).declarationElement(site.declarationElement())
+					.versionSource(VersionSource.versionCatalogProperty(site.propertyName()));
 			ArtifactVersion.from(site.version()).ifPresent(it::version);
 			it.versionLiteral(site.versionElement());
 		});
 	}
 
 	/**
-	 * Resolve the given {@link DependencyAndVersionLocation} to an
-	 * {@link ArtifactReference}.
-	 * @param location the dependency and version location.
+	 * Resolve the given {@link GradleDependency} to an {@link ArtifactReference}.
+	 * @param dependency the dependency.
 	 * @param declaration the declaration (usage) element.
+	 * @param version the version literal element.
 	 * @param propertyResolver property resolver to resolve property-managed
 	 * dependencies.
 	 * @return the resolved artifact reference.
 	 */
-	public static ArtifactReference resolve(DependencyAndVersionLocation location, PsiElement declaration,
+	public static ArtifactReference resolve(GradleDependency dependency, PsiElement declaration, PsiElement version,
 			PropertyResolver propertyResolver) {
 
-		if (location.dependency() instanceof PropertyManagedDependency managed) {
+		if (dependency instanceof PropertyManagedDependency managed) {
 
-			PsiPropertyValueElement element = propertyResolver.getElement(managed.property());
+			PropertyValue element = propertyResolver.getElement(managed.property());
 			return fromPropertyManaged(managed, declaration, element == null ? null : element.propertyValue(),
 					element == null ? null : element.element());
 		}
 
-		if (location.dependency() instanceof SimpleDependency simple) {
-			return fromSimple(simple, declaration, location.version());
+		if (dependency instanceof SimpleDependency simple) {
+			return fromSimple(simple, declaration, version);
 		}
 
 		return ArtifactReference.unresolved();
+	}
+
+
+	/**
+	 * Resolve the given {@link GradleDependency} to an {@link ArtifactReference}.
+	 * @param declaration the declaration (usage) element.
+	 * @param version the version literal element.
+	 * @param propertyResolver property resolver to resolve property-managed
+	 * dependencies.
+	 * @return the resolved artifact reference.
+	 */
+	public static ArtifactReference resolve(ArtifactId artifactId, VersionSource versionSource, PsiElement declaration,
+			PsiElement version, PropertyResolver propertyResolver) {
+
+		if (versionSource instanceof VersionProperty property) {
+
+			PropertyValue propertyValue = propertyResolver.getElement(property.getProperty());
+
+			if (propertyValue == null) {
+				return ArtifactReference.unresolved();
+			}
+			return ArtifactReference.from(it -> {
+				it.artifact(artifactId).declarationElement(declaration)
+						.versionSource(versionSource);
+				if (StringUtils.hasText(propertyValue.propertyValue())) {
+					ArtifactVersion.from(propertyValue.propertyValue()).ifPresent(it::version);
+				}
+				it.versionLiteral(propertyValue.element());
+			});
+		}
+
+		return ArtifactReference.from(it -> {
+			it.artifact(artifactId).declarationElement(declaration).versionSource(versionSource);
+
+			if (versionSource.isDefined()) {
+				ArtifactVersion.from(versionSource.toString()).ifPresent(it::version);
+				it.versionLiteral(version);
+			}
+		});
+	}
+
+	public static ArtifactReference resolve(ResolvedSite resolvedSite) {
+		return ArtifactReference.from(resolvedSite.site());
 	}
 
 	/**

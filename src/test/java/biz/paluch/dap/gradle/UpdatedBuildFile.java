@@ -17,7 +17,7 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.assertions.DependencyCollectorAssert.DependencyUsageAssert;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.psi.PsiFile;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.AssertProvider;
@@ -57,6 +57,10 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 	@Override
 	public UpdatedBuildFileAssert assertThat() {
 		return new UpdatedBuildFileAssert(this);
+	}
+
+	public PsiFile getFile() {
+		return file;
 	}
 
 	/**
@@ -114,7 +118,7 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		public UpdatedBuildFileAssert hasProperty(String propertyName, String expectedValue) {
 			isNotNull();
 
-			PsiPropertyValueElement element = this.actual.propertyResolver.getElement(propertyName);
+			PropertyValue element = this.actual.propertyResolver.getElement(propertyName);
 			if (element == null) {
 				failWithMessage("Expected property '%s' to be declared in %s but it was not found",
 						propertyName, this.actual.file.getName());
@@ -136,7 +140,7 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 			isNotNull();
 
 			@Nullable
-			PsiPropertyValueElement element = this.actual.propertyResolver.getElement(propertyName);
+			PropertyValue element = this.actual.propertyResolver.getElement(propertyName);
 			if (element != null) {
 				failWithMessage("Expected property '%s' to be absent in %s but found value '%s'",
 						propertyName, this.actual.file.getName(), element.propertyValue());

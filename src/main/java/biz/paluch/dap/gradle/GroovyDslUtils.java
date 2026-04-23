@@ -21,19 +21,17 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.gradle.GradleParserSupport.NamedDependencyDeclaration;
-import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PsiPropertyValueElement;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.lang.properties.IProperty;
-import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Predicates;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
@@ -57,9 +55,9 @@ class GroovyDslUtils {
 	private static final Logger LOG = Logger.getInstance(GroovyDslUtils.class);
 
 	/**
-	 * Returns a {@link PsiPropertyValueElement} when {@code element} is the
-	 * <em>value</em> literal of a Groovy {@code ext} property declaration, or
-	 * {@code null} otherwise.
+	 * Returns a {@link PropertyValue} when {@code element} is the <em>value</em>
+	 * literal of a Groovy {@code ext} property declaration, or {@code null}
+	 * otherwise.
 	 * <p>The three supported forms are:
 	 * <ul>
 	 * <li>{@code ext { set('key', 'value') }} — set-call form</li>
@@ -68,258 +66,54 @@ class GroovyDslUtils {
 	 * <li>{@code ext.key = 'value'} — dot-qualified assignment</li>
 	 * </ul>
 	 */
-	public static @Nullable PsiPropertyValueElement findGroovyExtPropertyVersionElement(PsiElement element) {
+	public static @Nullable PropertyValue findGroovyExtPropertyVersionElement(PsiElement element) {
 
 		if (!(element instanceof GrLiteral literal)) {
 			return null;
 		}
 
-		PsiPropertyValueElement setLoc = resolvePropertyLocation(literal);
+		PropertyValue setLoc = resolvePropertyLocation(literal);
 		if (setLoc != null) {
 			return setLoc;
 		}
-		return tryExtAssignmentValue(literal);
+		PropertyValue extAssignment = tryExtAssignmentValue(literal);
+		if (extAssignment != null) {
+			return extAssignment;
+		}
+		return findGroovyScriptVariableLiteralValue(literal);
 	}
 
 	/**
-	 * Returns the version value element for a {@code gradle.properties} property if
-	 * the element is a property value that maps to a known dependency artifact in
-	 * the cache.
+	 * Returns the variable binding when {@code literal} is the initializer of a
+	 * top-level script variable ({@code def}/{@code val}/{@code String} … forms).
 	 */
-	public static @Nullable PsiPropertyValueElement findPropertiesVersionElement(PsiElement element) {
+	static @Nullable PropertyValue findGroovyScriptVariableLiteralValue(GrLiteral literal) {
 
-		PsiFile file = element.getContainingFile();
-
-		if (!(file instanceof PropertiesFile)) {
+		GrVariableDeclaration declaration = PsiTreeUtil.getParentOfType(literal, GrVariableDeclaration.class);
+		if (declaration == null) {
 			return null;
 		}
 
-		// Walk up to the IProperty PSI element
-		IProperty property = PsiTreeUtil.getParentOfType(element, com.intellij.lang.properties.psi.Property.class);
-		if (property == null) {
-			return null;
-		}
-
-		// We only suggest versions for value elements (not key elements)
-		PsiElement psiElement = property.getPsiElement();
-		PsiElement valueElement = psiElement.getLastChild();
-		if (!PsiTreeUtil.isAncestor(valueElement, element, false)) {
-			return null;
-		}
-
-		return new PsiPropertyValueElement(psiElement, property.getKey(), property.getValue());
-	}
-
-	/**
-	 * Returns the version segment {@link PsiElement} if the caret is inside the
-	 * version part of a Groovy string-notation dependency
-	 * ({@code 'group:artifact:version'}), or {@code null} if the element is not in
-	 * such a position.
-	 */
-	public static @Nullable DependencyAndVersionLocation findGroovyVersionElement(PsiElement element,
-			PropertyResolver scriptProperties) {
-
-		if (!(element instanceof GrLiteral literal)) {
-			return null;
-		}
-
-		// Check if this literal is inside a prefer/strictly call inside a version {}
-		// closure
-		DependencyAndVersionLocation versionBlockLocation = resolveVersionBlockLiteral(literal, scriptProperties);
-		if (versionBlockLocation != null) {
-			return versionBlockLocation;
-		}
-
-		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		if (call == null) {
-			return null;
-		}
-		String callName = getGroovyMethodName(call);
-		if (!GradleUtils.isDependencySection(callName) && !GradleUtils.isPlatformSection(callName)) {
-			// Not a standard dependency/platform call; check the plugin version pattern:
-			// id 'pluginId' version 'x.y.z'
-			return resolvePluginVersionLiteral(literal, call, scriptProperties);
-		}
-
-		// Try getValue() first (fast path for single-quoted and non-interpolated
-		// double-quoted literals).
-		// Fall back to toString() which preserves ${…} placeholders for interpolated
-		// GStrings.
-		String text = GroovyDslUtils.renderText(literal);
-		if (StringUtils.isEmpty(text)) {
-			return null;
-		}
-
-		GrNamedArgument[] namedArguments = call.getNamedArguments();
-		if (namedArguments.length > 2 && literal.getParent() instanceof GrNamedArgument namedArgument) {
-			String labelName = namedArgument.getLabelName();
-			if ("version".equals(labelName)) {
-				NamedDependencyDeclaration declaration = GradleParser.parseMapDependency(call, namedArguments,
-						scriptProperties);
-				if (declaration.isComplete()) {
-					GradleDependency dependency = declaration.toDependency(scriptProperties);
-					return new DependencyAndVersionLocation(dependency, declaration.getRequiredVersionLiteral());
-				}
+		for (GrVariable variable : declaration.getVariables()) {
+			GrExpression initializer = variable.getInitializerGroovy();
+			if (initializer == null || !PsiTreeUtil.isAncestor(initializer, literal, false)) {
+				continue;
 			}
-		}
-
-		String[] parts = text.split(":");
-		if (parts.length < 3) {
-			return null;
-		}
-		GradleDependency dependency = GradleDependency.parse(text);
-		if (dependency == null || !dependency.getVersionSource().isDefined()) {
-			return null;
-		}
-
-		return new DependencyAndVersionLocation(dependency, literal);
-	}
-
-	/**
-	 * Returns a {@link DependencyAndVersionLocation} when {@code literal} is the
-	 * version value in a Groovy plugin declaration of the form
-	 * {@code id 'pluginId' version 'x.y.z'} inside a {@code plugins {}} block, or
-	 * {@code null} otherwise.
-	 * <p>The plugin ID is used as both {@link ArtifactId#groupId()} and
-	 * {@link ArtifactId#artifactId()}, matching the convention used throughout the
-	 * rest of the Gradle plugin support.
-	 */
-	public static @Nullable DependencyAndVersionLocation resolvePluginVersionLiteral(GrLiteral literal,
-			GrMethodCall call,
-			PropertyResolver scriptProperties) {
-		// The 'x.y.z' literal is an argument of the outer `version` method call.
-		// call.invokedExpression must be a `version` GrReferenceExpression whose
-		// qualifier
-		// is the inner `id 'pluginId'` method call.
-		if (!(call.getInvokedExpression() instanceof GrReferenceExpression versionRef)) {
-			return null;
-		}
-		if (!"version".equals(versionRef.getReferenceName())) {
-			return null;
-		}
-
-		if (!(versionRef.getQualifierExpression() instanceof GrMethodCall idCall) || !isInsidePluginsBlock(idCall)) {
-			return null;
-		}
-
-		if (!GradleUtils.isPlugin(getGroovyMethodName(idCall))) {
-			return null;
-		}
-
-		PluginId id = PluginId.fromMethodCall(idCall, scriptProperties);
-		if (id == null) {
-			return null;
-		}
-		ArtifactId artifactId = id.toValidatedArtifactId();
-		if (artifactId == null) {
-			return null;
-		}
-		String version = GroovyDslUtils.renderText(id.version);
-		PropertyExpression versionExpression = PropertyExpression.from(version);
-
-		return new DependencyAndVersionLocation(GradleDependency.of(artifactId, versionExpression), literal);
-	}
-
-	/**
-	 * Returns a {@link DependencyAndVersionLocation} when {@code literal} is the
-	 * version value inside a {@code prefer} or {@code strictly} call within a
-	 * {@code version {}} block of a Groovy dependency declaration, or {@code null}
-	 * otherwise.
-	 */
-	private static @Nullable DependencyAndVersionLocation resolveVersionBlockLiteral(GrLiteral literal,
-			PropertyResolver scriptProperties) {
-
-		GrMethodCall preferOrStrictlyCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		if (preferOrStrictlyCall == null) {
-			return null;
-		}
-		String innerName = getGroovyMethodName(preferOrStrictlyCall);
-		if (!GradleVersionConstraint.PREFER.equals(innerName) && !GradleVersionConstraint.STRICTLY.equals(innerName)) {
-			return null;
-		}
-
-		if (GradleVersionConstraint.STRICTLY.equals(innerName)) {
-			String text = renderText(literal);
-			if (GradleUtils.isVersionRange(text)) {
-				return null;
+			String name = variable.getName();
+			if (!StringUtils.hasText(name)) {
+				continue;
 			}
-		}
-
-		GrMethodCall depCall = findVersionBlockDependencyCall(preferOrStrictlyCall);
-		if (depCall == null) {
-			return null;
-		}
-
-		GrLiteral gavLiteral = null;
-		for (PsiElement arg : depCall.getArgumentList().getAllArguments()) {
-			if (arg instanceof GrLiteral lit) {
-				String text = renderText(lit);
-				if (text != null && text.split(":").length == 2) {
-					gavLiteral = lit;
-					break;
-				}
+			String value = GroovyDslUtils.getText(literal);
+			if (StringUtils.isEmpty(value)) {
+				continue;
 			}
+			return new PropertyValue(literal, name, value);
 		}
 
-		if (gavLiteral == null) {
-			return null;
-		}
-
-		String gavText = renderText(gavLiteral);
-		if (gavText == null) {
-			return null;
-		}
-		String[] parts = gavText.split(":");
-		String group = parts[0];
-		String artifact = parts[1];
-		String version = renderText(literal);
-
-		GradleDependency dependency = GradleDependency.of(group, artifact, version);
-		return new DependencyAndVersionLocation(dependency, literal);
+		return null;
 	}
 
-	/**
-	 * Walks up from a {@code prefer} or {@code strictly} call to the enclosing
-	 * dependency method call, returning the outer {@link GrMethodCall} when the
-	 * full version-block structure is present, or {@code null} otherwise.
-	 * <p>The expected structure is: <pre class="code">
-	 * depCall("g:a") {          // outer GrMethodCall (returned)
-	 *     version {             // version call inside dep closure
-	 *         prefer "1.0"      // preferOrStrictlyCall (starting point)
-	 *     }
-	 * }
-	 * </pre>
-	 */
-	static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
-
-		GrClosableBlock versionClosure = PsiTreeUtil.getParentOfType(preferOrStrictlyCall, GrClosableBlock.class);
-		if (versionClosure == null) {
-			return null;
-		}
-
-		GrMethodCall versionCall = PsiTreeUtil.getParentOfType(versionClosure, GrMethodCall.class);
-		if (versionCall == null || !"version".equals(getGroovyMethodName(versionCall))) {
-			return null;
-		}
-
-		GrClosableBlock depClosure = PsiTreeUtil.getParentOfType(versionCall, GrClosableBlock.class);
-		if (depClosure == null) {
-			return null;
-		}
-
-		GrMethodCall depCall = PsiTreeUtil.getParentOfType(depClosure, GrMethodCall.class);
-		if (depCall == null) {
-			return null;
-		}
-		String depCallName = getGroovyMethodName(depCall);
-		if (!GradleUtils.isDependencySection(depCallName) && !GradleUtils.isPlatformSection(depCallName)) {
-			return null;
-		}
-		return depCall;
-	}
-
-
-	public static @Nullable PsiPropertyValueElement resolvePropertyLocation(GrLiteral literal) {
+	public static @Nullable PropertyValue resolvePropertyLocation(GrLiteral literal) {
 
 		GrMethodCall setCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
 
@@ -343,13 +137,13 @@ class GroovyDslUtils {
 		if (StringUtils.isEmpty(key) || StringUtils.isEmpty(value)) {
 			return null;
 		}
-		return new PsiPropertyValueElement(literal, key, value);
+		return new PropertyValue(literal, key, value);
 	}
 
 	/**
 	 * Detects {@code ext { key = 'value' }} and {@code ext.key = 'value'} forms.
 	 */
-	public static @Nullable PsiPropertyValueElement tryExtAssignmentValue(GrLiteral literal) {
+	public static @Nullable PropertyValue tryExtAssignmentValue(GrLiteral literal) {
 
 		GrAssignmentExpression assign = PsiTreeUtil.getParentOfType(literal, GrAssignmentExpression.class);
 
@@ -383,7 +177,7 @@ class GroovyDslUtils {
 		}
 
 		String value = literal.getValue() instanceof String v ? v : GroovyDslUtils.getText(literal);
-		return new PsiPropertyValueElement(literal, key, value);
+		return new PropertyValue(literal, key, value);
 	}
 
 
@@ -564,16 +358,9 @@ class GroovyDslUtils {
 	private static boolean isGroovyCatalogConsumerCall(GrMethodCall call) {
 
 		String name = getGroovyMethodName(call);
-		if (StringUtils.isEmpty(name)) {
-			return false;
-		}
-		if ("alias".equals(name)) {
-			return true;
-		}
-		if (GradleUtils.isPlugin(name) && isInsidePluginsBlock(call)) {
-			return true;
-		}
-		return GradleUtils.isDependencySection(name) || GradleUtils.isPlatformSection(name);
+
+		return GradleUtils.isCatalogConsumerCall(name)
+				&& (!GradleUtils.isPlugin(name) || KotlinDslUtils.isInsidePluginsBlock(call));
 	}
 
 	static @Nullable GrExpression getFirstGroovyCatalogArgumentExpression(GrMethodCall call) {
@@ -626,9 +413,9 @@ class GroovyDslUtils {
 	 * Replaces the string content of a Groovy literal while preserving its quote
 	 * style.
 	 */
-	static void updateText(GrLiteral lit, String text) {
+	static void updateText(GrLiteral literal, String text) {
 
-		String content = lit.getText();
+		String content = literal.getText();
 
 		if (!StringUtils.hasText(text) || text.length() < 2) {
 			return;
@@ -637,10 +424,10 @@ class GroovyDslUtils {
 		char quote = content.charAt(0);
 		// Use the same quote character (single or double) that was originally used.
 		String newLiteralText = quote + text + quote;
-		lit.updateText(newLiteralText);
+		literal.updateText(newLiteralText);
 	}
 
-	record PluginId(GrLiteral id, GrLiteral version, String resolvedPluginId) {
+	public record PluginId(GrLiteral id, GrLiteral version, String resolvedPluginId) {
 
 		// Three forms appear in Gradle Groovy DSL plugins {} blocks:
 		//
@@ -667,45 +454,22 @@ class GroovyDslUtils {
 		public static @Nullable PluginId fromMethodCall(GrMethodCall call, Predicate<String> idPredicate,
 				PropertyResolver properties) {
 
-			GrLiteral idLiteral = null;
-			String resolvedId = null;
-			GrLiteral version = null;
-			boolean sawVersion = false;
-
-			for (GroovyPsiElement arg : call.getArgumentList().getAllArguments()) {
-
-				if (idLiteral == null && arg instanceof GrLiteral literal) {
-					String raw = GroovyDslUtils.renderText(literal);
-					String resolved = properties.resolvePlaceholders(raw);
-					if (!idPredicate.test(resolved)) {
-						return null;
-					}
-					idLiteral = literal;
-					resolvedId = resolved;
-				}
-
-				if (idLiteral != null && version == null) {
-					if (!sawVersion && arg instanceof GrReferenceExpression ref && "version".equals(ref.getText())) {
-						sawVersion = true;
-					} else if (sawVersion && arg instanceof GrLiteral literal) {
-						version = literal;
-					}
-				}
-			}
-
-			if (version == null) {
-				PsiElement parent = call.getParent();
-				if (parent instanceof GrReferenceExpression versionRef
-						&& "version".equals(versionRef.getReferenceName())
-						&& versionRef.getParent() instanceof GrMethodCall outerApp) {
-					version = PsiTreeUtil.getChildOfType(outerApp.getArgumentList(), GrLiteral.class);
-				}
-			}
-
-			if (idLiteral == null || version == null || resolvedId == null) {
+			GrLiteral idLiteral = findFirstLiteralArgument(call);
+			if (idLiteral == null) {
 				return null;
 			}
-			return new PluginId(idLiteral, version, resolvedId);
+
+			String resolvedId = properties.resolvePlaceholders(GroovyDslUtils.renderText(idLiteral));
+			if (!idPredicate.test(resolvedId)) {
+				return null;
+			}
+
+			GrLiteral versionLiteral = findInlineVersionLiteral(call);
+			if (versionLiteral == null) {
+				versionLiteral = findChainedVersionLiteral(call);
+			}
+
+			return versionLiteral != null ? new PluginId(idLiteral, versionLiteral, resolvedId) : null;
 		}
 
 
@@ -725,6 +489,48 @@ class GroovyDslUtils {
 				return null;
 			}
 			return GradlePlugin.of(resolvedPluginId);
+		}
+
+		private static @Nullable GrLiteral findFirstLiteralArgument(GrMethodCall call) {
+
+			for (GroovyPsiElement argument : call.getArgumentList().getAllArguments()) {
+				if (argument instanceof GrLiteral literal) {
+					return literal;
+				}
+			}
+
+			return null;
+		}
+
+		private static @Nullable GrLiteral findInlineVersionLiteral(GrMethodCall call) {
+
+			boolean sawVersionKeyword = false;
+
+			for (GroovyPsiElement argument : call.getArgumentList().getAllArguments()) {
+				if (!sawVersionKeyword && argument instanceof GrReferenceExpression referenceExpression
+						&& "version".equals(referenceExpression.getReferenceName())) {
+					sawVersionKeyword = true;
+					continue;
+				}
+
+				if (sawVersionKeyword && argument instanceof GrLiteral literal) {
+					return literal;
+				}
+			}
+
+			return null;
+		}
+
+		private static @Nullable GrLiteral findChainedVersionLiteral(GrMethodCall call) {
+
+			PsiElement parent = call.getParent();
+			if (!(parent instanceof GrReferenceExpression versionRef)
+					|| !"version".equals(versionRef.getReferenceName())
+					|| !(versionRef.getParent() instanceof GrMethodCall outerCall)) {
+				return null;
+			}
+
+			return findFirstLiteralArgument(outerCall);
 		}
 
 	}

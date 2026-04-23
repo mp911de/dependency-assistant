@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.util.StringUtils;
@@ -40,6 +41,7 @@ import org.jetbrains.plugins.gradle.util.GradleConstants;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.lang.Contract;
 import org.springframework.util.ClassUtils;
 
 /**
@@ -330,6 +332,18 @@ class GradleUtils {
 		return String.join(":", parts);
 	}
 
+	public static void updateVersion(@Nullable String gav, String newVersion, Consumer<String> updateConsumer) {
+		if (StringUtils.isEmpty(gav)) {
+			return;
+		}
+		String updated = updateGavVersion(gav, newVersion);
+		if (StringUtils.hasText(updated)) {
+			updateConsumer.accept(updated);
+		} else {
+			updateConsumer.accept(newVersion);
+		}
+	}
+
 	/**
 	 * Walks the ancestor directories of {@code file} until one of them matches a
 	 * registered linked Gradle project root.
@@ -419,6 +433,22 @@ class GradleUtils {
 		}
 		return version.contains("[") || version.contains("]") || version.contains("(") || version.contains(")")
 				|| version.contains(",") || version.endsWith(".+");
+	}
+
+
+	@Contract("null -> false")
+	public static boolean isCatalogConsumerCall(@Nullable String name) {
+
+		if (StringUtils.isEmpty(name)) {
+			return false;
+		}
+
+		if ("alias".equals(name)
+				|| GradleUtils.isPlugin(name) || GradleUtils.isDependencySection(name)
+				|| GradleUtils.isPlatformSection(name)) {
+			return true;
+		}
+		return false;
 	}
 
 }

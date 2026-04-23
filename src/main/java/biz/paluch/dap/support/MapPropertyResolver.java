@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,26 @@
  */
 package biz.paluch.dap.support;
 
-import com.intellij.psi.PsiElement;
+import java.util.Map;
+
+import org.jspecify.annotations.Nullable;
 
 /**
- * Location of a property value inside {@code gradle.properties} or a
- * script-local declaration (e.g. {@code ext} / {@code extra}).
+ * {@link PropertyResolver} backed by a {@link Map}.
  *
  * @author Mark Paluch
  */
-public record PsiPropertyValueElement(PsiElement element, String propertyKey, String propertyValue) {
+record MapPropertyResolver(Map<String, PropertyValue> properties) implements PropertyResolver {
+
+	@Override
+	public @Nullable PropertyValue getElement(String propertyKey) {
+		return properties.get(propertyKey);
+	}
+
+	@Override
+	public @Nullable String getProperty(String propertyKey) {
+		PropertyValue element = properties.get(propertyKey);
+		return element != null ? element.propertyValue() : null;
+	}
 
 }

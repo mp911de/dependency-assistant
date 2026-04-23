@@ -15,6 +15,8 @@
  */
 package biz.paluch.dap.support;
 
+import java.util.Map;
+
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -51,7 +53,7 @@ public interface PropertyResolver {
 	 * @param propertyKey the property name
 	 * @return the value literal or entry PSI, or {@code null} when not tracked here
 	 */
-	default @Nullable PsiPropertyValueElement getElement(String propertyKey) {
+	default @Nullable PropertyValue getElement(String propertyKey) {
 		return null;
 	}
 
@@ -65,11 +67,16 @@ public interface PropertyResolver {
 	 * @throws IllegalArgumentException if given text is {@code null}
 	 */
 	default String resolvePlaceholders(String text) {
-
 		Assert.notNull(text, "Text must not be null");
-
 		return PropertyResolverUtil.resolvePlaceholders(text, this);
+	}
 
+	/**
+	 * Create a {@link PropertyResolver} from the given map containing
+	 * {@link PropertyValue}s.
+	 */
+	static PropertyResolver fromMap(Map<String, PropertyValue> properties) {
+		return new MapPropertyResolver(properties);
 	}
 
 }

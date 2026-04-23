@@ -16,7 +16,9 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -83,15 +85,23 @@ class UpdateGroovyDsl {
 		}));
 	}
 
-	public void updateDeclaration(PsiFile file, ArtifactId id, String newVersion) {
+	public void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
 		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
 
-			GradleDeclarationSite site = siteLocator.locateDeclaration(call);
-			if (site == null || !site.isUpdateable() || !site.matches(id)) {
+			DependencySite site = siteLocator.locateDeclaration(call);
+
+			if (!(site instanceof VersionedDependencySite versioned) || !site.getArtifactId()
+					.equals(artifactId)) {
 				return false;
 			}
 
-			return site.updateVersion(newVersion);
+			if (versioned.getVersionElement() instanceof GrLiteral literal) {
+				GradleUtils.updateVersion(GroovyDslUtils.getText(literal), newVersion,
+						it -> GroovyDslUtils.updateText(literal, it));
+				return true;
+			}
+
+			return false;
 		}));
 	}
 
