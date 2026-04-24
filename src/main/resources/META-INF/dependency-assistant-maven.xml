@@ -1,6 +1,8 @@
 <idea-plugin>
 	<extensions defaultExtensionNs="com.intellij">
 		<postStartupActivity implementation="biz.paluch.dap.maven.MavenPostStartup"/>
+		<projectService
+				serviceImplementation="biz.paluch.dap.maven.MavenDependencyCheckService"/>
 		<completion.contributor
 				language="XML"
 				implementationClass="biz.paluch.dap.maven.DependencyVersionCompletionContributor"/>
@@ -13,7 +15,7 @@
 				language="XML"
 				implementationClass="biz.paluch.dap.maven.NewerVersionLineMarkerProvider"/>
 		<platform.backend.documentation.psiTargetProvider
-				implementation="biz.paluch.dap.maven.PropertyVersionDocumentationProvider"/>
+				implementation="biz.paluch.dap.maven.PropertyDependencyDocumentationProvider"/>
 		<intentionAction>
 			<category>Maven</category>
 			<className>biz.paluch.dap.maven.UpdateMavenDependenciesIntention</className>

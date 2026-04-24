@@ -15,21 +15,20 @@
  */
 package biz.paluch.dap;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactRelease;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.state.Cache;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactRelease;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.state.Cache;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utility to find and add suggestions to a {@link CompletionResultSet}.
@@ -51,7 +50,7 @@ public abstract class SuggestionProviderUtil {
 	}
 
 	public static void addSuggestions(Collection<ArtifactRelease> versions, CompletionResultSet result,
-			Function<ArtifactId, String> toString, biz.paluch.dap.artifact.@Nullable ArtifactVersion currentVersion) {
+			Function<ArtifactId, String> toString, @Nullable ArtifactVersion currentVersion) {
 
 		double priority = versions.size();
 
@@ -60,7 +59,8 @@ public abstract class SuggestionProviderUtil {
 			String typeText = toString.apply(option.artifactId());
 			Release version = option.release();
 
-			LookupElementBuilder element = LookupElementBuilder.create(version.version().toString()).withTypeText(typeText);
+			LookupElementBuilder element = LookupElementBuilder.create(version.version().toString())
+					.withTypeText(typeText);
 
 			if (version.releaseDate() != null) {
 				element = element.withTailText(" (" + version.releaseDate().toLocalDate() + ")", true);

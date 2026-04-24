@@ -537,7 +537,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		 */
 		static Icon getIcon(DependencyUpdateOption option, JTable table) {
 
-			Icon base = option.source() instanceof DeclarationSource.Plugin ? MavenIcons.MavenPlugin
+			Icon base = option.source() instanceof DeclarationSource.Plugin ? AllIcons.Nodes.Plugin
 					: MavenIcons.MavenProject;
 
 			int pad = 0;

@@ -73,8 +73,12 @@ interface GradleProjectContext extends ProjectBuildContext {
 		if (context != null) {
 			return context;
 		}
+		VirtualFile virtualFile = file.getVirtualFile();
+		if (virtualFile == null) {
+			return EmptyGradleBuildContext.INSTANCE;
+		}
 
-		String linkedPath = GradleUtils.findLinkedProjectPath(project, file.getVirtualFile());
+		String linkedPath = GradleUtils.findLinkedProjectPath(project, virtualFile);
 		if (linkedPath == null) {
 			return EmptyGradleBuildContext.INSTANCE;
 		}

@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
-import javax.swing.Icon;
+import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.VersionSource;
@@ -57,7 +57,7 @@ public class NewerVersionLineMarkerProvider extends NewerVersionLineMarkerProvid
 
 	@Override
 	protected VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element) {
-		return new VersionUpgradeLookupService(element.getProject(), element.getContainingFile());
+		return VersionUpgradeLookupService.create(element);
 	}
 
 	@Override

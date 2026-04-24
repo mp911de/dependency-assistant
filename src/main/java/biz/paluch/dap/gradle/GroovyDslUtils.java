@@ -58,13 +58,8 @@ class GroovyDslUtils {
 		}
 
 		String value = getText(assignment.valueLiteral());
-		if (StringUtils.isEmpty(value)) {
-			return null;
-		}
-
 		return new PropertyValue(assignment.valueLiteral(), assignment.key(), value);
 	}
-
 
 	public static boolean isInsidePluginsBlock(PsiElement element) {
 		return isInsideGroovyBlock(element, GradleUtils::isPluginSection);

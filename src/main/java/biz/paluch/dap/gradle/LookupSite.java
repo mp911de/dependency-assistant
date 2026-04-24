@@ -122,7 +122,6 @@ interface LookupSite {
 			PsiElement versionElement) {
 
 		Assert.hasText(propertyName, "Property name must not be empty");
-		Assert.hasText(version, "Version  must not be empty");
 		Assert.notNull(declarationElement, "Declaration element must not be null");
 		Assert.notNull(versionElement, "Version element must not be null");
 

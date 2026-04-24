@@ -32,6 +32,7 @@ import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTokenType;
@@ -53,7 +54,15 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final MavenProperties properties;
 
-	public VersionUpgradeLookupService(Project project, MavenProjectContext context, PsiFile pom) {
+	private VersionUpgradeLookupService(PsiElement element) {
+		this(element.getProject(), element.getContainingFile());
+	}
+
+	private VersionUpgradeLookupService(Project project, PsiFile pom) {
+		this(project, pom, MavenProjectContext.of(project, pom));
+	}
+
+	private VersionUpgradeLookupService(Project project, PsiFile pom, MavenProjectContext context) {
 
 		super(project, context);
 
@@ -67,11 +76,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	static VersionUpgradeLookupService create(PsiElement element) {
-		return create(element.getProject(), element.getContainingFile());
-	}
-
-	static VersionUpgradeLookupService create(Project project, PsiFile pom) {
-		return new VersionUpgradeLookupService(project, MavenProjectContext.of(project, pom), pom);
+		return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
+				it -> new VersionUpgradeLookupService(element));
 	}
 
 	@Override
@@ -95,6 +101,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		return UpgradeSuggestion.none();
+	}
+
+	@Override
+	public ArtifactReference resolveArtifactReference(PsiElement element) {
+		return element instanceof XmlTag tag ? resolveArtifactDeclaration(tag) : ArtifactReference.unresolved();
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
@@ -222,11 +233,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return getCurrentVersion(property);
 		}
 
-		try {
-			return ArtifactVersion.of(expression.toString());
-		} catch (Exception e) {
-			return null;
-		}
+		return ArtifactVersion.from(expression.toString()).orElse(null);
 	}
 
 	private record ResolvedProperty(String value, PsiElement valueLiteral) {

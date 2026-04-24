@@ -29,16 +29,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.kotlin.psi.KtBinaryExpression;
-import org.jetbrains.kotlin.psi.KtCallElement;
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLambdaArgument;
-import org.jetbrains.kotlin.psi.KtLambdaExpression;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
-import org.jetbrains.kotlin.psi.KtValueArgumentList;
-import org.jetbrains.kotlin.psi.ValueArgument;
+import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -54,6 +45,10 @@ class KotlinDslParser extends GradleParser {
 
 	KotlinDslParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector, properties);
+	}
+
+	KotlinDslParser(DependencyCollector collector, PropertyResolver propertyResolver) {
+		super(collector, propertyResolver);
 	}
 
 	// -------------------------------------------------------------------------
@@ -508,6 +503,7 @@ class KotlinDslParser extends GradleParser {
 		 * if (hasLiteral[0]) { return null; } return result[0];
 		 */
 	}
+
 	private static @Nullable String resolveKotlinStringTemplate(KtStringTemplateExpression st,
 			PropertyResolver propertyResolver) {
 

@@ -22,8 +22,10 @@ import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.support.DependencyCheckSupport;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -34,6 +36,7 @@ import org.jetbrains.idea.maven.project.MavenProjectsManager;
 public class MavenDependencyCheckService extends DependencyCheckSupport {
 
 	private final Project project;
+
 	private final MavenProjectsManager projectsManager;
 
 	public MavenDependencyCheckService(Project project) {
@@ -54,7 +57,8 @@ public class MavenDependencyCheckService extends DependencyCheckSupport {
 		String projectName = project.getName();
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
 
-		MavenProjectContext mavenContext = MavenProjectContext.of(project, pomFile);
+		MavenProjectContext mavenContext = ApplicationManager.getApplication()
+				.runReadAction((Computable<MavenProjectContext>) () -> MavenProjectContext.of(project, pomFile));
 
 		if (!mavenContext.isAvailable()) {
 			return new DependencyUpdates(projectName, List.of(),

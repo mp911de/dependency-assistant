@@ -1,5 +1,4 @@
 <idea-plugin>
-
 	<applicationListeners>
 		<listener class="biz.paluch.dap.gradle.FlushStateOnSave"
 		          topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
@@ -12,34 +11,32 @@
 		<completion.contributor
 				language="Groovy"
 				order="first"
-				implementationClass="biz.paluch.dap.gradle.DependencyVersionCompletionContributor"/>
-		<completion.contributor
-				language="kotlin"
-				order="first"
-				implementationClass="biz.paluch.dap.gradle.DependencyVersionCompletionContributor"/>
+				implementationClass="biz.paluch.dap.gradle.ReleaseVersionCompletionContributor"/>
 		<completion.contributor
 				language="TOML"
 				order="first"
-				implementationClass="biz.paluch.dap.gradle.DependencyVersionCompletionContributor"/>
+				implementationClass="biz.paluch.dap.gradle.ReleaseVersionCompletionContributor"/>
 		<completion.contributor
 				language="Properties"
 				order="first"
-				implementationClass="biz.paluch.dap.gradle.PropertyVersionCompletionContributor"/>
-		<typedHandler
-				implementation="biz.paluch.dap.gradle.GradleCompletionAutoPopupHandler"/>
+				implementationClass="biz.paluch.dap.gradle.ReleaseVersionCompletionContributor"/>
+		<completion.contributor
+				language="kotlin"
+				order="first"
+				implementationClass="biz.paluch.dap.gradle.ReleaseVersionCompletionContributor"/>
+		<codeInsight.lineMarkerProvider
+				language="kotlin"
+				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
 		<annotator language="Groovy"
-		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
-		<annotator language="kotlin"
 		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
 		<annotator language="Properties"
 		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
 		<annotator language="TOML"
 		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
+		<annotator language="kotlin"
+		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="Groovy"
-				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
-		<codeInsight.lineMarkerProvider
-				language="kotlin"
 				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
 		<codeInsight.lineMarkerProvider
 				language="Properties"
@@ -48,13 +45,12 @@
 				language="TOML"
 				implementationClass="biz.paluch.dap.gradle.NewerVersionLineMarkerProvider"/>
 		<platform.backend.documentation.psiTargetProvider
-				implementation="biz.paluch.dap.gradle.PropertyVersionDocumentationProvider"/>
+				implementation="biz.paluch.dap.gradle.DependencyDocumentationProvider"/>
 		<intentionAction>
 			<category>Gradle</category>
 			<className>biz.paluch.dap.gradle.UpdateGradleDependenciesIntention</className>
 		</intentionAction>
 	</extensions>
-
 	<actions>
 		<action id="biz.paluch.dap.gradle.UpdateDependencies"
 		        class="biz.paluch.dap.gradle.UpdateDependenciesAction"

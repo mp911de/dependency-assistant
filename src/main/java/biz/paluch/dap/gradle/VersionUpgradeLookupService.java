@@ -15,8 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
@@ -29,6 +27,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
@@ -70,8 +69,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final @Nullable ProjectState projectState;
 
-	private final Cache cache;
-
 	private final PsiFile file;
 
 	private final TomlArtifactResolver tomlResolver;
@@ -88,20 +85,23 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GradleLookupSiteResolver lookupSiteResolver;
 
+	public VersionUpgradeLookupService(PsiElement element) {
+		this(element.getProject(), element.getContainingFile());
+	}
+
 	public VersionUpgradeLookupService(Project project, PsiFile file) {
 		this(project, file, GradleProjectContext.of(project, file));
 	}
 
-	private VersionUpgradeLookupService(Project project, PsiFile file, GradleProjectContext ctx) {
+	private VersionUpgradeLookupService(Project project, PsiFile file, GradleProjectContext context) {
 
-		super(project, ctx);
+		super(project, context);
 
 		this.file = file;
-		this.buildContext = ctx;
+		this.buildContext = context;
 		this.candidate = GradleUtils.isGradleFile(file);
 
 		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
-		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
@@ -113,20 +113,13 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				this.tomlResolver);
 	}
 
+	public static VersionUpgradeLookupService create(PsiElement element) {
+		return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
+				it -> new VersionUpgradeLookupService(element));
+	}
+
 	@Override
-	public UpgradeSuggestion suggestUpgrades(PsiElement element) {
-		return suggestUpgrades(this.cache, resolveArtifactReference(element));
-	}
-
-	public @Nullable Dependency findDependency(PsiElement element) {
-		ArtifactReference result = resolveArtifactReference(element);
-		if (!result.isResolved() || projectState == null) {
-			return null;
-		}
-		return projectState.findDependency(result.getArtifactId());
-	}
-
-	protected ArtifactReference resolveArtifactReference(PsiElement element) {
+	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
 		if (!candidate || !buildContext.isAvailable()) {
 			return ArtifactReference.unresolved();

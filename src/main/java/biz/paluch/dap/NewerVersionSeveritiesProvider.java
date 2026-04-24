@@ -16,8 +16,7 @@
 package biz.paluch.dap;
 
 import java.util.List;
-
-import javax.swing.Icon;
+import javax.swing.*;
 
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
 import com.intellij.codeInsight.daemon.impl.SeveritiesProvider;
@@ -25,21 +24,31 @@ import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 
 /**
- * {@link SeveritiesProvider} to install the severity for dependencies that have a newer version available. The severity
- * is used to apply a custom text attribute.
- * <p>
- * <strong>Platform coupling:</strong> extends types under {@code com.intellij.codeInsight.daemon.impl} (the supported
- * extension point still lives in that package). Custom severities are ordered using
- * {@code HighlightSeverity.INFORMATION.myVal} plus a fixed offset; re-check when upgrading the IDE baseline because
- * that field is not a documented stable API.
+ * {@link SeveritiesProvider} to install the severity for dependencies that have
+ * a newer version available. The severity is used to apply a custom text
+ * attribute.
+ * <p><strong>Platform coupling:</strong> extends types under
+ * {@code com.intellij.codeInsight.daemon.impl} (the supported extension point
+ * still lives in that package). Custom severities are ordered using
+ * {@code HighlightSeverity.INFORMATION.myVal} plus a fixed offset; re-check
+ * when upgrading the IDE baseline because that field is not a documented stable
+ * API.
  *
  * @author Mark Paluch
  */
 public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 
-	public static final TextAttributesKey NEWER_VERSION_KEY = TextAttributesKey.createTextAttributesKey("NEWER_VERSION");
+	public static final TextAttributesKey NEWER_VERSION_KEY = TextAttributesKey
+			.createTextAttributesKey("NEWER_VERSION");
 
-	public static final HighlightSeverity NEWER_VERSION_MAVEN = new HighlightSeverity(NEWER_VERSION_KEY.getExternalName(),
+	public static final HighlightSeverity NEWER_VERSION = new HighlightSeverity(NEWER_VERSION_KEY.getExternalName(),
+			HighlightSeverity.INFORMATION.myVal + 5, //
+			MessageBundle.lazyMessage("newer.severity"), //
+			MessageBundle.lazyMessage("newer.severity.capitalized"), //
+			MessageBundle.lazyMessage("newer.severity.count.message"));
+
+	public static final HighlightSeverity NEWER_VERSION_MAVEN = new HighlightSeverity(
+			NEWER_VERSION_KEY.getExternalName(),
 			HighlightSeverity.INFORMATION.myVal + 5, //
 			MessageBundle.lazyMessage("newer.severity"), //
 			MessageBundle.lazyMessage("newer.severity.capitalized"), //
@@ -52,12 +61,26 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			MessageBundle.lazyMessage("newer.severity.capitalized"), //
 			MessageBundle.lazyMessage("newer.severity.count.message"));
 
-	public NewerVersionSeveritiesProvider() {}
+	public NewerVersionSeveritiesProvider() {
+	}
 
 	@Override
 	public List<HighlightInfoType> getSeveritiesHighlightInfoTypes() {
 
+		class GENERIC extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+
+			private GENERIC(HighlightSeverity severity, TextAttributesKey attributesKey) {
+				super(severity, attributesKey);
+			}
+
+			public Icon getIcon() {
+				return DependencyAssistantIcons.ICON;
+			}
+
+		}
+
 		class M extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+
 			private M(HighlightSeverity severity, TextAttributesKey attributesKey) {
 				super(severity, attributesKey);
 			}
@@ -65,9 +88,11 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			public Icon getIcon() {
 				return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
 			}
+
 		}
 
 		class G extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+
 			private G(HighlightSeverity severity, TextAttributesKey attributesKey) {
 				super(severity, attributesKey);
 			}
@@ -75,9 +100,11 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			public Icon getIcon() {
 				return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
 			}
+
 		}
 
-		return List.of(new M(NEWER_VERSION_MAVEN, NEWER_VERSION_KEY), new G(NEWER_VERSION_GRADLE, NEWER_VERSION_KEY));
+		return List.of(new GENERIC(NEWER_VERSION, NEWER_VERSION_KEY), new M(NEWER_VERSION_MAVEN, NEWER_VERSION_KEY),
+				new G(NEWER_VERSION_GRADLE, NEWER_VERSION_KEY));
 	}
 
 }

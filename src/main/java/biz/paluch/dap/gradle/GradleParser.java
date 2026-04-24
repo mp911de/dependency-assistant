@@ -63,6 +63,11 @@ class GradleParser extends GradleParserSupport {
 		this.global = properties::get;
 	}
 
+	GradleParser(DependencyCollector collector, PropertyResolver propertyResolver) {
+		super(collector);
+		this.global = propertyResolver;
+	}
+
 	public static boolean isDependencyCallCandidate(GrMethodCall call) {
 
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);

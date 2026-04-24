@@ -20,6 +20,7 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -82,10 +83,12 @@ class GradleDependencyCollector {
 			GradleParser parser = new GradleParser(collector, new LinkedHashMap<>(properties));
 			parser.parseGradleProperties(service.getCache(), psiFile);
 		} else if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
-			KotlinDslParser parser = new KotlinDslParser(collector, new LinkedHashMap<>(properties));
+			PropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile).withFallback(properties::get);
+			KotlinDslParser parser = new KotlinDslParser(collector, propertyResolver);
 			parser.parseKotlinScript(psiFile);
 		} else {
-			GradleParser parser = new GradleParser(collector, new LinkedHashMap<>(properties));
+			PropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile).withFallback(properties::get);
+			GradleParser parser = new GradleParser(collector, propertyResolver);
 			parser.parseGroovyDsl(psiFile);
 		}
 	}

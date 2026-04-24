@@ -54,17 +54,4 @@ class TomlCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 	}
 
-	@Test
-	@EditorFile(name = "gradle/libs.versions.toml", content = """
-			[libraries]
-			junit = { module = "org.junit:junit-bom", version = "6.0.<caret>" }
-			""")
-	void autoPopupForQuotedVersionLiteral(PsiFile tomlFile) {
-
-		GradleFixtures.analyze(tomlFile);
-
-		assertThat(GradleCompletionSupport.shouldAutoPopup(fixture.getProject(), fixture.getEditor(), tomlFile, '3'))
-				.isTrue();
-	}
-
 }

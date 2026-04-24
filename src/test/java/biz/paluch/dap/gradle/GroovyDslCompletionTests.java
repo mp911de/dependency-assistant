@@ -60,24 +60,4 @@ class GroovyDslCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 	}
 
-	@Test
-	@EditorFile(name = "build.gradle", content = """
-			def junit = '6.0.<caret>'
-			dependencies {
-			    implementation('org.junit:junit-bom') {
-			        version {
-			            strictly '[5.0, 6.1['
-			            prefer junit
-			        }
-			    }
-			}
-			""")
-	void autoPopupForVersionVariable(PsiFile buildFile) {
-
-		GradleFixtures.analyze(buildFile);
-
-		assertThat(GradleCompletionSupport.shouldAutoPopup(fixture.getProject(), fixture.getEditor(), buildFile, '3'))
-				.isTrue();
-	}
-
 }

@@ -298,7 +298,9 @@ class GroovyDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(fixture).hasSingleGutter().hasNoNavigation();
+		assertThat(fixture).gutters().hasSize(2);
+		assertThat(fixture).gutter(0).hasNoNavigation();
+		assertThat(fixture).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -322,6 +324,14 @@ class GroovyDslHighlightingTests {
 		assertThat(fixture).gutter(1).hasNoNavigation();
 	}
 
+	/**
+	 * Validates the behavior of Gradle dependency configuration where a version
+	 * constraint is strictly defined, but a preferred version is set using a
+	 * variable. This test ensures that no gutter navigation issues occur.
+	 *
+	 * @param buildFile the PsiFile representing the build.gradle file to be
+	 * analyzed.
+	 */
 	@Test
 	@EditorFile(name = "build.gradle", content = """
 			val junit = "6.0.0"
@@ -338,7 +348,9 @@ class GroovyDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(fixture).hasSingleGutter().hasNoNavigation();
+		assertThat(fixture).gutters().hasSize(2);
+		assertThat(fixture).gutter(0).hasNoNavigation();
+		assertThat(fixture).gutter(1).hasNoNavigation();
 	}
 
 }

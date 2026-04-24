@@ -25,21 +25,21 @@ import com.intellij.psi.PsiElement;
 
 /**
  * Annotator that highlights outdated version strings in Gradle build files.
- * <p>
- * Complements {@link NewerVersionLineMarkerProvider}: the gutter icon provides a click target while this annotation
- * draws the reader's eye directly to the outdated version string in the editor.
+ * <p>Complements {@link NewerVersionLineMarkerProvider}: the gutter icon
+ * provides a click target while this annotation draws the reader's eye directly
+ * to the outdated version string in the editor.
  *
  * @author Mark Paluch
  */
 public class NewerVersionAnnotator extends NewerVersionAnnotatorSupport {
 
 	public NewerVersionAnnotator() {
-		super(UpdateGradleDependenciesIntention.INSTANCE, NewerVersionSeveritiesProvider.NEWER_VERSION_GRADLE);
+		super(UpdateGradleDependenciesIntention.INSTANCE, NewerVersionSeveritiesProvider.NEWER_VERSION);
 	}
 
 	@Override
 	protected VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element) {
-		return new VersionUpgradeLookupService(element.getProject(), element.getContainingFile());
+		return VersionUpgradeLookupService.create(element);
 	}
 
 	@Override

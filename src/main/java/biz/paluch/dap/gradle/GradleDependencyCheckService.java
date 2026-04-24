@@ -21,8 +21,10 @@ import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.support.DependencyCheckSupport;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -52,7 +54,8 @@ public class GradleDependencyCheckService extends DependencyCheckSupport {
 	public DependencyUpdates runCheck(ProgressIndicator indicator, PsiFile buildFile) {
 
 		String projectName = project.getName();
-		GradleProjectContext buildContext = GradleProjectContext.of(project, buildFile);
+		GradleProjectContext buildContext = ApplicationManager.getApplication()
+				.runReadAction((Computable<GradleProjectContext>) () -> GradleProjectContext.of(project, buildFile));
 
 		if (!buildContext.isAvailable()) {
 			return new DependencyUpdates(projectName, List.of(),

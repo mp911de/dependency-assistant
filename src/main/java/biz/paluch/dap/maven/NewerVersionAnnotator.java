@@ -33,7 +33,7 @@ import com.intellij.psi.PsiElement;
 public class NewerVersionAnnotator extends NewerVersionAnnotatorSupport {
 
 	public NewerVersionAnnotator() {
-		super(UpdateMavenDependenciesIntention.INSTANCE, NewerVersionSeveritiesProvider.NEWER_VERSION_MAVEN);
+		super(UpdateMavenDependenciesIntention.INSTANCE, NewerVersionSeveritiesProvider.NEWER_VERSION);
 	}
 
 	@Override

@@ -31,6 +31,8 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.util.Assert;
+
 /**
  * Shared version-upgrade lookup used by both
  * {@code NewerVersionLineMarkerProvider} and {@code NewerVersionAnnotator}.
@@ -39,13 +41,30 @@ public abstract class VersionUpgradeLookupSupport {
 
 	private final @Nullable ProjectState projectState;
 
+	private final ProjectBuildContext buildContext;
+
+	private final Cache cache;
+
 	protected VersionUpgradeLookupSupport(Project project, ProjectBuildContext buildContext) {
 
 		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
+		this.buildContext = buildContext;
 	}
 
-	protected boolean hasCachedState() {
+	public Cache getCache() {
+		return this.cache;
+	}
+
+	public ProjectState getProjectState() {
+
+		Assert.state(this.projectState != null,
+				"Project state is not available for project " + buildContext.getProjectId());
+		return this.projectState;
+	}
+
+	public boolean hasCachedState() {
 		return projectState != null;
 	}
 
@@ -54,7 +73,23 @@ public abstract class VersionUpgradeLookupSupport {
 	 * {@code null} if the element does not represent a version value or no upgrade
 	 * is available in the cache.
 	 */
-	public abstract UpgradeSuggestion suggestUpgrades(PsiElement element);
+	public UpgradeSuggestion suggestUpgrades(PsiElement element) {
+		return suggestUpgrades(this.cache, resolveArtifactReference(element));
+	}
+
+	public abstract ArtifactReference resolveArtifactReference(PsiElement element);
+
+	/**
+	 * Returns the dependency for the given artifact id or {@code null} if not
+	 * found.
+	 * @param artifactId the artifact id to look up.
+	 */
+	public @Nullable Dependency findDependency(ArtifactId artifactId) {
+		if (projectState == null) {
+			return null;
+		}
+		return projectState.findDependency(artifactId);
+	}
 
 	/**
 	 * Resolves upgrade suggestion from a resolved {@link ArtifactReference} using

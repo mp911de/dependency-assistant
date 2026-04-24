@@ -15,107 +15,71 @@
  */
 package biz.paluch.dap.maven;
 
-import static com.intellij.patterns.PlatformPatterns.*;
-
-import biz.paluch.dap.SuggestionProviderUtil;
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.Property;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.ReleasesSuggestionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
-import com.intellij.codeInsight.completion.CompletionParameters;
-import com.intellij.codeInsight.completion.CompletionProvider;
-import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
-import com.intellij.openapi.project.Project;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.XmlPatterns;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTokenType;
-import com.intellij.util.ProcessingContext;
+
+import static com.intellij.patterns.PlatformPatterns.*;
 
 /**
- * Provides version auto-completion suggestions when editing a Maven {@code <properties>} value whose property name maps
- * to a known dependency artifact in the {@link Cache}.
- * <p>
- * Invoking completion once ({@code Ctrl+Space}) filters by the typed prefix. Invoking it a second time shows all cached
- * versions regardless of the current text.
+ * Provides version auto-completion suggestions when editing a Maven
+ * {@code <properties>} value whose property name maps to a known dependency
+ * artifact in the {@link Cache}.
+ * <p>Invoking completion once ({@code Ctrl+Space}) filters by the typed prefix.
+ * Invoking it a second time shows all cached versions regardless of the current
+ * text.
  */
 public class PropertyVersionCompletionContributor extends CompletionContributor {
 
 	public PropertyVersionCompletionContributor() {
 		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
 				.withElementType(XmlTokenType.XML_DATA_CHARACTERS) //
-				.and(psiElement().inside(XmlPatterns.xmlFile())) //
+				.and(psiElement().inside(XmlPatterns.xmlFile().withName("pom.xml"))) //
 				.and(psiElement().inside(XmlPatterns.xmlTag().withParent(XmlPatterns.xmlTag().withName("properties")))),
-				new VersionSuggestionProvider());
+				new PropertySuggestionProvider());
 	}
 
-	private static class VersionSuggestionProvider extends CompletionProvider<CompletionParameters> {
+	private static class PropertySuggestionProvider extends ReleasesSuggestionProvider {
 
-		@Override
-		protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
-				CompletionResultSet result) {
+		public PropertySuggestionProvider() {
+			super(element -> {
 
-			Project project = parameters.getEditor().getProject();
-			XmlTag propertyTag = PomUtil.findPropertyTag(parameters.getPosition());
-			if (project == null || propertyTag == null) {
-				return;
-			}
+				XmlTag propertyTag = PomUtil.findPropertyTag(element);
+				if (propertyTag == null) {
+					return null;
+				}
 
-			VersionUpgradeLookupService service = VersionUpgradeLookupService.create(project, parameters.getOriginalFile());
-			String propertyName = propertyTag.getLocalName();
-			Cache cache = DependencyAssistantService.getInstance(project).getCache();
+				VersionUpgradeLookupService lookupService = VersionUpgradeLookupService.create(element);
+				String propertyName = propertyTag.getLocalName();
+				Property property = lookupService.getProperty(propertyName);
+				if (property == null || !property.hasArtifacts()) {
+					return null;
+				}
 
-			Property property = service.getProperty(propertyName);
-			if (property == null) {
-				return;
-			}
+				ArtifactReference artifactReference = lookupService.resolveArtifactReference(element);
+				if (artifactReference.isResolved()) {
+					return new CompletionMetadata(artifactReference.getDeclaration().getArtifactId(),
+							artifactReference.getDeclaration().getVersion());
+				}
 
-			List<ArtifactRelease> allOptions = findVersionsForFirstArtifact(property, cache);
-			if (allOptions.isEmpty()) {
-				return;
-			}
-
-			// Run all remaining contributors first and pass their results through unchanged.
-			// Collect the lookup strings they contribute so we can skip our own duplicates.
-			Set<String> alreadyContributed = new HashSet<>();
-			result.runRemainingContributors(parameters, completionResult -> {
-				alreadyContributed.add(completionResult.getLookupElement().getLookupString());
-				result.passResult(completionResult);
+				ArtifactVersion version = lookupService.getCurrentVersion(artifactReference.getArtifactId());
+				if (version != null) {
+					return new CompletionMetadata(artifactReference.getArtifactId(), version);
+				}
+				CachedArtifact first = property.artifacts().getFirst();
+				return new CompletionMetadata(first.toArtifactId(), null);
 			});
-
-			// Show all cached versions on a second invocation (Ctrl+Space twice)
-			CompletionResultSet versionsResult = parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("") : result;
-			ArtifactVersion currentVersion = service.getCurrentVersion(property);
-
-			List<ArtifactRelease> unique = allOptions.stream()
-					.filter(opt -> !alreadyContributed.contains(opt.release().version().toString())).toList();
-
-			SuggestionProviderUtil.addSuggestions(unique, versionsResult, ArtifactId::toString, currentVersion);
-		}
-
-		private static List<ArtifactRelease> findVersionsForFirstArtifact(Property property,
-				Cache cache) {
-
-			List<ArtifactRelease> options = new ArrayList<>();
-			for (CachedArtifact artifact : property.artifacts()) {
-				options.addAll(SuggestionProviderUtil.findOptions(artifact.toArtifactId(), cache));
-				break;
-			}
-			options.sort(Comparator.reverseOrder());
-			return options;
 		}
 
 	}
+
 }

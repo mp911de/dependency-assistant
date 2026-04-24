@@ -111,8 +111,7 @@ sealed interface GroovyExtAssignment {
 			}
 
 			String key = GroovyDslUtils.getText(keyLiteral);
-			String value = GroovyDslUtils.getText(literal);
-			if (StringUtils.isEmpty(key) || StringUtils.isEmpty(value)) {
+			if (StringUtils.isEmpty(key)) {
 				return null;
 			}
 
@@ -198,10 +197,6 @@ sealed interface GroovyExtAssignment {
 				}
 				String name = variable.getName();
 				if (!StringUtils.hasText(name)) {
-					continue;
-				}
-				String value = GroovyDslUtils.getText(literal);
-				if (StringUtils.isEmpty(value)) {
 					continue;
 				}
 				return new ScriptVariable(name, literal, variable);
