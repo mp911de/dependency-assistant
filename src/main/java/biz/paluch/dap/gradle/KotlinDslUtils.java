@@ -204,78 +204,6 @@ class KotlinDslUtils {
 	}
 
 	/**
-	 * Create a {@link DependencySite} for a Kotlin plugin declaration.
-	 * <p>Used for plugin ids declared in {@code plugins { }} blocks and infix
-	 * {@code version} declarations.
-	 */
-	public static @Nullable DependencySite findPluginSite(KtCallElement call,
-			@Nullable KtBinaryExpression be, PropertyResolver scriptProperties) {
-
-		StringBuilder pluginId = new StringBuilder();
-		boolean[] failed = new boolean[1];
-
-		doWithStrings(call, pluginId::append, expr -> {
-			String resolved = resolveKotlinExpression(expr, scriptProperties);
-			if (resolved == null) {
-				failed[0] = true;
-			} else {
-				pluginId.append(resolved);
-			}
-		});
-
-		if (failed[0]) {
-			return null;
-		}
-
-		String id = scriptProperties.resolvePlaceholders(pluginId.toString());
-		if (!GradlePlugin.isValidPluginId(id)) {
-			return null;
-		}
-
-		String versionText = null;
-		String versionPropertyKey = null;
-		PsiElement versionElement = null;
-		if (be != null) {
-			PsiElement[] children = be.getChildren();
-			for (int i = 0; i < children.length; i++) {
-				PsiElement child = children[i];
-				if (child instanceof KtOperationReferenceExpression ops && "version".equals(ops.getReferencedName())
-						&& children.length > i + 1
-						&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
-					KtLiterals literals = KtLiterals.from(versionExpr);
-					if (!literals.hasText()) {
-						return null;
-					}
-
-					versionElement = versionExpr;
-					versionText = literals.toString();
-					if (literals.hasProperty() && literals.size() == 1) {
-						versionPropertyKey = literals.getProperty();
-						PsiElement resolvedElement = scriptProperties.getPropertyValue(versionPropertyKey) != null
-								? scriptProperties.getPropertyValue(versionPropertyKey).element()
-								: null;
-						if (resolvedElement != null) {
-							versionElement = resolvedElement;
-						}
-					}
-					break;
-				}
-			}
-		}
-
-		if (!StringUtils.hasText(versionText)) {
-			return null;
-		}
-
-		PropertyExpression versionExpression = StringUtils.hasText(versionPropertyKey)
-				? PropertyExpression.property(versionPropertyKey)
-				: PropertyExpression.from(versionText);
-
-		return GradleDependency.of(GradlePlugin.of(id), versionExpression).toDependencySite(call,
-				versionElement);
-	}
-
-	/**
 	 * Create a {@link DependencySite} from parsed Kotlin DSL dependency data.
 	 * <p>The supplied {@code declaration} and {@code version} elements are reused
 	 * as the PSI anchors for the resulting site.
@@ -315,31 +243,8 @@ class KotlinDslUtils {
 	@Contract("null -> null")
 	public static @Nullable String findProperty(@Nullable KtBinaryExpression element) {
 
-		if (element == null) {
-			return null;
-		}
-
-		for (PsiElement child : element.getChildren()) {
-
-			if (child instanceof KtArrayAccessExpression array) {
-				KtExpression arrayExpression = array.getArrayExpression();
-				List<KtExpression> indexExpressions = array.getIndexExpressions();
-
-				if (arrayExpression == null || !"extra".equals(arrayExpression.getText())
-						|| indexExpressions.size() != 1) {
-					return null;
-				}
-
-				StringBuilder builder = new StringBuilder();
-				KtExpression indexExpression = indexExpressions.getFirst();
-				doWithStrings(indexExpression, builder::append, e -> {
-				});
-
-				return builder.toString();
-			}
-		}
-
-		return null;
+		KotlinExtraAssignment assignment = KotlinExtraAssignment.of(element);
+		return assignment != null ? assignment.key() : null;
 	}
 
 	// -------------------------------------------------------------------------
@@ -503,72 +408,16 @@ class KotlinDslUtils {
 			return null;
 		}
 
-		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class);
-
-		if (binary != null) {
-
-			if (binary.getLeft() instanceof KtArrayAccessExpression arrayAccess) {
-				KtExpression arrayExpression = arrayAccess.getArrayExpression();
-				if ("extra".equals(getText(arrayExpression))) {
-					return binary;
-				}
-			}
+		KotlinExtraAssignment direct = KotlinExtraAssignment.of(
+				PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class));
+		if (direct != null) {
+			return direct.expression();
 		}
 
 		// "v".also { extra["k"] = it } — element PSI lives in the receiver, not under
 		// the assignment RHS.
-		return findExtraItAssignmentFromAlsoReceiver(element);
-	}
-
-	private static @Nullable KtBinaryExpression findExtraItAssignmentFromAlsoReceiver(PsiElement version) {
-
-		KtQualifiedExpression qual = PsiTreeUtil.getParentOfType(version, KtQualifiedExpression.class);
-		while (qual != null) {
-			KtExpression recv = qual.getReceiverExpression();
-			if (recv != null && PsiTreeUtil.isAncestor(recv, version, false)) {
-				KtExpression selector = qual.getSelectorExpression();
-				if (selector instanceof KtCallExpression alsoCall && "also".equals(getKotlinCallName(alsoCall))) {
-					KtLambdaExpression lambda = firstLambdaArgument(alsoCall);
-					if (lambda != null) {
-						KtExpression body = lambda.getBodyExpression();
-						if (body != null) {
-							for (KtBinaryExpression assign : PsiTreeUtil.collectElementsOfType(body,
-									KtBinaryExpression.class)) {
-								if (!"=".equals(assign.getOperationReference().getText())) {
-									continue;
-								}
-								if (!(assign.getLeft() instanceof KtArrayAccessExpression arrayAccess)) {
-									continue;
-								}
-								KtExpression arrayExpr = arrayAccess.getArrayExpression();
-								if (!(arrayExpr instanceof KtNameReferenceExpression nr)
-										|| !"extra".equals(nr.getReferencedName())) {
-									continue;
-								}
-								if (assign.getRight() instanceof KtNameReferenceExpression ref
-										&& "it".equals(ref.getReferencedName())) {
-									return assign;
-								}
-							}
-						}
-					}
-				}
-				return null;
-			}
-			qual = PsiTreeUtil.getParentOfType(qual, KtQualifiedExpression.class);
-		}
-		return null;
-	}
-
-	private static @Nullable KtLambdaExpression firstLambdaArgument(KtCallExpression call) {
-
-		for (ValueArgument va : call.getValueArguments()) {
-			KtExpression expr = va.getArgumentExpression();
-			if (expr instanceof KtLambdaExpression lam) {
-				return lam;
-			}
-		}
-		return null;
+		KotlinExtraAssignment viaAlso = KotlinExtraAssignment.fromAlsoReceiver(element);
+		return viaAlso != null ? viaAlso.expression() : null;
 	}
 
 	static @Nullable String getKotlinCallName(KtCallElement call) {

@@ -18,9 +18,7 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
 import biz.paluch.dap.support.DependencySite;
-import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
@@ -136,38 +134,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 	private @Nullable DependencySite locatePluginDeclaration(GrMethodCall call) {
 
-		GroovyDslUtils.PluginId pluginId = GroovyDslUtils.PluginId.fromMethodCall(call, propertyResolver);
-		if (pluginId == null) {
-			return null;
-		}
-
-		ArtifactId artifactId = pluginId.toValidatedArtifactId();
-		if (artifactId == null) {
-			return null;
-		}
-
-		return GradleDependency.of(artifactId, PropertyExpression.from(pluginId.getVersionAsString()))
-				.toDependencySite(call, pluginId.version());
-	}
-
-	private @Nullable DependencySite locateDirectDeclaration(GrMethodCall call) {
-
-		for (PsiElement arg : call.getArgumentList().getAllArguments()) {
-			PsiElement candidate = arg;
-			if (arg instanceof GrMethodCall innerCall
-					&& GradleUtils.isPlatformSection(GroovyDslUtils.getGroovyMethodName(innerCall))) {
-				PsiElement[] innerArgs = innerCall.getArgumentList().getAllArguments();
-				candidate = innerArgs.length > 0 ? innerArgs[0] : null;
-			}
-
-			if (!(candidate instanceof GrLiteral literal)) {
-				continue;
-			}
-
-			return findDependencySite(literal, propertyResolver);
-		}
-
-		return null;
+		PluginId pluginId = GroovyPluginIds.fromMethodCall(call, propertyResolver);
+		return pluginId != null ? pluginId.toDependencySite() : null;
 	}
 
 	private LookupSite locatePropertyLiteral(GrLiteral literal) {
@@ -461,18 +429,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			return null;
 		}
 
-		PluginId id = PluginId.fromMethodCall(idCall, scriptProperties);
-		if (id == null) {
-			return null;
-		}
-		ArtifactId artifactId = id.toValidatedArtifactId();
-		if (artifactId == null) {
-			return null;
-		}
-		String version = GroovyDslUtils.getText(id.version());
-		PropertyExpression versionExpression = PropertyExpression.from(version);
-
-		return GradleDependency.of(artifactId, versionExpression).toDependencySite(idCall, id.version());
+		PluginId id = GroovyPluginIds.fromMethodCall(idCall, scriptProperties);
+		return id != null ? id.toDependencySite() : null;
 	}
 
 	/**

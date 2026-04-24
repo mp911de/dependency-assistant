@@ -20,22 +20,13 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.util.Predicates;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrParenthesizedExpression;
@@ -52,132 +43,26 @@ import org.springframework.util.Assert;
  */
 class GroovyDslUtils {
 
-	private static final Logger LOG = Logger.getInstance(GroovyDslUtils.class);
-
 	/**
 	 * Returns a {@link PropertyValue} when {@code element} is the <em>value</em>
 	 * literal of a Groovy {@code ext} property declaration, or {@code null}
 	 * otherwise.
-	 * <p>The three supported forms are:
-	 * <ul>
-	 * <li>{@code ext { set('key', 'value') }} — set-call form</li>
-	 * <li>{@code ext { key = 'value' }} — assignment inside an {@code ext}
-	 * closure</li>
-	 * <li>{@code ext.key = 'value'} — dot-qualified assignment</li>
-	 * </ul>
+	 * <p>The supported declaration forms are recognised via
+	 * {@link GroovyExtAssignment#from(PsiElement)}.
 	 */
 	public static @Nullable PropertyValue findGroovyExtPropertyVersionElement(PsiElement element) {
 
-		if (!(element instanceof GrLiteral literal)) {
+		GroovyExtAssignment assignment = GroovyExtAssignment.from(element);
+		if (assignment == null) {
 			return null;
 		}
 
-		PropertyValue setLoc = resolvePropertyLocation(literal);
-		if (setLoc != null) {
-			return setLoc;
-		}
-		PropertyValue extAssignment = tryExtAssignmentValue(literal);
-		if (extAssignment != null) {
-			return extAssignment;
-		}
-		return findGroovyScriptVariableLiteralValue(literal);
-	}
-
-	/**
-	 * Returns the variable binding when {@code literal} is the initializer of a
-	 * top-level script variable ({@code def}/{@code val}/{@code String} … forms).
-	 */
-	static @Nullable PropertyValue findGroovyScriptVariableLiteralValue(GrLiteral literal) {
-
-		GrVariableDeclaration declaration = PsiTreeUtil.getParentOfType(literal, GrVariableDeclaration.class);
-		if (declaration == null) {
+		String value = getText(assignment.valueLiteral());
+		if (StringUtils.isEmpty(value)) {
 			return null;
 		}
 
-		for (GrVariable variable : declaration.getVariables()) {
-			GrExpression initializer = variable.getInitializerGroovy();
-			if (initializer == null || !PsiTreeUtil.isAncestor(initializer, literal, false)) {
-				continue;
-			}
-			String name = variable.getName();
-			if (!StringUtils.hasText(name)) {
-				continue;
-			}
-			String value = GroovyDslUtils.getText(literal);
-			if (StringUtils.isEmpty(value)) {
-				continue;
-			}
-			return new PropertyValue(literal, name, value);
-		}
-
-		return null;
-	}
-
-	public static @Nullable PropertyValue resolvePropertyLocation(GrLiteral literal) {
-
-		GrMethodCall setCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-
-		if (setCall == null || !"set".equals(getGroovyMethodName(setCall))) {
-			return null;
-		}
-
-		PsiElement[] args = setCall.getArgumentList().getAllArguments();
-		if (args.length < 2 || !(args[0] instanceof GrLiteral keyLiteral)
-				|| !(args[1] instanceof GrLiteral valueLiteral)) {
-			return null;
-		}
-
-		// Only process the value argument (args[1]); reject the key literal (args[0]).
-		if (literal != valueLiteral) {
-			return null;
-		}
-
-		String key = getText(keyLiteral);
-		String value = GroovyDslUtils.getText(literal);
-		if (StringUtils.isEmpty(key) || StringUtils.isEmpty(value)) {
-			return null;
-		}
-		return new PropertyValue(literal, key, value);
-	}
-
-	/**
-	 * Detects {@code ext { key = 'value' }} and {@code ext.key = 'value'} forms.
-	 */
-	public static @Nullable PropertyValue tryExtAssignmentValue(GrLiteral literal) {
-
-		GrAssignmentExpression assign = PsiTreeUtil.getParentOfType(literal, GrAssignmentExpression.class);
-
-		if (assign == null || assign.isOperatorAssignment()) {
-			return null;
-		}
-
-		// Guard: only process when the literal IS the RHS value.
-		if (assign.getRValue() != literal) {
-			return null;
-		}
-
-		GrExpression lhs = assign.getLValue();
-		if (!(lhs instanceof GrReferenceExpression ref)) {
-			return null;
-		}
-
-		GrExpression qualifier = ref.getQualifierExpression();
-
-		String key = null;
-		if (qualifier == null && isInsideGroovyBlock(literal, "ext"::equals)) {
-			// Plain assignment inside ext {} closure: springVersion = '1.0'
-			key = ref.getReferenceName();
-		} else if (qualifier instanceof GrReferenceExpression qualRef && "ext".equals(qualRef.getReferenceName())) {
-			// Dot-qualified: ext.springVersion = '1.0'
-			key = ref.getReferenceName();
-		}
-
-		if (key == null) {
-			return null;
-		}
-
-		String value = literal.getValue() instanceof String v ? v : GroovyDslUtils.getText(literal);
-		return new PropertyValue(literal, key, value);
+		return new PropertyValue(assignment.valueLiteral(), assignment.key(), value);
 	}
 
 
@@ -402,114 +287,6 @@ class GroovyDslUtils {
 		// Use the same quote character (single or double) that was originally used.
 		String newLiteralText = quote + text + quote;
 		literal.updateText(newLiteralText);
-	}
-
-	public record PluginId(GrLiteral id, GrLiteral version, String resolvedPluginId) {
-
-		// Three forms appear in Gradle Groovy DSL plugins {} blocks:
-		//
-		// (1) Flat command args (non-chained):
-		// id 'x' version 'y' GrApplicationStatement(id, ['x', version_ref, 'y'])
-		//
-		// (2) Chained command expression (most common):
-		// id 'x' version 'y' inner GrApplicationStatement(id, ['x'])
-		// whose parent is GrReferenceExpression('version')
-		// whose parent is outer GrApplicationStatement(version, ['y'])
-		//
-		// (3) Explicit-paren + command chain:
-		// id('x') version 'y' same chained structure as (2) but inner uses explicit
-		// parens
-		public static @Nullable PluginId fromMethodCall(GrMethodCall call, PropertyResolver properties) {
-			return fromMethodCall(call, Predicates.alwaysTrue(), properties);
-		}
-
-		public static @Nullable PluginId fromMethodCall(GrMethodCall call, ArtifactId plugin,
-				PropertyResolver properties) {
-			return fromMethodCall(call, id -> plugin.groupId().equals(id), properties);
-		}
-
-		public static @Nullable PluginId fromMethodCall(GrMethodCall call, Predicate<String> idPredicate,
-				PropertyResolver properties) {
-
-			GrLiteral idLiteral = findFirstLiteralArgument(call);
-			if (idLiteral == null) {
-				return null;
-			}
-
-			String resolvedId = properties.resolvePlaceholders(GroovyDslUtils.getText(idLiteral));
-			if (!idPredicate.test(resolvedId)) {
-				return null;
-			}
-
-			GrLiteral versionLiteral = findInlineVersionLiteral(call);
-			if (versionLiteral == null) {
-				versionLiteral = findChainedVersionLiteral(call);
-			}
-
-			return versionLiteral != null ? new PluginId(idLiteral, versionLiteral, resolvedId) : null;
-		}
-
-
-		public String getVersionAsString() {
-			return GroovyDslUtils.getText(version);
-		}
-
-		/**
-		 * Returns a plugin {@link ArtifactId} when {@link #resolvedPluginId()} is safe
-		 * to use as a coordinate, or {@code null} otherwise.
-		 */
-		@Nullable
-		ArtifactId toValidatedArtifactId() {
-
-			if (!GradlePlugin.isValidPluginId(resolvedPluginId)) {
-				LOG.debug("Skipping plugin entry: cannot use resolved id '%s'".formatted(resolvedPluginId));
-				return null;
-			}
-			return GradlePlugin.of(resolvedPluginId);
-		}
-
-		private static @Nullable GrLiteral findFirstLiteralArgument(GrMethodCall call) {
-
-			for (GroovyPsiElement argument : call.getArgumentList().getAllArguments()) {
-				if (argument instanceof GrLiteral literal) {
-					return literal;
-				}
-			}
-
-			return null;
-		}
-
-		private static @Nullable GrLiteral findInlineVersionLiteral(GrMethodCall call) {
-
-			boolean sawVersionKeyword = false;
-
-			for (GroovyPsiElement argument : call.getArgumentList().getAllArguments()) {
-				if (!sawVersionKeyword && argument instanceof GrReferenceExpression referenceExpression
-						&& "version".equals(referenceExpression.getReferenceName())) {
-					sawVersionKeyword = true;
-					continue;
-				}
-
-				if (sawVersionKeyword && argument instanceof GrLiteral literal) {
-					return literal;
-				}
-			}
-
-			return null;
-		}
-
-		private static @Nullable GrLiteral findChainedVersionLiteral(GrMethodCall call) {
-
-			PsiElement parent = call.getParent();
-			if (!(parent instanceof GrReferenceExpression versionRef)
-					|| !"version".equals(versionRef.getReferenceName())
-					|| !(versionRef.getParent() instanceof GrMethodCall outerCall)) {
-				return null;
-			}
-
-			return findFirstLiteralArgument(outerCall);
-		}
-
 	}
 
 }

@@ -17,16 +17,13 @@ package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.ProjectProperty;
+import biz.paluch.dap.gradle.LookupSite.PropertyLookupSite;
+import biz.paluch.dap.gradle.LookupSite.ResolvedSite;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.support.VersionedDependencySite;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -36,7 +33,6 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlFile;
-import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
 
@@ -58,6 +54,8 @@ class TomlArtifactResolver {
 
 	private final @Nullable VersionCatalogRegistry registry;
 
+	private final TomlLookupSiteLocator tomlSiteLocator = new TomlLookupSiteLocator();
+
 	TomlArtifactResolver(Project project, PsiFile file,
 			@Nullable ProjectState projectState) {
 		this(project, file, projectState, null);
@@ -74,61 +72,34 @@ class TomlArtifactResolver {
 	}
 
 	/**
-	 * Resolves the {@link ArtifactReference} from a {@link TomlLiteral literal}.
+	 * Resolves the {@link ArtifactReference} from a {@link TomlLiteral literal} by
+	 * classifying it through {@link TomlLookupSiteLocator} and dispatching the
+	 * resulting {@link LookupSite} to the same primitives used by
+	 * {@link GradleLookupSiteResolver}.
 	 *
 	 * @param literal the TOML literal.
 	 * @return the resolved artifact reference result.
 	 */
 	public ArtifactReference resolveTomlLiteral(TomlLiteral literal) {
+		return resolveLookupSite(tomlSiteLocator.locate(literal));
+	}
 
-		TomlKeyValue kv = PsiTreeUtil.getParentOfType(literal, TomlKeyValue.class);
-		if (kv == null) {
+	private ArtifactReference resolveLookupSite(LookupSite site) {
+
+		if (site.isAbsent()) {
 			return ArtifactReference.unresolved();
 		}
 
-		if (isInsideTable(literal, VERSIONS::equals)) {
-			return resolveByProperty(kv, literal);
+		if (site instanceof PropertyLookupSite propertySite) {
+			return ArtifactReferenceUtils.resolve(propertySite, projectState);
 		}
 
-		if (isInsideTable(literal, it -> it.equals(TomlParser.LIBRARIES) || it.equals(TomlParser.PLUGINS))) {
-			return resolve(kv, literal);
+		if (site instanceof ResolvedSite(VersionedDependencySite versionedDependency)) {
+			return ArtifactReferenceUtils.resolve(versionedDependency,
+					() -> GradlePropertyResolver.forFile(file));
 		}
 
 		return ArtifactReference.unresolved();
-	}
-
-	private ArtifactReference resolveByProperty(TomlKeyValue kv, TomlLiteral literal) {
-
-		String versionKey = TomlParser.getTomlKeyName(kv.getKey());
-		String version = TomlParser.getText(literal);
-		if (version == null || projectState == null) {
-			return ArtifactReference.unresolved();
-		}
-
-		ProjectProperty projectProperty = projectState.findProjectProperty(versionKey);
-		if (projectProperty == null || projectProperty.property().artifacts().isEmpty()) {
-			return ArtifactReference.unresolved();
-		}
-
-		CachedArtifact first = projectProperty.property().artifacts().iterator().next();
-		return ArtifactReference.from(it -> {
-			it.artifact(first.toArtifactId()).declarationElement(kv)
-					.versionSource(VersionSource.property(versionKey));
-			ArtifactVersion.from(version).ifPresent(it::version);
-			it.versionLiteral(literal);
-		});
-	}
-
-	private ArtifactReference resolve(TomlKeyValue kv, TomlLiteral literal) {
-
-		PsiElement keyPsi = literal.getParent() != null ? literal.getParent().getFirstChild() : null;
-		if (keyPsi == null || !VERSION.equals(keyPsi.getText().trim())) {
-			return ArtifactReference.unresolved();
-		}
-
-		Map<String, PropertyValue> properties = parseTomlVersions(kv.getContainingFile());
-		TomlDependencyDeclaration entry = TomlParser.parseTomlEntry(kv, properties);
-		return getArtifactReference(entry, kv);
 	}
 
 	/**

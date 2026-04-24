@@ -132,8 +132,10 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 
 	private @Nullable DependencySite locatePluginDeclaration(KtCallElement call) {
-		return KotlinDslUtils.findPluginSite(call,
+
+		PluginId id = KotlinPluginIds.fromBinary(call,
 				PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class), propertyResolver);
+		return id != null ? id.toDependencySite() : null;
 	}
 
 	private LookupSite locateExtraProperty(@Nullable KtBinaryExpression propertyExpression,

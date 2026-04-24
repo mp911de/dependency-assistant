@@ -20,17 +20,9 @@ import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.PsiVisitors;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariable;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Updates a Gradle build file with a new version.
@@ -49,42 +41,21 @@ class UpdateGroovyDsl {
 	}
 
 	/**
-	 * Update {@code ext.propertyKey = 'newVersion'} or
-	 * {@code set('propertyKey', 'newVersion')}.
+	 * Update {@code ext.propertyKey = 'newVersion'},
+	 * {@code set('propertyKey', 'newVersion')}, or a top-level
+	 * {@code def propertyKey = 'newVersion'} script variable.
 	 */
 	void updateExtProperty(PsiFile file, String propertyKey, String newVersion) {
 
-		file.accept(PsiVisitors.visitTreeUntil(PsiElement.class, element -> {
+		file.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, literal -> {
 
-			if (element instanceof GrVariableDeclaration decl && decl.getParent() instanceof GroovyFile) {
-				for (GrVariable variable : decl.getVariables()) {
-					if (propertyKey.equals(variable.getName())
-							&& variable.getInitializerGroovy() instanceof GrLiteral literal) {
-						GroovyDslUtils.updateText(literal, newVersion);
-						return true;
-					}
-				}
+			GroovyExtAssignment assignment = GroovyExtAssignment.from(literal);
+			if (assignment == null || !propertyKey.equals(assignment.key())) {
+				return false;
 			}
 
-			if (element instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
-				String key = extractExtPropertyKey(assign.getLValue());
-				if (propertyKey.equals(key) && assign.getRValue() instanceof GrLiteral literal) {
-					GroovyDslUtils.updateText(literal, newVersion);
-					return true;
-				}
-			}
-
-			if (element instanceof GrMethodCall call
-					&& "set".equals(GroovyDslUtils.getGroovyMethodName(call))) {
-				PsiElement[] args = call.getArgumentList().getAllArguments();
-				if (args.length >= 2 && args[0] instanceof GrLiteral keyLit && propertyKey.equals(keyLit.getValue())
-						&& args[1] instanceof GrLiteral valLit) {
-					GroovyDslUtils.updateText(valLit, newVersion);
-					return true;
-				}
-			}
-
-			return false;
+			GroovyDslUtils.updateText(assignment.valueLiteral(), newVersion);
+			return true;
 		}));
 	}
 
@@ -106,35 +77,6 @@ class UpdateGroovyDsl {
 
 			return false;
 		}));
-	}
-
-	/**
-	 * Extracts the property key from an {@code ext} assignment LHS, or {@code null}
-	 * if the expression is not an ext property assignment.
-	 * <p>Recognises:
-	 * <ul>
-	 * <li>{@code springVersion} (plain ref inside an {@code ext { }} closure)</li>
-	 * <li>{@code ext.springVersion} (dot-qualified assignment)</li>
-	 * </ul>
-	 */
-	static @Nullable String extractExtPropertyKey(GrExpression lhs) {
-
-		if (!(lhs instanceof GrReferenceExpression ref)) {
-			return null;
-		}
-
-		GrExpression qualifier = ref.getQualifierExpression();
-
-		// Plain name (inside ext {} closure)
-		if (qualifier == null) {
-			return ref.getReferenceName();
-		}
-
-		// ext.name
-		if (qualifier instanceof GrReferenceExpression qualRef && "ext".equals(qualRef.getReferenceName())) {
-			return ref.getReferenceName();
-		}
-		return null;
 	}
 
 }

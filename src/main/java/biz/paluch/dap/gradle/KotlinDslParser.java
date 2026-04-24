@@ -195,9 +195,9 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		if (GradleUtils.isPlugin(methodName) && KotlinDslUtils.isInsidePluginsBlock(call)) {
-			return KotlinDslUtils.findPluginSite(call,
-					PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class),
-					scriptProperties);
+			PluginId id = KotlinPluginIds.fromBinary(call,
+					PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class), scriptProperties);
+			return id != null ? id.toDependencySite() : null;
 		}
 
 		KtStringTemplateExpression directNotation = findInlineDependencyLiteral(call, scriptProperties);

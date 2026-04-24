@@ -22,11 +22,9 @@ import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
-import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
 import org.jetbrains.kotlin.psi.KtProperty;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
@@ -64,10 +62,14 @@ class KotlinDslExtraParser {
 
 		SyntaxTraverser.psiTraverser(file)
 				.filter(KtBinaryExpression.class)
-				.filter(KotlinDslExtraParser::isExtra)
-				.forEach(it -> {
+				.forEach(expression -> {
 
-					PropertyValue element = parseExtra(it);
+					KotlinExtraAssignment assignment = KotlinExtraAssignment.of(expression);
+					if (assignment == null) {
+						return;
+					}
+
+					PropertyValue element = toPropertyValue(assignment);
 					if (element != null) {
 						result.put(element.propertyKey(), element);
 					}
@@ -166,140 +168,41 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Return the resolved key-value pair when {@code expr} assigns a resolvable
-	 * literal to {@code extra["key"]}.
-	 */
-	private static @Nullable PropertyValue parseExtra(KtBinaryExpression expr) {
-
-		KtStringTemplateExpression keyTemplate = getKeyAssignment(expr);
-		if (keyTemplate == null) {
-			return null;
-		}
-		String key = KotlinDslUtils.getText(keyTemplate);
-		if (StringUtils.isEmpty(key)) {
-			return null;
-		}
-
-		return getValueElement(expr.getRight(), key);
-	}
-
-	private static @Nullable KtStringTemplateExpression getKeyAssignment(KtBinaryExpression expression) {
-
-		KtExpression left = expression.getLeft();
-
-		if (!"=".equals(expression.getOperationReference().getText())) {
-			return null;
-		}
-
-		// Left must be extra["key"]
-		if (!(left instanceof KtArrayAccessExpression arrayAccess) || arrayAccess.getIndexExpressions().isEmpty()) {
-			return null;
-		}
-
-		KtExpression indexExpr = arrayAccess.getIndexExpressions().get(0);
-		if (!(indexExpr instanceof KtStringTemplateExpression keyTemplate)) {
-			return null;
-		}
-
-		return keyTemplate;
-	}
-
-	/**
 	 * Locates the PSI element whose text should be updated or highlighted as the
 	 * declared value for {@code propertyKey}.
 	 */
 	public static @Nullable PropertyValue findExtraPropertyLocation(PsiFile file, String propertyKey) {
 
-		KtBinaryExpression extraAssignment = findExtraAssignment(file, propertyKey);
-		if (extraAssignment != null) {
-			return getValueElement(extraAssignment.getRight(), propertyKey);
-		}
-		return null;
-	}
+		KotlinExtraAssignment assignment = SyntaxTraverser.psiTraverser(file)
+				.filter(KtBinaryExpression.class)
+				.filterMap(KotlinExtraAssignment::of)
+				.filter(it -> propertyKey.equals(it.key()))
+				.first();
 
-	private static @Nullable PropertyValue getValueElement(@Nullable KtExpression assignment, String key) {
-
-		if (assignment == null) {
-			return null;
-		}
-
-		KtStringTemplateExpression literalElement = getLiteralElement(assignment);
-		String value = KotlinDslUtils.getText(literalElement);
-		if (literalElement != null && value != null) {
-			return new PropertyValue(literalElement, key, value);
-		}
-		return null;
+		return assignment != null ? toPropertyValue(assignment) : null;
 	}
 
 	/**
-	 * Value literal to highlight for a given {@code extra["…"] = …} assignment.
-	 *
-	 * @param assignment the right side assignment expression to analyze.
+	 * Returns {@literal true} when {@code expression} is an
+	 * {@code extra["key"] = value} assignment.
 	 */
-	public static @Nullable KtStringTemplateExpression getLiteralElement(@Nullable KtExpression assignment) {
-
-		if (assignment instanceof KtStringTemplateExpression st) {
-			return st;
-		}
-		if (assignment instanceof KtNameReferenceExpression ref && "it".equals(ref.getReferencedName())) {
-			return KotlinDslUtils.findAlsoReceiverStringTemplate(ref);
-		}
-		if (assignment instanceof KtCallExpression call) {
-			return KotlinDslUtils.findBuildStringAppendLiteral(call);
-		}
-		return null;
+	public static boolean isExtra(@Nullable KtBinaryExpression expression) {
+		return KotlinExtraAssignment.of(expression) != null;
 	}
 
-	private static @Nullable KtBinaryExpression findExtraAssignment(PsiFile file, String propertyKey) {
+	private static @Nullable PropertyValue toPropertyValue(KotlinExtraAssignment assignment) {
 
-		return SyntaxTraverser.psiTraverser(file)
-				.filter(KtBinaryExpression.class)
-				.filter(KotlinDslExtraParser::isExtra)
-				.filter(it -> isKey(it, propertyKey))
-				.first();
-	}
-
-	private static boolean isKey(KtBinaryExpression expr, String propertyKey) {
-
-		KtStringTemplateExpression rightAssignment = getKeyAssignment(expr);
-		if (rightAssignment == null) {
-			return false;
+		KtStringTemplateExpression literalElement = assignment.valueLiteral();
+		if (literalElement == null) {
+			return null;
 		}
 
-		String key = KotlinDslUtils.getText(rightAssignment);
-		return propertyKey.equals(key);
-	}
-
-	public static boolean isExtra(@Nullable KtBinaryExpression expr) {
-
-		if (expr == null) {
-			return false;
+		String value = KotlinDslUtils.getText(literalElement);
+		if (value == null) {
+			return null;
 		}
 
-		// Must be an assignment: operator text is "="
-		if (!"=".equals(expr.getOperationReference().getText())) {
-			return false;
-		}
-
-		KtExpression left = expr.getLeft();
-
-		// Left must be extra["key"]
-		if (!(left instanceof KtArrayAccessExpression arrayAccess)) {
-			return false;
-		}
-
-		KtExpression receiver = arrayAccess.getArrayExpression();
-		if (!(receiver instanceof KtNameReferenceExpression nameRef)
-				|| !"extra".equals(nameRef.getReferencedName())) {
-			return false;
-		}
-
-		// Index must be a plain string literal
-		if (arrayAccess.getIndexExpressions().isEmpty()) {
-			return false;
-		}
-
-		return true;
+		return new PropertyValue(literalElement, assignment.key(), value);
 	}
 
 }

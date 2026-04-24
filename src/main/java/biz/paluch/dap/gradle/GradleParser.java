@@ -24,7 +24,6 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.support.DependencySite;
@@ -386,19 +385,8 @@ class GradleParser extends GradleParserSupport {
 	 */
 	private @Nullable DependencySite parsePlugin(GrMethodCall call, PropertyResolver propertyResolver) {
 
-		PluginId id = PluginId.fromMethodCall(call, propertyResolver);
-		if (id == null) {
-			return null;
-		}
-
-		ArtifactId artifactId = id.toValidatedArtifactId();
-		if (artifactId == null) {
-			return null;
-		}
-
-		String rawVersion = id.getVersionAsString();
-		return GradleDependency.of(artifactId, PropertyExpression.from(rawVersion)).toDependencySite(call,
-				id.version());
+		PluginId id = GroovyPluginIds.fromMethodCall(call, propertyResolver);
+		return id != null ? id.toDependencySite() : null;
 	}
 
 	private static @Nullable GrLiteral findCoordinateLiteral(GrMethodCall call) {
