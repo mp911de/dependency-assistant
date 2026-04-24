@@ -21,7 +21,6 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
@@ -216,14 +215,9 @@ class TomlArtifactResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		GradleDependency dependency = declaration.toDependency();
-
-		if (dependency instanceof PropertyManagedDependency) {
-			return ArtifactReferenceUtils.resolve(dependency, usage, declaration.getRequiredVersionLiteral(),
-					GradlePropertyResolver.forFile(declaration.element().getContainingFile()));
-		}
-
-		return ArtifactReferenceUtils.resolve(dependency, declaration.getRequiredVersionLiteral(), usage, it -> null);
+		return ArtifactReferenceUtils.resolve(
+				declaration.toDependencySite(usage, declaration.getRequiredVersionLiteral()),
+				() -> GradlePropertyResolver.forFile(declaration.element().getContainingFile()));
 	}
 
 }

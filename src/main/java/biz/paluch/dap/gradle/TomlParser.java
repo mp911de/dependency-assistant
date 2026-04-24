@@ -21,14 +21,17 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -101,22 +104,10 @@ class TomlParser extends GradleParserSupport {
 		// TODO
 		return SyntaxTraverser.revPsiTraverser().api.parents(element).filter(TomlTable.class).filter(it -> {
 			String tomlTableName = getTomlTableName(it);
-			return org.springframework.util.StringUtils.hasText(tomlTableName) && predicate.test(tomlTableName);
+			return StringUtils.hasText(tomlTableName) && predicate.test(tomlTableName);
 		}).first() != null;
-
-		/*
-		 * TomlTable table = PsiTreeUtil.getParentOfType(element, TomlTable.class); if
-		 * (table == null) { return false; }
-		 *
-		 * String tableName = TomlParser.getTomlTableName(table); return tableName !=
-		 * null && predicate.test(tableName);
-		 */
 	}
 
-	@Override
-	protected Map<String, String> getPropertyMap() {
-		return properties;
-	}
 
 	/**
 	 * Parses a {@code libs.versions.toml} version catalog and populates
@@ -144,7 +135,8 @@ class TomlParser extends GradleParserSupport {
 			if (LIBRARIES.equals(tableName)) {
 				parseEntries(table, propertyResolver, (it) -> {
 					if (it.isComplete()) {
-						register(it.toDependency(), DeclarationSource.managed());
+						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()),
+								DeclarationSource.managed(), propertyResolver);
 					}
 				});
 			}
@@ -152,7 +144,8 @@ class TomlParser extends GradleParserSupport {
 			if (PLUGINS.equals(tableName)) {
 				parseEntries(table, propertyResolver, (it) -> {
 					if (it.isComplete()) {
-						register(it.toDependency(), DeclarationSource.plugin());
+						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()),
+								DeclarationSource.plugin(), propertyResolver);
 					}
 				});
 			}
@@ -434,7 +427,42 @@ class TomlParser extends GradleParserSupport {
 			return of(GradleDependency.parse(module).getId(), versionExpression);
 		}
 
-		public static GradleDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
+		/**
+		 * Resolve a {@link GradleDependency} from this declaration.
+		 * {@link PropertyResolver}.
+		 * <p>As declarations can be incomplete (e.g. missing version information), make
+		 * sure to check {@link #isComplete()} before calling this method.
+		 * @return the resolved dependency.
+		 */
+		public DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
+
+			Assert.state(StringUtils.hasText(id) || StringUtils.hasText(module), "No identifier or module set");
+
+			PropertyExpression versionExpression = StringUtils.hasText(this.version)
+					? PropertyExpression.from(this.version)
+					: PropertyExpression.property(versionRef);
+
+			GradleDependency dependency = StringUtils.hasText(id) ? GradleDependency.parsePlugin(id)
+					: GradleDependency.parse(module);
+
+			Assert.state(dependency != null, () -> "Dependency is null: Id: %s Module: %s".formatted(id, module));
+
+			return ArtifactVersion.from(this.version)
+					.map(it -> (DependencySite) VersionedDependencySite.of(dependency.getId(), it,
+							getVersionSource(versionExpression),
+							declaration, version))
+					.orElseGet(() -> {
+						return DependencySite.of(dependency.getId(), getVersionSource(versionExpression), declaration);
+					});
+		}
+
+		private static VersionSource getVersionSource(PropertyExpression versionExpression) {
+			return versionExpression.isProperty()
+					? VersionSource.versionCatalogProperty(versionExpression.getPropertyName())
+					: VersionSource.versionCatalog();
+		}
+
+		private static GradleDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
 
 			if (versionExpression.isProperty()) {
 				return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),
@@ -442,7 +470,6 @@ class TomlParser extends GradleParserSupport {
 			}
 			return new SimpleDependency(artifactId, versionExpression.toString(),
 					VersionSource.versionCatalog());
-
 		}
 
 		/**

@@ -21,6 +21,7 @@ import biz.paluch.dap.gradle.LookupSite.ResolvedSite;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.VersionedDependencySite;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
@@ -57,10 +58,6 @@ class GradleLookupSiteResolver {
 			return ArtifactReferenceUtils.resolve(propertySite, projectState);
 		}
 
-		if (site instanceof LookupSite.DependencyLookupSite(GradleDependency dependency, PsiElement declarationElement, PsiElement versionElement)) {
-			return ArtifactReferenceUtils.resolve(dependency, declarationElement, versionElement, propertyResolver);
-		}
-
 		if (site instanceof LookupSite.ArtifactIdLookupSite(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement, @Nullable PsiElement versionElement)) {
 			return ArtifactReferenceUtils.resolve(artifactId, versionSource, declarationElement, versionElement,
 					propertyResolver);
@@ -70,8 +67,8 @@ class GradleLookupSiteResolver {
 			return tomlResolver.resolveReference(reference, declarationElement);
 		}
 
-		if (site instanceof ResolvedSite resolvedSite) {
-			return ArtifactReferenceUtils.resolve(resolvedSite);
+		if (site instanceof ResolvedSite(VersionedDependencySite versionedDependency)) {
+			return ArtifactReferenceUtils.resolve(versionedDependency, () -> propertyResolver);
 		}
 
 		throw new IllegalStateException("Unsupported dependency site: " + site);

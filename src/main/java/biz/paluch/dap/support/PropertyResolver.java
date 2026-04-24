@@ -22,48 +22,61 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Resolves build-time property keys to string values and, when supported, to
- * the declaring PSI for documentation and navigation.
+ * Strategy interface for resolving build-time property values.
+ *
+ * <p>{@code PropertyResolver} provides read access to property values by key
+ * and, when available, to the {@link PropertyValue} metadata that identifies
+ * the PSI element backing the resolved value. This contract is used by parsers,
+ * lookup-site locators, and update routines to resolve property indirections
+ * without coupling that logic to a specific property source.
+ *
+ * <p>Implementations may resolve from a single source or compose several
+ * sources. A resolver is not required to expose declaration metadata through
+ * {@link #getElement(String)} even if it can resolve the corresponding string
+ * value through {@link #getProperty(String)}.
  *
  * @author Mark Paluch
+ * @see PropertyValue
  */
 public interface PropertyResolver {
 
 	/**
-	 * Whether a non-{@code null} value exists for {@code propertyKey}.
+	 * Return whether a non-{@code null} value exists for the given property key.
+	 * <p>This is a convenience method delegating to {@link #getProperty(String)}.
+	 * @param propertyKey the property name
+	 * @return {@code true} if this resolver can resolve the property to a value
 	 */
 	default boolean containsProperty(String propertyKey) {
 		return getProperty(propertyKey) != null;
 	}
 
 	/**
-	 * Resolves the property value for {@code propertyKey}, or {@code null} if the
-	 * key is not defined in this resolver.
-	 *
+	 * Return the resolved property value for the given property key.
 	 * @param propertyKey the property name
+	 * @return the resolved value, or {@code null} if this resolver does not define
+	 * the key
 	 */
 	@Nullable
 	String getProperty(String propertyKey);
 
 	/**
-	 * PSI element that carries the resolved value for {@code propertyKey}, when
-	 * this resolver tracks declaration sites (e.g. merged Gradle script
-	 * properties).
-	 *
+	 * Return declaration metadata for the given property key, if available.
+	 * <p>The returned {@link PropertyValue} typically identifies the PSI element
+	 * carrying the resolved value. Implementations that do not track declaration
+	 * sites may return {@code null} even if {@link #getProperty(String)} resolves a
+	 * value.
 	 * @param propertyKey the property name
-	 * @return the value literal or entry PSI, or {@code null} when not tracked here
+	 * @return the declaration metadata, or {@code null} if not tracked
 	 */
 	default @Nullable PropertyValue getElement(String propertyKey) {
 		return null;
 	}
 
 	/**
-	 * Resolve {@code ${...}} placeholders in the given text, replacing them with
-	 * corresponding property values as resolved by {@link #getProperty}.
-	 * Unresolvable placeholders with no default value are ignored and passed
-	 * through unchanged.
-	 * @param text the String to resolve
-	 * @return the resolved String (never {@code null})
+	 * Resolve {@code ${...}} placeholders in the given text against this resolver.
+	 * <p>Unresolvable placeholders without a default value are preserved unchanged.
+	 * @param text the text to resolve
+	 * @return the resolved text
 	 * @throws IllegalArgumentException if given text is {@code null}
 	 */
 	default String resolvePlaceholders(String text) {
@@ -72,11 +85,24 @@ public interface PropertyResolver {
 	}
 
 	/**
-	 * Create a {@link PropertyResolver} from the given map containing
-	 * {@link PropertyValue}s.
+	 * Create a {@link PropertyResolver} backed by the given property map.
+	 * @param properties the property entries keyed by property name
+	 * @return a map-backed property resolver
 	 */
 	static PropertyResolver fromMap(Map<String, PropertyValue> properties) {
 		return new MapPropertyResolver(properties);
 	}
 
+	/**
+	 * Compose this resolver with the given fallback resolver.
+	 * <p>This resolver is consulted first for both {@link #getProperty(String)} and
+	 * {@link #getElement(String)} lookups. The fallback resolver is only queried if
+	 * this resolver does not provide a value or declaration element.
+	 * @param fallback the resolver to consult if this resolver has no match
+	 * @return a composite resolver with this resolver as primary and
+	 * {@code fallback} as secondary
+	 */
+	default PropertyResolver andFallback(PropertyResolver fallback) {
+		return new CompositePropertyResolver(this, fallback);
+	}
 }

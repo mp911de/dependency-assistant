@@ -55,9 +55,7 @@ import org.jspecify.annotations.Nullable;
  */
 class GradleParser extends GradleParserSupport {
 
-	private final Map<String, String> properties;
-
-	private final Map<String, PropertyValue> propertyLookup = new LinkedHashMap<>();
+	private final PropertyResolver global;
 
 	GradleParser() {
 		this(new DependencyCollector(), new LinkedHashMap<>());
@@ -65,21 +63,11 @@ class GradleParser extends GradleParserSupport {
 
 	GradleParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
-		this.properties = new LinkedHashMap<>(properties);
+		this.global = properties::get;
 	}
 
-	@Override
-	protected Map<String, String> getPropertyMap() {
-		return properties;
-	}
-
-	@Override
-	public @Nullable PropertyValue getElement(String propertyKey) {
-		return this.propertyLookup.get(propertyKey);
-	}
-
-	protected Map<String, PropertyValue> getPropertyLookup() {
-		return this.propertyLookup;
+	protected PropertyResolver getPropertyResolver() {
+		return global;
 	}
 
 	// -------------------------------------------------------------------------
@@ -94,17 +82,21 @@ class GradleParser extends GradleParserSupport {
 	public void parseGroovyDsl(PsiFile file) {
 
 		Map<String, PropertyValue> extProperties = GroovyDslExtParser.parseExtProperties(file);
-		Map<String, PropertyValue> localVars = GroovyDslExtParser.parseLocalVariables(file);
-		this.propertyLookup.clear();
-		this.propertyLookup.putAll(localVars);
-		this.propertyLookup.putAll(extProperties);
+		Map<String, PropertyValue> properties = new LinkedHashMap<>(extProperties);
+		properties.putAll(GroovyDslExtParser.parseLocalVariables(file));
 
-		this.propertyLookup.forEach((k, v) -> this.properties.put(k, v.propertyValue()));
-		getCollector().addProperties(this.properties.keySet());
-		file.accept(PsiVisitors.visitTree(GrMethodCall.class, this::handleGroovyCall));
+		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties)
+				.andFallback(global);
+
+		getCollector().addProperties(extProperties.keySet());
+
+		SyntaxTraverser.psiTraverser(file).filter(GrMethodCall.class)
+				.forEach(call -> handleGroovyCall(call, propertyResolver));
+
+		file.accept(PsiVisitors.visitTree(GrMethodCall.class, call -> handleGroovyCall(call, propertyResolver)));
 	}
 
-	private void handleGroovyCall(GrMethodCall call) {
+	private void handleGroovyCall(GrMethodCall call, PropertyResolver propertyResolver) {
 
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);
 
@@ -113,9 +105,9 @@ class GradleParser extends GradleParserSupport {
 		boolean isPlugin = GroovyDslUtils.isInsidePluginsBlock(call);
 
 		if (isPlugin) {
-			GradleDependency dependency = parsePlugin(call);
+			GradleDependency dependency = parsePlugin(call, propertyResolver);
 			if (dependency != null) {
-				register(dependency, DeclarationSource.plugin());
+				register(dependency, DeclarationSource.plugin(), propertyResolver);
 			}
 			return;
 		}
@@ -124,23 +116,34 @@ class GradleParser extends GradleParserSupport {
 			return;
 		}
 
-		GradleDependency dependency = parseDependency(call);
+		GradleDependency dependency = parseDependency(call, propertyResolver);
 		DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed()
 				: DeclarationSource.dependency();
 
 		if (dependency == null || dependency instanceof GradleDependency.DependencyReference) {
-			NamedDependencyDeclaration declaration = parseNamedDependencyDeclaration(call, this);
+			NamedDependencyDeclaration declaration = parseNamedDependencyDeclaration(call, propertyResolver);
 			if (declaration.isComplete()) {
-				dependency = declaration.toDependency(this);
+				dependency = declaration.toDependency(propertyResolver);
 			}
 		}
 
 		if (dependency != null) {
-			register(dependency, declarationSource);
+			register(dependency, declarationSource, propertyResolver);
 		}
 	}
 
-	private @Nullable GradleDependency parseDependency(GrMethodCall call) {
+	/**
+	 * Parse a direct Groovy string-notation dependency declaration.
+	 * <pre class="code">
+	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+	 * implementation platform('org.springframework.boot:spring-boot-dependencies:3.3.2')
+	 * </pre>
+	 * @param call the method call to inspect.
+	 * @param propertyResolver property resolver used for property-backed versions.
+	 * @return the parsed dependency, or {@code null} if the call does not contain a
+	 * supported direct declaration.
+	 */
+	private @Nullable GradleDependency parseDependency(GrMethodCall call, PropertyResolver propertyResolver) {
 
 		PsiElement[] args = call.getArgumentList().getAllArguments();
 		for (PsiElement arg : args) {
@@ -152,9 +155,9 @@ class GradleParser extends GradleParserSupport {
 				arg = innerArgs.length > 0 ? innerArgs[0] : null;
 			}
 
-			if (arg instanceof GrLiteral lit) {
-				String rawText = GroovyDslUtils.renderText(lit);
-				GradleDependency dependency = parseGav(rawText);
+			if (arg instanceof GrLiteral literal) {
+				String rawText = GroovyDslUtils.renderText(literal);
+				GradleDependency dependency = GradleDependency.parse(rawText, propertyResolver);
 				if (dependency != null) {
 					return dependency;
 				}
@@ -165,8 +168,15 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Parses Groovy dependency declarations that use version-block or map-style
+	 * Parse Groovy dependency declarations that use version-block or map-style
 	 * notation.
+	 * <p>Supports declarations such as: <pre class="code">
+	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
+	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
+	 * </pre>
+	 * @param call the method call to parse
+	 * @param propertyResolver property resolver used for property-backed versions
+	 * @return the parsed declaration, possibly incomplete
 	 */
 	static NamedDependencyDeclaration parseNamedDependencyDeclaration(GrMethodCall call,
 			@Nullable PropertyResolver propertyResolver) {
@@ -185,7 +195,7 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Parses a version-block dependency of the form: <pre class="code">
+	 * Parse a Groovy version-block dependency declaration. <pre class="code">
 	 * implementation('group:artifact') {
 	 *     version {
 	 *         strictly '[1.7, 1.8['
@@ -195,8 +205,10 @@ class GradleParser extends GradleParserSupport {
 	 * </pre>
 	 * <p>When {@code propertyResolver} is provided, bare variable references such
 	 * as {@code prefer varName} are resolved through it.
-	 * <p>Returns a {@link NamedDependencyDeclaration} when a usable version can be
-	 * extracted, or {@code null} otherwise.
+	 * @param call the method call to parse
+	 * @param propertyResolver property resolver used for property-backed versions
+	 * @return the parsed declaration, possibly incomplete if no usable version can
+	 * be extracted
 	 */
 	static NamedDependencyDeclaration parseVersionBlockDependency(GrMethodCall call,
 			@Nullable PropertyResolver propertyResolver) {
@@ -250,7 +262,13 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Parse map-style dependency declarations.
+	 * Parse a Groovy map-style dependency declaration. <pre class="code">
+	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
+	 * </pre>
+	 * @param call the owning method call
+	 * @param named the named arguments to parse
+	 * @param propertyResolver property resolver used for property-backed versions
+	 * @return the parsed declaration, possibly incomplete
 	 */
 	static NamedDependencyDeclaration parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
 			PropertyResolver propertyResolver) {
@@ -308,8 +326,21 @@ class GradleParser extends GradleParserSupport {
 				versionProperty, version, call, versionLiteral);
 	}
 
-	private @Nullable GradleDependency parsePlugin(GrMethodCall call) {
-		PluginId id = PluginId.fromMethodCall(call, this);
+	/**
+	 * Parse a Groovy plugin declaration inside a {@code plugins {}} block.
+	 * <pre class="code">
+	 * plugins {
+	 *     id 'org.springframework.boot' version '3.3.2'
+	 * }
+	 * </pre>
+	 * @param call the method call to inspect
+	 * @param propertyResolver property resolver used for property-backed versions.
+	 * @return the parsed plugin dependency, or {@code null} if the call does not
+	 * match the supported plugin declaration shape
+	 */
+	private @Nullable GradleDependency parsePlugin(GrMethodCall call, PropertyResolver propertyResolver) {
+
+		PluginId id = PluginId.fromMethodCall(call, propertyResolver);
 		if (id == null) {
 			return null;
 		}

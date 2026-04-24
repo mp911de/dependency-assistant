@@ -18,6 +18,7 @@ package biz.paluch.dap.support;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
@@ -94,6 +95,8 @@ public abstract class PropertyExpression {
 	 */
 	public abstract String getPropertyName();
 
+	public abstract VersionSource asVersionSource();
+
 	/**
 	 * Resolve the value of this expression using the given
 	 * {@link PropertyResolver}. If this expression is a property reference, the
@@ -104,12 +107,7 @@ public abstract class PropertyExpression {
 	 * @return the resolved value.
 	 */
 	public @Nullable String resolve(PropertyResolver propertyResolver) {
-
-		if (isProperty()) {
-			return propertyResolver.getProperty(getPropertyName());
-		}
-
-		return toString();
+		return isProperty() ? propertyResolver.getProperty(getPropertyName()) : toString();
 	}
 
 	/**
@@ -161,6 +159,11 @@ public abstract class PropertyExpression {
 			return toString();
 		}
 
+		@Override
+		public VersionSource asVersionSource() {
+			return VersionSource.property(getPropertyName());
+		}
+
 	}
 
 	/**
@@ -180,6 +183,11 @@ public abstract class PropertyExpression {
 		@Override
 		public String getPropertyName() {
 			throw new IllegalStateException("Not a property expression");
+		}
+
+		@Override
+		public VersionSource asVersionSource() {
+			return VersionSource.declared(toString());
 		}
 
 	}

@@ -39,7 +39,8 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Groovy PSI locator for semantic version and declaration sites.
+ * Groovy DSL PSI locator for semantic {@link LookupSite lookup sites} and
+ * declaration-aware dependency lookups.
  *
  * @author Mark Paluch
  */
@@ -58,6 +59,19 @@ class GroovyVersionSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		this.registry = registry;
 	}
 
+	/**
+	 * Locate the semantic {@link LookupSite} owning the given Groovy PSI element.
+	 * <p>Supports direct dependency literals, property-backed declarations, and
+	 * version catalog references such as: <pre class="code">
+	 * implementation 'org.springframework:spring-core:6.2.0'
+	 * implementation "org.springframework:spring-core:$springVersion"
+	 * ext.springVersion = '6.2.0'
+	 * implementation libs.spring.core
+	 * </pre>
+	 * @param element the PSI element to inspect
+	 * @return the resolved lookup site, or {@link LookupSite#absent()} if no
+	 * supported declaration can be derived
+	 */
 	@Override
 	public LookupSite locate(GroovyPsiElement element) {
 
@@ -83,6 +97,19 @@ class GroovyVersionSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		return LookupSite.absent();
 	}
 
+	/**
+	 * Locate a {@link DependencySite} from a Groovy dependency or plugin call.
+	 * <p>Supports direct string notation, named-argument declarations, version
+	 * blocks, and plugin declarations such as: <pre class="code">
+	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
+	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
+	 * id 'org.springframework.boot' version '3.3.2'
+	 * </pre>
+	 * @param call the method call to inspect
+	 * @return the dependency site, or {@code null} if the call does not represent a
+	 * supported declaration
+	 */
 	@Nullable
 	DependencySite locateDeclaration(GrMethodCall call) {
 
@@ -235,10 +262,18 @@ class GroovyVersionSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	}
 
 	/**
-	 * Returns a {@link VersionedDependencySite} when {@code literal} is the version
-	 * value inside a {@code prefer} or {@code strictly} call within a
-	 * {@code version {}} block of a Groovy dependency declaration, or {@code null}
-	 * otherwise.
+	 * Resolve a version-block literal inside a Groovy dependency declaration.
+	 * <p>Matches literals used in declarations such as: <pre class="code">
+	 * implementation('org.junit.jupiter:junit-jupiter') {
+	 *     version {
+	 *         prefer '5.11.0'
+	 *     }
+	 * }
+	 * </pre>
+	 * @param literal the literal to inspect
+	 * @param scriptProperties property resolver used for dependency metadata
+	 * @return the resolved dependency site, or {@code null} if the literal does not
+	 * belong to a supported version block
 	 */
 	private static @Nullable VersionedDependencySite resolveVersionBlockLiteral(GrLiteral literal,
 			PropertyResolver scriptProperties) {
@@ -306,10 +341,18 @@ class GroovyVersionSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	}
 
 	/**
-	 * Returns the version segment {@link PsiElement} if the caret is inside the
-	 * version part of a Groovy string-notation dependency
-	 * ({@code 'group:artifact:version'}), or {@code null} if the element is not in
-	 * such a position.
+	 * Locate a {@link DependencySite} for a Groovy version literal.
+	 * <p>Supports direct string notation, named-argument versions, version-block
+	 * constraints, and plugin versions such as: <pre class="code">
+	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
+	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
+	 * id 'org.springframework.boot' version '3.3.2'
+	 * </pre>
+	 * @param element the literal to inspect
+	 * @param scriptProperties property resolver used for property-backed versions
+	 * @return the dependency site, or {@code null} if the literal is not part of a
+	 * supported declaration
 	 */
 	public static @Nullable DependencySite findGroovyVersionElement(GrLiteral element,
 			PropertyResolver scriptProperties) {
@@ -366,12 +409,19 @@ class GroovyVersionSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	}
 
 	/**
-	 * Returns a {@link DependencySite} when {@code literal} is the version value in
-	 * a Groovy plugin declaration of the form {@code id 'pluginId' version 'x.y.z'}
-	 * inside a {@code plugins {}} block, or {@code null} otherwise.
+	 * Resolve a plugin version literal declared inside a Groovy {@code plugins {}}
+	 * block. <pre class="code">
+	 * plugins {
+	 *     id 'org.springframework.boot' version '3.3.2'
+	 * }
+	 * </pre>
 	 * <p>The plugin ID is used as both {@link ArtifactId#groupId()} and
 	 * {@link ArtifactId#artifactId()}, matching the convention used throughout the
-	 * rest of the Gradle plugin support.
+	 * Gradle plugin support.
+	 * @param call the outer {@code version} call
+	 * @param scriptProperties property resolver used for plugin id parsing
+	 * @return the dependency site, or {@code null} if the call does not match the
+	 * supported plugin declaration shape
 	 */
 	public static @Nullable DependencySite resolvePluginVersionLiteral(GrMethodCall call,
 			PropertyResolver scriptProperties) {

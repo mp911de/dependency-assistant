@@ -15,19 +15,22 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.function.Supplier;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.VersionProperty;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
-import biz.paluch.dap.gradle.LookupSite.ResolvedSite;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
@@ -85,7 +88,6 @@ class ArtifactReferenceUtils {
 		return ArtifactReference.unresolved();
 	}
 
-
 	/**
 	 * Resolve the given {@link GradleDependency} to an {@link ArtifactReference}.
 	 * @param declaration the declaration (usage) element.
@@ -95,7 +97,7 @@ class ArtifactReferenceUtils {
 	 * @return the resolved artifact reference.
 	 */
 	public static ArtifactReference resolve(ArtifactId artifactId, VersionSource versionSource, PsiElement declaration,
-			PsiElement version, PropertyResolver propertyResolver) {
+			@Nullable PsiElement version, PropertyResolver propertyResolver) {
 
 		if (versionSource instanceof VersionProperty property) {
 
@@ -104,6 +106,7 @@ class ArtifactReferenceUtils {
 			if (propertyValue == null) {
 				return ArtifactReference.unresolved();
 			}
+
 			return ArtifactReference.from(it -> {
 				it.artifact(artifactId).declarationElement(declaration)
 						.versionSource(versionSource);
@@ -116,23 +119,50 @@ class ArtifactReferenceUtils {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(artifactId).declarationElement(declaration).versionSource(versionSource);
-
 			if (versionSource.isDefined()) {
 				ArtifactVersion.from(versionSource.toString()).ifPresent(it::version);
+			}
+			if (version != null) {
 				it.versionLiteral(version);
 			}
 		});
 	}
 
-	public static ArtifactReference resolve(ResolvedSite resolvedSite) {
-		return ArtifactReference.from(resolvedSite.site());
+	public static ArtifactReference resolve(DependencySite dependencySite,
+			Supplier<PropertyResolver> propertyResolverSupplier) {
+
+		if (dependencySite instanceof VersionedDependencySite versioned) {
+			return ArtifactReference.from(versioned);
+		}
+
+		if (dependencySite.getVersionSource() instanceof VersionProperty property) {
+
+			PropertyValue element = propertyResolverSupplier.get()
+					.getElement(property.getProperty());
+
+			if (element != null) {
+				return ArtifactReference.from(it -> {
+					it.artifact(dependencySite.getArtifactId())
+							.versionSource(dependencySite.getVersionSource())
+							.declarationElement(dependencySite.getDeclarationElement())
+							.versionLiteral(element.element());
+					ArtifactVersion.from(element.propertyValue()).ifPresent(it::version);
+				});
+			}
+		}
+
+		return ArtifactReference.from(it -> {
+			it.artifact(dependencySite.getArtifactId())
+					.versionSource(dependencySite.getVersionSource())
+					.declarationElement(dependencySite.getDeclarationElement());
+		});
 	}
 
 	/**
 	 * Create a resolved {@link ArtifactReference} from a property-managed
 	 * dependency.
 	 */
-	public static ArtifactReference fromPropertyManaged(PropertyManagedDependency managed,
+	private static ArtifactReference fromPropertyManaged(PropertyManagedDependency managed,
 			PsiElement declarationElement, @Nullable String resolvedVersion, @Nullable PsiElement versionPsi) {
 
 		return ArtifactReference.from(it -> {
@@ -150,7 +180,7 @@ class ArtifactReferenceUtils {
 	/**
 	 * Create a resolved {@link ArtifactReference} from a simple dependency.
 	 */
-	public static ArtifactReference fromSimple(SimpleDependency simple, PsiElement declarationElement,
+	private static ArtifactReference fromSimple(SimpleDependency simple, PsiElement declarationElement,
 			@Nullable PsiElement versionPsi) {
 
 		return ArtifactReference.from(it -> {

@@ -56,7 +56,7 @@ class TomlVersionSiteLocator implements LookupSiteLocator<TomlLiteral> {
 				return LookupSite.absent();
 			}
 
-			return LookupSite.ofDependency(declaration.toDependency(), keyValue, literal);
+			return LookupSite.from(declaration.toDependencySite(keyValue, literal));
 		}
 
 		return LookupSite.absent();

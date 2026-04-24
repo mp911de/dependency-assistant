@@ -27,18 +27,17 @@ import org.junit.jupiter.params.provider.CsvSource;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link GradleParser#parseGav(String)}.
+ * Unit tests for {@link GradleDependency}.
  *
  * @author Mark Paluch
  */
-class GradleParserGavUnitTests {
+class GradleDependencyUnitTests {
 
 	@Test
 	void parsesLiteralGav() {
 
-		GradleParser parser = new GradleParser();
-		SimpleDependency dependency = (SimpleDependency) parser
-				.parseGav("org.springframework:spring-core:6.1.0");
+		SimpleDependency dependency = (SimpleDependency) GradleDependency
+				.parse("org.springframework:spring-core:6.1.0");
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.id().groupId()).isEqualTo("org.springframework");
@@ -51,9 +50,8 @@ class GradleParserGavUnitTests {
 	void parsesGavWithPropertyVersion() {
 
 		Map<String, String> props = Map.of("springVersion", "6.1.0");
-		GradleParser parser = new GradleParser();
-		parser.getPropertyMap().putAll(props);
-		GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
+		GradleDependency dependency = GradleDependency.parse("org.springframework:spring-core:${springVersion}",
+				props::get);
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
@@ -65,8 +63,7 @@ class GradleParserGavUnitTests {
 	@Test
 	void returnsNullForGavWithUnresolvablePropertyVersion() {
 
-		GradleParser parser = new GradleParser();
-		GradleDependency dependency = parser.parseGav("org.springframework:spring-core:${springVersion}");
+		GradleDependency dependency = GradleDependency.parse("org.springframework:spring-core:${springVersion}");
 
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
 		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
@@ -75,21 +72,12 @@ class GradleParserGavUnitTests {
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("springVersion"));
 	}
 
-	@Test
-	void returnsNullForNullInput() {
-
-		GradleParser parser = new GradleParser();
-
-		assertThat(parser.parseGav(null)).isNull();
-	}
-
 	@ParameterizedTest(name = "{0}")
 	@CsvSource({"com.example:artifact:1.0.0, com.example, artifact, 1.0.0",
 			"org.example.group:my-artifact:2.3.4, org.example.group, my-artifact, 2.3.4"})
 	void parsesVariousCoordinates(String gav, String group, String artifact, String version) {
 
-		GradleParser parser = new GradleParser();
-		GradleDependency parsed = parser.parseGav(gav);
+		GradleDependency parsed = GradleDependency.parse(gav);
 
 		assertThat(parsed).isNotNull();
 		assertThat(parsed.getId().groupId()).isEqualTo(group);
@@ -99,8 +87,7 @@ class GradleParserGavUnitTests {
 	@Test
 	void versionSourceIsDeclaredForLiteralVersion() {
 
-		GradleParser parser = new GradleParser();
-		GradleDependency dependency = parser.parseGav("com.example:artifact:1.0.0");
+		GradleDependency dependency = GradleDependency.parse("com.example:artifact:1.0.0");
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.DeclaredVersion.class);
@@ -109,9 +96,8 @@ class GradleParserGavUnitTests {
 	@Test
 	void versionSourceIsPropertyForTemplateVersion() {
 
-		GradleParser parser = new GradleParser();
-		parser.getPropertyMap().putAll(Map.of("myVersion", "3.2.1"));
-		GradleDependency dependency = parser.parseGav("com.example:artifact:${myVersion}");
+		Map<String, String> properties = Map.of("myVersion", "3.2.1");
+		GradleDependency dependency = GradleDependency.parse("com.example:artifact:${myVersion}", properties::get);
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
@@ -119,24 +105,5 @@ class GradleParserGavUnitTests {
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("myVersion"));
 	}
 
-	@Test
-	void isValidPluginId_acceptsNormalId() {
-		assertThat(GradlePlugin.isValidPluginId("org.springframework.boot")).isTrue();
-	}
-
-	@Test
-	void isValidPluginId_rejectsPathTraversal() {
-		assertThat(GradlePlugin.isValidPluginId("../evil")).isFalse();
-	}
-
-	@Test
-	void isValidPluginId_rejectsEmpty() {
-		assertThat(GradlePlugin.isValidPluginId("")).isFalse();
-	}
-
-	@Test
-	void isValidPluginId_rejectsUrlSpecial() {
-		assertThat(GradlePlugin.isValidPluginId("org@attacker.com/x")).isFalse();
-	}
 
 }

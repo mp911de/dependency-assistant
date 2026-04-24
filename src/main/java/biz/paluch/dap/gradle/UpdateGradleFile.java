@@ -213,8 +213,7 @@ class UpdateGradleFile {
 
 		// Kotlin DSL
 		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, artifactId, newVersion,
-					DeclarationSource.dependency());
+			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, artifactId, newVersion);
 		}
 	}
 
@@ -239,8 +238,7 @@ class UpdateGradleFile {
 
 		// Kotlin DSL
 		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, id, newVersion,
-					DeclarationSource.plugin());
+			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, id, newVersion);
 		}
 	}
 

@@ -20,9 +20,11 @@ import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.lang.Contract;
+
 /**
  * Utility to resolve property placeholders.
- * 
+ *
  * @author Mark Paluch
  */
 class PropertyResolverUtil {
@@ -70,6 +72,7 @@ class PropertyResolverUtil {
 	 * until no placeholders remain, no progress is made, or the iteration cap is
 	 * reached.
 	 */
+	@Contract("null, _ -> null")
 	static @Nullable String resolvePlaceholders(@Nullable String value, PropertyResolver resolver) {
 
 		if (value == null) {

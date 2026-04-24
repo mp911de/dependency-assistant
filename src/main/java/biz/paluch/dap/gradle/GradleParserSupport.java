@@ -15,7 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.Map;
 import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -42,41 +41,20 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-abstract class GradleParserSupport extends BuildFileParserSupport implements PropertyResolver {
+abstract class GradleParserSupport extends BuildFileParserSupport {
 
 	public GradleParserSupport(DependencyCollector collector) {
 		super(collector);
 	}
 
-	@Override
-	public @Nullable String getProperty(String key) {
-		return getPropertyMap().get(key);
-	}
-
-	protected abstract Map<String, String> getPropertyMap();
-
-	/**
-	 * Parses a {@code group:artifact:version} GAV string, resolving any
-	 * {@code ${prop}} references.
-	 */
-	@Nullable
-	GradleDependency parseGav(@Nullable String raw) {
-
-		if (raw == null) {
-			return null;
-		}
-
-		return GradleDependency.parse(raw, this);
-	}
-
-	void register(DependencySite site, DeclarationSource declarationSource) {
+	void register(DependencySite site, DeclarationSource declarationSource, PropertyResolver propertyResolver) {
 
 		if (site instanceof VersionedDependencySite versioned) {
 			getCollector().registerUsage(versioned.getArtifactId(), versioned.getVersion(), declarationSource,
 					versioned.getVersionSource());
 		} else if (site.getVersionSource() instanceof VersionSource.VersionProperty property) {
 
-			String version = getProperty(property.getProperty());
+			String version = propertyResolver.getProperty(property.getProperty());
 			if (StringUtils.hasText(version)) {
 				ArtifactVersion.from(version)
 						.ifPresent(it -> getCollector().registerUsage(site.getArtifactId(), it, declarationSource,
@@ -87,12 +65,11 @@ abstract class GradleParserSupport extends BuildFileParserSupport implements Pro
 		getCollector().registerDeclaration(site.getArtifactId(), declarationSource, site.getVersionSource());
 	}
 
-
-	void register(GradleDependency dependency, DeclarationSource declarationSource) {
+	void register(GradleDependency dependency, DeclarationSource declarationSource, PropertyResolver propertyResolver) {
 
 		if (dependency instanceof PropertyManagedDependency pmd) {
 
-			String version = getProperty(pmd.property());
+			String version = propertyResolver.getProperty(pmd.property());
 			if (StringUtils.hasText(version)) {
 				ArtifactVersion.from(version)
 						.ifPresent(it -> getCollector().registerUsage(pmd.id(), it, declarationSource,

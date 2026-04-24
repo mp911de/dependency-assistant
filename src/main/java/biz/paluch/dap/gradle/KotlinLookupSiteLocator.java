@@ -25,7 +25,8 @@ import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Kotlin PSI locator for semantic version and declaration sites.
+ * Kotlin DSL PSI locator for semantic {@link LookupSite lookup sites} and
+ * parser-backed dependency declarations.
  *
  * @author Mark Paluch
  */
@@ -45,11 +46,18 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 	}
 
 	/**
-	 * Locate a {@link LookupSite} for the given element.
-	 *
-	 * @param element the element to inspect.
-	 * @return the lookup site or {@link LookupSite#absent()} if the element does
-	 * not represent a version element that is (within) a declaration.
+	 * Locate the semantic {@link LookupSite} owning the given Kotlin PSI element.
+	 * <p>Supports direct dependency literals, property-backed declarations,
+	 * {@code extra} assignments, and version catalog references such as:
+	 * <pre class="code">
+	 * implementation("org.springframework:spring-core:6.2.0")
+	 * implementation("org.springframework:spring-core:$springVersion")
+	 * extra["springVersion"] = "6.2.0"
+	 * implementation(libs.spring.core)
+	 * </pre>
+	 * @param element the PSI element to inspect
+	 * @return the resolved lookup site, or {@link LookupSite#absent()} if no
+	 * supported declaration can be derived
 	 */
 	@Override
 	public LookupSite locate(KtElement element) {
@@ -75,7 +83,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			}
 
 			if (dependencyExpression != null) {
-				return LookupSite.from(KotlinDslParser.findDependencySite(dependencyExpression,
+				return LookupSite.from(KotlinDslParser.parseDependencySite(dependencyExpression,
 						propertyResolver));
 			}
 		}
@@ -101,12 +109,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 			KtCallExpression declaration = KotlinDslUtils.findDependencyExpression(versionCandidate);
 			if (declaration != null) {
-				DependencySite site = KotlinDslParser.parseDependencySite(declaration, propertyResolver);
-				if (site != null) {
-					return LookupSite.from(site);
-				}
-
-				return LookupSite.from(KotlinDslParser.findDependencySite(declaration, propertyResolver));
+				return LookupSite.from(KotlinDslParser.parseDependencySite(declaration, propertyResolver));
 			}
 		}
 
@@ -126,32 +129,6 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 		return LookupSite.absent();
 	}
 
-	/**
-	 * Locate a dependency declaration site from a Kotlin DSL call.
-	 * @param call the call to inspect.
-	 * @return the dependency declaration site or {@code null} if the call does not
-	 * represent a valid dependency declaration.
-	 */
-	public @Nullable DependencySite locateDeclaration(KtCallElement call) {
-
-		DependencySite site = KotlinDslParser.parseDependencySite(call, propertyResolver);
-		if (site != null) {
-			return site;
-		}
-
-		site = KotlinDslParser.findDependencySite(call, propertyResolver);
-		if (site != null) {
-			return site;
-		}
-
-		GradleParserSupport.NamedDependencyDeclaration declaration = KotlinDslParser.parseMapDeclaration(call,
-				propertyResolver);
-		if (declaration.isComplete()) {
-			return declaration.toDependencySite(propertyResolver);
-		}
-
-		return KotlinDslParser.findDependencySite(call, propertyResolver);
-	}
 
 	private @Nullable DependencySite locatePluginDeclaration(KtCallElement call) {
 		return KotlinDslUtils.findPluginSite(call,
@@ -190,8 +167,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			return null;
 		}
 
-		// TODO
-		return locateDeclaration(declaration);
+		return KotlinDslParser.parseDependencySite(declaration, propertyResolver);
 	}
 
 	private LookupSite locateCatalogReference(KtElement element) {

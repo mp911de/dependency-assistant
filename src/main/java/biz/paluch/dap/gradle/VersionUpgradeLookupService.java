@@ -154,11 +154,17 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	private LookupSite locateGradlePropertySite(PropertyValueImpl element) {
+
 		Property property = PsiTreeUtil.getParentOfType(element, Property.class);
 		if (property == null || StringUtils.isEmpty(property.getKey()) || projectState == null) {
 			return LookupSite.absent();
 		}
-		return LookupSite.findProperty(property.getName(), property.getValue(), property, element);
+
+		if (StringUtils.hasText(property.getName()) && StringUtils.hasText(property.getValue())) {
+			return LookupSite.ofProperty(property.getName(), property.getValue(), property, element);
+		}
+
+		return LookupSite.absent();
 	}
 
 }

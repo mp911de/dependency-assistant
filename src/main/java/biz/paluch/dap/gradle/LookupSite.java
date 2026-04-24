@@ -21,7 +21,6 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
@@ -99,28 +98,6 @@ interface LookupSite {
 	}
 
 	/**
-	 * Create a {@link PropertyLookupSite} if the given property information is
-	 * complete.
-	 * <p>Returns {@code null} if either the property name or the current version
-	 * text is empty, allowing callers to reject incomplete property declarations
-	 * without raising an exception.
-	 *
-	 * @param propertyName the property name to resolve.
-	 * @param version the current property value.
-	 * @param declarationElement the PSI element owning the property declaration.
-	 * @param versionElement the PSI element exposing the version literal.
-	 * @return the lookup site or {@link #absent()} if the property name or version
-	 * is missing.
-	 */
-	static LookupSite findProperty(@Nullable String propertyName, @Nullable String version,
-			PsiElement declarationElement, PsiElement versionElement) {
-		if (StringUtils.isEmpty(propertyName) || StringUtils.isEmpty(version)) {
-			return LookupSite.absent();
-		}
-		return ofProperty(propertyName, version, declarationElement, versionElement);
-	}
-
-	/**
 	 * Create a {@link PropertyLookupSite} from a resolved {@link PropertyValue}.
 	 *
 	 * @param propertyValue the property value descriptor.
@@ -151,20 +128,6 @@ interface LookupSite {
 		Assert.notNull(versionElement, "Version element must not be null");
 
 		return new PropertyLookupSite(propertyName, version, declarationElement, versionElement);
-	}
-
-	/**
-	 * Create a {@link DependencyLookupSite} for a parsed Gradle dependency
-	 * declaration.
-	 *
-	 * @param dependency the parsed dependency descriptor.
-	 * @param declarationElement the PSI element owning the declaration.
-	 * @param versionElement the PSI element exposing the version literal.
-	 * @return the lookup site.
-	 */
-	static LookupSite ofDependency(GradleDependency dependency, PsiElement declarationElement,
-			PsiElement versionElement) {
-		return new DependencyLookupSite(dependency, declarationElement, versionElement);
 	}
 
 	/**
@@ -204,16 +167,6 @@ interface LookupSite {
 	}
 
 	/**
-	 * Adapt the given resolved dependency site to a {@link LookupSite}.
-	 *
-	 * @param site the resolved dependency site.
-	 * @return the adapted lookup site.
-	 */
-	static LookupSite ofDependency(VersionedDependencySite site) {
-		return new ResolvedSite(site);
-	}
-
-	/**
 	 * Lookup site backed by a version catalog alias reference.
 	 * <p>The version is obtained from the referenced TOML entry.
 	 */
@@ -235,22 +188,6 @@ interface LookupSite {
 	 */
 	record PropertyLookupSite(String propertyName, String version, PsiElement declarationElement,
 			PsiElement versionElement) implements LookupSite {
-
-		@Override
-		public boolean isPresent() {
-			return true;
-		}
-
-	}
-
-	/**
-	 * Lookup site backed by a parsed Gradle dependency declaration.
-	 *
-	 * <p>Used when artifact coordinates and version PSI are available directly from
-	 * the Gradle declaration being inspected.
-	 */
-	record DependencyLookupSite(GradleDependency dependency, PsiElement declarationElement, PsiElement versionElement)
-			implements LookupSite {
 
 		@Override
 		public boolean isPresent() {

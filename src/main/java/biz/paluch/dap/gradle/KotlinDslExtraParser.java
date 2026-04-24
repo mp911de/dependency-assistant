@@ -95,26 +95,24 @@ class KotlinDslExtraParser {
 	public static Map<String, String> getExtraProperties(PsiFile file) {
 
 		Map<String, String> result = new HashMap<>();
-
-		SyntaxTraverser.psiTraverser(file)
-				.filter(KtBinaryExpression.class)
-				.filter(KotlinDslExtraParser::isExtra)
-				.forEach(it -> {
-
-					PropertyValue element = parseExtra(it);
-					if (element != null) {
-						result.put(element.propertyKey(), element.propertyValue());
-					}
-				});
-
+		parseExtraProperties(file).forEach((k, v) -> result.put(k, v.propertyValue()));
 		return result;
 	}
 
 	/**
-	 * Parses top-level {@code val key = "value"} property declarations from a
-	 * Kotlin DSL file and returns them as {@link PropertyValue} entries.
-	 * <p>Only plain string-literal initialisers are recognised; complex expressions
-	 * are ignored.
+	 * Parses top-level {@code val} declarations from a Kotlin DSL file and returns
+	 * them as {@link PropertyValue} instances.
+	 * <p>Handles:
+	 * <ul>
+	 * <li>{@code val key = "value"} — plain string literal initialiser</li>
+	 * <li>{@code val key: T by project} — value from injected Gradle
+	 * properties</li>
+	 * <li>{@code val key: T by extra} — value from a preceding {@code extra["key"]}
+	 * assignment</li>
+	 * <li>{@code val key by extra("value")} — value from the {@code extra} delegate
+	 * argument</li>
+	 * </ul>
+	 * <p>We do consider {@code val} declarations as local properties.
 	 *
 	 * @param file the Kotlin build script ({@code .kts})
 	 * @return a map of variable name to literal value element.

@@ -16,7 +16,6 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
@@ -37,10 +36,10 @@ import org.jetbrains.kotlin.psi.ValueArgument;
  */
 class UpdateKotlinDsl {
 
-	private final KotlinLookupSiteLocator siteLocator;
+	private final PropertyResolver propertyResolver;
 
 	UpdateKotlinDsl(PropertyResolver propertyResolver) {
-		this.siteLocator = new KotlinLookupSiteLocator(propertyResolver);
+		this.propertyResolver = propertyResolver;
 	}
 
 	/**
@@ -51,15 +50,12 @@ class UpdateKotlinDsl {
 	 * @param file the Kotlin DSL build file.
 	 * @param artifactId the artifact whose version is being updated.
 	 * @param newVersion the new version string.
-	 * @param declarationSource the declaration source that describe where the
-	 * dependency appears.
 	 */
-	void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion,
-			DeclarationSource declarationSource) {
+	void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
 
 		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
 
-			DependencySite site = siteLocator.locateDeclaration(call);
+			DependencySite site = KotlinDslParser.parseDependencySite(call, propertyResolver);
 			if (!(site instanceof VersionedDependencySite versioned) || !site.getArtifactId()
 					.equals(artifactId)) {
 				return false;

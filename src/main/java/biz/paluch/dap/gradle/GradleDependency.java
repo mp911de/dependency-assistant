@@ -25,6 +25,7 @@ import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
+import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -79,7 +80,12 @@ interface GradleDependency {
 	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
 	 * could not be parsed because of e.g. missing segments.
 	 */
-	static @Nullable GradleDependency parse(String gav, PropertyResolver propertyResolver) {
+	@Contract("null, _ -> null")
+	static @Nullable GradleDependency parse(@Nullable String gav, PropertyResolver propertyResolver) {
+
+		if (StringUtils.isEmpty(gav)) {
+			return null;
+		}
 
 		String[] parts = gav.split(":");
 		return parts.length < 2 ? null : of(parts[0], parts[1], parts.length > 2 ? parts[2] : null, propertyResolver);
