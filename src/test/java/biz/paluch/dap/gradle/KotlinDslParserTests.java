@@ -85,6 +85,110 @@ class KotlinDslParserTests {
 	@Test
 	@EditorFile(name = "build.gradle.kts", content = """
 			dependencies {
+			    implementation("org.junit:junit-bom:6.0.0!!")
+			}
+			""")
+	void gavEnforcedVersion(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[5.2.0, 6.0.0]")
+			}
+			""")
+	void gavRange1(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[5.2.0,6.0.0]")
+			}
+			""")
+	void gavRange2(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[5.0, 7.0[!!6.0.0")
+			}
+			""")
+	void gavRangeStrictly(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[6.0.0,)")
+			}
+			""")
+	void gavOpenRange(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:(5.2,6.0.0]")
+			}
+			""")
+	void gavClosedRange(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:0.10.+")
+			}
+			""")
+	void gavPrefixVersion(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:latest.release")
+			}
+			""")
+	void gavLatestReleaseVersion(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
 			    implementation(platform("org.junit:junit-bom:6.0.0"))
 			}
 			""")
