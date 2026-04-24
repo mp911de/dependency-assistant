@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.VersionSource;
@@ -37,7 +37,7 @@ import org.toml.lang.psi.TomlFile;
 public class NewerVersionLineMarkerProvider extends NewerVersionLineMarkerProviderSupport {
 
 	public NewerVersionLineMarkerProvider() {
-		super("biz.paluch.dap.gradle.UpdateDependencies", DependencyAssistantIcons.GRADLE_TRANSPARENT_ICON);
+		super("biz.paluch.dap.gradle.UpdateDependencies", DependencyAssistantIcons.UPGRADE_GRADLE_ICON);
 	}
 
 	@Override

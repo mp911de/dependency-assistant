@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap.maven;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.VersionSource;
@@ -39,7 +39,7 @@ import icons.MavenIcons;
 public class NewerVersionLineMarkerProvider extends NewerVersionLineMarkerProviderSupport {
 
 	public NewerVersionLineMarkerProvider() {
-		super("biz.paluch.dap.maven.UpdateDependencies", DependencyAssistantIcons.MAVEN_TRANSPARENT_ICON);
+		super("biz.paluch.dap.maven.UpdateDependencies", DependencyAssistantIcons.UPGRADE_MAVEN_ICON);
 	}
 
 	@Override

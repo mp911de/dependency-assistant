@@ -15,13 +15,10 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.MessageBundle;
-
 import javax.swing.Icon;
 
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.MessageBundle;
 import com.intellij.codeInsight.intention.BaseElementAtCaretIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.openapi.editor.Editor;
@@ -30,6 +27,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Light-bulb intention action for Gradle build files. Launches the dependency version check dialog when the caret is
@@ -83,7 +81,7 @@ public class UpdateGradleDependenciesIntention extends BaseElementAtCaretIntenti
 
 	@Override
 	public Icon getIcon(int i) {
-		return DependencyAssistantIcons.GRADLE_ICON;
+		return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
 	}
 
 }

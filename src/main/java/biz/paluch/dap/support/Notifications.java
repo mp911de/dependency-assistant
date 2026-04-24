@@ -15,6 +15,8 @@
  */
 package biz.paluch.dap.support;
 
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -66,6 +68,32 @@ public class Notifications {
 		Notification notification = new Notification(
 				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.no.releases.title"),
 				MessageBundle.message("notification.cache.no.releases.description"),
+				NotificationType.INFORMATION);
+
+		notification
+				.setSuggestionType(true)
+				.addAction(NotificationAction
+						.createSimpleExpiring(MessageBundle.message("notification.action.update.releases"), () -> {
+							ProgressManager.getInstance().run(taskFunction.apply(project));
+						}))
+				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.dismiss"),
+						notification::expire))
+				.notify(project);
+	}
+
+	/**
+	 * Notify the user that release metadata is probably old and offer to update the
+	 * cache.
+	 */
+	public static void releaseMetadataStale(Project project, Instant cacheUpdate,
+			Function<Project, Task> taskFunction) {
+
+		ZoneId zoneId = ZoneId.systemDefault();
+		String ago = CacheUpdateAge.agoText(cacheUpdate, Instant.now(), zoneId);
+
+		Notification notification = new Notification(
+				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.stale.releases.title"),
+				MessageBundle.message("notification.cache.stale.releases.description", ago),
 				NotificationType.INFORMATION);
 
 		notification

@@ -15,13 +15,10 @@
  */
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.MessageBundle;
-
 import javax.swing.Icon;
 
-import org.jspecify.annotations.Nullable;
-
+import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.MessageBundle;
 import com.intellij.codeInsight.intention.BaseElementAtCaretIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.openapi.editor.Editor;
@@ -32,6 +29,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlTag;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Quick fix / intention in the POM XML editor when the caret is inside the &lt;version&gt; element of a
@@ -101,6 +99,6 @@ public class UpdateMavenDependenciesIntention extends BaseElementAtCaretIntentio
 
 	@Override
 	public Icon getIcon(int i) {
-		return DependencyAssistantIcons.MAVEN_ICON;
+		return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
 	}
 }

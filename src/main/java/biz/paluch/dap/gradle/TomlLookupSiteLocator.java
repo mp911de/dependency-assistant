@@ -15,6 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.toml.lang.psi.TomlKeyValue;
@@ -38,7 +39,7 @@ class TomlLookupSiteLocator implements LookupSiteLocator<TomlLiteral> {
 		if (TomlParser.isInsideTable(literal, TomlParser.VERSIONS::equals)) {
 			String propertyName = TomlParser.getTomlKeyName(keyValue.getKey());
 			String rawVersion = TomlParser.getText(literal);
-			if (rawVersion == null) {
+			if (rawVersion == null || StringUtils.isEmpty(rawVersion) || StringUtils.isEmpty(propertyName)) {
 				return LookupSite.absent();
 			}
 			return LookupSite.ofProperty(propertyName, rawVersion, keyValue, literal);

@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import com.intellij.openapi.util.IconLoader;
 
@@ -26,19 +26,21 @@ public class DependencyAssistantIcons {
 
 	public static final Icon ICON = load("/META-INF/pluginIcon.svg");
 
-	public static final Icon DISABLED_ICON = IconLoader.getDisabledIcon(ICON);
+	public static final Icon UPGRADE_MAVEN_ICON = load("/META-INF/upgrade-icons/mavenProject.svg");
 
-	public static final Icon MAVEN_ICON = load("/META-INF/upgrade-maven.svg");
+	public static final Icon UPGRADE_GRADLE_ICON = load("/META-INF/upgrade-icons/gradle.svg");
+
+	public static final Icon UPGRADE_LIBRARY_ICON = load("/META-INF/upgrade-icons/library.svg");
+
+	public static final Icon UPGRADE_NPM_ICON = load("/META-INF/upgrade-icons/npm.svg");
+
+	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/upgrade-icons/github.svg");
+
+	public static final Icon UPGRADE_TOML_ICON = load("/META-INF/upgrade-icons/toml.svg");
 
 	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/propertyNavigate.svg");
 
 	public static final Icon TOML_NAVIGATE = load("/META-INF/tomlNavigate.svg");
-
-	public static final Icon MAVEN_TRANSPARENT_ICON = IconLoader.getTransparentIcon(MAVEN_ICON, 1);
-
-	public static final Icon GRADLE_ICON = load("/META-INF/upgrade-gradle.svg");
-
-	public static final Icon GRADLE_TRANSPARENT_ICON = IconLoader.getTransparentIcon(GRADLE_ICON, 1);
 
 	private static Icon load(String path) {
 		return IconLoader.getIcon(path, DependencyAssistantIcons.class.getClassLoader());

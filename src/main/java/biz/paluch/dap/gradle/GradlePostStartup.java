@@ -15,7 +15,10 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.time.Duration;
+
 import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.support.Notifications;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -47,8 +50,18 @@ public class GradlePostStartup implements ProjectActivity {
 						@Override
 						public void run(ProgressIndicator indicator) {
 							new UpdateProjectState(project, service).readAndUpdateAll(indicator);
-							if (!service.getCache().hasReleases()) {
+
+							Cache cache = service.getCache();
+
+							if (!cache.hasReleases()) {
 								Notifications.releaseMetadataUnavailable(project, ReleasesRetrievalTask::new);
+							} else {
+								Duration age = cache.getAge();
+								Duration duration = Duration.ofDays(2);
+								if (age.compareTo(duration) > 0) {
+									Notifications.releaseMetadataStale(project, cache.getLastUpdate(),
+											ReleasesRetrievalTask::new);
+								}
 							}
 						}
 					});

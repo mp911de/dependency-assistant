@@ -74,7 +74,7 @@ public class UpdateDependenciesAction extends AnAction {
 
 		presentation.setText(MessageBundle.message("biz.paluch.dap.gradle.UpdateDependencies.text"));
 		presentation.setDescription(MessageBundle.message("gradle.action.description"));
-		presentation.setIcon(DependencyAssistantIcons.GRADLE_ICON);
+		presentation.setIcon(DependencyAssistantIcons.UPGRADE_GRADLE_ICON);
 
 		if (project == null) {
 			presentation.setEnabled(false);

@@ -63,7 +63,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			}
 
 			public Icon getIcon() {
-				return DependencyAssistantIcons.MAVEN_TRANSPARENT_ICON;
+				return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
 			}
 		}
 
@@ -73,7 +73,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			}
 
 			public Icon getIcon() {
-				return DependencyAssistantIcons.GRADLE_TRANSPARENT_ICON;
+				return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
 			}
 		}
 
