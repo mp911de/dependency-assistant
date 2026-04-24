@@ -42,8 +42,8 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 class GroovyDslExtParser {
 
 	/**
-	 * Parses all Groovy {@code ext} property declarations from the given file.
-	 * <p>Three forms are recognised:
+	 * Parse all Groovy {@code ext} property declarations from the given file.
+	 * <p>Three forms are recognized:
 	 *
 	 * <pre>
 	 * ext {
@@ -53,7 +53,7 @@ class GroovyDslExtParser {
 	 * ext.springVersion = '6.1.0'             // dot-qualified assignment form
 	 * </pre>
 	 *
-	 * @param file a Groovy {@code .gradle} file
+	 * @param file a Groovy {@code .gradle} file.
 	 * @return a map of property key to literal string value.
 	 */
 	public static Map<String, PropertyValue> parseExtProperties(PsiFile file) {
@@ -76,7 +76,8 @@ class GroovyDslExtParser {
 	}
 
 	/**
-	 * Parses all Groovy {@code ext} property declarations from the given file.
+	 * Collect all Groovy {@code ext} property declarations from the given file as
+	 * plain string values.
 	 * <p>This method supports the following syntax variants: <pre>
 	 * ext {
 	 *     springVersion = '6.1.0'              // assignment form
@@ -85,7 +86,7 @@ class GroovyDslExtParser {
 	 * ext.springVersion = '6.1.0'             // dot-qualified assignment form
 	 * </pre>
 	 *
-	 * @param file a Groovy {@code .gradle} file
+	 * @param file a Groovy {@code .gradle} file.
 	 * @return a map of property key to literal string value.
 	 */
 	public static Map<String, String> getExtProperties(PsiFile file) {
@@ -97,8 +98,8 @@ class GroovyDslExtParser {
 	}
 
 	/**
-	 * Parses script-level variable declarations from the given file.
-	 * <p>Recognised forms:
+	 * Parse script-level variable declarations from the given file.
+	 * <p>Recognized forms:
 	 *
 	 * <pre class="code">
 	 * def springVersion = '6.1.0'
@@ -106,7 +107,7 @@ class GroovyDslExtParser {
 	 * String springVersion = '6.1.0'
 	 * </pre>
 	 *
-	 * @param file a Groovy {@code .gradle} file
+	 * @param file a Groovy {@code .gradle} file.
 	 * @return a map of variable name to its literal string value.
 	 */
 	public static Map<String, PropertyValue> parseLocalVariables(PsiFile file) {

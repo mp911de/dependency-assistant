@@ -80,11 +80,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final VersionCatalogRegistry registry;
 
-	private final GroovyVersionSiteLocator groovySiteLocator;
+	private final GroovyLookupSiteLocator groovySiteLocator;
 
 	private final KotlinLookupSiteLocator kotlinSiteLocator;
 
-	private final TomlVersionSiteLocator tomlSiteLocator;
+	private final TomlLookupSiteLocator tomlSiteLocator;
 
 	private final GradleLookupSiteResolver lookupSiteResolver;
 
@@ -106,9 +106,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
 		this.tomlResolver = new TomlArtifactResolver(project, file, projectState, this.registry);
-		this.groovySiteLocator = new GroovyVersionSiteLocator(this.propertyResolver, this.registry);
+		this.groovySiteLocator = new GroovyLookupSiteLocator(this.propertyResolver, this.registry);
 		this.kotlinSiteLocator = new KotlinLookupSiteLocator(this.propertyResolver, this.registry);
-		this.tomlSiteLocator = new TomlVersionSiteLocator();
+		this.tomlSiteLocator = new TomlLookupSiteLocator();
 		this.lookupSiteResolver = new GradleLookupSiteResolver(this.propertyResolver, this.projectState,
 				this.tomlResolver);
 	}

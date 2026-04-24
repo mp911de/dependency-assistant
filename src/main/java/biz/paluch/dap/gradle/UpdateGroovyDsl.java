@@ -39,10 +39,13 @@ import org.jspecify.annotations.Nullable;
  */
 class UpdateGroovyDsl {
 
-	private final GroovyVersionSiteLocator siteLocator;
+	private final GroovyLookupSiteLocator siteLocator;
+
+	private final PropertyResolver propertyResolver;
 
 	UpdateGroovyDsl(PropertyResolver propertyResolver) {
-		this.siteLocator = new GroovyVersionSiteLocator(propertyResolver);
+		this.propertyResolver = propertyResolver;
+		this.siteLocator = new GroovyLookupSiteLocator(propertyResolver);
 	}
 
 	/**
@@ -56,8 +59,8 @@ class UpdateGroovyDsl {
 			if (element instanceof GrVariableDeclaration decl && decl.getParent() instanceof GroovyFile) {
 				for (GrVariable variable : decl.getVariables()) {
 					if (propertyKey.equals(variable.getName())
-							&& variable.getInitializerGroovy() instanceof GrLiteral lit) {
-						GroovyDslUtils.updateText(lit, newVersion);
+							&& variable.getInitializerGroovy() instanceof GrLiteral literal) {
+						GroovyDslUtils.updateText(literal, newVersion);
 						return true;
 					}
 				}
@@ -65,8 +68,8 @@ class UpdateGroovyDsl {
 
 			if (element instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
 				String key = extractExtPropertyKey(assign.getLValue());
-				if (propertyKey.equals(key) && assign.getRValue() instanceof GrLiteral lit) {
-					GroovyDslUtils.updateText(lit, newVersion);
+				if (propertyKey.equals(key) && assign.getRValue() instanceof GrLiteral literal) {
+					GroovyDslUtils.updateText(literal, newVersion);
 					return true;
 				}
 			}

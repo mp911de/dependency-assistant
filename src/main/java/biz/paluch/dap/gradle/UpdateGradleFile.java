@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.gradle.TomlParser.TomlDependencyDeclaration;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -64,7 +65,7 @@ class UpdateGradleFile {
 	/**
 	 * Applies the selected version updates to the Gradle build file.
 	 *
-	 * @param buildFile the build file currently open in the editor
+	 * @param buildFile the Gradle file to update.
 	 * @param updates dependency updates to apply.
 	 */
 	public void applyUpdates(VirtualFile buildFile, List<DependencyUpdate> updates) {
@@ -127,10 +128,41 @@ class UpdateGradleFile {
 	}
 
 	/**
-	 * Updates a version entry inside the {@code [versions]} table of a
+	 * Updates a property value in a properties file or Groovy/Kotlin ext/extra
+	 * block.
+	 */
+	public void updateProperty(PsiFile file, String propertyKey, String newVersion) {
+
+		// gradle.properties
+		if (file instanceof PropertiesFile propsFile) {
+			IProperty prop = propsFile.findPropertyByKey(propertyKey);
+			if (prop != null) {
+				prop.setValue(newVersion);
+			}
+		}
+
+		if (file instanceof TomlFile tf) {
+			updateProperty(tf, propertyKey, newVersion);
+		}
+
+		// Groovy DSL: ext { key = 'value' } / ext.key = 'value' / ext { set('key',
+		// 'value') }
+		if (GradleUtils.isGroovyDsl(file.getVirtualFile())) {
+			new UpdateGroovyDsl(PropertyResolver.empty()).updateExtProperty(file, propertyKey, newVersion);
+		}
+
+		// Kotlin DSL: extra["key"] = "value" or val key = "value"
+		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
+			UpdateKotlinDsl kotlinDsl = new UpdateKotlinDsl(PropertyResolver.empty());
+			if (!kotlinDsl.updateExtraProperty(file, propertyKey, newVersion)) {
+				kotlinDsl.updateValProperty(file, propertyKey, newVersion);
+			}
+		}
+	}
+
+	/**
+	 * Update a version entry inside the {@code [versions]} table of a
 	 * {@code libs.versions.toml} catalog.
-	 *
-	 * @return {@code true} if the key was found and updated
 	 */
 	public void updateProperty(TomlFile file, String propertyKey, String newVersion) {
 
@@ -151,41 +183,6 @@ class UpdateGradleFile {
 				TomlLiteral newLiteral = new TomlPsiFactory(project, false)
 						.createLiteral("\"%s\"".formatted(newVersion));
 				literal.replace(newLiteral);
-			}
-		}
-	}
-
-	/**
-	 * Updates a property value in a properties file or Groovy/Kotlin ext/extra
-	 * block.
-	 *
-	 * @return {@code true} if the property was found and updated
-	 */
-	public void updateProperty(PsiFile file, String propertyKey, String newVersion) {
-
-		// gradle.properties
-		if (file instanceof PropertiesFile propsFile) {
-			IProperty prop = propsFile.findPropertyByKey(propertyKey);
-			if (prop != null) {
-				prop.setValue(newVersion);
-			}
-		}
-
-		if (file instanceof TomlFile tf) {
-			updateProperty(tf, propertyKey, newVersion);
-		}
-
-		// Groovy DSL: ext { key = 'value' } / ext.key = 'value' / ext { set('key',
-		// 'value') }
-		if (GradleUtils.isGroovyDsl(file.getVirtualFile())) {
-			new UpdateGroovyDsl(property -> null).updateExtProperty(file, propertyKey, newVersion);
-		}
-
-		// Kotlin DSL: extra["key"] = "value" or val key = "value"
-		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
-			UpdateKotlinDsl kotlinDsl = new UpdateKotlinDsl(property -> null);
-			if (!kotlinDsl.updateExtraProperty(file, propertyKey, newVersion)) {
-				kotlinDsl.updateValProperty(file, propertyKey, newVersion);
 			}
 		}
 	}

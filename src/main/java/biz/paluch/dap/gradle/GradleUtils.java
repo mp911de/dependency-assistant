@@ -86,7 +86,6 @@ class GradleUtils {
 	 */
 	static final String PLUGINS = "plugins";
 
-
 	/** Name of the Gradle Settings file. */
 	public static final String GROOVY_SETTINGS = "settings.gradle";
 
@@ -99,7 +98,7 @@ class GradleUtils {
 	/** Name of the Gradle version catalog file. */
 	public static final String LIBS_VERSIONS_TOML = "libs.versions.toml";
 
-	/** Name of the Gradle version catalog file. */
+	/** Default relative path of the Gradle version catalog file. */
 	public static final String DEFAULT_TOML_LOCATION = "gradle/" + GradleUtils.LIBS_VERSIONS_TOML;
 
 	/** Names of Gradle build/settings script files. */
@@ -427,14 +426,13 @@ class GradleUtils {
 	/**
 	 * Returns {@code true} if {@code version} contains range syntax characters.
 	 */
-	static boolean isVersionRange(@Nullable String version) {
+	public static boolean isVersionRange(@Nullable String version) {
 		if (version == null) {
 			return false;
 		}
 		return version.contains("[") || version.contains("]") || version.contains("(") || version.contains(")")
 				|| version.contains(",") || version.endsWith(".+");
 	}
-
 
 	@Contract("null -> false")
 	public static boolean isCatalogConsumerCall(@Nullable String name) {

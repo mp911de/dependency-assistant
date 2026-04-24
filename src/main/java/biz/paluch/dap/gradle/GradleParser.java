@@ -17,6 +17,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -26,10 +27,11 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GroovyDslUtils.PluginId;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -57,13 +59,17 @@ class GradleParser extends GradleParserSupport {
 
 	private final PropertyResolver global;
 
-	GradleParser() {
-		this(new DependencyCollector(), new LinkedHashMap<>());
-	}
-
 	GradleParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
 		this.global = properties::get;
+	}
+
+	public static boolean isDependencyCallCandidate(GrMethodCall call) {
+
+		String methodName = GroovyDslUtils.getGroovyMethodName(call);
+
+		return GradleUtils.isPlatformSection(methodName) || GradleUtils.isDependencySection(methodName)
+				|| GroovyDslUtils.isInsidePluginsBlock(call);
 	}
 
 	protected PropertyResolver getPropertyResolver() {
@@ -86,28 +92,25 @@ class GradleParser extends GradleParserSupport {
 		properties.putAll(GroovyDslExtParser.parseLocalVariables(file));
 
 		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties)
-				.andFallback(global);
+				.withFallback(global);
 
 		getCollector().addProperties(extProperties.keySet());
 
 		SyntaxTraverser.psiTraverser(file).filter(GrMethodCall.class)
 				.forEach(call -> handleGroovyCall(call, propertyResolver));
-
-		file.accept(PsiVisitors.visitTree(GrMethodCall.class, call -> handleGroovyCall(call, propertyResolver)));
 	}
 
 	private void handleGroovyCall(GrMethodCall call, PropertyResolver propertyResolver) {
 
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);
-
 		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
 		boolean isDependencyConfig = GradleUtils.isDependencySection(methodName);
 		boolean isPlugin = GroovyDslUtils.isInsidePluginsBlock(call);
 
 		if (isPlugin) {
-			GradleDependency dependency = parsePlugin(call, propertyResolver);
-			if (dependency != null) {
-				register(dependency, DeclarationSource.plugin(), propertyResolver);
+			DependencySite pluginSite = parsePlugin(call, propertyResolver);
+			if (pluginSite != null) {
+				register(pluginSite, DeclarationSource.plugin(), propertyResolver);
 			}
 			return;
 		}
@@ -116,19 +119,19 @@ class GradleParser extends GradleParserSupport {
 			return;
 		}
 
-		GradleDependency dependency = parseDependency(call, propertyResolver);
 		DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed()
 				: DeclarationSource.dependency();
-
-		if (dependency == null || dependency instanceof GradleDependency.DependencyReference) {
-			NamedDependencyDeclaration declaration = parseNamedDependencyDeclaration(call, propertyResolver);
-			if (declaration.isComplete()) {
-				dependency = declaration.toDependency(propertyResolver);
-			}
+		DependencySite site = null;
+		if (isMapStyleDeclarationCandidate(call)) {
+			site = parseMapDeclaration(call, propertyResolver);
 		}
 
-		if (dependency != null) {
-			register(dependency, declarationSource, propertyResolver);
+		if (site == null) {
+			site = parseDependency(call, propertyResolver);
+		}
+
+		if (site != null) {
+			register(site, declarationSource, propertyResolver);
 		}
 	}
 
@@ -143,7 +146,7 @@ class GradleParser extends GradleParserSupport {
 	 * @return the parsed dependency, or {@code null} if the call does not contain a
 	 * supported direct declaration.
 	 */
-	private @Nullable GradleDependency parseDependency(GrMethodCall call, PropertyResolver propertyResolver) {
+	public static @Nullable DependencySite parseDependency(GrMethodCall call, PropertyResolver propertyResolver) {
 
 		PsiElement[] args = call.getArgumentList().getAllArguments();
 		for (PsiElement arg : args) {
@@ -156,15 +159,32 @@ class GradleParser extends GradleParserSupport {
 			}
 
 			if (arg instanceof GrLiteral literal) {
-				String rawText = GroovyDslUtils.renderText(literal);
+
+				String rawText = GroovyDslUtils.getText(literal);
+				DependencySite site = parseVersionBlockDependency(call, propertyResolver);
+				if (site != null) {
+					return site;
+				}
+
 				GradleDependency dependency = GradleDependency.parse(rawText, propertyResolver);
 				if (dependency != null) {
-					return dependency;
+					return dependency.toDependencySite(call, literal);
 				}
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Return whether the given call is a map-style declaration candidate.
+	 * <pre class="code">
+	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
+	 * </pre>
+	 */
+	public static boolean isMapStyleDeclarationCandidate(GrMethodCall call) {
+		GrNamedArgument[] namedArguments = call.getNamedArguments();
+		return namedArguments.length > 1;
 	}
 
 	/**
@@ -174,28 +194,19 @@ class GradleParser extends GradleParserSupport {
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
 	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
 	 * </pre>
-	 * @param call the method call to parse
-	 * @param propertyResolver property resolver used for property-backed versions
-	 * @return the parsed declaration, possibly incomplete
+	 *
+	 * @param call the method call to parse.
+	 * @param propertyResolver property resolver used for property-backed versions.
+	 * @return the parsed declaration, possibly incomplete.
 	 */
-	static NamedDependencyDeclaration parseNamedDependencyDeclaration(GrMethodCall call,
-			@Nullable PropertyResolver propertyResolver) {
-
-		NamedDependencyDeclaration declaration = parseVersionBlockDependency(call, propertyResolver);
-		if (declaration.isComplete()) {
-			return declaration;
-		}
-
-		GrNamedArgument[] namedArguments = call.getNamedArguments();
-		if (namedArguments.length < 2) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
-		}
-
-		return parseMapDependency(call, namedArguments, propertyResolver);
+	static @Nullable DependencySite parseMapDeclaration(GrMethodCall call, PropertyResolver propertyResolver) {
+		NamedDependencyDeclaration declaration = parseMapDependency(call, call.getNamedArguments(), propertyResolver);
+		return declaration.isComplete() ? declaration.toDependencySite(propertyResolver) : null;
 	}
 
 	/**
-	 * Parse a Groovy version-block dependency declaration. <pre class="code">
+	 * Parse a Groovy version-block dependency declaration.
+	 * <p><pre class="code">
 	 * implementation('group:artifact') {
 	 *     version {
 	 *         strictly '[1.7, 1.8['
@@ -205,35 +216,34 @@ class GradleParser extends GradleParserSupport {
 	 * </pre>
 	 * <p>When {@code propertyResolver} is provided, bare variable references such
 	 * as {@code prefer varName} are resolved through it.
-	 * @param call the method call to parse
-	 * @param propertyResolver property resolver used for property-backed versions
+	 *
+	 * @param call the method call to parse.
+	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed declaration, possibly incomplete if no usable version can
-	 * be extracted
+	 * be extracted.
 	 */
-	static NamedDependencyDeclaration parseVersionBlockDependency(GrMethodCall call,
-			@Nullable PropertyResolver propertyResolver) {
+	static @Nullable DependencySite parseVersionBlockDependency(GrMethodCall call, PropertyResolver propertyResolver) {
 
 		GrLiteral gavLiteral = findCoordinateLiteral(call);
 		GrClosableBlock depClosure = getFirstClosure(call);
 
 		if (gavLiteral == null) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
+			return null;
 		}
 
 		if (depClosure == null) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
+			return null;
 		}
 
 		GrMethodCall versionCall = findNestedMethodCall(depClosure, "version");
 
 		if (versionCall == null) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
+			return null;
 		}
 
 		GrClosableBlock versionClosure = getFirstClosure(versionCall);
-
 		if (versionClosure == null) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
+			return null;
 		}
 
 		GroovyVersionValue prefer = findConstraintValue(versionClosure, GradleVersionConstraint.PREFER,
@@ -243,32 +253,67 @@ class GradleParser extends GradleParserSupport {
 		GroovyVersionValue versionValue = prefer.isPresent() ? prefer : strictly;
 
 		if (!versionValue.isPresent()) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
+			return null;
 		}
 
 		if (strictly.isPresent() && !prefer.isPresent() && GradleUtils.isVersionRange(strictly.version())) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
+			return null;
 		}
 
-		String gavText = GroovyDslUtils.renderText(gavLiteral);
+		String gavText = GroovyDslUtils.getText(gavLiteral);
 		if (StringUtils.isEmpty(gavText)) {
-			return new NamedDependencyDeclaration(call.getContainingFile());
+			return null;
 		}
+
 		String[] parts = gavText.split(":");
 		String group = parts[0];
 		String artifact = parts[1];
-		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact,
-				versionValue.versionProperty(), versionValue.version(), call, versionValue.versionElement());
+
+		ArtifactId artifactId = GradleDependency.getArtifactId(group, artifact, propertyResolver);
+		VersionSource versionSource;
+		if (StringUtils.hasText(versionValue.versionProperty) || StringUtils.hasText(versionValue.version)) {
+			PropertyExpression expression = StringUtils.hasText(versionValue.versionProperty)
+					? PropertyExpression.property(versionValue.version)
+					: PropertyExpression.from(versionValue.version);
+			versionSource = expression.asVersionSource();
+			if (expression.isProperty()) {
+				PropertyValue propertyValue = propertyResolver.getPropertyValue(expression.getPropertyName());
+
+				if (propertyValue != null) {
+					Optional<ArtifactVersion> optionalVersion = ArtifactVersion.from(versionValue.version());
+					if (optionalVersion.isPresent()) {
+
+						return VersionedDependencySite.of(artifactId, optionalVersion.get(),
+								versionSource, call,
+								propertyValue.element());
+					}
+				}
+			}
+		} else {
+			versionSource = StringUtils.hasText(versionValue.version) ? VersionSource.declared(versionValue.version)
+					: VersionSource.none();
+		}
+
+		if (versionValue.isPresent()) {
+			Optional<ArtifactVersion> optionalVersion = ArtifactVersion.from(versionValue.version());
+			if (optionalVersion.isPresent()) {
+				return VersionedDependencySite.of(artifactId, optionalVersion.get(), versionSource, call,
+						versionValue.versionElement());
+			}
+		}
+
+		return DependencySite.of(artifactId, versionSource, call);
 	}
 
 	/**
 	 * Parse a Groovy map-style dependency declaration. <pre class="code">
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
 	 * </pre>
-	 * @param call the owning method call
-	 * @param named the named arguments to parse
-	 * @param propertyResolver property resolver used for property-backed versions
-	 * @return the parsed declaration, possibly incomplete
+	 *
+	 * @param call the owning method call.
+	 * @param named the named arguments to parse.
+	 * @param propertyResolver property resolver used for property-backed versions.
+	 * @return the parsed declaration, possibly incomplete.
 	 */
 	static NamedDependencyDeclaration parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
 			PropertyResolver propertyResolver) {
@@ -282,7 +327,7 @@ class GradleParser extends GradleParserSupport {
 		for (GrNamedArgument arg : named) {
 			String key = arg.getLabelName();
 			PsiElement val = arg.getExpression();
-			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.renderText(lit) : null;
+			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.getText(lit) : null;
 
 			if ("group".equals(key)) {
 				group = !StringUtils.isEmpty(strVal) ? propertyResolver.resolvePlaceholders(strVal) : strVal;
@@ -294,7 +339,7 @@ class GradleParser extends GradleParserSupport {
 					String refName = GroovyDslUtils.getRequiredText(ref);
 					versionProperty = refName;
 					if (StringUtils.hasText(refName)) {
-						PropertyValue element = propertyResolver.getElement(refName);
+						PropertyValue element = propertyResolver.getPropertyValue(refName);
 						if (element != null) {
 							version = element.propertyValue();
 							versionLiteral = element.element();
@@ -308,7 +353,7 @@ class GradleParser extends GradleParserSupport {
 						if (ref != null) {
 							String refName = ref.getReferenceName();
 							versionProperty = refName;
-							PropertyValue element = propertyResolver.getElement(refName);
+							PropertyValue element = propertyResolver.getPropertyValue(refName);
 							if (element != null) {
 								version = element.propertyValue();
 								versionLiteral = element.element();
@@ -333,12 +378,13 @@ class GradleParser extends GradleParserSupport {
 	 *     id 'org.springframework.boot' version '3.3.2'
 	 * }
 	 * </pre>
-	 * @param call the method call to inspect
+	 *
+	 * @param call the method call to inspect.
 	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed plugin dependency, or {@code null} if the call does not
-	 * match the supported plugin declaration shape
+	 * match the supported plugin declaration shape.
 	 */
-	private @Nullable GradleDependency parsePlugin(GrMethodCall call, PropertyResolver propertyResolver) {
+	private @Nullable DependencySite parsePlugin(GrMethodCall call, PropertyResolver propertyResolver) {
 
 		PluginId id = PluginId.fromMethodCall(call, propertyResolver);
 		if (id == null) {
@@ -351,7 +397,8 @@ class GradleParser extends GradleParserSupport {
 		}
 
 		String rawVersion = id.getVersionAsString();
-		return GradleDependency.of(artifactId, PropertyExpression.from(rawVersion));
+		return GradleDependency.of(artifactId, PropertyExpression.from(rawVersion)).toDependencySite(call,
+				id.version());
 	}
 
 	private static @Nullable GrLiteral findCoordinateLiteral(GrMethodCall call) {
@@ -361,7 +408,7 @@ class GradleParser extends GradleParserSupport {
 				continue;
 			}
 
-			String text = GroovyDslUtils.renderText(literal);
+			String text = GroovyDslUtils.getText(literal);
 			if (StringUtils.hasText(text) && text.split(":").length == 2) {
 				return literal;
 			}
@@ -400,7 +447,7 @@ class GradleParser extends GradleParserSupport {
 
 			PsiElement argument = getFirstArgument(methodCall);
 			if (argument instanceof GrLiteral literal) {
-				String version = GroovyDslUtils.renderText(literal);
+				String version = GroovyDslUtils.getText(literal);
 				return StringUtils.hasText(version) ? new GroovyVersionValue(null, version, literal)
 						: GroovyVersionValue.absent();
 			}
@@ -414,7 +461,7 @@ class GradleParser extends GradleParserSupport {
 				return GroovyVersionValue.absent();
 			}
 
-			PropertyValue resolved = propertyResolver.getElement(propertyName);
+			PropertyValue resolved = propertyResolver.getPropertyValue(propertyName);
 			if (resolved == null || !StringUtils.hasText(resolved.propertyValue())) {
 				return GroovyVersionValue.absent();
 			}

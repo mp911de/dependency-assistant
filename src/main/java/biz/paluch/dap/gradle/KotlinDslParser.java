@@ -52,43 +52,13 @@ import org.jspecify.annotations.Nullable;
  */
 class KotlinDslParser extends GradleParser {
 
-	private final PropertyResolver global;
-
-	KotlinDslParser() {
-		super(new DependencyCollector(), new LinkedHashMap<>());
-		this.global = getPropertyResolver();
-	}
-
-	KotlinDslParser(DependencyCollector collector) {
-		super(collector, new LinkedHashMap<>());
-		this.global = getPropertyResolver();
-	}
-
 	KotlinDslParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector, properties);
-		this.global = getPropertyResolver();
 	}
 
 	// -------------------------------------------------------------------------
 	// Kotlin DSL
 	// -------------------------------------------------------------------------
-
-	/**
-	 * Create a {@link PropertyResolver} for the given file.
-	 * <p>The returned resolver will contain properties defined in the file as
-	 * {@code extra} and {@code val} elements.
-	 *
-	 * @see KotlinDslExtraParser#parseExtraProperties(PsiFile)
-	 * @see KotlinDslExtraParser#parseValProperties(PsiFile)
-	 */
-	static PropertyResolver getPropertyResolver(PsiFile file) {
-
-		Map<String, PropertyValue> properties = new LinkedHashMap<>();
-		properties.putAll(KotlinDslExtraParser.parseExtraProperties(file));
-		properties.putAll(KotlinDslExtraParser.parseValProperties(file));
-
-		return PropertyResolver.fromMap(properties);
-	}
 
 	/**
 	 * Parses a Kotlin {@code build.gradle.kts} or {@code settings.gradle.kts} file.
@@ -99,7 +69,7 @@ class KotlinDslParser extends GradleParser {
 		Map<String, PropertyValue> properties = new LinkedHashMap<>(extra);
 		properties.putAll(KotlinDslExtraParser.parseValProperties(file));
 
-		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties).andFallback(global);
+		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties).withFallback(getPropertyResolver());
 
 		getCollector().addProperties(extra.keySet());
 
@@ -138,10 +108,11 @@ class KotlinDslParser extends GradleParser {
 	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
 	 * id("org.springframework.boot") version "3.3.2"
 	 * </pre>
-	 * @param call the call to parse
-	 * @param propertyResolver property resolver used for property-backed versions
+	 *
+	 * @param call the call to parse.
+	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the dependency site, or {@code null} if the call is not a supported
-	 * declaration
+	 * declaration.
 	 */
 	public static @Nullable DependencySite parseDependencySite(KtCallElement call, PropertyResolver propertyResolver) {
 
@@ -204,10 +175,11 @@ class KotlinDslParser extends GradleParser {
 	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
 	 * id("org.springframework.boot") version "3.3.2"
 	 * </pre>
-	 * @param call the call to parse
-	 * @param scriptProperties property resolver used for property-backed versions
+	 *
+	 * @param call the call to parse.
+	 * @param scriptProperties property resolver used for property-backed versions.
 	 * @return the dependency site, or {@code null} if the call is not a supported
-	 * declaration
+	 * declaration.
 	 */
 	private static @Nullable DependencySite findDependencySite(KtCallElement call,
 			PropertyResolver scriptProperties) {
@@ -244,7 +216,7 @@ class KotlinDslParser extends GradleParser {
 		if (ktVersion.hasProperty()) {
 			String property = ktVersion.getProperty();
 			versionExpression = PropertyExpression.property(property);
-			PropertyValue version = scriptProperties.getElement(property);
+			PropertyValue version = scriptProperties.getPropertyValue(property);
 			if (version != null) {
 				versionElement = version.element();
 			}
@@ -355,9 +327,10 @@ class KotlinDslParser extends GradleParser {
 		String version;
 
 		if (preferTemplate != null) {
+			KtLiterals literals = KtLiterals.from(preferTemplate);
 			version = resolveKotlinStringTemplate(preferTemplate, propertyResolver);
 			versionLiteralElement = preferTemplate;
-			versionProperty = extractTemplatePropertyKey(preferTemplate);
+			versionProperty = literals.hasProperty() ? literals.getProperty() : null;
 		} else if (preferNameRef != null) {
 			String refName = preferNameRef.getReferencedName();
 			PropertyValue resolved = resolveVersionProperty(propertyResolver, refName);
@@ -368,13 +341,14 @@ class KotlinDslParser extends GradleParser {
 			versionLiteralElement = resolved.element();
 			versionProperty = refName;
 		} else if (strictlyTemplate != null) {
+			KtLiterals literals = KtLiterals.from(strictlyTemplate);
 			String strictlyText = resolveKotlinStringTemplate(strictlyTemplate, propertyResolver);
-			if (GradleUtils.isVersionRange(strictlyText)) {
+			if (GradleUtils.isVersionRange(literals.toString())) {
 				return null;
 			}
 			version = strictlyText;
 			versionLiteralElement = strictlyTemplate;
-			versionProperty = extractTemplatePropertyKey(strictlyTemplate);
+			versionProperty = literals.hasProperty() ? literals.getProperty() : null;
 		} else if (strictlyNameRef != null) {
 			String refName = strictlyNameRef.getReferencedName();
 			PropertyValue resolved = resolveVersionProperty(propertyResolver, refName);
@@ -412,7 +386,7 @@ class KotlinDslParser extends GradleParser {
 			return null;
 		}
 
-		return propertyResolver.getElement(refName);
+		return propertyResolver.getPropertyValue(refName);
 	}
 
 	private static @Nullable KtStringTemplateExpression findInlineDependencyLiteral(KtCallElement call,
@@ -460,9 +434,10 @@ class KotlinDslParser extends GradleParser {
 	 * Parse a Kotlin map-style dependency declaration. <pre class="code">
 	 * implementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.11.0")
 	 * </pre>
-	 * @param call the call to parse
-	 * @param propertyResolver property resolver used for property-backed versions
-	 * @return the parsed declaration, possibly incomplete
+	 *
+	 * @param call the call to parse.
+	 * @param propertyResolver property resolver used for property-backed versions.
+	 * @return the parsed declaration, possibly incomplete.
 	 */
 	private static NamedDependencyDeclaration parseMapDeclaration(KtCallElement call,
 			PropertyResolver propertyResolver) {
@@ -486,18 +461,18 @@ class KotlinDslParser extends GradleParser {
 				artifact = strVal;
 			} else if ("version".equals(name)) {
 				if (expr instanceof KtStringTemplateExpression st) {
-					String propKey = extractTemplatePropertyKey(st);
-					if (propKey != null && propertyResolver.containsProperty(propKey)) {
-						version = propertyResolver.getProperty(propKey);
+					KtLiterals literals = KtLiterals.from(st);
+					if (literals.hasProperty() && propertyResolver.containsProperty(literals.getProperty())) {
+						version = propertyResolver.getProperty(literals.getProperty());
 						versionLiteral = expr;
-						versionProperty = propKey;
+						versionProperty = literals.getProperty();
 					} else {
 						version = renderKotlinStringTemplate(st);
 						versionLiteral = expr;
 					}
 				} else if (expr instanceof KtNameReferenceExpression ref) {
 					String refName = ref.getReferencedName();
-					PropertyValue element = propertyResolver.getElement(refName);
+					PropertyValue element = propertyResolver.getPropertyValue(refName);
 					if (element != null) {
 						version = element.propertyValue();
 						versionLiteral = element.element();
@@ -520,26 +495,19 @@ class KotlinDslParser extends GradleParser {
 	 */
 	private static @Nullable String extractTemplatePropertyKey(KtStringTemplateExpression template) {
 
-		String[] result = {null};
-		boolean[] hasLiteral = {false};
-
-		KotlinDslUtils.doWithStrings(template, text -> {
-			if (!text.isEmpty()) {
-				hasLiteral[0] = true;
-			}
-		}, expression -> {
-			String key = KotlinDslUtils.getPropertyName(expression);
-			if (StringUtils.hasText(key)) {
-				result[0] = key;
-			}
-		});
-
-		if (hasLiteral[0]) {
-			return null;
-		}
-		return result[0];
+		KtLiterals literals = KtLiterals.from(template);
+		return literals.toString();
+		/*
+		 * String[] result = {null}; boolean[] hasLiteral = {false};
+		 *
+		 * KotlinDslUtils.doWithStrings(template, text -> { if (!text.isEmpty()) {
+		 * hasLiteral[0] = true; } }, expression -> { String key =
+		 * KotlinDslUtils.getPropertyName(expression); if (StringUtils.hasText(key)) {
+		 * result[0] = key; } });
+		 *
+		 * if (hasLiteral[0]) { return null; } return result[0];
+		 */
 	}
-
 	private static @Nullable String resolveKotlinStringTemplate(KtStringTemplateExpression st,
 			PropertyResolver propertyResolver) {
 

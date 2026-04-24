@@ -118,7 +118,7 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		public UpdatedBuildFileAssert hasProperty(String propertyName, String expectedValue) {
 			isNotNull();
 
-			PropertyValue element = this.actual.propertyResolver.getElement(propertyName);
+			PropertyValue element = this.actual.propertyResolver.getPropertyValue(propertyName);
 			if (element == null) {
 				failWithMessage("Expected property '%s' to be declared in %s but it was not found",
 						propertyName, this.actual.file.getName());
@@ -140,7 +140,7 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 			isNotNull();
 
 			@Nullable
-			PropertyValue element = this.actual.propertyResolver.getElement(propertyName);
+			PropertyValue element = this.actual.propertyResolver.getPropertyValue(propertyName);
 			if (element != null) {
 				failWithMessage("Expected property '%s' to be absent in %s but found value '%s'",
 						propertyName, this.actual.file.getName(), element.propertyValue());

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package biz.paluch.dap.gradle;
 
 import com.intellij.psi.PsiElement;
@@ -35,7 +34,7 @@ import com.intellij.psi.PsiElement;
  * contract uses {@link LookupSite#absent()} instead of {@code null} to signal
  * that no meaningful lookup site could be derived for the supplied element.
  *
- * @param <T> the supported PSI element type
+ * @param <T> the supported PSI element type.
  * @author Mark Paluch
  * @see LookupSite
  */
@@ -47,9 +46,10 @@ interface LookupSiteLocator<T extends PsiElement> {
 	 * literal, a property reference, or another PSI node contained within the
 	 * owning declaration. Implementations may inspect surrounding PSI as needed to
 	 * recover the effective lookup site.
-	 * @param element the PSI element to inspect
+	 *
+	 * @param element the PSI element to inspect.
 	 * @return the resolved lookup site, or {@link LookupSite#absent()} if the
-	 * element does not belong to a supported dependency or version declaration
+	 * element does not belong to a supported dependency or version declaration.
 	 */
 	LookupSite locate(T element);
 

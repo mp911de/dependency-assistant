@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -47,8 +46,8 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  * @see KotlinLookupSiteLocator
- * @see GroovyVersionSiteLocator
- * @see TomlVersionSiteLocator
+ * @see GroovyLookupSiteLocator
+ * @see TomlLookupSiteLocator
  * @see GradleLookupSiteResolver
  */
 interface LookupSite {
@@ -61,7 +60,7 @@ interface LookupSite {
 	 * the lookup site as a whole and does not imply that artifact resolution will
 	 * necessarily succeed.
 	 *
-	 * @return {@code true} if this instance represents an actual lookup site
+	 * @return {@code true} if this instance represents an actual lookup site.
 	 * @see #isAbsent()
 	 */
 	boolean isPresent();
@@ -143,14 +142,11 @@ interface LookupSite {
 
 	/**
 	 * Adapt the given {@link DependencySite} to a {@link LookupSite}.
-	 * <p>{@link VersionedDependencySite Versioned dependency sites} are exposed as
-	 * {@link ResolvedSite resolved sites}. Unresolved dependency sites are adapted
-	 * to {@link ArtifactIdLookupSite artifact-id lookup sites}. A {@code null}
-	 * input results in {@code null}.
+	 * <p>A {@code null} input results in {@link LookupSite#absent()}.
 	 *
 	 * @param dependencySite the dependency site to adapt.
-	 * @return the adapted lookup site, or {@code null} if {@code dependencySite} is
-	 * {@code null}.
+	 * @return the adapted lookup site, or {@link LookupSite#absent()} if
+	 * {@code dependencySite} is {@code null}.
 	 */
 	static LookupSite from(@Nullable DependencySite dependencySite) {
 

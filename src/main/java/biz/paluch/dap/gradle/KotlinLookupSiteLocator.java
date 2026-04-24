@@ -55,9 +55,10 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 	 * extra["springVersion"] = "6.2.0"
 	 * implementation(libs.spring.core)
 	 * </pre>
-	 * @param element the PSI element to inspect
+	 *
+	 * @param element the PSI element to inspect.
 	 * @return the resolved lookup site, or {@link LookupSite#absent()} if no
-	 * supported declaration can be derived
+	 * supported declaration can be derived.
 	 */
 	@Override
 	public LookupSite locate(KtElement element) {
@@ -152,7 +153,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 	private LookupSite locatePropertyDeclaration(String propertyName, KtElement declaration) {
 
-		PropertyValue propertyValue = propertyResolver.getElement(propertyName);
+		PropertyValue propertyValue = propertyResolver.getPropertyValue(propertyName);
 		if (propertyValue == null) {
 			return LookupSite.absent();
 		}

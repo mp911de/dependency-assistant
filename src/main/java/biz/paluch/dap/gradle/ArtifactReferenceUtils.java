@@ -64,6 +64,7 @@ class ArtifactReferenceUtils {
 
 	/**
 	 * Resolve the given {@link GradleDependency} to an {@link ArtifactReference}.
+	 *
 	 * @param dependency the dependency.
 	 * @param declaration the declaration (usage) element.
 	 * @param version the version literal element.
@@ -76,7 +77,7 @@ class ArtifactReferenceUtils {
 
 		if (dependency instanceof PropertyManagedDependency managed) {
 
-			PropertyValue element = propertyResolver.getElement(managed.property());
+			PropertyValue element = propertyResolver.getPropertyValue(managed.property());
 			return fromPropertyManaged(managed, declaration, element == null ? null : element.propertyValue(),
 					element == null ? null : element.element());
 		}
@@ -89,7 +90,9 @@ class ArtifactReferenceUtils {
 	}
 
 	/**
-	 * Resolve the given {@link GradleDependency} to an {@link ArtifactReference}.
+	 * Resolve the given artifact and version source to an
+	 * {@link ArtifactReference}.
+	 *
 	 * @param declaration the declaration (usage) element.
 	 * @param version the version literal element.
 	 * @param propertyResolver property resolver to resolve property-managed
@@ -101,7 +104,7 @@ class ArtifactReferenceUtils {
 
 		if (versionSource instanceof VersionProperty property) {
 
-			PropertyValue propertyValue = propertyResolver.getElement(property.getProperty());
+			PropertyValue propertyValue = propertyResolver.getPropertyValue(property.getProperty());
 
 			if (propertyValue == null) {
 				return ArtifactReference.unresolved();
@@ -138,7 +141,7 @@ class ArtifactReferenceUtils {
 		if (dependencySite.getVersionSource() instanceof VersionProperty property) {
 
 			PropertyValue element = propertyResolverSupplier.get()
-					.getElement(property.getProperty());
+					.getPropertyValue(property.getProperty());
 
 			if (element != null) {
 				return ArtifactReference.from(it -> {

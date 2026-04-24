@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;

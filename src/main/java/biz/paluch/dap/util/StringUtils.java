@@ -89,4 +89,17 @@ public abstract class StringUtils {
 		return (str != null && !str.isBlank());
 	}
 
+	/**
+	 * Remove quotes from a string if the String is quoted with either single or
+	 * double quotes.
+	 * @param str the string to unquote.
+	 * @return the unquoted string.
+	 */
+	public static String unquote(String str) {
+		if ((str.startsWith("\"") && str.endsWith("\"")) || (str.startsWith("'") && str.endsWith("'"))) {
+			return str.length() > 2 ? str.substring(1, str.length() - 1) : "";
+		}
+		return str;
+	}
+
 }

@@ -128,8 +128,8 @@ class GroovyDslSettingsParser {
 				continue;
 			}
 			PsiElement[] filesArgs = filesCall.getArgumentList().getAllArguments();
-			if (filesArgs.length > 0 && filesArgs[0] instanceof GrLiteral lit) {
-				return GroovyDslUtils.getText(lit);
+			if (filesArgs.length > 0 && filesArgs[0] instanceof GrLiteral literal) {
+				return GroovyDslUtils.getText(literal);
 			}
 		}
 

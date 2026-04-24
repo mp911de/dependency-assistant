@@ -31,8 +31,8 @@ import com.intellij.psi.PsiFile;
  * <ol>
  * <li>Loads {@code gradle.properties} from the project root to build a property
  * map.</li>
- * <li>Parses the anchor file itself (the file currently open in the editor)
- * using the appropriate parser (Groovy, Kotlin, Properties, or TOML).</li>
+ * <li>Parses the anchor file itself using the appropriate parser (Groovy,
+ * Kotlin, Properties, or TOML).</li>
  * <li>If the anchor file is not a {@code build.gradle(.kts)}, also scans for
  * {@code gradle/libs.versions.toml} if it exists.</li>
  * </ol>
@@ -63,7 +63,7 @@ class GradleDependencyCollector {
 	 * directory tree).
 	 *
 	 * @param buildFile the Gradle file.
-	 * @return a populated {@link DependencyCollector}
+	 * @return a populated {@link DependencyCollector}.
 	 */
 	public DependencyCollector collect(PsiFile buildFile) {
 

@@ -75,6 +75,7 @@ class TomlArtifactResolver {
 
 	/**
 	 * Resolves the {@link ArtifactReference} from a {@link TomlLiteral literal}.
+	 *
 	 * @param literal the TOML literal.
 	 * @return the resolved artifact reference result.
 	 */
@@ -133,6 +134,7 @@ class TomlArtifactResolver {
 	/**
 	 * Resolves a {@code libs.…} catalog accessor through
 	 * {@code gradle/libs.versions.toml}.
+	 *
 	 * @param tomlReference TOML reference to resolve.
 	 * @param usage the PSI element where the reference is used (the
 	 * {@code alias(libs…)} element).

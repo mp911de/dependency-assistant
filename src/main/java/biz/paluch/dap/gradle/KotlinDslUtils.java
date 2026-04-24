@@ -251,8 +251,8 @@ class KotlinDslUtils {
 					versionText = literals.toString();
 					if (literals.hasProperty() && literals.size() == 1) {
 						versionPropertyKey = literals.getProperty();
-						PsiElement resolvedElement = scriptProperties.getElement(versionPropertyKey) != null
-								? scriptProperties.getElement(versionPropertyKey).element()
+						PsiElement resolvedElement = scriptProperties.getPropertyValue(versionPropertyKey) != null
+								? scriptProperties.getPropertyValue(versionPropertyKey).element()
 								: null;
 						if (resolvedElement != null) {
 							versionElement = resolvedElement;
@@ -605,13 +605,10 @@ class KotlinDslUtils {
 	static String getRequiredText(KtExpression expression) {
 
 		Assert.notNull(expression, "Expression must not be null");
-
 		String text = getText(expression);
-
 		if (text == null) {
 			throw new IllegalArgumentException(
-					"Unexpected expression: %s (%s)".formatted(expression, expression.getClass()
-							.getName()));
+					"No text available: %s (%s)".formatted(expression, expression.getClass().getName()));
 		}
 		return text;
 	}

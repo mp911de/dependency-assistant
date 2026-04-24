@@ -77,37 +77,13 @@ class TomlParser extends GradleParserSupport {
 	private final Map<String, String> properties;
 
 	public TomlParser(DependencyCollector collector) {
-		this(collector, new LinkedHashMap<>());
+		this(collector, Map.of());
 	}
 
 	public TomlParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
 		this.properties = properties;
 	}
-
-	public static @Nullable PsiFile findVersionCatalogToml(Project project, VirtualFile anchorFile) {
-
-		VirtualFile root = GradleUtils.findProjectRoot(project, anchorFile);
-		VirtualFile gradleDir = root.findChild("gradle");
-		if (gradleDir == null) {
-			return null;
-		}
-		VirtualFile toml = gradleDir.findChild(GradleUtils.LIBS_VERSIONS_TOML);
-		if (toml == null) {
-			return null;
-		}
-		return PsiManager.getInstance(project).findFile(toml);
-	}
-
-	public static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
-
-		// TODO
-		return SyntaxTraverser.revPsiTraverser().api.parents(element).filter(TomlTable.class).filter(it -> {
-			String tomlTableName = getTomlTableName(it);
-			return StringUtils.hasText(tomlTableName) && predicate.test(tomlTableName);
-		}).first() != null;
-	}
-
 
 	/**
 	 * Parses a {@code libs.versions.toml} version catalog and populates
@@ -152,12 +128,33 @@ class TomlParser extends GradleParserSupport {
 		}
 	}
 
+	public static @Nullable PsiFile findVersionCatalogToml(Project project, VirtualFile anchorFile) {
+
+		VirtualFile root = GradleUtils.findProjectRoot(project, anchorFile);
+		VirtualFile gradleDir = root.findChild("gradle");
+		if (gradleDir == null) {
+			return null;
+		}
+		VirtualFile toml = gradleDir.findChild(GradleUtils.LIBS_VERSIONS_TOML);
+		if (toml == null) {
+			return null;
+		}
+		return PsiManager.getInstance(project).findFile(toml);
+	}
+
+	public static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
+		return SyntaxTraverser.revPsiTraverser().api.parents(element).filter(TomlTable.class).filter(it -> {
+			String tomlTableName = getTomlTableName(it);
+			return StringUtils.hasText(tomlTableName) && predicate.test(tomlTableName);
+		}).first() != null;
+	}
+
 	/**
-	 * Parse TOML {@code [versions]} table into a map of {@link PropertyValue}. We
-	 * treat versions semantically as properties.
+	 * Parse the TOML {@code [versions]} table into a map of {@link PropertyValue}.
+	 * We treat versions semantically as properties.
 	 *
 	 * @param tomlFile the file to parse.
-	 * @return map of {@link PropertyValue} mapped to its version key.
+	 * @return a map of version keys to {@link PropertyValue} descriptors.
 	 */
 	public static Map<String, PropertyValue> parseTomlVersions(PsiFile tomlFile) {
 
@@ -294,7 +291,7 @@ class TomlParser extends GradleParserSupport {
 		}
 
 		if (versionRef != null && versionLiteral == null && propertyResolver.containsProperty(versionRef)) {
-			PropertyValue p = propertyResolver.getElement(versionRef);
+			PropertyValue p = propertyResolver.getPropertyValue(versionRef);
 			versionLiteral = (TomlValue) p.element();
 		}
 
@@ -335,10 +332,11 @@ class TomlParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Returns the required text associated with {@code expression} or throw
-	 * {@link IllegalArgumentException} if the text could not be obtained.
+	 * Return the required text associated with {@code element}.
+	 *
+	 * @param element the PSI element to inspect.
 	 * @return the required text.
-	 * @throws IllegalArgumentException if the expression is not supported.
+	 * @throws IllegalArgumentException if the element is not supported.
 	 */
 	static String getRequiredText(PsiElement element) {
 
@@ -355,7 +353,8 @@ class TomlParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Returns the string content of a TOML literal.
+	 * Return the string content of a TOML literal.
+	 *
 	 * @param element the PSI element to extract the text from.
 	 * @return the string value.
 	 */
@@ -365,13 +364,8 @@ class TomlParser extends GradleParserSupport {
 			return key.getText();
 		}
 
-		if (element instanceof TomlLiteral lit) {
-			String text = lit.getText();
-			// Strip surrounding quotes
-			if ((text.startsWith("\"") && text.endsWith("\"")) || (text.startsWith("'") && text.endsWith("'"))) {
-				return text.length() > 2 ? text.substring(1, text.length() - 1) : "";
-			}
-			return text;
+		if (element instanceof TomlLiteral literal) {
+			return StringUtils.unquote(literal.getText());
 		}
 		return null;
 	}
@@ -398,8 +392,21 @@ class TomlParser extends GradleParserSupport {
 		}
 
 		/**
-		 * Return the required {@link TomlLiteral} for the version or throw
-		 * {@link IllegalArgumentException} if no literal is available.
+		 * Return the required module or throw {@link IllegalStateException} if the
+		 * module is not set.
+		 * @return the module value.
+		 * @throws IllegalStateException if no module is set.
+		 */
+		public String getRequiredModule() {
+			Assert.state(StringUtils.hasText(module), "No module set");
+			return module;
+		}
+
+		/**
+		 * Return the required version value.
+		 *
+		 * @return the version value.
+		 * @throws IllegalStateException if no version value is available.
 		 */
 		public TomlValue getRequiredVersionLiteral() {
 			Assert.state(versionLiteral != null, "No version literal set");
@@ -408,9 +415,9 @@ class TomlParser extends GradleParserSupport {
 
 		/**
 		 * Resolve a {@link GradleDependency} from this declaration.
-		 * {@link PropertyResolver}.
 		 * <p>As declarations can be incomplete (e.g. missing version information), make
 		 * sure to check {@link #isComplete()} before calling this method.
+		 *
 		 * @return the resolved dependency.
 		 */
 		public GradleDependency toDependency() {
@@ -424,15 +431,15 @@ class TomlParser extends GradleParserSupport {
 				return of(GradlePlugin.of(id), versionExpression);
 			}
 
-			return of(GradleDependency.parse(module).getId(), versionExpression);
+			return of(GradleDependency.parse(getRequiredModule()).getId(), versionExpression);
 		}
 
 		/**
-		 * Resolve a {@link GradleDependency} from this declaration.
-		 * {@link PropertyResolver}.
+		 * Resolve a {@link DependencySite} from this declaration.
 		 * <p>As declarations can be incomplete (e.g. missing version information), make
 		 * sure to check {@link #isComplete()} before calling this method.
-		 * @return the resolved dependency.
+		 *
+		 * @return the resolved dependency site.
 		 */
 		public DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
 

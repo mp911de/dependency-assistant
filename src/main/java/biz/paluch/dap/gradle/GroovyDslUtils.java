@@ -213,22 +213,19 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Returns the required text associated with {@code expression} or throw
-	 * {@link IllegalArgumentException} if the text could not be obtained.
+	 * Return the required text associated with {@code expression}.
 	 *
+	 * @param expression the expression to inspect.
 	 * @return the required text.
 	 * @throws IllegalArgumentException if the expression is not supported.
 	 */
 	static String getRequiredText(GrExpression expression) {
 
 		Assert.notNull(expression, "Expression must not be null");
-
 		String text = getText(expression);
-
 		if (text == null) {
 			throw new IllegalArgumentException(
-					"Unexpected expression: %s (%s)".formatted(expression, expression.getClass()
-							.getName()));
+					"No text available: %s (%s)".formatted(expression, expression.getClass().getName()));
 		}
 		return text;
 	}
@@ -278,9 +275,6 @@ class GroovyDslUtils {
 
 	/**
 	 * Returns the plain string content of a Groovy literal.
-	 * <p>For interpolated GStrings, use {@link #renderText(GrLiteral)} when the
-	 * caller intentionally wants the raw placeholder form such as
-	 * {@code org.foo:bar:${version}}.
 	 * @param literal the literal to extract the text from.
 	 * @return the string value.
 	 */
@@ -290,27 +284,10 @@ class GroovyDslUtils {
 			return s;
 		}
 
-		return renderText(literal);
-	}
-
-	/**
-	 * Renders the raw textual form of a Groovy literal, preserving any
-	 * {@code ${...}} placeholders from interpolated GStrings.
-	 * @param literal the literal to render.
-	 * @return the rendered literal text.
-	 */
-	public static String renderText(GrLiteral literal) {
-
-		if (literal.getValue() instanceof String s) {
-			return s;
-		}
-
 		StringBuilder builder = new StringBuilder();
-
 		for (PsiElement child : literal.getChildren()) {
 			builder.append(child.getText());
 		}
-
 		return builder.toString();
 	}
 
@@ -459,7 +436,7 @@ class GroovyDslUtils {
 				return null;
 			}
 
-			String resolvedId = properties.resolvePlaceholders(GroovyDslUtils.renderText(idLiteral));
+			String resolvedId = properties.resolvePlaceholders(GroovyDslUtils.getText(idLiteral));
 			if (!idPredicate.test(resolvedId)) {
 				return null;
 			}
@@ -474,7 +451,7 @@ class GroovyDslUtils {
 
 
 		public String getVersionAsString() {
-			return GroovyDslUtils.renderText(version);
+			return GroovyDslUtils.getText(version);
 		}
 
 		/**

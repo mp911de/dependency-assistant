@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 record MapPropertyResolver(Map<String, PropertyValue> properties) implements PropertyResolver {
 
 	@Override
-	public @Nullable PropertyValue getElement(String propertyKey) {
+	public @Nullable PropertyValue getPropertyValue(String propertyKey) {
 		return properties.get(propertyKey);
 	}
 

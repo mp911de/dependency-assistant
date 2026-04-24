@@ -32,8 +32,8 @@ import org.springframework.util.Assert;
  *
  * <p>Implementations may resolve from a single source or compose several
  * sources. A resolver is not required to expose declaration metadata through
- * {@link #getElement(String)} even if it can resolve the corresponding string
- * value through {@link #getProperty(String)}.
+ * {@link #getPropertyValue(String)} even if it can resolve the corresponding
+ * string value through {@link #getProperty(String)}.
  *
  * @author Mark Paluch
  * @see PropertyValue
@@ -68,7 +68,7 @@ public interface PropertyResolver {
 	 * @param propertyKey the property name
 	 * @return the declaration metadata, or {@code null} if not tracked
 	 */
-	default @Nullable PropertyValue getElement(String propertyKey) {
+	default @Nullable PropertyValue getPropertyValue(String propertyKey) {
 		return null;
 	}
 
@@ -85,6 +85,28 @@ public interface PropertyResolver {
 	}
 
 	/**
+	 * Compose this resolver with the given fallback resolver.
+	 * <p>This resolver is consulted first for both {@link #getProperty(String)} and
+	 * {@link #getPropertyValue(String)} lookups. The fallback resolver is only
+	 * queried if this resolver does not provide a value or declaration element.
+	 * @param fallback the resolver to consult if this resolver has no match
+	 * @return a composite resolver with this resolver as primary and
+	 * {@code fallback} as secondary
+	 */
+	default PropertyResolver withFallback(PropertyResolver fallback) {
+		return new CompositePropertyResolver(this, fallback);
+	}
+
+	/**
+	 * Return an empty {@link PropertyResolver}.
+	 * <p>The returned resolver never resolves properties or declaration metadata.
+	 * @return an empty property resolver.
+	 */
+	static PropertyResolver empty() {
+		return propertyKey -> null;
+	}
+
+	/**
 	 * Create a {@link PropertyResolver} backed by the given property map.
 	 * @param properties the property entries keyed by property name
 	 * @return a map-backed property resolver
@@ -93,16 +115,4 @@ public interface PropertyResolver {
 		return new MapPropertyResolver(properties);
 	}
 
-	/**
-	 * Compose this resolver with the given fallback resolver.
-	 * <p>This resolver is consulted first for both {@link #getProperty(String)} and
-	 * {@link #getElement(String)} lookups. The fallback resolver is only queried if
-	 * this resolver does not provide a value or declaration element.
-	 * @param fallback the resolver to consult if this resolver has no match
-	 * @return a composite resolver with this resolver as primary and
-	 * {@code fallback} as secondary
-	 */
-	default PropertyResolver andFallback(PropertyResolver fallback) {
-		return new CompositePropertyResolver(this, fallback);
-	}
 }

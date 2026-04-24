@@ -152,7 +152,7 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 			GradleDependency dependency = toDependency(propertyResolver);
 
 			if (StringUtils.hasText(versionProperty)) {
-				PropertyValue element = propertyResolver.getElement(versionProperty);
+				PropertyValue element = propertyResolver.getPropertyValue(versionProperty);
 				if (element != null) {
 					Optional<ArtifactVersion> version = ArtifactVersion.from(element.propertyValue());
 					if (version.isPresent()) {

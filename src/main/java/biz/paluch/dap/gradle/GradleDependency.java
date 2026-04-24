@@ -54,19 +54,7 @@ interface GradleDependency {
 	 * could not be parsed because of e.g. missing segments.
 	 */
 	static @Nullable GradleDependency parse(String gav) {
-		return parse(gav, new PropertyResolver() {
-
-			@Override
-			public boolean containsProperty(String key) {
-				return false;
-			}
-
-			@Override
-			public @Nullable String getProperty(String key) {
-				return null;
-			}
-
-		});
+		return parse(gav, PropertyResolver.empty());
 	}
 
 	/**
@@ -92,36 +80,24 @@ interface GradleDependency {
 	}
 
 	/**
-	 * Parse a Gradle IDV string {@code pluginId} or {@code pluginId:version} into a
-	 * {@code GradleDependency}.
+	 * Parse a Gradle plugin coordinate string {@code pluginId} or
+	 * {@code pluginId:version} into a {@code GradleDependency}.
 	 *
-	 * @param idv the GAV string.
+	 * @param idv the plugin coordinate string.
 	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
 	 * could not be parsed because of e.g. missing segments.
 	 */
 	static @Nullable GradleDependency parsePlugin(String idv) {
-		return parsePlugin(idv, new PropertyResolver() {
-
-			@Override
-			public boolean containsProperty(String key) {
-				return false;
-			}
-
-			@Override
-			public @Nullable String getProperty(String key) {
-				return null;
-			}
-
-		});
+		return parsePlugin(idv, PropertyResolver.empty());
 	}
 
 	/**
-	 * Parse a Gradle IDV string {@code pluginId} or {@code pluginId:version} into a
-	 * {@code GradleDependency}. Parsing resolves {@code groupId} and
-	 * {@code artifactId} and returns the {@link VersionSource} accordingly if the
-	 * version is a property.
+	 * Parse a Gradle plugin coordinate string {@code pluginId} or
+	 * {@code pluginId:version} into a {@code GradleDependency}. Parsing resolves
+	 * {@code groupId} and {@code artifactId} and returns the {@link VersionSource}
+	 * accordingly if the version is a property.
 	 *
-	 * @param gav the GAV string.
+	 * @param gav the plugin coordinate string.
 	 * @param propertyResolver the property resolver to resolve properties.
 	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
 	 * could not be parsed because of e.g. missing segments.
@@ -135,6 +111,7 @@ interface GradleDependency {
 	/**
 	 * Create a new {@code GradleDependency} from group, artifact, and version
 	 * strings.
+	 *
 	 * @param g groupId.
 	 * @param a artifactId.
 	 * @param v version, which may be {@code null} or a property reference like
@@ -142,12 +119,13 @@ interface GradleDependency {
 	 * @return the created {@code GradleDependency}.
 	 */
 	static GradleDependency of(String g, String a, @Nullable String v) {
-		return of(g, a, v, key -> null);
+		return of(g, a, v, PropertyResolver.empty());
 	}
 
 	/**
 	 * Create a new {@code GradleDependency} from group, artifact, and version
 	 * strings.
+	 *
 	 * @param g groupId.
 	 * @param a artifactId.
 	 * @param v version, which may be {@code null} or a property reference like
@@ -172,7 +150,7 @@ interface GradleDependency {
 	}
 
 	/**
-	 * Resolve the artifact id from the given group and artifact.
+	 * Resolve the {@link ArtifactId} from the given group and artifact values.
 	 */
 	public static ArtifactId getArtifactId(String g, String a, PropertyResolver resolver) {
 
@@ -186,6 +164,7 @@ interface GradleDependency {
 	/**
 	 * Create a new {@code GradleDependency} using {@link ArtifactId} and a version
 	 * to determine whether it is a version-managed artifact.
+	 *
 	 * @param artifactId artifact identifier.
 	 * @param versionExpression the property expression defining the version.
 	 * @return a new {@code GradleDependency}.
@@ -202,9 +181,10 @@ interface GradleDependency {
 
 	/**
 	 * Create a new {@code GradleDependency} with the same artifact but a different
-	 * version source.
-	 * @param versionExpression
-	 * @return
+	 * version expression.
+	 *
+	 * @param versionExpression the version expression to apply.
+	 * @return a new {@code GradleDependency} with the updated version expression.
 	 */
 	default GradleDependency withVersion(PropertyExpression versionExpression) {
 		return of(getId(), versionExpression);

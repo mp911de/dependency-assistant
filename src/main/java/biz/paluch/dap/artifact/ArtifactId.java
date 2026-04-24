@@ -18,8 +18,8 @@ package biz.paluch.dap.artifact;
 import java.util.Comparator;
 
 /**
- * Maven artifact coordinates.
- * 
+ * Artifact coordinates identified by {@code groupId} and {@code artifactId}.
+ *
  * @author Mark Paluch
  */
 public interface ArtifactId extends Comparable<ArtifactId> {

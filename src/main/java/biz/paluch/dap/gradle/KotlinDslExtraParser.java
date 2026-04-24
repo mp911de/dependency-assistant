@@ -43,7 +43,7 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Parses {@code extra["key"]} property declarations from a Kotlin DSL file to
+	 * Parse {@code extra["key"]} property declarations from a Kotlin DSL file to
 	 * {@link PropertyValue} for declarations of the form:
 	 * <ul>
 	 * <li>{@code extra["key"] = "value"} and
@@ -55,7 +55,7 @@ class KotlinDslExtraParser {
 	 * can be declared inline in {@code build.gradle.kts} and referenced via
 	 * {@code property("key")} or {@code extra["key"]}.
 	 *
-	 * @param file the Kotlin build script ({@code .kts})
+	 * @param file the Kotlin build script ({@code .kts}).
 	 * @return a map of property key to literal value.
 	 */
 	public static Map<String, PropertyValue> parseExtraProperties(PsiFile file) {
@@ -77,8 +77,8 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Collects {@code extra["key"]} property declarations from a Kotlin DSL file,
-	 * to a map of property key to literal value, for declarations of the form:
+	 * Collect {@code extra["key"]} property declarations from a Kotlin DSL file, to
+	 * a map of property key to literal value, for declarations of the form:
 	 * <ul>
 	 * <li>{@code extra["key"] = "value"} and
 	 * {@code extra["key"] = """value"""}</li>
@@ -89,7 +89,7 @@ class KotlinDslExtraParser {
 	 * can be declared inline in {@code build.gradle.kts} and referenced via
 	 * {@code property("key")} or {@code extra["key"]}.
 	 *
-	 * @param file the Kotlin build script ({@code .kts})
+	 * @param file the Kotlin build script ({@code .kts}).
 	 * @return a map of property key to literal value.
 	 */
 	public static Map<String, String> getExtraProperties(PsiFile file) {
@@ -100,7 +100,7 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Parses top-level {@code val} declarations from a Kotlin DSL file and returns
+	 * Parse top-level {@code val} declarations from a Kotlin DSL file and return
 	 * them as {@link PropertyValue} instances.
 	 * <p>Handles:
 	 * <ul>
@@ -112,9 +112,9 @@ class KotlinDslExtraParser {
 	 * <li>{@code val key by extra("value")} — value from the {@code extra} delegate
 	 * argument</li>
 	 * </ul>
-	 * <p>We do consider {@code val} declarations as local properties.
+	 * <p>This method treats top-level {@code val} declarations as local properties.
 	 *
-	 * @param file the Kotlin build script ({@code .kts})
+	 * @param file the Kotlin build script ({@code .kts}).
 	 * @return a map of variable name to literal value element.
 	 */
 	public static Map<String, PropertyValue> parseValProperties(PsiFile file) {
@@ -166,8 +166,8 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * If {@code expr} assigns a resolvable literal to {@code extra["key"]}, returns
-	 * that key-value pair.
+	 * Return the resolved key-value pair when {@code expr} assigns a resolvable
+	 * literal to {@code extra["key"]}.
 	 */
 	private static @Nullable PropertyValue parseExtra(KtBinaryExpression expr) {
 
@@ -233,6 +233,7 @@ class KotlinDslExtraParser {
 
 	/**
 	 * Value literal to highlight for a given {@code extra["…"] = …} assignment.
+	 *
 	 * @param assignment the right side assignment expression to analyze.
 	 */
 	public static @Nullable KtStringTemplateExpression getLiteralElement(@Nullable KtExpression assignment) {

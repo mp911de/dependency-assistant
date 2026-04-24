@@ -252,7 +252,7 @@ class GradlePropertyResolver implements PropertyResolver {
 	@Override
 	public @Nullable String getProperty(String key) {
 
-		PropertyValue element = getElement(key);
+		PropertyValue element = getPropertyValue(key);
 		if (element != null) {
 			return element.propertyValue();
 		}
@@ -260,7 +260,7 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	@Override
-	public @Nullable PropertyValue getElement(String key) {
+	public @Nullable PropertyValue getPropertyValue(String key) {
 		return propertyElements.get(key);
 	}
 

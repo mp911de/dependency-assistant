@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for {@link PropertyResolverUtil}.
- * 
+ *
  * @author Mark Paluch
  */
 class PropertyResolverUtilUnitTests {
@@ -72,6 +72,16 @@ class PropertyResolverUtilUnitTests {
 	void resolveInterpolated_emptyValueLeftAsEmpty() {
 		assertThat(PropertyResolverUtil.resolveInterpolated("${a}", wrap(Map.of("a", ""))))
 				.isEmpty();
+	}
+
+	@Test
+	void emptyResolverDoesNotResolveProperties() {
+
+		PropertyResolver resolver = PropertyResolver.empty();
+
+		assertThat(resolver.containsProperty("missing")).isFalse();
+		assertThat(resolver.getProperty("missing")).isNull();
+		assertThat(resolver.getPropertyValue("missing")).isNull();
 	}
 
 	@Test

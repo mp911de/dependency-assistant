@@ -26,8 +26,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
 /**
- * Service that runs a dependency version check for a Gradle project. Mirrors the structure of
- * {@code DependencyCheckService} for Maven but uses {@link GradleDependencyCollector} for artifact collection and
+ * Service that runs a dependency version check for a Gradle project.
+ * <p>Mirrors the structure of {@code DependencyCheckService} for Maven but uses
+ * {@link GradleDependencyCollector} for artifact collection and
  * {@link GradleProjectContext} for repository sources.
  *
  * @author Mark Paluch
@@ -46,7 +47,7 @@ public class GradleDependencyCheckService extends DependencyCheckSupport {
 	}
 
 	/**
-	 * Runs the full version check for the Gradle build file currently open in the editor.
+	 * Run the full version check for the given Gradle build file.
 	 */
 	public DependencyUpdates runCheck(ProgressIndicator indicator, PsiFile buildFile) {
 
@@ -62,7 +63,8 @@ public class GradleDependencyCheckService extends DependencyCheckSupport {
 	}
 
 	/**
-	 * Collects all dependency declarations from the given Gradle build file (and related files in the same project root).
+	 * Collect all dependency declarations from the given Gradle build file and
+	 * related files in the same project root.
 	 */
 	@Override
 	public DependencyCollector collectArtifacts(PsiFile buildFile) {

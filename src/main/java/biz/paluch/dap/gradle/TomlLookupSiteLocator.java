@@ -25,7 +25,7 @@ import org.toml.lang.psi.TomlLiteral;
  *
  * @author Mark Paluch
  */
-class TomlVersionSiteLocator implements LookupSiteLocator<TomlLiteral> {
+class TomlLookupSiteLocator implements LookupSiteLocator<TomlLiteral> {
 
 	@Override
 	public LookupSite locate(TomlLiteral literal) {

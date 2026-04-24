@@ -13,41 +13,73 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A Gradle version constraint such as {@code prefer} or {@code strictly}.
+ * Contract for a Gradle version constraint such as {@code prefer} or
+ * {@code strictly}.
+ *
+ * <p>Gradle allows dependency declarations to express version intent through
+ * named constraint operators within a {@code version { ... }} block. This
+ * interface models the extracted constraint value and exposes common helpers
+ * used by parsers and lookup-site infrastructure.
+ *
+ * <p>Implementations are expected to provide the raw version text while the
+ * default methods expose higher-level predicates for text presence and range
+ * detection.
  *
  * @author Mark Paluch
  */
 interface GradleVersionConstraint {
 
+	/**
+	 * Constraint name for Gradle's {@code prefer(...)} version declaration.
+	 */
 	String PREFER = "prefer";
 
+	/**
+	 * Constraint name for Gradle's {@code strictly(...)} version declaration.
+	 */
 	String STRICTLY = "strictly";
 
 	/**
-	 * Return whether the given call is a constraint.
-	 */
-	static boolean isConstraint(@Nullable String call) {
-		return PREFER.equals(call) || STRICTLY.equals(call);
-	}
-
-	/**
-	 * Return the version text.
+	 * Return the declared version text for this constraint.
+	 *
+	 * @return the declared version text.
 	 */
 	String getVersion();
 
+	/**
+	 * Return whether this constraint declares non-empty version text.
+	 *
+	 * @return {@code true} if {@link #getVersion()} contains text.
+	 */
 	default boolean hasText() {
 		return StringUtils.hasText(getVersion());
 	}
 
+	/**
+	 * Return whether this constraint declares a version range.
+	 *
+	 * @return {@code true} if the declared version uses Gradle range syntax.
+	 * @see GradleUtils#isVersionRange(String)
+	 */
 	default boolean isRange() {
 		return GradleUtils.isVersionRange(getVersion());
+	}
+
+	/**
+	 * Return whether the given call name represents a supported Gradle version
+	 * constraint.
+	 *
+	 * @param call the call name to inspect.
+	 * @return {@code true} if the call matches a supported constraint name.
+	 */
+	static boolean isConstraint(@Nullable String call) {
+		return PREFER.equals(call) || STRICTLY.equals(call);
 	}
 
 }
