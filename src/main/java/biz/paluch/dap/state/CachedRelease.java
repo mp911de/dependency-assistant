@@ -23,6 +23,15 @@ import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * Persistent representation of a cached artifact release.
+ * <p>The serialized form stores only the release version and an optional
+ * ISO-8601 date string. Conversion back to the domain {@link Release} type is
+ * performed lazily and memoized for repeated access within the same JVM
+ * instance.
+ *
+ * @author Mark Paluch
+ */
 @Tag("release")
 public class CachedRelease {
 
@@ -34,14 +43,29 @@ public class CachedRelease {
 
 	private volatile @Nullable Release release;
 
+	/**
+	 * Create an empty release entry for XML deserialization.
+	 */
 	public CachedRelease() {
 	}
 
+	/**
+	 * Create a release entry with the given serialized values.
+	 *
+	 * @param version the release version.
+	 * @param date the optional release date in ISO-8601 local-date form.
+	 */
 	public CachedRelease(String version, @Nullable String date) {
 		this.version = version;
 		this.date = date;
 	}
 
+	/**
+	 * Create a cached representation of the given release.
+	 *
+	 * @param release the domain release to convert.
+	 * @return the corresponding cached release representation.
+	 */
 	public static CachedRelease from(Release release) {
 		if (release.releaseDate() != null) {
 			return new CachedRelease(release.version().toString(), release.releaseDate().toLocalDate().toString());
@@ -49,6 +73,12 @@ public class CachedRelease {
 		return new CachedRelease(release.version().toString(), null);
 	}
 
+	/**
+	 * Return this entry as a domain {@link Release}.
+	 * <p>The returned instance is memoized after the first conversion.
+	 *
+	 * @return the corresponding release.
+	 */
 	@Transient
 	public Release toRelease() {
 
@@ -60,11 +90,21 @@ public class CachedRelease {
 		return cachedRelease;
 	}
 
+	/**
+	 * Return the serialized release version.
+	 *
+	 * @return the release version.
+	 */
 	@Attribute
 	public String version() {
 		return version;
 	}
 
+	/**
+	 * Return the serialized release date.
+	 *
+	 * @return the optional ISO-8601 local-date string.
+	 */
 	@Attribute
 	public @Nullable String date() {
 		return date;

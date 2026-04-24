@@ -24,6 +24,13 @@ import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.XCollection;
 
+/**
+ * Persistent descriptor of a project property and the artifacts it governs.
+ * <p>A property can be merely declared, actually used as a version source, or
+ * both. Artifact associations are stored without duplicates.
+ *
+ * @author Mark Paluch
+ */
 @Tag("property")
 public class Property {
 
@@ -33,12 +40,26 @@ public class Property {
 	@XCollection(propertyElementName = "artifacts", elementName = "artifact",
 			style = XCollection.Style.v2) private final List<CachedArtifact> artifacts = new ArrayList<>();
 
+	/**
+	 * Create an empty property entry for XML deserialization.
+	 */
 	public Property() {}
 
+	/**
+	 * Create a property entry with the given name and no artifact associations.
+	 *
+	 * @param name the property name.
+	 */
 	public Property(String name) {
 		this(name, new ArrayList<>());
 	}
 
+	/**
+	 * Create a property entry with the given name and artifact associations.
+	 *
+	 * @param name the property name.
+	 * @param artifacts the initial artifact associations.
+	 */
 	public Property(String name, List<CachedArtifact> artifacts) {
 		this.name = name;
 		synchronized (this.artifacts) {
@@ -46,6 +67,12 @@ public class Property {
 		}
 	}
 
+	/**
+	 * Associate this property with the given artifact unless such an association is
+	 * already present.
+	 *
+	 * @param artifactId the artifact to associate.
+	 */
 	public void addArtifact(ArtifactId artifactId) {
 
 		synchronized (this.artifacts) {
@@ -60,27 +87,58 @@ public class Property {
 		}
 	}
 
+	/**
+	 * Return whether this property is currently used as a version source.
+	 *
+	 * @return {@code true} if the property is used.
+	 */
 	public boolean isUsed() {
 		return used;
 	}
 
+	/**
+	 * Mark whether this property is used as a version source.
+	 *
+	 * @param used whether the property is used.
+	 */
 	public void setUsed(boolean used) {
 		this.used = used;
 	}
 
+	/**
+	 * Return whether this property is declared in the analyzed project.
+	 *
+	 * @return {@code true} if the property is declared.
+	 */
 	public boolean isDeclared() {
 		return declared;
 	}
 
+	/**
+	 * Mark whether this property is declared in the analyzed project.
+	 *
+	 * @param declared whether the property is declared.
+	 */
 	public void setDeclared(boolean declared) {
 		this.declared = declared;
 	}
 
+	/**
+	 * Return the property name.
+	 *
+	 * @return the property name.
+	 */
 	@Tag
 	public String name() {
 		return name;
 	}
 
+	/**
+	 * Return the backing artifact associations.
+	 * <p>This is the live storage list used for persistence and in-place mutation.
+	 *
+	 * @return the mutable backing artifact associations.
+	 */
 	public List<CachedArtifact> artifacts() {
 		return artifacts;
 	}
@@ -107,6 +165,11 @@ public class Property {
 		return "Property[" + "name=" + name + ", " + "artifacts=" + artifacts + ']';
 	}
 
+	/**
+	 * Return whether this property is associated with at least one artifact.
+	 *
+	 * @return {@code true} if at least one artifact association is present.
+	 */
 	public boolean hasArtifacts() {
 		return !artifacts.isEmpty();
 	}

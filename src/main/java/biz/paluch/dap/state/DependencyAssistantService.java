@@ -31,7 +31,19 @@ import com.intellij.util.xmlb.XmlSerializerUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Project-level service.
+ * Project-level service exposing persistent cache state and runtime dependency
+ * state.
+ * <p>The service has two distinct responsibilities:
+ * <ul>
+ * <li>persisting the durable {@link Cache} through IntelliJ's
+ * {@link PersistentStateComponent} contract, and</li>
+ * <li>holding in-memory {@link DependencyCollector dependency collectors} for
+ * the projects currently analyzed in this IDE session.</li>
+ * </ul>
+ * Runtime dependency information is intentionally not part of the persisted
+ * state and is lost when the IDE process is restarted.
+ *
+ * @author Mark Paluch
  */
 @State(name = "DependencyAssistant", storages = @Storage("dependency-assistant.xml"), defaultStateAsResource = true)
 public class DependencyAssistantService implements PersistentStateComponent<DependencyAssistantState> {
@@ -41,30 +53,61 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 	private final Map<ProjectId, DependencyCollector> dependencies = new ConcurrentHashMap<>();
 
 	/**
-	 * Returns the service instance for the given project.
+	 * Return the project-scoped service instance.
+	 *
+	 * @param project the IntelliJ project.
+	 * @return the corresponding service instance.
 	 */
 	public static DependencyAssistantService getInstance(Project project) {
 		return project.getService(DependencyAssistantService.class);
 	}
 
+	/**
+	 * Return the state object managed by IntelliJ persistence.
+	 *
+	 * @return the persistent service state.
+	 */
 	@Override
 	public DependencyAssistantState getState() {
 		return state;
 	}
 
+	/**
+	 * Return the persistent cache backing this service.
+	 *
+	 * @return the current cache instance.
+	 */
 	public Cache getCache() {
 		return state.getCache();
 	}
 
+	/**
+	 * Replace the persistent cache backing this service.
+	 *
+	 * @param cache the cache to store.
+	 */
 	public void setCache(Cache cache) {
 		state.setCache(cache);
 	}
 
+	/**
+	 * Copy the persisted state into this service instance.
+	 *
+	 * @param state the state loaded by IntelliJ persistence.
+	 */
 	@Override
 	public void loadState(DependencyAssistantState state) {
 		XmlSerializerUtil.copyBean(state, this.state);
 	}
 
+	/**
+	 * Return a project-state facade for the given project identity.
+	 * <p>The returned facade is backed by the current service instance and reflects
+	 * subsequent cache or dependency updates.
+	 *
+	 * @param identity the project identity to expose.
+	 * @return the corresponding project-state facade.
+	 */
 	public ProjectState getProjectState(ProjectId identity) {
 		return new DefaultProjectState(identity);
 	}
@@ -116,13 +159,6 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 		@Override
 		public @Nullable ProjectProperty findProjectProperty(String propertyName, Predicate<Property> filter) {
 			return getCache().findProperty(propertyName, filter);
-		}
-
-		@Override
-		public @Nullable ArtifactId findArtifactByPropertyName(String versionPropertyName) {
-
-			Property property = findProperty(versionPropertyName);
-			return property != null ? property.artifacts().getFirst().toArtifactId() : null;
 		}
 
 	}

@@ -15,16 +15,19 @@
  */
 package biz.paluch.dap.state;
 
+import java.util.function.Predicate;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-
-import java.util.function.Predicate;
-
 import org.jspecify.annotations.Nullable;
 
 /**
- * Interface for project state.
+ * Runtime view of dependency and property state for a single analyzed project.
+ * <p>Implementations combine transient dependency analysis results with
+ * persistent property correlations from the plugin cache. Unless stated
+ * otherwise, lookup methods return {@code null} when no matching state is
+ * currently available.
  *
  * @author Mark Paluch
  */
@@ -32,27 +35,39 @@ public interface ProjectState {
 
 	/**
 	 * Find a dependency by its artifact coordinates.
+	 *
+	 * @param artifactId the dependency coordinates to locate.
+	 * @return the matching dependency, or {@code null} if the current runtime state
+	 * does not contain it.
 	 */
 	@Nullable
 	Dependency findDependency(ArtifactId artifactId);
 
 	/**
-	 * Set the dependencies of the project.
+	 * Replace the current runtime dependency state of this project.
+	 *
+	 * @param collector the freshly analyzed dependency collector.
 	 */
 	void setDependencies(DependencyCollector collector);
 
 	/**
-	 * Check whether the project has dependencies.
+	 * Return whether dependencies are available.
+	 *
+	 * @return {@code true} if dependencies were set and not yet invalidated.
 	 */
 	boolean hasDependencies();
 
 	/**
-	 * Invalidate all dependencies.
+	 * Discard the current runtime dependency state.
 	 */
 	void invalidateDependencies();
 
 	/**
-	 * Find a property by its name that is used to define an artifact version.
+	 * Find a property by name that is associated with at least one artifact.
+	 *
+	 * @param propertyName the property name to locate.
+	 * @return the matching property, or {@code null} if none is known or no
+	 * artifact correlation exists.
 	 */
 	@Nullable
 	default Property findProperty(String propertyName) {
@@ -60,13 +75,22 @@ public interface ProjectState {
 	}
 
 	/**
-	 * Find a property by its name.
+	 * Find a property by name using the given filter.
+	 *
+	 * @param propertyName the property name to locate.
+	 * @param filter the predicate that must accept the matching property.
+	 * @return the matching property, or {@code null}.
 	 */
 	@Nullable
 	Property findProperty(String propertyName, Predicate<Property> filter);
 
 	/**
-	 * Find a property by its name that is used to define an artifact version.
+	 * Find a project property by name that is associated with at least one
+	 * artifact.
+	 *
+	 * @param propertyName the property name to locate.
+	 * @return the matching project property, or {@code null} if none is known or no
+	 * artifact correlation exists.
 	 */
 
 	default @Nullable ProjectProperty findProjectProperty(String propertyName) {
@@ -74,15 +98,13 @@ public interface ProjectState {
 	}
 
 	/**
-	 * Find a property by its name that is used to define an artifact version.
+	 * Find a project property by name using the given filter.
+	 *
+	 * @param propertyName the property name to locate.
+	 * @param filter the predicate that must accept the matching property.
+	 * @return the matching project property, or {@code null}.
 	 */
 	@Nullable
 	ProjectProperty findProjectProperty(String propertyName, Predicate<Property> filter);
-
-	/**
-	 * Find an artifact by its versionPropertyName name used to define the version.
-	 */
-	@Nullable
-	ArtifactId findArtifactByPropertyName(String versionPropertyName);
 
 }

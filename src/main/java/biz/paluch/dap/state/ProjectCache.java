@@ -64,41 +64,87 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		this.descriptor = identity.buildFile();
 	}
 
+	/**
+	 * Return the cached artifact identifier of the owning project, if known.
+	 *
+	 * @return the project artifact identifier, or {@code null}.
+	 */
 	public @Nullable String getArtifactId() {
 		return artifactId;
 	}
 
+	/**
+	 * Return the cached artifact identifier or an empty string if absent.
+	 *
+	 * @return a non-{@code null} artifact identifier representation.
+	 */
 	@Transient
 	public String getSafeArtifactId() {
 		return StringUtils.hasText(artifactId) ? artifactId : "";
 	}
 
+	/**
+	 * Set the cached artifact identifier of the owning project.
+	 *
+	 * @param artifactId the artifact identifier to store.
+	 */
 	public void setArtifactId(String artifactId) {
 		this.artifactId = artifactId;
 	}
 
+	/**
+	 * Return the cached group identifier of the owning project, if known.
+	 *
+	 * @return the project group identifier, or {@code null}.
+	 */
 	public @Nullable String getGroupId() {
 		return groupId;
 	}
 
+	/**
+	 * Return the cached group identifier or an empty string if absent.
+	 *
+	 * @return a non-{@code null} group identifier representation.
+	 */
 	@Transient
 	public String getSafeGroupId() {
 		return StringUtils.hasText(groupId) ? groupId : "";
 	}
 
+	/**
+	 * Set the cached group identifier of the owning project.
+	 *
+	 * @param groupId the group identifier to store.
+	 */
 	public void setGroupId(String groupId) {
 		this.groupId = groupId;
 	}
 
+	/**
+	 * Return the descriptor used to distinguish the owning project entry, typically
+	 * the build file path.
+	 *
+	 * @return the descriptor, or {@code null}.
+	 */
 	public @Nullable String getDescriptor() {
 		return descriptor;
 	}
 
+	/**
+	 * Return the descriptor or an empty string if absent.
+	 *
+	 * @return a non-{@code null} descriptor representation.
+	 */
 	@Transient
 	public String getSafeDescriptor() {
 		return StringUtils.hasText(descriptor) ? descriptor : "";
 	}
 
+	/**
+	 * Set the descriptor used to distinguish the owning project entry.
+	 *
+	 * @param descriptor the descriptor to store.
+	 */
 	public void setDescriptor(String descriptor) {
 		this.descriptor = descriptor;
 	}
@@ -112,7 +158,17 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	}
 
 	/**
-	 * Update the cache with the given properties.
+	 * Set this project's property correlations from the given dependency collector.
+	 * <p>The resulting property set contains both:
+	 * <ul>
+	 * <li>properties that are used as version sources for one or more declarations,
+	 * and</li>
+	 * <li>properties that are merely declared in the project and therefore have no
+	 * associated artifacts yet.</li>
+	 * </ul>
+	 *
+	 * @param collector the collector whose declarations and properties should be
+	 * used.
 	 */
 	@Transient
 	public void setProperties(DependencyCollector collector) {
@@ -146,6 +202,14 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		}
 	}
 
+	/**
+	 * Return the cached property with the given name.
+	 * <p>If this instance was deserialized and the transient lookup map is not yet
+	 * in sync with the persisted list, the lookup map is rebuilt first.
+	 *
+	 * @param propertyName the property name.
+	 * @return the matching property, or {@code null} if none is known.
+	 */
 	@Transient
 	public @Nullable Property getProperty(String propertyName) {
 
@@ -160,6 +224,12 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		return propertyMap.get(propertyName);
 	}
 
+	/**
+	 * Return whether this entry represents the given project identity.
+	 *
+	 * @param identity the project identity to compare with.
+	 * @return {@code true} if group, artifact, and descriptor all match.
+	 */
 	public boolean matches(ProjectId identity) {
 
 		if (!ObjectUtils.nullSafeEquals(this.descriptor, identity.buildFile())) {
@@ -182,6 +252,11 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		return COMPARATOR.compare(o1, o2);
 	}
 
+	/**
+	 * Return this cache entry's project identity.
+	 *
+	 * @return the corresponding project identity.
+	 */
 	public ProjectId getId() {
 		return ProjectId.of(groupId, artifactId, descriptor);
 	}
