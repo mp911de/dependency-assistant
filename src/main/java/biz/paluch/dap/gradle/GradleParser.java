@@ -93,7 +93,7 @@ class GradleParser extends GradleParserSupport {
 		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties)
 				.withFallback(global);
 
-		getCollector().addProperties(extProperties.keySet());
+		getCollector().addProperties(properties.keySet());
 
 		SyntaxTraverser.psiTraverser(file).filter(GrMethodCall.class)
 				.forEach(call -> handleGroovyCall(call, propertyResolver));
@@ -272,7 +272,7 @@ class GradleParser extends GradleParserSupport {
 		VersionSource versionSource;
 		if (StringUtils.hasText(versionValue.versionProperty) || StringUtils.hasText(versionValue.version)) {
 			PropertyExpression expression = StringUtils.hasText(versionValue.versionProperty)
-					? PropertyExpression.property(versionValue.version)
+					? PropertyExpression.property(versionValue.versionProperty)
 					: PropertyExpression.from(versionValue.version);
 			versionSource = expression.asVersionSource();
 			if (expression.isProperty()) {

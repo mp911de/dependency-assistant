@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
 
@@ -51,13 +52,27 @@ class TomlLookupSiteLocator implements LookupSiteLocator<TomlLiteral> {
 				return LookupSite.absent();
 			}
 
-			GradlePropertyResolver propertyResolver = GradlePropertyResolver.forFile(keyValue.getContainingFile());
-			TomlParser.TomlDependencyDeclaration declaration = TomlParser.parseTomlEntry(keyValue, propertyResolver);
+			TomlKeyValue declarationKeyValue = keyValue;
+			if (isInlineVersionLiteral(literal)) {
+				TomlInlineTable inlineTable = PsiTreeUtil.getParentOfType(literal, TomlInlineTable.class);
+				if (inlineTable == null) {
+					return LookupSite.absent();
+				}
+				declarationKeyValue = PsiTreeUtil.getParentOfType(inlineTable, TomlKeyValue.class);
+				if (declarationKeyValue == null) {
+					return LookupSite.absent();
+				}
+			}
+
+			GradlePropertyResolver propertyResolver = GradlePropertyResolver
+					.forFile(declarationKeyValue.getContainingFile());
+			TomlParser.TomlDependencyDeclaration declaration = TomlParser.parseTomlEntry(declarationKeyValue,
+					propertyResolver);
 			if (!declaration.isComplete() || declaration.versionLiteral() != literal) {
 				return LookupSite.absent();
 			}
 
-			return LookupSite.from(declaration.toDependencySite(keyValue, literal));
+			return LookupSite.from(declaration.toDependencySite(declarationKeyValue, literal));
 		}
 
 		return LookupSite.absent();

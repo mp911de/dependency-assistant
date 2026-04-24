@@ -225,6 +225,15 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	}
 
 	/**
+	 * Return this cache entry's project identity.
+	 *
+	 * @return the corresponding project identity.
+	 */
+	public ProjectId getId() {
+		return ProjectId.of(groupId, artifactId, descriptor);
+	}
+
+	/**
 	 * Return whether this entry represents the given project identity.
 	 *
 	 * @param identity the project identity to compare with.
@@ -252,13 +261,13 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		return COMPARATOR.compare(o1, o2);
 	}
 
-	/**
-	 * Return this cache entry's project identity.
-	 *
-	 * @return the corresponding project identity.
-	 */
-	public ProjectId getId() {
-		return ProjectId.of(groupId, artifactId, descriptor);
+	@Override
+	public String toString() {
+		return "ProjectCache{" +
+				"artifactId='" + artifactId + '\'' +
+				", groupId='" + groupId + '\'' +
+				", descriptor='" + descriptor + '\'' +
+				'}';
 	}
 
 }

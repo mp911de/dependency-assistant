@@ -22,8 +22,6 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
-import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
@@ -63,28 +61,6 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 		}
 
 		getCollector().registerDeclaration(site.getArtifactId(), declarationSource, site.getVersionSource());
-	}
-
-	void register(GradleDependency dependency, DeclarationSource declarationSource, PropertyResolver propertyResolver) {
-
-		if (dependency instanceof PropertyManagedDependency pmd) {
-
-			String version = propertyResolver.getProperty(pmd.property());
-			if (StringUtils.hasText(version)) {
-				ArtifactVersion.from(version)
-						.ifPresent(it -> getCollector().registerUsage(pmd.id(), it, declarationSource,
-								pmd.versionSource()));
-			}
-		}
-
-		if (dependency instanceof SimpleDependency sd) {
-
-			ArtifactVersion.from(sd.version())
-					.ifPresent(it -> getCollector().registerUsage(sd.id(), it, declarationSource,
-							sd.versionSource()));
-		}
-
-		getCollector().registerDeclaration(dependency.getId(), declarationSource, dependency.getVersionSource());
 	}
 
 	/**

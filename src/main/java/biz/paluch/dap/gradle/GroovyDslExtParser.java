@@ -153,7 +153,6 @@ class GroovyDslExtParser {
 				.flatMap(SyntaxTraverser::psiTraverser)
 				.forEach(child -> {
 
-
 					// Assignment form: springVersion = '6.1.0'
 					if (child instanceof GrAssignmentExpression assign && !assign.isOperatorAssignment()) {
 						GrExpression lhs = assign.getLValue();

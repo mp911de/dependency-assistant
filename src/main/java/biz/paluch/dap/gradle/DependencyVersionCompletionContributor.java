@@ -49,6 +49,10 @@ public class DependencyVersionCompletionContributor extends CompletionContributo
 		if (element == null) {
 			element = parameters.getPosition();
 		}
+		element = GradleCompletionSupport.findLookupElement(file, element);
+		if (element == null) {
+			return;
+		}
 
 		VersionUpgradeLookupService lookupService = new VersionUpgradeLookupService(file.getProject(), file);
 		Dependency dependency = lookupService.findDependency(element);
@@ -59,8 +63,8 @@ public class DependencyVersionCompletionContributor extends CompletionContributo
 		Project project = file.getProject();
 		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
 
-		// Show all cached versions on a second invocation (Ctrl+Space twice)
-		CompletionResultSet versionsResult = parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("") : result;
+		CompletionResultSet versionsResult = GradleCompletionSupport.versionResultSet(parameters, result, file,
+				element);
 
 		List<ArtifactRelease> options = SuggestionProviderUtil.findOptions(dependency.getArtifactId(), service.getCache());
 		if (options.isEmpty()) {

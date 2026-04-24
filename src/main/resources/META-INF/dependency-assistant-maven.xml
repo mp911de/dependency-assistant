@@ -1,0 +1,35 @@
+<idea-plugin>
+	<extensions defaultExtensionNs="com.intellij">
+		<postStartupActivity implementation="biz.paluch.dap.maven.MavenPostStartup"/>
+		<completion.contributor
+				language="XML"
+				implementationClass="biz.paluch.dap.maven.DependencyVersionCompletionContributor"/>
+		<completion.contributor
+				language="XML"
+				implementationClass="biz.paluch.dap.maven.PropertyVersionCompletionContributor"/>
+		<annotator language="XML"
+		           implementationClass="biz.paluch.dap.maven.NewerVersionAnnotator"/>
+		<codeInsight.lineMarkerProvider
+				language="XML"
+				implementationClass="biz.paluch.dap.maven.NewerVersionLineMarkerProvider"/>
+		<platform.backend.documentation.psiTargetProvider
+				implementation="biz.paluch.dap.maven.PropertyVersionDocumentationProvider"/>
+		<intentionAction>
+			<category>Maven</category>
+			<className>biz.paluch.dap.maven.UpdateMavenDependenciesIntention</className>
+		</intentionAction>
+	</extensions>
+
+	<actions>
+		<action id="biz.paluch.dap.maven.UpdateDependencies"
+		        class="biz.paluch.dap.maven.UpdateDependenciesAction"
+		        text="Update Maven Plugins and Dependencies…">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+		<action id="biz.paluch.dap.maven.UpdateReleaseCache"
+		        class="biz.paluch.dap.maven.UpdateReleaseCacheAction"
+		        text="Update Dependency Releases">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+	</actions>
+</idea-plugin>

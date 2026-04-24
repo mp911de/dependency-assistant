@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.function.BiConsumer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -49,27 +48,10 @@ public class DependencyCollector {
 	}
 
 	/**
-	 * Execute the given callback for each dependency.
-	 */
-	public void doWithDeclarations(BiConsumer<ArtifactId, DeclaredDependency> callback) {
-		declarations.forEach(callback);
-	}
-
-	/**
 	 * Register a dependency usage.
 	 */
 	public void registerUsage(ArtifactId artifactId, ArtifactVersion currentVersion,
 			DeclarationSource declarationSource, VersionSource versionSource) {
-		usages.computeIfAbsent(artifactId, ac -> new Dependency(ac, currentVersion))
-				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
-	}
-
-	/**
-	 * Register dependency declaration and usage.
-	 */
-	public void register(ArtifactId artifactId, ArtifactVersion currentVersion,
-			DeclarationSource declarationSource, VersionSource versionSource) {
-		registerDeclaration(artifactId, declarationSource, versionSource);
 		usages.computeIfAbsent(artifactId, ac -> new Dependency(ac, currentVersion))
 				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
 	}

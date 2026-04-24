@@ -19,6 +19,7 @@ import java.util.Map;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -67,6 +68,18 @@ class GroovyDslExtParserTests {
 		Map<String, String> props = GroovyDslExtParser.getExtProperties(buildFile);
 
 		assertThat(props).containsEntry("springBootVersion", "3.5.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			val junit = "6.0.0"
+			""")
+	void considersLocalVariable(PsiFile buildFile) {
+
+		Map<String, PropertyValue> props = GroovyDslExtParser.parseLocalVariables(buildFile);
+
+		assertThat(props).containsKey("junit");
+		assertThat(props.get("junit").propertyValue()).isEqualTo("6.0.0");
 	}
 
 }

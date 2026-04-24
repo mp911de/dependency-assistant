@@ -18,9 +18,15 @@
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.DependencyVersionCompletionContributor"/>
 		<completion.contributor
+				language="TOML"
+				order="first"
+				implementationClass="biz.paluch.dap.gradle.DependencyVersionCompletionContributor"/>
+		<completion.contributor
 				language="Properties"
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.PropertyVersionCompletionContributor"/>
+		<typedHandler
+				implementation="biz.paluch.dap.gradle.GradleCompletionAutoPopupHandler"/>
 		<annotator language="Groovy"
 		           implementationClass="biz.paluch.dap.gradle.NewerVersionAnnotator"/>
 		<annotator language="kotlin"

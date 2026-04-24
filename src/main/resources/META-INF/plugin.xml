@@ -43,11 +43,13 @@
 
 	<depends>com.intellij.modules.xml</depends>
 	<depends>com.intellij.modules.java</depends>
-	<depends optional="true" config-file="maven-extensions.xml">org.jetbrains.idea.maven
+	<depends optional="true" config-file="dependency-assistant-maven.xml">
+		org.jetbrains.idea.maven
 	</depends>
-	<depends optional="true" config-file="kotlin-extensions.xml">org.jetbrains.kotlin
+	<depends optional="true" config-file="dependency-assistant-kotlin.xml">
+		org.jetbrains.kotlin
 	</depends>
-	<depends optional="true" config-file="gradle-extensions.xml">
+	<depends optional="true" config-file="dependency-assistant-gradle.xml">
 		org.jetbrains.plugins.gradle
 	</depends>
 
