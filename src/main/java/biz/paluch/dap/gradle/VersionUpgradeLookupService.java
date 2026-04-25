@@ -48,8 +48,8 @@ import org.toml.lang.psi.TomlLiteral;
  * <li>Kotlin {@code extra["key"]} version value: plain string, triple-quoted
  * string, {@code buildString { append("…") }}, or the receiver literal in
  * {@code "….also { extra["key"] = it }}</li>
- * <li>Property value in {@code gradle.properties} that maps to a known artifact
- * version</li>
+ * <li>VersionProperty value in {@code gradle.properties} that maps to a known
+ * artifact version</li>
  * <li>Version literal in a {@code libs.versions.toml} {@code [versions]}
  * table</li>
  * <li>Version-catalog accessors in Groovy or Kotlin:

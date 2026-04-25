@@ -41,23 +41,22 @@ import org.springframework.util.Assert;
 public interface PropertyResolver {
 
 	/**
-	 * Return whether a non-{@code null} value exists for the given property key.
-	 * <p>This is a convenience method delegating to {@link #getProperty(String)}.
-	 * @param propertyKey the property name
-	 * @return {@code true} if this resolver can resolve the property to a value
+	 * Determine whether the given property key is available for resolution &mdash;
+	 * for example, if the value for the given key is not {@code null}.
+	 * @param key the property name to resolve.
 	 */
-	default boolean containsProperty(String propertyKey) {
-		return getProperty(propertyKey) != null;
+	default boolean containsProperty(String key) {
+		return getProperty(key) != null;
 	}
 
 	/**
-	 * Return the resolved property value for the given property key.
-	 * @param propertyKey the property name
-	 * @return the resolved value, or {@code null} if this resolver does not define
-	 * the key
+	 * Resolve the property value associated with the given key, or {@code null} if
+	 * the key cannot be resolved.
+	 * @param key the property name to resolve.
+	 * @see #containsProperty(String)
 	 */
 	@Nullable
-	String getProperty(String propertyKey);
+	String getProperty(String key);
 
 	/**
 	 * Return declaration metadata for the given property key, if available.
@@ -65,19 +64,22 @@ public interface PropertyResolver {
 	 * carrying the resolved value. Implementations that do not track declaration
 	 * sites may return {@code null} even if {@link #getProperty(String)} resolves a
 	 * value.
-	 * @param propertyKey the property name
-	 * @return the declaration metadata, or {@code null} if not tracked
+	 * @param key the property name.
+	 * @return the declaration metadata, or {@code null} if the property cannot be
+	 * resolved.
 	 */
-	default @Nullable PropertyValue getPropertyValue(String propertyKey) {
+	default @Nullable PropertyValue getPropertyValue(String key) {
 		return null;
 	}
 
 	/**
-	 * Resolve {@code ${...}} placeholders in the given text against this resolver.
-	 * <p>Unresolvable placeholders without a default value are preserved unchanged.
-	 * @param text the text to resolve
-	 * @return the resolved text
-	 * @throws IllegalArgumentException if given text is {@code null}
+	 * Resolve {@code ${...}} placeholders in the given text, replacing them with
+	 * corresponding property values as resolved by {@link #getProperty(String)}.
+	 * Unresolvable placeholders with no default value are ignored and passed
+	 * through unchanged.
+	 * @param text the String to resolve.
+	 * @return the resolved String.
+	 * @throws IllegalArgumentException if given text is {@code null}.
 	 */
 	default String resolvePlaceholders(String text) {
 		Assert.notNull(text, "Text must not be null");
@@ -91,7 +93,7 @@ public interface PropertyResolver {
 	 * queried if this resolver does not provide a value or declaration element.
 	 * @param fallback the resolver to consult if this resolver has no match
 	 * @return a composite resolver with this resolver as primary and
-	 * {@code fallback} as secondary
+	 * {@code fallback} as secondary.
 	 */
 	default PropertyResolver withFallback(PropertyResolver fallback) {
 		return new CompositePropertyResolver(this, fallback);
@@ -103,15 +105,15 @@ public interface PropertyResolver {
 	 * @return an empty property resolver.
 	 */
 	static PropertyResolver empty() {
-		return propertyKey -> null;
+		return key -> null;
 	}
 
 	/**
 	 * Create a {@link PropertyResolver} backed by the given property map.
-	 * @param properties the property entries keyed by property name
-	 * @return a map-backed property resolver
+	 * @param properties the property entries keyed by property name.
+	 * @return a map-backed property resolver.
 	 */
-	static PropertyResolver fromMap(Map<String, PropertyValue> properties) {
+	static PropertyResolver fromMap(Map<String, ? extends Property> properties) {
 		return new MapPropertyResolver(properties);
 	}
 

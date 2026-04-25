@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
@@ -47,18 +48,18 @@ class GroovyDslUtils {
 	 * Returns a {@link PropertyValue} when {@code element} is the <em>value</em>
 	 * literal of a Groovy {@code ext} property declaration, or {@code null}
 	 * otherwise.
-	 * <p>The supported declaration forms are recognised via
+	 * <p>The supported declaration forms are detected via
 	 * {@link GroovyExtAssignment#from(PsiElement)}.
 	 */
-	public static @Nullable PropertyValue findGroovyExtPropertyVersionElement(PsiElement element) {
+	public static @Nullable Property findGroovyExtPropertyVersionElement(PsiElement element) {
 
 		GroovyExtAssignment assignment = GroovyExtAssignment.from(element);
 		if (assignment == null) {
 			return null;
 		}
 
-		String value = getText(assignment.valueLiteral());
-		return new PropertyValue(assignment.valueLiteral(), assignment.key(), value);
+		String value = getText(assignment.getValueLiteral());
+		return new PropertyValue(assignment.getKey(), value, assignment.getValueLiteral());
 	}
 
 	public static boolean isInsidePluginsBlock(PsiElement element) {

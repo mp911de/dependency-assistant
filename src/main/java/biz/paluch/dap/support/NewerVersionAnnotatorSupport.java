@@ -50,7 +50,7 @@ public abstract class NewerVersionAnnotatorSupport implements Annotator {
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
 		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
-		UpgradeSuggestion suggestion = service.suggestUpgrades(element);
+		UpgradeSuggestion suggestion = service.suggestUpgrade(element);
 
 		if (!suggestion.isPresent()) {
 			return;

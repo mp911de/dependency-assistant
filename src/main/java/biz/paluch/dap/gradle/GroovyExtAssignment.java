@@ -28,7 +28,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recogniser for Groovy DSL {@code ext} property declarations.
+ * Interface representing Groovy DSL {@code ext} property declarations.
  * <p>Captures the four supported declaration shapes behind one factory:
  * <ul>
  * <li>{@code ext { set('key', 'value') }} — {@link SetCall set-call form}</li>
@@ -42,32 +42,21 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-sealed interface GroovyExtAssignment {
-
-	/**
-	 * @return the resolved property key.
-	 */
-	String key();
+sealed interface GroovyExtAssignment extends ExtraDeclaration {
 
 	/**
 	 * @return the literal expression holding the value.
 	 */
-	GrLiteral valueLiteral();
+	@Override
+	GrLiteral getValueLiteral();
 
 	/**
-	 * @return the PSI element representing the declaration (either the call,
-	 * assignment, or variable declaration).
-	 */
-	PsiElement declaration();
-
-	/**
-	 * Recognise a Groovy {@code ext} property declaration anchored at
-	 * {@code element}. {@code element} is expected to be the value literal of the
-	 * declaration.
+	 * Detect a Groovy {@code ext} property declaration anchored at {@code element}.
+	 * {@code element} is expected to be the value literal of the declaration.
 	 *
 	 * @param element the candidate value PSI element; can be {@literal null}.
 	 * @return the resolved assignment, or {@literal null} if {@code element} is not
-	 * the value literal of a recognised {@code ext} declaration shape.
+	 * the value literal of a detected {@code ext} declaration shape.
 	 */
 	static @Nullable GroovyExtAssignment from(@Nullable PsiElement element) {
 
@@ -91,7 +80,8 @@ sealed interface GroovyExtAssignment {
 	/**
 	 * {@code ext { set('key', 'value') }} declaration.
 	 */
-	record SetCall(String key, GrLiteral valueLiteral, GrMethodCall declaration) implements GroovyExtAssignment {
+	record SetCall(String getKey, GrLiteral getValueLiteral, GrMethodCall getDeclaration)
+			implements GroovyExtAssignment {
 
 		static @Nullable SetCall from(GrLiteral literal) {
 
@@ -118,13 +108,18 @@ sealed interface GroovyExtAssignment {
 			return new SetCall(key, literal, setCall);
 		}
 
+		@Override
+		public String getValue() {
+			return GroovyDslUtils.getText(getValueLiteral());
+		}
+
 	}
 
 	/**
 	 * {@code ext { key = 'value' }} or {@code ext.key = 'value'} declaration.
 	 */
-	record ExtAssignment(String key, GrLiteral valueLiteral,
-			GrAssignmentExpression declaration) implements GroovyExtAssignment {
+	record ExtAssignment(String getKey, GrLiteral getValueLiteral,
+			GrAssignmentExpression getDeclaration) implements GroovyExtAssignment {
 
 		static @Nullable ExtAssignment from(GrLiteral literal) {
 
@@ -174,13 +169,19 @@ sealed interface GroovyExtAssignment {
 			return null;
 		}
 
+		@Override
+		public String getValue() {
+			return GroovyDslUtils.getText(getValueLiteral());
+		}
+
 	}
 
 	/**
 	 * Top-level script variable declaration ({@code def key = 'v'} /
 	 * {@code String key = 'v'}).
 	 */
-	record ScriptVariable(String key, GrLiteral valueLiteral, GrVariable declaration) implements GroovyExtAssignment {
+	record ScriptVariable(String getKey, GrLiteral getValueLiteral, GrVariable getDeclaration)
+			implements GroovyExtAssignment {
 
 		static @Nullable ScriptVariable from(GrLiteral literal) {
 
@@ -202,6 +203,11 @@ sealed interface GroovyExtAssignment {
 				return new ScriptVariable(name, literal, variable);
 			}
 			return null;
+		}
+
+		@Override
+		public String getValue() {
+			return GroovyDslUtils.getText(getValueLiteral());
 		}
 
 	}

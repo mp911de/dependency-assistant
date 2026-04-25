@@ -18,12 +18,12 @@ package biz.paluch.dap.state;
 import biz.paluch.dap.ProjectId;
 
 /**
- * Value object pairing a {@link Property} with the {@link ProjectId} that owns
- * it.
+ * Value object pairing a {@link VersionProperty} with the {@link ProjectId}
+ * that owns it.
  * <p>This contract is used when a property lookup must preserve project
  * identity in addition to the property metadata itself.
  *
  * @author Mark Paluch
  */
-public record ProjectProperty(ProjectId id, Property property) {
+public record ProjectProperty(ProjectId id, VersionProperty property) {
 }

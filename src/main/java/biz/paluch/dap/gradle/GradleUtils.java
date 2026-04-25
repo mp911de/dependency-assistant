@@ -323,12 +323,18 @@ class GradleUtils {
 	// -------------------------------------------------------------------------
 
 	public static @Nullable String updateGavVersion(String gav, String newVersion) {
-		String[] parts = gav.split(":");
-		if (parts.length < 3) {
+		if (StringUtils.isEmpty(gav)) {
 			return null;
 		}
-		parts[2] = newVersion;
-		return String.join(":", parts);
+
+		int firstColon = gav.indexOf(':');
+		int secondColon = firstColon == -1 ? -1 : gav.indexOf(':', firstColon + 1);
+		if (secondColon == -1) {
+			return GradleRichVersion.update(gav, newVersion);
+		}
+
+		String version = gav.substring(secondColon + 1);
+		return gav.substring(0, secondColon + 1) + GradleRichVersion.update(version, newVersion);
 	}
 
 	public static void updateVersion(@Nullable String gav, String newVersion, Consumer<String> updateConsumer) {

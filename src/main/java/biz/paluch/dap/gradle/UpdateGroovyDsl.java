@@ -50,11 +50,11 @@ class UpdateGroovyDsl {
 		file.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, literal -> {
 
 			GroovyExtAssignment assignment = GroovyExtAssignment.from(literal);
-			if (assignment == null || !propertyKey.equals(assignment.key())) {
+			if (assignment == null || !propertyKey.equals(assignment.getKey())) {
 				return false;
 			}
 
-			GroovyDslUtils.updateText(assignment.valueLiteral(), newVersion);
+			GroovyDslUtils.updateText(assignment.getValueLiteral(), newVersion);
 			return true;
 		}));
 	}

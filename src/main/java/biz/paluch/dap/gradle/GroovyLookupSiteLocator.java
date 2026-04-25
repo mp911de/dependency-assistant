@@ -19,6 +19,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
@@ -140,7 +141,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 	private LookupSite locatePropertyLiteral(GrLiteral literal) {
 
-		PropertyValue property = GroovyDslUtils.findGroovyExtPropertyVersionElement(literal);
+		Property property = GroovyDslUtils.findGroovyExtPropertyVersionElement(literal);
 		if (property == null && propertyResolver instanceof GradlePropertyResolver resolver) {
 			property = resolver.findBindingForValueLiteral(literal);
 		}

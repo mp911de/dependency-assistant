@@ -65,8 +65,8 @@ final class KotlinPluginIds {
 		StringBuilder pluginId = new StringBuilder();
 		boolean[] failed = new boolean[1];
 
-		KotlinDslUtils.doWithStrings(call, pluginId::append, expr -> {
-			String resolved = KotlinDslUtils.resolveKotlinExpression(expr, scriptProperties);
+		KtLiterals.doWithStrings(call, pluginId::append, expr -> {
+			String resolved = KotlinDslParser.resolveKotlinExpression(expr, scriptProperties);
 			if (resolved == null) {
 				failed[0] = true;
 			} else {
@@ -105,8 +105,8 @@ final class KotlinPluginIds {
 					if (literals.hasProperty() && literals.size() == 1) {
 						versionPropertyKey = literals.getProperty();
 						PropertyValue resolvedProperty = scriptProperties.getPropertyValue(versionPropertyKey);
-						if (resolvedProperty != null && resolvedProperty.element() != null) {
-							versionElement = resolvedProperty.element();
+						if (resolvedProperty != null && resolvedProperty.getValueLiteral() != null) {
+							versionElement = resolvedProperty.getValueLiteral();
 						}
 					}
 					break;

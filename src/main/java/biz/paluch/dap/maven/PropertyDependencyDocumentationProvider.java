@@ -18,7 +18,7 @@ package biz.paluch.dap.maven;
 import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.state.Property;
+import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencyDocumentationProviderSupport;
 import com.intellij.openapi.project.Project;
@@ -64,7 +64,7 @@ public class PropertyDependencyDocumentationProvider extends DependencyDocumenta
 		}
 
 		ProjectState projectState = lookupService.getProjectState();
-		Property property = projectState.findProperty(propertyTag.getLocalName());
+		VersionProperty property = projectState.findProperty(propertyTag.getLocalName());
 		if (property == null) {
 			return null;
 		}

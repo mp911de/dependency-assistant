@@ -28,7 +28,7 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.gradle.DependencyDocumentationProvider;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.Property;
+import biz.paluch.dap.state.VersionProperty;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.model.Pointer;
 import com.intellij.openapi.util.text.HtmlChunk;
@@ -109,10 +109,10 @@ public abstract class DependencyDocumentationProviderSupport implements PsiDocum
 
 	protected static class PropertyDocumentationTarget extends DocumentationTargetSupport {
 
-		private final Property property;
+		private final VersionProperty property;
 
 		public PropertyDocumentationTarget(PsiElement target, Cache cache, @Nullable ArtifactVersion currentVersion,
-				@Nullable String currentValue, Property property) {
+				@Nullable String currentValue, VersionProperty property) {
 			super(target, cache, currentVersion, currentValue);
 			this.property = property;
 		}
@@ -175,7 +175,7 @@ public abstract class DependencyDocumentationProviderSupport implements PsiDocum
 	/**
 	 * Builds the HTML body.
 	 */
-	protected static @Nullable String buildHtmlBody(Cache cache, Property property,
+	protected static @Nullable String buildHtmlBody(Cache cache, VersionProperty property,
 			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages) {
 
 		if (property.artifacts().isEmpty()) {

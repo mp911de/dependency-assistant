@@ -25,8 +25,8 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.gradle.TomlParser.TomlDependencyDeclaration;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.application.ApplicationManager;
@@ -246,7 +246,8 @@ class UpdateGradleFile {
 	 */
 	private void updateDeclaration(TomlFile file, ArtifactId artifactId, String newVersion) {
 
-		Map<String, PropertyValue> properties = TomlParser.parseTomlVersions(file);
+		Map<String, Property> properties = TomlParser.parseTomlVersions(file);
+		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties);
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
 
 			String tableName = TomlParser.getTomlTableName(table);
@@ -258,7 +259,7 @@ class UpdateGradleFile {
 
 			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
 
-				TomlDependencyDeclaration entry = TomlParser.parseTomlEntry(kv, properties);
+				TomlDependencyDeclaration entry = TomlParser.parseTomlEntry(kv, propertyResolver);
 				if (!entry.isComplete()) {
 					continue;
 				}

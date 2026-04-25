@@ -16,8 +16,7 @@
 package biz.paluch.dap.support;
 
 import java.awt.event.MouseEvent;
-
-import javax.swing.Icon;
+import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
@@ -58,7 +57,7 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
 		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
-		UpgradeSuggestion suggestion = service.suggestUpgrades(element);
+		UpgradeSuggestion suggestion = service.suggestUpgrade(element);
 
 		if (!suggestion.isPresent()) {
 			return null;

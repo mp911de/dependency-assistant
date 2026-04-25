@@ -152,13 +152,13 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 		}
 
 		@Override
-		public @Nullable Property findProperty(String propertyName, Predicate<Property> filter) {
+		public @Nullable VersionProperty findProperty(String propertyName, Predicate<VersionProperty> filter) {
 			ProjectProperty projectProperty = findProjectProperty(propertyName, filter);
 			return projectProperty != null ? projectProperty.property() : null;
 		}
 
 		@Override
-		public @Nullable ProjectProperty findProjectProperty(String propertyName, Predicate<Property> filter) {
+		public @Nullable ProjectProperty findProjectProperty(String propertyName, Predicate<VersionProperty> filter) {
 			return getCache().findProperty(propertyName, filter);
 		}
 

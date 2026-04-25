@@ -19,47 +19,192 @@ import java.util.List;
 
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
-import org.jetbrains.kotlin.psi.KtBinaryExpression;
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLambdaExpression;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
-import org.jetbrains.kotlin.psi.KtQualifiedExpression;
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
-import org.jetbrains.kotlin.psi.ValueArgument;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Recogniser for Kotlin DSL {@code extra["key"] = value} assignments.
- * <p>Captures the assignment expression, the resolved key, and the value
- * expression for both the plain {@code extra["k"] = "v"} form and the indirect
- * {@code "v".also { extra["k"] = it }} form.
+ * Interface representing Kotlin DSL {@code extra} property declarations.
+ * <p>Captures the supported declaration shapes behind one factory:
+ * <ul>
+ * <li>{@code extra["key"] = "value"} / {@code extra["key"] = """value"""} -
+ * {@link StringLiteralAssignment plain string assignment}</li>
+ * <li>{@code "value".also { extra["key"] = it }} -
+ * {@link AlsoReceiverAssignment also-receiver assignment}</li>
+ * <li>{@code extra["key"] = buildString { append("value") }} -
+ * {@link BuildStringAssignment buildString assignment}</li>
+ * </ul>
  *
- * @param expression the {@code extra["key"] = value} binary expression.
- * @param key the resolved key string.
- * @param value the right-hand side expression.
  * @author Mark Paluch
  */
-record KotlinExtraAssignment(KtBinaryExpression expression, String key, KtExpression value) {
+sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 
 	/**
-	 * Recognise a plain {@code extra["key"] = value} assignment.
-	 *
-	 * @param expression the binary expression to inspect; can be {@literal null}.
-	 * @return the assignment, or {@literal null} if {@code expression} is not an
-	 * {@code extra[...]} assignment with a string-template key.
+	 * Return the receiver string template for an {@code also { ... = it }}
+	 * assignment.
 	 */
-	static @Nullable KotlinExtraAssignment of(@Nullable KtBinaryExpression expression) {
+	static @Nullable KtStringTemplateExpression findAlsoReceiverStringTemplate(KtNameReferenceExpression itRef) {
 
-		if (expression == null) {
+		KtLambdaExpression lambda = PsiTreeUtil.getParentOfType(itRef, KtLambdaExpression.class);
+		if (lambda == null) {
+			return null;
+		}
+		KtCallExpression alsoCall = PsiTreeUtil.getParentOfType(lambda, KtCallExpression.class);
+		if (alsoCall == null || !"also".equals(KotlinDslUtils.getKotlinCallName(alsoCall))) {
+			return null;
+		}
+		PsiElement parent = alsoCall.getParent();
+		if (parent instanceof KtQualifiedExpression dot) {
+			KtExpression recv = dot.getReceiverExpression();
+			if (recv instanceof KtStringTemplateExpression st) {
+				return st;
+			}
+		}
+		return null;
+	}
+
+	static void from(KtArrayAccessExpression arrayAccess) {
+
+	}
+
+	/**
+	 * Return the first string template appended within a {@code buildString { }}
+	 * call.
+	 */
+	static @Nullable KtStringTemplateExpression findBuildStringAppendLiteral(KtCallExpression buildStringCall) {
+
+		if (!"buildString".equals(KotlinDslUtils.getKotlinCallName(buildStringCall))) {
 			return null;
 		}
 
-		if (!"=".equals(expression.getOperationReference().getText())) {
+		KtLambdaExpression lambda = findTrailingLambda(buildStringCall);
+		if (lambda == null) {
 			return null;
 		}
+		KtExpression body = lambda.getBodyExpression();
+		if (body == null) {
+			return null;
+		}
+		for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(body, KtCallExpression.class)) {
+			if (!"append".equals(KotlinDslUtils.getKotlinCallName(inner))) {
+				continue;
+			}
+			for (ValueArgument va : inner.getValueArguments()) {
+				KtExpression argExpr = va.getArgumentExpression();
+				if (argExpr instanceof KtStringTemplateExpression st) {
+					return st;
+				}
+			}
+		}
+		return null;
+	}
+
+	public static @Nullable String extractAlsoReceiverStringLiteral(KtNameReferenceExpression itRef) {
+
+		KtStringTemplateExpression receiver = KotlinExtraAssignment.findAlsoReceiverStringTemplate(itRef);
+		return receiver != null ? KtLiterals.getText(receiver) : null;
+	}
+
+	private static @Nullable KtLambdaExpression findTrailingLambda(KtCallExpression call) {
+
+		for (ValueArgument va : call.getValueArguments()) {
+			KtExpression expr = va.getArgumentExpression();
+			if (expr instanceof KtLambdaExpression lambda) {
+				return lambda;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * @return the string template literal that represents the declared value.
+	 */
+	@Override
+	KtStringTemplateExpression getValueLiteral();
+
+	/**
+	 * @return the binary assignment expression declaring the property.
+	 */
+	@Override
+	KtBinaryExpression getDeclaration();
+
+	/**
+	 * Detect a Kotlin {@code extra} property declaration anchored at the assignment
+	 * expression.
+	 *
+	 * @param expression the candidate element; can be {@literal null}.
+	 * @return the resolved declaration, or {@literal null} if {@code expression} is
+	 * not a supported {@code extra["key"] = value} shape.
+	 */
+	@Contract("null -> null")
+	static @Nullable KotlinExtraAssignment from(@Nullable KtBinaryExpression expression) {
+
+		if (expression == null || !"=".equals(expression.getOperationReference().getText())) {
+			return null;
+		}
+
+		String key = extractKey(expression);
+		if (StringUtils.isEmpty(key)) {
+			return null;
+		}
+
+		AlsoReceiverAssignment alsoReceiver = AlsoReceiverAssignment.from(expression, key);
+		if (alsoReceiver != null) {
+			return alsoReceiver;
+		}
+
+		BuildStringAssignment buildString = BuildStringAssignment.from(expression, key);
+		if (buildString != null) {
+			return buildString;
+		}
+
+		return StringLiteralAssignment.from(expression, key);
+	}
+
+	/**
+	 * Detect the indirect {@code "value".also { extra["key"] = it }} form by
+	 * locating the enclosing {@code also} call from a PSI element living inside the
+	 * receiver string template.
+	 *
+	 * @param valuePsi the PSI element inside the {@code also} receiver.
+	 * @return the resolved declaration, or {@literal null} if no matching
+	 * {@code also { extra[...] = it }} declaration is found.
+	 */
+	static @Nullable KotlinExtraAssignment fromAlsoReceiver(PsiElement valuePsi) {
+
+		KtQualifiedExpression qualified = PsiTreeUtil.getParentOfType(valuePsi, KtQualifiedExpression.class);
+		if (qualified == null) {
+			return null;
+		}
+
+		if (qualified.getSelectorExpression() instanceof KtCallExpression alsoCall
+				&& "also".equals(KotlinDslUtils.getKotlinCallName(alsoCall))) {
+			return findAlsoAssignment(alsoCall);
+		}
+		return null;
+	}
+
+	private static @Nullable KotlinExtraAssignment findAlsoAssignment(KtCallExpression alsoCall) {
+
+		KtLambdaExpression lambda = firstLambdaArgument(alsoCall);
+		if (lambda == null) {
+			return null;
+		}
+
+		KtBlockExpression bodyExpression = lambda.getBodyExpression();
+		if (bodyExpression == null) {
+			return null;
+		}
+
+		return SyntaxTraverser.psiTraverser(bodyExpression)
+				.filter(KtBinaryExpression.class)
+				.filterMap(it -> from(it) instanceof AlsoReceiverAssignment also ? also : null)
+				.first();
+	}
+
+	private static @Nullable String extractKey(KtBinaryExpression expression) {
 
 		if (!(expression.getLeft() instanceof KtArrayAccessExpression arrayAccess)) {
 			return null;
@@ -71,111 +216,107 @@ record KotlinExtraAssignment(KtBinaryExpression expression, String key, KtExpres
 		}
 
 		List<KtExpression> indices = arrayAccess.getIndexExpressions();
-		if (indices.isEmpty() || !(indices.get(0) instanceof KtStringTemplateExpression keyTemplate)) {
+		if (indices.isEmpty() || !(indices.getFirst() instanceof KtStringTemplateExpression keyTemplate)) {
 			return null;
 		}
 
-		String key = KotlinDslUtils.getText(keyTemplate);
-		if (StringUtils.isEmpty(key)) {
-			return null;
-		}
-
-		KtExpression value = expression.getRight();
-		if (value == null) {
-			return null;
-		}
-
-		return new KotlinExtraAssignment(expression, key, value);
-	}
-
-	/**
-	 * Recognise the indirect {@code "value".also { extra["key"] = it }} form by
-	 * locating the enclosing {@code also} call from a value PSI element living
-	 * inside the receiver string template.
-	 *
-	 * @param valuePsi the PSI element inside the {@code also} receiver.
-	 * @return the resolved assignment, or {@literal null} if no matching
-	 * {@code also { extra[...] = it }} is found.
-	 */
-	static @Nullable KotlinExtraAssignment fromAlsoReceiver(PsiElement valuePsi) {
-
-		KtQualifiedExpression qual = PsiTreeUtil.getParentOfType(valuePsi, KtQualifiedExpression.class);
-		while (qual != null) {
-
-			KtExpression recv = qual.getReceiverExpression();
-			if (recv != null && PsiTreeUtil.isAncestor(recv, valuePsi, false)) {
-
-				if (qual.getSelectorExpression() instanceof KtCallExpression alsoCall
-						&& "also".equals(KotlinDslUtils.getKotlinCallName(alsoCall))) {
-
-					KtBinaryExpression assignment = findExtraItAssignment(alsoCall);
-					if (assignment != null) {
-						return of(assignment);
-					}
-				}
-				return null;
-			}
-			qual = PsiTreeUtil.getParentOfType(qual, KtQualifiedExpression.class);
-		}
-		return null;
-	}
-
-	/**
-	 * Resolve the value-side string template literal to update or highlight,
-	 * handling the plain literal, {@code also}-receiver, and {@code buildString}
-	 * forms.
-	 *
-	 * @return the resolved string template literal, or {@literal null} if the value
-	 * is not a recognised literal form.
-	 */
-	@Nullable
-	KtStringTemplateExpression valueLiteral() {
-
-		if (value instanceof KtStringTemplateExpression st) {
-			return st;
-		}
-
-		if (value instanceof KtNameReferenceExpression ref && "it".equals(ref.getReferencedName())) {
-			return KotlinDslUtils.findAlsoReceiverStringTemplate(ref);
-		}
-
-		if (value instanceof KtCallExpression call) {
-			return KotlinDslUtils.findBuildStringAppendLiteral(call);
-		}
-
-		return null;
-	}
-
-	private static @Nullable KtBinaryExpression findExtraItAssignment(KtCallExpression alsoCall) {
-
-		KtLambdaExpression lambda = firstLambdaArgument(alsoCall);
-		if (lambda == null || lambda.getBodyExpression() == null) {
-			return null;
-		}
-
-		for (KtBinaryExpression assign : PsiTreeUtil.collectElementsOfType(lambda.getBodyExpression(),
-				KtBinaryExpression.class)) {
-
-			KotlinExtraAssignment candidate = of(assign);
-			if (candidate == null) {
-				continue;
-			}
-			if (candidate.value() instanceof KtNameReferenceExpression ref
-					&& "it".equals(ref.getReferencedName())) {
-				return assign;
-			}
-		}
-		return null;
+		String key = KtLiterals.getText(keyTemplate);
+		return StringUtils.hasText(key) ? key : null;
 	}
 
 	private static @Nullable KtLambdaExpression firstLambdaArgument(KtCallExpression call) {
-
-		for (ValueArgument va : call.getValueArguments()) {
-			if (va.getArgumentExpression() instanceof KtLambdaExpression lam) {
-				return lam;
+		for (ValueArgument argument : call.getValueArguments()) {
+			if (argument.getArgumentExpression() instanceof KtLambdaExpression lambda) {
+				return lambda;
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * {@code extra["key"] = "value"} or {@code extra["key"] = """value"""}
+	 * declaration.
+	 * <p>Example: <pre class="code">
+	 * extra["springVersion"] = "6.2.0"
+	 * </pre>
+	 */
+	record StringLiteralAssignment(String getKey, KtStringTemplateExpression getValueLiteral,
+			KtBinaryExpression getDeclaration) implements KotlinExtraAssignment {
+
+		static @Nullable StringLiteralAssignment from(KtBinaryExpression expression, String key) {
+			if (expression.getRight() instanceof KtStringTemplateExpression stringTemplate) {
+				return new StringLiteralAssignment(key, stringTemplate, expression);
+			}
+			return null;
+		}
+
+		@Override
+		public String getValue() {
+			return KtLiterals.from(getValueLiteral()).toString();
+		}
+
+	}
+
+	/**
+	 * {@code "value".also { extra["key"] = it }} declaration.
+	 * <p>Example: <pre class="code">
+	 * "6.2.0".also { extra["springVersion"] = it }
+	 * </pre>
+	 */
+	record AlsoReceiverAssignment(String getKey, KtStringTemplateExpression getValueLiteral,
+			KtBinaryExpression getDeclaration, KtNameReferenceExpression itReference) implements KotlinExtraAssignment {
+
+		static @Nullable AlsoReceiverAssignment from(KtBinaryExpression expression, String key) {
+			if (!(expression.getRight() instanceof KtNameReferenceExpression reference)
+					|| !"it".equals(reference.getReferencedName())) {
+				return null;
+			}
+
+			KtStringTemplateExpression receiver = findAlsoReceiverStringTemplate(reference);
+			if (receiver == null) {
+				return null;
+			}
+
+			return new AlsoReceiverAssignment(key, receiver, expression, reference);
+		}
+
+		@Override
+		public String getValue() {
+			return KtLiterals.from(getValueLiteral()).toString();
+		}
+
+	}
+
+	/**
+	 * {@code extra["key"] = buildString { append("value") }} declaration.
+	 * <p>Example: <pre class="code">
+	 * extra["springVersion"] = buildString {
+	 *     append("6.2.0")
+	 * }
+	 * </pre>
+	 */
+	record BuildStringAssignment(String getKey, KtStringTemplateExpression getValueLiteral,
+			KtBinaryExpression getDeclaration,
+			KtCallExpression buildStringCall) implements KotlinExtraAssignment {
+
+		static @Nullable BuildStringAssignment from(KtBinaryExpression expression, String key) {
+			if (!(expression.getRight() instanceof KtCallExpression call)) {
+				return null;
+			}
+
+			KtStringTemplateExpression literal = findBuildStringAppendLiteral(call);
+			if (literal == null) {
+				return null;
+			}
+
+			return new BuildStringAssignment(key, literal, expression, call);
+		}
+
+		@Override
+		public String getValue() {
+			return KtLiterals.from(getValueLiteral()).toString();
+		}
+
 	}
 
 }

@@ -15,14 +15,22 @@
  */
 package biz.paluch.dap.gradle;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import biz.paluch.dap.gradle.KtVersion.Constraint;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.lang.Contract;
 
 /**
  * Kotlin DSL PSI locator for semantic {@link LookupSite lookup sites} and
@@ -43,6 +51,218 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 	KotlinLookupSiteLocator(PropertyResolver propertyResolver, @Nullable VersionCatalogRegistry registry) {
 		this.propertyResolver = propertyResolver;
 		this.registry = registry;
+	}
+
+	/**
+	 * Find the dependency call that owns the given PSI element.
+	 * <p>Used by lookup-site resolution to map version literals, named arguments,
+	 * and version-constraint entries back to their declaration call.
+	 */
+	public static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
+
+		// A literal nested inside an array-access index (e.g. "junit" in
+		// extra["junit"])
+		// is never the element of a dependency declaration.
+		if (PsiTreeUtil.getParentOfType(element, KtArrayAccessExpression.class) != null) {
+			return null;
+		}
+
+		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class);
+		KtCallExpression call = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+
+		if (call != null && KotlinDslUtils.isDependencyCall(call)) {
+
+			// GA string containing a versions block
+			int lambdas = PsiTreeUtil.countChildrenOfType(call, KtLambdaExpression.class);
+			if (lambdas > 0) {
+				return null;
+			}
+
+			lambdas = PsiTreeUtil.countChildrenOfType(call, KtLambdaArgument.class);
+			if (lambdas > 0) {
+				return null;
+			}
+		}
+
+		if (binary == null && call != null && KotlinDslUtils.isDependencyCall(call)) {
+
+			if (element.getNextSibling() instanceof KtBlockStringTemplateEntry entry) {
+				return null;
+			}
+
+			if (call.getValueArguments().size() == 1) {
+				return call;
+			}
+
+			if (element.getParent().getParent() instanceof KtValueArgument valueArgument
+					&& valueArgument.getArgumentName() instanceof KtValueArgumentName argumentName) {
+
+				String name = argumentName.getAsName().asString();
+				if ("version".equals(name)) {
+					return call;
+				}
+
+				return null;
+			}
+
+			return call;
+		}
+
+		if (binary != null && call != null && KotlinDslUtils.isDependencyCall(call)) {
+			return null;
+		}
+
+		if (binary != null && binary != element) {
+			PsiElement previous = element.getPrevSibling();
+			while (previous != null && !(previous instanceof PsiFile)) {
+
+				if (previous instanceof KtOperationReferenceExpression ops) {
+					if ("version".equals(ops.getReferencedName())) {
+						for (PsiElement child : binary.getChildren()) {
+							if (child instanceof KtCallExpression nested && KotlinDslUtils.isDependencyCall(nested)) {
+								return nested;
+							}
+						}
+					}
+				}
+
+				if (previous.getPrevSibling() != null) {
+					previous = previous.getPrevSibling();
+				} else {
+					previous = previous.getParent();
+				}
+			}
+		}
+
+		// Handle: literal inside prefer("v") or strictly("v") inside element { } block
+		KtCallExpression enclosingCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+		KtCallExpression versionCall = null;
+		if (enclosingCall != null) {
+			if (GradleVersionConstraint.PREFER.equals(KotlinDslUtils.getKotlinCallName(enclosingCall))
+					|| GradleVersionConstraint.STRICTLY.equals(KotlinDslUtils.getKotlinCallName(enclosingCall))) {
+				Constraint constraint = Constraint.of(enclosingCall);
+				if (constraint.hasProperty() || constraint.hasText() && !constraint.isRange()) {
+
+					versionCall = (KtCallExpression) PsiTreeUtil.findFirstParent(element, it -> {
+						return it instanceof KtCallExpression candidate
+								&& "version".equals(KotlinDslUtils.getKotlinCallName(candidate));
+					});
+				}
+			} else {
+				versionCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+			}
+
+			if (versionCall != null && "version".equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
+
+				KtCallExpression depCall = PsiTreeUtil.getParentOfType(versionCall,
+						KtCallExpression.class);
+				if (depCall != null && KotlinDslUtils.isDependencyCall(depCall)) {
+					return depCall;
+				}
+			}
+
+			if (element instanceof KtBlockStringTemplateEntry block) {
+				KtLiterals literals = KtLiterals.from(block);
+				if (literals.hasProperty() && GradleUtils.isDependencySection(KotlinDslUtils.getKotlinCallName(call))) {
+					return call;
+				}
+			}
+		}
+
+
+		return null;
+	}
+
+	/**
+	 * Find the Kotlin property declaration that owns the given PSI element.
+	 * <p>Used for literal entries nested within property initializers.
+	 */
+	public static @Nullable KtProperty findProperty(KtElement element) {
+		return element instanceof KtLiteralStringTemplateEntry entry
+				? PsiTreeUtil.getParentOfType(element, KtProperty.class)
+				: null;
+	}
+
+	/**
+	 * Find the {@code extra["key"] = ...} assignment that owns the given value PSI.
+	 * <p>Also supports the {@code "value".also { extra["key"] = it }} form.
+	 */
+	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
+
+		// don't allow lookup from index side.
+		if (element.getParent() instanceof KtContainerNode node) {
+			return null;
+		}
+
+		KtBinaryExpression binaryExpression = PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class);
+		KotlinExtraAssignment extra = null;
+		if (binaryExpression != null) {
+			extra = KotlinExtraAssignment.from(binaryExpression);
+		}
+
+		if (extra == null) {
+			extra = KotlinExtraAssignment.fromAlsoReceiver(element);
+		}
+
+		return extra != null ? extra.getDeclaration() : null;
+	}
+
+	/**
+	 * Extract the property key from an {@code extra["key"] = ...} assignment.
+	 */
+	@Contract("null -> null")
+	public static @Nullable String findProperty(@Nullable KtBinaryExpression element) {
+
+		KotlinExtraAssignment assignment = KotlinExtraAssignment.from(element);
+		return assignment != null ? assignment.getKey() : null;
+	}
+
+	/**
+	 * Unwrap nested {@link KtParenthesizedExpression} nodes.
+	 */
+	static KtExpression unwrapParenthesizedExpression(KtExpression expression) {
+
+		KtExpression e = expression;
+		while (e instanceof KtParenthesizedExpression paren) {
+			KtExpression inner = paren.getExpression();
+			if (inner == null) {
+				break;
+			}
+			e = inner;
+		}
+		return e;
+	}
+
+	static List<String> collectKotlinCatalogDotSegments(KtExpression expr) {
+
+		List<String> reversed = new ArrayList<>();
+		KtExpression cur = expr;
+		while (cur instanceof KtDotQualifiedExpression dq) {
+			String seg = kotlinSelectorToSegment(dq.getSelectorExpression());
+			if (seg == null) {
+				return List.of();
+			}
+			reversed.add(seg);
+			cur = dq.getReceiverExpression();
+		}
+		if (cur instanceof KtNameReferenceExpression ref) {
+			reversed.add(ref.getReferencedName());
+		} else {
+			return reversed;
+		}
+		Collections.reverse(reversed);
+		return reversed;
+	}
+
+	private static @Nullable String kotlinSelectorToSegment(@Nullable KtExpression selector) {
+
+		if (selector instanceof KtNameReferenceExpression ref) {
+			return ref.getReferencedName();
+		}
+		if (selector instanceof KtCallExpression call && call.getValueArguments().isEmpty()) {
+			return KotlinDslUtils.getKotlinCallName(call);
+		}
+		return null;
 	}
 
 	/**
@@ -69,14 +289,14 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 		}
 
 		if (element instanceof KtStringTemplateExpression propertyCandidate) {
-			KtBinaryExpression propertyExpression = KotlinDslUtils.findPropertyExpression(propertyCandidate);
+			KtBinaryExpression propertyExpression = findPropertyExpression(propertyCandidate);
 			if (KotlinDslExtraParser.isExtra(propertyExpression)) {
 				return locateExtraProperty(propertyExpression, propertyCandidate);
 			}
 		}
 
 		if (element instanceof KtBlockStringTemplateEntry propertyCandidate) {
-			KtCallExpression dependencyExpression = KotlinDslUtils.findDependencyExpression(propertyCandidate);
+			KtCallExpression dependencyExpression = findDependencyExpression(propertyCandidate);
 			KtLiterals literals = KtLiterals.from(propertyCandidate);
 			if (dependencyExpression != null && literals.hasProperty()) {
 				return LookupSite
@@ -91,7 +311,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 		if (element instanceof KtStringTemplateEntry versionCandidate) {
 
-			KtProperty property = KotlinDslUtils.findProperty(versionCandidate);
+			KtProperty property = findProperty(versionCandidate);
 			if (property != null && StringUtils.hasText(property.getName())) {
 				return locatePropertyDeclaration(property.getName(), property);
 			}
@@ -103,12 +323,12 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 				}
 			}
 
-			KtBinaryExpression propertyExpression = KotlinDslUtils.findPropertyExpression(versionCandidate);
+			KtBinaryExpression propertyExpression = findPropertyExpression(versionCandidate);
 			if (KotlinDslExtraParser.isExtra(propertyExpression)) {
 				return locateExtraProperty(propertyExpression, versionCandidate);
 			}
 
-			KtCallExpression declaration = KotlinDslUtils.findDependencyExpression(versionCandidate);
+			KtCallExpression declaration = findDependencyExpression(versionCandidate);
 			if (declaration != null) {
 				return LookupSite.from(KotlinDslParser.parseDependencySite(declaration, propertyResolver));
 			}
@@ -120,7 +340,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 				return LookupSite.absent();
 			}
 
-			KtCallExpression declaration = KotlinDslUtils.findDependencyExpression(propertyCandidate);
+			KtCallExpression declaration = findDependencyExpression(propertyCandidate);
 			if (declaration != null) {
 				return LookupSite.from(
 						locatePropertyUsage(propertyCandidate.getReferencedName(), declaration, propertyCandidate));
@@ -145,7 +365,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			return LookupSite.absent();
 		}
 
-		String propertyName = KotlinDslUtils.findProperty(propertyExpression);
+		String propertyName = findProperty(propertyExpression);
 		if (!StringUtils.hasText(propertyName)) {
 			return LookupSite.absent();
 		}
@@ -192,13 +412,13 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			return LookupSite.absent();
 		}
 
-		KtExpression canonicalAccessor = KotlinDslUtils.unwrapParenthesizedExpression(argument);
+		KtExpression canonicalAccessor = unwrapParenthesizedExpression(argument);
 		if (!(element instanceof KtExpression ktExpr) || !canonicalAccessor.equals(ktExpr)) {
 			return LookupSite.absent();
 		}
 
 		TomlReference reference = TomlReference.from(
-				KotlinDslUtils.collectKotlinCatalogDotSegments(canonicalAccessor),
+				collectKotlinCatalogDotSegments(canonicalAccessor),
 				registry.catalogPaths().keySet());
 		if (reference == null) {
 			return LookupSite.absent();

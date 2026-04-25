@@ -27,7 +27,6 @@ import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtBlockExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLambdaArgument;
 import org.jetbrains.kotlin.psi.KtLambdaExpression;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
@@ -61,7 +60,7 @@ class KotlinDslSettingsParser {
 				return;
 			}
 
-			KtLambdaExpression outerLambda = getLambdaArgument(call);
+			KtLambdaExpression outerLambda = KotlinDslUtils.getLambdaArgument(call);
 			if (outerLambda == null) {
 				return;
 			}
@@ -77,9 +76,9 @@ class KotlinDslSettingsParser {
 					parseVersionCatalogsBlock(catalogsCall, catalogs);
 				}
 				if (stmt instanceof KtBinaryExpression binary) {
-					String lhs = KotlinDslUtils.getText(binary.getLeft());
+					String lhs = KtLiterals.getText(binary.getLeft());
 					if ("defaultLibrariesExtensionName".equals(lhs) && binary.getRight() instanceof KtExpression) {
-						defaultAlias.set(KotlinDslUtils.getRequiredText(binary.getRight()));
+						defaultAlias.set(KtLiterals.getText(binary.getRight()));
 					}
 				}
 			}
@@ -96,7 +95,7 @@ class KotlinDslSettingsParser {
 
 	private static void parseVersionCatalogsBlock(KtCallExpression catalogsCall, Map<String, String> catalogs) {
 
-		KtLambdaExpression lambda = getLambdaArgument(catalogsCall);
+		KtLambdaExpression lambda = KotlinDslUtils.getLambdaArgument(catalogsCall);
 		if (lambda == null) {
 			return;
 		}
@@ -124,7 +123,7 @@ class KotlinDslSettingsParser {
 
 	private static @Nullable String extractFromFilesPath(KtCallExpression createCall) {
 
-		KtLambdaExpression lambda = getLambdaArgument(createCall);
+		KtLambdaExpression lambda = KotlinDslUtils.getLambdaArgument(createCall);
 		if (lambda == null) {
 			return null;
 		}
@@ -182,15 +181,6 @@ class KotlinDslSettingsParser {
 		return children[0].getText();
 	}
 
-	private static @Nullable KtLambdaExpression getLambdaArgument(KtCallExpression call) {
 
-		KtLambdaArgument lambdaArg = call.getLambdaArguments().isEmpty() ? null : call.getLambdaArguments().get(0);
-		if (lambdaArg == null) {
-			return null;
-		}
-
-		KtExpression expr = lambdaArg.getArgumentExpression();
-		return expr instanceof KtLambdaExpression lambda ? lambda : null;
-	}
 
 }

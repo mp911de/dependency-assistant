@@ -22,10 +22,10 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectCache;
-import biz.paluch.dap.state.Property;
+import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.PropertyExpression;
-import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
@@ -81,11 +81,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	@Override
-	public UpgradeSuggestion suggestUpgrades(PsiElement element) {
+	public AvailableUpgrades suggestUpgrades(PsiElement element) {
 
 		if (element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS || !candidate || pom == null
 				|| !buildContext.isAvailable()) {
-			return UpgradeSuggestion.none();
+			return AvailableUpgrades.none();
 		}
 
 		ProjectCache cache = this.cache.getProject(buildContext.getProjectId());
@@ -100,7 +100,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return suggestUpgrades(this.cache, resolveArtifactDeclaration(cache, propertyTag));
 		}
 
-		return UpgradeSuggestion.none();
+		return AvailableUpgrades.none();
 	}
 
 	@Override
@@ -176,7 +176,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private ArtifactReference resolveArtifactDeclaration(ProjectCache cache, XmlTag propertyTag) {
 
-		Property property = findProperty(cache, propertyTag);
+		VersionProperty property = findProperty(cache, propertyTag);
 		if (property == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -200,10 +200,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		});
 	}
 
-	private @Nullable Property findProperty(ProjectCache cache, XmlTag propertyTag) {
+	private @Nullable VersionProperty findProperty(ProjectCache cache, XmlTag propertyTag) {
 
 		String propertyName = propertyTag.getLocalName();
-		Property property = cache.getProperty(propertyName);
+		VersionProperty property = cache.getProperty(propertyName);
 		if (property == null || property.artifacts().isEmpty()) {
 			return null;
 		}
@@ -214,7 +214,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	ArtifactVersion getCurrentVersion(ProjectCache cache, XmlTag propertyTag) {
 
 		String propertyName = propertyTag.getLocalName();
-		Property property = cache.getProperty(propertyName);
+		VersionProperty property = cache.getProperty(propertyName);
 		if (property == null || property.artifacts().isEmpty()) {
 			return null;
 		}
@@ -222,7 +222,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return getCurrentVersion(property, propertyTag);
 	}
 
-	private @Nullable ArtifactVersion getCurrentVersion(Property property, XmlTag propertyTag) {
+	private @Nullable ArtifactVersion getCurrentVersion(VersionProperty property, XmlTag propertyTag) {
 
 		PropertyExpression expression = PropertyExpression.from(propertyTag.getValue().getText().trim());
 		if (expression.isProperty()) {

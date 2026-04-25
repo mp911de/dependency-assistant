@@ -16,21 +16,14 @@
 package biz.paluch.dap.gradle;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.containers.JBIterable;
-import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
-import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression;
-import org.jetbrains.kotlin.psi.KtElement;
-import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
-import org.jetbrains.kotlin.psi.KtReferenceExpression;
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -94,7 +87,7 @@ class KtLiterals {
 	 * @return a {@link KtLiterals} representing the supported fragments contained
 	 * in the element.
 	 */
-	static KtLiterals from(@Nullable KtElement element) {
+	public static KtLiterals from(@Nullable KtElement element) {
 
 		switch (element) {
 		case null -> {
@@ -103,8 +96,16 @@ class KtLiterals {
 		case KtCallExpression call when "property".equals(KotlinDslUtils.getKotlinCallName(call)) -> {
 			return KtLiterals.fromPropertyCall(call);
 		}
+		case KtStringTemplateExpression expression -> {
+
+			List<KtLiteral> literals = JBIterable.of(expression.getEntries())
+					.map(KtLiterals::fromPropertyCandidate)
+					.flatMap(KtLiterals::getLiterals).toList();
+			return new KtLiterals(literals);
+		}
 		case KtBlockStringTemplateEntry block -> {
-			List<KtLiteral> literals = JBIterable.from(block.getExpressions()).map(KtLiterals::from)
+			List<KtLiteral> literals = JBIterable.from(block.getExpressions())
+					.map(KtLiterals::fromPropertyCandidate)
 					.flatMap(KtLiterals::getLiterals).toList();
 			return new KtLiterals(literals);
 		}
@@ -112,15 +113,16 @@ class KtLiterals {
 			return new KtLiterals(new KtLiteral(entry.getText(), null, entry));
 		}
 		case KtNameReferenceExpression nameRef -> {
-			return KtLiterals.fromProperty(nameRef);
+			return new KtLiterals(new KtLiteral(nameRef.getReferencedName(), null, nameRef));
 		}
 		case KtArrayAccessExpression arrayAccess when arrayAccess.getArrayExpression() != null
 				&& "extra".equals(arrayAccess.getArrayExpression().getText()) -> {
 			List<KtExpression> indices = arrayAccess.getIndexExpressions();
-			if (!indices.isEmpty()) {
-				String extraKey = KotlinDslUtils.getPropertyName(arrayAccess);
-				if (StringUtils.hasText(extraKey)) {
-					return KtLiterals.property(extraKey, indices.get(0));
+
+			for (KtExpression index : indices) {
+				KtLiterals literals = from(index);
+				if (literals.hasText()) {
+					return literals.asProperty();
 				}
 			}
 		}
@@ -145,11 +147,11 @@ class KtLiterals {
 
 					if (it instanceof KtLiteralStringTemplateEntry literal) {
 						return JBIterable.of(
-								new KtLiteral(KotlinDslUtils.getText(literal), null, (KtElement) literal.getParent()));
+								new KtLiteral(getText(literal), null, (KtElement) literal.getParent()));
 					}
 
 					if (it instanceof KtBlockStringTemplateEntry block) {
-						return JBIterable.from(block.getExpressions()).map(KtLiterals::from)
+						return JBIterable.from(block.getExpressions()).map(KtLiterals::fromPropertyCandidate)
 								.map(KtLiterals::getLiterals).flatMap(JBIterable::from);
 					}
 
@@ -159,8 +161,61 @@ class KtLiterals {
 		return new KtLiterals(literals);
 	}
 
-	private List<KtLiteral> getLiterals() {
-		return literals;
+	private static KtLiterals fromPropertyCandidate(KtElement it) {
+		KtLiterals inner = from(it);
+		return it instanceof KtReferenceExpression ? inner.asProperty() : inner;
+	}
+
+	/**
+	 * Extract text from supported Kotlin DSL literal forms.
+	 * <p>Used for property keys, dependency coordinates, and simple synthesized
+	 * string values.
+	 * @throws IllegalArgumentException if the element type is not supported
+	 */
+	public static String getText(KtElement element) {
+		Assert.notNull(element, "Element must not be null");
+		return KtLiterals.from(element).getText();
+	}
+
+	// TODO
+	static void doWithStrings(KtStringTemplateExpression element, Consumer<String> text,
+			Consumer<KtExpression> expressionConsumer) {
+
+		for (PsiElement child : element.getChildren()) {
+			if (child instanceof KtStringTemplateExpression kse) {
+				doWithStrings(kse, text, expressionConsumer);
+			} else if (child instanceof KtBlockStringTemplateEntry block) {
+				for (KtExpression expression : block.getExpressions()) {
+					expressionConsumer.accept(expression);
+				}
+			} else if (child instanceof KtSimpleNameStringTemplateEntry simple) {
+				KtExpression expr = simple.getExpression();
+				if (expr == null) {
+					expr = PsiTreeUtil.getChildOfType(simple, KtNameReferenceExpression.class);
+				}
+				if (expr != null) {
+					expressionConsumer.accept(expr);
+				} else {
+					text.accept(child.getText());
+				}
+			} else {
+				text.accept(child.getText());
+			}
+		}
+	}
+
+	// TODO
+	static void doWithStrings(KtElement element, Consumer<String> text, Consumer<KtExpression> expressionConsumer) {
+
+		for (PsiElement child : element.getChildren()) {
+			if (child instanceof KtStringTemplateExpression kse) {
+				doWithStrings(kse, text, expressionConsumer);
+			} else if (child instanceof KtLiteralStringTemplateEntry kse) {
+				text.accept(kse.getText());
+			} else if (child instanceof KtElement kte) {
+				doWithStrings(kte, text, expressionConsumer);
+			}
+		}
 	}
 
 	/**
@@ -172,7 +227,7 @@ class KtLiterals {
 	 */
 	public static KtLiterals fromPropertyCall(KtCallExpression call) {
 		KtExpression arg = KotlinDslUtils.getFirstValueArgument(call);
-		String propertyName = KotlinDslUtils.getRequiredText(arg);
+		String propertyName = getText(arg);
 		return property(propertyName, arg);
 	}
 
@@ -196,18 +251,13 @@ class KtLiterals {
 	 * @return a {@link KtLiterals} containing a single property fragment.
 	 */
 	public static KtLiterals fromProperty(KtReferenceExpression ref) {
-		return KtLiterals.property(ref.getName(), ref);
+		String name = ref.getName();
+		Assert.hasText(name, "Reference must have a name");
+		return KtLiterals.property(name, ref);
 	}
 
-	/**
-	 * Create a property-backed {@link KtLiterals} from a Kotlin name reference
-	 * expression.
-	 *
-	 * @param ref the property reference.
-	 * @return a {@link KtLiterals} containing a single property fragment.
-	 */
-	public static KtLiterals fromProperty(KtNameReferenceExpression ref) {
-		return KtLiterals.property(ref.getReferencedName(), ref);
+	private List<KtLiteral> getLiterals() {
+		return literals;
 	}
 
 	/**
@@ -220,33 +270,9 @@ class KtLiterals {
 	}
 
 	/**
-	 * Return the number of normalized fragments contributing to this instance.
-	 *
-	 * @return the fragment count; {@code 0} for an empty instance.
-	 */
-	public int size() {
-		return literals.size();
-	}
-
-	/**
-	 * Return the first property reference represented by this instance.
-	 * <p>If multiple property fragments are present, the first fragment in
-	 * encounter order is returned.
-	 *
-	 * @return the referenced property name without decoration.
-	 * @throws IllegalStateException if {@link #hasProperty()} is {@code false}.
-	 */
-	public String getProperty() {
-		if (property != null) {
-			return property.getProperty();
-		}
-		throw new IllegalStateException("No property found");
-	}
-
-	/**
 	 * Return whether this instance contains any renderable content.
-	 * <p>Property references count as content because they participate in the
-	 * rendered form returned by {@link #toString()}.
+	 * <p>VersionProperty references count as content because they participate in
+	 * the rendered form returned by {@link #toString()}.
 	 *
 	 * @return {@code true} if at least one fragment contributes text or a property
 	 * placeholder.
@@ -267,9 +293,40 @@ class KtLiterals {
 	}
 
 	/**
+	 * Return the first property reference represented by this instance.
+	 * <p>If multiple property fragments are present, the first fragment in
+	 * encounter order is returned.
+	 *
+	 * @return the referenced property name without decoration.
+	 * @throws IllegalStateException if {@link #hasProperty()} is {@code false}.
+	 */
+	public String getProperty() {
+		if (property != null) {
+			return property.getProperty();
+		}
+		throw new IllegalStateException("No property found");
+	}
+
+	/**
+	 * Return the first concrete text fragment represented by this instance.
+	 */
+	public String getText() {
+		return text;
+	}
+
+	/**
+	 * Return the number of normalized fragments contributing to this instance.
+	 *
+	 * @return the fragment count; {@code 0} for an empty instance.
+	 */
+	public int size() {
+		return literals.size();
+	}
+
+	/**
 	 * Render the collected fragments in encounter order.
-	 * <p>Plain literals are concatenated as-is. Property fragments are rendered as
-	 * {@code ${property}}.
+	 * <p>Plain literals are concatenated as-is. VersionProperty fragments are
+	 * rendered as {@code ${property}}.
 	 *
 	 * @return the rendered literal content, or the empty string if no fragments are
 	 * present.
@@ -277,6 +334,20 @@ class KtLiterals {
 	@Override
 	public String toString() {
 		return text;
+	}
+
+	/**
+	 * Create a {@link KtLiterals} instance that represents a single property.
+	 */
+	public KtLiterals asProperty() {
+		if (property != null && property.isProperty()) {
+			return new KtLiterals(property);
+		}
+		if (literals.isEmpty()) {
+			return EMPTY;
+		}
+		KtLiteral first = literals.getFirst();
+		return new KtLiterals(new KtLiteral(null, first.value(), first.expression()));
 	}
 
 	/**
@@ -296,15 +367,12 @@ class KtLiterals {
 		}
 
 		/**
-		 * Return the concrete text value for this fragment.
+		 * Return whether this fragment contributes any renderable content.
 		 *
-		 * @return the fragment text.
-		 * @throws IllegalArgumentException if this fragment does not carry a concrete
-		 * text value.
+		 * @return {@code true} if text or a property name is present.
 		 */
-		public String getString() {
-			Assert.isTrue(StringUtils.hasText(value), "Value must be set");
-			return value;
+		public boolean hasText() {
+			return StringUtils.hasText(value) || StringUtils.hasText(property);
 		}
 
 		/**
@@ -314,7 +382,7 @@ class KtLiterals {
 		 * @throws IllegalArgumentException if this fragment is not property-backed.
 		 */
 		public String getProperty() {
-			Assert.isTrue(StringUtils.hasText(property), "Property must be set");
+			Assert.isTrue(StringUtils.hasText(property), "VersionProperty must be set");
 			return property;
 		}
 
@@ -326,15 +394,6 @@ class KtLiterals {
 		@Override
 		public String toString() {
 			return property != null ? "${" + property + "}" : value;
-		}
-
-		/**
-		 * Return whether this fragment contributes any renderable content.
-		 *
-		 * @return {@code true} if text or a property name is present.
-		 */
-		public boolean hasText() {
-			return StringUtils.hasText(value) || StringUtils.hasText(property);
 		}
 
 	}

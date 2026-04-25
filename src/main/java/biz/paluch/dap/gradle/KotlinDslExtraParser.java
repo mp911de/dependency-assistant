@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 import java.util.HashMap;
 import java.util.Map;
 
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
@@ -56,22 +57,17 @@ class KotlinDslExtraParser {
 	 * @param file the Kotlin build script ({@code .kts}).
 	 * @return a map of property key to literal value.
 	 */
-	public static Map<String, PropertyValue> parseExtraProperties(PsiFile file) {
+	public static Map<String, Property> parseExtraProperties(PsiFile file) {
 
-		Map<String, PropertyValue> result = new HashMap<>();
+		Map<String, Property> result = new HashMap<>();
 
 		SyntaxTraverser.psiTraverser(file)
 				.filter(KtBinaryExpression.class)
 				.forEach(expression -> {
 
-					KotlinExtraAssignment assignment = KotlinExtraAssignment.of(expression);
-					if (assignment == null) {
-						return;
-					}
-
-					PropertyValue element = toPropertyValue(assignment);
-					if (element != null) {
-						result.put(element.propertyKey(), element);
+					KotlinExtraAssignment assignment = KotlinExtraAssignment.from(expression);
+					if (assignment != null) {
+						result.put(assignment.getKey(), assignment);
 					}
 				});
 
@@ -97,7 +93,7 @@ class KotlinDslExtraParser {
 	public static Map<String, String> getExtraProperties(PsiFile file) {
 
 		Map<String, String> result = new HashMap<>();
-		parseExtraProperties(file).forEach((k, v) -> result.put(k, v.propertyValue()));
+		parseExtraProperties(file).forEach((k, v) -> result.put(k, v.getValue()));
 		return result;
 	}
 
@@ -134,12 +130,12 @@ class KotlinDslExtraParser {
 
 					KtExpression initializer = property.getInitializer();
 					if (initializer instanceof KtStringTemplateExpression st) {
-						String value = KotlinDslUtils.getText(st);
+						String value = KtLiterals.getText(st);
 						if (StringUtils.isEmpty(value)) {
 							return;
 						}
 
-						result.put(name, new PropertyValue(st, name, value));
+						result.put(name, new PropertyValue(name, value, st));
 						return;
 					}
 
@@ -154,12 +150,12 @@ class KotlinDslExtraParser {
 							continue;
 						}
 
-						String value = KotlinDslUtils.getText(argTemplate);
+						String value = KtLiterals.getText(argTemplate);
 						if (StringUtils.isEmpty(value)) {
 							return;
 						}
 
-						result.put(name, new PropertyValue(argTemplate, name, value));
+						result.put(name, new PropertyValue(name, value, argTemplate));
 						return;
 					}
 				});
@@ -175,8 +171,8 @@ class KotlinDslExtraParser {
 
 		KotlinExtraAssignment assignment = SyntaxTraverser.psiTraverser(file)
 				.filter(KtBinaryExpression.class)
-				.filterMap(KotlinExtraAssignment::of)
-				.filter(it -> propertyKey.equals(it.key()))
+				.filterMap(KotlinExtraAssignment::from)
+				.filter(it -> propertyKey.equals(it.getKey()))
 				.first();
 
 		return assignment != null ? toPropertyValue(assignment) : null;
@@ -187,22 +183,13 @@ class KotlinDslExtraParser {
 	 * {@code extra["key"] = value} assignment.
 	 */
 	public static boolean isExtra(@Nullable KtBinaryExpression expression) {
-		return KotlinExtraAssignment.of(expression) != null;
+		return KotlinExtraAssignment.from(expression) != null;
 	}
 
 	private static @Nullable PropertyValue toPropertyValue(KotlinExtraAssignment assignment) {
 
-		KtStringTemplateExpression literalElement = assignment.valueLiteral();
-		if (literalElement == null) {
-			return null;
-		}
-
-		String value = KotlinDslUtils.getText(literalElement);
-		if (value == null) {
-			return null;
-		}
-
-		return new PropertyValue(literalElement, assignment.key(), value);
+		String value = assignment.getValue();
+		return new PropertyValue(assignment.getKey(), value, assignment.getValueLiteral());
 	}
 
 }

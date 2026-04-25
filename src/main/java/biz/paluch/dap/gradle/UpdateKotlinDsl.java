@@ -62,7 +62,7 @@ class UpdateKotlinDsl {
 			}
 
 			if (versioned.getVersionElement() instanceof KtStringTemplateExpression template) {
-				GradleUtils.updateVersion(KotlinDslUtils.getText(template), newVersion, template::updateText);
+				GradleUtils.updateVersion(KtLiterals.getText(template), newVersion, template::updateText);
 				return true;
 			}
 
@@ -85,7 +85,7 @@ class UpdateKotlinDsl {
 			return updateValProperty(file, propertyKey, newVersion);
 		}
 
-		if (element.element() instanceof KtStringTemplateExpression valueTemplate) {
+		if (element.getValueLiteral() instanceof KtStringTemplateExpression valueTemplate) {
 			valueTemplate.updateText(newVersion);
 			return true;
 		}

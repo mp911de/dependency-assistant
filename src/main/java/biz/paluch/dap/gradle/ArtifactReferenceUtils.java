@@ -78,8 +78,8 @@ class ArtifactReferenceUtils {
 		if (dependency instanceof PropertyManagedDependency managed) {
 
 			PropertyValue element = propertyResolver.getPropertyValue(managed.property());
-			return fromPropertyManaged(managed, declaration, element == null ? null : element.propertyValue(),
-					element == null ? null : element.element());
+			return fromPropertyManaged(managed, declaration, element == null ? null : element.getValue(),
+					element == null ? null : element.getValueLiteral());
 		}
 
 		if (dependency instanceof SimpleDependency simple) {
@@ -113,10 +113,10 @@ class ArtifactReferenceUtils {
 			return ArtifactReference.from(it -> {
 				it.artifact(artifactId).declarationElement(declaration)
 						.versionSource(versionSource);
-				if (StringUtils.hasText(propertyValue.propertyValue())) {
-					ArtifactVersion.from(propertyValue.propertyValue()).ifPresent(it::version);
+				if (StringUtils.hasText(propertyValue.getValue())) {
+					ArtifactVersion.from(propertyValue.getValue()).ifPresent(it::version);
 				}
-				it.versionLiteral(propertyValue.element());
+				it.versionLiteral(propertyValue.getValueLiteral());
 			});
 		}
 
@@ -148,8 +148,8 @@ class ArtifactReferenceUtils {
 					it.artifact(dependencySite.getArtifactId())
 							.versionSource(dependencySite.getVersionSource())
 							.declarationElement(dependencySite.getDeclarationElement())
-							.versionLiteral(element.element());
-					ArtifactVersion.from(element.propertyValue()).ifPresent(it::version);
+							.versionLiteral(element.getValueLiteral());
+					ArtifactVersion.from(element.getValue()).ifPresent(it::version);
 				});
 			}
 		}

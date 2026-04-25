@@ -129,7 +129,6 @@ class KtVersion {
 				});
 
 		KtExpression versionLiteral = getVersionLiteral(versionCall.getValueArgumentList());
-
 		return new KtVersion(versionCall, versionLiteral, constraints);
 	}
 
@@ -147,7 +146,7 @@ class KtVersion {
 							&& dotQualified.getSelectorExpression() instanceof KtCallExpression selectorCall;
 				}).filter(KtExpression.class)
 				.flatMap(it -> {
-					String propertyName = KotlinDslUtils.getPropertyName(it);
+					String propertyName = KtLiterals.getText(it);
 					if (StringUtils.hasText(propertyName)) {
 						return JBIterable.of(it);
 					}
@@ -178,6 +177,10 @@ class KtVersion {
 	 */
 	public boolean hasProperty() {
 
+		if (versionLiteral instanceof KtReferenceExpression ref) {
+			return StringUtils.hasText(ref.getText());
+		}
+
 		if (versionLiterals != null) {
 			return versionLiterals.hasProperty();
 		}
@@ -199,6 +202,10 @@ class KtVersion {
 	 * @throws IllegalStateException if {@link #hasProperty()} is {@code false}.
 	 */
 	public String getProperty() {
+
+		if (versionLiteral instanceof KtReferenceExpression ref) {
+			return ref.getText();
+		}
 
 		if (versionLiterals != null && versionLiterals.hasProperty()) {
 			return versionLiterals.getProperty();
@@ -226,7 +233,7 @@ class KtVersion {
 	public @Nullable String getVersion() {
 
 		if (versionLiteral != null) {
-			String version = KotlinDslUtils.getText(versionLiteral);
+			String version = KtLiterals.getText(versionLiteral);
 			if (StringUtils.hasText(version)) {
 				return version;
 			}
@@ -234,7 +241,7 @@ class KtVersion {
 
 		for (Constraint value : constraints.values()) {
 			if (value.hasText() && !value.isRange()) {
-				String version = KotlinDslUtils.getText(value.version());
+				String version = KtLiterals.getText(value.version());
 				if (StringUtils.hasText(version)) {
 					return version;
 				}
@@ -316,8 +323,9 @@ class KtVersion {
 		 */
 		public static Constraint of(KtCallElement call) {
 			KtExpression version = KotlinDslUtils.getFirstValueArgument(call);
+			KtLiterals from = KtLiterals.from(version);
 			return new Constraint(KotlinDslUtils.getKotlinCallName(call), call, version,
-					KtLiterals.from(version));
+					version instanceof KtReferenceExpression ? from.asProperty() : from);
 		}
 
 		/**

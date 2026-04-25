@@ -32,7 +32,7 @@ import com.intellij.util.xmlb.annotations.XCollection;
  * @author Mark Paluch
  */
 @Tag("property")
-public class Property {
+public class VersionProperty {
 
 	@Attribute private String name;
 	@Attribute private boolean declared;
@@ -43,14 +43,15 @@ public class Property {
 	/**
 	 * Create an empty property entry for XML deserialization.
 	 */
-	public Property() {}
+	public VersionProperty() {
+	}
 
 	/**
 	 * Create a property entry with the given name and no artifact associations.
 	 *
 	 * @param name the property name.
 	 */
-	public Property(String name) {
+	public VersionProperty(String name) {
 		this(name, new ArrayList<>());
 	}
 
@@ -60,7 +61,7 @@ public class Property {
 	 * @param name the property name.
 	 * @param artifacts the initial artifact associations.
 	 */
-	public Property(String name, List<CachedArtifact> artifacts) {
+	public VersionProperty(String name, List<CachedArtifact> artifacts) {
 		this.name = name;
 		synchronized (this.artifacts) {
 			this.artifacts.addAll(artifacts);
@@ -151,7 +152,7 @@ public class Property {
 		if (obj == null || obj.getClass() != this.getClass()) {
 			return false;
 		}
-		Property that = (Property) obj;
+		VersionProperty that = (VersionProperty) obj;
 		return Objects.equals(this.name, that.name) && Objects.equals(this.artifacts, that.artifacts);
 	}
 
@@ -162,7 +163,7 @@ public class Property {
 
 	@Override
 	public String toString() {
-		return "Property[" + "name=" + name + ", " + "artifacts=" + artifacts + ']';
+		return "VersionProperty[" + "name=" + name + ", " + "artifacts=" + artifacts + ']';
 	}
 
 	/**

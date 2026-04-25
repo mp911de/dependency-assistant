@@ -289,7 +289,7 @@ class GradleParser extends GradleParserSupport {
 
 						return VersionedDependencySite.of(artifactId, optionalVersion.get(),
 								versionSource, call,
-								propertyValue.element());
+								propertyValue.getValueLiteral());
 					}
 				}
 			}
@@ -345,8 +345,8 @@ class GradleParser extends GradleParserSupport {
 					if (StringUtils.hasText(refName)) {
 						PropertyValue element = propertyResolver.getPropertyValue(refName);
 						if (element != null) {
-							version = element.propertyValue();
-							versionLiteral = element.element();
+							version = element.getValue();
+							versionLiteral = element.getValueLiteral();
 						}
 					}
 				} else if (val instanceof GrString gstr) {
@@ -359,8 +359,8 @@ class GradleParser extends GradleParserSupport {
 							versionProperty = refName;
 							PropertyValue element = propertyResolver.getPropertyValue(refName);
 							if (element != null) {
-								version = element.propertyValue();
-								versionLiteral = element.element();
+								version = element.getValue();
+								versionLiteral = element.getValueLiteral();
 							}
 						}
 					}
@@ -455,11 +455,11 @@ class GradleParser extends GradleParserSupport {
 			}
 
 			PropertyValue resolved = propertyResolver.getPropertyValue(propertyName);
-			if (resolved == null || !StringUtils.hasText(resolved.propertyValue())) {
+			if (resolved == null || !StringUtils.hasText(resolved.getValue())) {
 				return GroovyVersionValue.absent();
 			}
 
-			return new GroovyVersionValue(propertyName, resolved.propertyValue(), resolved.element());
+			return new GroovyVersionValue(propertyName, resolved.getValue(), resolved.getValueLiteral());
 		}
 
 		return GroovyVersionValue.absent();

@@ -23,6 +23,7 @@ import com.intellij.psi.PsiElement;
  *
  * @author Mark Paluch
  */
-public record PropertyValue(PsiElement element, String propertyKey, String propertyValue) {
+public record PropertyValue(String getKey, String getValue, PsiElement getValueLiteral) implements Property {
+
 
 }

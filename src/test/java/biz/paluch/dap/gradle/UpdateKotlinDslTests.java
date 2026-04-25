@@ -100,6 +100,90 @@ class UpdateKotlinDslTests {
 	@Test
 	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
+			    implementation("org.junit:junit-bom:(5.2,6.0.0]")
+			}
+			""")
+	void kotlinConstraintRangeUpperBoundIsUpdated(PsiFile buildFile) {
+
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
+				VersionSource.declared("6.0.0"), "6.0.3");
+
+		assertThat(updated).hasDependency("junit-bom", "6.0.3");
+		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:(5.2,6.0.3]\")");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[6.0.0,)")
+			}
+			""")
+	void kotlinConstraintRangeLowerBoundIsUpdated(PsiFile buildFile) {
+
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
+				VersionSource.declared("6.0.0"), "6.0.3");
+
+		assertThat(updated).hasDependency("junit-bom", "6.0.3");
+		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:[6.0.3,)\")");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[5.0, 7.0[!!6.0.0")
+			}
+			""")
+	void kotlinConstraintBangBangPreferVersionIsUpdated(PsiFile buildFile) {
+
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
+				VersionSource.declared("6.0.0"), "6.0.3");
+
+		assertThat(updated).hasDependency("junit-bom", "6.0.3");
+		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:[5.0, 7.0[!!6.0.3\")");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:6.0.0!!")
+			}
+			""")
+	void kotlinConstraintBangBangStrictVersionIsUpdated(PsiFile buildFile) {
+
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+				DeclarationSource.dependency(),
+				VersionSource.declared("6.0.0"), "6.0.3");
+
+		assertThat(updated).hasDependency("junit-bom", "6.0.3");
+		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:6.0.3!!\")");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:0.10.+")
+			    testImplementation("org.junit:junit-bom:latest.release")
+			}
+			""")
+	void kotlinDynamicConstraintVersionsAreNotUpdated(PsiFile buildFile) {
+
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+				VersionSource.declared("0.10.+"), "6.0.3");
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
+				VersionSource.declared("latest.release"), "6.0.3");
+
+		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:0.10.+\")");
+		assertThat(buildFile.getText()).contains("testImplementation(\"org.junit:junit-bom:latest.release\")");
+		assertThat(buildFile.getText()).doesNotContain("implementation(\"org.junit:junit-bom:6.0.3\")");
+		assertThat(buildFile.getText()).doesNotContain("testImplementation(\"org.junit:junit-bom:6.0.3\")");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
 			    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.5.0"))
 			    implementation(platform("io.micrometer:micrometer-bom:1.14.0"))
 			}

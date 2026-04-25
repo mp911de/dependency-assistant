@@ -26,7 +26,7 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectProperty;
-import biz.paluch.dap.state.Property;
+import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.application.ApplicationManager;
@@ -224,7 +224,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 				return value;
 			}
 
-			ProjectProperty property = this.service.getCache().findProperty(name, Property::isDeclared);
+			ProjectProperty property = this.service.getCache().findProperty(name, VersionProperty::isDeclared);
 			if (property == null || StringUtils.isEmpty(property.id().buildFile())) {
 				return null;
 			}

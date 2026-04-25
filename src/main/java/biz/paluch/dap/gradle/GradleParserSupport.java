@@ -121,6 +121,10 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 			return GradleDependency.of(group, artifact, version, propertyResolver);
 		}
 
+		/**
+		 * Create a {@link DependencySite} from this declaration if it
+		 * {@link #isComplete() is complete}.
+		 */
 		public DependencySite toDependencySite(PropertyResolver propertyResolver) {
 
 			Assert.state(isComplete(), "Declaration must be complete");
@@ -130,23 +134,24 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 			if (StringUtils.hasText(versionProperty)) {
 				PropertyValue element = propertyResolver.getPropertyValue(versionProperty);
 				if (element != null) {
-					Optional<ArtifactVersion> version = ArtifactVersion.from(element.propertyValue());
+					Optional<ArtifactVersion> version = ArtifactVersion.from(element.getValue());
 					if (version.isPresent()) {
 						return VersionedDependencySite.of(dependency.getId(), version
-								.get(), VersionSource.property(versionProperty), element.element(), declaration);
+								.get(), VersionSource.property(versionProperty), element.getValueLiteral(),
+								declaration);
 					}
 				}
 				if (StringUtils.hasText(version)) {
 					Optional<ArtifactVersion> version = ArtifactVersion.from(version());
 					if (version.isPresent()) {
 						return VersionedDependencySite.of(dependency.getId(), version.get(),
-								VersionSource.property(versionProperty), declaration, versionLiteral);
+								VersionSource.property(versionProperty), declaration, getRequiredVersionLiteral());
 					}
 				}
 			}
 
 			return GradleDependency.of(group, artifact, version, propertyResolver).toDependencySite(declaration,
-					versionLiteral);
+					getRequiredVersionLiteral());
 		}
 
 		/**

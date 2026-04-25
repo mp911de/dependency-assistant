@@ -24,17 +24,19 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-record MapPropertyResolver(Map<String, PropertyValue> properties) implements PropertyResolver {
+record MapPropertyResolver(Map<String, ? extends Property> properties) implements PropertyResolver {
 
 	@Override
-	public @Nullable PropertyValue getPropertyValue(String propertyKey) {
-		return properties.get(propertyKey);
+	public @Nullable PropertyValue getPropertyValue(String key) {
+		Property property = properties.get(key);
+		return property != null ? new PropertyValue(property.getKey(), property.getValue(), property.getValueLiteral())
+				: null;
 	}
 
 	@Override
 	public @Nullable String getProperty(String propertyKey) {
-		PropertyValue element = properties.get(propertyKey);
-		return element != null ? element.propertyValue() : null;
+		Property element = properties.get(propertyKey);
+		return element != null ? element.getValue() : null;
 	}
 
 }

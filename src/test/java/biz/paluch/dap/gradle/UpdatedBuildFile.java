@@ -124,7 +124,7 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 						propertyName, this.actual.file.getName());
 			}
 
-			String actualValue = element.propertyValue();
+			String actualValue = element.getValue();
 			if (!expectedValue.equals(actualValue)) {
 				failWithMessage("Expected property '%s' in %s to have value '%s' but was '%s'",
 						propertyName, this.actual.file.getName(), expectedValue, actualValue);
@@ -143,7 +143,7 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 			PropertyValue element = this.actual.propertyResolver.getPropertyValue(propertyName);
 			if (element != null) {
 				failWithMessage("Expected property '%s' to be absent in %s but found value '%s'",
-						propertyName, this.actual.file.getName(), element.propertyValue());
+						propertyName, this.actual.file.getName(), element.getValue());
 			}
 
 			return this;

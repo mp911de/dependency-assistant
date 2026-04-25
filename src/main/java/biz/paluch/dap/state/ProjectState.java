@@ -70,8 +70,8 @@ public interface ProjectState {
 	 * artifact correlation exists.
 	 */
 	@Nullable
-	default Property findProperty(String propertyName) {
-		return findProperty(propertyName, Property::hasArtifacts);
+	default VersionProperty findProperty(String propertyName) {
+		return findProperty(propertyName, VersionProperty::hasArtifacts);
 	}
 
 	/**
@@ -82,7 +82,7 @@ public interface ProjectState {
 	 * @return the matching property, or {@code null}.
 	 */
 	@Nullable
-	Property findProperty(String propertyName, Predicate<Property> filter);
+	VersionProperty findProperty(String propertyName, Predicate<VersionProperty> filter);
 
 	/**
 	 * Find a project property by name that is associated with at least one
@@ -94,7 +94,7 @@ public interface ProjectState {
 	 */
 
 	default @Nullable ProjectProperty findProjectProperty(String propertyName) {
-		return findProjectProperty(propertyName, Property::hasArtifacts);
+		return findProjectProperty(propertyName, VersionProperty::hasArtifacts);
 	}
 
 	/**
@@ -105,6 +105,6 @@ public interface ProjectState {
 	 * @return the matching project property, or {@code null}.
 	 */
 	@Nullable
-	ProjectProperty findProjectProperty(String propertyName, Predicate<Property> filter);
+	ProjectProperty findProjectProperty(String propertyName, Predicate<VersionProperty> filter);
 
 }

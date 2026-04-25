@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import com.intellij.openapi.project.Project;
@@ -54,10 +55,10 @@ class GradlePropertyResolver implements PropertyResolver {
 
 	private static final GradlePropertyResolver ABSENT = new GradlePropertyResolver(Map.of());
 
-	private final Map<String, PropertyValue> propertyElements;
+	private final Map<String, Property> propertyElements;
 
 	public GradlePropertyResolver(
-			Map<String, PropertyValue> propertyElements) {
+			Map<String, Property> propertyElements) {
 		this.propertyElements = propertyElements;
 	}
 
@@ -113,7 +114,7 @@ class GradlePropertyResolver implements PropertyResolver {
 		}
 		Collections.reverse(dirsLeafToRoot);
 
-		Map<String, PropertyValue> properties = new LinkedHashMap<>();
+		Map<String, Property> properties = new LinkedHashMap<>();
 		for (VirtualFile directory : dirsLeafToRoot) {
 			VirtualFile gradleProps = directory.findChild(GradleUtils.GRADLE_PROPERTIES);
 			if (gradleProps != null) {
@@ -150,7 +151,7 @@ class GradlePropertyResolver implements PropertyResolver {
 
 	private static GradlePropertyResolver parseFile(PsiFile file) {
 
-		Map<String, PropertyValue> properties = new LinkedHashMap<>();
+		Map<String, Property> properties = new LinkedHashMap<>();
 
 		if (GradleUtils.isGroovyDsl(file)) {
 			properties.putAll(GroovyDslExtParser.parseLocalVariables(file));
@@ -254,24 +255,26 @@ class GradlePropertyResolver implements PropertyResolver {
 
 		PropertyValue element = getPropertyValue(key);
 		if (element != null) {
-			return element.propertyValue();
+			return element.getValue();
 		}
 		return null;
 	}
 
 	@Override
 	public @Nullable PropertyValue getPropertyValue(String key) {
-		return propertyElements.get(key);
+		Property property = propertyElements.get(key);
+		return property != null ? new PropertyValue(property.getKey(), property.getValue(), property.getValueLiteral())
+				: null;
 	}
 
 	/**
 	 * Finds a cached property binding whose value PSI matches or encloses
 	 * {@code literal}.
 	 */
-	public @Nullable PropertyValue findBindingForValueLiteral(PsiElement literal) {
+	public @Nullable Property findBindingForValueLiteral(PsiElement literal) {
 
-		for (PropertyValue binding : propertyElements.values()) {
-			PsiElement psi = binding.element();
+		for (Property binding : propertyElements.values()) {
+			PsiElement psi = binding.getValueLiteral();
 			if (psi == null) {
 				continue;
 			}

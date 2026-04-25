@@ -15,10 +15,10 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.VersionSource.VersionProperty;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.state.Property;
+import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencyDocumentationProviderSupport;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
@@ -60,10 +60,11 @@ public class DependencyDocumentationProvider extends DependencyDocumentationProv
 		Cache cache = lookupService.getCache();
 
 		if (lookupService.hasCachedState()
-				&& artifactReference.getDeclaration().getVersionSource() instanceof VersionProperty property) {
+				&& artifactReference.getDeclaration()
+						.getVersionSource() instanceof VersionSource.VersionProperty property) {
 
 			ProjectState projectState = lookupService.getProjectState();
-			Property cachedProperty = projectState.findProperty(property.getProperty());
+			VersionProperty cachedProperty = projectState.findProperty(property.getProperty());
 			if (cachedProperty == null || cachedProperty.artifacts().isEmpty()) {
 				return null;
 			}

@@ -18,7 +18,7 @@ package biz.paluch.dap.maven;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.Property;
+import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ReleasesSuggestionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
@@ -60,7 +60,7 @@ public class PropertyVersionCompletionContributor extends CompletionContributor 
 
 				VersionUpgradeLookupService lookupService = VersionUpgradeLookupService.create(element);
 				String propertyName = propertyTag.getLocalName();
-				Property property = lookupService.getProperty(propertyName);
+				VersionProperty property = lookupService.getProperty(propertyName);
 				if (property == null || !property.hasArtifacts()) {
 					return null;
 				}

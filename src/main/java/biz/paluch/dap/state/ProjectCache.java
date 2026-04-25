@@ -50,10 +50,10 @@ public class ProjectCache implements Comparator<ProjectCache> {
 
 	private @Attribute @Nullable String descriptor;
 
-	private final @Tag @XCollection(propertyElementName = "properties", elementName = "property", style = XCollection.Style.v2) List<Property> properties = new ArrayList<>();
+	private final @Tag @XCollection(propertyElementName = "properties", elementName = "property", style = XCollection.Style.v2) List<VersionProperty> properties = new ArrayList<>();
 
 	@Transient
-	private final Map<String, Property> propertyMap = new java.util.TreeMap<>();
+	private final Map<String, VersionProperty> propertyMap = new java.util.TreeMap<>();
 
 	public ProjectCache() {
 	}
@@ -150,10 +150,10 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	}
 
 	/**
-	 * Returns all known property-to-artifact mappings. Each {@link Property}
+	 * Returns all known property-to-artifact mappings. Each {@link VersionProperty}
 	 * carries the property name and the artifact(s) whose version it controls.
 	 */
-	public List<Property> getProperties() {
+	public List<VersionProperty> getProperties() {
 		return List.copyOf(properties);
 	}
 
@@ -183,7 +183,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 				for (VersionSource versionSource : declaration.getVersionSources()) {
 					if (versionSource instanceof VersionSource.VersionProperty vps) {
 
-						Property property = propertyMap.computeIfAbsent(vps.getProperty(), Property::new);
+						VersionProperty property = propertyMap.computeIfAbsent(vps.getProperty(), VersionProperty::new);
 						property.setUsed(true);
 						property.addArtifact(declaration.getArtifactId());
 					}
@@ -194,7 +194,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 
 			for (String propertyName : collector.getProperties()) {
 				propertyMap.computeIfAbsent(propertyName, k -> {
-					Property property = new Property(k);
+					VersionProperty property = new VersionProperty(k);
 					this.properties.add(property);
 					return property;
 				}).setDeclared(true);
@@ -211,12 +211,12 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	 * @return the matching property, or {@code null} if none is known.
 	 */
 	@Transient
-	public @Nullable Property getProperty(String propertyName) {
+	public @Nullable VersionProperty getProperty(String propertyName) {
 
 		if (propertyMap.size() != properties.size()) {
 
 			propertyMap.clear();
-			for (Property property : properties) {
+			for (VersionProperty property : properties) {
 				propertyMap.put(property.name(), property);
 			}
 		}

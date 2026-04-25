@@ -43,7 +43,7 @@ class GroovyDslExtParser {
 
 	/**
 	 * Parse all Groovy {@code ext} property declarations from the given file.
-	 * <p>Three forms are recognized:
+	 * <p>Three forms are supported:
 	 *
 	 * <pre>
 	 * ext {
@@ -92,14 +92,14 @@ class GroovyDslExtParser {
 	public static Map<String, String> getExtProperties(PsiFile file) {
 
 		Map<String, String> elements = new LinkedHashMap<>();
-		parseExtProperties(file).forEach((k, v) -> elements.put(k, v.propertyValue()));
+		parseExtProperties(file).forEach((k, v) -> elements.put(k, v.getValue()));
 
 		return elements;
 	}
 
 	/**
 	 * Parse script-level variable declarations from the given file.
-	 * <p>Recognized forms:
+	 * <p>Supported forms:
 	 *
 	 * <pre class="code">
 	 * def springVersion = '6.1.0'
@@ -126,8 +126,8 @@ class GroovyDslExtParser {
 						GrExpression initializer = variable.getInitializerGroovy();
 						if (name != null && initializer instanceof GrLiteral literal
 								&& GroovyDslUtils.hasText(literal)) {
-							elements.put(name, new PropertyValue(literal, name,
-									GroovyDslUtils.getRequiredText(literal)));
+							elements.put(name,
+									new PropertyValue(name, GroovyDslUtils.getRequiredText(literal), literal));
 							continue;
 						}
 
@@ -135,8 +135,8 @@ class GroovyDslExtParser {
 							GrLiteral innerLiteral = PsiTreeUtil.findChildOfType(gstr, GrLiteral.class);
 							if (innerLiteral != null && GroovyDslUtils.hasText(innerLiteral)) {
 								elements.put(name,
-										new PropertyValue(innerLiteral, name,
-												GroovyDslUtils.getRequiredText(innerLiteral)));
+										new PropertyValue(name, GroovyDslUtils.getRequiredText(innerLiteral),
+												innerLiteral));
 							}
 						}
 					}
@@ -161,8 +161,7 @@ class GroovyDslExtParser {
 							String key = ref.getReferenceName();
 							if (key != null && rhs instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
 								elements.put(key,
-										new PropertyValue(literal, key,
-												GroovyDslUtils.getRequiredText(literal)));
+										new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
 							}
 						}
 					}
@@ -175,7 +174,7 @@ class GroovyDslExtParser {
 								&& keyLit.getValue() instanceof String key
 								&& args[1] instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
 							elements.put(key,
-									new PropertyValue(literal, key, GroovyDslUtils.getRequiredText(literal)));
+									new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
 						}
 					}
 				});
@@ -197,7 +196,7 @@ class GroovyDslExtParser {
 		if (qualifier instanceof GrReferenceExpression qualRef && "ext".equals(qualRef.getReferenceName())) {
 			String key = ref.getReferenceName();
 			if (key != null && rhs instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
-				elements.put(key, new PropertyValue(literal, key, GroovyDslUtils.getRequiredText(literal)));
+				elements.put(key, new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
 			}
 		}
 

@@ -47,8 +47,8 @@ class CompositePropertyResolver implements PropertyResolver {
 	}
 
 	@Override
-	public boolean containsProperty(String propertyKey) {
-		return primary.containsProperty(propertyKey) || fallback.containsProperty(propertyKey);
+	public boolean containsProperty(String key) {
+		return primary.containsProperty(key) || fallback.containsProperty(key);
 	}
 
 	@Override
@@ -58,9 +58,9 @@ class CompositePropertyResolver implements PropertyResolver {
 	}
 
 	@Override
-	public @Nullable PropertyValue getPropertyValue(String propertyKey) {
-		PropertyValue element = primary.getPropertyValue(propertyKey);
-		return element != null ? element : fallback.getPropertyValue(propertyKey);
+	public @Nullable PropertyValue getPropertyValue(String key) {
+		PropertyValue element = primary.getPropertyValue(key);
+		return element != null ? element : fallback.getPropertyValue(key);
 	}
 
 

@@ -79,6 +79,7 @@ public abstract class SuggestionProviderUtil {
 				element = element.withIcon(versionAge.getIcon());
 			}
 
+			// TODO Elements are sometimes not sorted properly
 			result.addElement(PrioritizedLookupElement.withPriority(element, priority--));
 		}
 	}

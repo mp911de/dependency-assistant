@@ -18,14 +18,10 @@ package biz.paluch.dap.gradle;
 import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import org.jspecify.annotations.Nullable;
+import biz.paluch.dap.util.StringUtils;
 
 /**
- * Parses a Gradle rich-version string into a concrete version anchor suitable
- * for dependency collection and upgrade suggestions.
- * <p>Supports {@code !!} strict shorthand, Maven/Gradle range syntax with
- * inclusive/exclusive bounds using {@code [}, {@code ]}, {@code (}, and
- * {@code )} delimiters, and dynamic version patterns that are left unresolved.
+ * Utilities for Gradle rich-version declarations.
  *
  * @author Mark Paluch
  */
@@ -33,97 +29,167 @@ class GradleRichVersion {
 
 	private static final String BANG_BANG = "!!";
 
-	@Nullable
-	private final ArtifactVersion concreteVersion;
-
-	private GradleRichVersion(@Nullable ArtifactVersion concreteVersion) {
-		this.concreteVersion = concreteVersion;
+	private GradleRichVersion() {
 	}
 
 	/**
-	 * Parse a raw Gradle version string into a {@code GradleRichVersion}.
-	 *
-	 * @param raw the raw version string, must not be {@literal null}.
-	 * @return the parsed rich version.
+	 * Derive a concrete version anchor from a raw Gradle rich-version declaration.
 	 */
 	static Optional<ArtifactVersion> parse(String raw) {
 		if (isDynamic(raw)) {
 			return Optional.empty();
 		}
 
-		String[] bangParts = raw.split(BANG_BANG, 2);
-		String strictlyPart = bangParts[0];
-		String preferPart = bangParts.length > 1 ? bangParts[1].trim() : "";
-
-		if (!preferPart.isEmpty()) {
-			ArtifactVersion prefer = ArtifactVersion.from(preferPart).orElse(null);
-			if (prefer != null) {
-				return Optional.of(prefer);
+		BangBangVersion bangBang = BangBangVersion.parse(raw);
+		if (bangBang != null && StringUtils.hasText(bangBang.prefer())) {
+			Optional<ArtifactVersion> preferred = ArtifactVersion.from(bangBang.prefer().trim());
+			if (preferred.isPresent()) {
+				return preferred;
 			}
 		}
 
-		if (!isRange(strictlyPart)) {
-			return ArtifactVersion.from(strictlyPart);
-		}
-
-		return anchorFromRange(strictlyPart);
+		String candidate = bangBang != null ? bangBang.strictly() : raw;
+		VersionRange range = VersionRange.parse(candidate);
+		return (range != null ? range.anchor() : ArtifactVersion.from(candidate.trim()));
 	}
 
 	/**
-	 * Return the concrete version anchor derived from the raw version string, if
-	 * one can be determined.
-	 *
-	 * @return the concrete version, or empty if the version is dynamic or no anchor
-	 * can be derived.
+	 * Rewrite a raw Gradle rich-version declaration to use {@code newVersion} while
+	 * preserving supported rich-version syntax.
 	 */
-	Optional<ArtifactVersion> getConcreteVersion() {
-		return Optional.ofNullable(concreteVersion);
+	static String update(String raw, String newVersion) {
+		if (StringUtils.isEmpty(raw) || isDynamic(raw)) {
+			return raw;
+		}
+
+		BangBangVersion bangBang = BangBangVersion.parse(raw);
+		if (bangBang != null) {
+			return bangBang.update(newVersion);
+		}
+
+		VersionRange range = VersionRange.parse(raw);
+		return (range != null ? range.update(newVersion) : newVersion);
 	}
 
 	private static boolean isDynamic(String raw) {
-		return raw.endsWith(".+") || raw.equals("+") || raw.equals("latest.release")
-				|| raw.equals("latest.integration");
+		String trimmed = raw.trim();
+		return trimmed.endsWith(".+") || trimmed.equals("+") || trimmed.equals("latest.release")
+				|| trimmed.equals("latest.integration");
 	}
 
-	private static boolean isRange(String s) {
-		if (s.isEmpty()) {
-			return false;
+	private record BangBangVersion(String strictly, String prefer) {
+
+		static BangBangVersion parse(String raw) {
+			int bangBang = raw.indexOf(BANG_BANG);
+			if (bangBang == -1) {
+				return null;
+			}
+			return new BangBangVersion(raw.substring(0, bangBang), raw.substring(bangBang + BANG_BANG.length()));
 		}
-		char first = s.charAt(0);
-		char last = s.charAt(s.length() - 1);
-		boolean lowerDelimiter = first == '[' || first == '(' || first == ']';
-		boolean upperDelimiter = last == ']' || last == ')' || last == '[';
-		return lowerDelimiter && upperDelimiter;
+
+		String update(String newVersion) {
+			if (StringUtils.hasText(this.prefer)) {
+				return this.strictly + BANG_BANG + replaceTrimmed(this.prefer, newVersion);
+			}
+			return newVersion + BANG_BANG;
+		}
+
 	}
 
-	private static Optional<ArtifactVersion> anchorFromRange(String range) {
+	private record VersionRange(String prefix, char start, String lowerBound, String upperBound, char end,
+			String suffix) {
 
-		String content = range.substring(1, range.length() - 1);
-		int commaIndex = content.indexOf(',');
-		if (commaIndex < 0) {
+		static VersionRange parse(String raw) {
+			int leadingWhitespace = leadingWhitespace(raw);
+			int trailingWhitespace = trailingWhitespace(raw);
+			String trimmed = raw.substring(leadingWhitespace, raw.length() - trailingWhitespace);
+
+			if (!hasRangeDelimiters(trimmed)) {
+				return null;
+			}
+
+			String content = trimmed.substring(1, trimmed.length() - 1);
+			int comma = content.indexOf(',');
+			if (comma == -1) {
+				return null;
+			}
+
+			return new VersionRange(raw.substring(0, leadingWhitespace), trimmed.charAt(0),
+					content.substring(0, comma), content.substring(comma + 1),
+					trimmed.charAt(trimmed.length() - 1), raw.substring(raw.length() - trailingWhitespace));
+		}
+
+		Optional<ArtifactVersion> anchor() {
+			if (this.end == ']') {
+				Optional<ArtifactVersion> upper = ArtifactVersion.from(this.upperBound.trim());
+				if (upper.isPresent()) {
+					return upper;
+				}
+			}
+
+			if (this.start == '[') {
+				Optional<ArtifactVersion> lower = ArtifactVersion.from(this.lowerBound.trim());
+				if (lower.isPresent()) {
+					return lower;
+				}
+			}
+
 			return Optional.empty();
 		}
 
-		String lowerToken = content.substring(0, commaIndex).trim();
-		String upperToken = content.substring(commaIndex + 1).trim();
-		char lastChar = range.charAt(range.length() - 1);
-		char firstChar = range.charAt(0);
-
-		if (lastChar == ']') {
-			Optional<ArtifactVersion> upper = ArtifactVersion.from(upperToken);
-			if (upper.isPresent()) {
-				return upper;
+		String update(String newVersion) {
+			if (this.end == ']' && StringUtils.hasText(this.upperBound)) {
+				return this.prefix + this.start + this.lowerBound + "," + replaceTrimmed(this.upperBound, newVersion)
+						+ this.end + this.suffix;
 			}
+
+			if (this.start == '[' && StringUtils.hasText(this.lowerBound)) {
+				return this.prefix + this.start + replaceTrimmed(this.lowerBound, newVersion) + "," + this.upperBound
+						+ this.end + this.suffix;
+			}
+
+			return toString();
 		}
 
-		if (firstChar == '[') {
-			Optional<ArtifactVersion> lower = ArtifactVersion.from(lowerToken);
-			if (lower.isPresent()) {
-				return lower;
-			}
+		@Override
+		public String toString() {
+			return this.prefix + this.start + this.lowerBound + "," + this.upperBound + this.end + this.suffix;
 		}
 
-		return Optional.empty();
+		private static boolean hasRangeDelimiters(String value) {
+			if (!StringUtils.hasText(value)) {
+				return false;
+			}
+			char first = value.charAt(0);
+			char last = value.charAt(value.length() - 1);
+			boolean lowerDelimiter = first == '[' || first == '(' || first == ']';
+			boolean upperDelimiter = last == ']' || last == ')' || last == '[';
+			return lowerDelimiter && upperDelimiter;
+		}
+
+	}
+
+	private static String replaceTrimmed(String value, String replacement) {
+		int leadingWhitespace = leadingWhitespace(value);
+		int trailingWhitespace = trailingWhitespace(value);
+		return value.substring(0, leadingWhitespace) + replacement
+				+ value.substring(value.length() - trailingWhitespace);
+	}
+
+	private static int leadingWhitespace(String value) {
+		int index = 0;
+		while (index < value.length() && Character.isWhitespace(value.charAt(index))) {
+			index++;
+		}
+		return index;
+	}
+
+	private static int trailingWhitespace(String value) {
+		int index = value.length() - 1;
+		while (index >= 0 && Character.isWhitespace(value.charAt(index))) {
+			index--;
+		}
+		return value.length() - index - 1;
 	}
 
 }

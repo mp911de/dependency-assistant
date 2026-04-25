@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
 import com.intellij.psi.PsiElement;
@@ -99,13 +100,13 @@ interface LookupSite {
 	/**
 	 * Create a {@link PropertyLookupSite} from a resolved {@link PropertyValue}.
 	 *
-	 * @param propertyValue the property value descriptor.
+	 * @param property the property value descriptor.
 	 * @param declarationElement the PSI element owning the property declaration.
 	 * @return the lookup site.
 	 */
-	static LookupSite ofProperty(PropertyValue propertyValue, PsiElement declarationElement) {
-		return ofProperty(propertyValue.propertyKey(), propertyValue.propertyValue(), declarationElement,
-				propertyValue.element());
+	static LookupSite ofProperty(Property property, PsiElement declarationElement) {
+		return ofProperty(property.getKey(), property.getValue(), declarationElement,
+				property.getValueLiteral());
 	}
 
 	/**
@@ -121,7 +122,7 @@ interface LookupSite {
 	static LookupSite ofProperty(String propertyName, String version, PsiElement declarationElement,
 			PsiElement versionElement) {
 
-		Assert.hasText(propertyName, "Property name must not be empty");
+		Assert.hasText(propertyName, "VersionProperty name must not be empty");
 		Assert.notNull(declarationElement, "Declaration element must not be null");
 		Assert.notNull(versionElement, "Version element must not be null");
 

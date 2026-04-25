@@ -221,7 +221,7 @@ public class Cache {
 	 * @param filter the predicate that must accept the matching property.
 	 * @return the first matching project property, or {@code null} if none matches.
 	 */
-	public @Nullable ProjectProperty findProperty(String propertyName, Predicate<Property> filter) {
+	public @Nullable ProjectProperty findProperty(String propertyName, Predicate<VersionProperty> filter) {
 
 		synchronized (projects) {
 			for (ProjectCache project : projects) {
@@ -229,7 +229,7 @@ public class Cache {
 					continue;
 				}
 
-				Property property = project.getProperty(propertyName);
+				VersionProperty property = project.getProperty(propertyName);
 				if (property == null || !filter.test(property)) {
 					continue;
 				}
@@ -247,7 +247,7 @@ public class Cache {
 	 *
 	 * @param propertyConsumer the consumer to invoke.
 	 */
-	public void doWithProperties(Consumer<Property> propertyConsumer) {
+	public void doWithProperties(Consumer<VersionProperty> propertyConsumer) {
 		getProjects().forEach(project -> project.getProperties().forEach(propertyConsumer));
 	}
 

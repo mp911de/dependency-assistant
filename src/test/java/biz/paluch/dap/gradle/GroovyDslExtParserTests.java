@@ -79,7 +79,7 @@ class GroovyDslExtParserTests {
 		Map<String, PropertyValue> props = GroovyDslExtParser.parseLocalVariables(buildFile);
 
 		assertThat(props).containsKey("junit");
-		assertThat(props.get("junit").propertyValue()).isEqualTo("6.0.0");
+		assertThat(props.get("junit").getValue()).isEqualTo("6.0.0");
 	}
 
 }
