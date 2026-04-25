@@ -18,11 +18,12 @@ package biz.paluch.dap.artifact;
 import java.util.List;
 
 /**
- * {@link ReleaseSource} that queries the <a href="https://plugins.gradle.org/">Gradle Plugin Portal</a> for available
+ * {@link ReleaseSource} that queries the
+ * <a href="https://plugins.gradle.org/">Gradle Plugin Portal</a> for available
  * plugin versions.
- * <p>
- * The Portal exposes a Maven 2-compatible repository at {@value #PORTAL_URL}. Gradle plugin IDs are published there as
- * <em>marker artifacts</em> with the convention:
+ * <p>The Portal exposes a Maven 2-compatible repository at
+ * {@value #PORTAL_URL}. Gradle plugin IDs are published there as <em>marker
+ * artifacts</em> with the convention:
  *
  * <pre>
  *   groupId    = &lt;pluginId&gt;
@@ -36,13 +37,15 @@ import java.util.List;
  *       org.springframework.boot.gradle.plugin/maven-metadata.xml
  * </pre>
  *
- * {@link biz.paluch.dap.gradle.GradleDependencyParser} stores plugin declarations as
- * {@code ArtifactId.of(pluginId, pluginId)}, so this source recognises a plugin lookup whenever
- * {@code groupId.equals(artifactId)}, applies the marker-artifact transformation, and delegates the actual HTTP fetch
- * and XML parsing to a {@link RemoteRepositoryReleaseSource} backed by the Portal's Maven 2 endpoint.
- * <p>
- * For regular library coordinates ({@code groupId != artifactId}) the source returns an empty list immediately so that
- * no unnecessary HTTP requests are made to the Portal.
+ * {@code GradleDependencyParser} stores plugin declarations as
+ * {@code ArtifactId.of(pluginId, pluginId)}, so this source recognises a plugin
+ * lookup whenever {@code groupId.equals(artifactId)}, applies the
+ * marker-artifact transformation, and delegates the actual HTTP fetch and XML
+ * parsing to a {@link RemoteRepositoryReleaseSource} backed by the Portal's
+ * Maven 2 endpoint.
+ * <p>For regular library coordinates ({@code groupId != artifactId}) the source
+ * returns an empty list immediately so that no unnecessary HTTP requests are
+ * made to the Portal.
  *
  * @author Mark Paluch
  */
@@ -59,12 +62,13 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 	public List<Release> getReleases(ArtifactId artifactId) {
 
 		// GradleDependencyParser encodes plugin IDs as ArtifactId(pluginId, pluginId).
-		// Regular library coordinates have a distinct groupId and artifactId, so we skip
+		// Regular library coordinates have a distinct groupId and artifactId, so we
+		// skip
 		// them to avoid unnecessary 404 round-trips to the Portal.
 		if (!artifactId.groupId().equals(artifactId.artifactId())) {
 			return List.of();
 		}
-
+		// TODO: parse dates
 		// Convert the plugin ID to its Maven marker artifact coordinate.
 		String pluginId = artifactId.groupId();
 		ArtifactId markerArtifact = ArtifactId.of(pluginId, pluginId + ".gradle.plugin");

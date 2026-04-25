@@ -105,6 +105,13 @@ public class CodeInsightAssertions {
 			return gutters().hasSingleGutterContaining(expected);
 		}
 
+		/**
+		 * Verify that no gutter marks are present.
+		 */
+		public GutterMarksAssert hasNoGutterMarks() {
+			return gutters().isEmpty();
+		}
+
 	}
 
 
@@ -168,6 +175,28 @@ public class CodeInsightAssertions {
 						index, this.actual.size());
 			}
 			return new GutterMarkAssert(this.actual.get(index));
+		}
+
+		/**
+		 * Verify that no gutter marks are present.
+		 */
+		public GutterMarksAssert isEmpty() {
+			isNotNull();
+			int actual = this.actual.size();
+			if (actual != 0) {
+				String gutters = MessageFormatter.instance().format(info.description(), info.representation(), "%s",
+						this.actual());
+				failWithMessage("Expected no gutter marks but found %d: %s",
+						actual, gutters);
+			}
+			return this;
+		}
+
+		/**
+		 * Verify that no gutter marks are present.
+		 */
+		public GutterMarksAssert hasNoGutterMarks() {
+			return isEmpty();
 		}
 
 	}

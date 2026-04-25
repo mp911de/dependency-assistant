@@ -68,7 +68,7 @@ class GroovyDslHighlightingTests {
 			    implementation 'org.junit:junit-bom:6.0.0'
 			}
 			""")
-	void gav(PsiFile buildFile) {
+	void gavInlineVersion(PsiFile buildFile) {
 
 		GradleFixtures.analyze(buildFile);
 
@@ -77,6 +77,114 @@ class GroovyDslHighlightingTests {
 
 	// -------------------------------------------------------------------------
 	// Constraints
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:6.0.0!!'
+			}
+			""")
+	void gavEnforcedVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:[5.2.0, 6.0.0]'
+			}
+			""")
+	void gavRange1(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:[5.2.0,6.0.0]'
+			}
+			""")
+	void gavRange2(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:[5.0, 7.0[!!6.0.0'
+			}
+			""")
+	void gavRangeStrictly(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:[6.0.0,)'
+			}
+			""")
+	void gavOpenRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:(5.2,6.0.0]'
+			}
+			""")
+	void gavClosedRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:0.10.+'
+			}
+			""")
+	void gavPrefixVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Major", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:latest.release'
+			}
+			""")
+	void gavLatestReleaseVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasNoGutterMarks();
+	}
+
+	// -------------------------------------------------------------------------
+	// Version block
 	// -------------------------------------------------------------------------
 
 	@Test
@@ -324,14 +432,6 @@ class GroovyDslHighlightingTests {
 		assertThat(fixture).gutter(1).hasNoNavigation();
 	}
 
-	/**
-	 * Validates the behavior of Gradle dependency configuration where a version
-	 * constraint is strictly defined, but a preferred version is set using a
-	 * variable. This test ensures that no gutter navigation issues occur.
-	 *
-	 * @param buildFile the PsiFile representing the build.gradle file to be
-	 * analyzed.
-	 */
 	@Test
 	@EditorFile(name = "build.gradle", content = """
 			val junit = "6.0.0"

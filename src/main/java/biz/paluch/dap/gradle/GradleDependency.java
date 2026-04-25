@@ -224,11 +224,11 @@ interface GradleDependency {
 		public DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
 
 			DependencySite dependencySite = GradleDependency.super.toDependencySite(declaration, version);
-			Optional<ArtifactVersion> optional = ArtifactVersion.from(version());
-			if (optional.isPresent()) {
-				return dependencySite.withVersion(optional.get(), version);
+			Optional<ArtifactVersion> concreteVersion = GradleRichVersion.parse(version());
+			if (concreteVersion.isEmpty()) {
+				return dependencySite;
 			}
-			return dependencySite;
+			return dependencySite.withVersion(concreteVersion.get(), version);
 		}
 
 	}

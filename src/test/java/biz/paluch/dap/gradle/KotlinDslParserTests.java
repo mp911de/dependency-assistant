@@ -85,6 +85,50 @@ class KotlinDslParserTests {
 	@Test
 	@EditorFile(name = "build.gradle.kts", content = """
 			dependencies {
+			    implementation(platform("org.junit:junit-bom:6.0.0"))
+			}
+			""")
+	void gavPlatformIsDiscovered(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasDeclaration(DeclarationSource.managed());
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(group = "org.junit", name = "junit-bom", version = "6.0.0")
+			}
+			""")
+	void directDependencyInNamedArgNotationIsDiscovered(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.apache.groovy:groovy")
+			    implementation("org.springframework.modulith:spring-modulith-starter-core")
+			}
+			""")
+	void dependenciesWithoutVersionAreNotCollected(PsiFile buildFile) {
+		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
+	}
+
+	// -------------------------------------------------------------------------
+	// Constraints
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
 			    implementation("org.junit:junit-bom:6.0.0!!")
 			}
 			""")
@@ -186,48 +230,8 @@ class KotlinDslParserTests {
 		assertThat(collector).isEmpty();
 	}
 
-	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
-			dependencies {
-			    implementation(platform("org.junit:junit-bom:6.0.0"))
-			}
-			""")
-	void gavPlatformIsDiscovered(PsiFile buildFile) {
-
-		DependencyCollector collector = GradleFixtures.analyze(buildFile);
-
-		assertThat(collector)
-				.hasDependencyUsage("org.junit", "junit-bom")
-				.hasVersion("6.0.0")
-				.hasDeclaration(DeclarationSource.managed());
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
-			dependencies {
-			    implementation(group = "org.junit", name = "junit-bom", version = "6.0.0")
-			}
-			""")
-	void directDependencyInNamedArgNotationIsDiscovered(PsiFile buildFile) {
-
-		DependencyCollector collector = GradleFixtures.analyze(buildFile);
-
-		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
-			dependencies {
-			    implementation("org.apache.groovy:groovy")
-			    implementation("org.springframework.modulith:spring-modulith-starter-core")
-			}
-			""")
-	void dependenciesWithoutVersionAreNotCollected(PsiFile buildFile) {
-		assertThat(GradleFixtures.analyze(buildFile)).isEmpty();
-	}
-
 	// -------------------------------------------------------------------------
-	// Constraints
+	// Version block
 	// -------------------------------------------------------------------------
 
 	@Test

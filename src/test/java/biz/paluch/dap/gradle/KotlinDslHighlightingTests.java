@@ -91,6 +91,114 @@ class KotlinDslHighlightingTests {
 	@Test
 	@EditorFile(name = "build.gradle.kts", content = """
 			dependencies {
+			    implementation("org.junit:junit-bom:6.0.0!!")
+			}
+			""")
+	void gavEnforcedVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[5.2.0, 6.0.0]")
+			}
+			""")
+	void gavRange1(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[5.2.0,6.0.0]")
+			}
+			""")
+	void gavRange2(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[5.0, 7.0[!!6.0.0")
+			}
+			""")
+	void gavRangeStrictly(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:[6.0.0,)")
+			}
+			""")
+	void gavOpenRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:(5.2,6.0.0]")
+			}
+			""")
+	void gavClosedRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:0.10.+")
+			}
+			""")
+	void gavPrefixVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Major", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:latest.release")
+			}
+			""")
+	void gavLatestReleaseVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(LineMarkers.of(buildFile)).hasNoGutterMarks();
+	}
+
+	// -------------------------------------------------------------------------
+	// Version block
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
 			    implementation("org.junit:junit-bom") {
 			        version {
 			            strictly("6.0.0")
