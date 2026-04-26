@@ -29,12 +29,12 @@ import org.jspecify.annotations.Nullable;
  * <p>The collector maintains two distinct registries that together represent
  * how a dependency appears across the build files of a project slice:
  * <ul>
- * <li><em>Usages</em> — versioned dependency references at an active use site
+ * <li><em>Usages</em> - versioned dependency references at an active use site
  * (e.g. a {@code <dependency>} element with a resolved version, or a Gradle
  * dependency string). Registered via {@link #registerUsage}. The version
  * carried by a usage is the effective version that governs the artifact at that
  * location, whether declared inline or resolved from a property.</li>
- * <li><em>Declarations</em> — version-constraint entries that govern one or
+ * <li><em>Declarations</em> - version-constraint entries that govern one or
  * more usages without being an active dependency themselves (e.g. a Maven
  * {@code <dependencyManagement>} entry or a Gradle {@code platform()} BOM
  * import). Registered via {@link #registerDeclaration}.</li>
@@ -98,7 +98,7 @@ public class DependencyCollector {
 	/**
 	 * Register a versioned dependency usage found in the scanned build files.
 	 * <p>A usage represents an active dependency reference whose effective version
-	 * is known at the declaration site — either declared inline or resolved from a
+	 * is known at the declaration site - either declared inline or resolved from a
 	 * property or version catalog entry. Multiple declaration and version sources
 	 * may be added to the same artifact as the scan progresses across files.
 	 *
@@ -119,7 +119,7 @@ public class DependencyCollector {
 	/**
 	 * Register a version-constraint declaration found in the scanned build files.
 	 * <p>A declaration is a version-management entry that constrains one or more
-	 * usages without being an active dependency itself — for example a Maven
+	 * usages without being an active dependency itself - for example a Maven
 	 * {@code <dependencyManagement>} entry or a Gradle BOM import. Declarations do
 	 * not require a resolved version; their purpose is to anchor the PSI location
 	 * so that updates can be written back to the correct element.

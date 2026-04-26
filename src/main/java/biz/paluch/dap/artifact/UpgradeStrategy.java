@@ -21,16 +21,28 @@ import java.util.function.Predicate;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Upgrade strategies.
+ * Determines which release to select as the upgrade target from a list of
+ * available releases.
+ * <p>Each constant represents a boundary within the version space.
+ * {@link #select} filters the provided releases according to that boundary and
+ * returns the best match, or {@literal null} if no suitable release exists.
+ * <p>Note: The {@code options} list passed to {@link #select} must be sorted
+ * newest-first (as produced by {@link ReleaseResolver}).
  *
  * @author Mark Paluch
+ * @see ReleaseResolver
+ * @see Release
  */
 public enum UpgradeStrategy {
 
 	/**
-	 * Upgrade to the latest patch version.
+	 * Select the newest non-preview release within the same major and minor version
+	 * as {@code current}, limited to release and bug-fix versions.
+	 * <p>Returns {@literal null} when the current version is already the latest
+	 * within its major.minor line, or no qualifying release exists.
 	 */
 	PATCH {
+
 		@Override
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
@@ -41,26 +53,35 @@ public enum UpgradeStrategy {
 					.filter(opt -> opt.isReleaseVersion() || opt.isBugFixVersion()) //
 					.findFirst().orElse(null);
 		}
+
 	},
 
 	/**
-	 * Upgrade to the latest minor version.
+	 * Select the newest non-preview release with the same major version but a
+	 * higher minor version than {@code current}.
+	 * <p>Returns {@literal null} when no qualifying minor upgrade exists.
 	 */
 	MINOR {
+
 		@Override
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
 			return options.stream() //
 					.filter(Predicate.not(Release::isPreview)) //
-					.filter(opt -> opt.version().hasSameMajor(current) && !opt.hasSameMajorMinor(current) && opt.isNewer(current))
+					.filter(opt -> opt.version().hasSameMajor(current) && !opt.hasSameMajorMinor(current)
+							&& opt.isNewer(current))
 					.findFirst().orElse(null);
 		}
+
 	},
 
 	/**
-	 * Upgrade to the next major version.
+	 * Select the newest non-preview release with a higher major version than
+	 * {@code current}.
+	 * <p>Returns {@literal null} when no qualifying major upgrade exists.
 	 */
 	MAJOR {
+
 		@Override
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
@@ -69,12 +90,17 @@ public enum UpgradeStrategy {
 					.filter(opt -> !opt.version().hasSameMajor(current) && opt.isNewer(current)) //
 					.findFirst().orElse(null);
 		}
+
 	},
 
 	/**
-	 * Upgrade to the latest stable version.
+	 * Select the newest non-preview release regardless of version boundaries.
+	 * <p>This strategy does not compare against {@code current}; it simply returns
+	 * the first non-preview entry from the sorted list, which may be the same as or
+	 * older than {@code current} if no newer stable release is available.
 	 */
 	LATEST {
+
 		@Override
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
@@ -86,9 +112,12 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Upgrade to the latest preview version.
+	 * Select the newest preview release (RC, milestone) that is newer than
+	 * {@code current}.
+	 * <p>Returns {@literal null} when no qualifying preview release exists.
 	 */
 	PREVIEW {
+
 		@Override
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
@@ -97,7 +126,22 @@ public enum UpgradeStrategy {
 					.filter(opt -> opt.isNewer(current)) //
 					.findFirst().orElse(null);
 		}
+
 	};
 
+	/**
+	 * Select the best upgrade candidate from {@code options} according to this
+	 * strategy.
+	 * <p>The caller is responsible for providing {@code options} sorted
+	 * newest-first. Each strategy applies its own filter and returns the first
+	 * matching element.
+	 *
+	 * @param current the version currently in use; must not be {@literal null}.
+	 * @param options the available releases sorted newest-first; must not be
+	 * {@literal null}.
+	 * @return the selected release, or {@literal null} if no release satisfies this
+	 * strategy's criteria.
+	 */
 	public abstract @Nullable Release select(ArtifactVersion current, Collection<Release> options);
+
 }

@@ -34,9 +34,9 @@ import org.jspecify.annotations.Nullable;
  * Applies selected dependency and plugin version updates to a POM file
  * according to the {@link VersionSource} and {@link DeclarationSource}.
  */
-class UpdatePom {
+class UpdatePomFile {
 
-	private static final Logger LOG = Logger.getInstance(UpdatePom.class);
+	private static final Logger LOG = Logger.getInstance(UpdatePomFile.class);
 
 	/**
 	 * Apply updates to the POM.
@@ -65,7 +65,6 @@ class UpdatePom {
 
 			if (source instanceof VersionSource.VersionProperty vps) {
 				if (source instanceof VersionSource.Profile profileProperty) {
-
 					XmlTag profile = findProfile(projectTag, profileProperty.getProfileId());
 					if (profile != null) {
 						updateProperty(profile, vps.getProperty(), newVersion);

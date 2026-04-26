@@ -53,8 +53,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final MavenProperties properties;
 
-	private VersionUpgradeLookupService(PsiElement element) {
-		this(element.getProject(), element.getContainingFile());
+	private VersionUpgradeLookupService(PsiFile file) {
+		this(file.getProject(), file);
 	}
 
 	private VersionUpgradeLookupService(Project project, PsiFile pom) {
@@ -76,7 +76,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	static VersionUpgradeLookupService create(PsiElement element) {
 		return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
-				it -> new VersionUpgradeLookupService(element));
+				VersionUpgradeLookupService::new);
 	}
 
 	@Override
@@ -105,16 +105,16 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (!candidate || pom == null || !buildContext.isAvailable()) {
+		if (element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS || !candidate || pom == null
+				|| !buildContext.isAvailable()) {
 			return ArtifactReference.unresolved();
 		}
 
-		if (element instanceof XmlTag tag) {
+		if (PomUtil.findPropertyTag(element) instanceof XmlTag tag) {
 			return resolveArtifactDeclaration(tag);
 		}
 
-		XmlTag versionTag = PomUtil.findVersionTag(element);
-		if (versionTag != null) {
+		if (PomUtil.findVersionTag(element) instanceof XmlTag versionTag) {
 			return resolveArtifactDeclaration(versionTag);
 		}
 

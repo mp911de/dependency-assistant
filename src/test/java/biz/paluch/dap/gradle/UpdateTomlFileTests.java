@@ -15,24 +15,18 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.support.BuildActionDelegate;
 import biz.paluch.dap.support.UpdatedBuildFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
+import static biz.paluch.dap.gradle.UpdateTestSupport.*;
 
 /**
  * PSI-level integration tests for {@link UpdateGradleFile}.
@@ -74,8 +68,7 @@ class UpdateTomlFileTests {
 	void libraryVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("3.5.0"), "3.6.0");
+				"3.6.0");
 
 		assertThat(updated).hasDependency("spring-boot-starter", "3.6.0");
 		assertThat(updated).hasProperty("commons-lang", "3.17.0");
@@ -90,8 +83,7 @@ class UpdateTomlFileTests {
 	void libraryLiteralVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("3.5.0"), "3.6.0");
+				"3.6.0");
 
 		assertThat(updated).hasDependency("spring-boot-starter", "3.6.0");
 	}
@@ -128,26 +120,6 @@ class UpdateTomlFileTests {
 
 		assertThat(updated).hasDependency("io.spring.dependency-management", "1.1.7");
 		assertThat(updated).hasProperty("commons-lang", "3.17.0");
-	}
-
-	private UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
-			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
-
-		ArtifactId id = ArtifactId.of(groupId, artifactId);
-		ArtifactVersion current = ArtifactVersion.of(fromVersion);
-		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
-
-		Dependency dep = new Dependency(id, current);
-		dep.addDeclarationSource(declarationSource);
-		dep.addVersionSource(versionSource);
-
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
-				dep.getVersionSources());
-
-		new BuildActionDelegate(fixture.getProject(),
-				(file, updates) -> new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile, updates),
-				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
-		return UpdatedGradleBuildFile.of(targetFile);
 	}
 
 }

@@ -15,7 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.assertions.LineMarkers;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
@@ -56,7 +55,7 @@ class GroovyDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "4.0.5");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "4.0.5");
 	}
 
 	// -------------------------------------------------------------------------
@@ -168,7 +167,7 @@ class GroovyDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Major", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Major", "6.0.3");
 	}
 
 	@Test

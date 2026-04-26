@@ -16,9 +16,17 @@
 package biz.paluch.dap.artifact;
 
 /**
- * A dependency that is being used in a build file.
+ * A versioned dependency usage found in the scanned build files.
+ * <p>Extends {@link DeclaredDependency} with a {@link #getCurrentVersion()
+ * current version} - the effective version that governs this artifact at its
+ * declaration site, whether specified inline, resolved from a property, or
+ * derived from a version catalog entry. The version is fixed at construction
+ * and does not change as additional declaration or version sources are added to
+ * the parent.
  *
  * @author Mark Paluch
+ * @see DeclaredDependency
+ * @see DependencyCollector#registerUsage
  */
 public class Dependency extends DeclaredDependency implements HasArtifactId {
 
@@ -29,6 +37,11 @@ public class Dependency extends DeclaredDependency implements HasArtifactId {
 		this.currentVersion = currentVersion;
 	}
 
+	/**
+	 * Return the effective version of this dependency at its declaration site.
+	 *
+	 * @return the current version; guaranteed to be not {@literal null}.
+	 */
 	public ArtifactVersion getCurrentVersion() {
 		return currentVersion;
 	}

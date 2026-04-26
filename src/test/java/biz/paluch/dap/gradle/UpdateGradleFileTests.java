@@ -15,24 +15,18 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.support.BuildActionDelegate;
 import biz.paluch.dap.support.UpdatedBuildFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
+import static biz.paluch.dap.gradle.UpdateTestSupport.*;
 
 /**
  * PSI-level integration tests for {@link UpdateGradleFile}.
@@ -107,8 +101,7 @@ class UpdateGradleFileTests {
 	void groovyDependencyVersionInSingleQuotesIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("3.19.0"), "3.20.0");
+				"3.20.0");
 
 		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
 		assertThat(updated).hasDependency("junit-jupiter", "5.11.0");
@@ -123,8 +116,7 @@ class UpdateGradleFileTests {
 	void groovyDependencyVersionInDoubleQuotesIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("3.19.0"), "3.20.0");
+				"3.20.0");
 
 		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
 	}
@@ -138,8 +130,7 @@ class UpdateGradleFileTests {
 	void groovyConstraintRangeUpperBoundIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation 'org.junit:junit-bom:(5.2,6.0.3]'");
@@ -154,8 +145,7 @@ class UpdateGradleFileTests {
 	void groovyConstraintRangeLowerBoundIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation 'org.junit:junit-bom:[6.0.3,)'");
@@ -170,8 +160,7 @@ class UpdateGradleFileTests {
 	void groovyConstraintBangBangPreferVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation 'org.junit:junit-bom:[5.0, 7.0[!!6.0.3'");
@@ -186,8 +175,7 @@ class UpdateGradleFileTests {
 	void groovyConstraintBangBangStrictVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation 'org.junit:junit-bom:6.0.3!!'");
@@ -225,9 +213,7 @@ class UpdateGradleFileTests {
 	void groovyManagedDependencyVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies",
-				"3.5.0",
-				DeclarationSource.managed(),
-				VersionSource.declared("3.5.0"), "3.6.0");
+				"3.5.0", "3.6.0");
 
 		assertThat(updated).hasDependency("spring-boot-dependencies", "3.6.0");
 		assertThat(updated).hasDependency("micrometer-bom", "1.14.0");
@@ -348,8 +334,7 @@ class UpdateGradleFileTests {
 	void groovyMapSyntaxExtraKeyIsPreserved(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
-				DeclarationSource.dependency(),
-				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
+				"33.0.0-jre");
 
 		assertThat(updated).hasDependency("guava", "33.0.0-jre");
 		assertThat(buildFile.getText()).contains("classifier: 'android'");
@@ -369,8 +354,7 @@ class UpdateGradleFileTests {
 	void groovyVersionBlockPreferIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25",
-				DeclarationSource.dependency(),
-				VersionSource.declared("1.7.25"), "1.8.0");
+				"1.8.0");
 
 		assertThat(updated).hasDependency("slf4j-api", "1.8.0");
 		assertThat(buildFile.getText()).contains("strictly '[1.7, 1.8['");
@@ -457,26 +441,6 @@ class UpdateGradleFileTests {
 
 		assertThat(updated).hasProperty("junitVersion", "6.0.3");
 		assertThat(buildFile.getText()).contains("strictly '[5.0, 7.0['");
-	}
-
-	private UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
-			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
-
-		ArtifactId id = ArtifactId.of(groupId, artifactId);
-		ArtifactVersion current = ArtifactVersion.of(fromVersion);
-		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
-
-		Dependency dep = new Dependency(id, current);
-		dep.addDeclarationSource(declarationSource);
-		dep.addVersionSource(versionSource);
-
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
-				dep.getVersionSources());
-
-		new BuildActionDelegate(fixture.getProject(),
-				(file, updates) -> new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile, updates),
-				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
-		return UpdatedGradleBuildFile.of(targetFile);
 	}
 
 }

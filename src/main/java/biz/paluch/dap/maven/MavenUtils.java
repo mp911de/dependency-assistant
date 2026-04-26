@@ -39,22 +39,46 @@ import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
 
 /**
+ * Internal utilities for Maven POM file detection and remote repository
+ * assembly.
+ *
  * @author Mark Paluch
  */
 class MavenUtils {
 
+	/**
+	 * Return whether the given file is a Maven POM by filename alone.
+	 * <p>This is a lightweight check suitable for action-visibility guards. It does
+	 * not inspect file content or PSI structure.
+	 *
+	 * @param file the file to test; can be {@literal null}.
+	 * @return {@literal true} if the filename is {@code pom.xml}; {@literal false}
+	 * otherwise.
+	 */
 	public static boolean isMavenPomFile(@Nullable VirtualFile file) {
 		return file != null && "pom.xml".equals(file.getName());
 	}
 
+	/**
+	 * Return whether the given file is a Maven POM by filename and type.
+	 * <p>This is a lightweight check suitable for action-visibility guards. It does
+	 * not inspect file content or PSI structure.
+	 *
+	 * @param file the file to test; can be {@literal null}.
+	 * @return {@literal true} if the file is an XML file named {@code pom.xml};
+	 * {@literal false} otherwise.
+	 */
 	public static boolean isMavenPomFile(@Nullable PsiFile file) {
 		return file instanceof XmlFile && "pom.xml".equals(file.getName());
 	}
 
-	public static boolean isExactMavenPomFile(@Nullable PsiFile file) {
-		return file instanceof XmlFile xmlFile && isMavenPomFile(file) && isMavenPomFile(xmlFile);
-	}
-
+	/**
+	 * Return whether the given XML file is a Maven POM by root element structure.
+	 *
+	 * @param xmlFile the XML file to inspect; must not be {@literal null}.
+	 * @return {@literal true} if the root element identifies the file as a Maven
+	 * POM; {@literal false} otherwise.
+	 */
 	public static boolean isMavenPomFile(XmlFile xmlFile) {
 
 		XmlTag rootTag = xmlFile.getDocument() != null ? xmlFile.getDocument().getRootTag() : null;
@@ -69,6 +93,17 @@ class MavenUtils {
 		return namespace.isEmpty() || "http://maven.apache.org/POM/4.0.0".equals(namespace);
 	}
 
+	/**
+	 * Collect all remote repositories (dependency and plugin) from the given Maven
+	 * project, decorated with credentials where available.
+	 * <p>Repositories are deduplicated by URL.
+	 *
+	 * @param credentials credentials keyed by repository id; must not be
+	 * {@literal null}.
+	 * @param project the Maven project to inspect; must not be {@literal null}.
+	 * @return the deduplicated set of remote repositories; guaranteed to be not
+	 * {@literal null} but may be empty.
+	 */
 	public static Set<RemoteRepository> getRemoteRepositories(Map<String, RepositoryCredentials> credentials,
 			MavenProject project) {
 
@@ -82,7 +117,7 @@ class MavenUtils {
 		return urls;
 	}
 
-	public static void forEach(Collection<MavenRemoteRepository> repositories, BiConsumer<String, String> consumer) {
+	private static void forEach(Collection<MavenRemoteRepository> repositories, BiConsumer<String, String> consumer) {
 		for (MavenRemoteRepository repo : repositories) {
 
 			String url = repo.getUrl();
@@ -95,11 +130,30 @@ class MavenUtils {
 		}
 	}
 
+	/**
+	 * Wrap each {@link RemoteRepository} as a {@link ReleaseSource} backed by
+	 * {@link RemoteRepositoryReleaseSource}.
+	 *
+	 * @param remoteRepositories the repositories to wrap; must not be
+	 * {@literal null}.
+	 * @return a list of release sources in the same order; guaranteed to be not
+	 * {@literal null}.
+	 */
 	public static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> remoteRepositories) {
 		return remoteRepositories.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it)
 				.toList();
 	}
 
+	/**
+	 * Collect release sources for all Maven sub-projects in the given project.
+	 * <p>Loads credentials from {@code settings.xml}, then aggregates the remote
+	 * repositories across every project known to {@link MavenProjectsManager},
+	 * deduplicates them, and wraps each as a {@link ReleaseSource}.
+	 *
+	 * @param project the IntelliJ project; must not be {@literal null}.
+	 * @return the aggregated release sources; guaranteed to be not {@literal null}
+	 * but may be empty.
+	 */
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 
 		Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);

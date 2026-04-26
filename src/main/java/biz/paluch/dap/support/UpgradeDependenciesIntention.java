@@ -26,9 +26,9 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -47,7 +47,7 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 
 	@Override
 	public String getText() {
-		return MessageBundle.message("biz.paluch.dap.UpdateDependencies.text");
+		return MessageBundle.message("biz.paluch.dap.UpgradeDependenciesIntention.text");
 	}
 
 	@Override
@@ -57,8 +57,22 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 			return false;
 		}
 
-		ProjectDependencyContext context = context(project, element);
-		return context != null && context.resolveReference(element).isResolved();
+		PsiFile file = element.getContainingFile();
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
+				file);
+		if (context == null) {
+			return false;
+		}
+
+		if (element instanceof LeafPsiElement leaf) {
+			element = leaf.getParent();
+		}
+
+		if (element == null) {
+			return false;
+		}
+
+		return context.isVersionElement(element);
 	}
 
 	@Override
@@ -78,11 +92,11 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 			return;
 		}
 
-		VirtualFile buildFile = element.getContainingFile().getVirtualFile();
+		PsiFile file = element.getContainingFile();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
-				element.getContainingFile());
-		if (buildFile != null && context != null) {
-			ProgressManager.getInstance().run(new DependencyCheckTask(project, buildFile, context));
+				file);
+		if (context != null) {
+			ProgressManager.getInstance().run(new DependencyCheckTask(project, file.getVirtualFile(), context));
 		}
 	}
 
@@ -91,10 +105,5 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 		return DependencyAssistantIcons.ICON;
 	}
 
-	private static @Nullable ProjectDependencyContext context(Project project, PsiElement element) {
-
-		PsiFile file = element.getContainingFile();
-		return file != null ? DependencyAssistantDispatcher.findFirstContext(project, file.getContainingFile()) : null;
-	}
 
 }

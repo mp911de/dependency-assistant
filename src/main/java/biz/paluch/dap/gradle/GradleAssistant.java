@@ -16,17 +16,24 @@
 package biz.paluch.dap.gradle;
 
 import java.util.List;
+import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistant;
+import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -34,7 +41,9 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
+import icons.GradleIcons;
 import org.jspecify.annotations.Nullable;
+import org.toml.lang.psi.TomlElement;
 
 import org.springframework.util.Assert;
 
@@ -52,7 +61,7 @@ class GradleAssistant implements DependencyAssistant {
 
 	@Override
 	public String getDisplayName() {
-		return "Gradle";
+		return GradleInterface.INSTANCE.getDisplayName();
 	}
 
 	@Override
@@ -129,6 +138,11 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public InterfaceAssistant getInterfaceAssistant() {
+			return GradleInterface.INSTANCE;
+		}
+
+		@Override
 		public ProjectId getProjectId() {
 			return projectId;
 		}
@@ -171,12 +185,18 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public ArtifactReference resolveReference(PsiElement element) {
-			return VersionUpgradeLookupService.create(element).resolveArtifactReference(element);
+		public boolean isVersionElement(PsiElement element) {
+
+			PsiFile file = element.getContainingFile();
+			return GradleUtils.isGradleFile(file);
+			/*
+			 * LookupSite lookupSite = getLookup(element).findLookupSite(element,
+			 * file.getVirtualFile()); return lookupSite.isPresent();
+			 */
 		}
 
 		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element) {
+		public VersionUpgradeLookupService getLookup(PsiElement element) {
 			return VersionUpgradeLookupService.create(element);
 		}
 
@@ -184,6 +204,76 @@ class GradleAssistant implements DependencyAssistant {
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			Assert.state(anchor != null, "Cannot apply Gradle updates without a build file");
 			new UpdateGradleFile(project).applyUpdates(psiFile, updates);
+		}
+
+	}
+
+	/**
+	 * Gradle-specific user interface support.
+	 */
+	enum GradleInterface implements InterfaceAssistant {
+
+		INSTANCE;
+
+		@Override
+		public String getDisplayName() {
+			return MessageBundle.message("assistant.gradle");
+		}
+
+		@Override
+		public String getDisplayName(VirtualFile file) {
+
+			if (GradleUtils.isKotlinDsl(file)) {
+				return MessageBundle.message("assistant.gradle.kts");
+			}
+
+			if (GradleUtils.isGroovyDsl(file)) {
+				return MessageBundle.message("assistant.gradle.groovy");
+			}
+
+			if (GradleUtils.isVersionCatalog(file)) {
+				return MessageBundle.message("assistant.gradle.toml");
+			}
+
+			return getDisplayName();
+		}
+
+		@Override
+		public Icon getGutterIcon(ArtifactDeclaration declaration) {
+
+			if (declaration.getVersionLiteral() instanceof TomlElement) {
+				return DependencyAssistantIcons.TOML_NAVIGATE;
+			}
+
+			return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
+		}
+
+		@Override
+		public Icon getNavigateIcon(ArtifactDeclaration declaration) {
+
+			PsiElement versionLiteral = declaration.getVersionLiteral();
+			if (declaration.getVersionSource() instanceof VersionSource.VersionCatalog
+					&& versionLiteral instanceof TomlElement) {
+				return DependencyAssistantIcons.TOML_NAVIGATE;
+			}
+
+			if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
+				return DependencyAssistantIcons.PROPERTY_NAVIGATE;
+			}
+
+			return DependencyAssistantIcons.ICON;
+		}
+
+		@Override
+		public Icon getTableIcon(Dependency dependency) {
+
+			for (DeclarationSource declarationSource : dependency.getDeclarationSources()) {
+				if (declarationSource instanceof DeclarationSource.Plugin) {
+					return AllIcons.Nodes.Plugin;
+				}
+			}
+
+			return GradleIcons.Gradle;
 		}
 
 	}

@@ -24,6 +24,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.state.DependencyAssistantService;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
@@ -34,11 +35,11 @@ import org.jspecify.annotations.Nullable;
  * IntelliJ extension point and iterated in registration order. Two dispatch
  * semantics are provided:
  * <ul>
- * <li><em>Fan-out</em> — {@link #doWithContext(PsiFile, Consumer)} and
+ * <li><em>Fan-out</em> - {@link #doWithContext(PsiFile, Consumer)} and
  * {@link #findAll} visit every applicable integration. Use these for
  * project-wide operations such as background indexing and cache invalidation on
  * save where all integrations must participate.</li>
- * <li><em>First-match</em> — {@link #findFirstContext(PsiFile)} and
+ * <li><em>First-match</em> - {@link #findFirstContext(PsiFile)} and
  * {@link #findFirstContext(Project, PsiFile)} return the result from the first
  * integration that claims the file and stop. Use these for per-file editor
  * operations (annotators, line markers, completion) where exactly one
@@ -141,28 +142,37 @@ class DependencyAssistantDispatcher {
 		}
 	}
 
+	/**
+	 * Return the {@link ProjectDependencyContext} from the first integration that
+	 * owns the given PSI element, or {@literal null} if none applies.
+	 * <p>Intended for per-file editor operations such as annotators, line-marker
+	 * providers, and completion contributors where exactly one integration is
+	 * expected to own a given file. The search stops at the first match, so
+	 * registration order determines priority when integrations could theoretically
+	 * overlap.
+	 *
+	 * @param element the PSI element to resolve; can be {@literal null}.
+	 * @return the context from the first matching integration, or {@literal null}
+	 * if {@code file} is {@literal null} or no integration claims the file.
+	 */
+	static @Nullable ProjectDependencyContext findFirstContext(PsiElement element) {
+		return findFirstContext(element instanceof PsiFile file ? file : element.getContainingFile());
+	}
 
 	/**
 	 * Return the {@link ProjectDependencyContext} from the first integration that
 	 * owns the given PSI file, or {@literal null} if none applies.
-	 * <p>Intended for per-file editor operations — annotators, line-marker
-	 * providers, and completion contributors — where exactly one integration is
+	 * <p>Intended for per-file editor operations such as annotators, line-marker
+	 * providers, and completion contributors where exactly one integration is
 	 * expected to own a given file. The search stops at the first match, so
 	 * registration order determines priority when integrations could theoretically
 	 * overlap.
-	 * <p>Returns {@literal null} immediately when {@code file} is {@literal null},
-	 * making it safe to pass the result of {@code editor.getFile()} without a
-	 * preceding null check.
 	 *
 	 * @param file the PSI file to resolve; can be {@literal null}.
 	 * @return the context from the first matching integration, or {@literal null}
 	 * if {@code file} is {@literal null} or no integration claims the file.
 	 */
 	static @Nullable ProjectDependencyContext findFirstContext(PsiFile file) {
-
-		if (file == null) {
-			return null;
-		}
 
 		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
 

@@ -74,8 +74,10 @@ public class DependencyDocumentationProvider
 
 		Cache cache = lookup.getCache();
 
+		ArtifactDeclaration declaration = artifactReference.getDeclaration();
+		ArtifactVersion currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
 		if (lookup.hasCachedState()
-				&& artifactReference.getDeclaration()
+				&& declaration
 						.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
 
 			ProjectState projectState = lookup.getProjectState();
@@ -84,12 +86,12 @@ public class DependencyDocumentationProvider
 				return null;
 			}
 
-			return new PropertyDocumentationTarget(target, cache, artifactReference.getDeclaration().getVersion(),
+			return new PropertyDocumentationTarget(target, cache, currentVersion,
 					element.getText(), property);
 		}
 
 		return new DependencyVersionTarget(target, cache, artifactReference.getArtifactId(),
-				artifactReference.getDeclaration().getVersion(), element.getText());
+				currentVersion, element.getText());
 	}
 
 	private abstract static class DocumentationTargetSupport implements DocumentationTarget {
@@ -132,7 +134,7 @@ public class DependencyDocumentationProvider
 		}
 
 		/**
-		 * Simplified content shown in the hover tooltip (no icons — plain HTML).
+		 * Simplified content shown in the hover tooltip (no icons - plain HTML).
 		 */
 		@Override
 		public @Nullable String computeDocumentationHint() {

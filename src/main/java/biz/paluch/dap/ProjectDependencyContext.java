@@ -19,8 +19,6 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.psi.PsiElement;
@@ -34,19 +32,19 @@ import com.intellij.psi.PsiFile;
  * {@code build.gradle}, or {@code build.gradle.kts}) and exposes the operations
  * required by the shared IDE-integration layer:
  * <ul>
- * <li><em>State invalidation</em> — {@link #invalidateState(PsiFile)} triggers
+ * <li><em>State invalidation</em> - {@link #invalidateState(PsiFile)} triggers
  * a targeted re-scan when a file changes on save, so that annotators and
  * completion contributors reflect the latest content without a full project
  * reload.</li>
- * <li><em>Dependency scanning</em> — {@link #scanDependencies} parses the build
+ * <li><em>Dependency scanning</em> - {@link #scanDependencies} parses the build
  * files reachable from the anchor file and returns a populated
  * {@link DependencyCollector} for version-resolution and update purposes.</li>
- * <li><em>Editor reference resolution</em> — {@link #resolveReference} and
+ * <li><em>Editor reference resolution</em> - {@link #resolveReference} and
  * {@link #getLookup} map a {@link PsiElement} at the cursor position to the
  * artifact it represents, enabling annotators, line-marker providers, and
  * completion contributors to operate without build-tool-specific
  * knowledge.</li>
- * <li><em>Update application</em> — {@link #applyUpdates} writes selected
+ * <li><em>Update application</em> - {@link #applyUpdates} writes selected
  * version changes back to the appropriate build files via the IntelliJ document
  * API.</li>
  * </ul>
@@ -58,6 +56,11 @@ import com.intellij.psi.PsiFile;
  * @see DependencyCollector
  */
 public interface ProjectDependencyContext extends ProjectBuildContext {
+
+	/**
+	 * Return the assistantfor user interface interation.
+	 */
+	InterfaceAssistant getInterfaceAssistant();
 
 	/**
 	 * Invalidate and re-collect the state affected by the changed file.
@@ -83,18 +86,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 */
 	DependencyCollector scanDependencies(ProgressIndicator indicator);
 
-	/**
-	 * Resolve the artifact reference at the given PSI element.
-	 * <p>Used by annotators and line-marker providers to map the element under the
-	 * cursor to its artifact coordinates without build-tool-specific knowledge.
-	 * Returns {@link ArtifactReference#unresolved()} when the element does not
-	 * correspond to a known dependency version string.
-	 *
-	 * @param element the PSI element under inspection; must not be {@literal null}.
-	 * @return the resolved reference or {@link ArtifactReference#unresolved()};
-	 * guaranteed to be not {@literal null}.
-	 */
-	ArtifactReference resolveReference(PsiElement element);
+	boolean isVersionElement(PsiElement element);
 
 	/**
 	 * Return the version-upgrade lookup for the given PSI element.
@@ -109,18 +101,6 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	VersionUpgradeLookupSupport getLookup(PsiElement element);
 
 	/**
-	 * Return the remote-repository {@link ReleaseSource}s for the bound project.
-	 * <p>Unlike the inherited {@link ProjectBuildContext#getReleaseSources()}, a
-	 * {@link ProjectDependencyContext} is always associated with a valid,
-	 * applicable project, so this method never throws.
-	 *
-	 * @return the release sources; guaranteed to be not {@literal null} but may be
-	 * empty.
-	 */
-	@Override
-	List<ReleaseSource> getReleaseSources();
-
-	/**
 	 * Apply the given dependency updates to the appropriate build files.
 	 * <p>Writes version changes back to the build files via the IntelliJ document
 	 * API inside a write action. Each update carries the PSI location of the
@@ -132,5 +112,6 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * @param updates the updates to apply; must not be {@literal null}.
 	 */
 	void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates);
+
 
 }

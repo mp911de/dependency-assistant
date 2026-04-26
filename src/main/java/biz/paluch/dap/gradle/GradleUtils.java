@@ -51,12 +51,12 @@ import org.springframework.util.ClassUtils;
  * coordinates for that declaration. Gradle projects can declare dependencies in
  * multiple file types:
  * <ul>
- * <li>{@code build.gradle} — Groovy DSL build script</li>
- * <li>{@code build.gradle.kts} — Kotlin DSL build script</li>
- * <li>{@code settings.gradle} — Groovy DSL settings script</li>
- * <li>{@code settings.gradle.kts} — Kotlin DSL settings script</li>
- * <li>{@code gradle.properties} — project and system properties</li>
- * <li>{@code gradle/libs.versions.toml} — version catalog (TOML format)</li>
+ * <li>{@code build.gradle} - Groovy DSL build script</li>
+ * <li>{@code build.gradle.kts} - Kotlin DSL build script</li>
+ * <li>{@code settings.gradle} - Groovy DSL settings script</li>
+ * <li>{@code settings.gradle.kts} - Kotlin DSL settings script</li>
+ * <li>{@code gradle.properties} - project and system properties</li>
+ * <li>{@code gradle/libs.versions.toml} - version catalog (TOML format)</li>
  * </ul>
  *
  * @author Mark Paluch

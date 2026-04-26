@@ -17,10 +17,8 @@ package biz.paluch.dap.support;
 
 import java.awt.event.MouseEvent;
 
-import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProvider;
@@ -44,19 +42,16 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
-
-		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
-		if (service == null) {
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
+		if (context == null) {
 			return null;
 		}
 
-		UpgradeSuggestion suggestion = service.suggestUpgrade(element);
-
+		UpgradeSuggestion suggestion = context.getLookup(element).suggestUpgrade(element);
 		if (!suggestion.isPresent()) {
 			return null;
 		}
 
-		// TODO: Icons
 		String tooltip = suggestion.getMessage();
 		String accessibleName = MessageBundle.message("gutter.newer.accessible");
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
@@ -71,23 +66,22 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 				String tooltipToUse = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
 						+ System.lineSeparator() + tooltip;
 
-				return new LineMarkerInfo<>(anchor, getTextRange(anchor), getNavigateIcon(declaration),
+				return new LineMarkerInfo<>(anchor, getTextRange(anchor),
+						context.getInterfaceAssistant().getNavigateIcon(declaration),
 						e -> tooltipToUse,
 						(mouseEvent, psiElement) -> {
 
 							OpenFileDescriptor descriptor = new OpenFileDescriptor(versionLiteral.getProject(),
-									virtualFile,
-									versionLiteral.getTextOffset());
+									virtualFile, versionLiteral.getTextOffset());
 							descriptor.navigate(true);
-
 						}, GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 			}
 		}
 
-		return new LineMarkerInfo<>(anchor, getTextRange(anchor), DependencyAssistantIcons.ICON, e -> tooltip,
+		return new LineMarkerInfo<>(anchor, getTextRange(anchor),
+				context.getInterfaceAssistant().getGutterIcon(declaration), e -> tooltip,
 				new ActionNavigationHandler("biz.paluch.dap.UpdateDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
-
 	}
 
 	public record ActionNavigationHandler(String actionId) implements GutterIconNavigationHandler<PsiElement> {
@@ -100,28 +94,6 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 			}
 		}
 
-	}
-
-	protected javax.swing.Icon getNavigateIcon(ArtifactDeclaration declaration) {
-
-		PsiElement versionLiteral = declaration.getVersionLiteral();
-		if (versionLiteral != null
-				&& versionLiteral.getContainingFile().getName().endsWith(".versions.toml")) {
-			return DependencyAssistantIcons.TOML_NAVIGATE;
-		}
-
-		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
-			return DependencyAssistantIcons.PROPERTY_NAVIGATE;
-		}
-
-		return DependencyAssistantIcons.ICON;
-	}
-
-	protected @Nullable VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element) {
-
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
-				element.getContainingFile());
-		return context != null ? context.getLookup(element) : null;
 	}
 
 	protected TextRange getTextRange(PsiElement element) {

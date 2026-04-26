@@ -16,14 +16,17 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Interface to be implemented by objects that have an {@link ArtifactId}.
+ * Common accessor interface for objects identified by Maven coordinates.
  *
  * @author Mark Paluch
+ * @see ArtifactId
  */
 public interface HasArtifactId {
 
 	/**
-	 * Returns the {@link ArtifactId}.
+	 * Return the artifact coordinates.
+	 *
+	 * @return the artifact id; guaranteed to be not {@literal null}.
 	 */
 	ArtifactId getArtifactId();
 

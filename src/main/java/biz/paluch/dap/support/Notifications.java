@@ -80,7 +80,7 @@ class Notifications {
 						.createSimpleExpiring(MessageBundle.message("notification.action.update.releases"), () -> {
 							ProgressManager.getInstance().run(taskFunction.apply(project));
 						}))
-				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.dismiss"),
+				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
 						notification::expire))
 				.notify(project);
 	}
@@ -106,7 +106,7 @@ class Notifications {
 						.createSimpleExpiring(MessageBundle.message("notification.action.update.releases"), () -> {
 							ProgressManager.getInstance().run(taskFunction.apply(project));
 						}))
-				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.dismiss"),
+				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
 						notification::expire))
 				.notify(project);
 	}

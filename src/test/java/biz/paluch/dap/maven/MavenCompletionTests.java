@@ -16,12 +16,17 @@
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
- * PSI-level integration tests for Maven completion.
+ * PSI-level integration tests for Maven version completion.
  *
  * @author Mark Paluch
  */
@@ -32,8 +37,57 @@ class MavenCompletionTests {
 
 	@BeforeEach
 	void setUp() {
-		// MavenFixtures.setup(fixture.getProject());
+		MavenFixtures.setup(fixture.getProject());
 	}
 
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit</groupId>
+						<artifactId>junit-bom</artifactId>
+						<version>6.0.<caret></version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void completesInlineVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencyManagement>
+					<dependencies>
+						<dependency>
+							<groupId>org.springframework.modulith</groupId>
+							<artifactId>spring-modulith-bom</artifactId>
+							<version>2.0.<caret></version>
+							<type>pom</type>
+							<scope>import</scope>
+						</dependency>
+					</dependencies>
+				</dependencyManagement>
+			</project>
+			""")
+	void completesInlineManagedDependencyVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("2.0.5");
+	}
 
 }

@@ -102,12 +102,12 @@ class KotlinDslExtraParser {
 	 * them as {@link PropertyValue} instances.
 	 * <p>Handles:
 	 * <ul>
-	 * <li>{@code val key = "value"} — plain string literal initialiser</li>
-	 * <li>{@code val key: T by project} — value from injected Gradle
+	 * <li>{@code val key = "value"} - plain string literal initialiser</li>
+	 * <li>{@code val key: T by project} - value from injected Gradle
 	 * properties</li>
-	 * <li>{@code val key: T by extra} — value from a preceding {@code extra["key"]}
+	 * <li>{@code val key: T by extra} - value from a preceding {@code extra["key"]}
 	 * assignment</li>
-	 * <li>{@code val key by extra("value")} — value from the {@code extra} delegate
+	 * <li>{@code val key by extra("value")} - value from the {@code extra} delegate
 	 * argument</li>
 	 * </ul>
 	 * <p>This method treats top-level {@code val} declarations as local properties.

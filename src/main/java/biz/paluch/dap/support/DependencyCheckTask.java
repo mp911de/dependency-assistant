@@ -63,8 +63,9 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 		DependencyUpdates result = resultRef;
 		if (result != null) {
-			new DependencyCheckDialog(project, buildFile, result, new BuildActionDelegate(project, context, buildFile))
-					.show();
+			new DependencyCheckDialog(project, buildFile, result, new BuildActionDelegate(project, context, buildFile),
+					context.getInterfaceAssistant())
+							.show();
 		}
 	}
 

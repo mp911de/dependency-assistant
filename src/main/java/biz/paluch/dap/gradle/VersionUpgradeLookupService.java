@@ -85,8 +85,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GradleLookupSiteResolver lookupSiteResolver;
 
-	public VersionUpgradeLookupService(PsiElement element) {
-		this(element.getProject(), element.getContainingFile());
+	public VersionUpgradeLookupService(PsiFile file) {
+		this(file.getProject(), file);
 	}
 
 	public VersionUpgradeLookupService(Project project, PsiFile file) {
@@ -115,7 +115,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	public static VersionUpgradeLookupService create(PsiElement element) {
 		return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
-				it -> new VersionUpgradeLookupService(element));
+				VersionUpgradeLookupService::new);
 	}
 
 	@Override
@@ -126,24 +126,29 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		VirtualFile vf = this.file.getVirtualFile();
+		LookupSite lookupSite = findLookupSite(element, vf);
+		return lookupSite.isPresent() ? lookupSiteResolver.resolve(lookupSite) : ArtifactReference.unresolved();
+	}
+
+	public LookupSite findLookupSite(PsiElement element, VirtualFile vf) {
 
 		if (GradleUtils.isVersionCatalog(vf) && element instanceof TomlLiteral literal) {
-			return lookupSiteResolver.resolve(tomlSiteLocator.locate(literal));
+			return tomlSiteLocator.locate(literal);
 		}
 
 		if (GradleUtils.isGradlePropertiesFile(vf) && element instanceof PropertyValueImpl propertyValue) {
-			return lookupSiteResolver.resolve(locateGradlePropertySite(propertyValue));
+			return locateGradlePropertySite(propertyValue);
 		}
 
 		if (GradleUtils.isGroovyDsl(vf) && element instanceof GroovyPsiElement groovyElement) {
-			return lookupSiteResolver.resolve(groovySiteLocator.locate(groovyElement));
+			return groovySiteLocator.locate(groovyElement);
 		}
 
 		if (GradleUtils.KOTLIN_AVAILABLE && element instanceof KtElement ktElement) {
-			return lookupSiteResolver.resolve(kotlinSiteLocator.locate(ktElement));
+			return kotlinSiteLocator.locate(ktElement);
 		}
 
-		return ArtifactReference.unresolved();
+		return LookupSite.absent();
 	}
 
 	private LookupSite locateGradlePropertySite(PropertyValueImpl element) {

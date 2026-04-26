@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.idea.maven.model.MavenId;
@@ -44,6 +45,8 @@ import org.jspecify.annotations.Nullable;
  */
 interface MavenProjectContext extends ProjectBuildContext {
 
+	Key<MavenProjectContext> KEY = Key.create("MavenProjectContext");
+
 	/**
 	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
 	 * {@link VirtualFile}.
@@ -52,6 +55,11 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		if (file == null) {
 			return EmptyMavenContext.INSTANCE;
+		}
+
+		MavenProjectContext injected = file.getUserData(KEY);
+		if (injected != null) {
+			return injected;
 		}
 
 		return of(project, file.getVirtualFile());

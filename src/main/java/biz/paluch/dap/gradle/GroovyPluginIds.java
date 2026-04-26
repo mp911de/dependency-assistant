@@ -28,13 +28,13 @@ import org.jspecify.annotations.Nullable;
  * <p>Three forms appear in Gradle Groovy DSL {@code plugins {}} blocks:
  *
  * <ol>
- * <li>Flat command args (non-chained): {@code id 'x' version 'y'} — single
+ * <li>Flat command args (non-chained): {@code id 'x' version 'y'} - single
  * {@code GrApplicationStatement(id, ['x', version_ref, 'y'])}</li>
- * <li>Chained command expression (most common): {@code id 'x' version 'y'} —
+ * <li>Chained command expression (most common): {@code id 'x' version 'y'} -
  * inner {@code GrApplicationStatement(id, ['x'])} whose parent is the
  * {@code GrReferenceExpression('version')} whose parent is the outer
  * {@code GrApplicationStatement(version, ['y'])}</li>
- * <li>Explicit-paren + command chain: {@code id('x') version 'y'} — same
+ * <li>Explicit-paren + command chain: {@code id('x') version 'y'} - same
  * chained structure as (2) but inner uses explicit parens</li>
  * </ol>
  *

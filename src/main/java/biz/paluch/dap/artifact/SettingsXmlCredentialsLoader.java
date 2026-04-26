@@ -41,22 +41,23 @@ import org.jetbrains.idea.maven.utils.MavenUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Reads Maven {@code settings.xml} for the active project and returns a map of server-id to
- * {@link RepositoryCredentials}.
- * <p>
- * Uses Maven's own bundled JARs (loaded via {@link URLClassLoader} over {@code <maven_home>/lib}) to parse and decrypt
- * settings, so all password-encryption schemes supported by the active Maven installation are handled correctly.
- * <p>
- * Settings files are resolved and merged in priority order (lowest first):
+ * Reads Maven {@code settings.xml} for the active project and returns a map of
+ * server-id to {@link RepositoryCredentials}.
+ * <p>Uses Maven's own bundled JARs (loaded via {@link URLClassLoader} over
+ * {@code <maven_home>/lib}) to parse and decrypt settings, so all
+ * password-encryption schemes supported by the active Maven installation are
+ * handled correctly.
+ * <p>Settings files are resolved and merged in priority order (lowest first):
  * <ol>
  * <li>Global settings: {@code <maven_home>/conf/settings.xml}</li>
- * <li>User settings: path from {@link MavenUtil#resolveUserSettingsPath}, which honours IntelliJ's configured path and
- * falls back to {@code ~/.m2/settings.xml}</li>
+ * <li>User settings: path from {@link MavenUtil#resolveUserSettingsPath}, which
+ * honours IntelliJ's configured path and falls back to
+ * {@code ~/.m2/settings.xml}</li>
  * </ol>
- * <p>
- * Maven-encrypted passwords (those enclosed in {@code {...}}) are decrypted via Maven's
- * {@code DefaultSettingsDecrypter} chain. The master password is read from the file given by the
- * {@code settings.security} system property, defaulting to {@code ~/.m2/settings-security.xml}.
+ * <p>Maven-encrypted passwords (those enclosed in {@code {...}}) are decrypted
+ * via Maven's {@code DefaultSettingsDecrypter} chain. The master password is
+ * read from the file given by the {@code settings.security} system property,
+ * defaulting to {@code ~/.m2/settings-security.xml}.
  *
  * @author Mark Paluch
  */
@@ -64,18 +65,24 @@ public class SettingsXmlCredentialsLoader {
 
 	private static final Logger LOG = Logger.getInstance(SettingsXmlCredentialsLoader.class);
 
-	/** Detects passwords that are still in Maven-encrypted {@code {base64}} form after a decryption attempt. */
+	/**
+	 * Detects passwords that are still in Maven-encrypted {@code {base64}} form
+	 * after a decryption attempt.
+	 */
 	private static final Pattern STILL_ENCRYPTED = Pattern.compile("\\{[^}]+\\}");
 
 	private final static Map<File, URLClassLoader> MAVEN_CLASSLOADERS = new LinkedHashMap<>();
 
-	private SettingsXmlCredentialsLoader() {}
+	private SettingsXmlCredentialsLoader() {
+	}
 
 	/**
-	 * Loads credentials from the Maven settings files applicable to the given project.
+	 * Loads credentials from the Maven settings files applicable to the given
+	 * project.
 	 *
 	 * @param project the IntelliJ project
-	 * @return map from server {@code <id>} to credentials; never {@code null}, may be empty
+	 * @return map from server {@code <id>} to credentials; never {@code null}, may
+	 * be empty
 	 */
 	public static Map<String, RepositoryCredentials> load(Project project) {
 
@@ -84,8 +91,7 @@ public class SettingsXmlCredentialsLoader {
 			return Collections.emptyMap();
 		}
 
-		// Resolve Maven home — required to locate Maven's own lib JARs.
-		// staticOrBundled() maps MavenWrapper and other non-static types to the bundled distribution.
+		// Resolve Maven home
 		StaticResolvedMavenHomeType homeType = MavenHomeKt
 				.staticOrBundled(mavenManager.getGeneralSettings().getMavenHomeType());
 		Path mavenHomePath = MavenUtil.getMavenHomePath(homeType);
@@ -95,11 +101,13 @@ public class SettingsXmlCredentialsLoader {
 			return Collections.emptyMap();
 		}
 
-		// Global settings (lower priority) — <maven_home>/conf/settings.xml.
+		// Global settings (lower priority) <maven_home>/conf/settings.xml.
 		Path globalSettings = new File(mavenHome, "conf/settings.xml").toPath();
 
-		// User settings (higher priority) — resolved via IntelliJ Maven API, which handles
-		// the configured override path, default ~/.m2/settings.xml, and remote EEL targets.
+		// User settings (higher priority) resolved via IntelliJ Maven API, which
+		// handles
+		// the configured override path, default ~/.m2/settings.xml, and remote EEL
+		// targets.
 		String configuredUserSettings = mavenManager.getGeneralSettings().getUserSettingsFile();
 		Path userSettings = MavenUtil.resolveUserSettingsPath(configuredUserSettings, project);
 
@@ -117,8 +125,7 @@ public class SettingsXmlCredentialsLoader {
 
 			try {
 				return new URLClassLoader(collectJars(libDir), null);
-			}
-			catch (IOException e) {
+			} catch (IOException e) {
 				LOG.debug("Failed to list Maven lib JARs from " + libDir, e);
 				throw new RuntimeException(e);
 			}
@@ -147,19 +154,21 @@ public class SettingsXmlCredentialsLoader {
 	}
 
 	/**
-	 * Parses global and user {@code settings.xml} files using {@code SettingsXpp3Reader} and merges them (user settings
-	 * taking precedence) using {@code MavenSettingsMerger}.
+	 * Parses global and user {@code settings.xml} files using
+	 * {@code SettingsXpp3Reader} and merges them (user settings taking precedence)
+	 * using {@code MavenSettingsMerger}.
 	 */
-	private static Object mergeSettings(URLClassLoader loader, Path globalSettings, Path userSettings) throws Exception {
+	private static Object mergeSettings(URLClassLoader loader, Path globalSettings, Path userSettings)
+			throws Exception {
 
 		Class<?> readerClass = loader.loadClass("org.apache.maven.settings.io.xpp3.SettingsXpp3Reader");
 		Object reader = readerClass.getConstructor().newInstance();
 		Method readMethod = readerClass.getMethod("read", InputStream.class);
 
-		// Read global settings (may not exist — treat as empty).
+		// Read global settings
 		Object global = readSettingsFile(reader, readMethod, globalSettings);
 
-		// Read user settings (may not exist — treat as empty).
+		// Read user settings
 		Object user = readSettingsFile(reader, readMethod, userSettings);
 
 		if (global == null && user == null) {
@@ -197,9 +206,10 @@ public class SettingsXmlCredentialsLoader {
 	}
 
 	/**
-	 * Decrypts the server passwords in {@code settingsObj} using Maven's {@code DefaultSettingsDecrypter} chain and
-	 * returns a map of server-id to {@link RepositoryCredentials}. Servers whose passwords remain encrypted after the
-	 * attempt (decryption failed) are silently omitted.
+	 * Decrypts the server passwords in {@code settingsObj} using Maven's
+	 * {@code DefaultSettingsDecrypter} chain and returns a map of server-id to
+	 * {@link RepositoryCredentials}. Servers whose passwords remain encrypted after
+	 * the attempt (decryption failed) are silently omitted.
 	 */
 	private static Map<String, RepositoryCredentials> extractCredentials(URLClassLoader loader, Object settingsObj,
 			String securityFilePath) throws Exception {
@@ -210,7 +220,8 @@ public class SettingsXmlCredentialsLoader {
 		Object cipher = cipherClass.getConstructor().newInstance();
 
 		Class<?> plexusCipherIface = loader.loadClass("org.sonatype.plexus.components.cipher.PlexusCipher");
-		Class<?> dispatcherClass = loader.loadClass("org.sonatype.plexus.components.sec.dispatcher.DefaultSecDispatcher");
+		Class<?> dispatcherClass = loader
+				.loadClass("org.sonatype.plexus.components.sec.dispatcher.DefaultSecDispatcher");
 		Constructor<?> dispatcherCtor = dispatcherClass.getConstructor(plexusCipherIface, Map.class, String.class);
 		Object dispatcher = dispatcherCtor.newInstance(cipher, Collections.emptyMap(), securityFilePath);
 
@@ -251,7 +262,7 @@ public class SettingsXmlCredentialsLoader {
 			}
 
 			if (STILL_ENCRYPTED.matcher(password.trim()).matches()) {
-				LOG.debug("Skipping server '" + id + "' — password could not be decrypted");
+				LOG.debug("Skipping server '" + id + "': Password could not be decrypted");
 				continue;
 			}
 
@@ -353,4 +364,5 @@ public class SettingsXmlCredentialsLoader {
 		}
 		return urls;
 	}
+
 }

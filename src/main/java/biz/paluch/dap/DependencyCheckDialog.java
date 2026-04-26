@@ -62,7 +62,6 @@ import com.intellij.util.IconUtil;
 import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.ListTableModel;
-import icons.MavenIcons;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -81,14 +80,19 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private final UpdateBuildFile updateAction;
 
+	private final InterfaceAssistant interfaceAssistant;
+
 	public DependencyCheckDialog(Project project, VirtualFile buildFile, DependencyUpdates updates,
-			UpdateBuildFile updateAction) {
+			UpdateBuildFile updateAction, InterfaceAssistant interfaceAssistant) {
 		super(project, false, IdeModalityType.MODELESS);
 		this.project = project;
 		this.buildFile = buildFile;
 		this.model = new DependencyUpdateModel(updates);
 		this.updateAction = updateAction;
-		setTitle(MessageBundle.message("dialog.title", project.getName()));
+		this.interfaceAssistant = interfaceAssistant;
+
+		setTitle(
+				MessageBundle.message("dialog.title", interfaceAssistant.getDisplayName(buildFile), project.getName()));
 		init();
 	}
 
@@ -479,14 +483,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	}
 
-	static class DependencyCoordinateColumn extends ColumnInfo<DependencyUpdateOption, ArtifactId> {
+	class DependencyCoordinateColumn extends ColumnInfo<DependencyUpdateOption, ArtifactId> {
 
 		DefaultTableCellRenderer tcr = new DefaultTableCellRenderer() {
 
 			@Override
 			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-					boolean hasFocus,
-					int row, int column) {
+					boolean hasFocus, int row, int column) {
 
 				Component tableCellRendererComponent = super.getTableCellRendererComponent(table, value, isSelected,
 						hasFocus,
@@ -514,7 +517,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 					tooltip += MessageBundle.message("dialog.tooltip.profile", profile.getProfileId());
 				}
 
-				setIcon(DependencyCoordinateColumn.getIcon(option, table));
+				setIcon(DependencyCoordinateColumn.this.getIcon(option, table));
 
 				setToolTipText(tooltip);
 				return tableCellRendererComponent;
@@ -535,10 +538,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 		 * Plugin icon with a small property icon overlaid at the bottom-right (for
 		 * plugin + ${property} version).
 		 */
-		static Icon getIcon(DependencyUpdateOption option, JTable table) {
+		Icon getIcon(DependencyUpdateOption option, JTable table) {
 
-			Icon base = option.source() instanceof DeclarationSource.Plugin ? AllIcons.Nodes.Plugin
-					: MavenIcons.MavenProject;
+			Icon base = interfaceAssistant.getTableIcon(option.getDependency());
 
 			int pad = 0;
 			int bw = base.getIconWidth();

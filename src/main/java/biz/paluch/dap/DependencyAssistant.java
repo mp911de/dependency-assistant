@@ -23,8 +23,8 @@ import com.intellij.psi.PsiFile;
 
 /**
  * SPI for build-tool integrations that provide dependency-assistant
- * functionality — dependency collection, release-metadata retrieval, and
- * in-editor version updates — for a specific build tool such as Maven or
+ * functionality - dependency collection, release-metadata retrieval, and
+ * in-editor version updates - for a specific build tool such as Maven or
  * Gradle.
  * <p>Implementations are registered as IntelliJ extension-point contributions
  * under the name {@code biz.paluch.dap.assistant} and are discovered at runtime
@@ -33,24 +33,23 @@ import com.intellij.psi.PsiFile;
  * so implementations must be stateless or hold only immutable configuration.
  * <p>The interface exposes four groups of methods:
  * <ul>
- * <li><em>Identity</em> — {@link #getId()} and {@link #getDisplayName()}
+ * <li><em>Identity</em> - {@link #getId()} and {@link #getDisplayName()}
  * provide a stable programmatic key and a human-readable label.</li>
- * <li><em>Applicability predicates</em> — {@link #supports(Project)},
+ * <li><em>Applicability predicates</em> - {@link #supports(Project)},
  * {@link #supports(VirtualFile)}, and {@link #supports(PsiFile)} allow the
  * dispatcher to route operations without allocating a context. These methods
  * must be cheap (no I/O, no PSI access) and are called on every editor
  * event.</li>
- * <li><em>State management</em> — {@link #initializeState} and
+ * <li><em>State management</em> - {@link #initializeState} and
  * {@link #getAllDependencies} drive background scanning and project-level state
  * population, typically invoked during post-startup or on user action.</li>
- * <li><em>Context factory</em> — {@link #createContext(Project, PsiFile)}
+ * <li><em>Context factory</em> - {@link #createContext(Project, PsiFile)}
  * creates a {@link ProjectDependencyContext} scoped to the given file. Callers
  * must guard the call behind a matching {@link #supports(PsiFile)} check.</li>
  * </ul>
  *
  * @author Mark Paluch
  * @see ProjectDependencyContext
- * @see biz.paluch.dap.support.DependencyAssistantDispatcher
  */
 public interface DependencyAssistant {
 

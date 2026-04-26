@@ -18,94 +18,141 @@ package biz.paluch.dap.artifact;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Where in the POM a dependency is declared.
+ * Identifies the structural location in a build file where a dependency or
+ * plugin is declared.
+ * <p>The class uses marker interfaces as independent classification axes:
+ * {@link Dependency} vs {@link Plugin} identifies the artifact kind,
+ * {@link Managed} indicates a version-constraint section rather than an active
+ * use, and {@link Profile} marks a Maven profile scope.
+ *
+ * @author Mark Paluch
+ * @see Managed
+ * @see Profile
+ * @see VersionSource
+ * @see DeclaredDependency
  */
 public abstract class DeclarationSource {
 
 	/**
-	 * Declaration source for a plugin.
+	 * Marker interface for a build plugin declaration (e.g. Maven
+	 * {@code <build><plugins>} or Gradle {@code plugins {}}).
+	 * <p>A source that is {@code instanceof Plugin} is never
+	 * {@code instanceof Dependency}.
 	 */
 	public interface Plugin {
 
 	}
 
 	/**
-	 * Declaration source for a dependency.
+	 * Marker interface for a library dependency declaration (e.g. Maven
+	 * {@code <dependencies>} or a Gradle dependency configuration).
+	 * <p>A source that is {@code instanceof Dependency} is never
+	 * {@code instanceof Plugin}.
 	 */
 	public interface Dependency {
 
 	}
 
 	/**
-	 * Declaration source for a managed dependency.
+	 * Marker interface for a version-constraint entry in a management section
+	 * (Maven {@code <dependencyManagement>} or {@code <pluginManagement>}) rather
+	 * than an active dependency or plugin use.
+	 * <p>May be combined with {@link Dependency} or {@link Plugin}.
 	 */
 	public interface Managed {
 
 	}
 
 	/**
-	 * Artifact declared within a profile.
+	 * Marker interface for a declaration scoped to a named Maven profile.
 	 */
 	public interface Profile {
 
 		/**
-		 * Return the profile identifier.
+		 * Return the identifier of the Maven profile that contains this declaration.
+		 *
+		 * @return the profile id; may be {@literal null} if the profile has no id.
 		 */
 		String getProfileId();
 
 	}
 
 	/**
-	 * Direct dependency.
+	 * Return the source for a direct library dependency
+	 * ({@code project/dependencies}).
+	 *
+	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource dependency() {
 		return Dependencies.INSTANCE;
 	}
 
 	/**
-	 * Managed dependency.
+	 * Return the source for a managed library dependency
+	 * ({@code project/dependencyManagement}).
+	 *
+	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource managed() {
 		return DependencyManagement.INSTANCE;
 	}
 
 	/**
-	 * Dependency under a profile.
+	 * Return the source for a direct library dependency within the named Maven
+	 * profile.
+	 *
+	 * @param id the profile identifier; can be {@literal null}.
+	 * @return a new instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource profileDependency(String id) {
 		return new ProfileDependencies(id);
 	}
 
 	/**
-	 * Managed dependency under a profile.
+	 * Return the source for a managed library dependency within the named Maven
+	 * profile.
+	 *
+	 * @param id the profile identifier; can be {@literal null}.
+	 * @return a new instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource profileManaged(String id) {
 		return new ProfileDependencyManagement(id);
 	}
 
 	/**
-	 * Direct plugin.
+	 * Return the source for a direct plugin ({@code project/build/plugins}).
+	 *
+	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource plugin() {
 		return Plugins.INSTANCE;
 	}
 
 	/**
-	 * Managed plugin.
+	 * Return the source for a managed plugin
+	 * ({@code project/build/pluginManagement}).
+	 *
+	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource pluginManagement() {
 		return PluginManagement.INSTANCE;
 	}
 
 	/**
-	 * Direct plugin under a profile.
+	 * Return the source for a direct plugin within the named Maven profile.
+	 *
+	 * @param id the profile identifier; can be {@literal null}.
+	 * @return a new instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource profilePlugin(String id) {
 		return new ProfilePlugins(id);
 	}
 
 	/**
-	 * Managed plugin under a profile.
+	 * Return the source for a managed plugin within the named Maven profile.
+	 *
+	 * @param id the profile identifier; can be {@literal null}.
+	 * @return a new instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource profilePluginManagement(String id) {
 		return new ProfilePluginManagement(id);
@@ -119,12 +166,14 @@ public abstract class DeclarationSource {
 
 		public static final Dependencies INSTANCE = new Dependencies();
 
-		private Dependencies() {}
+		private Dependencies() {
+		}
 
 		@Override
 		public String toString() {
 			return "DP";
 		}
+
 	}
 
 	/** Dependencies under project/dependencyManagement. */
@@ -132,12 +181,14 @@ public abstract class DeclarationSource {
 
 		public static final DependencyManagement INSTANCE = new DependencyManagement();
 
-		private DependencyManagement() {}
+		private DependencyManagement() {
+		}
 
 		@Override
 		public String toString() {
 			return "DM";
 		}
+
 	}
 
 	/** Dependencies under a profile's dependencies. */
@@ -157,6 +208,7 @@ public abstract class DeclarationSource {
 		public String toString() {
 			return "profile:" + profileId;
 		}
+
 	}
 
 	/** Dependencies under a profile's dependencyManagement. */
@@ -184,7 +236,8 @@ public abstract class DeclarationSource {
 
 		public static final Plugins INSTANCE = new Plugins();
 
-		private Plugins() {}
+		private Plugins() {
+		}
 
 		@Override
 		public String toString() {
@@ -198,7 +251,8 @@ public abstract class DeclarationSource {
 
 		public static final PluginManagement INSTANCE = new PluginManagement();
 
-		private PluginManagement() {}
+		private PluginManagement() {
+		}
 
 		@Override
 		public String toString() {

@@ -16,14 +16,17 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Interface for objects that can have a version.
+ * Common accessor interface for objects that carry an {@link ArtifactVersion}.
  *
  * @author Mark Paluch
+ * @see ArtifactVersion
  */
 public interface HasVersion {
 
 	/**
-	 * Returns the version.
+	 * Return the version.
+	 *
+	 * @return the version; guaranteed to be not {@literal null}.
 	 */
 	ArtifactVersion getVersion();
 

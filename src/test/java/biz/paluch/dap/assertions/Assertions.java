@@ -17,6 +17,7 @@ package biz.paluch.dap.assertions;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.assertions.CodeInsightAssertions.CodeInsightFixtureAssert;
+import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 
 /**
@@ -38,6 +39,13 @@ public class Assertions extends org.assertj.core.api.Assertions {
 	 */
 	public static DependencyCollectorAssert assertThat(DependencyCollector collector) {
 		return new DependencyCollectorAssert(collector);
+	}
+
+	/**
+	 * Create an assertion for the given {@link PsiFile}.
+	 */
+	public static GutterMarksAssert assertThat(PsiFile file) {
+		return LineMarkers.of(file).assertThat();
 	}
 
 }

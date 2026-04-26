@@ -18,17 +18,25 @@ package biz.paluch.dap.maven;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistant;
+import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -38,7 +46,10 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.containers.ContainerUtil;
+import icons.MavenIcons;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
@@ -62,7 +73,7 @@ class MavenAssistant implements DependencyAssistant {
 
 	@Override
 	public String getDisplayName() {
-		return "Maven";
+		return MavenInterface.INSTANCE.getDisplayName();
 	}
 
 	@Override
@@ -96,6 +107,13 @@ class MavenAssistant implements DependencyAssistant {
 		if (!supports(anchor)) {
 			throw new IllegalStateException("Maven integration does not support " + anchor);
 		}
+
+		MavenProjectContext injected = anchor.getUserData(MavenProjectContext.KEY);
+		if (injected != null) {
+			return new MavenDependencyContext(project, anchor.getVirtualFile(),
+					MavenProjectsManager.getInstance(project), injected);
+		}
+
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
 				it -> createContext(project, anchor.getVirtualFile()));
 	}
@@ -140,6 +158,11 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public InterfaceAssistant getInterfaceAssistant() {
+			return MavenInterface.INSTANCE;
+		}
+
+		@Override
 		public ProjectId getProjectId() {
 			return projectContext.getProjectId();
 		}
@@ -180,8 +203,26 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public ArtifactReference resolveReference(PsiElement element) {
-			return VersionUpgradeLookupService.create(element).resolveArtifactReference(element);
+		public boolean isVersionElement(PsiElement element) {
+
+			XmlTag currentTag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
+			if (currentTag == null) {
+				return false;
+			}
+
+			XmlTag parentTag = currentTag.getParentTag();
+			if (parentTag == null) {
+				return false;
+			}
+
+			if (currentTag.getLocalName().equals("properties") || parentTag.getLocalName().equals("properties")
+					|| currentTag.getLocalName().equals("dependency") || currentTag.getLocalName().equals("plugin")
+					|| parentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")) {
+				return true;
+			}
+
+			return "version".equals(currentTag.getLocalName())
+					&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName()));
 		}
 
 		@Override
@@ -192,13 +233,60 @@ class MavenAssistant implements DependencyAssistant {
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			Assert.state(anchor != null, "Cannot apply Maven updates without a build file");
-			new UpdatePom().applyUpdates(psiFile, updates);
+			new UpdatePomFile().applyUpdates(psiFile, updates);
 		}
 
 		private DependencyCollector collect(PsiFile file, MavenProject currentProject) {
 
 			Map<String, String> allProperties = new MavenProperties(project, manager).getAllProperties(currentProject);
 			return new MavenDependencyCollector(service.getCache(), allProperties).collect(file);
+		}
+
+	}
+
+	/**
+	 * Maven-specific user interface support.
+	 */
+	enum MavenInterface implements InterfaceAssistant {
+
+		INSTANCE;
+
+
+		@Override
+		public String getDisplayName() {
+			return MessageBundle.message("assistant.maven");
+		}
+
+		@Override
+		public String getDisplayName(VirtualFile file) {
+			return getDisplayName();
+		}
+
+		@Override
+		public Icon getGutterIcon(ArtifactDeclaration declaration) {
+			return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
+		}
+
+		@Override
+		public Icon getNavigateIcon(ArtifactDeclaration declaration) {
+
+			if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
+				return DependencyAssistantIcons.PROPERTY_NAVIGATE;
+			}
+
+			return DependencyAssistantIcons.ICON;
+		}
+
+		@Override
+		public Icon getTableIcon(Dependency dependency) {
+
+			for (DeclarationSource declarationSource : dependency.getDeclarationSources()) {
+				if (declarationSource instanceof DeclarationSource.Plugin) {
+					return AllIcons.Nodes.Plugin;
+				}
+			}
+
+			return MavenIcons.MavenProject;
 		}
 
 	}

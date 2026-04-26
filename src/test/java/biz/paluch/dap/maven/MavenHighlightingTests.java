@@ -16,9 +16,14 @@
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for highlighting Maven pom.xml.
@@ -32,8 +37,76 @@ class MavenHighlightingTests {
 
 	@BeforeEach
 	void setUp() {
-		// MavenFixtures.setup(fixture.getProject());
+		MavenFixtures.setup(fixture.getProject());
 	}
 
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit</groupId>
+						<artifactId>junit-bom</artifactId>
+						<version>6.0.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void directDependencyInlineVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencyManagement>
+					<dependencies>
+						<dependency>
+							<groupId>org.springframework.modulith</groupId>
+							<artifactId>spring-modulith-bom</artifactId>
+							<version>2.0.4</version>
+							<type>pom</type>
+							<scope>import</scope>
+						</dependency>
+					</dependencies>
+				</dependencyManagement>
+			</project>
+			""")
+	void managedDependencyInlineVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "2.0.5");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-lang3</artifactId>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void dependencyWithoutVersionHasNoGutter(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		assertThat(fixture).hasNoGutterMarks();
+	}
 
 }

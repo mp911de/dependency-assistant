@@ -15,7 +15,7 @@
  */
 package biz.paluch.dap;
 
-import javax.swing.Icon;
+import javax.swing.*;
 
 import com.intellij.openapi.util.IconLoader;
 
@@ -24,7 +24,7 @@ import com.intellij.openapi.util.IconLoader;
  */
 public class DependencyAssistantIcons {
 
-	public static final Icon ICON = load("/META-INF/pluginIcon.svg");
+	public static final Icon ICON = load("/META-INF/dependency-assistant.svg");
 
 	public static final Icon UPGRADE_MAVEN_ICON = load("/META-INF/upgrade-icons/mavenProject.svg");
 
@@ -37,6 +37,8 @@ public class DependencyAssistantIcons {
 	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/upgrade-icons/github.svg");
 
 	public static final Icon UPGRADE_TOML_ICON = load("/META-INF/upgrade-icons/toml.svg");
+
+	// TODO: UPGRADE_PROPERTY
 
 	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/propertyNavigate.svg");
 

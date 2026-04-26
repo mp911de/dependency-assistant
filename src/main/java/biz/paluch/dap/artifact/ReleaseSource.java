@@ -29,8 +29,8 @@ import org.jetbrains.idea.maven.indices.MavenGAVIndex;
  * held as long-lived singletons and called concurrently from multiple threads.
  * <p>{@link ReleaseResolver} submits calls to all registered sources in
  * parallel via an {@link java.util.concurrent.ExecutorService}. To signal a
- * definitive absence — meaning the artifact is not published at this source at
- * all — implementations must throw {@link ArtifactNotFoundException}. That
+ * definitive absence - meaning the artifact is not published at this source at
+ * all - implementations must throw {@link ArtifactNotFoundException}. That
  * exception causes {@link ReleaseResolver} to skip the source rather than
  * propagate the failure. Any other {@link RuntimeException} is treated as a
  * transient error and propagated to the caller once results from other sources
@@ -40,8 +40,8 @@ import org.jetbrains.idea.maven.indices.MavenGAVIndex;
  * which is distinct from a definitive 404.
  * <p>Built-in sources are accessible via the static factory methods:
  * <ul>
- * <li>{@link #mavenCentral()} — the canonical Maven Central HTTP source.</li>
- * <li>{@link #gradlePluginPortal()} — the Gradle Plugin Portal HTTP
+ * <li>{@link #mavenCentral()} - the canonical Maven Central HTTP source.</li>
+ * <li>{@link #gradlePluginPortal()} - the Gradle Plugin Portal HTTP
  * source.</li>
  * </ul>
  * The IDE-local Maven index is covered by {@link IndexReleaseSource}.
@@ -57,7 +57,7 @@ public interface ReleaseSource {
 	 * Return all known releases for the given artifact at this source.
 	 * <p>The returned list may include release, preview (RC, milestone), and
 	 * SNAPSHOT versions depending on what the underlying registry exposes; callers
-	 * are responsible for any further filtering. The list may be in any order —
+	 * are responsible for any further filtering. The list may be in any order -
 	 * callers must not assume a particular sort. An empty list signals that no
 	 * version data is available from this source, which is a recoverable condition;
 	 * other sources may still contribute results.

@@ -15,7 +15,6 @@
  */
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.assertions.LineMarkers;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
@@ -56,7 +55,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "4.0.5");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "4.0.5");
 	}
 
 	@Test
@@ -69,7 +68,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -82,7 +81,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	// -------------------------------------------------------------------------
@@ -99,7 +98,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -112,7 +111,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -125,7 +124,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -138,7 +137,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -151,7 +150,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -164,7 +163,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -177,7 +176,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Major", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Major", "6.0.3");
 	}
 
 	@Test
@@ -190,7 +189,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasNoGutterMarks();
+		assertThat(buildFile).hasNoGutterMarks();
 	}
 
 	// -------------------------------------------------------------------------
@@ -211,7 +210,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -229,7 +228,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutterContaining("Patch", "6.0.3");
+		assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
 	@Test
@@ -247,7 +246,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().tooltipContains("Patch", "6.0.3")
+		assertThat(buildFile).hasSingleGutter().tooltipContains("Patch", "6.0.3")
 				.hasPsiElementTextContaining("6.0.0");
 	}
 
@@ -261,7 +260,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().tooltipContains("Patch", "6.0.3")
+		assertThat(buildFile).hasSingleGutter().tooltipContains("Patch", "6.0.3")
 				.hasPsiElementTextContaining("6.0.0");
 	}
 
@@ -276,10 +275,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -294,7 +293,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().tooltipContains("Patch", "6.0.3")
+		assertThat(buildFile).hasSingleGutter().tooltipContains("Patch", "6.0.3")
 				.hasPsiElementTextContaining("6.0.0");
 	}
 
@@ -317,7 +316,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(properties, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
+		assertThat(buildFile).hasSingleGutter().hasNavigation();
 	}
 
 	@Test
@@ -335,7 +334,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(properties, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
+		assertThat(buildFile).hasSingleGutter().hasNavigation();
 	}
 
 	@Test
@@ -354,7 +353,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(properties, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
+		assertThat(buildFile).hasSingleGutter().hasNavigation();
 	}
 
 	@Test
@@ -371,10 +370,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// same file
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -390,10 +389,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// same file
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -409,10 +408,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// same file
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -426,9 +425,9 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	// -------------------------------------------------------------------------
@@ -450,9 +449,9 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -470,10 +469,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -492,9 +491,9 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -513,10 +512,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -530,10 +529,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -547,10 +546,10 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSize(2);
-		assertThat(LineMarkers.of(buildFile)).gutter(0).hasNoNavigation();
+		assertThat(buildFile).hasSize(2);
+		assertThat(buildFile).gutter(0).hasNoNavigation();
 		// variables are treated like local properties
-		assertThat(LineMarkers.of(buildFile)).gutter(1).hasNoNavigation();
+		assertThat(buildFile).gutter(1).hasNoNavigation();
 	}
 
 	@Test
@@ -570,7 +569,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(properties, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
+		assertThat(buildFile).hasSingleGutter().hasNavigation();
 	}
 
 	@Test
@@ -590,7 +589,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(toml, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
+		assertThat(buildFile).hasSingleGutter().hasNavigation();
 	}
 
 	@Test
@@ -607,7 +606,7 @@ class KotlinDslHighlightingTests {
 
 		GradleFixtures.analyze(toml, buildFile);
 
-		assertThat(LineMarkers.of(buildFile)).hasSingleGutter().hasNavigation();
+		assertThat(buildFile).hasSingleGutter().hasNavigation();
 	}
 
 }

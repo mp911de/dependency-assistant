@@ -68,26 +68,6 @@ public class Cache {
 			.synchronizedList(new ArrayList<>());
 
 	/**
-	 * Return the epoch-millisecond timestamp of the last recorded cache update.
-	 * <p>A value of {@code 0} indicates that no successful update has been recorded
-	 * yet.
-	 *
-	 * @return the last update timestamp.
-	 */
-	public long getLastUpdateTimestamp() {
-		return lastUpdateTimestamp;
-	}
-
-	/**
-	 * Set the epoch-millisecond timestamp of the last recorded cache update.
-	 *
-	 * @param lastUpdateTimestamp the timestamp to store.
-	 */
-	public void setLastUpdateTimestamp(long lastUpdateTimestamp) {
-		this.lastUpdateTimestamp = lastUpdateTimestamp;
-	}
-
-	/**
 	 * Return the {@link Instant} of the last recorded cache update.
 	 */
 	public Instant getLastUpdate() {

@@ -43,8 +43,10 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jspecify.annotations.Nullable;
 
@@ -95,18 +97,15 @@ class DependencyCheck {
 	public DependencyUpdates getDependencyUpdates(ProgressIndicator indicator, ProjectDependencyContext context,
 			Consistency consistency) {
 
-		ProjectState projectState = service.getProjectState(context.getProjectId());
-		Cache cache = service.getCache();
+		return ApplicationManager.getApplication().runReadAction((Computable<DependencyUpdates>) () -> {
+			ProjectState projectState = service.getProjectState(context.getProjectId());
+			return getDependencyUpdates(indicator, () -> {
+				DependencyCollector collector = context.scanDependencies(indicator);
+				projectState.setDependencies(collector);
+				return collector;
+			}, consistency);
+		});
 
-		DependencyUpdates dependencyUpdates = getDependencyUpdates(indicator, () -> {
-			DependencyCollector collector = context.scanDependencies(indicator);
-			projectState.setDependencies(collector);
-			return collector;
-		}, context.getReleaseSources(), consistency);
-
-		cache.recordUpdate();
-
-		return dependencyUpdates;
 	}
 
 	/**
@@ -134,7 +133,7 @@ class DependencyCheck {
 	 * Runs the full version check for a build file.
 	 */
 	private DependencyUpdates getDependencyUpdates(ProgressIndicator indicator,
-			Supplier<DependencyCollector> dependencyCollector, List<ReleaseSource> sources, Consistency consistency) {
+			Supplier<DependencyCollector> dependencyCollector, Consistency consistency) {
 
 		String projectName = project.getName();
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
@@ -150,7 +149,7 @@ class DependencyCheck {
 		Cache cache = service.getCache();
 
 		ExecutorService executor = AppExecutorUtil.getAppExecutorService();
-		ReleaseResolver resolver = new ReleaseResolver(sources, executor);
+		ReleaseResolver resolver = new ReleaseResolver(collector.getReleaseSources(), executor);
 		List<DependencyUpdateOption> items = new ArrayList<>();
 		List<String> errors = new ArrayList<>();
 		List<Future<ResolverResult>> futures = new ArrayList<>();
@@ -204,6 +203,8 @@ class DependencyCheck {
 
 			items.add(new DependencyUpdateOption(tasks.get(i), res.releases()));
 		}
+
+		cache.recordUpdate();
 
 		items.sort(Comparator.comparing(DependencyUpdateOption::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 		return new DependencyUpdates(projectName, items, errors);
@@ -278,6 +279,8 @@ class DependencyCheck {
 
 			items.add(new DependencyUpdateOption(tasks.get(i), res.releases()));
 		}
+
+		cache.recordUpdate();
 
 		items.sort(Comparator.comparing(DependencyUpdateOption::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 		return new DependencyUpdates("", items, errors);

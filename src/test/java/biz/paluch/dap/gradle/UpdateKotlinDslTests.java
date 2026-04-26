@@ -15,24 +15,18 @@
  */
 package biz.paluch.dap.gradle;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.support.BuildActionDelegate;
 import biz.paluch.dap.support.UpdatedBuildFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
+import static biz.paluch.dap.gradle.UpdateTestSupport.*;
 
 /**
  * PSI-level integration tests for {@link UpdateGradleFile} using Kotlin DSL.
@@ -91,8 +85,7 @@ class UpdateKotlinDslTests {
 	void kotlinDependencyVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.apache.commons", "commons-lang3", "3.19.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("3.19.0"), "3.20.0");
+				"3.20.0");
 
 		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
 		assertThat(updated).hasDependency("junit-jupiter", "5.11.0");
@@ -107,8 +100,7 @@ class UpdateKotlinDslTests {
 	void kotlinConstraintRangeUpperBoundIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:(5.2,6.0.3]\")");
@@ -123,8 +115,7 @@ class UpdateKotlinDslTests {
 	void kotlinConstraintRangeLowerBoundIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:[6.0.3,)\")");
@@ -139,8 +130,7 @@ class UpdateKotlinDslTests {
 	void kotlinConstraintBangBangPreferVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:[5.0, 7.0[!!6.0.3\")");
@@ -155,8 +145,7 @@ class UpdateKotlinDslTests {
 	void kotlinConstraintBangBangStrictVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 		assertThat(buildFile.getText()).contains("implementation(\"org.junit:junit-bom:6.0.3!!\")");
@@ -192,9 +181,7 @@ class UpdateKotlinDslTests {
 	void kotlinManagedDependencyVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.springframework.boot", "spring-boot-dependencies",
-				"3.5.0",
-				DeclarationSource.managed(),
-				VersionSource.declared("3.5.0"), "3.6.0");
+				"3.5.0", "3.6.0");
 
 		assertThat(updated).hasDependency("spring-boot-dependencies", "3.6.0");
 		assertThat(updated).hasDependency("micrometer-bom", "1.14.0");
@@ -279,53 +266,6 @@ class UpdateKotlinDslTests {
 	}
 
 	@Test
-	@ProjectFile(name = "gradle.properties", content = """
-			springVersion=3.5.0
-			lombokVersion=1.18.36
-			""")
-	void propertyInGradlePropertiesIsUpdatedFromKotlinBuildFile(PsiFile propsFile) {
-
-		// findProjectRoot falls back to the build file's parent when no settings file
-		// is present.
-		UpdatedBuildFile updated = applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0",
-				DeclarationSource.dependency(),
-				VersionSource.property("springVersion"), "3.6.0");
-
-		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
-				"1.18.36");
-	}
-
-	@Test
-	@ProjectFile(name = "gradle/libs.versions.toml", content = """
-			[versions]
-			spring-boot = "3.5.0"
-			commons-lang = "3.17.0"
-
-			[libraries]
-			spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "spring-boot" }
-			""")
-	void propertyInTomlVersionCatalogIsUpdatedFromKotlinBuildFile(PsiFile tomlFile) {
-
-		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter", "3.5.0",
-				DeclarationSource.dependency(),
-				VersionSource.property("spring-boot"), "3.6.0");
-
-		assertThat(updated).hasProperty("spring-boot", "3.6.0").hasProperty("commons-lang",
-				"3.17.0");
-	}
-
-	@Test
-	@ProjectFile(name = "gradle.properties", content = "springVersion=3.5.0\n")
-	void gradlePropertiesTakesPriorityOverExtraBlock(PsiFile propsFile) {
-
-		UpdatedBuildFile updated = applyUpdate(propsFile, "org.springframework", "spring-core", "3.5.0",
-				DeclarationSource.dependency(),
-				VersionSource.property("springVersion"), "3.6.0");
-
-		assertThat(updated).hasProperty("springVersion", "3.6.0");
-	}
-
-	@Test
 	@ProjectFile(name = "build.gradle.kts", content = """
 			val springVersion = "3.5.0"
 			val otherVersion = "1.1.7"
@@ -394,8 +334,7 @@ class UpdateKotlinDslTests {
 	void kotlinVersionBlockStrictlyLiteralIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 	}
@@ -411,8 +350,7 @@ class UpdateKotlinDslTests {
 	void kotlinDependencyConstraintVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
-				DeclarationSource.dependency(),
-				VersionSource.declared("6.0.0"), "6.0.3");
+				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
 	}
@@ -444,8 +382,7 @@ class UpdateKotlinDslTests {
 	void kotlinNamedArgVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
-				DeclarationSource.dependency(),
-				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
+				"33.0.0-jre");
 
 		assertThat(updated).hasDependency("guava", "33.0.0-jre");
 		assertThat(buildFile.getText()).contains("group = \"com.google.guava\"");
@@ -467,8 +404,7 @@ class UpdateKotlinDslTests {
 	void kotlinVersionBlockPreferIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "org.slf4j", "slf4j-api", "1.7.25",
-				DeclarationSource.dependency(),
-				VersionSource.declared("1.7.25"), "1.8.0");
+				"1.8.0");
 
 		assertThat(updated).hasDependency("slf4j-api", "1.8.0");
 		assertThat(buildFile.getText()).contains("strictly(\"[1.7, 1.8[\")");
@@ -483,31 +419,10 @@ class UpdateKotlinDslTests {
 	void kotlinNamedArgExtraKeyIsPreserved(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyUpdate(buildFile, "com.google.guava", "guava", "32.1.2-jre",
-				DeclarationSource.dependency(),
-				VersionSource.declared("32.1.2-jre"), "33.0.0-jre");
+				"33.0.0-jre");
 
 		assertThat(updated).hasDependency("guava", "33.0.0-jre");
 		assertThat(buildFile.getText()).contains("classifier = \"android\"");
-	}
-
-	private UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId, String fromVersion,
-			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
-
-		ArtifactId id = ArtifactId.of(groupId, artifactId);
-		ArtifactVersion current = ArtifactVersion.of(fromVersion);
-		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
-
-		Dependency dep = new Dependency(id, current);
-		dep.addDeclarationSource(declarationSource);
-		dep.addVersionSource(versionSource);
-
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
-				dep.getVersionSources());
-
-		new BuildActionDelegate(fixture.getProject(),
-				(file, updates) -> new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile, updates),
-				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
-		return UpdatedGradleBuildFile.of(targetFile);
 	}
 
 }
