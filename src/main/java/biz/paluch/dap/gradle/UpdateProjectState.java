@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.util.StringUtils;
@@ -44,8 +45,11 @@ import org.jetbrains.plugins.gradle.settings.GradleSettings;
 class UpdateProjectState {
 
 	private final Project project;
+
 	private final DependencyAssistantService service;
+
 	private final PsiManager psiManager;
+
 	private final GradleDependencyCollector collector;
 
 	public UpdateProjectState(Project project) {
@@ -81,8 +85,20 @@ class UpdateProjectState {
 
 		DependencyCollector collector = new DependencyCollector();
 		doWithAllFiles(it -> {
+
+			GradleProjectContext.of(project, it).getReleaseSources();
 			this.collector.doCollect(it, collector);
 		}, indicator);
+
+		Collection<GradleProjectSettings> settings = GradleSettings.getInstance(project).getLinkedProjectsSettings();
+
+		for (GradleProjectSettings setting : settings) {
+
+			List<RemoteRepository> remoteRepositories = GradleUtils.getRepositoriesFromImportedProject(project,
+					setting.getExternalProjectPath());
+
+			collector.addAllReleaseSources(GradleProjectContext.getReleaseSources(remoteRepositories));
+		}
 
 		return collector;
 	}
@@ -112,7 +128,8 @@ class UpdateProjectState {
 		for (GradleProjectSettings setting : settings) {
 
 			indicator.setText(
-					MessageBundle.message("action.check.dependencies.progress.collecting", setting.getExternalProjectPath()));
+					MessageBundle.message("action.check.dependencies.progress.collecting",
+							setting.getExternalProjectPath()));
 
 			String path = setting.getExternalProjectPath();
 			if (StringUtils.isEmpty(path)) {

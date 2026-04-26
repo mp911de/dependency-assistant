@@ -109,7 +109,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the given {@link PsiFile} is a Gradle build or
+	 * Returns {@literal true} if the given {@link PsiFile} is a Gradle build or
 	 * settings script, a {@code gradle.properties} file, or a
 	 * {@code libs.versions.toml} version catalog.
 	 */
@@ -118,8 +118,8 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the given {@link VirtualFile} is any Gradle-related
-	 * build file.
+	 * Returns {@literal true} if the given {@link VirtualFile} is any
+	 * Gradle-related build file.
 	 */
 	public static boolean isGradleFile(@Nullable VirtualFile file) {
 		if (file == null) {
@@ -129,7 +129,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file is a Gradle build or settings script
+	 * Returns {@literal true} if the file is a Gradle build or settings script
 	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
 	 * {@code settings.gradle.kts}).
 	 */
@@ -138,7 +138,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file is a Gradle build or settings script
+	 * Returns {@literal true} if the file is a Gradle build or settings script
 	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
 	 * {@code settings.gradle.kts}).
 	 */
@@ -147,21 +147,21 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file is a {@code gradle.properties} file.
+	 * Returns {@literal true} if the file is a {@code gradle.properties} file.
 	 */
 	public static boolean isGradlePropertiesFile(@Nullable VirtualFile file) {
 		return file != null && GRADLE_PROPERTIES.equals(file.getName());
 	}
 
 	/**
-	 * Returns {@code true} if the file is a {@code gradle.properties} file.
+	 * Returns {@literal true} if the file is a {@code gradle.properties} file.
 	 */
 	public static boolean isGradlePropertiesFile(@Nullable PsiFile file) {
 		return file != null && GRADLE_PROPERTIES.equals(file.getName());
 	}
 
 	/**
-	 * Returns {@code true} if the file is a {@code *.versions.toml} version
+	 * Returns {@literal true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable VirtualFile file) {
@@ -169,7 +169,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file is a {@code *.versions.toml} version
+	 * Returns {@literal true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable PsiFile file) {
@@ -177,7 +177,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Kotlin DSL ({@code .kts}
+	 * Returns {@literal true} if the file uses the Kotlin DSL ({@code .kts}
 	 * extension).
 	 */
 	public static boolean isKotlinDsl(@Nullable VirtualFile file) {
@@ -185,7 +185,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Kotlin DSL ({@code .kts}
+	 * Returns {@literal true} if the file uses the Kotlin DSL ({@code .kts}
 	 * extension).
 	 */
 	public static boolean isKotlinDsl(@Nullable PsiFile file) {
@@ -193,16 +193,16 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Groovy DSL ({@code .gradle} without
-	 * a {@code .kts} suffix).
+	 * Returns {@literal true} if the file uses the Groovy DSL ({@code .gradle}
+	 * without a {@code .kts} suffix).
 	 */
 	public static boolean isGroovyDsl(@Nullable PsiFile file) {
 		return isGradleScript(file) && !isKotlinDsl(file);
 	}
 
 	/**
-	 * Returns {@code true} if the file uses the Groovy DSL ({@code .gradle} without
-	 * a {@code .kts} suffix).
+	 * Returns {@literal true} if the file uses the Groovy DSL ({@code .gradle}
+	 * without a {@code .kts} suffix).
 	 */
 	public static boolean isGroovyDsl(@Nullable VirtualFile file) {
 		return isGradleScript(file) && !isKotlinDsl(file);
@@ -430,7 +430,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@code true} if {@code version} contains range syntax characters.
+	 * Returns {@literal true} if {@code version} contains range syntax characters.
 	 */
 	public static boolean isVersionRange(@Nullable String version) {
 		if (version == null) {

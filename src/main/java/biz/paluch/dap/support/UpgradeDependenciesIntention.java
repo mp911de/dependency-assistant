@@ -13,49 +13,52 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.support;
 
-import javax.swing.Icon;
+import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.ProjectDependencyContext;
 import com.intellij.codeInsight.intention.BaseElementAtCaretIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Light-bulb intention action for Gradle build files. Launches the dependency version check dialog when the caret is
- * inside a version string or property value.
+ * Light-bulb intention action for supported dependency build files.
  *
  * @author Mark Paluch
  */
-public class UpdateGradleDependenciesIntention extends BaseElementAtCaretIntentionAction implements Iconable {
+public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAction implements Iconable {
 
-	public static final UpdateGradleDependenciesIntention INSTANCE = new UpdateGradleDependenciesIntention();
+	public static final UpgradeDependenciesIntention INSTANCE = new UpgradeDependenciesIntention();
 
 	@Override
 	public String getFamilyName() {
-		return MessageBundle.message("gradle.intention.family.name");
+		return MessageBundle.message("intention.family.name");
 	}
 
 	@Override
 	public String getText() {
-		return MessageBundle.message("biz.paluch.dap.gradle.UpdateDependencies.text");
+		return MessageBundle.message("biz.paluch.dap.UpdateDependencies.text");
 	}
 
 	@Override
 	public boolean isAvailable(Project project, Editor editor, @Nullable PsiElement element) {
+
 		if (element == null) {
 			return false;
 		}
-		PsiFile file = element.getContainingFile();
-		return GradleUtils.isGradleFile(file);
+
+		ProjectDependencyContext context = context(project, element);
+		return context != null && context.resolveReference(element).isResolved();
 	}
 
 	@Override
@@ -75,13 +78,23 @@ public class UpdateGradleDependenciesIntention extends BaseElementAtCaretIntenti
 			return;
 		}
 
-		PsiFile buildFile = element.getContainingFile();
-		ProgressManager.getInstance().run(new DependencyCheckTask(project, buildFile));
+		VirtualFile buildFile = element.getContainingFile().getVirtualFile();
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
+				element.getContainingFile());
+		if (buildFile != null && context != null) {
+			ProgressManager.getInstance().run(new DependencyCheckTask(project, buildFile, context));
+		}
 	}
 
 	@Override
-	public Icon getIcon(int i) {
-		return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
+	public Icon getIcon(int flags) {
+		return DependencyAssistantIcons.ICON;
+	}
+
+	private static @Nullable ProjectDependencyContext context(Project project, PsiElement element) {
+
+		PsiFile file = element.getContainingFile();
+		return file != null ? DependencyAssistantDispatcher.findFirstContext(project, file.getContainingFile()) : null;
 	}
 
 }

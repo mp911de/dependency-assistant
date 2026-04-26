@@ -35,6 +35,19 @@ public record RepositoryCredentials(String id, String username, String password,
 		@Nullable List<URI> settingsDeclaredRepositoryBases) {
 
 	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof RepositoryCredentials other) {
+			return id.equals(other.id);
+		}
+		return false;
+	}
+
+	@Override
+	public int hashCode() {
+		return id.hashCode();
+	}
+
+	@Override
 	public String toString() {
 		return "RepositoryCredentials: " + id();
 	}

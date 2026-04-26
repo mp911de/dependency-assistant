@@ -61,7 +61,7 @@ interface LookupSite {
 	 * the lookup site as a whole and does not imply that artifact resolution will
 	 * necessarily succeed.
 	 *
-	 * @return {@code true} if this instance represents an actual lookup site.
+	 * @return {@literal true} if this instance represents an actual lookup site.
 	 * @see #isAbsent()
 	 */
 	boolean isPresent();
@@ -70,8 +70,8 @@ interface LookupSite {
 	 * Return whether this instance represents an absent lookup site (i.e.
 	 * {@code isPresent() == false}).
 	 *
-	 * @return {@code true} if this instance represents an absent lookup site;
-	 * {@code false} otherwise.
+	 * @return {@literal true} if this instance represents an absent lookup site;
+	 * {@literal false} otherwise.
 	 * @see #isPresent()
 	 */
 	default boolean isAbsent() {

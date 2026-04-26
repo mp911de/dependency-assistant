@@ -16,10 +16,11 @@
 package biz.paluch.dap.support;
 
 import java.awt.event.MouseEvent;
-import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProvider;
@@ -34,35 +35,28 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Gutter line marker that indicates a newer dependency or plugin version in a
- * build file.
- * <p>The marker appears on the line of the version value and the icon reflects
- * the highest available upgrade tier: patch, minor, or major.
- * <p>Version resolution is delegated to
- * {@link biz.paluch.dap.support.VersionUpgradeLookupSupport}. Clicking the
- * gutter icon invokes the update action.
+ * Gutter line marker that indicates a newer dependency version.
+ *
+ * @author Mark Paluch
  */
-public abstract class NewerVersionLineMarkerProviderSupport implements LineMarkerProvider {
+public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 
-	private final String actionId;
-
-	private final Icon icon;
-
-	protected NewerVersionLineMarkerProviderSupport(String actionId, Icon icon) {
-		this.actionId = actionId;
-		this.icon = icon;
-	}
 
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
 		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
+		if (service == null) {
+			return null;
+		}
+
 		UpgradeSuggestion suggestion = service.suggestUpgrade(element);
 
 		if (!suggestion.isPresent()) {
 			return null;
 		}
 
+		// TODO: Icons
 		String tooltip = suggestion.getMessage();
 		String accessibleName = MessageBundle.message("gutter.newer.accessible");
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
@@ -90,21 +84,11 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 			}
 		}
 
-		return new LineMarkerInfo<>(anchor, getTextRange(anchor), icon, e -> tooltip,
-				new ActionNavigationHandler(actionId), GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
+		return new LineMarkerInfo<>(anchor, getTextRange(anchor), DependencyAssistantIcons.ICON, e -> tooltip,
+				new ActionNavigationHandler("biz.paluch.dap.UpdateDependencies"),
+				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 
 	}
-
-	protected Icon getNavigateIcon(ArtifactDeclaration declaration) {
-		return DependencyAssistantIcons.PROPERTY_NAVIGATE;
-	}
-
-	protected abstract VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element);
-
-	protected TextRange getTextRange(PsiElement element) {
-		return element.getTextRange();
-	}
-
 
 	public record ActionNavigationHandler(String actionId) implements GutterIconNavigationHandler<PsiElement> {
 
@@ -116,6 +100,37 @@ public abstract class NewerVersionLineMarkerProviderSupport implements LineMarke
 			}
 		}
 
+	}
+
+	protected javax.swing.Icon getNavigateIcon(ArtifactDeclaration declaration) {
+
+		PsiElement versionLiteral = declaration.getVersionLiteral();
+		if (versionLiteral != null
+				&& versionLiteral.getContainingFile().getName().endsWith(".versions.toml")) {
+			return DependencyAssistantIcons.TOML_NAVIGATE;
+		}
+
+		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
+			return DependencyAssistantIcons.PROPERTY_NAVIGATE;
+		}
+
+		return DependencyAssistantIcons.ICON;
+	}
+
+	protected @Nullable VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element) {
+
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
+				element.getContainingFile());
+		return context != null ? context.getLookup(element) : null;
+	}
+
+	protected TextRange getTextRange(PsiElement element) {
+
+		TextRange textRange = element.getTextRange();
+		if (element.getContainingFile().getName().endsWith(".versions.toml") && element.getText().startsWith("\"")) {
+			return new TextRange(textRange.getStartOffset() + 1, textRange.getEndOffset() - 1);
+		}
+		return textRange;
 	}
 
 }

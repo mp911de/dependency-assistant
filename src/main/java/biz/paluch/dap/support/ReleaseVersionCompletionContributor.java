@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.support;
 
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.ReleasesSuggestionProvider;
 import biz.paluch.dap.support.ReleasesSuggestionProvider.CompletionMetadata;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.util.ProcessingContext;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Completion contributor that suggests available versions for the version
- * segment of a Gradle dependency string literal in Groovy DSL or Kotlin DSL
- * files.
+ * Completion contributor that suggests cached release versions.
  *
  * @author Mark Paluch
  */
@@ -41,28 +40,35 @@ public class ReleaseVersionCompletionContributor extends CompletionContributor {
 			element = element.getParent();
 		}
 
-		VersionUpgradeLookupService lookupService = VersionUpgradeLookupService.create(element);
-		ArtifactReference artifactReference = lookupService.resolveArtifactReference(element);
+		ProjectDependencyContext context = context(element);
+		if (context == null) {
+			return null;
+		}
+
+		VersionUpgradeLookupSupport lookup = context.getLookup(element);
+		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
 		if (!artifactReference.isResolved()) {
 			return null;
 		}
 
-		ArtifactVersion version = lookupService.getCurrentVersion(artifactReference.getArtifactId());
-		if (version != null) {
-			return new CompletionMetadata(artifactReference.getArtifactId(), version);
-		}
+		ArtifactVersion version = lookup.getCurrentVersion(artifactReference.getArtifactId());
 		return new CompletionMetadata(artifactReference.getArtifactId(),
-				artifactReference.getDeclaration().getVersion());
+				version != null ? version : artifactReference.getDeclaration().getVersion());
 	});
 
 	@Override
 	public void fillCompletionVariants(CompletionParameters parameters, CompletionResultSet result) {
 
 		PsiFile file = parameters.getOriginalFile();
-		if (!GradleUtils.isGradleFile(file.getVirtualFile())) {
+		if (DependencyAssistantDispatcher.findFirstContext(file.getProject(), parameters.getOriginalFile()) == null) {
 			return;
 		}
+
 		provider.addCompletionVariants(parameters, new ProcessingContext(), result);
+	}
+
+	private static @Nullable ProjectDependencyContext context(PsiElement element) {
+		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), element.getContainingFile());
 	}
 
 }

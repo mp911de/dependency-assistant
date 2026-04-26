@@ -15,10 +15,9 @@
  */
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.ProjectBuildContext;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.DependencyAssistantService;
-import biz.paluch.dap.state.ProjectState;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
@@ -31,15 +30,14 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 
 /**
- * Listener base class that invalidates and re-collects the dependency state for
- * build files when they are saved or reloaded.
+ * Listener that re-collects dependency state when supported build files change.
  *
  * @author Mark Paluch
  */
-public abstract class FlushStateOnSaveSupport extends ActionsOnSaveFileDocumentManagerListener.ActionOnSave
+public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.ActionOnSave
 		implements FileDocumentManagerListener {
 
-	private final FileDocumentManager DOCUMENT_MANAGER = FileDocumentManager.getInstance();
+	private final FileDocumentManager documentManager = FileDocumentManager.getInstance();
 
 	@Override
 	public void fileContentReloaded(VirtualFile file, Document document) {
@@ -49,32 +47,13 @@ public abstract class FlushStateOnSaveSupport extends ActionsOnSaveFileDocumentM
 			return;
 		}
 
-		DependencyAssistantService state = DependencyAssistantService.getInstance(project);
-		ProjectBuildContext context = getBuildContext(project, file);
-		if (!context.isAvailable()) {
-			return;
-		}
-
-		ApplicationManager.getApplication().runReadAction(() -> {
-			PsiManager psiManager = PsiManager.getInstance(project);
-			PsiFile buildFile = psiManager.findFile(file);
-			if (buildFile != null) {
-				ProjectState projectState = state.getProjectState(context.getProjectId());
-				projectState.invalidateDependencies();
-				DependencyCollector collector = collectDependencies(project, buildFile);
-				projectState.setDependencies(collector);
-			}
-		});
+		invalidateState(project, List.of(file));
 	}
-
-	protected abstract DependencyCollector collectDependencies(Project project, PsiFile buildFile);
-
-	protected abstract ProjectBuildContext getBuildContext(Project project, VirtualFile file);
 
 	@Override
 	public void afterDocumentSaved(Document document) {
 
-		VirtualFile virtualFile = DOCUMENT_MANAGER.getFile(document);
+		VirtualFile virtualFile = documentManager.getFile(document);
 		if (virtualFile != null) {
 			fileContentReloaded(virtualFile, document);
 		}
@@ -88,21 +67,35 @@ public abstract class FlushStateOnSaveSupport extends ActionsOnSaveFileDocumentM
 	@Override
 	public void processDocuments(Project project, Document[] documents) {
 
-		DependencyAssistantService state = DependencyAssistantService.getInstance(project);
-
+		List<VirtualFile> files = new ArrayList<>(documents.length);
 		for (Document document : documents) {
-			VirtualFile virtualFile = DOCUMENT_MANAGER.getFile(document);
+			VirtualFile virtualFile = documentManager.getFile(document);
 			if (virtualFile == null) {
 				continue;
 			}
-
-			ProjectBuildContext context = getBuildContext(project, virtualFile);
-			if (context.isAvailable()) {
-				state.getProjectState(context.getProjectId()).invalidateDependencies();
-			}
+			files.add(virtualFile);
 		}
+		invalidateState(project, files);
 
 		super.processDocuments(project, documents);
+	}
+
+	private void invalidateState(Project project, List<VirtualFile> files) {
+
+		ApplicationManager.getApplication().runReadAction(() -> {
+
+			PsiManager psiManager = PsiManager.getInstance(project);
+
+			for (VirtualFile file : files) {
+
+				PsiFile psiFile = psiManager.findFile(file);
+				if (psiFile == null) {
+					continue;
+				}
+
+				DependencyAssistantDispatcher.doWithContext(psiFile, context -> context.invalidateState(psiFile));
+			}
+		});
 	}
 
 }

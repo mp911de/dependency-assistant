@@ -18,7 +18,6 @@ package biz.paluch.dap.gradle;
 import java.util.List;
 import java.util.Map;
 
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
@@ -29,16 +28,9 @@ import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.command.CommandProcessor;
-import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlKeyValue;
@@ -54,8 +46,6 @@ import org.toml.lang.psi.TomlTable;
  */
 class UpdateGradleFile {
 
-	private static final Logger LOG = Logger.getInstance(UpdateGradleFile.class);
-
 	private final Project project;
 
 	public UpdateGradleFile(Project project) {
@@ -68,38 +58,13 @@ class UpdateGradleFile {
 	 * @param buildFile the Gradle file to update.
 	 * @param updates dependency updates to apply.
 	 */
-	public void applyUpdates(VirtualFile buildFile, List<DependencyUpdate> updates) {
+	public void applyUpdates(PsiFile buildFile, List<DependencyUpdate> updates) {
 
-		if (updates.isEmpty()) {
-			return;
+		GradlePropertyResolver propertyResolver = GradlePropertyResolver.create(buildFile);
+
+		for (DependencyUpdate update : updates) {
+			applyUpdate(buildFile, propertyResolver, update);
 		}
-
-		Runnable applyAll = () -> {
-			Document document = FileDocumentManager.getInstance().getDocument(buildFile);
-			if (document != null) {
-				PsiDocumentManager.getInstance(project).commitDocument(document);
-			}
-
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(buildFile);
-			if (psiFile == null) {
-				LOG.warn("Cannot update Gradle file: PSI not found for " + buildFile.getPath());
-				return;
-			}
-
-			GradlePropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile);
-
-			for (DependencyUpdate update : updates) {
-				applyUpdate(psiFile, propertyResolver, update);
-			}
-
-			Document after = PsiDocumentManager.getInstance(project).getDocument(psiFile);
-			if (after != null) {
-				PsiDocumentManager.getInstance(project).commitDocument(after);
-			}
-		};
-
-		ApplicationManager.getApplication().runWriteAction(() -> CommandProcessor.getInstance().executeCommand(project,
-				applyAll, MessageBundle.message("command.update.title"), null));
 	}
 
 	private void applyUpdate(PsiFile buildFile, GradlePropertyResolver propertyResolver, DependencyUpdate update) {

@@ -53,7 +53,7 @@ public interface ProjectState {
 	/**
 	 * Return whether dependencies are available.
 	 *
-	 * @return {@code true} if dependencies were set and not yet invalidated.
+	 * @return {@literal true} if dependencies were set and not yet invalidated.
 	 */
 	boolean hasDependencies();
 

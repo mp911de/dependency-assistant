@@ -173,7 +173,7 @@ class KtVersion {
 	 * <p>A direct version/property expression declared on the dependency takes
 	 * precedence. Otherwise, constraints are consulted in declaration order.
 	 *
-	 * @return {@code true} if a property-backed version is available.
+	 * @return {@literal true} if a property-backed version is available.
 	 */
 	public boolean hasProperty() {
 
@@ -199,7 +199,7 @@ class KtVersion {
 	 * precedence. Otherwise, constraints are consulted in declaration order.
 	 *
 	 * @return the property name without decoration.
-	 * @throws IllegalStateException if {@link #hasProperty()} is {@code false}.
+	 * @throws IllegalStateException if {@link #hasProperty()} is {@literal false}.
 	 */
 	public String getProperty() {
 
@@ -283,8 +283,8 @@ class KtVersion {
 	 * <p>This includes a direct version/property expression or a constraint-backed
 	 * version/property.
 	 *
-	 * @return {@code true} if callers can resolve either a property or a concrete
-	 * version value.
+	 * @return {@literal true} if callers can resolve either a property or a
+	 * concrete version value.
 	 */
 	public boolean containsVersion() {
 
@@ -331,7 +331,7 @@ class KtVersion {
 		/**
 		 * Return whether the constraint renders textual content.
 		 *
-		 * @return {@code true} if the constraint contributes text.
+		 * @return {@literal true} if the constraint contributes text.
 		 */
 		@Override
 		public boolean hasText() {
@@ -341,7 +341,7 @@ class KtVersion {
 		/**
 		 * Return whether the constraint resolves to a property reference.
 		 *
-		 * @return {@code true} if the constraint value is property-backed.
+		 * @return {@literal true} if the constraint value is property-backed.
 		 */
 		public boolean hasProperty() {
 			return literals.hasProperty();

@@ -28,11 +28,12 @@ public abstract class PsiVisitors {
 	/**
 	 * Create a {@link PsiRecursiveElementVisitor} to visit the entire PSI tree
 	 * recursively and invoke {@code actionAndExitCondition} (until returning
-	 * {@code true}) only for elements that are subtypes of {@code psiElementType}.
+	 * {@literal true}) only for elements that are subtypes of
+	 * {@code psiElementType}.
 	 * <p>The visitor stops subtree navigation once {@link Predicate
-	 * actionAndExitCondition} returns {@code true}.
+	 * actionAndExitCondition} returns {@literal true}.
 	 * @param actionAndExitCondition the action to invoke. If the predicate returns
-	 * {@code true}, then the visitor will stop to navigate the tree.
+	 * {@literal true}, then the visitor will stop to navigate the tree.
 	 * @return a new {@link PsiRecursiveElementVisitor}.
 	 */
 	public static <T> PsiRecursiveElementVisitor visitTreeUntil(Class<T> psiElementType,

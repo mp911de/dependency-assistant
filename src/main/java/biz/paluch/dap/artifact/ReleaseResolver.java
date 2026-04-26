@@ -17,7 +17,9 @@ package biz.paluch.dap.artifact;
 
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -25,21 +27,25 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import org.jspecify.annotations.Nullable;
+
 /**
- * Resolves available versions by fetching {@link Release}s from {@link ReleaseSource}s.
+ * Resolves available versions by fetching {@link Release}s from
+ * {@link ReleaseSource}s.
  */
 public class ReleaseResolver {
 
-	private final List<ReleaseSource> sources;
+	private final Collection<ReleaseSource> sources;
+
 	private final ExecutorService executor;
 
-	public ReleaseResolver(List<ReleaseSource> sources, ExecutorService executor) {
-		this.sources = sources;
+	public ReleaseResolver(Collection<ReleaseSource> sources, ExecutorService executor) {
+		this.sources = sources instanceof Set<ReleaseSource> s ? s : new LinkedHashSet<>(sources);
 		this.executor = executor;
 	}
 
 	public List<Release> getReleases(ArtifactId artifactId,
-									 ArtifactVersion currentVersion) {
+			@Nullable ArtifactVersion currentVersion) {
 
 		Set<Release> result = new TreeSet<>(Comparator.<Release>naturalOrder().reversed());
 		List<Future<List<Release>>> futures = new ArrayList<>();
@@ -60,7 +66,8 @@ public class ReleaseResolver {
 				if (e.getCause() instanceof ArtifactNotFoundException) {
 					continue;
 				}
-				errors.add(e.getCause() instanceof RuntimeException re ? re : new UndeclaredThrowableException(e.getCause()));
+				errors.add(e.getCause() instanceof RuntimeException re ? re
+						: new UndeclaredThrowableException(e.getCause()));
 			}
 		}
 
@@ -70,8 +77,11 @@ public class ReleaseResolver {
 			}
 		}
 
-		result.add(Release.of(currentVersion));
+		if (currentVersion != null) {
+			result.add(Release.of(currentVersion));
+		}
 
 		return new ArrayList<>(result);
 	}
+
 }

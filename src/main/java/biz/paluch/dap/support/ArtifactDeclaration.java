@@ -83,8 +83,8 @@ public class ArtifactDeclaration implements DependencySite {
 	/**
 	 * Return whether the version is defined in the same file as the declaration.
 	 *
-	 * @return {@code true} if the version is defined in the same file;
-	 * {@code false} otherwise.
+	 * @return {@literal true} if the version is defined in the same file;
+	 * {@literal false} otherwise.
 	 */
 	public boolean isVersionDefinedInSameFile() {
 		return versionDefinedInSameFile;

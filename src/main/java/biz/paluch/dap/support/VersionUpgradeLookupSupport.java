@@ -71,14 +71,11 @@ public abstract class VersionUpgradeLookupSupport {
 
 	/**
 	 * Create a new {@code VersionUpgradeLookupSupport} instance.
-	 * <p>The constructor captures the shared release {@link Cache} and, when the
-	 * build context is available, the associated {@link ProjectState}. It does not
-	 * refresh release metadata or inspect PSI.
 	 *
 	 * @param project the IntelliJ project that owns the lookup.
-	 * @param buildContext the build context used to locate project-specific state.
+	 * @param buildContext the build context.
 	 */
-	protected VersionUpgradeLookupSupport(Project project, ProjectBuildContext buildContext) {
+	public VersionUpgradeLookupSupport(Project project, ProjectBuildContext buildContext) {
 
 		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
 		this.cache = service.getCache();
@@ -114,21 +111,10 @@ public abstract class VersionUpgradeLookupSupport {
 	/**
 	 * Return whether this lookup has an associated {@link ProjectState}.
 	 *
-	 * @return {@code true} if project state is available.
+	 * @return {@literal true} if project state is available.
 	 */
 	public boolean hasCachedState() {
 		return projectState != null;
-	}
-
-	/**
-	 * Return the cached version property with the given name.
-	 *
-	 * @param propertyName the property name to locate.
-	 * @return the matching version property, or {@code null} if project state is
-	 * unavailable or no matching property is known.
-	 */
-	public @Nullable VersionProperty getProperty(String propertyName) {
-		return projectState != null ? projectState.findProperty(propertyName) : null;
 	}
 
 	/**
@@ -248,7 +234,6 @@ public abstract class VersionUpgradeLookupSupport {
 
 		return determineUpgrades(artifactReference, declaration.getVersion(), options);
 	}
-
 
 	/**
 	 * Determine the preferred broad upgrade suggestion for the given version.

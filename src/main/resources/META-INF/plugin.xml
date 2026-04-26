@@ -43,23 +43,35 @@
 
 	<depends>com.intellij.modules.xml</depends>
 	<depends>com.intellij.modules.java</depends>
-	<depends optional="true" config-file="dependency-assistant-maven.xml">
+	<depends optional="true" config-file="maven.xml">
 		org.jetbrains.idea.maven
 	</depends>
-	<depends optional="true" config-file="dependency-assistant-kotlin.xml">
+	<depends optional="true" config-file="kotlin.xml">
 		org.jetbrains.kotlin
 	</depends>
-	<depends optional="true" config-file="dependency-assistant-gradle.xml">
+	<depends optional="true" config-file="gradle.xml">
 		org.jetbrains.plugins.gradle
 	</depends>
 
 	<resource-bundle>messages.MessageBundle</resource-bundle>
+
+	<extensionPoints>
+		<extensionPoint qualifiedName="biz.paluch.dap.assistant"
+		                interface="biz.paluch.dap.DependencyAssistant"
+		                dynamic="true"/>
+	</extensionPoints>
+
+	<applicationListeners>
+		<listener class="biz.paluch.dap.support.FlushStateOnSave"
+		          topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+	</applicationListeners>
 
 	<extensions defaultExtensionNs="org.jetbrains.kotlin">
 		<supportsKotlinPluginMode supportsK1="true" supportsK2="true"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<postStartupActivity implementation="biz.paluch.dap.support.PostStartup"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.releases"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
@@ -76,5 +88,24 @@
 				serviceImplementation="biz.paluch.dap.state.DependencyAssistantService"/>
 		<severitiesProvider
 				implementation="biz.paluch.dap.NewerVersionSeveritiesProvider"/>
+		<platform.backend.documentation.psiTargetProvider
+				implementation="biz.paluch.dap.support.DependencyDocumentationProvider"/>
+		<intentionAction>
+			<category>Dependency Assistant</category>
+			<className>biz.paluch.dap.support.UpgradeDependenciesIntention</className>
+		</intentionAction>
 	</extensions>
+
+	<actions>
+		<action id="biz.paluch.dap.UpdateDependencies"
+		        class="biz.paluch.dap.support.UpdateDependenciesAction"
+		        text="Update Dependencies…">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+		<action id="biz.paluch.dap.UpdateReleaseCache"
+		        class="biz.paluch.dap.support.RefreshReleasesMetadataAction"
+		        text="Refresh Dependency Release Metadata">
+			<add-to-group group-id="ToolsMenu" anchor="last"/>
+		</action>
+	</actions>
 </idea-plugin>

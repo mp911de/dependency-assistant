@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.maven;
+package biz.paluch.dap.support;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
-
+import biz.paluch.dap.ProjectDependencyContext;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -30,7 +30,9 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.psi.PsiFile;
 
 /**
- * Tools menu action to check Maven dependency versions for the current POM.
+ * Tools menu action to check dependency versions for the active build file.
+ *
+ * @author Mark Paluch
  */
 public class UpdateDependenciesAction extends AnAction {
 
@@ -40,52 +42,53 @@ public class UpdateDependenciesAction extends AnAction {
 	}
 
 	@Override
-	public void actionPerformed(AnActionEvent e) {
+	public void actionPerformed(AnActionEvent event) {
 
-		Project project = e.getProject();
+		Project project = event.getProject();
 		if (project == null) {
 			return;
 		}
-		Editor editor = e.getData(CommonDataKeys.EDITOR);
+
+		Editor editor = event.getData(CommonDataKeys.EDITOR);
 		if (editor == null) {
-			Messages.showMessageDialog(project, MessageBundle.message("maven.action.check.dependencies.noEditorOpen"),
+			Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.noEditorOpen"),
 					MessageBundle.message("action.check.dependencies.noEditorOpen.title"),
 					Messages.getInformationIcon());
 			return;
 		}
 
-		PsiFile buildFile = e.getData(CommonDataKeys.PSI_FILE);
-		if (!MavenUtils.isMavenPomFile(buildFile)) {
-			Messages.showMessageDialog(project, MessageBundle.message("maven.action.check.dependencies.notPom"),
-					MessageBundle.message("action.check.dependencies.noEditorOpen.title"), Messages.getInformationIcon());
+		PsiFile psiFile = event.getData(CommonDataKeys.PSI_FILE);
+
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, psiFile);
+		if (psiFile == null || context == null) {
+			Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.noSupportedFile"),
+					MessageBundle.message("action.check.dependencies.noEditorOpen.title"),
+					Messages.getInformationIcon());
 			return;
 		}
-		ProgressManager.getInstance().run(new DependencyCheckTask(project, buildFile));
+
+		ProgressManager.getInstance().run(new DependencyCheckTask(project, psiFile.getVirtualFile(), context));
 	}
 
 	@Override
-	public void update(AnActionEvent e) {
+	public void update(AnActionEvent event) {
 
-		Project project = e.getProject();
-		Presentation presentation = e.getPresentation();
+		Project project = event.getProject();
+		Presentation presentation = event.getPresentation();
 
-		presentation.setText(MessageBundle.message("biz.paluch.dap.maven.UpdateDependencies.text"));
-		presentation.setDescription(MessageBundle.message("maven.action.description"));
-		presentation.setIcon(DependencyAssistantIcons.UPGRADE_MAVEN_ICON);
-		presentation.setVisible(MavenProjectContext.isMavenProject(project));
+		presentation.setText(MessageBundle.message("biz.paluch.dap.UpdateDependencies.text"));
+		presentation.setDescription(MessageBundle.message("action.description"));
+		presentation.setIcon(DependencyAssistantIcons.ICON);
 
 		if (project == null) {
 			presentation.setEnabled(false);
+			presentation.setVisible(false);
 			return;
 		}
 
-		Editor editor = e.getData(CommonDataKeys.EDITOR);
-		if (editor == null) {
-			presentation.setEnabled(false);
-			return;
-		}
-
-		presentation.setEnabled(MavenUtils.isMavenPomFile(project, editor.getDocument()));
+		presentation.setVisible(DependencyAssistantDispatcher.supports(project));
+		presentation.setEnabled(DependencyAssistantDispatcher.findFirstContext(project,
+				event.getData(CommonDataKeys.PSI_FILE)) != null);
 	}
 
 }

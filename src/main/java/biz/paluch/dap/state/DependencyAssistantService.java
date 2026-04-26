@@ -112,6 +112,10 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 		return new DefaultProjectState(identity);
 	}
 
+	public boolean hasDependenciesOrReleases() {
+		return getCache().hasReleases() || getCache().hasDependencies();
+	}
+
 	class DefaultProjectState implements ProjectState {
 
 		private final ProjectId identity;

@@ -76,7 +76,7 @@ class UpdateKotlinDsl {
 	 * (plain string, triple-quoted string, {@code "v".also { extra["k"] = it }}, or
 	 * {@code buildString { append("v") }}).
 	 *
-	 * @return {@code true} if the property was found and updated.
+	 * @return {@literal true} if the property was found and updated.
 	 */
 	boolean updateExtraProperty(PsiFile file, String propertyKey, String newVersion) {
 
@@ -96,7 +96,7 @@ class UpdateKotlinDsl {
 	 * Finds and updates a {@code val key = "value"} or
 	 * {@code val key by extra("value")} declaration in a Kotlin DSL file.
 	 *
-	 * @return {@code true} if the property was found and updated.
+	 * @return {@literal true} if the property was found and updated.
 	 */
 	boolean updateValProperty(PsiFile file, String propertyKey, String newVersion) {
 

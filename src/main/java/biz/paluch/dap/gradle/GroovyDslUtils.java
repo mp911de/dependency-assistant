@@ -136,8 +136,8 @@ class GroovyDslUtils {
 	 * Check whether the given {@code GrExpression} contains actual <em>text</em>.
 	 *
 	 * @param expression the expression to check.
-	 * @return {@code true} if the expression contains actual text; {@code false}
-	 * otherwise.
+	 * @return {@literal true} if the expression contains actual text;
+	 * {@literal false} otherwise.
 	 * @see StringUtils#hasText
 	 */
 	public static boolean hasText(@Nullable GrExpression expression) {

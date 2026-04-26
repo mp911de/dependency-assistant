@@ -13,23 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap;
+package biz.paluch.dap.maven;
 
-import org.jspecify.annotations.Nullable;
+import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.TestFixture;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.junit.jupiter.api.BeforeEach;
 
 /**
- * Build-tool-agnostic project identity expressed as Maven coordinates ({@code groupId} and {@code artifactId}).
+ * PSI-level integration tests for highlighting Maven pom.xml.
  *
  * @author Mark Paluch
  */
-public record ProjectId(String groupId, String artifactId, @Nullable String buildFile) {
+@CodeInsightFixtureTests
+class MavenHighlightingTests {
 
-	public static ProjectId of(String groupId, String artifactId) {
-		return new ProjectId(groupId, artifactId, null);
+	private @TestFixture CodeInsightTestFixture fixture;
+
+	@BeforeEach
+	void setUp() {
+		// MavenFixtures.setup(fixture.getProject());
 	}
 
-	public static ProjectId of(String groupId, String artifactId, String buildFile) {
-		return new ProjectId(groupId, artifactId, buildFile);
-	}
 
 }

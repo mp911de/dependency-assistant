@@ -39,7 +39,7 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given {@code CharSequence} contains actual <em>text</em>.
-	 * <p>More specifically, this method returns {@code true} if the
+	 * <p>More specifically, this method returns {@literal true} if the
 	 * {@code CharSequence} is not {@code null}, its length is greater than 0, and
 	 * it contains at least one non-whitespace character.
 	 * <p><pre class="code">
@@ -50,7 +50,7 @@ public abstract class StringUtils {
 	 * StringUtils.hasText(" 12345 ") = true
 	 * </pre>
 	 * @param str the {@code CharSequence} to check (may be {@code null}).
-	 * @return {@code true} if the {@code CharSequence} is not {@code null}, its
+	 * @return {@literal true} if the {@code CharSequence} is not {@code null}, its
 	 * length is greater than 0, and it does not contain whitespace only.
 	 * @see Character#isWhitespace
 	 */
@@ -75,12 +75,12 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given {@code String} contains actual <em>text</em>.
-	 * <p>More specifically, this method returns {@code true} if the {@code String}
-	 * is not {@code null}, its length is greater than 0, and it contains at least
-	 * one non-whitespace character.
+	 * <p>More specifically, this method returns {@literal true} if the
+	 * {@code String} is not {@code null}, its length is greater than 0, and it
+	 * contains at least one non-whitespace character.
 	 * @param str the {@code String} to check (may be {@code null}).
-	 * @return {@code true} if the {@code String} is not {@code null}, its length is
-	 * greater than 0, and it does not contain whitespace only.
+	 * @return {@literal true} if the {@code String} is not {@code null}, its length
+	 * is greater than 0, and it does not contain whitespace only.
 	 * @see #hasText(CharSequence)
 	 * @see Character#isWhitespace
 	 */

@@ -13,62 +13,74 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.support;
 
 import java.time.Duration;
+import java.util.List;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
-import biz.paluch.dap.support.Notifications;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
+import com.intellij.util.progress.StepsProgressIndicator;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Startup activity that reads the Gradle build file and updates the project
- * state.
+ * Startup activity that initializes all registered dependency integrations.
  *
  * @author Mark Paluch
  */
-public class GradlePostStartup implements ProjectActivity {
+public class PostStartup implements ProjectActivity {
 
 	@Override
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
 
-		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
 		DumbService.getInstance(project).runWhenSmart(() -> {
 			ProgressManager.getInstance()
-					.run(new Task.Backgroundable(project, MessageBundle.message("gradle.indexing.project"), false) {
-
+					.run(new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), false) {
 						@Override
 						public void run(ProgressIndicator indicator) {
-							new UpdateProjectState(project, service).readAndUpdateAll(indicator);
-
-							Cache cache = service.getCache();
-
-							if (!cache.hasReleases()) {
-								Notifications.releaseMetadataUnavailable(project, ReleasesRetrievalTask::new);
-							} else {
-								Duration age = cache.getAge();
-								Duration duration = Duration.ofDays(2);
-								if (age.compareTo(duration) > 0) {
-									Notifications.releaseMetadataStale(project, cache.getLastUpdate(),
-											ReleasesRetrievalTask::new);
-								}
-							}
+							postStartup(indicator, project);
 						}
+
 					});
 		});
 
 		return null;
 	}
 
+	private void postStartup(ProgressIndicator indicator, Project project) {
+
+		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
+		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, assistants.size());
+		for (DependencyAssistant assistant : assistants) {
+
+			steps.setText(MessageBundle.message("post-startup.indexing", assistant.getDisplayName()));
+			assistant.initializeState(project, indicator);
+			steps.setFraction(1);
+			steps.nextStep();
+		}
+
+		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		Cache cache = service.getCache();
+
+		if (!cache.hasReleases()) {
+			Notifications.releaseMetadataUnavailable(project, RefreshReleaseMetadata::new);
+			return;
+		}
+
+		if (cache.getAge().compareTo(Duration.ofDays(2)) > 0) {
+			Notifications.releaseMetadataStale(project, cache.getLastUpdate(),
+					RefreshReleaseMetadata::new);
+		}
+	}
 
 }

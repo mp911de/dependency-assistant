@@ -42,6 +42,7 @@ class MavenParserTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
+	// TODO: Rewrite
 	@Test
 	void directDependenciesWithInlineVersionsAreDiscovered() {
 

@@ -16,13 +16,15 @@
 package biz.paluch.dap.support;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import biz.paluch.dap.MessageBundle;
-import biz.paluch.dap.artifact.DependencyUpdateOption;
-import biz.paluch.dap.artifact.DependencyUpdates;
+import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.ide.nls.NlsMessages;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
@@ -30,12 +32,14 @@ import com.intellij.notification.NotificationType;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import com.intellij.util.text.DateFormatUtil;
 
 /**
  * Utility to manage Dependency Assistant notifications.
+ * 
  * @author Mark Paluch
  */
-public class Notifications {
+class Notifications {
 
 	private static final String BALLOON_NOTIFICATION = "biz.paluch.dependency-assistant.releases";
 
@@ -45,16 +49,16 @@ public class Notifications {
 	 * Notify the user that release metadata is unavailable and offer to update the
 	 * cache.
 	 */
-	public static void releaseMetadataRefreshed(Project project, DependencyUpdates updates, long durationMs) {
+	public static void releaseMetadataRefreshed(Project project, List<ArtifactId> updates, long durationMs) {
 
-		int count = updates.updates().size();
+		int count = updates.size();
 		String duration = NlsMessages.formatDuration(durationMs, 1, true);
-		String detail = updates.updates().stream().map(DependencyUpdateOption::getArtifactId).map(Object::toString)
+		String detail = updates.stream().map(Object::toString)
 				.collect(Collectors.joining(", "));
 
 		Notification notification = new Notification(
-				BALLOON_NOTIFICATION, MessageBundle.message("action.update.releases.done.title"),
-				MessageBundle.message("action.update.releases.done", count, duration, detail),
+				BALLOON_NOTIFICATION, MessageBundle.message("action.refresh-releases.task.done.title"),
+				MessageBundle.message("action.refresh-releases.task.done.message", count, duration, detail),
 				NotificationType.INFORMATION);
 		notification.notify(project);
 	}
@@ -89,7 +93,7 @@ public class Notifications {
 			Function<Project, Task> taskFunction) {
 
 		ZoneId zoneId = ZoneId.systemDefault();
-		String ago = CacheUpdateAge.agoText(cacheUpdate, Instant.now(), zoneId);
+		String ago = agoText(cacheUpdate, Instant.now(), zoneId);
 
 		Notification notification = new Notification(
 				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.stale.releases.title"),
@@ -107,4 +111,40 @@ public class Notifications {
 				.notify(project);
 	}
 
+	public static String agoText(Instant pastInstant, Instant nowInstant, ZoneId zone) {
+
+		LocalDate past = pastInstant.atZone(zone).toLocalDate();
+		LocalDate now = nowInstant.atZone(zone).toLocalDate();
+
+		long days = ChronoUnit.DAYS.between(past, now);
+
+		if (days < 0) {
+			return DateFormatUtil.formatBetweenDates(pastInstant.toEpochMilli(), nowInstant.toEpochMilli());
+		}
+
+		if (days == 0 || days == 1) {
+			return DateFormatUtil.formatPrettyDateTime(pastInstant.toEpochMilli());
+		}
+
+		if (days < 7) {
+			return MessageBundle.message("cache-age.days-ago", days);
+		}
+
+		if (days < 14) {
+			return MessageBundle.message("cache-age.a-week-ago");
+		}
+
+		if (days < 30) {
+			return MessageBundle.message("cache-age.days-ago", days);
+		}
+
+		long months = ChronoUnit.MONTHS.between(past.withDayOfMonth(1),
+				now.withDayOfMonth(1));
+
+		if (months <= 1) {
+			return MessageBundle.message("cache-age.a-month-ago", days);
+		}
+
+		return MessageBundle.message("cache-age.months-ago", months);
+	}
 }

@@ -107,9 +107,9 @@ public class Cache {
 
 	/**
 	 * Return cached releases for the given artifact.
-	 * <p>If {@code ensureRecent} is {@code true}, stale cache content is treated as
-	 * absent and this method returns an empty list once the cache age exceeds the
-	 * configured expiration window. The method does not trigger a refresh.
+	 * <p>If {@code ensureRecent} is {@literal true}, stale cache content is treated
+	 * as absent and this method returns an empty list once the cache age exceeds
+	 * the configured expiration window. The method does not trigger a refresh.
 	 *
 	 * @param artifactId the artifact to look up.
 	 * @param ensureRecent whether stale cache content should be ignored.
@@ -254,10 +254,21 @@ public class Cache {
 	/**
 	 * Return whether this cache contains any cached release entries.
 	 *
-	 * @return {@code true} if at least one artifact entry is present.
+	 * @return {@literal true} if at least one artifact entry is present.
 	 */
 	public boolean hasReleases() {
 		return !artifacts.isEmpty();
+	}
+
+	/**
+	 * Return whether this cache contains any known projects.
+	 *
+	 * @return {@literal true} if at least one project entry is present.
+	 */
+	public boolean hasDependencies() {
+		synchronized (projects) {
+			return !projects.isEmpty();
+		}
 	}
 
 	/**
@@ -271,4 +282,5 @@ public class Cache {
 		Instant lastUpdateInstant = Instant.ofEpochMilli(lastUpdateTimestamp);
 		return Duration.between(lastUpdateInstant, instant);
 	}
+
 }

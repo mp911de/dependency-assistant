@@ -39,8 +39,7 @@ import com.intellij.psi.xml.XmlTokenType;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Shared version-upgrade lookup used by both
- * {@link NewerVersionLineMarkerProvider} and {@link NewerVersionAnnotator}.
+ * Maven implementation of version-upgrade reference resolution.
  */
 class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
@@ -105,7 +104,26 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
-		return element instanceof XmlTag tag ? resolveArtifactDeclaration(tag) : ArtifactReference.unresolved();
+
+		if (!candidate || pom == null || !buildContext.isAvailable()) {
+			return ArtifactReference.unresolved();
+		}
+
+		if (element instanceof XmlTag tag) {
+			return resolveArtifactDeclaration(tag);
+		}
+
+		XmlTag versionTag = PomUtil.findVersionTag(element);
+		if (versionTag != null) {
+			return resolveArtifactDeclaration(versionTag);
+		}
+
+		XmlTag propertyTag = PomUtil.findPropertyTag(element);
+		if (propertyTag != null) {
+			return resolveArtifactDeclaration(cache.getProject(buildContext.getProjectId()), propertyTag);
+		}
+
+		return ArtifactReference.unresolved();
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {

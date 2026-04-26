@@ -56,7 +56,7 @@ interface GradlePlugin extends ArtifactId {
 	 * whether {@link #groupId()} and {@link #artifactId()} are equal).
 	 *
 	 * @param id the artifact to check.
-	 * @return {@code true} if the {@link ArtifactId} represents a plugin.
+	 * @return {@literal true} if the {@link ArtifactId} represents a plugin.
 	 */
 	static boolean isPlugin(ArtifactId id) {
 		return id.artifactId().equals(id.groupId());

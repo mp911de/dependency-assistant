@@ -83,8 +83,8 @@ public abstract class PropertyExpression {
 	/**
 	 * Return whether this value is a property expression.
 	 *
-	 * @return {@code true} if this value is a property expression; {@code false}
-	 * otherwise
+	 * @return {@literal true} if this value is a property expression;
+	 * {@literal false} otherwise
 	 */
 	public abstract boolean isProperty();
 

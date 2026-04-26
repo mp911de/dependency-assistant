@@ -56,7 +56,7 @@ class GradleFixtures {
 
 		GradleDependencyCollector parser = new GradleDependencyCollector(file.getProject(), properties);
 		DependencyCollector collector = parser.collect(file);
-		GradleProjectContext projectContext = new GradleBuildContextImpl(file.getProject(), file, "",
+		GradleProjectContext projectContext = new GradleBuildContextImpl(file.getProject(), "",
 				new ProjectId("demo", "demo", file.getVirtualFile().getPath()));
 		file.putUserData(GradleProjectContext.KEY, projectContext);
 		DependencyAssistantService.getInstance(file.getProject()).getProjectState(projectContext.getProjectId())

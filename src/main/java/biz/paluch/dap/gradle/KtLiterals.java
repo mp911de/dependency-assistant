@@ -263,7 +263,7 @@ class KtLiterals {
 	/**
 	 * Return whether any fragment resolves to a property reference.
 	 *
-	 * @return {@code true} if at least one fragment is property-backed.
+	 * @return {@literal true} if at least one fragment is property-backed.
 	 */
 	public boolean hasProperty() {
 		return property != null && property.isProperty();
@@ -274,8 +274,8 @@ class KtLiterals {
 	 * <p>VersionProperty references count as content because they participate in
 	 * the rendered form returned by {@link #toString()}.
 	 *
-	 * @return {@code true} if at least one fragment contributes text or a property
-	 * placeholder.
+	 * @return {@literal true} if at least one fragment contributes text or a
+	 * property placeholder.
 	 */
 	public boolean hasText() {
 
@@ -298,7 +298,7 @@ class KtLiterals {
 	 * encounter order is returned.
 	 *
 	 * @return the referenced property name without decoration.
-	 * @throws IllegalStateException if {@link #hasProperty()} is {@code false}.
+	 * @throws IllegalStateException if {@link #hasProperty()} is {@literal false}.
 	 */
 	public String getProperty() {
 		if (property != null) {
@@ -360,7 +360,7 @@ class KtLiterals {
 		/**
 		 * Return whether this fragment represents a property placeholder.
 		 *
-		 * @return {@code true} if the fragment is property-backed.
+		 * @return {@literal true} if the fragment is property-backed.
 		 */
 		public boolean isProperty() {
 			return StringUtils.hasText(property);
@@ -369,7 +369,7 @@ class KtLiterals {
 		/**
 		 * Return whether this fragment contributes any renderable content.
 		 *
-		 * @return {@code true} if text or a property name is present.
+		 * @return {@literal true} if text or a property name is present.
 		 */
 		public boolean hasText() {
 			return StringUtils.hasText(value) || StringUtils.hasText(property);

@@ -1,0 +1,19 @@
+<idea-plugin>
+	<extensions defaultExtensionNs="biz.paluch.dap">
+		<assistant implementation="biz.paluch.dap.maven.MavenAssistant"/>
+	</extensions>
+
+	<extensions defaultExtensionNs="com.intellij">
+		<completion.contributor
+				language="XML"
+				implementationClass="biz.paluch.dap.support.ReleaseVersionCompletionContributor"/>
+		<completion.contributor
+				language="XML"
+				implementationClass="biz.paluch.dap.support.ReleaseVersionCompletionContributor"/>
+		<annotator language="XML"
+		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
+		<codeInsight.lineMarkerProvider
+				language="XML"
+				implementationClass="biz.paluch.dap.support.NewerVersionLineMarkerProvider"/>
+	</extensions>
+</idea-plugin>

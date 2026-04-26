@@ -58,6 +58,9 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 	private static final RemoteRepositoryReleaseSource GRADLE_PLUGIN_PORTAL = new RemoteRepositoryReleaseSource(
 			new RemoteRepository("gradle-plugin-portal", PORTAL_URL, null));
 
+	private GradlePluginPortalReleaseSource() {
+	}
+
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId) {
 

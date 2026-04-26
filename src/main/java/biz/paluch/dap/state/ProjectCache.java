@@ -237,7 +237,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	 * Return whether this entry represents the given project identity.
 	 *
 	 * @param identity the project identity to compare with.
-	 * @return {@code true} if group, artifact, and descriptor all match.
+	 * @return {@literal true} if group, artifact, and descriptor all match.
 	 */
 	public boolean matches(ProjectId identity) {
 

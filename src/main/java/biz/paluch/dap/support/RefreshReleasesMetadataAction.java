@@ -13,11 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.support;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
-
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -26,11 +25,11 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 
 /**
- * Menu action to refresh Gradle dependency releases.
+ * Menu action to refresh dependency release metadata.
  *
  * @author Mark Paluch
  */
-public class UpdateReleaseCacheAction extends AnAction {
+public class RefreshReleasesMetadataAction extends AnAction {
 
 	@Override
 	public ActionUpdateThread getActionUpdateThread() {
@@ -38,30 +37,32 @@ public class UpdateReleaseCacheAction extends AnAction {
 	}
 
 	@Override
-	public void actionPerformed(AnActionEvent e) {
+	public void actionPerformed(AnActionEvent event) {
 
-		Project project = e.getProject();
+		Project project = event.getProject();
 		if (project == null) {
 			return;
 		}
-		ProgressManager.getInstance().run(new ReleasesRetrievalTask(project));
+
+		ProgressManager.getInstance().run(new RefreshReleaseMetadata(project));
 	}
 
 	@Override
-	public void update(AnActionEvent e) {
+	public void update(AnActionEvent event) {
 
-		Project project = e.getProject();
-		Presentation presentation = e.getPresentation();
+		Project project = event.getProject();
+		Presentation presentation = event.getPresentation();
 
 		presentation.setText(MessageBundle.message("action.update.releases"));
 		presentation.setIcon(DependencyAssistantIcons.ICON);
 
 		if (project == null) {
 			presentation.setEnabled(false);
+			presentation.setVisible(false);
 			return;
 		}
 
-		presentation.setEnabledAndVisible(GradleProjectContext.isGradleProject(project));
+		presentation.setEnabledAndVisible(DependencyAssistantDispatcher.supports(project));
 	}
 
 }

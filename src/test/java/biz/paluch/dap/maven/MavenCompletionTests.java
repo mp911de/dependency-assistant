@@ -13,25 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.support;
+package biz.paluch.dap.maven;
 
-import biz.paluch.dap.artifact.DependencyUpdate;
-
-import java.util.List;
-
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
+import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.TestFixture;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.junit.jupiter.api.BeforeEach;
 
 /**
- * Strategy interface for updating a build file.
+ * PSI-level integration tests for Maven completion.
  *
  * @author Mark Paluch
  */
-public interface BuildFileUpdateAction {
+@CodeInsightFixtureTests
+class MavenCompletionTests {
 
-	/**
-	 * Update the build file.
-	 */
-	void updateBuildFile(Project project, VirtualFile buildFile, List<DependencyUpdate> updates);
+	private @TestFixture CodeInsightTestFixture fixture;
+
+	@BeforeEach
+	void setUp() {
+		// MavenFixtures.setup(fixture.getProject());
+	}
+
 
 }

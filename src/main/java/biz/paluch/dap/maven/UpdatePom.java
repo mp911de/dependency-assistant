@@ -19,74 +19,42 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Applies selected dependency and plugin version updates to a POM file according to the {@link VersionSource} and
- * {@link DeclarationSource}.
+ * Applies selected dependency and plugin version updates to a POM file
+ * according to the {@link VersionSource} and {@link DeclarationSource}.
  */
 class UpdatePom {
 
 	private static final Logger LOG = Logger.getInstance(UpdatePom.class);
 
-	private final Project project;
-
-	public UpdatePom(Project project) {
-		this.project = project;
-	}
-
 	/**
 	 * Apply updates to the POM.
 	 */
-	public void applyUpdates(VirtualFile pomFile, List<DependencyUpdate> updates) {
+	public void applyUpdates(PsiFile pomFile, List<DependencyUpdate> updates) {
 
-		if (updates.isEmpty()) {
+		if (!(pomFile instanceof XmlFile file)) {
+			LOG.warn("Cannot update POM: PSI file is not XmlFile for " + pomFile.getName());
+			return;
+		}
+		XmlTag root = file.getDocument() != null ? file.getDocument().getRootTag() : null;
+		if (root == null || !MavenUtils.isMavenPomFile(file)) {
 			return;
 		}
 
-		Runnable updatePom = () -> {
-			Document document = FileDocumentManager.getInstance().getDocument(pomFile);
-			if (document != null) {
-				PsiDocumentManager.getInstance(project).commitDocument(document);
-			}
-
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(pomFile);
-			if (!(psiFile instanceof XmlFile file)) {
-				LOG.warn("Cannot update POM: PSI file is not XmlFile for " + pomFile.getPath());
-				return;
-			}
-			XmlTag root = file.getDocument() != null ? file.getDocument().getRootTag() : null;
-			if (root == null || !MavenUtils.isMavenPomFile(file)) {
-				return;
-			}
-
-			for (DependencyUpdate update : updates) {
-				apply(root, update);
-			}
-		};
-
-		ApplicationManager.getApplication().runWriteAction(() -> {
-			CommandProcessor.getInstance().executeCommand(project, updatePom, MessageBundle.message("command.update.title"),
-					null);
-		});
+		for (DependencyUpdate update : updates) {
+			apply(root, update);
+		}
 	}
 
 	private void apply(XmlTag projectTag, DependencyUpdate update) {
@@ -206,7 +174,8 @@ class UpdatePom {
 		return null;
 	}
 
-	private void findAndCollect(@Nullable XmlTag container, String groupId, String artifactId, Consumer<XmlTag> action) {
+	private void findAndCollect(@Nullable XmlTag container, String groupId, String artifactId,
+			Consumer<XmlTag> action) {
 
 		if (container == null) {
 			return;

@@ -42,7 +42,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.support.BuildFileUpdateAction;
+import biz.paluch.dap.support.UpdateBuildFile;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionGroup;
@@ -79,10 +79,10 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private final DependencyUpdateModel model;
 
-	private final BuildFileUpdateAction updateAction;
+	private final UpdateBuildFile updateAction;
 
 	public DependencyCheckDialog(Project project, VirtualFile buildFile, DependencyUpdates updates,
-			BuildFileUpdateAction updateAction) {
+			UpdateBuildFile updateAction) {
 		super(project, false, IdeModalityType.MODELESS);
 		this.project = project;
 		this.buildFile = buildFile;
@@ -237,7 +237,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	@Override
 	protected void doOKAction() {
-		updateAction.updateBuildFile(project, buildFile, model.toDependencyUpdates());
+		updateAction.updateBuildFile(model.toDependencyUpdates());
 		DaemonCodeAnalyzer.getInstance(project).restart(buildFile);
 		super.doOKAction();
 	}

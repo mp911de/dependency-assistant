@@ -34,6 +34,8 @@ public class DependencyCollector {
 
 	private final Map<ArtifactId, Dependency> usages = new TreeMap<>();
 
+	private final Set<ReleaseSource> releaseSources = new TreeSet<>();
+
 	/**
 	 * Properties defined in the scanned file.
 	 */
@@ -45,6 +47,14 @@ public class DependencyCollector {
 	 */
 	public void addProperties(Collection<String> propertyNames) {
 		this.properties.addAll(propertyNames);
+	}
+
+	public void addAllReleaseSources(Collection<? extends ReleaseSource> releaseSources) {
+		this.releaseSources.addAll(releaseSources);
+	}
+
+	public Collection<ReleaseSource> getReleaseSources() {
+		return releaseSources;
 	}
 
 	/**

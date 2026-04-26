@@ -25,7 +25,7 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.TestFixture;
-import com.intellij.psi.PsiDocumentManager;
+import biz.paluch.dap.support.BuildActionDelegate;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
@@ -169,10 +169,12 @@ class UpdatePomTests {
 		dep.addDeclarationSource(DeclarationSource.profileDependency("dev"));
 		dep.addVersionSource(VersionSource.profileProperty("dev", "spring.version"));
 
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(), dep.getVersionSources());
+		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
+				dep.getVersionSources());
 
-		new UpdatePom(fixture.getProject()).applyUpdates(pom.getVirtualFile(), List.of(update));
-		PsiDocumentManager.getInstance(fixture.getProject()).commitAllDocuments();
+		new BuildActionDelegate(fixture.getProject(),
+				(file, updates) -> new UpdatePom().applyUpdates(file, updates), pom.getVirtualFile())
+						.updateBuildFile(List.of(update));
 
 		assertThat(pom.getText()).contains("<spring.version>6.2.0</spring.version>");
 	}
@@ -188,10 +190,12 @@ class UpdatePomTests {
 		dep.addDeclarationSource(declarationSource);
 		dep.addVersionSource(versionSource);
 
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(), dep.getVersionSources());
+		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
+				dep.getVersionSources());
 
-		new UpdatePom(fixture.getProject()).applyUpdates(targetFile.getVirtualFile(), List.of(update));
-		PsiDocumentManager.getInstance(fixture.getProject()).commitAllDocuments();
+		new BuildActionDelegate(fixture.getProject(),
+				(file, updates) -> new UpdatePom().applyUpdates(targetFile, updates),
+				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
 	}
 
 }

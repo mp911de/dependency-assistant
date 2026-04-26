@@ -99,7 +99,7 @@ public class CachedArtifact {
 	 * Return whether this cache entry refers to the given artifact.
 	 *
 	 * @param artifactId the artifact to compare with.
-	 * @return {@code true} if both group and artifact identifiers match.
+	 * @return {@literal true} if both group and artifact identifiers match.
 	 */
 	public boolean matches(ArtifactId artifactId) {
 		return getArtifactId().equals(artifactId.artifactId()) && getGroupId().equals(artifactId.groupId());

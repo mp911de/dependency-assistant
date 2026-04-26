@@ -26,38 +26,33 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
+import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
-import com.intellij.psi.PsiDocumentManager;
-import com.intellij.psi.PsiElement;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
 
 /**
  * @author Mark Paluch
  */
-public class MavenUtils {
+class MavenUtils {
 
-	/**
-	 * Uses the IDE's PSI to detect if the document is a Maven POM: root element must be "project" with Maven POM
-	 * namespace (or no namespace).
-	 */
-	public static boolean isMavenPomFile(Project project, com.intellij.openapi.editor.Document document) {
-		PsiElement psiFile = PsiDocumentManager.getInstance(project).getPsiFile(document);
-
-		if (!(psiFile instanceof XmlFile xmlFile)) {
-			return false;
-		}
-
-		return isMavenPomFile(xmlFile);
+	public static boolean isMavenPomFile(@Nullable VirtualFile file) {
+		return file != null && "pom.xml".equals(file.getName());
 	}
 
 	public static boolean isMavenPomFile(@Nullable PsiFile file) {
-		return file instanceof XmlFile xmlFile && isMavenPomFile(xmlFile);
+		return file instanceof XmlFile && "pom.xml".equals(file.getName());
+	}
+
+	public static boolean isExactMavenPomFile(@Nullable PsiFile file) {
+		return file instanceof XmlFile xmlFile && isMavenPomFile(file) && isMavenPomFile(xmlFile);
 	}
 
 	public static boolean isMavenPomFile(XmlFile xmlFile) {
@@ -101,7 +96,21 @@ public class MavenUtils {
 	}
 
 	public static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> remoteRepositories) {
-		return remoteRepositories.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it).toList();
+		return remoteRepositories.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it)
+				.toList();
+	}
+
+	public static List<ReleaseSource> getReleaseSources(Project project) {
+
+		Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
+		Set<RemoteRepository> remoteRepositories = new LinkedHashSet<>();
+		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
+
+		for (MavenProject candidate : manager.getProjects()) {
+			remoteRepositories.addAll(MavenUtils.getRemoteRepositories(credentials, candidate));
+		}
+
+		return getReleaseSources(remoteRepositories);
 	}
 
 	private static RemoteRepository remoteRepository(String id, String url,

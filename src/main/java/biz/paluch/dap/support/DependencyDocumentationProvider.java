@@ -21,16 +21,19 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.gradle.DependencyDocumentationProvider;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.VersionProperty;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.model.Pointer;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.platform.backend.documentation.DocumentationResult;
@@ -43,15 +46,51 @@ import com.intellij.psi.SmartPsiElementPointer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Support class for documentation providers that contributes hover and Quick
- * Documentation ({@code Ctrl+Q}) content for dependency elements whose name
- * maps to a known dependency artifact in the {@link Cache}.
- * 
+ * Provides Quick Documentation for supported dependency build files.
+ *
  * @author Mark Paluch
  */
-public abstract class DependencyDocumentationProviderSupport implements PsiDocumentationTargetProvider {
+public class DependencyDocumentationProvider
+		implements PsiDocumentationTargetProvider {
 
 	static final int MAX_VERSIONS = 10;
+
+	@Override
+	public @Nullable DocumentationTarget documentationTarget(PsiElement element, @Nullable PsiElement originalElement) {
+
+		PsiElement target = originalElement != null ? originalElement : element;
+		Project project = target.getProject();
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
+				target.getContainingFile());
+		if (context == null) {
+			return null;
+		}
+
+		VersionUpgradeLookupSupport lookup = context.getLookup(element);
+		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
+		if (!artifactReference.isResolved()) {
+			return null;
+		}
+
+		Cache cache = lookup.getCache();
+
+		if (lookup.hasCachedState()
+				&& artifactReference.getDeclaration()
+						.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
+
+			ProjectState projectState = lookup.getProjectState();
+			VersionProperty property = projectState.findProperty(propertySource.getProperty());
+			if (property == null || property.artifacts().isEmpty()) {
+				return null;
+			}
+
+			return new PropertyDocumentationTarget(target, cache, artifactReference.getDeclaration().getVersion(),
+					element.getText(), property);
+		}
+
+		return new DependencyVersionTarget(target, cache, artifactReference.getArtifactId(),
+				artifactReference.getDeclaration().getVersion(), element.getText());
+	}
 
 	private abstract static class DocumentationTargetSupport implements DocumentationTarget {
 
@@ -107,7 +146,7 @@ public abstract class DependencyDocumentationProviderSupport implements PsiDocum
 
 	}
 
-	protected static class PropertyDocumentationTarget extends DocumentationTargetSupport {
+	private static class PropertyDocumentationTarget extends DocumentationTargetSupport {
 
 		private final VersionProperty property;
 
@@ -132,9 +171,8 @@ public abstract class DependencyDocumentationProviderSupport implements PsiDocum
 		/**
 		 * Builds the HTML body.
 		 */
-		protected @Nullable String buildHtmlBody(@org.jetbrains.annotations.Nullable Map<String, Image> iconImages) {
-			return DependencyDocumentationProvider.buildHtmlBody(cache, property, currentVersion,
-					iconImages);
+		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
+			return DependencyDocumentationProvider.buildHtmlBody(cache, property, currentVersion, iconImages);
 		}
 
 	}
@@ -165,9 +203,8 @@ public abstract class DependencyDocumentationProviderSupport implements PsiDocum
 		/**
 		 * Builds the HTML body.
 		 */
-		protected @Nullable String buildHtmlBody(@org.jetbrains.annotations.Nullable Map<String, Image> iconImages) {
-			return DependencyDocumentationProvider.buildHtmlBody(cache, artifactId, currentVersion,
-					iconImages);
+		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
+			return DependencyDocumentationProvider.buildHtmlBody(cache, artifactId, currentVersion, iconImages);
 		}
 
 	}
@@ -175,7 +212,7 @@ public abstract class DependencyDocumentationProviderSupport implements PsiDocum
 	/**
 	 * Builds the HTML body.
 	 */
-	protected static @Nullable String buildHtmlBody(Cache cache, VersionProperty property,
+	private static @Nullable String buildHtmlBody(Cache cache, VersionProperty property,
 			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages) {
 
 		if (property.artifacts().isEmpty()) {
@@ -201,7 +238,7 @@ public abstract class DependencyDocumentationProviderSupport implements PsiDocum
 			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.controls"),
 					artifactId));
 
-			List<Release> versions = cache.getReleases(artifactId, false);
+			java.util.List<Release> versions = cache.getReleases(artifactId, false);
 			if (versions.isEmpty()) {
 				continue;
 			}

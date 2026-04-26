@@ -24,11 +24,6 @@ import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
-import biz.paluch.dap.state.DependencyAssistantService;
-import biz.paluch.dap.state.ProjectProperty;
-import biz.paluch.dap.state.VersionProperty;
-import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
@@ -37,7 +32,6 @@ import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
@@ -54,11 +48,6 @@ import org.jspecify.annotations.Nullable;
 interface GradleProjectContext extends ProjectBuildContext {
 
 	Key<GradleProjectContext> KEY = Key.create("GradleProjectContext");
-
-	/**
-	 * Check whether the property is locally defined.
-	 */
-	boolean isLocalProperty(String propertyKey);
 
 	/**
 	 * Looks up the {@link GradleProjectContext} for the given PSI file.
@@ -88,7 +77,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 
-		return new GradleBuildContextImpl(project, file, linkedPath, identity);
+		return new GradleBuildContextImpl(project, linkedPath, identity);
 	}
 
 	/**
@@ -161,35 +150,19 @@ interface GradleProjectContext extends ProjectBuildContext {
 		return ProjectId.of(group, name, buildFile.getVirtualFile().getPath());
 	}
 
-	// -------------------------------------------------------------------------
-	// Concrete implementation
-	// -------------------------------------------------------------------------
-
 	class GradleBuildContextImpl implements GradleProjectContext {
 
-		private final DependencyAssistantService service;
-
-		private final PsiFile buildFile;
+		private final Project project;
 
 		private final String linkedProjectPath;
 
 		private final ProjectId identity;
 
-		private final PsiManager psiManager;
+		GradleBuildContextImpl(Project project, String linkedProjectPath, ProjectId identity) {
 
-		private final GradlePropertyResolver propertyResolver;
-
-		private final GradlePropertyResolver localProperties;
-
-		GradleBuildContextImpl(Project project, PsiFile buildFile, String linkedProjectPath, ProjectId identity) {
-
-			this.service = DependencyAssistantService.getInstance(project);
-			this.buildFile = buildFile;
+			this.project = project;
 			this.linkedProjectPath = linkedProjectPath;
 			this.identity = identity;
-			this.psiManager = PsiManager.getInstance(project);
-			this.propertyResolver = GradlePropertyResolver.create(buildFile);
-			this.localProperties = GradlePropertyResolver.forFile(buildFile);
 		}
 
 		@Override
@@ -203,7 +176,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public List<ReleaseSource> getReleaseSources(Project project) {
+		public List<ReleaseSource> getReleaseSources() {
 
 			List<RemoteRepository> remoteRepositories = GradleUtils.getRepositoriesFromImportedProject(project,
 					linkedProjectPath);
@@ -211,47 +184,11 @@ interface GradleProjectContext extends ProjectBuildContext {
 			return GradleProjectContext.getReleaseSources(remoteRepositories);
 		}
 
-		@Override
-		public boolean isLocalProperty(String propertyKey) {
-			return localProperties.containsProperty(propertyKey);
-		}
-
-		@Override
-		public @Nullable String getPropertyValue(String name) {
-
-			String value = propertyResolver.getProperty(name);
-			if (value != null) {
-				return value;
-			}
-
-			ProjectProperty property = this.service.getCache().findProperty(name, VersionProperty::isDeclared);
-			if (property == null || StringUtils.isEmpty(property.id().buildFile())) {
-				return null;
-			}
-
-			LocalFileSystem lfs = LocalFileSystem.getInstance();
-			VirtualFile file = lfs.findFileByPath(property.id().buildFile());
-
-			if (file == null || file.isDirectory()) {
-				return null;
-			}
-
-			return ApplicationManager.getApplication().runReadAction((Computable<@Nullable String>) () -> {
-				PsiFile psiFile = psiManager.findFile(file);
-				if (psiFile == null) {
-					return null;
-				}
-				PropertyResolver declaring = GradlePropertyResolver.create(psiFile);
-				return declaring.containsProperty(name) ? declaring.getProperty(name) : null;
-			});
-		}
-
 	}
 
-	// -------------------------------------------------------------------------
-	// Empty / absent context
-	// -------------------------------------------------------------------------
-
+	/**
+	 * Absent Gradle project context.
+	 */
 	enum EmptyGradleBuildContext implements GradleProjectContext {
 
 		INSTANCE;
@@ -267,17 +204,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public List<ReleaseSource> getReleaseSources(Project project) {
-			throw new IllegalStateException("Gradle BuildContext not available");
-		}
-
-		@Override
-		public boolean isLocalProperty(String propertyKey) {
-			return false;
-		}
-
-		@Override
-		public @Nullable String getPropertyValue(String name) {
+		public List<ReleaseSource> getReleaseSources() {
 			throw new IllegalStateException("Gradle BuildContext not available");
 		}
 

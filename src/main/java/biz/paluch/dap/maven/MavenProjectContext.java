@@ -15,11 +15,9 @@
  */
 package biz.paluch.dap.maven;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.function.Function;
 
 import biz.paluch.dap.ProjectBuildContext;
@@ -65,8 +63,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 	 */
 	static MavenProjectContext of(Project project, @Nullable VirtualFile file) {
 
-		MavenProjectsManager projectsManager = MavenContextImpl.projectsManager.computeIfAbsent(project,
-				MavenProjectsManager::getInstance);
+		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(project);
+
 		if (!projectsManager.isMavenizedProject() || file == null) {
 			return EmptyMavenContext.INSTANCE;
 		}
@@ -75,21 +73,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return EmptyMavenContext.INSTANCE;
 		}
 
-		return MavenContextImpl.contexts.computeIfAbsent(file, it -> {
-			return new MavenContextImpl(project, mavenProject, mavenProject.getMavenId());
-		});
-	}
-
-	static boolean isMavenProject(@Nullable Project project) {
-
-		if (project == null) {
-			return false;
-		}
-
-		MavenProjectsManager projectsManager = MavenContextImpl.projectsManager.computeIfAbsent(project,
-				MavenProjectsManager::getInstance);
-
-		return projectsManager.isMavenizedProject();
+		return new MavenContextImpl(project, mavenProject, mavenProject.getMavenId());
 	}
 
 	/**
@@ -110,11 +94,10 @@ interface MavenProjectContext extends ProjectBuildContext {
 	 */
 	<T> T doWithMaven(Function<MavenProject, T> action);
 
+	/**
+	 * Maven project context.
+	 */
 	class MavenContextImpl implements MavenProjectContext {
-
-		static Map<Project, MavenProjectsManager> projectsManager = Collections.synchronizedMap(new WeakHashMap<>());
-
-		static Map<VirtualFile, MavenProjectContext> contexts = Collections.synchronizedMap(new WeakHashMap<>());
 
 		private final Project project;
 
@@ -122,10 +105,13 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		private final MavenId id;
 
+		private final ProjectId projectId;
+
 		public MavenContextImpl(Project project, MavenProject mavenProject, MavenId id) {
 			this.project = project;
 			this.mavenProject = mavenProject;
 			this.id = id;
+			this.projectId = ProjectId.of(id.getGroupId(), id.getArtifactId(), null);
 		}
 
 		@Override
@@ -145,20 +131,15 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		@Override
 		public ProjectId getProjectId() {
-			return ProjectId.of(id.getGroupId(), id.getArtifactId(), null);
+			return projectId;
 		}
 
 		@Override
-		public List<ReleaseSource> getReleaseSources(Project project) {
+		public List<ReleaseSource> getReleaseSources() {
 
 			Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
 			Set<RemoteRepository> remoteRepositories = MavenUtils.getRemoteRepositories(credentials, mavenProject);
 			return MavenUtils.getReleaseSources(remoteRepositories);
-		}
-
-		@Override
-		public @Nullable String getPropertyValue(String name) {
-			return mavenProject.getProperties().getProperty(name);
 		}
 
 		@Override
@@ -196,12 +177,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public List<ReleaseSource> getReleaseSources(Project project) {
-			throw new IllegalStateException("Maven Context not available");
-		}
-
-		@Override
-		public @Nullable String getPropertyValue(String name) {
+		public List<ReleaseSource> getReleaseSources() {
 			throw new IllegalStateException("Maven Context not available");
 		}
 

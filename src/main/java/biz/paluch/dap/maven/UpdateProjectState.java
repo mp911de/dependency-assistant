@@ -15,26 +15,24 @@
  */
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.MessageBundle;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.DependencyAssistantService;
-import biz.paluch.dap.state.ProjectState;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import org.jetbrains.idea.maven.project.MavenProject;
-import org.jetbrains.idea.maven.project.MavenProjectsManager;
-
+import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectState;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
 
 /**
  * Service to read Maven build files and update the dependency state.
@@ -44,9 +42,13 @@ import com.intellij.psi.PsiManager;
 class UpdateProjectState {
 
 	private final Project project;
+
 	private final DependencyAssistantService service;
+
 	private final PsiManager psiManager;
+
 	private final MavenDependencyCollector collector;
+
 	private final MavenProjectsManager manager;
 
 	public UpdateProjectState(Project project) {
@@ -91,6 +93,8 @@ class UpdateProjectState {
 			this.collector.doCollect(it, collector);
 		}, indicator);
 
+		collector.addAllReleaseSources(MavenUtils.getReleaseSources(project));
+
 		return collector;
 	}
 
@@ -114,7 +118,8 @@ class UpdateProjectState {
 		for (MavenProject mavenProject : projects) {
 
 			indicator
-					.setText(MessageBundle.message("action.check.dependencies.progress.collecting", mavenProject.getMavenId()));
+					.setText(MessageBundle.message("action.index-dependencies.indexing.assistant",
+							mavenProject.getMavenId()));
 
 			action.accept(psiManager, mavenProject.getFile());
 

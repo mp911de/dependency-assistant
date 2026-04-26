@@ -15,6 +15,7 @@
  */
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.assertions.LineMarkers;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;

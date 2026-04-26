@@ -15,20 +15,16 @@
  */
 package biz.paluch.dap;
 
-import biz.paluch.dap.artifact.ReleaseSource;
-
 import java.util.List;
 
-import org.jspecify.annotations.Nullable;
-
-import com.intellij.openapi.project.Project;
+import biz.paluch.dap.artifact.ReleaseSource;
 
 /**
- * Build-tool-agnostic context for the build file currently open in the editor (e.g. {@code pom.xml},
- * {@code build.gradle}, {@code build.gradle.kts}).
- * <p>
- * Provides project identity, remote-repository release sources, and property resolution without coupling callers to
- * Maven-specific or Gradle-specific APIs.
+ * Build-tool-agnostic context for the build file currently open in the editor
+ * (e.g. {@code pom.xml}, {@code build.gradle}, {@code build.gradle.kts}).
+ * <p>Provides project identity, remote-repository release sources, and property
+ * resolution without coupling callers to Maven-specific or Gradle-specific
+ * APIs.
  *
  * @author Mark Paluch
  */
@@ -42,26 +38,16 @@ public interface ProjectBuildContext {
 	/**
 	 * Returns the build-tool-agnostic project identity (groupId + artifactId).
 	 *
-	 * @throws IllegalStateException if {@link #isAvailable()} is {@code false}
+	 * @throws IllegalStateException if {@link #isAvailable()} is {@literal false}.
 	 */
 	ProjectId getProjectId();
 
 	/**
-	 * Returns the remote-repository {@link ReleaseSource}s for this project so that version resolution can query the
-	 * correct repositories.
+	 * Returns the remote-repository {@link ReleaseSource}s for the bound project so
+	 * that version resolution can query the correct repositories.
 	 *
-	 * @param project the IntelliJ project (needed for credential loading)
-	 * @throws IllegalStateException if {@link #isAvailable()} is {@code false}
+	 * @throws IllegalStateException if {@link #isAvailable()} is {@literal false}.
 	 */
-	List<ReleaseSource> getReleaseSources(Project project);
-
-	/**
-	 * Resolves a project-level property by name (e.g. from Maven {@code <properties>} or {@code gradle.properties}).
-	 *
-	 * @return the property value, or {@code null} if not defined
-	 * @throws IllegalStateException if {@link #isAvailable()} is {@code false}
-	 */
-	@Nullable
-	String getPropertyValue(String name);
+	List<ReleaseSource> getReleaseSources();
 
 }

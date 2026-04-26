@@ -91,7 +91,7 @@ public class VersionProperty {
 	/**
 	 * Return whether this property is currently used as a version source.
 	 *
-	 * @return {@code true} if the property is used.
+	 * @return {@literal true} if the property is used.
 	 */
 	public boolean isUsed() {
 		return used;
@@ -109,7 +109,7 @@ public class VersionProperty {
 	/**
 	 * Return whether this property is declared in the analyzed project.
 	 *
-	 * @return {@code true} if the property is declared.
+	 * @return {@literal true} if the property is declared.
 	 */
 	public boolean isDeclared() {
 		return declared;
@@ -169,7 +169,7 @@ public class VersionProperty {
 	/**
 	 * Return whether this property is associated with at least one artifact.
 	 *
-	 * @return {@code true} if at least one artifact association is present.
+	 * @return {@literal true} if at least one artifact association is present.
 	 */
 	public boolean hasArtifacts() {
 		return !artifacts.isEmpty();

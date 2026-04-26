@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap;
+package biz.paluch.dap.support;
 
-import org.jspecify.annotations.Nullable;
+import java.util.List;
+
+import biz.paluch.dap.artifact.DependencyUpdate;
 
 /**
- * Build-tool-agnostic project identity expressed as Maven coordinates ({@code groupId} and {@code artifactId}).
+ * Strategy interface for updating a build file.
  *
  * @author Mark Paluch
  */
-public record ProjectId(String groupId, String artifactId, @Nullable String buildFile) {
+public interface UpdateBuildFile {
 
-	public static ProjectId of(String groupId, String artifactId) {
-		return new ProjectId(groupId, artifactId, null);
-	}
-
-	public static ProjectId of(String groupId, String artifactId, String buildFile) {
-		return new ProjectId(groupId, artifactId, buildFile);
-	}
+	/**
+	 * Update the build file.
+	 */
+	void updateBuildFile(List<DependencyUpdate> updates);
 
 }

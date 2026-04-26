@@ -17,46 +17,38 @@ package biz.paluch.dap.support;
 
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.NewerVersionSeveritiesProvider;
+import biz.paluch.dap.ProjectDependencyContext;
 import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
-import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Annotator that applies a highlight to version text in a build file when a
- * newer version is available in the cache.
- * <p>Complements {@code NewerVersionLineMarkerProvider}: the gutter icon
- * provides a click target while this annotation draws the reader's eye directly
- * to the outdated version string in the editor.
+ * Annotator that marks outdated dependency versions in supported build files.
  *
  * @author Mark Paluch
  */
-public abstract class NewerVersionAnnotatorSupport implements Annotator {
-
-	private final IntentionAction action;
-
-	private final HighlightSeverity severity;
-
-	protected NewerVersionAnnotatorSupport(IntentionAction action, HighlightSeverity severity) {
-		this.action = action;
-		this.severity = severity;
-	}
+public class NewerVersionAnnotator implements Annotator {
 
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
 		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
+		if (service == null) {
+			return;
+		}
+
 		UpgradeSuggestion suggestion = service.suggestUpgrade(element);
 
 		if (!suggestion.isPresent()) {
 			return;
 		}
 
-		IntentionAction action = this.action;
+		IntentionAction action = UpgradeDependenciesIntention.INSTANCE;
 		String message = suggestion.getMessage();
 		ArtifactDeclaration declaration = suggestion.getArtifactDeclaration();
 		if (!declaration.isVersionDefinedInSameFile()) {
@@ -75,7 +67,8 @@ public abstract class NewerVersionAnnotatorSupport implements Annotator {
 			}
 		}
 
-		AnnotationBuilder builder = holder.newAnnotation(severity, message).range(getTextRange(element))
+		AnnotationBuilder builder = holder.newAnnotation(NewerVersionSeveritiesProvider.NEWER_VERSION, message)
+				.range(getTextRange(element))
 				.textAttributes(NewerVersionSeveritiesProvider.NEWER_VERSION_KEY);
 
 		if (action != null) {
@@ -85,10 +78,20 @@ public abstract class NewerVersionAnnotatorSupport implements Annotator {
 		builder.create();
 	}
 
-	protected abstract VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element);
+	protected @Nullable VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element) {
+
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
+				element.getContainingFile());
+		return context != null ? context.getLookup(element) : null;
+	}
 
 	protected TextRange getTextRange(PsiElement element) {
-		return element.getTextRange();
+
+		TextRange textRange = element.getTextRange();
+		if (element.getContainingFile().getName().endsWith(".versions.toml") && element.getText().startsWith("\"")) {
+			return new TextRange(textRange.getStartOffset() + 1, textRange.getEndOffset() - 1);
+		}
+		return textRange;
 	}
 
 }

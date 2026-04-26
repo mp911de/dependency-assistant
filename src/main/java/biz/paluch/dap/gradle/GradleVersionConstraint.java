@@ -55,7 +55,7 @@ interface GradleVersionConstraint {
 	/**
 	 * Return whether this constraint declares non-empty version text.
 	 *
-	 * @return {@code true} if {@link #getVersion()} contains text.
+	 * @return {@literal true} if {@link #getVersion()} contains text.
 	 */
 	default boolean hasText() {
 		return StringUtils.hasText(getVersion());
@@ -64,7 +64,7 @@ interface GradleVersionConstraint {
 	/**
 	 * Return whether this constraint declares a version range.
 	 *
-	 * @return {@code true} if the declared version uses Gradle range syntax.
+	 * @return {@literal true} if the declared version uses Gradle range syntax.
 	 * @see GradleUtils#isVersionRange(String)
 	 */
 	default boolean isRange() {
@@ -76,7 +76,7 @@ interface GradleVersionConstraint {
 	 * constraint.
 	 *
 	 * @param call the call name to inspect.
-	 * @return {@code true} if the call matches a supported constraint name.
+	 * @return {@literal true} if the call matches a supported constraint name.
 	 */
 	static boolean isConstraint(@Nullable String call) {
 		return PREFER.equals(call) || STRICTLY.equals(call);
