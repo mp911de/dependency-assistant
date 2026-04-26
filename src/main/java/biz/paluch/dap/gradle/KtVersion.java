@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
@@ -32,22 +33,11 @@ import org.jetbrains.kotlin.psi.KtReferenceExpression;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Value object that exposes the version contract of a Kotlin DSL dependency
- * declaration.
- * <p>Instances are created from a dependency call such as
- * {@code implementation("g:a") { version { strictly("1.2.3") } }} or directly
- * from a {@code version(...)} call. The contract intentionally focuses on the
- * version information that callers need for navigation and upgrade logic:
- * <ul>
- * <li>a direct version literal or property reference declared on the dependency
- * itself,</li>
- * <li>version constraints declared within a nested {@code version { ... }}
- * block, and</li>
- * <li>a consistent precedence model where the direct version expression is
- * consulted before any constraint.</li>
- * </ul>
- * The type does not attempt to validate Gradle semantics beyond extracting
- * these supported structures.
+ * Value object for version information in a Kotlin DSL dependency declaration.
+ *
+ * <p>Supports direct version expressions and constraints declared in a nested
+ * {@code version { ... }} block. It extracts only the PSI needed for navigation
+ * and upgrade logic.
  *
  * @author Mark Paluch
  */
@@ -71,14 +61,9 @@ class KtVersion {
 
 	/**
 	 * Create a {@link KtVersion} from a dependency declaration.
-	 * <p>The dependency is inspected for a nested {@code version(...)} call first.
-	 * If no such call is present, the method falls back to a directly declared
-	 * version/property expression in the dependency argument list.
-	 *
-	 * @param dependency the dependency declaration to inspect; never {@code null}.
+	 * @param dependency the dependency declaration to inspect.
 	 * @return a {@link KtVersion} if the dependency exposes version information in
-	 * one of the supported forms; {@code null} if the dependency does not declare a
-	 * version.
+	 * one of the supported forms.
 	 */
 	public static @Nullable KtVersion fromDependency(KtCallElement dependency) {
 
@@ -102,13 +87,8 @@ class KtVersion {
 
 	/**
 	 * Create a {@link KtVersion} from a Kotlin DSL {@code version(...)} call.
-	 * <p>Supported nested constraints are collected from {@code version {
-	 * strictly(...) }} and {@code version { prefer(...) }} declarations. Calls with
-	 * a different name are rejected.
-	 *
 	 * @param versionCall the call to inspect.
-	 * @return a {@link KtVersion} describing the call, or {@code null} if the
-	 * supplied element is not a {@code version} call.
+	 * @return a {@link KtVersion} describing the call, or {@code null}.
 	 */
 	public static @Nullable KtVersion fromVersion(KtCallElement versionCall) {
 

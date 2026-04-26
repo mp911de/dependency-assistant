@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import org.jspecify.annotations.Nullable;
@@ -27,6 +28,9 @@ public record RemoteRepository(String id, String url, @Nullable RepositoryCreden
 	static final RemoteRepository MAVEN_CENTRAL = new RemoteRepository("central", "https://repo1.maven.org/maven2/",
 			null);
 
+	/**
+	 * Return the Maven Central repository descriptor.
+	 */
 	public static RemoteRepository mavenCentral() {
 		return MAVEN_CENTRAL;
 	}

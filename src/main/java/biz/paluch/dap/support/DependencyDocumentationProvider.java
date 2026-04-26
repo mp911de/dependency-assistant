@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.awt.*;
@@ -179,6 +180,9 @@ public class DependencyDocumentationProvider
 
 	}
 
+	/**
+	 * Documentation target for a concrete dependency version.
+	 */
 	protected static class DependencyVersionTarget extends DocumentationTargetSupport {
 
 		private final ArtifactId artifactId;

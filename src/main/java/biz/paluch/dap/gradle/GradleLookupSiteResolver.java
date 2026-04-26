@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -47,6 +48,9 @@ class GradleLookupSiteResolver {
 		this.tomlResolver = tomlResolver;
 	}
 
+	/**
+	 * Resolve the given lookup site to an artifact reference.
+	 */
 	public ArtifactReference resolve(LookupSite site) {
 
 		Assert.notNull(site, "Lookup site must not be null");

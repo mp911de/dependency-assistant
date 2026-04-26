@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.state;
 
 import java.time.Clock;
@@ -51,6 +52,9 @@ import org.jspecify.annotations.Nullable;
 @Tag("cache")
 public class Cache {
 
+	/**
+	 * Clock used for cache age calculations.
+	 */
 	public static final Clock CLOCK = Clock.systemUTC();
 
 	private static final Duration CACHE_EXPIRATION = Duration.ofMinutes(10);

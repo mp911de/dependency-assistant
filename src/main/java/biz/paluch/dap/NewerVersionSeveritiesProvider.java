@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
 
 import java.util.List;
@@ -24,29 +25,30 @@ import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 
 /**
- * {@link SeveritiesProvider} to install the severity for dependencies that have
- * a newer version available. The severity is used to apply a custom text
- * attribute.
- * <p><strong>Platform coupling:</strong> extends types under
- * {@code com.intellij.codeInsight.daemon.impl} (the supported extension point
- * still lives in that package). Custom severities are ordered using
- * {@code HighlightSeverity.INFORMATION.myVal} plus a fixed offset; re-check
- * when upgrading the IDE baseline because that field is not a documented stable
- * API.
+ * {@link SeveritiesProvider} for dependency update highlighting.
  *
  * @author Mark Paluch
  */
 public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 
+	/**
+	 * Text attributes key for newer dependency versions.
+	 */
 	public static final TextAttributesKey NEWER_VERSION_KEY = TextAttributesKey
 			.createTextAttributesKey("NEWER_VERSION");
 
+	/**
+	 * Generic newer-version highlight severity.
+	 */
 	public static final HighlightSeverity NEWER_VERSION = new HighlightSeverity(NEWER_VERSION_KEY.getExternalName(),
 			HighlightSeverity.INFORMATION.myVal + 5, //
 			MessageBundle.lazyMessage("newer.severity"), //
 			MessageBundle.lazyMessage("newer.severity.capitalized"), //
 			MessageBundle.lazyMessage("newer.severity.count.message"));
 
+	/**
+	 * Maven newer-version highlight severity.
+	 */
 	public static final HighlightSeverity NEWER_VERSION_MAVEN = new HighlightSeverity(
 			NEWER_VERSION_KEY.getExternalName(),
 			HighlightSeverity.INFORMATION.myVal + 5, //
@@ -54,6 +56,9 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			MessageBundle.lazyMessage("newer.severity.capitalized"), //
 			MessageBundle.lazyMessage("newer.severity.count.message"));
 
+	/**
+	 * Gradle newer-version highlight severity.
+	 */
 	public static final HighlightSeverity NEWER_VERSION_GRADLE = new HighlightSeverity(
 			NEWER_VERSION_KEY.getExternalName(),
 			HighlightSeverity.INFORMATION.myVal + 5, //
@@ -61,6 +66,9 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 			MessageBundle.lazyMessage("newer.severity.capitalized"), //
 			MessageBundle.lazyMessage("newer.severity.count.message"));
 
+	/**
+	 * Create a new {@code NewerVersionSeveritiesProvider}.
+	 */
 	public NewerVersionSeveritiesProvider() {
 	}
 
@@ -73,6 +81,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 				super(severity, attributesKey);
 			}
 
+			@Override
 			public Icon getIcon() {
 				return DependencyAssistantIcons.ICON;
 			}
@@ -85,6 +94,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 				super(severity, attributesKey);
 			}
 
+			@Override
 			public Icon getIcon() {
 				return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
 			}
@@ -97,6 +107,7 @@ public class NewerVersionSeveritiesProvider extends SeveritiesProvider {
 				super(severity, attributesKey);
 			}
 
+			@Override
 			public Icon getIcon() {
 				return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
 			}

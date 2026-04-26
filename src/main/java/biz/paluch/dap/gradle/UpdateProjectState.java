@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.Collection;
@@ -52,14 +53,29 @@ class UpdateProjectState {
 
 	private final GradleDependencyCollector collector;
 
+	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 */
 	public UpdateProjectState(Project project) {
 		this(project, PsiManager.getInstance(project), DependencyAssistantService.getInstance(project));
 	}
 
+	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 * @param service the dependency assistant service to update.
+	 */
 	public UpdateProjectState(Project project, DependencyAssistantService service) {
 		this(project, PsiManager.getInstance(project), service);
 	}
 
+	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 * @param psiManager the PSI manager to use.
+	 * @param service the dependency assistant service to update.
+	 */
 	public UpdateProjectState(Project project, PsiManager psiManager, DependencyAssistantService service) {
 		this.project = project;
 		this.service = service;
@@ -67,20 +83,36 @@ class UpdateProjectState {
 		this.collector = new GradleDependencyCollector(project);
 	}
 
+	/**
+	 * Read and update dependency state for the given file.
+	 * @param file the file to inspect.
+	 */
 	public void readAndUpdate(PsiFile file) {
 		if (GradleUtils.isGradleFile(file)) {
 			ApplicationManager.getApplication().runReadAction(() -> update(file));
 		}
 	}
 
+	/**
+	 * Read and update dependency state for all linked Gradle files.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public void readAndUpdateAll(ProgressIndicator indicator) {
 		ApplicationManager.getApplication().runReadAction(() -> updateAll(indicator));
 	}
 
+	/**
+	 * Update dependency state for all linked Gradle files.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public void updateAll(ProgressIndicator indicator) {
 		doWithAllFiles(this::update, indicator);
 	}
 
+	/**
+	 * Return dependencies collected from all linked Gradle files.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
 		DependencyCollector collector = new DependencyCollector();
@@ -103,6 +135,11 @@ class UpdateProjectState {
 		return collector;
 	}
 
+	/**
+	 * Invoke the given action for every Gradle-related file in linked projects.
+	 * @param action the file callback.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public void doWithAllFiles(Consumer<PsiFile> action, ProgressIndicator indicator) {
 
 		Collection<GradleProjectSettings> settings = GradleSettings.getInstance(project).getLinkedProjectsSettings();
@@ -147,6 +184,10 @@ class UpdateProjectState {
 		}
 	}
 
+	/**
+	 * Update dependency state for the given Gradle file.
+	 * @param file the Gradle-related file to inspect.
+	 */
 	public void update(PsiFile file) {
 
 		if (GradleUtils.isGradleFile(file)) {

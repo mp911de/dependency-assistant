@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.util.function.Consumer;
@@ -84,6 +85,9 @@ public class ArtifactReference {
 		return declaration;
 	}
 
+	/**
+	 * Return the artifact id of the resolved declaration.
+	 */
 	public ArtifactId getArtifactId() {
 		return getDeclaration().getArtifactId();
 	}

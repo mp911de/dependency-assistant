@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.Property;
@@ -35,29 +35,11 @@ import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlLiteral;
 
 /**
- * Gradle implementation of {@link VersionUpgradeLookupSupport}. Determines
- * whether the PSI element at the caret represents a version value in a Gradle
- * dependency declaration and returns an {@link UpgradeSuggestion} if a newer
- * version is available.
- * <p>Supported locations:
- * <ul>
- * <li>Version part of a Groovy string-notation GAV literal
- * ({@code 'group:artifact:version'})</li>
- * <li>Version part of a Kotlin DSL string template GAV literal
- * ({@code "group:artifact:version"})</li>
- * <li>Kotlin {@code extra["key"]} version value: plain string, triple-quoted
- * string, {@code buildString { append("…") }}, or the receiver literal in
- * {@code "….also { extra["key"] = it }}</li>
- * <li>VersionProperty value in {@code gradle.properties} that maps to a known
- * artifact version</li>
- * <li>Version literal in a {@code libs.versions.toml} {@code [versions]}
- * table</li>
- * <li>Version-catalog accessors in Groovy or Kotlin:
- * {@code alias(libs.plugins.…)}, {@code id(libs.plugins.…)} (inside
- * {@code plugins { }}), and dependency configurations such as
- * {@code implementation(libs.…)} / {@code platform(libs.…)}, resolved via
- * {@code gradle/libs.versions.toml}</li>
- * </ul>
+ * Gradle implementation of {@link VersionUpgradeLookupSupport}.
+ *
+ * <p>Supports version lookups in Groovy and Kotlin build scripts,
+ * {@code gradle.properties}, and {@code libs.versions.toml}. Version catalog
+ * accessors are resolved back to the catalog entry that owns the version.
  *
  * @author Mark Paluch
  */
@@ -85,10 +67,19 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final GradleLookupSiteResolver lookupSiteResolver;
 
+	/**
+	 * Create a new {@code VersionUpgradeLookupService}.
+	 * @param file the Gradle-related file to inspect.
+	 */
 	public VersionUpgradeLookupService(PsiFile file) {
 		this(file.getProject(), file);
 	}
 
+	/**
+	 * Create a new {@code VersionUpgradeLookupService}.
+	 * @param project the IntelliJ project.
+	 * @param file the Gradle-related file to inspect.
+	 */
 	public VersionUpgradeLookupService(Project project, PsiFile file) {
 		this(project, file, GradleProjectContext.of(project, file));
 	}
@@ -113,6 +104,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				this.tomlResolver);
 	}
 
+	/**
+	 * Return the cached lookup service for the file containing the given element.
+	 * @param element the PSI element that belongs to a Gradle-related file.
+	 */
 	public static VersionUpgradeLookupService create(PsiElement element) {
 		return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
 				VersionUpgradeLookupService::new);
@@ -130,6 +125,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return lookupSite.isPresent() ? lookupSiteResolver.resolve(lookupSite) : ArtifactReference.unresolved();
 	}
 
+	/**
+	 * Find the Gradle lookup site represented by the given element.
+	 * @param element the PSI element under inspection.
+	 * @param vf the backing virtual file.
+	 */
 	public LookupSite findLookupSite(PsiElement element, VirtualFile vf) {
 
 		if (GradleUtils.isVersionCatalog(vf) && element instanceof TomlLiteral literal) {

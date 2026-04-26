@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.Collections;
@@ -22,17 +23,11 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A dependency entry found in the scanned build files, together with all
- * structural locations where it appears and how its version is defined.
- * <p>The same artifact can be declared in multiple places across a project -
- * for example in both {@code <dependencies>} and {@code <dependencyManagement>}
- * in Maven, or in both a TOML catalog and a Gradle build file. Each location is
- * captured as a {@link DeclarationSource}, and each version origin is captured
- * as a {@link VersionSource}. Both sets preserve insertion order so that
- * iteration reflects the scan sequence.
- * <p>{@link DeclaredDependency} represents a version-constraint entry that may
- * or may not carry a directly resolved version. {@link Dependency} extends this
- * class for entries that do carry a definitive version.
+ * Dependency declaration found while scanning build files.
+ *
+ * <p>The same artifact can appear in several structural locations. Each
+ * declaration location is captured as a {@link DeclarationSource}, and each
+ * version origin is captured as a {@link VersionSource}.
  *
  * @author Mark Paluch
  * @see Dependency
@@ -48,6 +43,10 @@ public class DeclaredDependency implements HasArtifactId {
 
 	private final Set<DeclarationSource> declarationSources = new LinkedHashSet<>();
 
+	/**
+	 * Create a new {@code DeclaredDependency}.
+	 * @param artifactId the declared artifact coordinates.
+	 */
 	public DeclaredDependency(ArtifactId artifactId) {
 		this.artifactId = artifactId;
 	}
@@ -58,22 +57,14 @@ public class DeclaredDependency implements HasArtifactId {
 	}
 
 	/**
-	 * Return the version sources associated with this dependency, in the order they
-	 * were registered during the scan.
-	 *
-	 * @return an unmodifiable set of version sources; guaranteed to be not
-	 * {@literal null} but may be empty.
+	 * Return the version sources associated with this dependency.
 	 */
 	public Set<VersionSource> getVersionSources() {
 		return Collections.unmodifiableSet(versionSources);
 	}
 
 	/**
-	 * Return the declaration sources associated with this dependency, in the order
-	 * they were registered during the scan.
-	 *
-	 * @return an unmodifiable set of declaration sources; guaranteed to be not
-	 * {@literal null} but may be empty.
+	 * Return the declaration sources associated with this dependency.
 	 */
 	public Set<DeclarationSource> getDeclarationSources() {
 		return Collections.unmodifiableSet(declarationSources);
@@ -81,10 +72,7 @@ public class DeclaredDependency implements HasArtifactId {
 
 	/**
 	 * Add a version source to this dependency.
-	 * <p>Called by {@link DependencyCollector} as the scan progresses across files.
-	 * Duplicates are silently ignored by the underlying {@link LinkedHashSet}.
-	 *
-	 * @param versionSource the version source to add; must not be {@literal null}.
+	 * @param versionSource the version source to add.
 	 * @return this instance for method chaining.
 	 */
 	public DeclaredDependency addVersionSource(VersionSource versionSource) {
@@ -94,11 +82,7 @@ public class DeclaredDependency implements HasArtifactId {
 
 	/**
 	 * Add a declaration source to this dependency.
-	 * <p>Called by {@link DependencyCollector} as the scan progresses across files.
-	 * Duplicates are silently ignored by the underlying {@link LinkedHashSet}.
-	 *
-	 * @param declarationSource the declaration source to add; must not be
-	 * {@literal null}.
+	 * @param declarationSource the declaration source to add.
 	 * @return this instance for method chaining.
 	 */
 	public DeclaredDependency addDeclarationSource(DeclarationSource declarationSource) {
@@ -107,24 +91,15 @@ public class DeclaredDependency implements HasArtifactId {
 	}
 
 	/**
-	 * Return whether any of the registered version sources is a property-based
-	 * version (i.e. implements {@link VersionSource.VersionProperty}).
-	 *
-	 * @return {@literal true} if a property version source is present;
-	 * {@literal false} otherwise.
+	 * Return whether any registered version source is property-based.
 	 */
 	public boolean hasPropertyVersion() {
 		return findPropertyVersion() != null;
 	}
 
 	/**
-	 * Return the first property-based version source, or {@literal null} if none is
+	 * Return the first property-based version source, or {@code null} if none is
 	 * registered.
-	 * <p>Covers both Maven property references and TOML version catalog property
-	 * entries, both of which implement {@link VersionSource.VersionProperty}.
-	 *
-	 * @return the first {@link VersionSource.VersionProperty}, or {@literal null}
-	 * if no property version is present.
 	 */
 	public VersionSource.@Nullable VersionProperty findPropertyVersion() {
 

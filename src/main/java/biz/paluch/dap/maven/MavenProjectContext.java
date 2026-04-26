@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.maven;
 
 import java.util.List;
@@ -115,6 +116,9 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		private final ProjectId projectId;
 
+		/**
+		 * Create a context for the given Maven project.
+		 */
 		public MavenContextImpl(Project project, MavenProject mavenProject, MavenId id) {
 			this.project = project;
 			this.mavenProject = mavenProject;

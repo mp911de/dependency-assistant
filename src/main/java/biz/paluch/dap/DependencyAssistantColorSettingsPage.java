@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
 
 import java.util.Map;
-
-import javax.swing.Icon;
+import javax.swing.*;
 
 import com.intellij.ide.highlighter.XmlFileHighlighter;
 import com.intellij.openapi.editor.colors.TextAttributesKey;

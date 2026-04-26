@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
-import javax.swing.Icon;
+import javax.swing.*;
 
 import com.intellij.icons.AllIcons;
 
@@ -36,6 +37,9 @@ public enum VersionAge {
 
 	PREVIEW;
 
+	/**
+	 * Return the icon classification for the given upgrade target.
+	 */
 	public static VersionAge fromTarget(UpgradeStrategy target) {
 
 		return switch (target) {
@@ -46,6 +50,9 @@ public enum VersionAge {
 		};
 	}
 
+	/**
+	 * Compare two version-bearing objects using their {@link ArtifactVersion}.
+	 */
 	public static VersionAge fromVersions(HasVersion currentVersion, HasVersion otherVersion) {
 
 		ArtifactVersion current = currentVersion.getVersion();
@@ -54,6 +61,9 @@ public enum VersionAge {
 		return fromVersions(current, option);
 	}
 
+	/**
+	 * Return how {@code option} relates to {@code current}.
+	 */
 	public static VersionAge fromVersions(ArtifactVersion current, ArtifactVersion option) {
 
 		int cmp = option.compareTo(current);
@@ -80,6 +90,9 @@ public enum VersionAge {
 		return NEWER_MAJOR;
 	}
 
+	/**
+	 * Return the IntelliJ icon associated with this version age.
+	 */
 	public Icon getIcon() {
 		return switch (this) {
 			case OLDER -> AllIcons.Nodes.Library;

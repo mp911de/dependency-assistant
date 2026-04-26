@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.io.File;
@@ -41,23 +42,11 @@ import org.jetbrains.idea.maven.utils.MavenUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Reads Maven {@code settings.xml} for the active project and returns a map of
- * server-id to {@link RepositoryCredentials}.
- * <p>Uses Maven's own bundled JARs (loaded via {@link URLClassLoader} over
- * {@code <maven_home>/lib}) to parse and decrypt settings, so all
- * password-encryption schemes supported by the active Maven installation are
- * handled correctly.
- * <p>Settings files are resolved and merged in priority order (lowest first):
- * <ol>
- * <li>Global settings: {@code <maven_home>/conf/settings.xml}</li>
- * <li>User settings: path from {@link MavenUtil#resolveUserSettingsPath}, which
- * honours IntelliJ's configured path and falls back to
- * {@code ~/.m2/settings.xml}</li>
- * </ol>
- * <p>Maven-encrypted passwords (those enclosed in {@code {...}}) are decrypted
- * via Maven's {@code DefaultSettingsDecrypter} chain. The master password is
- * read from the file given by the {@code settings.security} system property,
- * defaulting to {@code ~/.m2/settings-security.xml}.
+ * Loader for repository credentials declared in Maven {@code settings.xml}.
+ *
+ * <p>Uses the active Maven installation to merge global and user settings and
+ * decrypt encrypted server passwords, matching Maven's own credential handling
+ * as closely as possible.
  *
  * @author Mark Paluch
  */
@@ -79,10 +68,8 @@ public class SettingsXmlCredentialsLoader {
 	/**
 	 * Loads credentials from the Maven settings files applicable to the given
 	 * project.
-	 *
-	 * @param project the IntelliJ project
-	 * @return map from server {@code <id>} to credentials; never {@code null}, may
-	 * be empty
+	 * @param project the IntelliJ project.
+	 * @return map from server {@code <id>} to credentials.
 	 */
 	public static Map<String, RepositoryCredentials> load(Project project) {
 

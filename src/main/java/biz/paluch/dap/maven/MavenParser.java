@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.maven;
 
 import java.util.HashMap;
@@ -53,6 +54,11 @@ class MavenParser {
 
 	private final Map<String, String> properties;
 
+	/**
+	 * Create a new {@code MavenParser}.
+	 * @param collector the dependency collector to populate.
+	 * @param properties known Maven properties.
+	 */
 	public MavenParser(DependencyCollector collector, Map<String, String> properties) {
 		this.collector = collector;
 		this.properties = new HashMap<>(properties);
@@ -106,6 +112,11 @@ class MavenParser {
 		}
 	}
 
+	/**
+	 * Parse dependencies, plugins, and properties from the given POM file.
+	 * @param cache the project cache used for property-to-artifact associations.
+	 * @param pomFile the POM file to parse.
+	 */
 	public void parsePomFile(Cache cache, XmlFile pomFile) {
 
 		Map<String, String> properties = getProperties(pomFile);
@@ -153,6 +164,12 @@ class MavenParser {
 		});
 	}
 
+	/**
+	 * Parse artifact coordinates from the given XML tag.
+	 * @param tag the dependency or plugin tag.
+	 * @param propertyResolver resolver for Maven placeholders.
+	 * @return the artifact id, or {@code null} if no artifact id is present.
+	 */
 	public static @Nullable ArtifactId parseArtifactId(XmlTag tag, Function<String, String> propertyResolver) {
 		return parseArtifactId(tag.getSubTagText("groupId"), tag.getSubTagText("artifactId"), propertyResolver);
 	}
@@ -268,6 +285,9 @@ class MavenParser {
 
 	record ResolvedProperty(String name, String value, VersionSource versionSource) {
 
+		/**
+		 * Return whether the resolved value still contains a placeholder.
+		 */
 		public boolean containsProperty() {
 			return value.contains("${");
 		}
@@ -287,10 +307,20 @@ class MavenParser {
 
 		private final @Nullable String version;
 
+		/**
+		 * Create a new {@code PropertyResolver}.
+		 * @param pom the POM file providing project coordinates.
+		 * @param properties known Maven properties.
+		 */
 		public PropertyResolver(XmlFile pom, Map<String, String> properties) {
 			this(pom, properties::get);
 		}
 
+		/**
+		 * Create a new {@code PropertyResolver}.
+		 * @param pom the POM file providing project coordinates.
+		 * @param propertySource property lookup function.
+		 */
 		public PropertyResolver(XmlFile pom, Function<String, @Nullable String> propertySource) {
 
 			this.propertySource = propertySource;
@@ -321,6 +351,10 @@ class MavenParser {
 			this.version = version;
 		}
 
+		/**
+		 * Resolve Maven placeholders in the given value.
+		 * @param property the value to resolve.
+		 */
 		public String resolvePropertyValue(String property) {
 
 			Matcher matcher = PROPERTY_PATTERN.matcher(property);

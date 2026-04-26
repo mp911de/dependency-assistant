@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.support.PropertyResolver;
@@ -47,17 +48,13 @@ final class KotlinPluginIds {
 
 	/**
 	 * Parse a Kotlin plugin declaration anchored at {@code call} and surrounded by
-	 * {@code be}. Returns {@literal null} when the call is not a recognised plugin
-	 * declaration shape, when the resolved id is invalid, or when no version is
-	 * declared.
-	 *
+	 * {@code be}.
 	 * @param call the inner {@code id(...)} call element.
 	 * @param be the enclosing binary expression carrying the {@code version}
-	 * keyword and version literal; {@literal null} if absent.
+	 * keyword and version literal.
 	 * @param scriptProperties property resolver used to resolve interpolated id
 	 * placeholders.
-	 * @return the parsed plugin declaration, or {@literal null} when the call is
-	 * not a complete plugin declaration.
+	 * @return the parsed plugin declaration, or {@code null}.
 	 */
 	static @Nullable PluginId fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
 			PropertyResolver scriptProperties) {

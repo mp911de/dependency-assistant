@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.artifact;
 
-import static org.assertj.core.api.Assertions.*;
+package biz.paluch.dap.artifact;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for {@link GradlePluginPortalReleaseSource}.

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.Objects;
@@ -40,11 +41,13 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Try to parse a release-train version without throwing. Returns {@code null} if the string does not match the
-	 * train-name-suffix pattern.
+	 * Try to parse a release-train version without throwing. Returns {@code null}
+	 * if the string does not match the train-name-suffix pattern.
 	 *
-	 * @param source the version string (e.g. {@code Aluminium-M1}, {@code Bismuth-SR1})
-	 * @return a new {@link ArtifactVersion} or {@code null} if not a release-train version
+	 * @param source the version string (e.g. {@code Aluminium-M1},
+	 * {@code Bismuth-SR1}).
+	 * @return a new {@link ArtifactVersion} or {@code null} if not a release-train
+	 * version.
 	 */
 	@Nullable
 	static ArtifactVersion tryParse(String source) {
@@ -71,11 +74,13 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Parse a release-train version string. Throws if the string is not a valid release-train version.
+	 * Parse a release-train version string. Throws if the string is not a valid
+	 * release-train version.
 	 *
-	 * @param source the version string
-	 * @return a new {@link ArtifactVersion}
-	 * @throws IllegalArgumentException if the string does not match the release-train pattern
+	 * @param source the version string.
+	 * @return a new {@link ArtifactVersion}.
+	 * @throws IllegalArgumentException if the string does not match the
+	 * release-train pattern.
 	 */
 	static ArtifactVersion of(String source) {
 		ArtifactVersion v = tryParse(source);
@@ -89,17 +94,23 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	/**
 	 * Return whether the given string looks like a release-train version.
 	 *
-	 * @param source the version string
-	 * @return true if parsing as release-train succeeds
+	 * @param source the version string.
+	 * @return true if parsing as release-train succeeds.
 	 */
 	static boolean isReleaseTrainVersion(String source) {
 		return tryParse(source) != null;
 	}
 
+	/**
+	 * Return the release train name.
+	 */
 	public String getTrainName() {
 		return trainName;
 	}
 
+	/**
+	 * Return the train suffix.
+	 */
 	public Suffix getSuffix() {
 		return suffix;
 	}

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.xml;
 
 import javax.xml.XMLConstants;
@@ -27,6 +28,9 @@ import org.xmlbeam.config.DefaultXMLFactoriesConfig;
  */
 public class XmlBeamProjectorFactory {
 
+	/**
+	 * Shared XMLBeam projector instance.
+	 */
 	public static final XBProjector INSTANCE = XmlBeamProjectorFactory.create();
 
 	private XmlBeamProjectorFactory() {}

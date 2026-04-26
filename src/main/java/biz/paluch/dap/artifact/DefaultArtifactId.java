@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import biz.paluch.dap.util.StringUtils;
@@ -22,10 +23,16 @@ import biz.paluch.dap.util.StringUtils;
  */
 record DefaultArtifactId(String groupId, String artifactId) implements ArtifactId, Comparable<ArtifactId> {
 
+	/**
+	 * Create coordinates from another artifact id.
+	 */
 	public DefaultArtifactId(ArtifactId artifact) {
 		this(artifact.groupId(), artifact.artifactId());
 	}
 
+	/**
+	 * Return whether the artifact id has text.
+	 */
 	public boolean hasArtifactId() {
 		return StringUtils.hasText(artifactId);
 	}

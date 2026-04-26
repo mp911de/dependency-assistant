@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
+
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.*;
 
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.swing.Icon;
-
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -41,29 +40,48 @@ class DependencyUpdateModel {
 
 	private boolean filterVersionSuggestions = true;
 
+	/**
+	 * Create a new {@code DependencyUpdateModel}.
+	 * @param updateCheckResult the dependency update check result.
+	 */
 	public DependencyUpdateModel(DependencyUpdates updateCheckResult) {
 		this.updateCheckResult = updateCheckResult;
 		setFilterVersionSuggestions(true);
 	}
 
+	/**
+	 * Set whether all visible update options should be applied.
+	 */
 	public void setUpdateAll(boolean state) {
 		for (DependencyUpdateOption option : getUpdateOptions()) {
 			option.setApplyUpdate(state);
 		}
 	}
 
+	/**
+	 * Return the active upgrade strategy selection.
+	 */
 	public UpgradeStrategies getUpgradeStrategy() {
 		return upgradeStrategy;
 	}
 
+	/**
+	 * Set the active upgrade strategy selection.
+	 */
 	public void setUpgradeStrategy(UpgradeStrategies upgradeStrategy) {
 		this.upgradeStrategy = upgradeStrategy;
 	}
 
+	/**
+	 * Return whether version suggestions are filtered for update candidates.
+	 */
 	public boolean isFilterVersionSuggestions() {
 		return filterVersionSuggestions;
 	}
 
+	/**
+	 * Set whether version suggestions are filtered for update candidates.
+	 */
 	public void setFilterVersionSuggestions(boolean filterVersionSuggestions) {
 
 		this.filterVersionSuggestions = filterVersionSuggestions;
@@ -85,14 +103,23 @@ class DependencyUpdateModel {
 		}
 	}
 
+	/**
+	 * Return the update options shown by the dialog.
+	 */
 	public List<DependencyUpdateOption> getUpdateOptions() {
 		return updateOptions;
 	}
 
+	/**
+	 * Return the selected dependency updates.
+	 */
 	public List<DependencyUpdate> toDependencyUpdates() {
 		return updateOptions.stream().filter(DependencyUpdateOption::isApplyUpdate).map(DependencyUpdate::of).toList();
 	}
 
+	/**
+	 * Return errors reported while checking dependencies.
+	 */
 	public List<String> getErrors() {
 		return updateCheckResult.errors();
 	}
@@ -118,6 +145,10 @@ class DependencyUpdateModel {
 			this.strategy = strategy;
 		}
 
+		/**
+		 * Return the upgrade strategy represented by this selection, or {@code null}
+		 * for manual selection.
+		 */
 		public @Nullable UpgradeStrategy getStrategy() {
 			return strategy;
 		}

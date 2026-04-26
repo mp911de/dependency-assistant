@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -29,21 +30,10 @@ import org.springframework.util.Assert;
 /**
  * Descriptor for a semantic dependency lookup site in a Gradle build.
  *
- * <p>{@code LookupSite} decouples PSI traversal from artifact resolution.
- * Locator implementations identify the most meaningful source location for a
- * dependency declaration, property indirection, or version catalog reference
- * and expose it in one of the supported forms. {@link GradleLookupSiteResolver}
- * can then resolve that semantic description without depending on the traversal
- * logic that produced it.
- *
- * <p>Instances are typically created through the static factory methods on this
- * interface or adapted from {@link DependencySite} handles obtained from parser
- * infrastructure. Callers are expected to treat lookup sites as immutable
- * snapshots of the relevant PSI state and pass them directly to
- * {@link GradleLookupSiteResolver#resolve(LookupSite)}.
- *
- * <p>The {@link #declarationElement()} always identifies the owning declaration
- * or reference site.
+ * <p>Locator implementations create these descriptors from PSI. The
+ * {@link GradleLookupSiteResolver} then resolves them to artifact metadata. The
+ * {@link #declarationElement()} identifies the owning declaration or reference
+ * site.
  *
  * @author Mark Paluch
  * @see KotlinLookupSiteLocator
@@ -55,23 +45,12 @@ interface LookupSite {
 
 	/**
 	 * Return whether this instance represents an actual lookup site.
-	 *
-	 * <p>A present lookup site carries sufficient semantic context to be handed to
-	 * {@link GradleLookupSiteResolver} for further resolution. This flag applies to
-	 * the lookup site as a whole and does not imply that artifact resolution will
-	 * necessarily succeed.
-	 *
-	 * @return {@literal true} if this instance represents an actual lookup site.
 	 * @see #isAbsent()
 	 */
 	boolean isPresent();
 
 	/**
-	 * Return whether this instance represents an absent lookup site (i.e.
-	 * {@code isPresent() == false}).
-	 *
-	 * @return {@literal true} if this instance represents an absent lookup site;
-	 * {@literal false} otherwise.
+	 * Return whether this instance represents an absent lookup site.
 	 * @see #isPresent()
 	 */
 	default boolean isAbsent() {
@@ -80,18 +59,11 @@ interface LookupSite {
 
 	/**
 	 * Return the PSI element that owns this lookup site.
-	 * <p>The declaration element typically represents the dependency declaration,
-	 * property declaration, or catalog reference that should be used as the primary
-	 * navigation and resolution anchor.
-	 *
-	 * @return the owning declaration element.
 	 */
 	PsiElement declarationElement();
 
 	/**
 	 * Return an absent lookup site.
-	 *
-	 * @return an absent lookup site.
 	 */
 	static LookupSite absent() {
 		return AbsentLookupSite.ABSENT;
@@ -99,7 +71,6 @@ interface LookupSite {
 
 	/**
 	 * Create a {@link PropertyLookupSite} from a resolved {@link PropertyValue}.
-	 *
 	 * @param property the property value descriptor.
 	 * @param declarationElement the PSI element owning the property declaration.
 	 * @return the lookup site.
@@ -112,7 +83,6 @@ interface LookupSite {
 	/**
 	 * Create a {@link PropertyLookupSite} for a version property declaration or
 	 * property-backed version usage.
-	 *
 	 * @param propertyName the property name.
 	 * @param version the current property value.
 	 * @param declarationElement the PSI element owning the property declaration.
@@ -131,7 +101,6 @@ interface LookupSite {
 
 	/**
 	 * Create a {@link TomlCatalogLookupSite} for a version catalog alias reference.
-	 *
 	 * @param reference the catalog reference to resolve.
 	 * @param declarationElement the PSI element containing the alias usage.
 	 * @return the lookup site.
@@ -143,7 +112,6 @@ interface LookupSite {
 	/**
 	 * Adapt the given {@link DependencySite} to a {@link LookupSite}.
 	 * <p>A {@code null} input results in {@link LookupSite#absent()}.
-	 *
 	 * @param dependencySite the dependency site to adapt.
 	 * @return the adapted lookup site, or {@link LookupSite#absent()} if
 	 * {@code dependencySite} is {@code null}.
@@ -164,7 +132,6 @@ interface LookupSite {
 
 	/**
 	 * Lookup site backed by a version catalog alias reference.
-	 * <p>The version is obtained from the referenced TOML entry.
 	 */
 	record TomlCatalogLookupSite(TomlReference reference, PsiElement declarationElement) implements LookupSite {
 

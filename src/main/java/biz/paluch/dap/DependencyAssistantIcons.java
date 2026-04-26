@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
 
 import javax.swing.*;
@@ -24,24 +25,51 @@ import com.intellij.openapi.util.IconLoader;
  */
 public class DependencyAssistantIcons {
 
+	/**
+	 * Main Dependency Assistant icon.
+	 */
 	public static final Icon ICON = load("/META-INF/dependency-assistant.svg");
 
+	/**
+	 * Maven dependency update icon.
+	 */
 	public static final Icon UPGRADE_MAVEN_ICON = load("/META-INF/upgrade-icons/mavenProject.svg");
 
+	/**
+	 * Gradle dependency update icon.
+	 */
 	public static final Icon UPGRADE_GRADLE_ICON = load("/META-INF/upgrade-icons/gradle.svg");
 
+	/**
+	 * Library dependency update icon.
+	 */
 	public static final Icon UPGRADE_LIBRARY_ICON = load("/META-INF/upgrade-icons/library.svg");
 
+	/**
+	 * NPM dependency update icon.
+	 */
 	public static final Icon UPGRADE_NPM_ICON = load("/META-INF/upgrade-icons/npm.svg");
 
+	/**
+	 * GitHub dependency update icon.
+	 */
 	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/upgrade-icons/github.svg");
 
+	/**
+	 * TOML version catalog update icon.
+	 */
 	public static final Icon UPGRADE_TOML_ICON = load("/META-INF/upgrade-icons/toml.svg");
 
 	// TODO: UPGRADE_PROPERTY
 
+	/**
+	 * Property navigation gutter icon.
+	 */
 	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/propertyNavigate.svg");
 
+	/**
+	 * TOML catalog navigation gutter icon.
+	 */
 	public static final Icon TOML_NAVIGATE = load("/META-INF/tomlNavigate.svg");
 
 	private static Icon load(String path) {

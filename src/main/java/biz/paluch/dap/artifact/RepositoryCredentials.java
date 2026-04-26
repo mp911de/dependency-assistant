@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.net.URI;
@@ -23,8 +24,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * HTTP Basic-auth credentials for a Maven repository server entry.
  *
- * @param username server username
- * @param password plain-text password
+ * @param username server username.
+ * @param password plain-text password.
  * @param settingsDeclaredRepositoryBases when not {@literal null}, credentials
  * are only sent to repository URLs whose host and path match one of these bases
  * (from {@code settings.xml} mirrors and profile repositories). When

@@ -13,17 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import org.jspecify.annotations.Nullable;
 
 /**
- * Identifies the structural location in a build file where a dependency or
- * plugin is declared.
- * <p>The class uses marker interfaces as independent classification axes:
- * {@link Dependency} vs {@link Plugin} identifies the artifact kind,
- * {@link Managed} indicates a version-constraint section rather than an active
- * use, and {@link Profile} marks a Maven profile scope.
+ * Structural location where a dependency or plugin is declared.
+ *
+ * <p>Marker interfaces classify the artifact kind, whether the declaration is
+ * managed, and whether it belongs to a Maven profile.
  *
  * @author Mark Paluch
  * @see Managed
@@ -36,8 +35,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Marker interface for a build plugin declaration (e.g. Maven
 	 * {@code <build><plugins>} or Gradle {@code plugins {}}).
-	 * <p>A source that is {@code instanceof Plugin} is never
-	 * {@code instanceof Dependency}.
 	 */
 	public interface Plugin {
 
@@ -46,8 +43,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Marker interface for a library dependency declaration (e.g. Maven
 	 * {@code <dependencies>} or a Gradle dependency configuration).
-	 * <p>A source that is {@code instanceof Dependency} is never
-	 * {@code instanceof Plugin}.
 	 */
 	public interface Dependency {
 
@@ -55,9 +50,7 @@ public abstract class DeclarationSource {
 
 	/**
 	 * Marker interface for a version-constraint entry in a management section
-	 * (Maven {@code <dependencyManagement>} or {@code <pluginManagement>}) rather
-	 * than an active dependency or plugin use.
-	 * <p>May be combined with {@link Dependency} or {@link Plugin}.
+	 * rather than an active dependency or plugin use.
 	 */
 	public interface Managed {
 
@@ -70,8 +63,6 @@ public abstract class DeclarationSource {
 
 		/**
 		 * Return the identifier of the Maven profile that contains this declaration.
-		 *
-		 * @return the profile id; may be {@literal null} if the profile has no id.
 		 */
 		String getProfileId();
 
@@ -80,8 +71,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a direct library dependency
 	 * ({@code project/dependencies}).
-	 *
-	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource dependency() {
 		return Dependencies.INSTANCE;
@@ -90,8 +79,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a managed library dependency
 	 * ({@code project/dependencyManagement}).
-	 *
-	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource managed() {
 		return DependencyManagement.INSTANCE;
@@ -100,9 +87,7 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a direct library dependency within the named Maven
 	 * profile.
-	 *
-	 * @param id the profile identifier; can be {@literal null}.
-	 * @return a new instance; guaranteed to be not {@literal null}.
+	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profileDependency(String id) {
 		return new ProfileDependencies(id);
@@ -111,9 +96,7 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a managed library dependency within the named Maven
 	 * profile.
-	 *
-	 * @param id the profile identifier; can be {@literal null}.
-	 * @return a new instance; guaranteed to be not {@literal null}.
+	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profileManaged(String id) {
 		return new ProfileDependencyManagement(id);
@@ -121,8 +104,6 @@ public abstract class DeclarationSource {
 
 	/**
 	 * Return the source for a direct plugin ({@code project/build/plugins}).
-	 *
-	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource plugin() {
 		return Plugins.INSTANCE;
@@ -131,8 +112,6 @@ public abstract class DeclarationSource {
 	/**
 	 * Return the source for a managed plugin
 	 * ({@code project/build/pluginManagement}).
-	 *
-	 * @return the singleton instance; guaranteed to be not {@literal null}.
 	 */
 	public static DeclarationSource pluginManagement() {
 		return PluginManagement.INSTANCE;
@@ -140,9 +119,7 @@ public abstract class DeclarationSource {
 
 	/**
 	 * Return the source for a direct plugin within the named Maven profile.
-	 *
-	 * @param id the profile identifier; can be {@literal null}.
-	 * @return a new instance; guaranteed to be not {@literal null}.
+	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profilePlugin(String id) {
 		return new ProfilePlugins(id);
@@ -150,9 +127,7 @@ public abstract class DeclarationSource {
 
 	/**
 	 * Return the source for a managed plugin within the named Maven profile.
-	 *
-	 * @param id the profile identifier; can be {@literal null}.
-	 * @return a new instance; guaranteed to be not {@literal null}.
+	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profilePluginManagement(String id) {
 		return new ProfilePluginManagement(id);
@@ -164,6 +139,9 @@ public abstract class DeclarationSource {
 	/** Dependencies under project/dependencies. */
 	private static class Dependencies extends DeclarationSource implements Dependency {
 
+		/**
+		 * Shared dependencies source.
+		 */
 		public static final Dependencies INSTANCE = new Dependencies();
 
 		private Dependencies() {
@@ -179,6 +157,9 @@ public abstract class DeclarationSource {
 	/** Dependencies under project/dependencyManagement. */
 	private static class DependencyManagement extends DeclarationSource implements Dependency, Managed {
 
+		/**
+		 * Shared dependency management source.
+		 */
 		public static final DependencyManagement INSTANCE = new DependencyManagement();
 
 		private DependencyManagement() {
@@ -200,6 +181,9 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
+		/**
+		 * Return the Maven profile id.
+		 */
 		public @Nullable String getProfileId() {
 			return profileId;
 		}
@@ -220,6 +204,9 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
+		/**
+		 * Return the Maven profile id.
+		 */
 		public @Nullable String getProfileId() {
 			return profileId;
 		}
@@ -234,6 +221,9 @@ public abstract class DeclarationSource {
 	/** Plugins under project/build/plugins. */
 	private static class Plugins extends DeclarationSource implements Plugin {
 
+		/**
+		 * Shared plugins source.
+		 */
 		public static final Plugins INSTANCE = new Plugins();
 
 		private Plugins() {
@@ -249,6 +239,9 @@ public abstract class DeclarationSource {
 	/** Plugins under project/build/pluginManagement. */
 	private static class PluginManagement extends DeclarationSource implements Plugin, Managed {
 
+		/**
+		 * Shared plugin management source.
+		 */
 		public static final PluginManagement INSTANCE = new PluginManagement();
 
 		private PluginManagement() {
@@ -270,6 +263,9 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
+		/**
+		 * Return the Maven profile id.
+		 */
 		public @Nullable String getProfileId() {
 			return profileId;
 		}
@@ -290,6 +286,9 @@ public abstract class DeclarationSource {
 			this.profileId = profileId;
 		}
 
+		/**
+		 * Return the Maven profile id.
+		 */
 		public @Nullable String getProfileId() {
 			return profileId;
 		}

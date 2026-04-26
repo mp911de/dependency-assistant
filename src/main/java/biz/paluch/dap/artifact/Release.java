@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.time.LocalDate;
@@ -28,14 +29,23 @@ import org.jspecify.annotations.Nullable;
 public record Release(ArtifactVersion version,
 		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, HasVersion {
 
+	/**
+	 * Create a {@code Release} from a version string.
+	 */
 	public static Release of(String version) {
 		return of(ArtifactVersion.of(version));
 	}
 
+	/**
+	 * Create a {@code Release} without release date metadata.
+	 */
 	public static Release of(ArtifactVersion version) {
 		return new Release(version, null);
 	}
 
+	/**
+	 * Create a {@code Release} from a version string and optional ISO date.
+	 */
 	public static Release from(String version, @Nullable String date) {
 		return new Release(ArtifactVersion.of(version),
 				StringUtils.hasText(date) ? LocalDateTime.of(LocalDate.parse(date), LocalTime.MIDNIGHT) : null);
@@ -70,30 +80,51 @@ public record Release(ArtifactVersion version,
 		return string;
 	}
 
+	/**
+	 * Return whether this release is newer than the given release.
+	 */
 	public boolean isNewer(Release option) {
 		return compareTo(option) > 0;
 	}
 
+	/**
+	 * Return whether this release is newer than the given version.
+	 */
 	public boolean isNewer(ArtifactVersion version) {
 		return this.version.isNewer(version);
 	}
 
+	/**
+	 * Return whether this release is older than the given version.
+	 */
 	public boolean isOlder(ArtifactVersion version) {
 		return this.version.isOlder(version);
 	}
 
+	/**
+	 * Return whether this release belongs to the same major/minor line.
+	 */
 	public boolean hasSameMajorMinor(ArtifactVersion current) {
 		return this.version.hasSameMajorMinor(current);
 	}
 
+	/**
+	 * Return whether this release is a bugfix release.
+	 */
 	public boolean isBugFixVersion() {
 		return this.version.isBugFixVersion();
 	}
 
+	/**
+	 * Return whether this release is a general-availability release.
+	 */
 	public boolean isReleaseVersion() {
 		return this.version.isReleaseVersion();
 	}
 
+	/**
+	 * Return whether this release is a preview release.
+	 */
 	public boolean isPreview() {
 		return this.version.isPreview();
 	}

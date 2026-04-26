@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.List;
@@ -101,6 +102,9 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 		return null;
 	}
 
+	/**
+	 * Return the string literal used as an {@code also} receiver, if present.
+	 */
 	public static @Nullable String extractAlsoReceiverStringLiteral(KtNameReferenceExpression itRef) {
 
 		KtStringTemplateExpression receiver = KotlinExtraAssignment.findAlsoReceiverStringTemplate(itRef);

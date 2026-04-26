@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.util.ArrayList;
@@ -63,6 +64,9 @@ class DependencyCheck {
 
 	private final DependencyAssistantService service;
 
+	/**
+	 * Create a dependency check bound to the given project.
+	 */
 	public DependencyCheck(Project project) {
 		this.project = project;
 		this.service = DependencyAssistantService.getInstance(project);
@@ -82,6 +86,9 @@ class DependencyCheck {
 		return Consistency.NO_CACHE;
 	}
 
+	/**
+	 * Return the cache used by this dependency check.
+	 */
 	public Cache getCache() {
 		return service.getCache();
 	}
@@ -314,8 +321,8 @@ class DependencyCheck {
 	/**
 	 * Candidate for an artifact to be refreshed containing all of its release
 	 * sources.
-	 * @param artifactId
-	 * @param sources
+	 * @param artifactId the artifact to refresh.
+	 * @param sources the release sources to query.
 	 */
 	public record ArtifactRefreshCandidate(ArtifactId artifactId, Collection<ReleaseSource> sources) {
 

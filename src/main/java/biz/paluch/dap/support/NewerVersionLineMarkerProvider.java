@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.awt.event.MouseEvent;
@@ -84,6 +85,9 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 	}
 
+	/**
+	 * Navigation handler that invokes the configured action id.
+	 */
 	public record ActionNavigationHandler(String actionId) implements GutterIconNavigationHandler<PsiElement> {
 
 		@Override
@@ -96,6 +100,9 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 
 	}
 
+	/**
+	 * Return the text range used for the gutter marker.
+	 */
 	protected TextRange getTextRange(PsiElement element) {
 
 		TextRange textRange = element.getTextRange();

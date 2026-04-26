@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.function.Supplier;
@@ -42,6 +43,9 @@ import org.jspecify.annotations.Nullable;
  */
 class ArtifactReferenceUtils {
 
+	/**
+	 * Resolve a version-catalog property lookup through the project state.
+	 */
 	public static ArtifactReference resolve(LookupSite.PropertyLookupSite site, @Nullable ProjectState projectState) {
 
 		if (projectState == null) {

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import biz.paluch.dap.MessageBundle;
@@ -61,6 +62,9 @@ public class UpgradeSuggestion {
 		return new UpgradeSuggestion(strategy, bestOption, artifactReference);
 	}
 
+	/**
+	 * Return the localized gutter message for this suggestion.
+	 */
 	public String getMessage() {
 		String upgradeTarget = MessageBundle.message("dialog.upgradeTarget." + strategy);
 		return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, getRelease().version().toString());

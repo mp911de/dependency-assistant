@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
 
 import java.util.List;
@@ -20,11 +21,10 @@ import java.util.List;
 import biz.paluch.dap.artifact.ReleaseSource;
 
 /**
- * Build-tool-agnostic context for the build file currently open in the editor
- * (e.g. {@code pom.xml}, {@code build.gradle}, {@code build.gradle.kts}).
- * <p>Provides project identity, remote-repository release sources, and property
- * resolution without coupling callers to Maven-specific or Gradle-specific
- * APIs.
+ * Build-tool agnostic context for the build file currently open in the editor.
+ *
+ * <p>Provides project identity and release sources without exposing Maven or
+ * Gradle-specific APIs to callers.
  *
  * @author Mark Paluch
  */
@@ -32,29 +32,18 @@ public interface ProjectBuildContext {
 
 	/**
 	 * Return whether this context is backed by a known, importable project.
-	 *
-	 * @return {@literal true} if the project context is available; {@literal false}
-	 * otherwise.
 	 */
 	boolean isAvailable();
 
 	/**
-	 * Return the build-tool-agnostic project identity (groupId + artifactId).
-	 *
-	 * @return the project identity; guaranteed to be not {@literal null}.
-	 * @throws IllegalStateException if the build context is not
-	 * {@link #isAvailable()}.
+	 * Return the build-tool agnostic project identity.
+	 * @throws IllegalStateException if the build context is not available.
 	 */
 	ProjectId getProjectId();
 
 	/**
-	 * Return the remote-repository {@link ReleaseSource}s for the bound project so
-	 * that version resolution can query the correct repositories.
-	 *
-	 * @return the release sources; guaranteed to be not {@literal null} but may be
-	 * empty.
-	 * @throws IllegalStateException if the build context is not
-	 * {@link #isAvailable()}.
+	 * Return release sources associated with the bound project.
+	 * @throws IllegalStateException if the build context is not available.
 	 */
 	List<ReleaseSource> getReleaseSources();
 

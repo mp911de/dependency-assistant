@@ -13,21 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
+
+import java.awt.*;
+import javax.swing.*;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
-
-import java.awt.Component;
-
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.ListCellRenderer;
-
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.util.ui.JBUI;
+import org.jspecify.annotations.Nullable;
 
 /**
  * List cell renderer that shows an icon (older / newer patch / minor / major) plus version text.
@@ -36,6 +32,9 @@ class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<Relea
 
 	private final ArtifactVersion currentVersion;
 
+	/**
+	 * Create a renderer that classifies options relative to the current version.
+	 */
 	public VersionOptionCellRenderer(ArtifactVersion currentVersion) {
 		this.currentVersion = currentVersion;
 		setIconTextGap(JBUI.scale(4));

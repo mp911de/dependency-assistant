@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
 
 import org.jspecify.annotations.Nullable;
@@ -24,10 +25,16 @@ import org.jspecify.annotations.Nullable;
  */
 public record ProjectId(String groupId, String artifactId, @Nullable String buildFile) {
 
+	/**
+	 * Create a project id without a build-file descriptor.
+	 */
 	public static ProjectId of(String groupId, String artifactId) {
 		return new ProjectId(groupId, artifactId, null);
 	}
 
+	/**
+	 * Create a project id with an optional build-file descriptor.
+	 */
 	public static ProjectId of(String groupId, String artifactId, String buildFile) {
 		return new ProjectId(groupId, artifactId, buildFile);
 	}

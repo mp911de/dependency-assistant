@@ -38,8 +38,8 @@ class CompositePropertyResolver implements PropertyResolver {
 
 	/**
 	 * Create a new composite resolver.
-	 * @param primary the resolver to consult first
-	 * @param fallback the resolver to consult if the primary resolver has no match
+	 * @param primary the resolver to consult first.
+	 * @param fallback the resolver to consult if the primary resolver has no match.
 	 */
 	public CompositePropertyResolver(PropertyResolver primary, PropertyResolver fallback) {
 		this.primary = primary;

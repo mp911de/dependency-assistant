@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import biz.paluch.dap.MessageBundle;
@@ -48,6 +49,7 @@ public class NewerVersionAnnotator implements Annotator {
 			return;
 		}
 
+		// TODO: Gutter text vs. file problems summary
 		IntentionAction action = UpgradeDependenciesIntention.INSTANCE;
 		String message = suggestion.getMessage();
 		ArtifactDeclaration declaration = suggestion.getArtifactDeclaration();
@@ -78,6 +80,10 @@ public class NewerVersionAnnotator implements Annotator {
 		builder.create();
 	}
 
+	/**
+	 * Return lookup support for the given element, if the containing file is
+	 * supported.
+	 */
 	protected @Nullable VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element) {
 
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
@@ -85,6 +91,9 @@ public class NewerVersionAnnotator implements Annotator {
 		return context != null ? context.getLookup(element) : null;
 	}
 
+	/**
+	 * Return the text range used for the annotation highlight.
+	 */
 	protected TextRange getTextRange(PsiElement element) {
 
 		TextRange textRange = element.getTextRange();

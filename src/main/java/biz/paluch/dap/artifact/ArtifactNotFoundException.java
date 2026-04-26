@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 /**
@@ -24,11 +25,17 @@ public class ArtifactNotFoundException extends RuntimeException {
 
 	private final ArtifactId artifactId;
 
+	/**
+	 * Create a new {@code ArtifactNotFoundException} for the missing artifact.
+	 */
 	public ArtifactNotFoundException(String message, ArtifactId artifactId) {
 		super(message);
 		this.artifactId = artifactId;
 	}
 
+	/**
+	 * Return the artifact that could not be resolved.
+	 */
 	public ArtifactId getArtifactId() {
 		return artifactId;
 	}

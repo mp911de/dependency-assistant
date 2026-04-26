@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.util.StringUtils;
@@ -138,16 +139,10 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 
 		/**
 		 * Extract the property key from an {@code ext} assignment LHS.
-		 * <p>The {@code valueContext} is used to determine whether the assignment sits
-		 * inside an {@code ext { }} closure when the LHS is a plain reference.
-		 *
 		 * @param lhs the assignment left-hand side.
 		 * @param valueContext the right-hand side literal, used as anchor for the
-		 * {@code ext} closure check; may be {@literal null} when the LHS is the only
-		 * available context (e.g. when called from updaters that don't yet know the
-		 * RHS).
-		 * @return the resolved key, or {@literal null} if {@code lhs} is not an
-		 * {@code ext} reference shape.
+		 * {@code ext} closure check.
+		 * @return the resolved key, or {@code null}.
 		 */
 		static @Nullable String extractKey(@Nullable GrExpression lhs, @Nullable PsiElement valueContext) {
 

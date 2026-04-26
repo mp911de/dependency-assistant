@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.support.PropertyResolver;
@@ -25,18 +26,6 @@ import org.jspecify.annotations.Nullable;
 /**
  * Factory for {@link PluginId} instances parsed from Groovy DSL plugin
  * declarations.
- * <p>Three forms appear in Gradle Groovy DSL {@code plugins {}} blocks:
- *
- * <ol>
- * <li>Flat command args (non-chained): {@code id 'x' version 'y'} - single
- * {@code GrApplicationStatement(id, ['x', version_ref, 'y'])}</li>
- * <li>Chained command expression (most common): {@code id 'x' version 'y'} -
- * inner {@code GrApplicationStatement(id, ['x'])} whose parent is the
- * {@code GrReferenceExpression('version')} whose parent is the outer
- * {@code GrApplicationStatement(version, ['y'])}</li>
- * <li>Explicit-paren + command chain: {@code id('x') version 'y'} - same
- * chained structure as (2) but inner uses explicit parens</li>
- * </ol>
  *
  * @author Mark Paluch
  */
@@ -46,8 +35,7 @@ final class GroovyPluginIds {
 	}
 
 	/**
-	 * Parse a Groovy plugin declaration, accepting ids that satisfy
-	 * {@code idPredicate}.
+	 * Parse a Groovy plugin declaration.
 	 */
 	static @Nullable PluginId fromMethodCall(GrMethodCall call,
 			PropertyResolver properties) {

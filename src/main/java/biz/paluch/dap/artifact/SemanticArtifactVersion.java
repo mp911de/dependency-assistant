@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.Objects;
@@ -56,20 +57,22 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Creates a new {@link SemanticArtifactVersion} from the given logical {@link NumericVersionComponents}.
+	 * Creates a new {@link SemanticArtifactVersion} from the given logical
+	 * {@link NumericVersionComponents}.
 	 *
 	 * @param components must not be {@literal null}.
-	 * @param modifierFormat
+	 * @param modifierFormat whether the suffix is rendered with modifier notation.
 	 */
 	SemanticArtifactVersion(NumericVersionComponents components, boolean modifierFormat) {
 		this(components.toString(), components, modifierFormat, modifierFormat ? Release.INSTANCE : Release.RELEASE);
 	}
 
 	/**
-	 * Creates a new {@link SemanticArtifactVersion} from the given logical {@link NumericVersionComponents}.
+	 * Creates a new {@link SemanticArtifactVersion} from the given logical
+	 * {@link NumericVersionComponents}.
 	 *
 	 * @param rawVersion must not be {@literal null}.
-	 * @param modifierFormat
+	 * @param modifierFormat whether the suffix is rendered with modifier notation.
 	 */
 	SemanticArtifactVersion(String rawVersion, NumericVersionComponents components, boolean modifierFormat,
 			Suffix suffix) {
@@ -94,7 +97,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	 * Parses the given {@link String} into an {@link SemanticArtifactVersion}.
 	 *
 	 * @param source must not be {@literal null} or empty.
-	 * @return
+	 * @return the parsed semantic artifact version.
 	 */
 	public static SemanticArtifactVersion of(String source) {
 
@@ -154,10 +157,8 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns whether the given source represents a valid version.
-	 *
-	 * @param source
-	 * @return
+	 * Return whether the given source represents a valid semantic version.
+	 * @param source the source to inspect.
 	 */
 	public static boolean isVersion(String source) {
 		try {
@@ -168,6 +169,9 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		}
 	}
 
+	/**
+	 * Return whether this version starts with the given numeric components.
+	 */
 	public boolean isVersionWithin(NumericVersionComponents version) {
 		return this.components.toMajorMinorBugfix().startsWith(version.toString());
 	}
@@ -206,7 +210,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	/**
 	 * Returns whether the version is a release version.
 	 *
-	 * @return
+	 * @return {@code true} if this version is a release version.
 	 */
 	@Override
 	public boolean isReleaseVersion() {
@@ -216,7 +220,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	/**
 	 * Returns whether the version is a milestone version.
 	 *
-	 * @return
+	 * @return {@code true} if this version is a preview version.
 	 */
 	@Override
 	public boolean isPreview() {
@@ -226,7 +230,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	/**
 	 * Returns whether the version is a milestone version.
 	 *
-	 * @return
+	 * @return {@code true} if this version is a milestone version.
 	 */
 	@Override
 	public boolean isMilestoneVersion() {
@@ -242,7 +246,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	/**
 	 * Returns whether the version is a RC version.
 	 *
-	 * @return
+	 * @return {@code true} if this version is a release candidate version.
 	 */
 	@Override
 	public boolean isReleaseCandidateVersion() {
@@ -254,6 +258,9 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		return suffix.canonical().toLowerCase().contains("rc");
 	}
 
+	/**
+	 * Return the canonical suffix string.
+	 */
 	public String getSuffix() {
 		return suffix.canonical();
 	}
@@ -263,15 +270,19 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		return suffix instanceof Suffix.Snapshot;
 	}
 
+	/**
+	 * Return whether this version is a bugfix release.
+	 */
 	public boolean isBugFixVersion() {
 		return isReleaseVersion() && components.getBugfix() != 0;
 	}
 
 	/**
-	 * Returns the next development version to be used for the current release version, which means next minor for GA
-	 * versions and next bug fix for service releases. Will return the current version as snapshot otherwise.
+	 * Returns the next development version to be used for the current release
+	 * version, which means next minor for GA versions and next bug fix for service
+	 * releases. Will return the current version as snapshot otherwise.
 	 *
-	 * @return
+	 * @return the next development version.
 	 */
 	public ArtifactVersion getNextDevelopmentVersion() {
 
@@ -287,10 +298,10 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns the next bug fix version for the current version if it's a release version or the snapshot version of the
-	 * current one otherwise.
+	 * Returns the next bug fix version for the current version if it's a release
+	 * version or the snapshot version of the current one otherwise.
 	 *
-	 * @return
+	 * @return the next bugfix version.
 	 */
 	public ArtifactVersion getNextBugfixVersion() {
 
@@ -313,6 +324,9 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		return that instanceof SemanticArtifactVersion sav ? compareTo(sav) : 1;
 	}
 
+	/**
+	 * Compare this semantic version with another semantic version.
+	 */
 	public int compareTo(SemanticArtifactVersion that) {
 
 		int versionsEqual = this.components.compareTo(that.components);

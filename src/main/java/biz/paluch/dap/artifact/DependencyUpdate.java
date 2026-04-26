@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
@@ -20,14 +21,17 @@ import java.util.Collection;
 /**
  * Value object to represent a dependency update.
  *
- * @param coordinate
- * @param version
- * @param declarationSources
- * @param versionSources
+ * @param coordinate the dependency coordinate to update.
+ * @param version the selected target version.
+ * @param declarationSources the declaration sources to update.
+ * @param versionSources the version sources to update.
  */
 public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 		Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
 
+	/**
+	 * Create an update command from a selected update option.
+	 */
 	public static DependencyUpdate of(DependencyUpdateOption option) {
 		return new DependencyUpdate(option.getArtifactId(), option.getRequiredUpdateTo(),
 				option.getDependency().getDeclarationSources(), option.getDependency().getVersionSources());

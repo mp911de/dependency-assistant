@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.maven;
 
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.Cache;
+package biz.paluch.dap.maven;
 
 import java.util.Map;
 
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.state.Cache;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 
@@ -33,6 +33,9 @@ class MavenDependencyCollector {
 	private final Cache cache;
 	private final Map<String, String> properties;
 
+	/**
+	 * Create a collector using the given cache and project properties.
+	 */
 	public MavenDependencyCollector(Cache cache, Map<String, String> properties) {
 		this.cache = cache;
 		this.properties = properties;
@@ -42,7 +45,7 @@ class MavenDependencyCollector {
 	 * Collects artifact declarations from {@code buildFile}.
 	 *
 	 * @param buildFile the POM file.
-	 * @return a populated {@link DependencyCollector}
+	 * @return a populated {@link DependencyCollector}.
 	 */
 	public DependencyCollector collect(PsiFile buildFile) {
 
@@ -51,6 +54,9 @@ class MavenDependencyCollector {
 		return collector;
 	}
 
+	/**
+	 * Collect declarations from the given Maven PSI file into {@code collector}.
+	 */
 	protected void doCollect(PsiFile psiFile, DependencyCollector collector) {
 
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {

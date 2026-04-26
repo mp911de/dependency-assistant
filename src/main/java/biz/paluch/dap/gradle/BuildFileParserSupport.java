@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -26,13 +27,18 @@ abstract class BuildFileParserSupport {
 
 	private final DependencyCollector collector;
 
+	/**
+	 * Create support with the collector that receives parsed declarations.
+	 */
 	public BuildFileParserSupport(DependencyCollector collector) {
 		this.collector = collector;
 	}
 
+	/**
+	 * Return the collector used by this parser.
+	 */
 	public DependencyCollector getCollector() {
 		return collector;
 	}
 
 }
-

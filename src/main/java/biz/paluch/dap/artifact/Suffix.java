@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.Comparator;
@@ -49,8 +50,8 @@ interface Suffix extends Comparable<Suffix> {
 	/**
 	 * Parse the suffix into a {@link Suffix} instance.
 	 *
-	 * @param suffix
-	 * @return
+	 * @param suffix the raw suffix text to parse.
+	 * @return the parsed suffix.
 	 */
 	static Suffix parse(String suffix) {
 
@@ -113,7 +114,7 @@ interface Suffix extends Comparable<Suffix> {
 	/**
 	 * Snapshot suffix such as {@code SNAPSHOT} or {@code BUILD-SNAPSHOT}.
 	 *
-	 * @param canonical
+	 * @param canonical the canonical suffix text.
 	 */
 	record Snapshot(String canonical) implements Suffix {
 
@@ -136,12 +137,18 @@ interface Suffix extends Comparable<Suffix> {
 	/**
 	 * Release suffix (or no suffix at all).
 	 *
-	 * @param canonical
+	 * @param canonical the canonical suffix text.
 	 */
 	record Release(String canonical) implements Suffix {
 
+		/**
+		 * Shared empty release suffix.
+		 */
 		public final static Release INSTANCE = new Release("");
 
+		/**
+		 * Shared {@code RELEASE} suffix.
+		 */
 		public final static Release RELEASE = new Release("RELEASE");
 
 		@Override
@@ -165,9 +172,10 @@ interface Suffix extends Comparable<Suffix> {
 	}
 
 	/**
-	 * Generic suffix that doesn't fit into any of the other categories. Will be sorted alphabetically by canonical value.
+	 * Generic suffix that doesn't fit into any of the other categories. Will be
+	 * sorted alphabetically by canonical value.
 	 *
-	 * @param canonical
+	 * @param canonical the canonical suffix text.
 	 */
 	record Generic(String canonical) implements Suffix {
 
@@ -198,8 +206,8 @@ interface Suffix extends Comparable<Suffix> {
 	/**
 	 * Semantic versioning suffix such as {@code M1}, {@code RC1} or {@code SR1}.
 	 *
-	 * @param type
-	 * @param counter
+	 * @param type the qualifier type.
+	 * @param counter the qualifier counter.
 	 * @param raw original counter value.
 	 */
 	record SemVerSuffix(String type, int counter, String separator, String raw) implements Suffix {
@@ -233,11 +241,17 @@ interface Suffix extends Comparable<Suffix> {
 			return Generic.COMPARATOR.compare(this, o);
 		}
 
+		/**
+		 * Return whether this suffix is a milestone.
+		 */
 		public boolean isMilestone() {
 			String t = getCanonicalType();
 			return t.equals("m") || t.equals("alpha") || t.equals("beta") || t.equals("b");
 		}
 
+		/**
+		 * Return whether this suffix is a release candidate.
+		 */
 		public boolean isReleaseCandidate() {
 			return getCanonicalType().equals("rc") || getCanonicalType().equals("cr");
 		}

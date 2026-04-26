@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.time.Instant;
@@ -111,6 +112,9 @@ class Notifications {
 				.notify(project);
 	}
 
+	/**
+	 * Return a localized age description for the given instant range.
+	 */
 	public static String agoText(Instant pastInstant, Instant nowInstant, ZoneId zone) {
 
 		LocalDate past = pastInstant.atZone(zone).toLocalDate();

@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
 
+import javax.swing.*;
+
 import biz.paluch.dap.artifact.DependencyUpdateOption;
-
-import javax.swing.JTable;
-
 import com.intellij.util.ui.SortableColumnModel;
 
 /**
@@ -29,7 +29,8 @@ import com.intellij.util.ui.SortableColumnModel;
 class ModelUtil {
 
 	/**
-	 * @param viewRow row index in view coordinates (e.g. from renderer/editor), respects row sorter
+	 * @param viewRow row index in view coordinates (e.g. from renderer/editor),
+	 * respects row sorter.
 	 */
 	static DependencyUpdateOption getOption(JTable table, int viewRow) {
 		int modelRow = table.convertRowIndexToModel(viewRow);

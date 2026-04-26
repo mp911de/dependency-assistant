@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
@@ -48,10 +49,16 @@ class GradleDependencyCollector {
 
 	private final DependencyAssistantService service;
 
+	/**
+	 * Create a collector with no predefined Gradle properties.
+	 */
 	public GradleDependencyCollector(Project project) {
 		this(project, Map.of());
 	}
 
+	/**
+	 * Create a collector using properties already known for the project.
+	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
 		this.project = project;
 		this.service = DependencyAssistantService.getInstance(project);
@@ -73,6 +80,10 @@ class GradleDependencyCollector {
 		return collector;
 	}
 
+	/**
+	 * Collect declarations from the given Gradle-related PSI file into
+	 * {@code collector}.
+	 */
 	protected void doCollect(PsiFile psiFile, DependencyCollector collector) {
 
 		VirtualFile file = psiFile.getVirtualFile();

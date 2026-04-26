@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -72,10 +73,16 @@ public class ArtifactDeclaration implements DependencySite {
 		return artifactId;
 	}
 
+	/**
+	 * Return whether this declaration has a concrete version source.
+	 */
 	public boolean hasVersionSource() {
 		return getVersionSource().isDefined();
 	}
 
+	/**
+	 * Return the source from which the version is obtained.
+	 */
 	public VersionSource getVersionSource() {
 		return versionSource;
 	}
@@ -90,10 +97,17 @@ public class ArtifactDeclaration implements DependencySite {
 		return versionDefinedInSameFile;
 	}
 
+	/**
+	 * Return whether a resolved version is available.
+	 */
 	public boolean isVersionDefined() {
 		return version != null;
 	}
 
+	/**
+	 * Return the resolved version.
+	 * @throws IllegalStateException if no version is available.
+	 */
 	public ArtifactVersion getVersion() {
 		Assert.state(version != null, "Version must not be null");
 		return version;

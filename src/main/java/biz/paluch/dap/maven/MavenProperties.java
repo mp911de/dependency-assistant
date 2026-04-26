@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
@@ -20,16 +21,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jetbrains.idea.maven.model.MavenId;
-import org.jetbrains.idea.maven.project.MavenProject;
-import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import org.jetbrains.idea.maven.model.MavenId;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utilities to access Maven properties.
@@ -42,22 +42,41 @@ class MavenProperties {
 	private final PsiManager psiManager;
 	private final MavenProjectsManager manager;
 
+	/**
+	 * Create a new {@code MavenProperties}.
+	 * @param project the IntelliJ project.
+	 */
 	public MavenProperties(Project project) {
 		this(project, PsiManager.getInstance(project), MavenProjectsManager.getInstance(project));
 	}
 
+	/**
+	 * Create a new {@code MavenProperties}.
+	 * @param project the IntelliJ project.
+	 * @param manager the Maven projects manager to inspect.
+	 */
 	public MavenProperties(Project project, MavenProjectsManager manager) {
 		this.project = project;
 		this.psiManager = PsiManager.getInstance(project);
 		this.manager = manager;
 	}
 
+	/**
+	 * Create a new {@code MavenProperties}.
+	 * @param project the IntelliJ project.
+	 * @param psiManager the PSI manager to use.
+	 * @param manager the Maven projects manager to inspect.
+	 */
 	public MavenProperties(Project project, PsiManager psiManager, MavenProjectsManager manager) {
 		this.project = project;
 		this.psiManager = psiManager;
 		this.manager = manager;
 	}
 
+	/**
+	 * Return all properties visible to the given Maven project.
+	 * @param mavenProject the Maven project to inspect.
+	 */
 	public Map<String, String> getAllProperties(MavenProject mavenProject) {
 
 		Map<String, String> properties = new HashMap<>();
@@ -76,6 +95,11 @@ class MavenProperties {
 		return properties;
 	}
 
+	/**
+	 * Find the XML tag that declares the given property.
+	 * @param mavenProject the Maven project to inspect.
+	 * @param property the property name to find.
+	 */
 	public @Nullable XmlTag findProperty(MavenProject mavenProject, String property) {
 
 		List<MavenProject> hierarchy = getProjects(mavenProject);

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
@@ -62,10 +63,17 @@ class GroovyDslUtils {
 		return new PropertyValue(assignment.getKey(), value, assignment.getValueLiteral());
 	}
 
+	/**
+	 * Return whether the element is nested inside a Groovy {@code plugins} block.
+	 */
 	public static boolean isInsidePluginsBlock(PsiElement element) {
 		return isInsideGroovyBlock(element, GradleUtils::isPluginSection);
 	}
 
+	/**
+	 * Return whether the element is nested inside a Groovy block accepted by
+	 * {@code predicate}.
+	 */
 	public static boolean isInsideGroovyBlock(PsiElement element, Predicate<String> predicate) {
 
 		PsiElement parent = element.getParent();
@@ -176,6 +184,9 @@ class GroovyDslUtils {
 	// Version catalog (Groovy {@code libs.…})
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Return the operand after removing Groovy parentheses.
+	 */
 	public static @Nullable GrExpression unwrapGroovyParentheses(@Nullable GrExpression expr) {
 
 		GrExpression e = expr;

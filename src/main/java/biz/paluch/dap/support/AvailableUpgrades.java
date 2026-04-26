@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.util.Map;
@@ -20,6 +21,9 @@ import java.util.Map;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 
+/**
+ * Upgrade suggestions for a resolved artifact reference.
+ */
 public class AvailableUpgrades {
 
 	private final static AvailableUpgrades NONE = new AvailableUpgrades(ArtifactReference.unresolved(),

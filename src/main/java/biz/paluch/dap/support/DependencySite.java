@@ -1,5 +1,5 @@
 /*
- * Copyright 2026the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,18 +22,10 @@ import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
 /**
- * Interface representing dependency usage (or declaration) site in a build file
+ * Dependency usage or declaration site in a build file.
  *
- * <p>A dependency site may represent a full dependency declaration or a usage
- * that derives its version from another location. In both cases,
- * implementations expose the {@link #getArtifactId() artifact coordinates}, the
- * associated {@link #getVersionSource() version source}, and the backing
- * {@link PsiElement PSI} element that identifies the site within the parsed
- * file.
- * <p>The {@link #getDeclarationElement() declaration element} is typically a
- * Maven {@code <dependency>/<plugin>} tag, a Maven {@code property tag}, Gradle
- * {@code implementation} call, Gradle property/local variable holding the
- * version literal, or TOML library element.
+ * <p>A site exposes artifact coordinates, the source from which the version is
+ * obtained, and the PSI element that owns the declaration.
  *
  * @author Mark Paluch
  * @see biz.paluch.dap.artifact.Dependency
@@ -44,24 +36,16 @@ public interface DependencySite {
 
 	/**
 	 * Return the artifact coordinates associated with this dependency site.
-	 *
-	 * @return the artifact coordinates.
 	 */
 	ArtifactId getArtifactId();
 
 	/**
 	 * Return the source from which the dependency version is obtained.
-	 *
-	 * @return the version source.
 	 */
 	VersionSource getVersionSource();
 
 	/**
 	 * Return the PSI element that represents this dependency site.
-	 * <p>The returned element typically identifies the declaration or reference
-	 * from which dependency metadata was collected.
-	 *
-	 * @return the PSI element representing this dependency site.
 	 */
 	PsiElement getDeclarationElement();
 
@@ -79,10 +63,9 @@ public interface DependencySite {
 	}
 
 	/**
-	 * Create a new {@code DependencySite} instance given {@link ArtifactId},
-	 * {@link VersionSource} and its {@link PsiElement declaration}.
+	 * Create a new {@code DependencySite}.
 	 * @param artifactId the artifact identifier.
-	 * @param versionSource the version source, an inline-version or a property.
+	 * @param versionSource the version source.
 	 * @param declarationElement element that represents this dependency site.
 	 * @return the dependency site.
 	 */

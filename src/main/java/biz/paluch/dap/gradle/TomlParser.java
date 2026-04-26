@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
@@ -63,24 +64,51 @@ import org.springframework.util.Assert;
  */
 class TomlParser extends GradleParserSupport {
 
+	/**
+	 * TOML table name for plugin aliases.
+	 */
 	public static final String PLUGINS = "plugins";
 
+	/**
+	 * TOML table name for bundles.
+	 */
 	public static final String BUNDLES = "bundles";
 
+	/**
+	 * TOML key name for inline versions.
+	 */
 	public static final String VERSION = "version";
 
+	/**
+	 * TOML table name for version aliases.
+	 */
 	public static final String VERSIONS = "versions";
 
+	/**
+	 * Default Gradle version catalog accessor root.
+	 */
 	public static final String LIBS = "libs";
 
+	/**
+	 * TOML table name for library aliases.
+	 */
 	public static final String LIBRARIES = "libraries";
 
 	private final Map<String, String> properties;
 
+	/**
+	 * Create a new {@code TomlParser}.
+	 * @param collector the dependency collector to populate.
+	 */
 	public TomlParser(DependencyCollector collector) {
 		this(collector, Map.of());
 	}
 
+	/**
+	 * Create a new {@code TomlParser}.
+	 * @param collector the dependency collector to populate.
+	 * @param properties known version properties.
+	 */
 	public TomlParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
 		this.properties = properties;
@@ -129,6 +157,11 @@ class TomlParser extends GradleParserSupport {
 		}
 	}
 
+	/**
+	 * Find the default Gradle version catalog for the given project.
+	 * @param project the IntelliJ project.
+	 * @param anchorFile the file used to locate the Gradle project root.
+	 */
 	public static @Nullable PsiFile findVersionCatalogToml(Project project, VirtualFile anchorFile) {
 
 		VirtualFile root = GradleUtils.findProjectRoot(project, anchorFile);
@@ -143,6 +176,12 @@ class TomlParser extends GradleParserSupport {
 		return PsiManager.getInstance(project).findFile(toml);
 	}
 
+	/**
+	 * Return whether the given element is inside a TOML table matching the
+	 * predicate.
+	 * @param element the PSI element to inspect.
+	 * @param predicate table-name predicate.
+	 */
 	public static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
 		return SyntaxTraverser.revPsiTraverser().api.parents(element).filter(TomlTable.class).filter(it -> {
 			String tomlTableName = getTomlTableName(it);
@@ -153,7 +192,6 @@ class TomlParser extends GradleParserSupport {
 	/**
 	 * Parse the TOML {@code [versions]} table into a map of {@link PropertyValue}.
 	 * We treat versions semantically as properties.
-	 *
 	 * @param tomlFile the file to parse.
 	 * @return a map of version keys to {@link PropertyValue} descriptors.
 	 */
@@ -182,6 +220,12 @@ class TomlParser extends GradleParserSupport {
 		return map;
 	}
 
+	/**
+	 * Parse catalog entries in the given TOML table.
+	 * @param table the TOML table to parse.
+	 * @param propertyResolver the resolver for {@code version.ref} entries.
+	 * @param action callback invoked for each complete declaration.
+	 */
 	public static void parseEntries(TomlTable table,
 			PropertyResolver propertyResolver, Consumer<TomlDependencyDeclaration> action) {
 		for (TomlKeyValue child : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
@@ -269,11 +313,17 @@ class TomlParser extends GradleParserSupport {
 				null, literal);
 	}
 
+	/**
+	 * Return the name of the given TOML table.
+	 */
 	public static @Nullable String getTomlTableName(TomlTable table) {
 		TomlKey key = table.getHeader().getKey();
 		return getText(key);
 	}
 
+	/**
+	 * Return the text of the given TOML key.
+	 */
 	public static String getTomlKeyName(TomlKey key) {
 		return key.getText().trim();
 	}

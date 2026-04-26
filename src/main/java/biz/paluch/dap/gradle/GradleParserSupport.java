@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.Optional;
@@ -41,6 +42,9 @@ import org.springframework.util.Assert;
  */
 abstract class GradleParserSupport extends BuildFileParserSupport {
 
+	/**
+	 * Create a new parser support instance using the given collector.
+	 */
 	public GradleParserSupport(DependencyCollector collector) {
 		super(collector);
 	}
@@ -73,6 +77,9 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 			@Nullable String versionProperty,
 			@Nullable String version, PsiElement declaration, @Nullable PsiElement versionLiteral) {
 
+		/**
+		 * Create an empty declaration for the given build file.
+		 */
 		public NamedDependencyDeclaration(PsiFile containingFile) {
 			this(containingFile, null, null, null, null, null, null, null);
 		}
@@ -94,6 +101,10 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 			return StringUtils.hasText(group) && StringUtils.hasText(artifact);
 		}
 
+		/**
+		 * Return the version literal.
+		 * @throws IllegalStateException if the declaration has no version literal.
+		 */
 		public PsiElement getRequiredVersionLiteral() {
 			Assert.state(versionLiteral != null, "Version literal must be set");
 			return versionLiteral;

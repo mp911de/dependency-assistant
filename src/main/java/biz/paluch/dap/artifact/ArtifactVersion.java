@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.Optional;
@@ -21,17 +22,15 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Interface representing an artifact version. Supports semantic versions (e.g. {@code 1.2.3.RELEASE}, {@code 2.0.0-M1})
- * and release-train versions (e.g. {@code Aluminium-M1}, {@code Bismuth-SR1}).
+ * Common contract for semantic and release-train artifact versions.
  *
  * @author Mark Paluch
  */
 public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion {
 
 	/**
-	 * Create a release version from a numeric {@link NumericVersionComponents} (e.g. {@code 1.2.3}).
-	 *
-	 * @param version the major.minor.bugfix version, must not be {@code null}.
+	 * Create a release version from numeric version components.
+	 * @param version the numeric version components.
 	 * @return an artifact version with release suffix.
 	 */
 	static ArtifactVersion of(NumericVersionComponents version) {
@@ -39,12 +38,10 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	}
 
 	/**
-	 * Parse a version string into an {@link ArtifactVersion}. Accepts semantic versions (e.g. {@code 1.2.3.RELEASE},
-	 * {@code 2.0.0-M1}) and release-train versions (e.g. {@code Aluminium-M1}, {@code Bismuth-SR1}).
-	 *
-	 * @param version the version string to parse, must not be {@code null} or empty.
+	 * Parse the given version string.
+	 * @param version the version string to parse.
 	 * @return the parsed artifact version.
-	 * @throws IllegalArgumentException if the string cannot be parsed as a supported version format.
+	 * @throws IllegalArgumentException if the string cannot be parsed.
 	 */
 	static ArtifactVersion of(String version) {
 		return SemanticArtifactVersion.isVersion(version) ? SemanticArtifactVersion.of(version)
@@ -52,13 +49,9 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	}
 
 	/**
-	 * Attempt to parse a version string into an {@link ArtifactVersion}. Accepts semantic versions (e.g.
-	 * {@code 1.2.3.RELEASE}, {@code 2.0.0-M1}) and release-train versions (e.g. {@code Aluminium-M1},
-	 * {@code Bismuth-SR1}) and return an {@link java.util.Optional} of the parsed version, or empty if the string cannot
-	 * be parsed.
-	 *
-	 * @param version the version string to parse, must not be {@code null} or empty
-	 * @return the parsed artifact version.
+	 * Attempt to parse the given version string.
+	 * @param version the version string to parse.
+	 * @return the parsed artifact version, or an empty {@link Optional}.
 	 */
 	static Optional<ArtifactVersion> from(@Nullable String version) {
 
@@ -73,14 +66,9 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	}
 
 	/**
-	 * Create an artifact version from a numeric {@link NumericVersionComponents}
-	 * with optional modifier format. When {@code useModifierFormat} is
-	 * {@literal true}, the version is rendered with a hyphen (e.g.
-	 * {@code 1.2.3-SNAPSHOT}); otherwise with a dot (e.g.
-	 * {@code 1.2.3.BUILD-SNAPSHOT}).
-	 *
-	 * @param version the major.minor.bugfix version, must not be {@code null}.
-	 * @param useModifierFormat whether to use hyphen between version and suffix.
+	 * Create an artifact version using the requested suffix format.
+	 * @param version the numeric version components.
+	 * @param useModifierFormat whether to use hyphen notation for the suffix.
 	 * @return an artifact version with the appropriate release suffix.
 	 */
 	static ArtifactVersion of(NumericVersionComponents version, boolean useModifierFormat) {
@@ -88,21 +76,14 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	}
 
 	/**
-	 * Whether this version is strictly newer than the given version (e.g. higher
-	 * version number, or same train with a later suffix).
-	 *
-	 * @param other the version to compare with, must not be {@code null}.
-	 * @return {@literal true} if this version is newer than {@code other}.
+	 * Return whether this version is strictly newer than the given version.
+	 * @param other the version to compare with.
 	 */
 	boolean isNewer(ArtifactVersion other);
 
 	/**
-	 * Whether the given version is a newer minor (or equivalent) within the same
-	 * major or release train. For semantic versions this means same major, higher
-	 * minor. For release-train versions, same train name and this version is older.
-	 *
-	 * @param other the version to compare with, must not be {@code null}.
-	 * @return {@literal true} if {@code other} is a newer minor in the same line.
+	 * Return whether the given version is a newer minor in the same version line.
+	 * @param other the version to compare with.
 	 */
 	boolean isNewerMinor(ArtifactVersion other);
 
@@ -112,75 +93,50 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	boolean isOlder(ArtifactVersion other);
 
 	/**
-	 * Whether this version shares the same {@code major.minor} (semantic) or
-	 * release train name (release-train) as the given version.
-	 *
-	 * @param other the version to compare with, must not be {@code null}.
-	 * @return {@literal true} if both are in the same {@code major.minor} or train.
+	 * Return whether this version shares the same major/minor line or release
+	 * train.
+	 * @param other the version to compare with.
 	 */
 	boolean hasSameMajorMinor(ArtifactVersion other);
 
 	/**
-	 * Whether this version shares the same major (semantic) or release train name
-	 * (release-train) as the given version. For semantic versions this is the major
-	 * number only; for release-train versions, the train name.
-	 *
-	 * @param other the version to compare with, must not be {@code null}
-	 * @return {@literal true} if both have the same major or train
+	 * Return whether this version shares the same major line or release train.
+	 * @param other the version to compare with.
 	 */
 	boolean hasSameMajor(ArtifactVersion other);
 
 	/**
-	 * Whether this version is a snapshot (e.g. {@code 1.2.3-SNAPSHOT},
-	 * {@code 1.2.3.BUILD-SNAPSHOT}).
-	 *
-	 * @return {@literal true} if this version is a snapshot.
+	 * Return whether this version is a snapshot.
 	 */
 	boolean isSnapshotVersion();
 
 	/**
-	 * Whether this version is a milestone (e.g. {@code M1}, {@code M2}, or
-	 * alpha/beta qualifiers).
-	 *
-	 * @return {@literal true} if this version is a milestone.
+	 * Return whether this version is a milestone.
 	 */
 	boolean isMilestoneVersion();
 
 	/**
-	 * Whether this version is a release candidate (e.g. {@code RC1}, {@code RC2}).
-	 *
-	 * @return {@literal true} if this version is a release candidate.
+	 * Return whether this version is a release candidate.
 	 */
 	boolean isReleaseCandidateVersion();
 
 	/**
-	 * Whether this version is a preview release: a milestone or release candidate,
-	 * but not yet GA.
-	 *
-	 * @return {@literal true} if this version is a milestone or release candidate.
+	 * Return whether this version is a preview release.
 	 */
 	boolean isPreview();
 
 	/**
-	 * Whether this version is a general-availability release (e.g. {@code RELEASE},
-	 * {@code 1.2.3} without milestone/RC suffix, or release-train
-	 * {@code Train-RELEASE}).
-	 *
-	 * @return {@literal true} if this version is a release (non-preview,
-	 * non-snapshot).
+	 * Return whether this version is a general-availability release.
 	 */
 	boolean isReleaseVersion();
 
 	/**
-	 * Whether this version is a service/bugfix release (e.g. {@code 1.2.1} or
-	 * {@code Train-SR1}).
-	 *
-	 * @return {@literal true} if this version is a bugfix or service release.
+	 * Return whether this version is a service or bugfix release.
 	 */
 	boolean isBugFixVersion();
 
 	/**
-	 * Return whether the given version can be compared with this one (whether objects are semantically comparable).
+	 * Return whether the given version can be compared with this one.
 	 */
 	default boolean canCompare(ArtifactVersion version) {
 		return getClass().equals(version.getClass());

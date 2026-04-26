@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.List;
@@ -29,21 +30,12 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Canonical representation of Kotlin DSL literal fragments that contribute to a
- * Gradle value.
- * <p>This type presents a lenient, caller-oriented view over supported PSI
- * structures. It preserves fragment encounter order and exposes three
- * observable aspects of that content:
- * <ul>
- * <li>the rendered value via {@link #toString()},</li>
- * <li>property-backed access via {@link #hasProperty()} and
- * {@link #getProperty()}, and</li>
- * <li>fragment cardinality via {@link #size()}.</li>
- * </ul>
- * Supported inputs include plain string literals, interpolated string
- * fragments, direct property references, {@code property(...)} lookups, and
- * {@code extra["..."]} access. Unsupported or non-literal PSI shapes are
- * represented as an empty instance instead of causing extraction failures.
+ * Canonical representation of Kotlin DSL literal fragments.
+ *
+ * <p>Supported inputs include plain string literals, interpolated fragments,
+ * direct property references, {@code property(...)} lookups, and
+ * {@code extra["..."]} access. Unsupported PSI shapes are represented as an
+ * empty instance.
  *
  * @author Mark Paluch
  */
@@ -79,11 +71,7 @@ class KtLiterals {
 
 	/**
 	 * Create a {@link KtLiterals} view for the supplied Kotlin PSI element.
-	 * <p>The returned instance is never {@code null}. If the element is
-	 * {@code null} or does not expose supported literal/property content, this
-	 * method returns an empty instance.
-	 *
-	 * @param element the Kotlin PSI element to inspect; may be {@code null}.
+	 * @param element the Kotlin PSI element to inspect.
 	 * @return a {@link KtLiterals} representing the supported fragments contained
 	 * in the element.
 	 */
@@ -170,7 +158,7 @@ class KtLiterals {
 	 * Extract text from supported Kotlin DSL literal forms.
 	 * <p>Used for property keys, dependency coordinates, and simple synthesized
 	 * string values.
-	 * @throws IllegalArgumentException if the element type is not supported
+	 * @throws IllegalArgumentException if the element type is not supported.
 	 */
 	public static String getText(KtElement element) {
 		Assert.notNull(element, "Element must not be null");

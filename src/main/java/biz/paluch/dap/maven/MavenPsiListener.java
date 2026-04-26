@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.state.DependencyAssistantService;
@@ -33,6 +34,9 @@ public class MavenPsiListener extends PsiTreeChangeAdapter implements PsiTreeCha
 
 	private final UpdateProjectState updateProjectState;
 
+	/**
+	 * Create a listener and register it with the project's PSI manager.
+	 */
 	public MavenPsiListener(Project project) {
 
 		PsiManager psiManager = PsiManager.getInstance(project);

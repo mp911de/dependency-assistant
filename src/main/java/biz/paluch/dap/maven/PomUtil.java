@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.maven;
 
-import org.jspecify.annotations.Nullable;
+package biz.paluch.dap.maven;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import org.jspecify.annotations.Nullable;
 
 /**
  * XML handling utility methods.

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.maven;
 
 import java.util.Collection;
@@ -51,18 +52,40 @@ class UpdateProjectState {
 
 	private final MavenProjectsManager manager;
 
+	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 */
 	public UpdateProjectState(Project project) {
 		this(project, PsiManager.getInstance(project), DependencyAssistantService.getInstance(project));
 	}
 
+	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 * @param service the dependency assistant service to update.
+	 */
 	public UpdateProjectState(Project project, DependencyAssistantService service) {
 		this(project, PsiManager.getInstance(project), service);
 	}
 
+	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 * @param psiManager the PSI manager to use.
+	 * @param service the dependency assistant service to update.
+	 */
 	public UpdateProjectState(Project project, PsiManager psiManager, DependencyAssistantService service) {
 		this(project, psiManager, service, MavenProjectsManager.getInstance(project));
 	}
 
+	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 * @param psiManager the PSI manager to use.
+	 * @param service the dependency assistant service to update.
+	 * @param projectsManager the Maven projects manager to inspect.
+	 */
 	public UpdateProjectState(Project project, PsiManager psiManager, DependencyAssistantService service,
 			MavenProjectsManager projectsManager) {
 		this.project = project;
@@ -72,20 +95,36 @@ class UpdateProjectState {
 		this.collector = new MavenDependencyCollector(service.getCache(), Map.of());
 	}
 
+	/**
+	 * Read and update dependency state for the given file.
+	 * @param file the file to inspect.
+	 */
 	public void readAndUpdate(PsiFile file) {
 		if (MavenUtils.isMavenPomFile(file)) {
 			ApplicationManager.getApplication().runReadAction(() -> update(file));
 		}
 	}
 
+	/**
+	 * Read and update dependency state for all Maven projects.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public void readAndUpdateAll(ProgressIndicator indicator) {
 		ApplicationManager.getApplication().runReadAction(() -> updateAll(indicator));
 	}
 
+	/**
+	 * Update dependency state for all Maven projects.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public void updateAll(ProgressIndicator indicator) {
 		doWithAllFiles(this::update, indicator);
 	}
 
+	/**
+	 * Return dependencies collected from all Maven projects.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
 		DependencyCollector collector = new DependencyCollector();
@@ -98,6 +137,11 @@ class UpdateProjectState {
 		return collector;
 	}
 
+	/**
+	 * Invoke the given action for every Maven POM file.
+	 * @param action the file callback.
+	 * @param indicator the progress indicator to report to.
+	 */
 	public void doWithAllFiles(Consumer<PsiFile> action, ProgressIndicator indicator) {
 
 		List<MavenProject> projects = manager.getProjects();
@@ -128,6 +172,10 @@ class UpdateProjectState {
 		}
 	}
 
+	/**
+	 * Update dependency state for the given Maven POM file.
+	 * @param file the Maven POM file to inspect.
+	 */
 	public void update(PsiFile file) {
 
 		if (MavenUtils.isMavenPomFile(file)) {

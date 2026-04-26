@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
 
 import java.util.function.Supplier;
 
+import com.intellij.DynamicBundle;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.PropertyKey;
-
-import com.intellij.DynamicBundle;
 
 /**
  * Message bundle for plugin strings.
@@ -34,11 +34,17 @@ public class MessageBundle {
 
 	private MessageBundle() {}
 
+	/**
+	 * Return the localized message for the given key.
+	 */
 	@Nls
 	public static String message(@PropertyKey(resourceBundle = BUNDLE) String key, Object... params) {
 		return INSTANCE.getMessage(key, params);
 	}
 
+	/**
+	 * Return a lazy supplier for the localized message.
+	 */
 	public static @Nls Supplier<String> lazyMessage(@PropertyKey(resourceBundle = BUNDLE) String key, Object... params) {
 		return INSTANCE.getLazyMessage(key, params);
 	}

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.util.regex.Matcher;
@@ -46,9 +47,9 @@ public abstract class PropertyExpression {
 	/**
 	 * Create a {@link PropertyExpression} from the given value.
 	 *
-	 * @param value the source value
+	 * @param value the source value.
 	 * @return a {@link PropertyReference} if the value is a property expression;
-	 * otherwise a {@link LiteralValue}
+	 * otherwise a {@link LiteralValue}.
 	 */
 	@Contract("null -> fail; _ -> new")
 	public static PropertyExpression from(@Nullable String value) {
@@ -84,7 +85,7 @@ public abstract class PropertyExpression {
 	 * Return whether this value is a property expression.
 	 *
 	 * @return {@literal true} if this value is a property expression;
-	 * {@literal false} otherwise
+	 * {@literal false} otherwise.
 	 */
 	public abstract boolean isProperty();
 
@@ -95,6 +96,9 @@ public abstract class PropertyExpression {
 	 */
 	public abstract String getPropertyName();
 
+	/**
+	 * Return the version source represented by this expression.
+	 */
 	public abstract VersionSource asVersionSource();
 
 	/**

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.Map;
@@ -165,10 +166,16 @@ class VersionCatalogRegistry {
 		return catalogPaths.containsKey(alias);
 	}
 
+	/**
+	 * Return the alias-to-path mappings for this registry.
+	 */
 	public Map<String, String> catalogPaths() {
 		return catalogPaths;
 	}
 
+	/**
+	 * Return the default catalog alias.
+	 */
 	public String defaultAlias() {
 		return defaultAlias;
 	}

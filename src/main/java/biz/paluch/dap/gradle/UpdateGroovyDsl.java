@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -59,6 +60,9 @@ class UpdateGroovyDsl {
 		}));
 	}
 
+	/**
+	 * Update the inline declaration for the given artifact, if present.
+	 */
 	public void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
 		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
 

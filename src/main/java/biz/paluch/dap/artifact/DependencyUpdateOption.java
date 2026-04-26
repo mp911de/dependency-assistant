@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.ArrayList;
@@ -39,6 +40,11 @@ public class DependencyUpdateOption implements HasArtifactId {
 	private final Map<UpgradeStrategy, Release> targets;
 	private boolean applyUpdate;
 
+	/**
+	 * Create a new {@code DependencyUpdateOption}.
+	 * @param dependency the dependency to update.
+	 * @param releases the known release options.
+	 */
 	public DependencyUpdateOption(Dependency dependency, List<Release> releases) {
 		this.dependency = dependency;
 		this.releases = releases;
@@ -95,34 +101,59 @@ public class DependencyUpdateOption implements HasArtifactId {
 		return this.dependency.getArtifactId();
 	}
 
+	/**
+	 * Return whether any automatic upgrade targets are available.
+	 */
 	public boolean hasUpgradeTargets() {
 		return !targets.isEmpty();
 	}
 
+	/**
+	 * Return whether the newest known release is newer than the current version.
+	 */
 	public boolean hasUpdateCandidate() {
 		return !releases.isEmpty() && releases.get(0).version().isNewer(dependency.getCurrentVersion());
 	}
 
+	/**
+	 * Return the dependency's current version.
+	 */
 	public ArtifactVersion currentVersion() {
 		return dependency.getCurrentVersion();
 	}
 
+	/**
+	 * Return all known release options.
+	 */
 	public List<Release> versionOptions() {
 		return releases;
 	}
 
+	/**
+	 * Return release options suitable for display in the update dialog.
+	 */
 	public List<Release> filtered() {
 		return filtered;
 	}
 
+	/**
+	 * Return the first declaration source for the dependency.
+	 */
 	public DeclarationSource source() {
 		return dependency.getDeclarationSources().iterator().next();
 	}
 
+	/**
+	 * Return the selected target version, or {@code null} if none is selected.
+	 */
 	public @Nullable ArtifactVersion getUpdateTo() {
 		return updateTo;
 	}
 
+	/**
+	 * Return the selected target version.
+	 * @throws IllegalStateException if no target version is selected.
+	 */
 	public ArtifactVersion getRequiredUpdateTo() {
 
 		if (updateTo == null) {
@@ -132,31 +163,53 @@ public class DependencyUpdateOption implements HasArtifactId {
 		return updateTo;
 	}
 
+	/**
+	 * Set the selected target version.
+	 * @param updateTo the selected target version, or {@code null}.
+	 */
 	public void setUpdateTo(@Nullable ArtifactVersion updateTo) {
 		this.updateTo = updateTo;
 		setApplyUpdate(!currentVersion().equals(updateTo));
 	}
 
+	/**
+	 * Return whether this option should be applied.
+	 */
 	public boolean isApplyUpdate() {
 		return applyUpdate;
 	}
 
+	/**
+	 * Set whether this option should be applied.
+	 */
 	public void setApplyUpdate(boolean applyUpdate) {
 		this.applyUpdate = applyUpdate;
 	}
 
+	/**
+	 * Return the dependency represented by this option.
+	 */
 	public Dependency getDependency() {
 		return dependency;
 	}
 
+	/**
+	 * Return whether the dependency version is backed by a property.
+	 */
 	public boolean hasPropertyVersion() {
 		return dependency.hasPropertyVersion();
 	}
 
+	/**
+	 * Return the dependency's property-based version source.
+	 */
 	public VersionSource.VersionProperty getPropertyVersion() {
 		return dependency.findPropertyVersion();
 	}
 
+	/**
+	 * Return automatically selected targets by upgrade strategy.
+	 */
 	public Map<UpgradeStrategy, Release> getTargets() {
 		return targets;
 	}

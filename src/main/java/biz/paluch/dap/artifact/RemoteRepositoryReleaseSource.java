@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.io.ByteArrayOutputStream;
@@ -31,16 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -64,6 +56,9 @@ import org.jspecify.annotations.Nullable;
  */
 public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
+	/**
+	 * Release source for Maven Central.
+	 */
 	public static RemoteRepositoryReleaseSource MAVEN_CENTRAL = new RemoteRepositoryReleaseSource(
 			RemoteRepository.mavenCentral());
 
@@ -89,6 +84,9 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 	private final RemoteRepository repository;
 
+	/**
+	 * Create a release source backed by the given repository.
+	 */
 	public RemoteRepositoryReleaseSource(RemoteRepository repository) {
 		this.repository = repository;
 	}

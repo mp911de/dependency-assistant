@@ -13,13 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 /**
- * An artifact release consisting of an {@link ArtifactId} and a {@link Release}.
+ * An artifact release consisting of an {@link ArtifactId} and a
+ * {@link Release}.
  *
- * @param artifactId
- * @param release
+ * @param artifactId the released artifact.
+ * @param release the release metadata.
  */
 public record ArtifactRelease(ArtifactId artifactId,
 		Release release) implements Comparable<ArtifactRelease>, HasVersion {
@@ -29,10 +31,16 @@ public record ArtifactRelease(ArtifactId artifactId,
 		return release.compareTo(o.release());
 	}
 
+	/**
+	 * Return whether this release is newer than the given current version.
+	 */
 	public boolean isNewer(ArtifactVersion currentVersion) {
 		return release.isNewer(currentVersion);
 	}
 
+	/**
+	 * Return whether this release is older than the given current version.
+	 */
 	public boolean isOlder(ArtifactVersion currentVersion) {
 		return release.isOlder(currentVersion);
 	}

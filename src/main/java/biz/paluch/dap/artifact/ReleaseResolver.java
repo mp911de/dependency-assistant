@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.lang.reflect.UndeclaredThrowableException;
@@ -39,6 +40,9 @@ public class ReleaseResolver {
 
 	private final ExecutorService executor;
 
+	/**
+	 * Create a resolver using the given release sources and executor.
+	 */
 	public ReleaseResolver(Collection<ReleaseSource> sources, ExecutorService executor) {
 		this.sources = sources instanceof Set<ReleaseSource> s ? s : new LinkedHashSet<>(sources);
 		this.executor = executor;

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.function.Predicate;
@@ -48,6 +49,9 @@ class KotlinDslUtils {
 	// Helpers
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Return whether the call can declare a supported dependency or plugin.
+	 */
 	public static boolean isDependencyCall(KtCallElement call) {
 
 		String methodName = getKotlinCallName(call);
@@ -87,6 +91,9 @@ class KotlinDslUtils {
 		return false;
 	}
 
+	/**
+	 * Return the trailing lambda argument, if present.
+	 */
 	public static @Nullable KtLambdaExpression getLambdaArgument(KtCallExpression call) {
 
 		KtLambdaArgument lambdaArg = call.getLambdaArguments().isEmpty() ? null : call.getLambdaArguments().get(0);

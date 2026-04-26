@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.state;
 
 import java.util.Map;
@@ -112,6 +113,9 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 		return new DefaultProjectState(identity);
 	}
 
+	/**
+	 * Return whether this service currently knows dependencies or releases.
+	 */
 	public boolean hasDependenciesOrReleases() {
 		return getCache().hasReleases() || getCache().hasDependencies();
 	}
@@ -122,6 +126,9 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 
 		private final ProjectCache projectCache;
 
+		/**
+		 * Create a state facade for the given project identity.
+		 */
 		public DefaultProjectState(ProjectId identity) {
 			this.identity = identity;
 			this.projectCache = getCache().getProject(identity);

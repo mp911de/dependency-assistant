@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import javax.swing.*;
@@ -38,6 +39,9 @@ import org.jspecify.annotations.Nullable;
  */
 public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAction implements Iconable {
 
+	/**
+	 * Singleton intention instance registered with IntelliJ.
+	 */
 	public static final UpgradeDependenciesIntention INSTANCE = new UpgradeDependenciesIntention();
 
 	@Override

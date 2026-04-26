@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.state.DependencyAssistantService;
@@ -33,6 +34,9 @@ public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeCh
 
 	private final UpdateProjectState updateProjectState;
 
+	/**
+	 * Create a listener and register it with the project's PSI manager.
+	 */
 	public GradlePsiListener(Project project) {
 
 		PsiManager psiManager = PsiManager.getInstance(project);

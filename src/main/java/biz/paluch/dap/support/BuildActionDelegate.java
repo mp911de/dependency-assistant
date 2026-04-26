@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,6 +46,9 @@ public class BuildActionDelegate implements UpdateBuildFile {
 
 	private final VirtualFile buildFile;
 
+	/**
+	 * Create a delegate using the update action from the given dependency context.
+	 */
 	public BuildActionDelegate(Project project, ProjectDependencyContext dependencyContext, VirtualFile buildFile) {
 		this(project, dependencyContext::applyUpdates, buildFile);
 	}

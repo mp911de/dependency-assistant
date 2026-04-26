@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.List;
@@ -48,6 +49,9 @@ class UpdateGradleFile {
 
 	private final Project project;
 
+	/**
+	 * Create an updater for Gradle-related files in the given project.
+	 */
 	public UpdateGradleFile(Project project) {
 		this.project = project;
 	}

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.state;
 
 import java.util.ArrayList;
@@ -55,9 +56,15 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	@Transient
 	private final Map<String, VersionProperty> propertyMap = new java.util.TreeMap<>();
 
+	/**
+	 * Create an empty cache entry for XML serialization.
+	 */
 	public ProjectCache() {
 	}
 
+	/**
+	 * Create a cache entry for the given project identity.
+	 */
 	public ProjectCache(ProjectId identity) {
 		this.artifactId = identity.artifactId();
 		this.groupId = identity.groupId();

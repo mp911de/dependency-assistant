@@ -13,25 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.*;
+import javax.swing.table.TableCellEditor;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.Release;
-
-import java.awt.Component;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.swing.AbstractCellEditor;
-import javax.swing.JTable;
-import javax.swing.table.TableCellEditor;
-
-import org.jspecify.annotations.Nullable;
-
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.util.ui.JBUI;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Table cell editor for the Suggested column: combobox of version options (with release dates and version-age icon).
@@ -45,6 +42,9 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 	private final DependencyUpdateModel model;
 	private final List<Release> options = new ArrayList<>();
 
+	/**
+	 * Create an editor for the suggested version column.
+	 */
 	public SuggestedVersionComboBoxEditor(DependencyUpdateModel model, DependencyUpdateOption option) {
 		this.model = model;
 		this.combo.putClientProperty("JComboBox.isTableCellEditor", Boolean.TRUE);
@@ -97,6 +97,9 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 		return null;
 	}
 
+	/**
+	 * Return the underlying combo box for tests and table integration.
+	 */
 	public ComboBox<Release> getCombo() {
 		return combo;
 	}

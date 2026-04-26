@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.HashMap;
@@ -43,18 +44,8 @@ class KotlinDslExtraParser {
 
 	/**
 	 * Parse {@code extra["key"]} property declarations from a Kotlin DSL file to
-	 * {@link PropertyValue} for declarations of the form:
-	 * <ul>
-	 * <li>{@code extra["key"] = "value"} and
-	 * {@code extra["key"] = """value"""}</li>
-	 * <li>{@code "value".also { extra["key"] = it }}</li>
-	 * <li>{@code extra["key"] = buildString { append("value") }}</li>
-	 * </ul>
-	 * <p>This is the Kotlin DSL equivalent of {@code gradle.properties}: versions
-	 * can be declared inline in {@code build.gradle.kts} and referenced via
-	 * {@code property("key")} or {@code extra["key"]}.
-	 *
-	 * @param file the Kotlin build script ({@code .kts}).
+	 * {@link PropertyValue} instances.
+	 * @param file the Kotlin build script.
 	 * @return a map of property key to literal value.
 	 */
 	public static Map<String, Property> parseExtraProperties(PsiFile file) {
@@ -75,19 +66,8 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Collect {@code extra["key"]} property declarations from a Kotlin DSL file, to
-	 * a map of property key to literal value, for declarations of the form:
-	 * <ul>
-	 * <li>{@code extra["key"] = "value"} and
-	 * {@code extra["key"] = """value"""}</li>
-	 * <li>{@code "value".also { extra["key"] = it }}</li>
-	 * <li>{@code extra["key"] = buildString { append("value") }}</li>
-	 * </ul>
-	 * <p>This is the Kotlin DSL equivalent of {@code gradle.properties}: versions
-	 * can be declared inline in {@code build.gradle.kts} and referenced via
-	 * {@code property("key")} or {@code extra["key"]}.
-	 *
-	 * @param file the Kotlin build script ({@code .kts}).
+	 * Collect {@code extra["key"]} property declarations from a Kotlin DSL file.
+	 * @param file the Kotlin build script.
 	 * @return a map of property key to literal value.
 	 */
 	public static Map<String, String> getExtraProperties(PsiFile file) {
@@ -100,19 +80,7 @@ class KotlinDslExtraParser {
 	/**
 	 * Parse top-level {@code val} declarations from a Kotlin DSL file and return
 	 * them as {@link PropertyValue} instances.
-	 * <p>Handles:
-	 * <ul>
-	 * <li>{@code val key = "value"} - plain string literal initialiser</li>
-	 * <li>{@code val key: T by project} - value from injected Gradle
-	 * properties</li>
-	 * <li>{@code val key: T by extra} - value from a preceding {@code extra["key"]}
-	 * assignment</li>
-	 * <li>{@code val key by extra("value")} - value from the {@code extra} delegate
-	 * argument</li>
-	 * </ul>
-	 * <p>This method treats top-level {@code val} declarations as local properties.
-	 *
-	 * @param file the Kotlin build script ({@code .kts}).
+	 * @param file the Kotlin build script.
 	 * @return a map of variable name to literal value element.
 	 */
 	public static Map<String, PropertyValue> parseValProperties(PsiFile file) {

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.Collection;
@@ -45,19 +46,7 @@ import org.springframework.lang.Contract;
 import org.springframework.util.ClassUtils;
 
 /**
- * PSI navigation utilities for Gradle build files.
- * <p>Provides methods to locate the version element at the cursor position in a
- * Groovy or Kotlin DSL dependency declaration, and to resolve the artifact
- * coordinates for that declaration. Gradle projects can declare dependencies in
- * multiple file types:
- * <ul>
- * <li>{@code build.gradle} - Groovy DSL build script</li>
- * <li>{@code build.gradle.kts} - Kotlin DSL build script</li>
- * <li>{@code settings.gradle} - Groovy DSL settings script</li>
- * <li>{@code settings.gradle.kts} - Kotlin DSL settings script</li>
- * <li>{@code gradle.properties} - project and system properties</li>
- * <li>{@code gradle/libs.versions.toml} - version catalog (TOML format)</li>
- * </ul>
+ * Utility methods for Gradle build files and related project metadata.
  *
  * @author Mark Paluch
  * @see KotlinDslUtils
@@ -109,17 +98,14 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the given {@link PsiFile} is a Gradle build or
-	 * settings script, a {@code gradle.properties} file, or a
-	 * {@code libs.versions.toml} version catalog.
+	 * Return whether the given {@link PsiFile} is a Gradle-related file.
 	 */
 	public static boolean isGradleFile(@Nullable PsiFile file) {
 		return file != null && isGradleFile(file.getVirtualFile());
 	}
 
 	/**
-	 * Returns {@literal true} if the given {@link VirtualFile} is any
-	 * Gradle-related build file.
+	 * Return whether the given {@link VirtualFile} is a Gradle-related file.
 	 */
 	public static boolean isGradleFile(@Nullable VirtualFile file) {
 		if (file == null) {
@@ -322,6 +308,9 @@ class GradleUtils {
 	// Helpers
 	// -------------------------------------------------------------------------
 
+	/**
+	 * Replace the version segment in a Gradle GAV string.
+	 */
 	public static @Nullable String updateGavVersion(String gav, String newVersion) {
 		if (StringUtils.isEmpty(gav)) {
 			return null;
@@ -337,6 +326,9 @@ class GradleUtils {
 		return gav.substring(0, secondColon + 1) + GradleRichVersion.update(version, newVersion);
 	}
 
+	/**
+	 * Apply a version update to the given GAV text, if it contains text.
+	 */
 	public static void updateVersion(@Nullable String gav, String newVersion, Consumer<String> updateConsumer) {
 		if (StringUtils.isEmpty(gav)) {
 			return;
@@ -440,6 +432,9 @@ class GradleUtils {
 				|| version.contains(",") || version.endsWith(".+");
 	}
 
+	/**
+	 * Return whether the call name can consume a version-catalog accessor.
+	 */
 	@Contract("null -> false")
 	public static boolean isCatalogConsumerCall(@Nullable String name) {
 

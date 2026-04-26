@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.support;
 
 import java.util.ArrayList;
@@ -29,29 +30,12 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Central dispatcher that fans out project and file operations to all
- * registered {@link DependencyAssistant} integrations.
- * <p>Integrations are discovered via the {@code biz.paluch.dap.assistant}
- * IntelliJ extension point and iterated in registration order. Two dispatch
- * semantics are provided:
- * <ul>
- * <li><em>Fan-out</em> - {@link #doWithContext(PsiFile, Consumer)} and
- * {@link #findAll} visit every applicable integration. Use these for
- * project-wide operations such as background indexing and cache invalidation on
- * save where all integrations must participate.</li>
- * <li><em>First-match</em> - {@link #findFirstContext(PsiFile)} and
- * {@link #findFirstContext(Project, PsiFile)} return the result from the first
- * integration that claims the file and stop. Use these for per-file editor
- * operations (annotators, line markers, completion) where exactly one
- * integration owns a given file.</li>
- * </ul>
- * <p>Each method guards dispatch behind the corresponding
- * {@link DependencyAssistant#supports} predicate, so integrations that do not
- * apply to the file or project are skipped without allocating a context.
- * <p>{@link #supports(Project)} additionally short-circuits to {@literal true}
- * when the project-scoped {@link DependencyAssistantService} already holds
- * cached dependency or release data, avoiding redundant applicability checks on
- * every UI update.
+ * Dispatcher for registered {@link DependencyAssistant} integrations.
+ *
+ * <p>Integrations are discovered through the {@code biz.paluch.dap.assistant}
+ * extension point and consulted in registration order. Fan-out methods visit
+ * every matching integration; first-match methods stop once a file has an
+ * owner.
  *
  * @author Mark Paluch
  * @see DependencyAssistant
@@ -67,17 +51,10 @@ class DependencyAssistantDispatcher {
 
 	/**
 	 * Return whether any registered integration applies to the given project.
-	 * <p>Returns {@literal true} immediately if the project-scoped
+	 * <p>Returns {@code true} immediately if the project-scoped
 	 * {@link DependencyAssistantService} already holds dependency or release data,
-	 * bypassing the per-integration applicability check. Otherwise iterates all
-	 * registered {@link DependencyAssistant} instances and returns {@literal true}
-	 * as soon as one claims the project.
-	 * <p>Intended for lightweight action-visibility checks; must not trigger I/O or
-	 * PSI access.
-	 *
-	 * @param project the project to inspect; must not be {@literal null}.
-	 * @return {@literal true} if at least one integration applies or cached state
-	 * is present; {@literal false} otherwise.
+	 * avoiding repeated project applicability checks during UI updates.
+	 * @param project the project to inspect.
 	 */
 	static boolean supports(Project project) {
 
@@ -95,16 +72,8 @@ class DependencyAssistantDispatcher {
 
 	/**
 	 * Return all integrations that apply to the given project.
-	 * <p>Iterates all registered {@link DependencyAssistant} instances and collects
-	 * each one that returns {@literal true} from
-	 * {@link DependencyAssistant#supports(Project)}. Use this for project-wide
-	 * fan-out operations such as post-startup background indexing and
-	 * release-metadata refresh where every applicable integration must participate.
-	 *
-	 * @param project the project to collect integrations for; must not be
-	 * {@literal null}.
-	 * @return the applicable integrations in registration order; guaranteed to be
-	 * not {@literal null} but may be empty.
+	 * @param project the project to collect integrations for.
+	 * @return the applicable integrations in registration order.
 	 */
 	static List<DependencyAssistant> findAll(Project project) {
 
@@ -121,17 +90,8 @@ class DependencyAssistantDispatcher {
 	/**
 	 * Invoke the given consumer with a {@link ProjectDependencyContext} for each
 	 * integration that claims the file.
-	 * <p>Iterates all registered {@link DependencyAssistant} instances, skips those
-	 * that do not claim the file, and passes a freshly created
-	 * {@link DependencyAssistant#createContext(Project, PsiFile) file-scoped
-	 * context} to the consumer for each match. Suitable for fan-out operations such
-	 * as cache invalidation on save where multiple integrations may each own
-	 * overlapping files.
-	 *
-	 * @param file the PSI file to which the context applies; must not be
-	 * {@literal null}.
-	 * @param consumer the callback invoked with a context per matching integration;
-	 * must not be {@literal null}.
+	 * @param file the PSI file to which the context applies.
+	 * @param consumer the callback invoked with a context per matching integration.
 	 */
 	static void doWithContext(PsiFile file, Consumer<ProjectDependencyContext> consumer) {
 
@@ -144,16 +104,9 @@ class DependencyAssistantDispatcher {
 
 	/**
 	 * Return the {@link ProjectDependencyContext} from the first integration that
-	 * owns the given PSI element, or {@literal null} if none applies.
-	 * <p>Intended for per-file editor operations such as annotators, line-marker
-	 * providers, and completion contributors where exactly one integration is
-	 * expected to own a given file. The search stops at the first match, so
-	 * registration order determines priority when integrations could theoretically
-	 * overlap.
-	 *
-	 * @param element the PSI element to resolve; can be {@literal null}.
-	 * @return the context from the first matching integration, or {@literal null}
-	 * if {@code file} is {@literal null} or no integration claims the file.
+	 * owns the given PSI element.
+	 * @param element the PSI element to resolve.
+	 * @return the context from the first matching integration, or {@code null}.
 	 */
 	static @Nullable ProjectDependencyContext findFirstContext(PsiElement element) {
 		return findFirstContext(element instanceof PsiFile file ? file : element.getContainingFile());
@@ -161,16 +114,9 @@ class DependencyAssistantDispatcher {
 
 	/**
 	 * Return the {@link ProjectDependencyContext} from the first integration that
-	 * owns the given PSI file, or {@literal null} if none applies.
-	 * <p>Intended for per-file editor operations such as annotators, line-marker
-	 * providers, and completion contributors where exactly one integration is
-	 * expected to own a given file. The search stops at the first match, so
-	 * registration order determines priority when integrations could theoretically
-	 * overlap.
-	 *
-	 * @param file the PSI file to resolve; can be {@literal null}.
-	 * @return the context from the first matching integration, or {@literal null}
-	 * if {@code file} is {@literal null} or no integration claims the file.
+	 * owns the given PSI file.
+	 * @param file the PSI file to resolve.
+	 * @return the context from the first matching integration, or {@code null}.
 	 */
 	static @Nullable ProjectDependencyContext findFirstContext(PsiFile file) {
 
@@ -186,16 +132,10 @@ class DependencyAssistantDispatcher {
 
 	/**
 	 * Return the {@link ProjectDependencyContext} from the first integration that
-	 * owns the given PSI file, or {@literal null} if none applies.
-	 * <p>Equivalent to {@link #findFirstContext(PsiFile)} but accepts an explicit
-	 * {@link Project} parameter. Use this overload when the project reference is
-	 * already at hand to avoid the implicit {@link PsiFile#getProject()} call.
-	 *
-	 * @param project the project that contains the file; must not be
-	 * {@literal null}.
-	 * @param file the PSI file to resolve; can be {@literal null}.
-	 * @return the context from the first matching integration, or {@literal null}
-	 * if {@code file} is {@literal null} or no integration claims the file.
+	 * owns the given PSI file.
+	 * @param project the project that contains the file.
+	 * @param file the PSI file to resolve.
+	 * @return the context from the first matching integration, or {@code null}.
 	 */
 	static @Nullable ProjectDependencyContext findFirstContext(Project project, @Nullable PsiFile file) {
 

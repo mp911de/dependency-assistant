@@ -1,5 +1,5 @@
 /*
- * Copyright 2026the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.Optional;
@@ -236,6 +237,9 @@ interface GradleDependency {
 	record PropertyManagedDependency(ArtifactId id, String property,
 			VersionSource versionSource) implements GradleDependency {
 
+		/**
+		 * Create a property-managed dependency from a version expression.
+		 */
 		public static PropertyManagedDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
 			return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),
 					VersionSource.property(versionExpression.getPropertyName()));

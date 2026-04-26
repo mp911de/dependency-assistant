@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.ArrayList;
@@ -26,10 +27,16 @@ import java.util.Set;
 public record DependencyUpdates(String projectName, List<DependencyUpdateOption> updates,
 		List<DependencyUpdateOption> uniqueUpdates, List<String> errors) {
 
+	/**
+	 * Create a result and derive unique update options from the full item list.
+	 */
 	public DependencyUpdates(String projectName, List<DependencyUpdateOption> items, List<String> errors) {
 		this(projectName, items, getUniqueItems(items), errors);
 	}
 
+	/**
+	 * Return update options collapsed by shared version source.
+	 */
 	public List<DependencyUpdateOption> getUpdates() {
 		return uniqueUpdates();
 	}

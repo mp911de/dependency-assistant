@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
@@ -68,6 +69,10 @@ class GradleParser extends GradleParserSupport {
 		this.global = propertyResolver;
 	}
 
+	/**
+	 * Return whether the call can contain a supported dependency or plugin
+	 * declaration.
+	 */
 	public static boolean isDependencyCallCandidate(GrMethodCall call) {
 
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);
@@ -76,6 +81,9 @@ class GradleParser extends GradleParserSupport {
 				|| GroovyDslUtils.isInsidePluginsBlock(call);
 	}
 
+	/**
+	 * Return the property resolver used as the parser fallback.
+	 */
 	protected PropertyResolver getPropertyResolver() {
 		return global;
 	}
@@ -487,6 +495,10 @@ class GradleParser extends GradleParserSupport {
 	// -------------------------------------------------------------------------
 	// Gradle Properties
 	// -------------------------------------------------------------------------
+	/**
+	 * Parse a {@code gradle.properties} file for project properties that back known
+	 * dependency versions.
+	 */
 	public void parseGradleProperties(Cache cache, PsiFile file) {
 
 		Map<String, String> properties = GradlePropertiesParser.getGradleProperties(file);

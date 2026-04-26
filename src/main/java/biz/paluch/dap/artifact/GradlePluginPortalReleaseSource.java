@@ -13,44 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package biz.paluch.dap.artifact;
 
 import java.util.List;
 
 /**
- * {@link ReleaseSource} that queries the
- * <a href="https://plugins.gradle.org/">Gradle Plugin Portal</a> for available
- * plugin versions.
- * <p>The Portal exposes a Maven 2-compatible repository at
- * {@value #PORTAL_URL}. Gradle plugin IDs are published there as <em>marker
- * artifacts</em> with the convention:
+ * {@link ReleaseSource} for Gradle Plugin Portal marker artifacts.
  *
- * <pre>
- *   groupId    = &lt;pluginId&gt;
- *   artifactId = &lt;pluginId&gt;.gradle.plugin
- * </pre>
- *
- * For example, the plugin {@code org.springframework.boot} is resolvable at:
- *
- * <pre>
- *   https://plugins.gradle.org/m2/org/springframework/boot/
- *       org.springframework.boot.gradle.plugin/maven-metadata.xml
- * </pre>
- *
- * {@code GradleDependencyParser} stores plugin declarations as
- * {@code ArtifactId.of(pluginId, pluginId)}, so this source recognises a plugin
- * lookup whenever {@code groupId.equals(artifactId)}, applies the
- * marker-artifact transformation, and delegates the actual HTTP fetch and XML
- * parsing to a {@link RemoteRepositoryReleaseSource} backed by the Portal's
- * Maven 2 endpoint.
- * <p>For regular library coordinates ({@code groupId != artifactId}) the source
- * returns an empty list immediately so that no unnecessary HTTP requests are
- * made to the Portal.
+ * <p>Plugin declarations are represented as {@code groupId == artifactId}. Such
+ * lookups are translated to the Portal marker artifact
+ * {@code <pluginId>:<pluginId>.gradle.plugin}. Regular library coordinates
+ * return an empty list.
  *
  * @author Mark Paluch
  */
 public class GradlePluginPortalReleaseSource implements ReleaseSource {
 
+	/**
+	 * Shared Gradle Plugin Portal release source.
+	 */
 	public static GradlePluginPortalReleaseSource INSTANCE = new GradlePluginPortalReleaseSource();
 
 	private static final String PORTAL_URL = "https://plugins.gradle.org/m2/";
