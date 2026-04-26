@@ -36,6 +36,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import com.intellij.psi.xml.XmlText;
 import com.intellij.psi.xml.XmlTokenType;
 import org.jspecify.annotations.Nullable;
 
@@ -83,20 +84,19 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	@Override
 	public AvailableUpgrades suggestUpgrades(PsiElement element) {
 
-		if (element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS || !candidate || pom == null
-				|| !buildContext.isAvailable()) {
+		if (!canResolve() || element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS) {
 			return AvailableUpgrades.none();
 		}
 
 		ProjectCache cache = this.cache.getProject(buildContext.getProjectId());
 
 		XmlTag versionTag = PomUtil.findVersionTag(element);
-		if (versionTag != null) {
+		if (MavenUtils.isVersionElement(versionTag)) {
 			return suggestUpgrades(this.cache, resolveArtifactDeclaration(versionTag));
 		}
 
 		XmlTag propertyTag = PomUtil.findPropertyTag(element);
-		if (propertyTag != null) {
+		if (MavenUtils.isVersionElement(propertyTag)) {
 			return suggestUpgrades(this.cache, resolveArtifactDeclaration(cache, propertyTag));
 		}
 
@@ -106,25 +106,34 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS || !candidate || pom == null
-				|| !buildContext.isAvailable()) {
+		if (!isCompletionLookupElement(element) || !canResolve()) {
 			return ArtifactReference.unresolved();
 		}
 
-		if (PomUtil.findPropertyTag(element) instanceof XmlTag tag) {
+		if (PomUtil.findPropertyTag(element) instanceof XmlTag tag && MavenUtils.isVersionElement(tag)) {
 			return resolveArtifactDeclaration(tag);
 		}
 
-		if (PomUtil.findVersionTag(element) instanceof XmlTag versionTag) {
+		if (PomUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
 			return resolveArtifactDeclaration(versionTag);
 		}
 
-		XmlTag propertyTag = PomUtil.findPropertyTag(element);
-		if (propertyTag != null) {
+		if (PomUtil.findPropertyTag(element) instanceof XmlTag propertyTag
+				&& MavenUtils.isVersionElement(propertyTag)) {
 			return resolveArtifactDeclaration(cache.getProject(buildContext.getProjectId()), propertyTag);
 		}
 
 		return ArtifactReference.unresolved();
+	}
+
+	private boolean canResolve() {
+		return candidate && pom != null
+				&& buildContext.isAvailable();
+	}
+
+	private boolean isCompletionLookupElement(PsiElement element) {
+		return element instanceof XmlText
+				|| element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS;
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {

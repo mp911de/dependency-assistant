@@ -152,4 +152,17 @@ class DependencyAssistantDispatcher {
 		return null;
 	}
 
+	/**
+	 * Return the {@link VersionUpgradeLookupSupport} from the first integration
+	 * that owns the given PSI element.
+	 * @param element the PSI element to resolve.
+	 * @return the VersionUpgradeLookupSupport from the first matching integration,
+	 * or {@code null} if not available.
+	 */
+	static @Nullable VersionUpgradeLookupSupport getVersionLookup(PsiElement element) {
+		ProjectDependencyContext context = findFirstContext(
+				element instanceof PsiFile file ? file : element.getContainingFile());
+		return context != null ? context.getLookup(element) : null;
+	}
+
 }

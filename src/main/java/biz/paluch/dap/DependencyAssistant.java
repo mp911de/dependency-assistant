@@ -19,7 +19,6 @@ package biz.paluch.dap;
 import biz.paluch.dap.artifact.DependencyCollector;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -56,13 +55,6 @@ public interface DependencyAssistant {
 	 * @param project the IntelliJ project to inspect.
 	 */
 	boolean supports(Project project);
-
-	/**
-	 * Return whether this integration owns the given file.
-	 * <p>This predicate must not trigger I/O or PSI access.
-	 * @param file the file to inspect.
-	 */
-	boolean supports(VirtualFile file);
 
 	/**
 	 * Return whether this integration owns the given file.

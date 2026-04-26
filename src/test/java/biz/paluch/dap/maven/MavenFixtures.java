@@ -16,24 +16,18 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import biz.paluch.dap.DependencyAssistantFixtures;
 import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
-import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.UpdatedBuildFile;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.model.MavenId;
-import org.jetbrains.idea.maven.project.MavenProject;
 
 /**
  * Fixtures for Maven.
@@ -42,7 +36,9 @@ import org.jetbrains.idea.maven.project.MavenProject;
  */
 class MavenFixtures {
 
-	private static final ProjectId TEST_PROJECT_ID = ProjectId.of("com.example", "demo");
+	static final MavenId MAVEN_ID = new MavenId("com.example", "demo", "");
+
+	static final ProjectId PROJECT_ID = ProjectId.of("com.example", "demo");
 
 	/**
 	 * Set up Dependency Assistant for the given project.
@@ -52,71 +48,26 @@ class MavenFixtures {
 	}
 
 	/**
-	 * Analyze the given POM file, store the dependency state for annotators and
-	 * completion contributors, and return the dependency collector.
+	 * Analyze the given file and return the dependency collector.
 	 */
-	static DependencyCollector analyze(PsiFile file) {
-
-		DependencyCollector collector = new DependencyCollector();
-		new MavenParser(collector, new HashMap<>()).parsePomFile(new Cache(), (XmlFile) file);
-
-		file.putUserData(MavenProjectContext.KEY, new TestMavenContext(TEST_PROJECT_ID));
-		DependencyAssistantService.getInstance(file.getProject()).getProjectState(TEST_PROJECT_ID)
-				.setDependencies(collector);
-
-		return collector;
+	public static DependencyCollector analyze(PsiFile file) {
+		return analyze(file, Map.of());
 	}
 
 	/**
-	 * Create an {@link UpdatedBuildFile} backed by fresh dependency analysis and
-	 * property resolution for the given POM file.
+	 * Analyze the given POM file, store the dependency state for annotators and
+	 * completion contributors, and return the dependency collector.
 	 */
-	static UpdatedBuildFile updatedBuildFile(PsiFile file) {
+	public static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
 
-		DependencyCollector collector = analyze(file);
-		Map<String, String> properties = MavenParser.getProperties((XmlFile) file);
-		PropertyResolver propertyResolver = properties::get;
-		return UpdatedBuildFile.of(collector, propertyResolver, file.getName());
-	}
+		DependencyCollector collector = new DependencyCollector();
+		new MavenParser(collector, properties).parsePomFile(new Cache(), (XmlFile) file);
+		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), null, MAVEN_ID);
+		file.putUserData(MavenProjectContext.KEY, projectContext);
+		DependencyAssistantService.getInstance(file.getProject()).getProjectState(PROJECT_ID)
+				.setDependencies(collector);
 
-	private static class TestMavenContext implements MavenProjectContext {
-
-		private final ProjectId projectId;
-
-		TestMavenContext(ProjectId projectId) {
-			this.projectId = projectId;
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return true;
-		}
-
-		@Override
-		public MavenId getMavenId() {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public MavenProject getMavenProject() {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			return projectId;
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return List.of();
-		}
-
-		@Override
-		public <T> T doWithMaven(Function<MavenProject, T> action) {
-			throw new UnsupportedOperationException();
-		}
-
+		return collector;
 	}
 
 }

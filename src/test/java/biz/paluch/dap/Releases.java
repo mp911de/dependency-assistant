@@ -41,7 +41,10 @@ public final class Releases {
 			.add("6.0.3", "2026-02-15")
 			.add("6.1.0-M1", "2025-11-17")
 			.add("6.0.2", "2026-01-06")
-			.add("5.14.3", "2026-02-15"));
+			.add("5.14.3", "2026-02-15")
+			.add("5.14.2", "2026-02-14")
+			.add("5.14.1", "2026-02-13")
+			.add("5.14.0", "2026-02-12"));
 
 	public static final CachedArtifact SPRING_BOOT = create("org.springframework.boot", "org.springframework.boot",
 			releases -> releases

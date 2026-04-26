@@ -31,9 +31,12 @@ import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -175,6 +178,33 @@ class MavenUtils {
 			credentials = null;
 		}
 		return new RemoteRepository(id, url, credentials);
+	}
+
+	@Contract("null -> false")
+	public static boolean isVersionElement(@Nullable PsiElement element) {
+
+		if (element == null) {
+			return false;
+		}
+
+		XmlTag currentTag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
+		if (currentTag == null) {
+			return false;
+		}
+
+		XmlTag parentTag = currentTag.getParentTag();
+		if (parentTag == null) {
+			return false;
+		}
+
+		if (currentTag.getLocalName().equals("properties") || parentTag.getLocalName().equals("properties")
+				|| currentTag.getLocalName().equals("dependency") || currentTag.getLocalName().equals("plugin")
+				|| parentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")) {
+			return true;
+		}
+
+		return "version".equals(currentTag.getLocalName())
+				&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName()));
 	}
 
 }

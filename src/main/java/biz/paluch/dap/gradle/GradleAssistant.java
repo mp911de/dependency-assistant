@@ -45,8 +45,6 @@ import com.intellij.psi.util.CachedValuesManager;
 import icons.GradleIcons;
 import org.toml.lang.psi.TomlElement;
 
-import org.springframework.util.Assert;
-
 /**
  * Gradle implementation of {@link DependencyAssistant}.
  *
@@ -67,11 +65,6 @@ class GradleAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(Project project) {
 		return GradleProjectContext.isGradleProject(project);
-	}
-
-	@Override
-	public boolean supports(VirtualFile file) {
-		return GradleUtils.isGradleFile(file);
 	}
 
 	@Override
@@ -172,10 +165,6 @@ class GradleAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			if (anchor == null) {
-				return new UpdateProjectState(project, service).getAllDependencies(indicator);
-			}
-
 			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
 			if (psiFile == null) {
 				return new DependencyCollector();
@@ -189,13 +178,7 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			PsiFile file = element.getContainingFile();
-			return GradleUtils.isGradleFile(file);
-			/*
-			 * LookupSite lookupSite = getLookup(element).findLookupSite(element,
-			 * file.getVirtualFile()); return lookupSite.isPresent();
-			 */
+			return GradleUtils.isGradleFile(element.getContainingFile());
 		}
 
 		@Override
@@ -205,7 +188,6 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			Assert.state(anchor != null, "Cannot apply Gradle updates without a build file");
 			new UpdateGradleFile(project).applyUpdates(psiFile, updates);
 		}
 

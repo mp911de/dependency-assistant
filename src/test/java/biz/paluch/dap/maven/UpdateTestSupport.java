@@ -17,16 +17,20 @@
 package biz.paluch.dap.maven;
 
 import java.util.List;
+import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.BuildActionDelegate;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.UpdatedBuildFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.xml.XmlFile;
 
 /**
  * Factory for {@link UpdatedBuildFile} instances backed by Maven-specific
@@ -70,7 +74,10 @@ class UpdateTestSupport {
 	 * local property resolution for the given Maven build file.
 	 */
 	static UpdatedBuildFile of(PsiFile file) {
-		return MavenFixtures.updatedBuildFile(file);
+		DependencyCollector collector = MavenFixtures.analyze(file);
+		Map<String, String> properties = MavenParser.getProperties((XmlFile) file);
+		PropertyResolver propertyResolver = properties::get;
+		return UpdatedBuildFile.of(collector, propertyResolver, file.getName());
 	}
 
 }

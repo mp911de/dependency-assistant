@@ -16,9 +16,16 @@
 
 package biz.paluch.dap.maven;
 
+import biz.paluch.dap.Releases;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectState;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +69,36 @@ class MavenCompletionTests {
 
 		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit</groupId>
+						<artifactId>junit-bom</artifactId>
+						<version>5.14<caret></version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void completesVersionInOrder(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		ProjectState projectState = DependencyAssistantService.getInstance(pomFile.getProject())
+				.getProjectState(MavenFixtures.PROJECT_ID);
+		DependencyCollector collector = new DependencyCollector();
+		collector.registerUsage(Releases.JUNIT_BOM.toArtifactId(), ArtifactVersion.of("5.14.1"),
+				DeclarationSource.dependency(), VersionSource.declared("5.14.1"));
+		projectState.setDependencies(collector);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("5.14.1");
 	}
 
 	@Test

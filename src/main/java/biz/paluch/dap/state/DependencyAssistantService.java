@@ -137,7 +137,6 @@ public class DependencyAssistantService implements PersistentStateComponent<Depe
 		@Override
 		public @Nullable Dependency findDependency(ArtifactId artifactId) {
 
-
 			DependencyCollector dependencyCollector = dependencies.get(identity);
 			if (dependencyCollector == null) {
 				return null;

@@ -43,6 +43,7 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
+
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
 		if (context == null) {
 			return null;

@@ -39,10 +39,8 @@ class GradleFixtures {
 		DependencyAssistantFixtures.setup(project);
 	}
 
-
 	/**
 	 * Analyze the given file and return the dependency collector.
-	 * @return
 	 */
 	public static DependencyCollector analyze(PsiFile file) {
 		return analyze(file, Map.of());
@@ -50,7 +48,6 @@ class GradleFixtures {
 
 	/**
 	 * Analyze the given file and return the dependency collector.
-	 * @return
 	 */
 	public static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
 

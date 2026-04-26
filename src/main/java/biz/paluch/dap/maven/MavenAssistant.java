@@ -47,15 +47,10 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
-import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.containers.ContainerUtil;
 import icons.MavenIcons;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.Assert;
 
 /**
  * Maven implementation of {@link DependencyAssistant}.
@@ -64,6 +59,7 @@ import org.springframework.util.Assert;
  */
 class MavenAssistant implements DependencyAssistant {
 
+	// TODO
 	private final ConcurrentMap<VirtualFile, ProjectDependencyContext> contexts = ContainerUtil
 			.createConcurrentWeakValueMap();
 
@@ -80,11 +76,6 @@ class MavenAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(Project project) {
 		return MavenProjectsManager.getInstance(project).isMavenizedProject();
-	}
-
-	@Override
-	public boolean supports(VirtualFile file) {
-		return MavenUtils.isMavenPomFile(file);
 	}
 
 	@Override
@@ -137,13 +128,13 @@ class MavenAssistant implements DependencyAssistant {
 
 		private final Project project;
 
-		private final @Nullable VirtualFile anchor;
+		private final VirtualFile anchor;
 
 		private final MavenProjectsManager manager;
 
 		private final DependencyAssistantService service;
 
-		MavenDependencyContext(Project project, @Nullable VirtualFile anchor,
+		MavenDependencyContext(Project project, VirtualFile anchor,
 				MavenProjectsManager manager, MavenProjectContext projectContext) {
 
 			this.project = project;
@@ -188,10 +179,6 @@ class MavenAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			if (anchor == null) {
-				return new UpdateProjectState(project, service).getAllDependencies(indicator);
-			}
-
 			return ApplicationManager.getApplication().runReadAction((Computable<DependencyCollector>) () -> {
 
 				PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
@@ -205,25 +192,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			XmlTag currentTag = PsiTreeUtil.getParentOfType(element, XmlTag.class);
-			if (currentTag == null) {
-				return false;
-			}
-
-			XmlTag parentTag = currentTag.getParentTag();
-			if (parentTag == null) {
-				return false;
-			}
-
-			if (currentTag.getLocalName().equals("properties") || parentTag.getLocalName().equals("properties")
-					|| currentTag.getLocalName().equals("dependency") || currentTag.getLocalName().equals("plugin")
-					|| parentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")) {
-				return true;
-			}
-
-			return "version".equals(currentTag.getLocalName())
-					&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName()));
+			return MavenUtils.isVersionElement(element);
 		}
 
 		@Override
@@ -233,7 +202,6 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			Assert.state(anchor != null, "Cannot apply Maven updates without a build file");
 			new UpdatePomFile().applyUpdates(psiFile, updates);
 		}
 
@@ -251,7 +219,6 @@ class MavenAssistant implements DependencyAssistant {
 	enum MavenInterface implements InterfaceAssistant {
 
 		INSTANCE;
-
 
 		@Override
 		public String getDisplayName() {
