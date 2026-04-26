@@ -20,17 +20,18 @@ import java.util.Map;
 
 import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.state.Cache;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link MavenParser}.
@@ -42,11 +43,15 @@ class MavenParserTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
-	// TODO: Rewrite
-	@Test
-	void directDependenciesWithInlineVersionsAreDiscovered() {
+	@BeforeEach
+	void setUp() {
+		MavenFixtures.setup(fixture.getProject());
+	}
 
-		PsiFile file = fixture.configureByText("pom.xml", Pom.of("""
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -62,23 +67,25 @@ class MavenParserTests {
 						<version>5.11.0</version>
 					</dependency>
 				</dependencies>
-				"""));
+			</project>
+			""")
+	void directDependenciesWithInlineVersionsAreDiscovered(PsiFile file) {
 
-		DependencyCollector collector = parse(file);
+		DependencyCollector collector = MavenFixtures.analyze(file);
 
-		Dependency commonsLang = collector.getUsage("org.apache.commons", "commons-lang3");
-		assertThat(commonsLang).as("commons-lang3").isNotNull();
-		assertThat(commonsLang.getCurrentVersion().toString()).isEqualTo("3.19.0");
-		assertThat(commonsLang.getDeclarationSources())
-				.anyMatch(ds -> ds instanceof DeclarationSource.Dependency && !(ds instanceof DeclarationSource.Managed));
-
-		assertThat(collector.getUsage("org.junit.jupiter", "junit-jupiter")).as("junit-jupiter").isNotNull();
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.commons", "commons-lang3")
+				.hasVersion("3.19.0")
+				.hasDeclaration(DeclarationSource.dependency());
+		assertThat(collector).hasDependencyUsage("org.junit.jupiter", "junit-jupiter");
 	}
 
 	@Test
-	void managedDependencyWithInlineVersionIsDiscovered() {
-
-		PsiFile file = fixture.configureByText("pom.xml", Pom.of("""
+	@EditorFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project xmlns="http://maven.apache.org/POM/4.0.0"
+					xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+					xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -93,20 +100,21 @@ class MavenParserTests {
 						</dependency>
 					</dependencies>
 				</dependencyManagement>
-				"""));
+			</project>
+			""")
+	void managedDependencyWithInlineVersionIsDiscovered(PsiFile file) {
 
-		DependencyCollector collector = parse(file);
+		DependencyCollector collector = MavenFixtures.analyze(file);
 
-		Dependency bom = collector.getUsage("org.springframework.boot", "spring-boot-dependencies");
-		assertThat(bom).as("spring-boot BOM").isNotNull();
-		assertThat(bom.getCurrentVersion().toString()).isEqualTo("3.5.0");
-		assertThat(bom.getDeclarationSources()).anyMatch(ds -> ds instanceof DeclarationSource.Managed);
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.boot", "spring-boot-dependencies")
+				.hasVersion("3.5.0")
+				.hasDeclaration(DeclarationSource.managed());
 	}
 
 	@Test
-	void dependencyVersionResolvedViaProperty() {
-
-		PsiFile file = fixture.configureByText("pom.xml", Pom.of("""
+	@EditorFile(name = "pom.xml", content = """
+			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -120,21 +128,21 @@ class MavenParserTests {
 						<version>${commons.version}</version>
 					</dependency>
 				</dependencies>
-				"""));
+			</project>
+			""")
+	void dependencyVersionResolvedViaProperty(PsiFile file) {
 
-		DependencyCollector collector = parse(file);
+		DependencyCollector collector = MavenFixtures.analyze(file);
 
-		Dependency dep = collector.getUsage("org.apache.commons", "commons-lang3");
-		assertThat(dep).as("commons-lang3 via property").isNotNull();
-		assertThat(dep.getCurrentVersion().toString()).isEqualTo("3.19.0");
-		assertThat(dep.hasPropertyVersion()).isTrue();
-		assertThat(dep.findPropertyVersion().getProperty()).isEqualTo("commons.version");
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.commons", "commons-lang3")
+				.hasVersion("3.19.0")
+				.hasPropertyVersion("commons.version");
 	}
 
 	@Test
-	void dependenciesWithoutVersionAreNotUpdateCandidates() {
-
-		PsiFile file = fixture.configureByText("pom.xml", Pom.of("""
+	@EditorFile(name = "pom.xml", content = """
+			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -144,17 +152,21 @@ class MavenParserTests {
 						<artifactId>commons-lang3</artifactId>
 					</dependency>
 				</dependencies>
-				"""));
+			</project>
+			""")
+	void dependenciesWithoutVersionAreNotUpdateCandidates(PsiFile file) {
 
-		DependencyCollector collector = parse(file);
+		DependencyCollector collector = MavenFixtures.analyze(file);
 
-		assertThat(collector.getDeclarations()).isEmpty();
+		assertThat(collector).isEmpty();
 	}
 
 	@Test
-	void pluginWithInlineVersionIsDiscovered() {
-
-		PsiFile file = fixture.configureByText("pom.xml", Pom.of("""
+	@EditorFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project xmlns="http://maven.apache.org/POM/4.0.0"
+					xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+					xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -166,21 +178,24 @@ class MavenParserTests {
 						</plugin>
 					</plugins>
 				</build>
-				"""));
+			</project>
+			""")
+	void pluginWithInlineVersionIsDiscovered(PsiFile file) {
 
-		DependencyCollector collector = parse(file);
+		DependencyCollector collector = MavenFixtures.analyze(file);
 
-		Dependency plugin = collector.getUsage("org.apache.maven.plugins", "maven-compiler-plugin");
-		assertThat(plugin).as("maven-compiler-plugin").isNotNull();
-		assertThat(plugin.getCurrentVersion().toString()).isEqualTo("3.14.0");
-		assertThat(plugin.getDeclarationSources())
-				.anyMatch(ds -> ds instanceof DeclarationSource.Plugin && !(ds instanceof DeclarationSource.Managed));
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.maven.plugins", "maven-compiler-plugin")
+				.hasVersion("3.14.0")
+				.hasDeclaration(DeclarationSource.plugin());
 	}
 
 	@Test
-	void parsePropertiesCollectsProjectAndProfileProperties() {
-
-		XmlFile file = (XmlFile) fixture.configureByText("pom.xml", Pom.of("""
+	@EditorFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project xmlns="http://maven.apache.org/POM/4.0.0"
+					xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+					xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -195,17 +210,21 @@ class MavenParserTests {
 						</properties>
 					</profile>
 				</profiles>
-				"""));
+			</project>
+			""")
+	void parsePropertiesCollectsProjectAndProfileProperties(PsiFile file) {
 
-		Map<String, String> props = MavenParser.getProperties(file);
+		Map<String, String> props = MavenParser.getProperties((XmlFile) file);
 
 		assertThat(props).containsEntry("root.prop", "root-value").containsEntry("profile.prop", "profile-value");
 	}
 
 	@Test
-	void singlePomFullDiscovery() {
-
-		PsiFile file = fixture.configureByText("pom.xml", Pom.of("""
+	@EditorFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project xmlns="http://maven.apache.org/POM/4.0.0"
+					xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+					xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
@@ -239,18 +258,18 @@ class MavenParserTests {
 						</plugin>
 					</plugins>
 				</build>
-				"""));
+			</project>
+			""")
+	void singlePomFullDiscovery(PsiFile file) {
 
-		DependencyCollector collector = parse(file);
+		DependencyCollector collector = MavenFixtures.analyze(file);
 
-		assertThat(collector.getUsage("org.apache.commons", "commons-lang3")).as("direct dependency").isNotNull();
-
-		Dependency bom = collector.getUsage("org.springframework.modulith", "spring-modulith-bom");
-		assertThat(bom).as("managed BOM").isNotNull();
-		assertThat(bom.getCurrentVersion().toString()).isEqualTo("2.0.4");
-		assertThat(bom.hasPropertyVersion()).isTrue();
-
-		assertThat(collector.getUsage("org.apache.maven.plugins", "maven-surefire-plugin")).as("plugin").isNotNull();
+		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3");
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.modulith", "spring-modulith-bom")
+				.hasVersion("2.0.4")
+				.hasPropertyVersion("bom.version");
+		assertThat(collector).hasDependencyUsage("org.apache.maven.plugins", "maven-surefire-plugin");
 	}
 
 	@Test
@@ -291,11 +310,10 @@ class MavenParserTests {
 		parser = new MavenParser(collector, new HashMap<>());
 		parser.parsePomFile(cache, parent);
 
-		Dependency junit = collector.getUsage("org.junit.jupiter", "junit-jupiter");
-		assertThat(junit).as("junit-jupiter resolved from parent property").isNotNull();
-		assertThat(junit.getCurrentVersion().toString()).isEqualTo("5.11.0");
-		assertThat(junit.hasPropertyVersion()).isTrue();
-		assertThat(junit.findPropertyVersion().getProperty()).isEqualTo("junit.version");
+		assertThat(collector)
+				.hasDependencyUsage("org.junit.jupiter", "junit-jupiter")
+				.hasVersion("5.11.0")
+				.hasPropertyVersion("junit.version");
 	}
 
 	@Test
@@ -337,15 +355,8 @@ class MavenParserTests {
 		parser.parsePomFile(new Cache(), parent);
 		parser.parsePomFile(new Cache(), child);
 
-		assertThat(collector.getUsage("org.assertj", "assertj-core")).as("parent dependencyManagement").isNotNull();
-		assertThat(collector.getUsage("org.apache.commons", "commons-lang3")).as("child dependency").isNotNull();
-	}
-
-	private DependencyCollector parse(PsiFile pomFile) {
-		DependencyCollector collector = new DependencyCollector();
-		MavenParser parser = new MavenParser(collector, new HashMap<>());
-		parser.parsePomFile(new Cache(), (XmlFile) pomFile);
-		return collector;
+		assertThat(collector).hasDependencyUsage("org.assertj", "assertj-core");
+		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3");
 	}
 
 }

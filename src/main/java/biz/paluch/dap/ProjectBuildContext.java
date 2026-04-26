@@ -31,22 +31,30 @@ import biz.paluch.dap.artifact.ReleaseSource;
 public interface ProjectBuildContext {
 
 	/**
-	 * Returns whether this context is backed by a known, importable project.
+	 * Return whether this context is backed by a known, importable project.
+	 *
+	 * @return {@literal true} if the project context is available; {@literal false}
+	 * otherwise.
 	 */
 	boolean isAvailable();
 
 	/**
-	 * Returns the build-tool-agnostic project identity (groupId + artifactId).
+	 * Return the build-tool-agnostic project identity (groupId + artifactId).
 	 *
-	 * @throws IllegalStateException if {@link #isAvailable()} is {@literal false}.
+	 * @return the project identity; guaranteed to be not {@literal null}.
+	 * @throws IllegalStateException if the build context is not
+	 * {@link #isAvailable()}.
 	 */
 	ProjectId getProjectId();
 
 	/**
-	 * Returns the remote-repository {@link ReleaseSource}s for the bound project so
+	 * Return the remote-repository {@link ReleaseSource}s for the bound project so
 	 * that version resolution can query the correct repositories.
 	 *
-	 * @throws IllegalStateException if {@link #isAvailable()} is {@literal false}.
+	 * @return the release sources; guaranteed to be not {@literal null} but may be
+	 * empty.
+	 * @throws IllegalStateException if the build context is not
+	 * {@link #isAvailable()}.
 	 */
 	List<ReleaseSource> getReleaseSources();
 

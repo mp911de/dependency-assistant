@@ -55,11 +55,12 @@ public interface ReleaseSource {
 
 	/**
 	 * Return all known releases for the given artifact at this source.
-	 * <p>Implementations must filter out SNAPSHOT versions; the returned list
-	 * contains only release and preview (RC, milestone) versions. The list may be
-	 * in any order — callers must not assume a particular sort. An empty list
-	 * signals that no version data is available from this source, which is a
-	 * recoverable condition; other sources may still contribute results.
+	 * <p>The returned list may include release, preview (RC, milestone), and
+	 * SNAPSHOT versions depending on what the underlying registry exposes; callers
+	 * are responsible for any further filtering. The list may be in any order —
+	 * callers must not assume a particular sort. An empty list signals that no
+	 * version data is available from this source, which is a recoverable condition;
+	 * other sources may still contribute results.
 	 * <p>Implementations are called from a background thread and must be safe for
 	 * concurrent use.
 	 *
@@ -85,7 +86,7 @@ public interface ReleaseSource {
 
 	/**
 	 * Return the built-in {@link ReleaseSource} backed by the Gradle Plugin Portal.
-	 * <p>This source recognises Gradle plugin coordinates (where {@code groupId}
+	 * <p>This source handles Gradle plugin coordinates (where {@code groupId}
 	 * equals {@code artifactId}) and translates them to the Portal's
 	 * marker-artifact convention before fetching. For regular library coordinates
 	 * it returns an empty list immediately.

@@ -27,6 +27,7 @@ import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.support.BuildActionDelegate;
+import biz.paluch.dap.support.UpdatedBuildFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
@@ -146,7 +147,7 @@ class UpdateTomlFileTests {
 		new BuildActionDelegate(fixture.getProject(),
 				(file, updates) -> new UpdateGradleFile(fixture.getProject()).applyUpdates(targetFile, updates),
 				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
-		return UpdatedBuildFile.of(targetFile);
+		return UpdatedGradleBuildFile.of(targetFile);
 	}
 
 }

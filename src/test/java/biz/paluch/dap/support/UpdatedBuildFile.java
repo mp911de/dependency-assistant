@@ -13,54 +13,47 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.support;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.assertions.DependencyCollectorAssert.DependencyUsageAssert;
-import biz.paluch.dap.support.PropertyValue;
-import com.intellij.psi.PsiFile;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.AssertProvider;
-import org.jspecify.annotations.Nullable;
 
 /**
- * Test-oriented view over an updated Gradle-related file.
- * <p>The view combines dependency analysis via
- * {@link GradleFixtures#analyze(PsiFile)} with file-local property resolution
- * via {@link GradlePropertyResolver#forFile(PsiFile)} so tests can assert
+ * Test-oriented view over an updated build file.
+ * <p>Combines dependency analysis via a {@link DependencyCollector} with
+ * property resolution via a {@link PropertyResolver} so tests can assert
  * semantic update outcomes without duplicating parser setup.
  *
  * @author Mark Paluch
  */
 public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.UpdatedBuildFileAssert> {
 
-	private final PsiFile file;
+	private final String fileName;
 
 	private final DependencyCollector collector;
 
-	private final GradlePropertyResolver propertyResolver;
+	private final PropertyResolver propertyResolver;
 
-	private UpdatedBuildFile(PsiFile file, DependencyCollector collector, GradlePropertyResolver propertyResolver) {
-		this.file = file;
+	private UpdatedBuildFile(String fileName, DependencyCollector collector, PropertyResolver propertyResolver) {
+		this.fileName = fileName;
 		this.collector = collector;
 		this.propertyResolver = propertyResolver;
 	}
 
 	/**
-	 * Create an {@link UpdatedBuildFile} backed by fresh dependency analysis and
-	 * local property resolution for the given file.
+	 * Create an {@link UpdatedBuildFile} backed by the given dependency collector
+	 * and property resolver.
 	 */
-	public static UpdatedBuildFile of(PsiFile file) {
-		return new UpdatedBuildFile(file, GradleFixtures.analyze(file), GradlePropertyResolver.forFile(file));
+	public static UpdatedBuildFile of(DependencyCollector collector, PropertyResolver propertyResolver,
+			String fileName) {
+		return new UpdatedBuildFile(fileName, collector, propertyResolver);
 	}
 
 	@Override
 	public UpdatedBuildFileAssert assertThat() {
 		return new UpdatedBuildFileAssert(this);
-	}
-
-	public PsiFile getFile() {
-		return file;
 	}
 
 	/**
@@ -118,16 +111,15 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		public UpdatedBuildFileAssert hasProperty(String propertyName, String expectedValue) {
 			isNotNull();
 
-			PropertyValue element = this.actual.propertyResolver.getPropertyValue(propertyName);
-			if (element == null) {
+			String actualValue = this.actual.propertyResolver.getProperty(propertyName);
+			if (actualValue == null) {
 				failWithMessage("Expected property '%s' to be declared in %s but it was not found",
-						propertyName, this.actual.file.getName());
+						propertyName, this.actual.fileName);
 			}
 
-			String actualValue = element.getValue();
 			if (!expectedValue.equals(actualValue)) {
 				failWithMessage("Expected property '%s' in %s to have value '%s' but was '%s'",
-						propertyName, this.actual.file.getName(), expectedValue, actualValue);
+						propertyName, this.actual.fileName, expectedValue, actualValue);
 			}
 
 			return this;
@@ -139,11 +131,10 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		public UpdatedBuildFileAssert hasNoProperty(String propertyName) {
 			isNotNull();
 
-			@Nullable
-			PropertyValue element = this.actual.propertyResolver.getPropertyValue(propertyName);
-			if (element != null) {
+			String value = this.actual.propertyResolver.getProperty(propertyName);
+			if (value != null) {
 				failWithMessage("Expected property '%s' to be absent in %s but found value '%s'",
-						propertyName, this.actual.file.getName(), element.getValue());
+						propertyName, this.actual.fileName, value);
 			}
 
 			return this;

@@ -13,31 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package biz.paluch.dap.assertions;
+package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.assertions.CodeInsightAssertions.CodeInsightFixtureAssert;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import biz.paluch.dap.support.UpdatedBuildFile;
+import com.intellij.psi.PsiFile;
 
 /**
- * Project-specific assertions.
+ * Factory for {@link UpdatedBuildFile} instances backed by Gradle-specific
+ * dependency analysis and property resolution.
  *
  * @author Mark Paluch
  */
-public class Assertions extends org.assertj.core.api.Assertions {
+class UpdatedGradleBuildFile {
 
 	/**
-	 * Create an assertion for the given {@link CodeInsightTestFixture}.
+	 * Create an {@link UpdatedBuildFile} backed by fresh dependency analysis and
+	 * local property resolution for the given Gradle build file.
 	 */
-	public static CodeInsightFixtureAssert assertThat(CodeInsightTestFixture fixture) {
-		return new CodeInsightFixtureAssert(fixture);
-	}
-
-	/**
-	 * Create an assertion for the given {@link CodeInsightTestFixture}.
-	 */
-	public static DependencyCollectorAssert assertThat(DependencyCollector collector) {
-		return new DependencyCollectorAssert(collector);
+	static UpdatedBuildFile of(PsiFile file) {
+		DependencyCollector collector = GradleFixtures.analyze(file);
+		GradlePropertyResolver propertyResolver = GradlePropertyResolver.forFile(file);
+		return UpdatedBuildFile.of(collector, propertyResolver, file.getName());
 	}
 
 }
