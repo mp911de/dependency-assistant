@@ -21,8 +21,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.Suffix.Release;
-import biz.paluch.dap.artifact.Suffix.SemVerSuffix;
-import biz.paluch.dap.util.StringUtils;
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Value object to represent version of a particular artifact.
@@ -31,10 +32,8 @@ import biz.paluch.dap.util.StringUtils;
  */
 class SemanticArtifactVersion implements ArtifactVersion {
 
-	private static final Pattern PATTERN = Pattern
+	private static final Pattern DOT_SUFFIX_PATTERN = Pattern
 			.compile("((\\d+)(\\.\\d+)+)(\\.((SR\\d+)|(RC\\d+)|(M\\d+)|(BUILD-SNAPSHOT)|(RELEASE)))");
-
-	private static final Pattern VERSION_FALLBACK = Pattern.compile("((\\d+)(\\.\\d+)+)([.-])?(.*)");
 
 	private static final Pattern MODIFIER_PATTERN = Pattern
 			.compile("((\\d+)(\\.\\d+)+)(-((RC\\d+)|(M\\d+)|(SNAPSHOT)))?");
@@ -42,9 +41,14 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	private static final Pattern SEMVER_PATTERN = Pattern
 			.compile("((\\d+)(\\.\\d+)+)(([.-])" + Suffix.SEMVER_QUALIFIER_PATTERN + ")?");
 
+	private static final Pattern VERSION_FALLBACK_PATTERN = Pattern.compile("((\\d+)(\\.\\d+)+)([.-])?(.*)");
+
 	private final String version;
+
 	private final NumericVersionComponents components;
+
 	private final boolean modifierFormat;
+
 	private final Suffix suffix;
 
 	/**
@@ -52,7 +56,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	 *
 	 * @param components must not be {@literal null}.
 	 */
-	SemanticArtifactVersion(NumericVersionComponents components) {
+	public SemanticArtifactVersion(NumericVersionComponents components) {
 		this(components, false);
 	}
 
@@ -63,7 +67,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	 * @param components must not be {@literal null}.
 	 * @param modifierFormat whether the suffix is rendered with modifier notation.
 	 */
-	SemanticArtifactVersion(NumericVersionComponents components, boolean modifierFormat) {
+	public SemanticArtifactVersion(NumericVersionComponents components, boolean modifierFormat) {
 		this(components.toString(), components, modifierFormat, modifierFormat ? Release.INSTANCE : Release.RELEASE);
 	}
 
@@ -74,19 +78,8 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	 * @param rawVersion must not be {@literal null}.
 	 * @param modifierFormat whether the suffix is rendered with modifier notation.
 	 */
-	SemanticArtifactVersion(String rawVersion, NumericVersionComponents components, boolean modifierFormat,
+	public SemanticArtifactVersion(String rawVersion, NumericVersionComponents components, boolean modifierFormat,
 			Suffix suffix) {
-
-		if (rawVersion == null) {
-			throw new IllegalArgumentException("Raw version must not be null!");
-		}
-		if (components == null) {
-			throw new IllegalArgumentException("Version components must not be null!");
-		}
-		if (suffix == null) {
-			throw new IllegalArgumentException("Suffix must not be null!");
-		}
-
 		this.version = rawVersion;
 		this.components = components;
 		this.modifierFormat = modifierFormat;
@@ -101,59 +94,95 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	 */
 	public static SemanticArtifactVersion of(String source) {
 
-		if (StringUtils.isEmpty(source)) {
-			throw new IllegalArgumentException("Version source must not be null or empty!");
+		Assert.hasText(source, "Version source must not be null or empty!");
+
+		String normalized = normalizeSource(source);
+		SemanticArtifactVersion version = parseDotSuffix(source, normalized);
+		if (version != null) {
+			return version;
 		}
 
-		Matcher matcher = PATTERN.matcher(source);
-		if (matcher.matches()) {
-
-			int suffixStart = source.lastIndexOf('.');
-
-			NumericVersionComponents version = NumericVersionComponents.parse(source.substring(0, suffixStart));
-			String suffix = source.substring(suffixStart + 1);
-
-			if (!suffix.matches(Suffix.VALID_SUFFIX)) {
-				throw new IllegalArgumentException("Invalid version suffix: %s!".formatted(source));
-			}
-
-			return new SemanticArtifactVersion(source, version, false, Suffix.parse(suffix));
+		version = parseModifier(source, normalized);
+		if (version != null) {
+			return version;
 		}
 
-		matcher = MODIFIER_PATTERN.matcher(source);
-
-		if (matcher.matches()) {
-
-			NumericVersionComponents version = NumericVersionComponents.parse(matcher.group(1));
-			String suffix = matcher.group(5);
-
-			return new SemanticArtifactVersion(source, version, true, Suffix.parse(suffix));
+		version = parseSemVer(source, normalized);
+		if (version != null) {
+			return version;
 		}
 
-		matcher = SEMVER_PATTERN.matcher(source);
-
-		if (matcher.matches()) {
-
-			NumericVersionComponents version = NumericVersionComponents.parse(matcher.group(1));
-			String modifierdelimiter = matcher.group(5);
-			String suffix = matcher.group(6);
-
-			return new SemanticArtifactVersion(source, version, modifierdelimiter.equals("-"), Suffix.parse(suffix));
-		}
-
-		matcher = VERSION_FALLBACK.matcher(source);
-
-		if (matcher.matches()) {
-
-			NumericVersionComponents version = NumericVersionComponents.parse(matcher.group(1));
-			String modifierdelimiter = matcher.group(4);
-			String suffix = matcher.group(5);
-
-			return new SemanticArtifactVersion(source, version, "-".equals(modifierdelimiter), Suffix.parse(suffix));
+		version = parseFallback(source, normalized);
+		if (version != null) {
+			return version;
 		}
 
 		throw new IllegalArgumentException(
 				"Version %s does not match <version>.<modifier> nor <version>-<modifier> pattern".formatted(source));
+	}
+
+	private static @Nullable SemanticArtifactVersion parseDotSuffix(String source, String normalized) {
+
+		Matcher matcher = DOT_SUFFIX_PATTERN.matcher(normalized);
+		if (!matcher.matches()) {
+			return null;
+		}
+
+		int suffixStart = normalized.lastIndexOf('.');
+		NumericVersionComponents components = NumericVersionComponents.parse(normalized.substring(0, suffixStart));
+		String suffix = normalized.substring(suffixStart + 1);
+		if (!suffix.matches(Suffix.VALID_SUFFIX)) {
+			throw new IllegalArgumentException("Invalid version suffix: %s!".formatted(source));
+		}
+
+		return new SemanticArtifactVersion(source, components, false, Suffix.parse(suffix));
+	}
+
+	private static @Nullable SemanticArtifactVersion parseModifier(String source, String normalized) {
+
+		Matcher matcher = MODIFIER_PATTERN.matcher(normalized);
+		if (!matcher.matches()) {
+			return null;
+		}
+
+		NumericVersionComponents components = NumericVersionComponents.parse(matcher.group(1));
+		return new SemanticArtifactVersion(source, components, true, Suffix.parse(matcher.group(5)));
+	}
+
+	private static @Nullable SemanticArtifactVersion parseSemVer(String source, String normalized) {
+
+		Matcher matcher = SEMVER_PATTERN.matcher(normalized);
+		if (!matcher.matches()) {
+			return null;
+		}
+
+		NumericVersionComponents components = NumericVersionComponents.parse(matcher.group(1));
+		String modifierDelimiter = matcher.group(5);
+		return new SemanticArtifactVersion(source, components, "-".equals(modifierDelimiter),
+				Suffix.parse(matcher.group(6)));
+	}
+
+	private static @Nullable SemanticArtifactVersion parseFallback(String source, String normalized) {
+
+		Matcher matcher = VERSION_FALLBACK_PATTERN.matcher(normalized);
+		if (!matcher.matches()) {
+			return null;
+		}
+
+		NumericVersionComponents components = NumericVersionComponents.parse(matcher.group(1));
+		String modifierDelimiter = matcher.group(4);
+		return new SemanticArtifactVersion(source, components, "-".equals(modifierDelimiter),
+				Suffix.parse(matcher.group(5)));
+	}
+
+	private static String normalizeSource(String source) {
+
+		String normalized = source.startsWith("v") || source.startsWith("V") ? source.substring(1) : source;
+		int metadataIndex = normalized.indexOf('+');
+		if (metadataIndex != -1) {
+			normalized = normalized.substring(0, metadataIndex);
+		}
+		return normalized;
 	}
 
 	/**
@@ -164,7 +193,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		try {
 			of(source);
 			return true;
-		} catch (IllegalArgumentException o_O) {
+		} catch (IllegalArgumentException ex) {
 			return false;
 		}
 	}
@@ -218,7 +247,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns whether the version is a milestone version.
+	 * Returns whether the version is a preview version.
 	 *
 	 * @return {@code true} if this version is a preview version.
 	 */
@@ -235,7 +264,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	@Override
 	public boolean isMilestoneVersion() {
 
-		if (suffix instanceof SemVerSuffix sv && sv.isMilestone()) {
+		if (suffix.isMilestone()) {
 			return true;
 		}
 
@@ -251,7 +280,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	@Override
 	public boolean isReleaseCandidateVersion() {
 
-		if (suffix instanceof SemVerSuffix sv && sv.isReleaseCandidate()) {
+		if (suffix.isReleaseCandidate()) {
 			return true;
 		}
 
@@ -333,10 +362,6 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		return versionsEqual != 0 ? versionsEqual : this.suffix.compareTo(that.suffix);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
 	@Override
 	public String toString() {
 		return version;
@@ -347,8 +372,8 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	private ArtifactVersion snapshotOf(NumericVersionComponents version) {
-		return new SemanticArtifactVersion(version.toString() + (modifierFormat ? "-" : ".") + getSnapshotSuffix(), version,
-				modifierFormat, Suffix.parse(getSnapshotSuffix()));
+		return new SemanticArtifactVersion(version.toString() + (modifierFormat ? "-" : ".") + getSnapshotSuffix(),
+				version, modifierFormat, Suffix.parse(getSnapshotSuffix()));
 	}
 
 	private ArtifactVersion versionOf(NumericVersionComponents version) {
@@ -356,11 +381,11 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (this == o) {
+	public boolean equals(Object obj) {
+		if (this == obj) {
 			return true;
 		}
-		if (!(o instanceof SemanticArtifactVersion other)) {
+		if (!(obj instanceof SemanticArtifactVersion other)) {
 			return false;
 		}
 		return components.compareTo(other.components) == 0 && suffix.compareTo(other.suffix) == 0;

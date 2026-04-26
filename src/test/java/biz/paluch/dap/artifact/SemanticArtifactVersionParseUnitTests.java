@@ -88,6 +88,97 @@ class SemanticArtifactVersionParseUnitTests {
 	}
 
 	@ParameterizedTest(name = "{0}")
+	@CsvSource({"v1.2.3, true, false", "v1.0.0-beta.1, false, true", "v2026.4.0-rc.1, false, true"})
+	void parsesVersionsWithVPrefix(String source, boolean release, boolean preview) {
+
+		SemanticArtifactVersion version = version(source);
+
+		assertThat(version).hasToString(source);
+		assertThat(version.isReleaseVersion()).isEqualTo(release);
+		assertThat(version.isPreview()).isEqualTo(preview);
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@ValueSource(strings = {"1.0.0-dev", "1.0.0-dev.5", "1.0.0-nightly.20260426", "1.0.0-canary",
+			"1.0.0-pre", "1.0.0-pre.1", "1.0.0-next", "1.0.0-next.20260426", "1.0.0-preview",
+			"1.0.0-preview.3", "0.0.0-experimental"})
+	void parsesAdditionalPreviewKeywords(String source) {
+
+		SemanticArtifactVersion version = version(source);
+
+		assertThat(version.isMilestoneVersion()).isTrue();
+		assertThat(version.isReleaseCandidateVersion()).isFalse();
+		assertThat(version.isPreview()).isTrue();
+		assertThat(version).hasToString(source);
+	}
+
+	@Test
+	void ordersAdditionalPreviewKeywordsByStability() {
+
+		assertThat(version("1.0.0-dev")).isLessThan(version("1.0.0-nightly"));
+		assertThat(version("1.0.0-nightly")).isLessThan(version("1.0.0-canary"));
+		assertThat(version("1.0.0-dev")).isLessThan(version("1.0.0-alpha"));
+		assertThat(version("1.0.0-alpha")).isLessThan(version("1.0.0-beta"));
+		assertThat(version("1.0.0-beta")).isLessThan(version("1.0.0-rc.1"));
+		assertThat(version("1.0.0-next")).isLessThan(version("1.0.0-rc.1"));
+		assertThat(version("1.0.0-rc.1")).isLessThan(version("1.0.0"));
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@CsvSource({"1.0.0-alpha.1+sha.abc1234, 1.0.0-alpha.1, true",
+			"1.0.0+build.42, 1.0.0, false", "1.0.0-beta.2+20260426, 1.0.0-beta.2, true"})
+	void ignoresBuildMetadataForComparison(String source, String expectedEqual, boolean preview) {
+
+		SemanticArtifactVersion version = version(source);
+		SemanticArtifactVersion equivalent = version(expectedEqual);
+
+		assertThat(version).hasToString(source);
+		assertThat(version.isPreview()).isEqualTo(preview);
+		assertThat(version.compareTo(equivalent)).isZero();
+		assertThat(version).isEqualTo(equivalent);
+		assertThat(version).hasSameHashCodeAs(equivalent);
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@CsvSource({"1.0.0-alpha.0.3, true, false", "1.0.0-rc.1.2, false, true",
+			"1.0.0-alpha.20260426.1, true, false"})
+	void parsesMultiSegmentPreReleaseIdentifiers(String source, boolean milestone, boolean releaseCandidate) {
+
+		SemanticArtifactVersion version = version(source);
+
+		assertThat(version.isMilestoneVersion()).isEqualTo(milestone);
+		assertThat(version.isReleaseCandidateVersion()).isEqualTo(releaseCandidate);
+		assertThat(version.isPreview()).isTrue();
+		assertThat(version).hasToString(source);
+	}
+
+	@Test
+	void ordersMultiSegmentPreReleaseIdentifiers() {
+
+		assertThat(version("1.0.0-alpha.0.3")).isLessThan(version("1.0.0-alpha.1.0"));
+		assertThat(version("1.0.0-rc.1.2")).isLessThan(version("1.0.0-rc.2.0"));
+		assertThat(version("1.0.0-rc.1.2")).isLessThan(version("1.0.0"));
+	}
+
+	@Test
+	void parsesNumericPreReleaseIdentifiers() {
+
+		assertThat(version("1.0.0-0").isPreview()).isTrue();
+		assertThat(version("1.0.0-0").isMilestoneVersion()).isTrue();
+		assertThat(version("1.0.0-1").isPreview()).isTrue();
+		assertThat(version("1.0.0-1").isMilestoneVersion()).isTrue();
+		assertThat(version("1.0.0-0.3.7").isPreview()).isTrue();
+		assertThat(version("1.0.0-0.3.7").isMilestoneVersion()).isTrue();
+	}
+
+	@Test
+	void ordersNumericPreReleaseIdentifiers() {
+
+		assertThat(version("1.0.0-0")).isLessThan(version("1.0.0-1")).isLessThan(version("1.0.0"));
+		assertThat(version("1.0.0-0.3.7")).isLessThan(version("1.0.0-0.3.8")).isLessThan(version("1.0.0"));
+	}
+
+	@ParameterizedTest(name = "{0}")
 	@ValueSource(
 			strings = { "12.1.3.0_special_74723", "9.4-1205-jdbc42", "13.3.1.jre8-preview", "11.1.0-SNAPSHOT.jre8-preview",
 					"1.5.1-native-mt", "0.0.0.1.3.0-HATEOAS-1417-SNAPSHOT.1", "0.1.0.20091028042923", "1.0" })
