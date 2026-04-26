@@ -64,15 +64,10 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId) {
 
-		// GradleDependencyParser encodes plugin IDs as ArtifactId(pluginId, pluginId).
-		// Regular library coordinates have a distinct groupId and artifactId, so we
-		// skip
-		// them to avoid unnecessary 404 round-trips to the Portal.
 		if (!artifactId.groupId().equals(artifactId.artifactId())) {
 			return List.of();
 		}
-		// TODO: parse dates
-		// Convert the plugin ID to its Maven marker artifact coordinate.
+
 		String pluginId = artifactId.groupId();
 		ArtifactId markerArtifact = ArtifactId.of(pluginId, pluginId + ".gradle.plugin");
 

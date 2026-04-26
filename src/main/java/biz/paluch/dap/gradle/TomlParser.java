@@ -184,7 +184,7 @@ class TomlParser extends GradleParserSupport {
 
 	public static void parseEntries(TomlTable table,
 			PropertyResolver propertyResolver, Consumer<TomlDependencyDeclaration> action) {
-		for (TomlKeyValue child : PsiTreeUtil.findChildrenOfType(table, TomlKeyValue.class)) {
+		for (TomlKeyValue child : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
 			TomlDependencyDeclaration declaration = parseTomlEntry(child, propertyResolver);
 			if (declaration.isComplete()) {
 				action.accept(declaration);

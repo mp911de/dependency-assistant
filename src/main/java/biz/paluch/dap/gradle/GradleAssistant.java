@@ -42,7 +42,6 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import icons.GradleIcons;
-import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlElement;
 
 import org.springframework.util.Assert;
@@ -114,15 +113,15 @@ class GradleAssistant implements DependencyAssistant {
 
 		private final Project project;
 
-		private final @Nullable VirtualFile anchor;
+		private final VirtualFile anchor;
 
-		private final @Nullable GradleProjectContext delegate;
+		private final GradleProjectContext delegate;
 
 		private final ProjectId projectId;
 
 		private final DependencyAssistantService service;
 
-		GradleDependencyContext(Project project, @Nullable VirtualFile anchor, @Nullable GradleProjectContext delegate,
+		GradleDependencyContext(Project project, VirtualFile anchor, GradleProjectContext delegate,
 				ProjectId projectId) {
 
 			this.project = project;
@@ -181,7 +180,10 @@ class GradleAssistant implements DependencyAssistant {
 				return new DependencyCollector();
 			}
 
-			return new GradleDependencyCollector(project).collect(psiFile);
+			DependencyCollector collector = new GradleDependencyCollector(project).collect(psiFile);
+			collector.addAllReleaseSources(delegate.getReleaseSources());
+
+			return collector;
 		}
 
 		@Override

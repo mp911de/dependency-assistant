@@ -77,7 +77,7 @@ public class ReleaseResolver {
 			}
 		}
 
-		if (currentVersion != null) {
+		if (!result.isEmpty() && currentVersion != null) {
 			result.add(Release.of(currentVersion));
 		}
 

@@ -128,7 +128,6 @@ class TomlParserTests {
 				.hasVersion("33.4.0-jre");
 	}
 
-
 	@Test
 	@EditorFile(name = "libs.versions.toml", content = """
 			[versions]
@@ -141,12 +140,12 @@ class TomlParserTests {
 			[plugins]
 			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
 			""")
-	void repro(PsiFile buildFile) {
+	void shouldContainOnlyDeclaredDependencies(PsiFile buildFile) {
 
 		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		assertThat(collector.getDeclarations()).hasSize(2);
 		assertThat(collector)
+				.hasNoDependencyUsage("io.lettuce", "io.lettuce")
 				.hasDependencyUsage("io.lettuce", "lettuce-core")
 				.hasVersion("7.0.0.RELEASE");
 	}
