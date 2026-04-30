@@ -16,8 +16,9 @@
 
 package biz.paluch.dap.support;
 
-import java.util.Collection;
+import java.time.ZoneId;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,9 @@ import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.psi.PsiElement;
 import com.intellij.util.ProcessingContext;
+import com.intellij.util.text.DateFormatUtil;
+import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -54,56 +58,6 @@ public class ReleasesSuggestionProvider extends CompletionProvider<CompletionPar
 		this.metadataFunction = metadataFunction;
 	}
 
-	/**
-	 * Return cached release options for the given artifact.
-	 */
-	public static List<ArtifactRelease> findOptions(ArtifactId artifactId, Cache cache) {
-
-		List<Release> versions = cache.getReleases(artifactId, false);
-		List<ArtifactRelease> result = new java.util.ArrayList<>();
-
-		for (Release release : versions) {
-			result.add(new ArtifactRelease(artifactId, release));
-		}
-
-		return result;
-	}
-
-	public static void addSuggestions(Collection<ArtifactRelease> versions, CompletionResultSet result,
-			Function<ArtifactId, String> toString, @Nullable ArtifactVersion currentVersion) {
-
-		double priority = versions.size();
-
-		for (ArtifactRelease option : versions) {
-
-			String typeText = toString.apply(option.artifactId());
-			Release version = option.release();
-
-			LookupElementBuilder element = LookupElementBuilder.create(version.version().toString())
-					.withTypeText(typeText);
-
-			if (version.releaseDate() != null) {
-				element = element.withTailText(" (" + version.releaseDate().toLocalDate() + ")", true);
-			}
-
-			if (currentVersion != null) {
-
-				if (option.isNewer(currentVersion)) {
-					element = element.bold();
-				}
-				if (option.isOlder(currentVersion)) {
-					element = element.withItemTextItalic(true);
-				}
-
-				VersionAge versionAge = VersionAge.fromVersions(currentVersion, option);
-				element = element.withIcon(versionAge.getIcon());
-			}
-
-			// TODO Elements are sometimes not sorted properly
-			result.addElement(PrioritizedLookupElement.withPriority(element, priority--));
-		}
-	}
-
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
 			CompletionResultSet result) {
@@ -112,6 +66,7 @@ public class ReleasesSuggestionProvider extends CompletionProvider<CompletionPar
 		if (position == null) {
 			position = parameters.getPosition();
 		}
+
 		CompletionMetadata metadata = metadataFunction.apply(position);
 		if (metadata == null) {
 			return;
@@ -129,20 +84,88 @@ public class ReleasesSuggestionProvider extends CompletionProvider<CompletionPar
 		// Run all remaining contributors first and pass their results through
 		// unchanged.
 		// Collect the lookup strings they contribute so we can skip our own duplicates.
+		Set<String> alreadyContributed = getAlreadyContributed(parameters, result);
+
+		// Show all cached versions on a second invocation (Ctrl+Space twice)
+		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
+
+		List<ArtifactRelease> unique = releases.stream()
+				.filter(opt -> !alreadyContributed.contains(opt.release().version().toString())).toList();
+
+		ArtifactVersion currentVersion = metadata.currentVersion();
+		double priority = unique.size();
+
+		for (ArtifactRelease option : unique) {
+
+			Release release = option.release();
+			LookupElementBuilder element = LookupElementBuilder.create(release.version().toString());
+
+			if (release.releaseDate() != null) {
+
+				Date date = Date.from(release.releaseDate().toLocalDate().atStartOfDay()
+						.atZone(ZoneId.systemDefault()).toInstant());
+				String pretty = DateFormatUtil.formatPrettyDate(date);
+				element = element.withTailText(" (" + pretty + ")", true);
+			}
+
+			if (currentVersion != null) {
+				element = applyVersion(currentVersion, option.getVersion(), element);
+			}
+
+			element = postProcess(parameters, position, currentVersion, option, versionsResult, element);
+
+			// TODO Elements are sometimes not sorted properly
+			versionsResult.addElement(PrioritizedLookupElement.withPriority(element, priority--));
+		}
+	}
+
+	private Set<String> getAlreadyContributed(CompletionParameters parameters, CompletionResultSet result) {
 		Set<String> alreadyContributed = new HashSet<>();
 		result.runRemainingContributors(parameters, completionResult -> {
 			alreadyContributed.add(completionResult.getLookupElement().getLookupString());
 			result.passResult(completionResult);
 		});
+		return alreadyContributed;
+	}
 
-		// Show all cached versions on a second invocation (Ctrl+Space twice)
-		CompletionResultSet versionsResult = parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")
+	/**
+	 * Return cached release options for the given artifact.
+	 */
+	protected List<ArtifactRelease> findOptions(ArtifactId artifactId, Cache cache) {
+
+		List<Release> versions = cache.getReleases(artifactId, false);
+		List<ArtifactRelease> result = new java.util.ArrayList<>();
+
+		for (Release release : versions) {
+			result.add(new ArtifactRelease(artifactId, release));
+		}
+
+		return result;
+	}
+
+	protected LookupElementBuilder postProcess(CompletionParameters parameters, PsiElement position,
+			@Nullable ArtifactVersion currentVersion, ArtifactRelease option, CompletionResultSet result,
+			LookupElementBuilder element) {
+		return element;
+	}
+
+	public static @NotNull LookupElementBuilder applyVersion(@NonNull ArtifactVersion currentVersion,
+			ArtifactVersion option,
+			LookupElementBuilder element) {
+		if (option.isNewer(currentVersion)) {
+			element = element.bold();
+		}
+		if (option.isOlder(currentVersion)) {
+			element = element.withItemTextItalic(true);
+		}
+
+		VersionAge versionAge = VersionAge.fromVersions(currentVersion, option);
+		return element.withIcon(versionAge.getIcon());
+	}
+
+	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
+		return parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")
 				: result;
-
-		List<ArtifactRelease> unique = releases.stream()
-				.filter(opt -> !alreadyContributed.contains(opt.release().version().toString())).toList();
-
-		addSuggestions(unique, versionsResult, it -> "", metadata.currentVersion());
 	}
 
 	/**

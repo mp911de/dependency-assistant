@@ -24,6 +24,10 @@ dependencies {
 		bundledPlugin("org.intellij.groovy")
 		bundledPlugin("org.jetbrains.kotlin")
 		bundledPlugin("org.toml.lang")
+		bundledPlugin("org.jetbrains.plugins.yaml")
+		bundledPlugin("org.jetbrains.plugins.github")
+		bundledPlugin("Git4Idea")
+		bundledModule("intellij.yaml.backend")
 	}
 	implementation("org.springframework:spring-core:7.0.6")
 	implementation("org.xmlbeam:xmlprojector:1.4.26")

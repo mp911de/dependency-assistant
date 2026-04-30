@@ -32,15 +32,7 @@ import java.util.function.Supplier;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DeclaredDependency;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.DependencyUpdateOption;
-import biz.paluch.dap.artifact.DependencyUpdates;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseResolver;
-import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
@@ -106,13 +98,12 @@ class DependencyCheck {
 
 		return ApplicationManager.getApplication().runReadAction((Computable<DependencyUpdates>) () -> {
 			ProjectState projectState = service.getProjectState(context.getProjectId());
-			return getDependencyUpdates(indicator, () -> {
+			return getDependencyUpdates(indicator, context, () -> {
 				DependencyCollector collector = context.scanDependencies(indicator);
 				projectState.setDependencies(collector);
 				return collector;
 			}, consistency);
 		});
-
 	}
 
 	/**
@@ -140,7 +131,8 @@ class DependencyCheck {
 	 * Runs the full version check for a build file.
 	 */
 	private DependencyUpdates getDependencyUpdates(ProgressIndicator indicator,
-			Supplier<DependencyCollector> dependencyCollector, Consistency consistency) {
+			ProjectDependencyContext context, Supplier<DependencyCollector> dependencyCollector,
+			Consistency consistency) {
 
 		String projectName = project.getName();
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
@@ -148,7 +140,7 @@ class DependencyCheck {
 		DependencyCollector collector = dependencyCollector.get();
 		indicator.setFraction(0.3);
 
-		if (collector.isEmpty()) {
+		if (collector.isEmpty() && collector.getDeclarations().isEmpty()) {
 			return new DependencyUpdates(projectName, List.of(),
 					List.of(MessageBundle.message("action.check.dependencies.empty")));
 		}
@@ -156,26 +148,33 @@ class DependencyCheck {
 		Cache cache = service.getCache();
 
 		ExecutorService executor = AppExecutorUtil.getAppExecutorService();
-		ReleaseResolver resolver = new ReleaseResolver(collector.getReleaseSources(), executor);
+		Collection<ReleaseSource> sources = collector.getReleaseSources();
+		ReleaseResolver resolver = new ReleaseResolver(sources, executor);
 		List<DependencyUpdateOption> items = new ArrayList<>();
 		List<String> errors = new ArrayList<>();
 		List<Future<ResolverResult>> futures = new ArrayList<>();
-		List<Dependency> tasks = new ArrayList<>(collector.getUsages());
+		List<DeclaredDependency> tasks = new ArrayList<>(collector.getUsages());
 
-		for (Dependency task : tasks) {
+		if (collector.isEmpty()) {
+			tasks.addAll(collector.getDeclarations());
+		}
+
+		for (DeclaredDependency task : tasks) {
 			futures.add(executor.submit(() -> {
 				indicator.setText(MessageBundle.message("action.check.dependency", task.getArtifactId()));
 				try {
 					List<Release> releases;
 					if (consistency == Consistency.NO_CACHE) {
-						releases = resolver.getReleases(task.getArtifactId(), task.getCurrentVersion());
-						cache.putVersionOptions(task.getArtifactId(), releases);
+						releases = resolver.getReleases(task.getArtifactId(),
+								task instanceof Dependency d ? d.getCurrentVersion() : null);
+						cache.putVersionOptions(task.getArtifactId(), releases, sources);
 					} else {
 
 						releases = cache.getReleases(task.getArtifactId(), consistency == Consistency.CACHED);
 						if (CollectionUtils.isEmpty(releases)) {
-							releases = resolver.getReleases(task.getArtifactId(), task.getCurrentVersion());
-							cache.putVersionOptions(task.getArtifactId(), releases);
+							releases = resolver.getReleases(task.getArtifactId(),
+									task instanceof Dependency d ? d.getCurrentVersion() : null);
+							cache.putVersionOptions(task.getArtifactId(), releases, sources);
 						}
 					}
 					return new ResolverResult(null, releases);
@@ -186,7 +185,6 @@ class DependencyCheck {
 		}
 
 		double total = futures.size();
-
 		for (int i = 0; i < futures.size(); i++) {
 			indicator.checkCanceled();
 
@@ -208,7 +206,11 @@ class DependencyCheck {
 			double progress = (i + 1) / total;
 			indicator.setFraction(0.5 + (progress / 2));
 
-			items.add(new DependencyUpdateOption(tasks.get(i), res.releases()));
+			if (tasks.get(i) instanceof Dependency d) {
+				items.add(new DependencyUpdateOption(d, res.releases()));
+			} else if (context.resolveDependency(tasks.get(i), res.releases()) instanceof Dependency d) {
+				items.add(new DependencyUpdateOption(d, res.releases()));
+			}
 		}
 
 		cache.recordUpdate();
@@ -226,33 +228,34 @@ class DependencyCheck {
 		List<DependencyUpdateOption> items = new ArrayList<>();
 		List<String> errors = new ArrayList<>();
 		List<Future<ResolverResult>> futures = new ArrayList<>();
-		List<Dependency> tasks = new ArrayList<>();
+		List<DeclaredDependency> tasks = new ArrayList<>();
 
-		Map<ArtifactId, ArtifactRefreshCandidate> consolidsated = new LinkedHashMap<>();
+		Map<ArtifactId, ArtifactRefreshCandidate> consolidated = new LinkedHashMap<>();
 		for (ArtifactRefreshCandidate candidate : candidates) {
-			consolidsated
+			consolidated
 					.computeIfAbsent(candidate.artifactId(), it -> new ArtifactRefreshCandidate(it, new ArrayList<>()))
 					.sources().addAll(candidate.sources());
 		}
 
-		for (ArtifactRefreshCandidate candidate : consolidsated.values()) {
+		for (ArtifactRefreshCandidate candidate : consolidated.values()) {
+
+			DeclaredDependency dependency = new DeclaredDependency(candidate.artifactId());
+			tasks.add(dependency);
+
 			futures.add(executor.submit(() -> {
 				try {
 					indicator.setText(MessageBundle.message("action.check.dependency", candidate.artifactId()));
 					ReleaseResolver resolver = new ReleaseResolver(candidate.sources(), executor);
 					List<Release> releases;
-
-					Dependency dependency = new Dependency(candidate.artifactId(), null);
-					tasks.add(dependency);
 					if (consistency == Consistency.NO_CACHE) {
 						releases = resolver.getReleases(candidate.artifactId(), null);
-						cache.putVersionOptions(candidate.artifactId(), releases);
+						cache.putVersionOptions(candidate.artifactId(), releases, candidate.sources());
 					} else {
 
 						releases = cache.getReleases(candidate.artifactId(), consistency == Consistency.CACHED);
 						if (CollectionUtils.isEmpty(releases)) {
 							releases = resolver.getReleases(candidate.artifactId(), null);
-							cache.putVersionOptions(candidate.artifactId(), releases);
+							cache.putVersionOptions(candidate.artifactId(), releases, candidate.sources());
 						}
 					}
 					return new ResolverResult(null, releases);
@@ -284,7 +287,8 @@ class DependencyCheck {
 			double progress = (i + 1) / total;
 			indicator.setFraction(progress);
 
-			items.add(new DependencyUpdateOption(tasks.get(i), res.releases()));
+			items.add(new DependencyUpdateOption(Dependency.from(tasks.get(i), ArtifactVersion.of("1.0")),
+					res.releases()));
 		}
 
 		cache.recordUpdate();

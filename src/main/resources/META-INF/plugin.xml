@@ -52,6 +52,11 @@
 	<depends optional="true" config-file="gradle.xml">
 		org.jetbrains.plugins.gradle
 	</depends>
+	<depends optional="true" config-file="yaml.xml">
+		org.jetbrains.plugins.yaml
+	</depends>
+	<depends optional="true" config-file="github.xml">org.jetbrains.plugins.github</depends>
+	<depends optional="true" config-file="git.xml">Git4Idea</depends>
 
 	<resource-bundle>messages.MessageBundle</resource-bundle>
 

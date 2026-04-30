@@ -110,10 +110,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		if (PomUtil.findPropertyTag(element) instanceof XmlTag tag && MavenUtils.isVersionElement(tag)) {
-			return resolveArtifactDeclaration(tag);
-		}
-
 		if (PomUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
 			return resolveArtifactDeclaration(versionTag);
 		}

@@ -134,6 +134,18 @@ public class CachedArtifact {
 	}
 
 	/**
+	 * Replace the cached releases of this entry with already-converted entries,
+	 * preserving any source-specific metadata such as the commit SHA stored by the
+	 * GitHub release source.
+	 *
+	 * @param releases the cached release entries to store.
+	 */
+	public void replaceCachedReleases(List<CachedRelease> releases) {
+		this.releases.clear();
+		this.releases.addAll(releases);
+	}
+
+	/**
 	 * Return the artifact coordinates represented by this cache entry.
 	 *
 	 * @return the artifact identifier.

@@ -18,12 +18,16 @@ package biz.paluch.dap;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.DeclaredDependency;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import org.jspecify.annotations.Nullable;
 
 /**
  * File-scoped operational handle for a build-tool integration.
@@ -62,6 +66,18 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	DependencyCollector scanDependencies(ProgressIndicator indicator);
 
 	/**
+	 * Resolve the given declared dependency to a concrete dependency by providing
+	 * the current list of releases.
+	 * @param declaredDependency the declared dependency to resolve.
+	 * @param releases current list of releases.
+	 * @return the resolved dependency or {@literal null} if the dependency could
+	 * not be resolved.
+	 */
+	default @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
+		return null;
+	}
+
+	/**
 	 * Return whether the given element represents an editable dependency version.
 	 * @param element the PSI element to inspect.
 	 */
@@ -80,6 +96,5 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * @param updates the updates to apply.
 	 */
 	void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates);
-
 
 }

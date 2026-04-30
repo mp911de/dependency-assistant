@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Common contract for semantic and release-train artifact versions.
+ * <p>{@link Object#toString()} returns the version string.
  *
  * @author Mark Paluch
  */
@@ -39,13 +40,17 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 
 	/**
 	 * Parse the given version string.
+	 *
 	 * @param version the version string to parse.
 	 * @return the parsed artifact version.
 	 * @throws IllegalArgumentException if the string cannot be parsed.
 	 */
 	static ArtifactVersion of(String version) {
+		if (version.length() > 1 && version.charAt(0) == 'v' && Character.isDigit(version.charAt(1))) {
+			return new PrefixedArtifactVersion("v", of(version.substring(1)));
+		}
 		return SemanticArtifactVersion.isVersion(version) ? SemanticArtifactVersion.of(version)
-				: biz.paluch.dap.artifact.ReleaseTrainArtifactVersion.of(version);
+				: ReleaseTrainArtifactVersion.of(version);
 	}
 
 	/**
@@ -139,7 +144,25 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	 * Return whether the given version can be compared with this one.
 	 */
 	default boolean canCompare(ArtifactVersion version) {
-		return getClass().equals(version.getClass());
+		ArtifactVersion self = isWrapped() ? unwrap() : this;
+		ArtifactVersion other = version.isWrapped() ? version.unwrap() : version;
+		return self.getClass().equals(other.getClass());
+	}
+
+	/**
+	 * Return whether this version is wrapped.
+	 * @return {@literal true} if this version carries a prefix; {@literal false}
+	 * otherwise.
+	 */
+	default boolean isWrapped() {
+		return false;
+	}
+
+	/**
+	 * Return the inner version without the prefix.
+	 */
+	default ArtifactVersion unwrap() {
+		return this;
 	}
 
 	@Override

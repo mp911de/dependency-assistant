@@ -97,7 +97,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		String path = artifactId.groupId().replace(".", "/") + "/" + artifactId.artifactId() + "/";
 		String metadataPath = path + "maven-metadata.xml";
 
-		Map<String, LocalDateTime> releaseDates = new HashMap<>();
 		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
 
 		String baseUrl = repository.url();
@@ -113,7 +112,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			return List.of();
 		}
 
-		releaseDates.putAll(parseDirectoryListingDates(directoryListing));
+		Map<String, LocalDateTime> releaseDates = parseDirectoryListingDates(directoryListing);
 		versions.addAll(parseAllVersionsFromMetadata(xml));
 
 		List<Release> result = new ArrayList<>();

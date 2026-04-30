@@ -350,6 +350,9 @@ class SemanticArtifactVersion implements ArtifactVersion {
 
 	@Override
 	public int compareTo(ArtifactVersion that) {
+		if (that.isWrapped()) {
+			return compareTo(that.unwrap());
+		}
 		return that instanceof SemanticArtifactVersion sav ? compareTo(sav) : 1;
 	}
 

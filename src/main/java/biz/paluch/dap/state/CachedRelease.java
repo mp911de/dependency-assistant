@@ -16,8 +16,10 @@
 
 package biz.paluch.dap.state;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
@@ -42,6 +44,9 @@ public class CachedRelease {
 	@Attribute
 	private @Nullable String date;
 
+	@Attribute
+	private @Nullable String sha;
+
 	private volatile @Nullable Release release;
 
 	/**
@@ -62,16 +67,57 @@ public class CachedRelease {
 	}
 
 	/**
+	 * Create a release entry with the given serialized values including a commit
+	 * SHA.
+	 *
+	 * @param version the release version.
+	 * @param date the optional release date in ISO-8601 local-date form.
+	 * @param sha the full 40-character SHA-1 commit hash, or {@code null}.
+	 */
+	public CachedRelease(String version, @Nullable String date, @Nullable String sha) {
+		this.version = version;
+		this.date = date;
+		this.sha = sha;
+	}
+
+	/**
 	 * Create a cached representation of the given release.
 	 *
 	 * @param release the domain release to convert.
 	 * @return the corresponding cached release representation.
 	 */
 	public static CachedRelease from(Release release) {
-		if (release.releaseDate() != null) {
-			return new CachedRelease(release.version().toString(), release.releaseDate().toLocalDate().toString());
+		return from(release.version(), release.releaseDate());
+	}
+
+	/**
+	 * Create a cached representation of the given release.
+	 *
+	 * @param version
+	 * @param releaseDate
+	 * @return the corresponding cached release representation.
+	 */
+	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate) {
+		if (releaseDate != null) {
+			return new CachedRelease(version.toString(), releaseDate.toLocalDate().toString());
 		}
-		return new CachedRelease(release.version().toString(), null);
+		return new CachedRelease(version.toString(), null);
+	}
+
+	/**
+	 * Create a cached release representation.
+	 *
+	 * @param version
+	 * @param releaseDate
+	 * @param sha
+	 * @return the corresponding cached release representation.
+	 */
+	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate,
+			@Nullable String sha) {
+		if (releaseDate != null) {
+			return new CachedRelease(version.toString(), releaseDate.toLocalDate().toString(), sha);
+		}
+		return new CachedRelease(version.toString(), null, sha);
 	}
 
 	/**
@@ -111,6 +157,16 @@ public class CachedRelease {
 		return date;
 	}
 
+	/**
+	 * Return the full SHA-1 commit hash, or {@code null} if not stored.
+	 *
+	 * @return the commit SHA-1, or {@code null}.
+	 */
+	@Attribute
+	public @Nullable String sha() {
+		return sha;
+	}
+
 	@Override
 	public boolean equals(Object obj) {
 		if (obj == this) {
@@ -119,18 +175,19 @@ public class CachedRelease {
 		if (obj == null || obj.getClass() != this.getClass()) {
 			return false;
 		}
-		var that = (CachedRelease) obj;
-		return Objects.equals(this.version, that.version) && Objects.equals(this.date, that.date);
+		CachedRelease that = (CachedRelease) obj;
+		return Objects.equals(this.version, that.version) && Objects.equals(this.date, that.date)
+				&& Objects.equals(this.sha, that.sha);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(version, date);
+		return Objects.hash(version, date, sha);
 	}
 
 	@Override
 	public String toString() {
-		return "Release[" + "version=" + version + ", " + "date=" + date + ']';
+		return "Release[" + "version=" + version + ", " + "date=" + date + ", sha=" + sha + ']';
 	}
 
 }

@@ -159,7 +159,6 @@ public abstract class VersionUpgradeLookupSupport {
 	 * locations, incomplete PSI, unavailable project state, and unresolved property
 	 * or catalog indirection should result in
 	 * {@link ArtifactReference#unresolved()} rather than an exception.
-	 * <p>This method must be free of side-effects.
 	 * @param element the PSI element under inspection.
 	 * @return a resolved artifact reference, or
 	 * {@link ArtifactReference#unresolved()}.

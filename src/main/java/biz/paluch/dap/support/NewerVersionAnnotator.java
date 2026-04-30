@@ -88,7 +88,12 @@ public class NewerVersionAnnotator implements Annotator {
 
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
 				element.getContainingFile());
-		return context != null ? context.getLookup(element) : null;
+
+		if (context == null || !context.isVersionElement(element) || !context.isAvailable()) {
+			return null;
+		}
+
+		return context.getLookup(element);
 	}
 
 	/**

@@ -173,7 +173,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return List.of();
+			return projectContext.getReleaseSources();
 		}
 
 		@Override
@@ -208,7 +208,11 @@ class MavenAssistant implements DependencyAssistant {
 		private DependencyCollector collect(PsiFile file, MavenProject currentProject) {
 
 			Map<String, String> allProperties = new MavenProperties(project, manager).getAllProperties(currentProject);
-			return new MavenDependencyCollector(service.getCache(), allProperties).collect(file);
+			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(service.getCache(),
+					allProperties);
+			DependencyCollector collector = dependencyCollector.collect(file);
+			collector.addAllReleaseSources(getReleaseSources());
+			return collector;
 		}
 
 	}

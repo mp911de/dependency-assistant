@@ -18,6 +18,8 @@ package biz.paluch.dap.artifact;
 
 import java.util.Objects;
 
+import org.springframework.util.Assert;
+
 /**
  * Source from which a dependency version is obtained in a build file.
  *
@@ -174,6 +176,7 @@ public abstract class VersionSource {
 		 * @param version the literal version string.
 		 */
 		public DeclaredVersion(String version) {
+			Assert.hasText(version, "Version must not be null or empty!");
 			this.version = version;
 		}
 

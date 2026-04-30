@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -74,7 +75,6 @@ public class DependencyDocumentationProvider
 		}
 
 		Cache cache = lookup.getCache();
-
 		ArtifactDeclaration declaration = artifactReference.getDeclaration();
 		ArtifactVersion currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
 		if (lookup.hasCachedState()
@@ -88,11 +88,11 @@ public class DependencyDocumentationProvider
 			}
 
 			return new PropertyDocumentationTarget(target, cache, currentVersion,
-					element.getText(), property);
+					element.getText(), property, context.getInterfaceAssistant());
 		}
 
 		return new DependencyVersionTarget(target, cache, artifactReference.getArtifactId(),
-				currentVersion, element.getText());
+				currentVersion, element.getText(), context.getInterfaceAssistant());
 	}
 
 	private abstract static class DocumentationTargetSupport implements DocumentationTarget {
@@ -153,10 +153,13 @@ public class DependencyDocumentationProvider
 
 		private final VersionProperty property;
 
+		private final InterfaceAssistant interfaceAssistant;
+
 		public PropertyDocumentationTarget(PsiElement target, Cache cache, @Nullable ArtifactVersion currentVersion,
-				@Nullable String currentValue, VersionProperty property) {
+				@Nullable String currentValue, VersionProperty property, InterfaceAssistant interfaceAssistant) {
 			super(target, cache, currentVersion, currentValue);
 			this.property = property;
+			this.interfaceAssistant = interfaceAssistant;
 		}
 
 		@Override
@@ -166,7 +169,8 @@ public class DependencyDocumentationProvider
 			return () -> {
 				PsiElement element = pointer.getElement();
 				return element != null
-						? new PropertyDocumentationTarget(element, cache, currentVersion, currentValue, property)
+						? new PropertyDocumentationTarget(element, cache, currentVersion, currentValue, property,
+								interfaceAssistant)
 						: null;
 			};
 		}
@@ -175,7 +179,8 @@ public class DependencyDocumentationProvider
 		 * Builds the HTML body.
 		 */
 		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
-			return DependencyDocumentationProvider.buildHtmlBody(cache, property, currentVersion, iconImages);
+			return DependencyDocumentationProvider.buildHtmlBody(interfaceAssistant, cache, property, currentVersion,
+					iconImages);
 		}
 
 	}
@@ -187,11 +192,14 @@ public class DependencyDocumentationProvider
 
 		private final ArtifactId artifactId;
 
+		private final InterfaceAssistant interfaceAssistant;
+
 		public DependencyVersionTarget(PsiElement target, Cache cache, ArtifactId artifactId,
-				@Nullable ArtifactVersion currentVersion,
-				@Nullable String currentValue) {
+				@Nullable ArtifactVersion currentVersion, @Nullable String currentValue,
+				InterfaceAssistant interfaceAssistant) {
 			super(target, cache, currentVersion, currentValue);
 			this.artifactId = artifactId;
+			this.interfaceAssistant = interfaceAssistant;
 		}
 
 		@Override
@@ -201,7 +209,8 @@ public class DependencyDocumentationProvider
 			return () -> {
 				PsiElement element = pointer.getElement();
 				return element != null
-						? new DependencyVersionTarget(element, cache, artifactId, currentVersion, currentValue)
+						? new DependencyVersionTarget(element, cache, artifactId, currentVersion, currentValue,
+								interfaceAssistant)
 						: null;
 			};
 		}
@@ -210,7 +219,8 @@ public class DependencyDocumentationProvider
 		 * Builds the HTML body.
 		 */
 		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
-			return DependencyDocumentationProvider.buildHtmlBody(cache, artifactId, currentVersion, iconImages);
+			return DependencyDocumentationProvider.buildHtmlBody(interfaceAssistant, cache, artifactId, currentVersion,
+					iconImages);
 		}
 
 	}
@@ -218,7 +228,8 @@ public class DependencyDocumentationProvider
 	/**
 	 * Builds the HTML body.
 	 */
-	private static @Nullable String buildHtmlBody(Cache cache, VersionProperty property,
+	private static @Nullable String buildHtmlBody(InterfaceAssistant interfaceAssistant, Cache cache,
+			VersionProperty property,
 			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages) {
 
 		if (property.artifacts().isEmpty()) {
@@ -235,7 +246,7 @@ public class DependencyDocumentationProvider
 
 		if (artifactVersion != null) {
 			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.current-value"),
-					StringUtil.escapeXmlEntities(artifactVersion.toString())));
+					StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(artifactVersion))));
 		}
 
 		for (CachedArtifact artifact : property.artifacts()) {
@@ -295,7 +306,8 @@ public class DependencyDocumentationProvider
 	/**
 	 * Builds the HTML body.
 	 */
-	protected static String buildHtmlBody(Cache cache, ArtifactId artifactId, @Nullable ArtifactVersion artifactVersion,
+	protected static String buildHtmlBody(InterfaceAssistant interfaceAssistant, Cache cache, ArtifactId artifactId,
+			@Nullable ArtifactVersion artifactVersion,
 			@Nullable Map<String, Image> iconImages) {
 
 		StringBuilder sb = new StringBuilder();
@@ -308,7 +320,7 @@ public class DependencyDocumentationProvider
 
 		if (artifactVersion != null) {
 			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.current-value"),
-					StringUtil.escapeXmlEntities(artifactVersion.toString())));
+					StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(artifactVersion))));
 		}
 
 		List<Release> versions = cache.getReleases(artifactId, false);

@@ -89,13 +89,70 @@ class SemanticArtifactVersionParseUnitTests {
 
 	@ParameterizedTest(name = "{0}")
 	@CsvSource({"v1.2.3, true, false", "v1.0.0-beta.1, false, true", "v2026.4.0-rc.1, false, true"})
-	void parsesVersionsWithVPrefix(String source, boolean release, boolean preview) {
+	void semanticArtifactVersionOfNormalizesVPrefixInternally(String source, boolean release, boolean preview) {
 
 		SemanticArtifactVersion version = version(source);
 
 		assertThat(version).hasToString(source);
 		assertThat(version.isReleaseVersion()).isEqualTo(release);
 		assertThat(version.isPreview()).isEqualTo(preview);
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@CsvSource({"v1.2.3, 1.2.3, true, false", "v1.0.0-beta.1, 1.0.0-beta.1, false, true",
+			"v2026.4.0-rc.1, 2026.4.0-rc.1, false, true"})
+	void artifactVersionOfWrapsVPrefixedVersions(String source, String inner, boolean release, boolean preview) {
+
+		ArtifactVersion version = ArtifactVersion.of(source);
+
+		assertThat(version.isWrapped()).isTrue();
+		assertThat(version).hasToString(source);
+		assertThat(version.unwrap()).hasToString(inner);
+		assertThat(version.isReleaseVersion()).isEqualTo(release);
+		assertThat(version.isPreview()).isEqualTo(preview);
+	}
+
+	@Test
+	void artifactVersionOfDoesNotWrapNonPrefixedVersions() {
+
+		ArtifactVersion version = ArtifactVersion.of("1.2.3");
+
+		assertThat(version.isWrapped()).isFalse();
+		assertThat(version.unwrap()).isSameAs(version);
+	}
+
+	@Test
+	void prefixedVersionComparesWithUnprefixedVersion() {
+
+		ArtifactVersion prefixed = ArtifactVersion.of("v1.2.3");
+		ArtifactVersion plain = ArtifactVersion.of("1.2.3");
+		ArtifactVersion newer = ArtifactVersion.of("2.0.0");
+
+		assertThat(prefixed.compareTo(plain)).isZero();
+		assertThat(plain.compareTo(prefixed)).isZero();
+		assertThat(prefixed.compareTo(newer)).isNegative();
+		assertThat(newer.compareTo(prefixed)).isPositive();
+	}
+
+	@Test
+	void twoPrefixedVersionsCompareByNumericValue() {
+
+		ArtifactVersion v1 = ArtifactVersion.of("v1.2.3");
+		ArtifactVersion v2 = ArtifactVersion.of("v2.0.0");
+
+		assertThat(v1.compareTo(v2)).isNegative();
+		assertThat(v2.compareTo(v1)).isPositive();
+		assertThat(v1.compareTo(ArtifactVersion.of("v1.2.3"))).isZero();
+	}
+
+	@Test
+	void canCompareReturnsTrueForPrefixedAndUnprefixedVersionsOfSameType() {
+
+		ArtifactVersion prefixed = ArtifactVersion.of("v1.2.3");
+		ArtifactVersion plain = ArtifactVersion.of("1.2.3");
+
+		assertThat(prefixed.canCompare(plain)).isTrue();
+		assertThat(plain.canCompare(prefixed)).isTrue();
 	}
 
 	@ParameterizedTest(name = "{0}")

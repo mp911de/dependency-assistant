@@ -175,6 +175,9 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 
 	@Override
 	public int compareTo(ArtifactVersion that) {
+		if (that.isWrapped()) {
+			return compareTo(that.getVersion());
+		}
 		if (that instanceof ReleaseTrainArtifactVersion other) {
 			int trainCompare = trainName.compareToIgnoreCase(other.trainName);
 			return trainCompare != 0 ? trainCompare : suffix.compareTo(other.suffix);

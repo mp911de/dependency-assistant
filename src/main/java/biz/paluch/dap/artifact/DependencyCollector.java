@@ -59,6 +59,14 @@ public class DependencyCollector {
 	}
 
 	/**
+	 * Add a release source associated with the project's remote repositories.
+	 * @param releaseSource the source to add.
+	 */
+	public void addAllReleaseSources(ReleaseSource releaseSource) {
+		this.releaseSources.add(releaseSource);
+	}
+
+	/**
 	 * Add release sources associated with the project's remote repositories.
 	 * @param releaseSources the sources to add.
 	 */
@@ -143,6 +151,12 @@ public class DependencyCollector {
 	 */
 	public @Nullable Dependency getUsage(String groupId, String artifactId) {
 		return getUsage(ArtifactId.of(groupId, artifactId));
+	}
+
+	@Override
+	public String toString() {
+		return "DependencyCollector[Declarations: %d, Usages: %d, Properties: %d, Release Sources: %d]"
+				.formatted(declarations.size(), usages.size(), properties.size(), releaseSources.size());
 	}
 
 }

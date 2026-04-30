@@ -29,6 +29,7 @@ import java.util.function.Predicate;
 import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSource;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -143,6 +144,24 @@ public class Cache {
 	 * @param releases the releases to cache.
 	 */
 	public void putVersionOptions(ArtifactId artifactId, List<Release> releases) {
+		putVersionOptions(artifactId, releases, List.of());
+	}
+
+	/**
+	 * Replace the cached releases for the given artifact, allowing source-specific
+	 * conversion that preserves side-band metadata such as the GitHub commit SHA.
+	 *
+	 * <p>For each release the registered {@link ReleaseSource} converters are
+	 * applied in the iteration order of {@code sources}. The first non-default
+	 * conversion (i.e., one that produced a {@link CachedRelease} carrying more
+	 * than version and date) is kept; otherwise the platform default form
+	 * ({@link CachedRelease#from(Release)}) is stored.
+	 *
+	 * @param artifactId the artifact whose releases should be stored.
+	 * @param releases the releases to cache.
+	 * @param sources the release sources whose converters should be consulted.
+	 */
+	public void putVersionOptions(ArtifactId artifactId, List<Release> releases, Collection<ReleaseSource> sources) {
 
 		CachedArtifact artifactToUse;
 		synchronized (artifacts) {
@@ -159,7 +178,23 @@ public class Cache {
 			}
 		}
 
-		artifactToUse.setVersionOptions(releases);
+		List<CachedRelease> converted = new ArrayList<>(releases.size());
+		for (Release release : releases) {
+			converted.add(convert(release, sources));
+		}
+		artifactToUse.replaceCachedReleases(converted);
+	}
+
+	private static CachedRelease convert(Release release, Collection<ReleaseSource> sources) {
+
+		CachedRelease fallback = CachedRelease.from(release);
+		for (ReleaseSource source : sources) {
+			CachedRelease candidate = source.toCachedRelease(release);
+			if (candidate != null && candidate.sha() != null) {
+				return candidate;
+			}
+		}
+		return fallback;
 	}
 
 	/**
@@ -233,6 +268,27 @@ public class Cache {
 	 */
 	public void doWithProperties(Consumer<VersionProperty> propertyConsumer) {
 		getProjects().forEach(project -> project.getProperties().forEach(propertyConsumer));
+	}
+
+	/**
+	 * Return the raw {@link CachedRelease} entries for the given artifact.
+	 * <p>Unlike {@link #getReleases(ArtifactId, boolean)}, this method returns the
+	 * serialized form including optional extended attributes such as the commit SHA
+	 * stored by the GitHub integration.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @return the cached release entries, or an empty list if no entry is present.
+	 */
+	public List<CachedRelease> getCachedReleases(ArtifactId artifactId) {
+
+		synchronized (artifacts) {
+			for (CachedArtifact artifact : artifacts) {
+				if (artifact.matches(artifactId)) {
+					return List.copyOf(artifact.getReleases());
+				}
+			}
+		}
+		return List.of();
 	}
 
 	/**

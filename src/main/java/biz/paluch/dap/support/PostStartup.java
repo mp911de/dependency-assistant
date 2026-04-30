@@ -51,7 +51,6 @@ public class PostStartup implements ProjectActivity {
 						public void run(ProgressIndicator indicator) {
 							postStartup(indicator, project);
 						}
-
 					});
 		});
 

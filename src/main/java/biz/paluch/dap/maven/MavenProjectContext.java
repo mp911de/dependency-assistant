@@ -99,11 +99,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 	MavenProject getMavenProject();
 
 	/**
-	 * Execute the given action with the Maven project.
-	 */
-	<T> T doWithMaven(Function<MavenProject, T> action);
-
-	/**
 	 * Maven project context.
 	 */
 	class MavenContextImpl implements MavenProjectContext {
@@ -154,11 +149,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return MavenUtils.getReleaseSources(remoteRepositories);
 		}
 
-		@Override
-		public <T> T doWithMaven(Function<MavenProject, T> action) {
-			return action.apply(mavenProject);
-		}
-
 	}
 
 	/**
@@ -190,11 +180,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			throw new IllegalStateException("Maven Context not available");
-		}
-
-		@Override
-		public <T> T doWithMaven(Function<MavenProject, T> action) {
 			throw new IllegalStateException("Maven Context not available");
 		}
 

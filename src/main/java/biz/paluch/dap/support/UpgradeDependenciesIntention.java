@@ -29,7 +29,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -64,19 +63,7 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 		PsiFile file = element.getContainingFile();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
 				file);
-		if (context == null) {
-			return false;
-		}
-
-		if (element instanceof LeafPsiElement leaf) {
-			element = leaf.getParent();
-		}
-
-		if (element == null) {
-			return false;
-		}
-
-		return context.isVersionElement(element);
+		return context != null && context.isAvailable();
 	}
 
 	@Override

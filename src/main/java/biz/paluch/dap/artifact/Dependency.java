@@ -42,6 +42,21 @@ public class Dependency extends DeclaredDependency implements HasArtifactId {
 	}
 
 	/**
+	 * Create a dependency usage with its effective current version from a declared
+	 * dependency.
+	 * @param declaredDependency the source of the dependency declaration.
+	 * @param version the effective version of the dependency.
+	 * @return the new dependency.
+	 */
+	public static Dependency from(DeclaredDependency declaredDependency, ArtifactVersion version) {
+
+		Dependency dependency = new Dependency(declaredDependency.getArtifactId(), version);
+		declaredDependency.getDeclarationSources().forEach(dependency::addDeclarationSource);
+		declaredDependency.getVersionSources().forEach(dependency::addVersionSource);
+		return dependency;
+	}
+
+	/**
 	 * Return the effective version of this dependency at its declaration site.
 	 *
 	 * @return the current version; guaranteed to be not {@literal null}.

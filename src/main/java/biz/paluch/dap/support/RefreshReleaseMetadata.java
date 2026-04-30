@@ -102,7 +102,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 
 	@Override
 	public void onThrowable(Throwable error) {
-
+		error.printStackTrace();
 		// TODO: use balloon notifications
 		Messages.showMessageDialog(project,
 				MessageBundle.message("action.refresh-releases.task.error", error.getMessage()),

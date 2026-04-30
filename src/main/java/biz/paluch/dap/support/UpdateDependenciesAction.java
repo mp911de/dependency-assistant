@@ -26,6 +26,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.psi.PsiFile;
@@ -35,7 +36,7 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-public class UpdateDependenciesAction extends AnAction {
+public class UpdateDependenciesAction extends AnAction implements DumbAware {
 
 	@Override
 	public ActionUpdateThread getActionUpdateThread() {

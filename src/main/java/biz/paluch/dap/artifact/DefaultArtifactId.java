@@ -18,10 +18,11 @@ package biz.paluch.dap.artifact;
 
 import biz.paluch.dap.util.StringUtils;
 
+
 /**
  * Maven artifact coordinates (groupId + artifactId).
  */
-record DefaultArtifactId(String groupId, String artifactId) implements ArtifactId, Comparable<ArtifactId> {
+record DefaultArtifactId(String groupId, String artifactId) implements ArtifactId {
 
 	/**
 	 * Create coordinates from another artifact id.
@@ -35,11 +36,6 @@ record DefaultArtifactId(String groupId, String artifactId) implements ArtifactI
 	 */
 	public boolean hasArtifactId() {
 		return StringUtils.hasText(artifactId);
-	}
-
-	@Override
-	public int compareTo(ArtifactId o) {
-		return ArtifactId.COMPARATOR.compare(this, o);
 	}
 
 	@Override

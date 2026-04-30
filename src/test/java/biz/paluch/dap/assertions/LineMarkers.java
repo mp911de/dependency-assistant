@@ -64,12 +64,20 @@ public class LineMarkers implements AssertProvider<GutterMarksAssert> {
 		}
 
 		List<GutterMark> gutterMarks = new ArrayList<>();
+		java.util.Set<com.intellij.psi.PsiElement> seenAnchors = new java.util.HashSet<>();
 		NewerVersionLineMarkerProvider provider = new NewerVersionLineMarkerProvider();
 
 		SyntaxTraverser.psiTraverser(file).forEach(element -> {
 
 			LineMarkerInfo<?> lineMarkerInfo = provider.getLineMarkerInfo(element);
 			if (lineMarkerInfo == null) {
+				return;
+			}
+
+			// Mirror IntelliJ's deduplication: the IDE displays one gutter per
+			// anchor element. Skip duplicates from iterating both parent and
+			// leaf elements that resolve to the same anchor.
+			if (!seenAnchors.add(lineMarkerInfo.getElement())) {
 				return;
 			}
 
