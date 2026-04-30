@@ -23,110 +23,18 @@ import java.util.Objects;
  * as {@code v}.
  *
  * <p>The prefix is preserved in {@link #toString()} so that the original
- * version string round-trips correctly (e.g. {@code v1.2.3}). All ordering and
- * compatibility methods delegate to the wrapped version after stripping any
- * prefix from the operand as well, so prefixed and unprefixed versions of the
- * same release compare as equal.
- *
- * <p>Instances are created by {@link ArtifactVersion#of(String)} and
- * {@link ArtifactVersion#from(String)} when the input carries a known prefix.
- * Callers that need the bare version for cache-key lookups should call
- * {@link #unwrap()}.
- *
- * <p>Note: {@link #compareTo} is not consistent with {@link #equals}. Two
- * instances representing the same numeric version but differing only by prefix
- * (e.g. {@code v1.2.3} vs {@code 1.2.3}) compare as equal (return 0) but are
- * not {@code equals}. This is the same design choice made by
- * {@link java.math.BigDecimal}.
+ * version string round-trips correctly (e.g. {@code v1.2.3}).
  *
  * @author Mark Paluch
  * @see ArtifactVersion#isWrapped()
- * @see ArtifactVersion#unwrap()
  */
-class PrefixedArtifactVersion implements ArtifactVersion {
+class PrefixedArtifactVersion extends ArtifactVersionWrapper implements ArtifactVersion {
 
 	private final String prefix;
 
-	private final ArtifactVersion delegate;
-
 	PrefixedArtifactVersion(String prefix, ArtifactVersion delegate) {
+		super(delegate);
 		this.prefix = prefix;
-		this.delegate = delegate;
-	}
-
-	@Override
-	public ArtifactVersion getVersion() {
-		return delegate;
-	}
-
-	@Override
-	public boolean isWrapped() {
-		return true;
-	}
-
-	@Override
-	public ArtifactVersion unwrap() {
-		return delegate;
-	}
-
-	@Override
-	public boolean isNewer(ArtifactVersion other) {
-		return delegate.isNewer(other.getVersion());
-	}
-
-	@Override
-	public boolean isNewerMinor(ArtifactVersion other) {
-		return delegate.isNewerMinor(other.getVersion());
-	}
-
-	@Override
-	public boolean isOlder(ArtifactVersion other) {
-		return delegate.isOlder(other.getVersion());
-	}
-
-	@Override
-	public boolean hasSameMajorMinor(ArtifactVersion other) {
-		return delegate.hasSameMajorMinor(other.getVersion());
-	}
-
-	@Override
-	public boolean hasSameMajor(ArtifactVersion other) {
-		return delegate.hasSameMajor(other.getVersion());
-	}
-
-	@Override
-	public boolean isSnapshotVersion() {
-		return delegate.isSnapshotVersion();
-	}
-
-	@Override
-	public boolean isMilestoneVersion() {
-		return delegate.isMilestoneVersion();
-	}
-
-	@Override
-	public boolean isReleaseCandidateVersion() {
-		return delegate.isReleaseCandidateVersion();
-	}
-
-	@Override
-	public boolean isPreview() {
-		return delegate.isPreview();
-	}
-
-	@Override
-	public boolean isReleaseVersion() {
-		return delegate.isReleaseVersion();
-	}
-
-	@Override
-	public boolean isBugFixVersion() {
-		return delegate.isBugFixVersion();
-	}
-
-	@Override
-	public int compareTo(ArtifactVersion other) {
-		return delegate.compareTo(other.getVersion());
 	}
 
 	@Override
@@ -137,17 +45,17 @@ class PrefixedArtifactVersion implements ArtifactVersion {
 		if (!(obj instanceof PrefixedArtifactVersion other)) {
 			return false;
 		}
-		return prefix.equals(other.prefix) && delegate.equals(other.delegate);
+		return prefix.equals(other.prefix) && getVersion().equals(other.getVersion());
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(prefix, delegate);
+		return Objects.hash(prefix, getVersion());
 	}
 
 	@Override
 	public String toString() {
-		return prefix + delegate;
+		return prefix + getVersion();
 	}
 
 }

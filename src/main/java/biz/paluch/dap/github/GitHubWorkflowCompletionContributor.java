@@ -16,15 +16,12 @@
 
 package biz.paluch.dap.github;
 
-import java.util.List;
-
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.github.WorkflowUsesReference.VersionText;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ReleasesSuggestionProvider;
 import biz.paluch.dap.support.ReleasesSuggestionProvider.CompletionMetadata;
@@ -95,17 +92,12 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	}) {
 
 		@Override
-		protected List<ArtifactRelease> findOptions(ArtifactId artifactId, Cache cache) {
-			return GitVersionResolver.getArtifactReleases(artifactId, cache);
-		}
-
-		@Override
 		protected LookupElementBuilder postProcess(CompletionParameters parameters, PsiElement position,
 				@Nullable ArtifactVersion currentVersion, ArtifactRelease option, CompletionResultSet result,
 				LookupElementBuilder element) {
 
 			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(position);
-			if (scalar == null) {
+			if (scalar == null || !(option.getVersion() instanceof GitVersion version)) {
 				return element;
 			}
 
@@ -115,7 +107,6 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				return element;
 			}
 
-			GitVersion version = (GitVersion) option.getVersion();
 			if (StringUtils.hasText(version.getSha())) {
 				element = element.withTypeText(version.getSha().substring(0, 8), Vcs.CommitNode, false);
 			}

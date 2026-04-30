@@ -184,7 +184,7 @@ public abstract class VersionUpgradeLookupSupport {
 			return AvailableUpgrades.none();
 		}
 
-		List<Release> options = cache.getReleases(declaration.getArtifactId(), false);
+		List<Release> options = cache.getReleases(declaration.getArtifactId());
 		if (options.isEmpty()) {
 			return AvailableUpgrades.none();
 		}

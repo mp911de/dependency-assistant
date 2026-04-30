@@ -255,7 +255,7 @@ public class DependencyDocumentationProvider
 			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.controls"),
 					artifactId));
 
-			java.util.List<Release> versions = cache.getReleases(artifactId, false);
+			java.util.List<Release> versions = cache.getReleases(artifactId);
 			if (versions.isEmpty()) {
 				continue;
 			}
@@ -323,7 +323,7 @@ public class DependencyDocumentationProvider
 					StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(artifactVersion))));
 		}
 
-		List<Release> versions = cache.getReleases(artifactId, false);
+		List<Release> versions = cache.getReleases(artifactId);
 		if (!versions.isEmpty()) {
 			sb.append("<table>");
 			int count = 0;

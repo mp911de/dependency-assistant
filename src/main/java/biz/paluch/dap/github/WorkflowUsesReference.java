@@ -17,6 +17,7 @@
 package biz.paluch.dap.github;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;

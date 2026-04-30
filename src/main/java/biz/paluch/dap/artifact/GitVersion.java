@@ -14,23 +14,20 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.artifact;
 
 import java.util.Objects;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactVersion} implementation for GitHub Actions workflow refs.
- *
- * <p>A {@code GitVersion} pairs a resolved commit SHA with a delegate
- * {@link ArtifactVersion} used for ordering and display.
+ * {@link ArtifactVersion} implementation for versions associated with a SHA
+ * commit hash.
  *
  * @author Mark Paluch
  */
-class GitVersion implements ArtifactVersion {
+public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersion {
 
 	private final @Nullable String sha;
 
@@ -42,6 +39,7 @@ class GitVersion implements ArtifactVersion {
 	 * @param version the version used for comparison and display.
 	 */
 	private GitVersion(@Nullable String sha, ArtifactVersion version) {
+		super(version);
 		this.sha = sha;
 		this.version = version;
 	}
@@ -84,89 +82,11 @@ class GitVersion implements ArtifactVersion {
 		return sha;
 	}
 
-	/**
-	 * Return the normalized delegate version used for comparison and display.
-	 */
-	public ArtifactVersion getVersion() {
-		return version;
-	}
-
 	@Override
 	public boolean canCompare(ArtifactVersion version) {
 		return version instanceof GitVersion;
 	}
 
-	@Override
-	public boolean hasSameMajorMinor(ArtifactVersion other) {
-		return version.hasSameMajorMinor(other.getVersion());
-	}
-
-	@Override
-	public boolean hasSameMajor(ArtifactVersion other) {
-		return version.hasSameMajor(other.getVersion());
-	}
-
-	@Override
-	public boolean isNewer(ArtifactVersion other) {
-		return version.isNewer(other.getVersion());
-	}
-
-	@Override
-	public boolean isNewerMinor(ArtifactVersion other) {
-		return version.isNewerMinor(other.getVersion());
-	}
-
-	@Override
-	public boolean isOlder(ArtifactVersion other) {
-		return version.isOlder(other.getVersion());
-	}
-
-	@Override
-	public boolean isSnapshotVersion() {
-		return version.isSnapshotVersion();
-	}
-
-	@Override
-	public boolean isMilestoneVersion() {
-		return version.isMilestoneVersion();
-	}
-
-	@Override
-	public boolean isReleaseCandidateVersion() {
-		return version.isReleaseCandidateVersion();
-	}
-
-	@Override
-	public boolean isPreview() {
-		return version.isPreview();
-	}
-
-	@Override
-	public boolean isReleaseVersion() {
-		return version.isReleaseVersion();
-	}
-
-	@Override
-	public boolean isBugFixVersion() {
-		return version.isBugFixVersion();
-	}
-
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>For another {@code GitVersion}, the comparison delegates to the wrapped
-	 * {@link ArtifactVersion} so that GitHub-only release lists sort consistently.
-	 *
-	 * <p>For non-{@code GitVersion} arguments this method throws
-	 * {@link ClassCastException}. Returning {@code 0} for incomparable types would
-	 * silently mis-merge sorted lists; throwing makes the incompatibility loud and
-	 * matches the {@link Comparable} contract that orderings be total within a
-	 * compared type.
-	 */
-	@Override
-	public int compareTo(ArtifactVersion other) {
-		return version.compareTo(other.getVersion());
-	}
 
 	@Override
 	public boolean equals(Object o) {
@@ -193,11 +113,5 @@ class GitVersion implements ArtifactVersion {
 
 		return toString();
 	}
-
-	@Override
-	public String toString() {
-		return version.toString();
-	}
-
 
 }

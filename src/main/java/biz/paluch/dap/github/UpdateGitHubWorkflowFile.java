@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.github.WorkflowUsesReference.VersionText;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.editor.Document;

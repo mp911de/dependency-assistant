@@ -55,8 +55,14 @@ public record Release(ArtifactVersion version,
 	 * Create a {@code Release} from a version string and optional ISO date.
 	 */
 	public static Release from(String version, @Nullable String date) {
-		return new Release(ArtifactVersion.of(version),
-				getReleaseDate(date));
+		return from(ArtifactVersion.of(version), date);
+	}
+
+	/**
+	 * Create a {@code Release} from a version string and optional ISO date.
+	 */
+	public static Release from(ArtifactVersion version, @Nullable String date) {
+		return new Release(version, getReleaseDate(date));
 	}
 
 	public static @Nullable LocalDateTime getReleaseDate(@Nullable String date) {

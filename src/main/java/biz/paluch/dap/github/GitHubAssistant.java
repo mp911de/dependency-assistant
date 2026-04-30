@@ -25,15 +25,7 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.DeclaredDependency;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
@@ -190,7 +182,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 			for (DeclaredDependency declaration : collector.getDeclarations()) {
 				Dependency dependency = resolveDependency(declaration,
-						cache.getReleases(declaration.getArtifactId(), false));
+						cache.getReleases(declaration.getArtifactId()));
 				if (dependency != null) {
 
 					DeclarationSource declarationSource = dependency.getDeclarationSources().iterator().next();
@@ -228,7 +220,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 			VersionSource source = declaredDependency.getVersionSources().iterator().next();
 			if (StringUtils.hasText(source.toString())) {
-				GitVersion gitVersion = GitVersionResolver.resolve(source.toString(), releases);
+				GitVersion gitVersion = GitVersionResolver.resolveVersion(source.toString(), releases);
 				return gitVersion != null ? Dependency.from(declaredDependency, gitVersion) : null;
 			}
 			return null;

@@ -107,7 +107,7 @@ class SemanticArtifactVersionParseUnitTests {
 
 		assertThat(version.isWrapped()).isTrue();
 		assertThat(version).hasToString(source);
-		assertThat(version.unwrap()).hasToString(inner);
+		assertThat(version.getVersion()).hasToString(inner);
 		assertThat(version.isReleaseVersion()).isEqualTo(release);
 		assertThat(version.isPreview()).isEqualTo(preview);
 	}
@@ -118,7 +118,7 @@ class SemanticArtifactVersionParseUnitTests {
 		ArtifactVersion version = ArtifactVersion.of("1.2.3");
 
 		assertThat(version.isWrapped()).isFalse();
-		assertThat(version.unwrap()).isSameAs(version);
+		assertThat(version.getVersion()).isSameAs(version);
 	}
 
 	@Test

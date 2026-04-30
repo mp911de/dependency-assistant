@@ -91,6 +91,18 @@ public class Cache {
 	}
 
 	/**
+	 * Return cached releases for the given artifact from.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @return the cached releases for the artifact, or an empty list if no entry is
+	 * present.
+	 */
+	@Transient
+	public List<Release> getReleases(ArtifactId artifactId) {
+		return getReleases(artifactId, false);
+	}
+
+	/**
 	 * Return cached releases for the given artifact.
 	 * <p>If {@code ensureRecent} is {@literal true}, stale cache content is treated
 	 * as absent and this method returns an empty list once the cache age exceeds

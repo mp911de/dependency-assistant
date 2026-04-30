@@ -29,6 +29,7 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.CachedRelease;

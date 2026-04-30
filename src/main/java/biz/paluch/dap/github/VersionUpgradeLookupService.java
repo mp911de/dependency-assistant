@@ -22,6 +22,7 @@ import java.util.Optional;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -76,16 +77,13 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return AvailableUpgrades.none();
 		}
 
-		List<Release> options = GitVersionResolver.getGitReleases(declaration.getArtifactId(), cache)
-				.stream()
-				.map(gitRelease -> Release.of(gitRelease.toGitVersion()))
-				.toList();
+		List<Release> releases = cache.getReleases(declaration.getArtifactId());
 
-		if (options.isEmpty()) {
+		if (releases.isEmpty()) {
 			return AvailableUpgrades.none();
 		}
 
-		return determineUpgrades(artifactReference, declaration.getVersion(), options);
+		return determineUpgrades(artifactReference, declaration.getVersion(), releases);
 	}
 
 	@Override

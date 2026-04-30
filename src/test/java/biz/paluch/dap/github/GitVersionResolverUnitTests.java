@@ -19,6 +19,7 @@ package biz.paluch.dap.github;
 import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
@@ -73,17 +74,6 @@ class GitVersionResolverUnitTests {
 	}
 
 	@Test
-	void resolvesByVersionWithoutSha() {
-
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Optional<GitVersion> result = resolver.resolve(ARTIFACT, "3.0.0");
-
-		assertThat(result).isPresent();
-		assertThat(result.get().getSha()).isNull();
-		assertThat(result.get().toString()).isEqualTo("3.0.0");
-	}
-
-	@Test
 	void returnsEmptyForUnknownSha() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
@@ -119,18 +109,6 @@ class GitVersionResolverUnitTests {
 		Optional<GitVersion> result = resolver.resolve(ARTIFACT, "1.0.0");
 
 		assertThat(result).isEmpty();
-	}
-
-	@Test
-	void getGitReleasesConvertsCorrectly() {
-
-		Cache cache = cacheWithReleases();
-		java.util.List<GitRelease> releases = GitVersionResolver.getGitReleases(ARTIFACT, cache);
-
-		assertThat(releases).hasSize(3);
-		assertThat(releases.get(0).sha()).isEqualTo(SHA_V1);
-		assertThat(releases.get(0).release().version().toString()).isEqualTo("1.0.0");
-		assertThat(releases.get(2).sha()).isNull();
 	}
 
 }

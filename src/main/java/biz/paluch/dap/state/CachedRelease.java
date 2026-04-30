@@ -20,7 +20,9 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -131,7 +133,13 @@ public class CachedRelease {
 
 		Release cachedRelease = this.release;
 		if (cachedRelease == null) {
-			cachedRelease = Release.from(version(), date());
+
+			ArtifactVersion version = ArtifactVersion.of(version());
+			if (StringUtils.hasText(sha())) {
+				version = GitVersion.of(sha(), version);
+			}
+
+			cachedRelease = Release.from(version, date());
 			this.release = cachedRelease;
 		}
 		return cachedRelease;

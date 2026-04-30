@@ -133,7 +133,7 @@ public class ReleasesSuggestionProvider extends CompletionProvider<CompletionPar
 	 */
 	protected List<ArtifactRelease> findOptions(ArtifactId artifactId, Cache cache) {
 
-		List<Release> versions = cache.getReleases(artifactId, false);
+		List<Release> versions = cache.getReleases(artifactId);
 		List<ArtifactRelease> result = new java.util.ArrayList<>();
 
 		for (Release release : versions) {

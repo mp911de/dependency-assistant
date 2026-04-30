@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
