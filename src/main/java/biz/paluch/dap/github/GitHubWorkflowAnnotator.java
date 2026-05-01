@@ -21,8 +21,8 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 
 /**
- * GitHub Actions workflow annotator that highlights only the ref segment after
- * {@code @} in a {@code uses:} declaration.
+ * GitHub Actions annotator that highlights only the ref segment after {@code @}
+ * in a repository-backed {@code uses:} declaration.
  *
  * @author Mark Paluch
  */

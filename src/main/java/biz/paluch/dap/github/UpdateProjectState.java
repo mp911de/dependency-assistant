@@ -37,7 +37,8 @@ import com.intellij.psi.search.GlobalSearchScope;
 import org.jetbrains.yaml.YAMLFileType;
 
 /**
- * Service to read GitHub action files and update the dependency state.
+ * Service to read supported GitHub Actions YAML files and update dependency
+ * state.
  *
  * @author Mark Paluch
  */
@@ -70,7 +71,7 @@ class UpdateProjectState {
 	}
 
 	/**
-	 * Read and update dependency state for all GitHub workflow files.
+	 * Read and update dependency state for all supported GitHub Actions files.
 	 * @param indicator the progress indicator to report to.
 	 */
 	public void readAndUpdateAll(ProgressIndicator indicator) {
@@ -78,7 +79,7 @@ class UpdateProjectState {
 	}
 
 	/**
-	 * Update dependency state for all GitHub workflow files.
+	 * Update dependency state for all supported GitHub Actions files.
 	 * @param indicator the progress indicator to report to.
 	 */
 	public void updateAll(ProgressIndicator indicator) {
@@ -86,7 +87,8 @@ class UpdateProjectState {
 	}
 
 	/**
-	 * Return dependencies collected from all GitHub workflow files.
+	 * Refresh dependency state for all supported GitHub Actions files and return
+	 * aggregate release-source metadata for the project.
 	 * @param indicator the progress indicator to report to.
 	 */
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
@@ -124,8 +126,8 @@ class UpdateProjectState {
 	}
 
 	/**
-	 * Update dependency state for the given GitHub workflow file.
-	 * @param file the GitHub workflow file to inspect.
+	 * Update dependency state for the given GitHub Actions file.
+	 * @param file the GitHub Actions file to inspect.
 	 */
 	public void update(PsiFile file) {
 
@@ -140,7 +142,7 @@ class UpdateProjectState {
 	}
 
 	/**
-	 * Invoke the given action for every GitHub workflow file file.
+	 * Invoke the given action for every supported GitHub Actions file.
 	 * @param action the file callback.
 	 * @param indicator the progress indicator to report to.
 	 */
@@ -161,8 +163,7 @@ class UpdateProjectState {
 	}
 
 	/**
-	 * Enumerate all workflow files under {@code .github/workflows/} in the
-	 * project's content scope.
+	 * Enumerate all supported GitHub Actions files in the project's content scope.
 	 */
 	private static List<VirtualFile> findWorkflowFiles(Project project) {
 

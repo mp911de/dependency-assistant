@@ -16,9 +16,9 @@
 
 package biz.paluch.dap.util;
 
+import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Contract;
 
 /**
  * Miscellaneous {@link String} utility methods.

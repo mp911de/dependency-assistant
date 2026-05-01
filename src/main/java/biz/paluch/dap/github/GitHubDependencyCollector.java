@@ -25,13 +25,14 @@ import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiFile;
 
 /**
- * Scans a single GitHub Actions workflow file and registers discovered
- * {@code uses:} references as dependency usages in a
+ * Scans a single supported GitHub Actions YAML file and registers
+ * repository-backed {@code uses:} references with a
  * {@link DependencyCollector}.
  *
- * <p>Each discovered reference is resolved against the shared cache using
- * {@link GitVersionResolver}. Unresolvable refs are silently skipped so that
- * incomplete cache state does not fail the entire scan.
+ * <p>This collector is intentionally syntax-only. It records the repository
+ * identity and declared ref as found in the workflow and leaves cache-based
+ * version resolution to the project context and lookup services. This keeps
+ * workflow scanning independent of release metadata availability.
  *
  * @author Mark Paluch
  */
@@ -40,9 +41,9 @@ class GitHubDependencyCollector {
 	private final GitHubWorkflowParser parser = new GitHubWorkflowParser();
 
 	/**
-	 * Collect all {@code uses:} references from the given workflow file and
-	 * register them as dependency usages.
-	 * @param file the YAML workflow PSI file to scan.
+	 * Collect repository-backed {@code uses:} references from the given GitHub
+	 * Actions file.
+	 * @param file the YAML PSI file to scan.
 	 * @return the populated dependency collector.
 	 */
 	DependencyCollector collect(PsiFile file) {
@@ -54,9 +55,9 @@ class GitHubDependencyCollector {
 	}
 
 	/**
-	 * Collect all {@code uses:} references from the given workflow file and
-	 * register them as dependency usages.
-	 * @param file the YAML workflow PSI file to scan.
+	 * Collect repository-backed {@code uses:} references from the given GitHub
+	 * Actions file and register them as declarations.
+	 * @param file the YAML PSI file to scan.
 	 * @param collector the collector to populate with the discovered dependencies.
 	 */
 	public void doCollect(PsiFile file, DependencyCollector collector) {

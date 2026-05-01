@@ -159,29 +159,9 @@ class DependencyCheck {
 			tasks.addAll(collector.getDeclarations());
 		}
 
-		for (DeclaredDependency task : tasks) {
-			futures.add(executor.submit(() -> {
-				indicator.setText(MessageBundle.message("action.check.dependency", task.getArtifactId()));
-				try {
-					List<Release> releases;
-					if (consistency == Consistency.NO_CACHE) {
-						releases = resolver.getReleases(task.getArtifactId(),
-								task instanceof Dependency d ? d.getCurrentVersion() : null);
-						cache.putVersionOptions(task.getArtifactId(), releases, sources);
-					} else {
-
-						releases = cache.getReleases(task.getArtifactId(), consistency == Consistency.CACHED);
-						if (CollectionUtils.isEmpty(releases)) {
-							releases = resolver.getReleases(task.getArtifactId(),
-									task instanceof Dependency d ? d.getCurrentVersion() : null);
-							cache.putVersionOptions(task.getArtifactId(), releases, sources);
-						}
-					}
-					return new ResolverResult(null, releases);
-				} catch (Exception e) {
-					return new ResolverResult(task.getArtifactId() + ": " + e.getMessage(), List.of());
-				}
-			}));
+		for (DeclaredDependency declaredDependency : tasks) {
+			futures.add(executor.submit(() -> fetchReleases(indicator, declaredDependency.getArtifactId(), sources,
+					executor, cache, consistency)));
 		}
 
 		double total = futures.size();
@@ -219,6 +199,7 @@ class DependencyCheck {
 		return new DependencyUpdates(projectName, items, errors);
 	}
 
+
 	public DependencyUpdates updateReleaseMetadata(ProgressIndicator indicator,
 			List<ArtifactRefreshCandidate> candidates,
 			Consistency consistency) {
@@ -242,27 +223,8 @@ class DependencyCheck {
 			DeclaredDependency dependency = new DeclaredDependency(candidate.artifactId());
 			tasks.add(dependency);
 
-			futures.add(executor.submit(() -> {
-				try {
-					indicator.setText(MessageBundle.message("action.check.dependency", candidate.artifactId()));
-					ReleaseResolver resolver = new ReleaseResolver(candidate.sources(), executor);
-					List<Release> releases;
-					if (consistency == Consistency.NO_CACHE) {
-						releases = resolver.getReleases(candidate.artifactId(), null);
-						cache.putVersionOptions(candidate.artifactId(), releases, candidate.sources());
-					} else {
-
-						releases = cache.getReleases(candidate.artifactId(), consistency == Consistency.CACHED);
-						if (CollectionUtils.isEmpty(releases)) {
-							releases = resolver.getReleases(candidate.artifactId(), null);
-							cache.putVersionOptions(candidate.artifactId(), releases, candidate.sources());
-						}
-					}
-					return new ResolverResult(null, releases);
-				} catch (Exception e) {
-					return new ResolverResult(candidate.artifactId() + ": " + e.getMessage(), List.of());
-				}
-			}));
+			futures.add(executor.submit(() -> fetchReleases(indicator, candidate.artifactId(), candidate.sources(),
+					executor, cache, consistency)));
 		}
 
 		double total = futures.size();
@@ -295,6 +257,30 @@ class DependencyCheck {
 
 		items.sort(Comparator.comparing(DependencyUpdateOption::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 		return new DependencyUpdates("", items, errors);
+	}
+
+	private ResolverResult fetchReleases(ProgressIndicator indicator, ArtifactId artifactId,
+			Collection<ReleaseSource> sources, ExecutorService executor, Cache cache, Consistency consistency) {
+
+		try {
+			indicator.setText(MessageBundle.message("action.check.dependency", artifactId));
+			ReleaseResolver resolver = new ReleaseResolver(sources, executor);
+			List<Release> releases;
+			if (consistency == Consistency.NO_CACHE) {
+				releases = resolver.getReleases(artifactId, null);
+				cache.putVersionOptions(artifactId, releases);
+			} else {
+
+				releases = cache.getReleases(artifactId, consistency == Consistency.CACHED);
+				if (CollectionUtils.isEmpty(releases)) {
+					releases = resolver.getReleases(artifactId, null);
+					cache.putVersionOptions(artifactId, releases);
+				}
+			}
+			return new ResolverResult(null, releases);
+		} catch (Exception e) {
+			return new ResolverResult(artifactId + ": " + e.getMessage(), List.of());
+		}
 	}
 
 	private record ResolverResult(@Nullable String error, List<Release> releases) {

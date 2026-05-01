@@ -48,13 +48,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * GitHub Actions implementation of {@link DependencyAssistant}.
  *
- * <p>Supports workflow files under {@code .github/workflows/} with {@code .yml}
- * or {@code .yaml} extensions. The assistant is only active when both the YAML
- * plugin and the GitHub plugin are available, which is checked via
- * class-availability guards so that the always-loaded portion of this class
- * never triggers loading of the optional plugin types eagerly.
+ * <p>Supports YAML files under {@code .github/workflows/} and GitHub Action
+ * metadata files named {@code action.yml} or {@code action.yaml}. The assistant
+ * is only active when both the YAML plugin and the GitHub plugin are available,
+ * which is checked via class-availability guards so that the always-loaded
+ * portion of this class never triggers loading of the optional plugin types
+ * eagerly.
  *
- * <p>Each workflow file forms its own lightweight project context keyed by the
+ * <p>Each supported file forms its own lightweight project context keyed by the
  * file path.
  *
  * @author Mark Paluch

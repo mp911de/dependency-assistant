@@ -27,11 +27,11 @@ import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * {@link ProjectBuildContext} for a single GitHub Actions workflow file.
+ * {@link ProjectBuildContext} for a single supported GitHub Actions YAML file.
  *
- * <p>The project identity uses the {@code github:<owner>} /
- * {@code <repository>} convention with the absolute workflow file path as the
- * build file descriptor. There is one context per workflow file.
+ * <p>The project identity uses the owning repository coordinates and the
+ * absolute file path. There is one context per file so independent declarations
+ * in the same repository can maintain independent dependency state.
  *
  * @author Mark Paluch
  */
@@ -49,7 +49,7 @@ class GitHubProjectContext implements ProjectBuildContext {
 	/**
 	 * Create a context for the given project identity and release source.
 	 * @param projectId the project identity.
-	 * @param releaseSource the release source for this workflow file.
+	 * @param releaseSource the release source for this GitHub Actions file.
 	 */
 	GitHubProjectContext(ProjectId projectId, GitHubReleaseSource releaseSource) {
 		this.projectId = projectId;
@@ -59,7 +59,7 @@ class GitHubProjectContext implements ProjectBuildContext {
 	/**
 	 * Create a context for the given project and anchor file.
 	 * @param project the IntelliJ project.
-	 * @param anchor the workflow file.
+	 * @param anchor the supported GitHub Actions file.
 	 * @return the context to be used.
 	 */
 	public static GitHubProjectContext of(Project project, VirtualFile anchor) {
@@ -87,7 +87,7 @@ class GitHubProjectContext implements ProjectBuildContext {
 	}
 
 	/**
-	 * Return the typed release source for this workflow file.
+	 * Return the typed release source for this GitHub Actions file.
 	 * @return the release source; guaranteed to be not {@literal null}.
 	 */
 	GitHubReleaseSource getReleaseSource() {

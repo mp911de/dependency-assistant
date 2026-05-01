@@ -19,7 +19,6 @@ package biz.paluch.dap.artifact;
 import java.util.List;
 import java.util.Set;
 
-import biz.paluch.dap.state.CachedRelease;
 import org.jetbrains.idea.maven.indices.MavenGAVIndex;
 
 /**
@@ -48,22 +47,6 @@ public interface ReleaseSource {
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
 	 */
 	List<Release> getReleases(ArtifactId artifactId);
-
-	/**
-	 * Convert a single resolved {@link Release} to its serializable
-	 * {@link CachedRelease} form for storage in the shared release cache.
-	 *
-	 * <p>The default implementation drops everything not represented by
-	 * {@link CachedRelease#from(Release)}. Sources that carry side-band metadata
-	 * (such as the GitHub source's commit SHA) override this method to enrich the
-	 * cache entry so the metadata survives the read/write round-trip.
-	 *
-	 * @param release the release to convert; must not be {@literal null}.
-	 * @return the cached representation; never {@literal null}.
-	 */
-	default CachedRelease toCachedRelease(Release release) {
-		return CachedRelease.from(release);
-	}
 
 	/**
 	 * Return the built-in {@link ReleaseSource} backed by Maven Central.

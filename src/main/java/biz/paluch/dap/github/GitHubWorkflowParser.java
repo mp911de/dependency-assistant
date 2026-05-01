@@ -27,21 +27,22 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * YAML PSI parser for GitHub Actions workflow {@code uses:} declarations.
+ * YAML PSI parser for GitHub Actions {@code uses:} declarations.
  *
- * <p>Scans a YAML workflow file for all {@code uses:} key-value pairs, parses
- * the scalar value into a {@link UsesRepositoryAction}, and collects the
- * results. References that represent local paths ({@code ./} or {@code ../}) or
- * Docker images ({@code docker://}) are silently ignored. References without an
- * {@code owner/repository@ref} structure are also ignored.
+ * <p>Scans a YAML file for all {@code uses:} key-value pairs, parses the scalar
+ * value into a {@link UsesRepositoryAction}, and collects the results.
+ * References that represent local paths ({@code ./} or {@code ../}) or Docker
+ * images ({@code docker://}) are silently ignored. References outside the
+ * repository-backed action model handled by {@link GitHubAction} are also
+ * ignored.
  *
  * @author Mark Paluch
  */
 class GitHubWorkflowParser {
 
 	/**
-	 * Collect all {@code uses:} references from the given workflow file.
-	 * @param file the YAML workflow PSI file to scan.
+	 * Collect all {@code uses:} references from the given YAML file.
+	 * @param file the YAML PSI file to scan.
 	 * @return the parsed references, possibly empty.
 	 */
 	public List<UsesRepositoryAction> parse(PsiFile file) {

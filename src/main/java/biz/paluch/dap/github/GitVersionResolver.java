@@ -36,12 +36,11 @@ import org.jspecify.annotations.Nullable;
  * {@link CachedRelease} entries for the given artifact and matches the ref
  * against:
  * <ul>
- * <li>the stored SHA-1, when the ref is a full 40-character hex string; or</li>
- * <li>the normalized version string (leading {@code v} stripped), when the ref
- * is a tag-style value.</li>
+ * <li>the stored SHA-1, accepting an unambiguous prefix; or</li>
+ * <li>the version string, also accepting an unambiguous prefix.</li>
  * </ul>
- * Abbreviated SHAs (fewer than 40 characters) are intentionally ignored.
- * Unresolvable refs return {@link Optional#empty()} rather than throwing.
+ * Ambiguous prefixes and unknown refs return {@link Optional#empty()} rather
+ * than throwing.
  *
  * @author Mark Paluch
  */
@@ -60,7 +59,7 @@ class GitVersionResolver {
 	/**
 	 * Resolve the given ref against cached releases for the given artifact.
 	 * @param artifactId the artifact whose cached releases to inspect.
-	 * @param rawVersion the raw ref string from the workflow file.
+	 * @param rawVersion the raw ref string from the GitHub Actions file.
 	 * @return the resolved version, or {@link Optional#empty()} if unresolvable.
 	 */
 	public Optional<GitVersion> resolve(ArtifactId artifactId, String rawVersion) {
@@ -73,6 +72,14 @@ class GitVersionResolver {
 		return Optional.ofNullable(resolveVersion(rawVersion, releases));
 	}
 
+	/**
+	 * Resolve a ref against the given release list.
+	 * <p>Exact version matches win. Otherwise, a unique version or SHA prefix match
+	 * is accepted; ambiguous prefixes are unresolved.
+	 * @param versionRef the raw workflow ref
+	 * @param releases the releases to inspect
+	 * @return the matching version, or {@code null} if no unique match exists
+	 */
 	public static @Nullable GitVersion resolveVersion(String versionRef, List<Release> releases) {
 
 		List<GitVersion> candidates = new ArrayList<>();

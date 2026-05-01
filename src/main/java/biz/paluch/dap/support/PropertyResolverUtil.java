@@ -19,9 +19,9 @@ package biz.paluch.dap.support;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Contract;
 
 /**
  * Utility to resolve property placeholders.

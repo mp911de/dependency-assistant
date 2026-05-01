@@ -47,12 +47,13 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Completion contributor for GitHub Actions workflow {@code uses:} refs.
+ * Completion contributor for GitHub Actions {@code uses:} refs.
  *
  * <p>Suggests cached release options with SHA-awareness: when the current ref
- * uses SHA style, the inserted text is the full 40-character commit SHA;
- * otherwise, the version string is inserted with the same prefix style as the
- * original ({@code v} prefix preserved or absent).
+ * uses SHA style and the release has SHA metadata, the inserted text is the
+ * release commit SHA, shortened to the current SHA prefix length if the
+ * workflow already uses an abbreviated SHA. Otherwise, the release version
+ * string is inserted.
  *
  * @author Mark Paluch
  */

@@ -89,6 +89,9 @@ public class CachedRelease {
 	 * @return the corresponding cached release representation.
 	 */
 	public static CachedRelease from(Release release) {
+		if (release.version() instanceof GitVersion gitVersion) {
+			return CachedRelease.from(gitVersion.getVersion(), release.releaseDate(), gitVersion.getSha());
+		}
 		return from(release.version(), release.releaseDate());
 	}
 

@@ -36,13 +36,13 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Contract;
 import org.springframework.util.ClassUtils;
 
 /**

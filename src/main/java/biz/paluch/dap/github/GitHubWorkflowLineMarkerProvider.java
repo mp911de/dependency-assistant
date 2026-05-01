@@ -21,8 +21,8 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 
 /**
- * GitHub Actions workflow line marker provider that positions the gutter icon
- * at the ref segment after {@code @} in a {@code uses:} declaration.
+ * GitHub Actions line marker provider that positions the gutter icon at the ref
+ * segment after {@code @} in a repository-backed {@code uses:} declaration.
  *
  * @author Mark Paluch
  */

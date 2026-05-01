@@ -33,20 +33,20 @@ import org.jetbrains.plugins.github.util.GithubUrlUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolver for the GitHub repository metadata associated with workflow files in
- * an IntelliJ project.
+ * Resolver for the GitHub repository metadata associated with GitHub Actions
+ * files in an IntelliJ project.
  *
- * <p>GitHub workflow support needs repository coordinates for two separate
+ * <p>GitHub Actions support needs repository coordinates for two separate
  * purposes: a stable {@link ProjectId} for persisted dependency state and the
  * GitHub host from which action releases should be resolved. This resolver
- * derives both from configured Git remotes instead of from the workflow YAML
- * itself, because workflow files do not identify the repository that owns them.
+ * derives both from configured Git remotes instead of from the YAML source
+ * itself, because action files do not identify the repository that owns them.
  *
  * <p>Resolution is intentionally best-effort. If the anchor can be associated
  * with a Git root, that root's preferred remote provides the metadata.
  * Otherwise any configured GitHub remote may be used as a project-level
- * fallback so that workflow assistance remains available in partially indexed
- * or non-standard projects.
+ * fallback so that GitHub Actions assistance remains available in partially
+ * indexed or non-standard projects.
  *
  * @author Mark Paluch
  */
@@ -63,7 +63,7 @@ class GitRepositoryResolver {
 
 	/**
 	 * Resolve repository metadata for the given anchor.
-	 * <p>The anchor is expected to be an existing directory in the project VFS. A
+	 * <p>The anchor may be a GitHub Actions file or directory in the project VFS. A
 	 * {@code null} result means no configured Git remote could be interpreted as a
 	 * GitHub or GitHub Enterprise repository; callers should then fall back to
 	 * host-agnostic GitHub support.
@@ -71,7 +71,12 @@ class GitRepositoryResolver {
 	public @Nullable GitRepositoryMetadata resolveOwnerAndRepository(
 			VirtualFile anchor) {
 
-		if (!anchor.isValid() || !anchor.exists() || !anchor.isDirectory()) {
+		if (!anchor.isValid() || !anchor.exists()) {
+			return null;
+		}
+
+		VirtualFile anchorDirectory = anchor.isDirectory() ? anchor : anchor.getParent();
+		if (anchorDirectory == null || !anchorDirectory.isValid() || !anchorDirectory.exists()) {
 			return null;
 		}
 
@@ -88,7 +93,7 @@ class GitRepositoryResolver {
 				continue;
 			}
 
-			if (VfsUtilCore.isAncestor(root, anchor, true)) {
+			if (VfsUtilCore.isAncestor(root, anchorDirectory, true)) {
 				GitRepositoryMetadata parsed = preferredRemoteCoordinates(repository);
 				if (parsed != null) {
 					return parsed;
@@ -161,7 +166,7 @@ class GitRepositoryResolver {
 	 *
 	 * <p>The host is retained so release lookup can target GitHub Enterprise when a
 	 * project is not hosted on {@code github.com}. The owner and repository form
-	 * the framework's project identity for workflow dependency state.
+	 * the framework's project identity for GitHub Actions dependency state.
 	 *
 	 * @param host the GitHub host name (e.g. {@code github.com} or a GitHub
 	 * Enterprise host).
@@ -171,11 +176,11 @@ class GitRepositoryResolver {
 	record GitRepositoryMetadata(String host, String owner, String repository) {
 
 		/**
-		 * Return the project identity for the given workflow file.
-		 * <p>The workflow file path is part of the identity because a repository may
-		 * contain several workflow files with independent dependency declarations.
-		 * @param buildFile the workflow file path
-		 * @return the project identity for the workflow
+		 * Return the project identity for the given GitHub Actions file.
+		 * <p>The file path is part of the identity because a repository may contain
+		 * several files with independent dependency declarations.
+		 * @param buildFile the GitHub Actions file path
+		 * @return the project identity for the file
 		 */
 		public ProjectId toProjectId(String buildFile) {
 			return ProjectId.of(owner(), repository(), buildFile);

@@ -28,10 +28,10 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Contract;
 
 /**
  * Kotlin DSL PSI locator for semantic {@link LookupSite lookup sites} and

@@ -126,8 +126,6 @@ class KotlinDslParser extends GradleParser {
 	public static @Nullable DependencySite getDependencySite(KtCallElement declaration,
 			PsiElement version, String gav, @Nullable PropertyExpression versionExpression) {
 
-		// Infix plugin form: id("plugin.id") version "x.y.z" - declaration may not be
-		// `plugins` depending on PSI shape.
 		if (version instanceof KtCallElement ktCall && GradleUtils.isPlugin(KotlinDslUtils.getKotlinCallName(ktCall))
 				&& KotlinDslUtils.isInsidePluginsBlock(version) && !gav.contains(":")
 				&& versionExpression != null) {

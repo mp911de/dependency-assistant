@@ -52,7 +52,7 @@ interface GitHubAction extends ArtifactId {
 	 */
 	Pattern USES = Pattern.compile(
 			"^(?<owner>[A-Za-z0-9-]{1,40})\\/" +
-					"(?<repo>[A-Za-z0-9-]{0,40})" +
+					"(?<repo>[A-Za-z0-9-]{1,40})" +
 					"(?<paths>[/A-Za-z0-9._-]*)@" +
 					"(?<version>\\S+)?\\s*(#(?<comment>[\\sA-Za-z0-9._-]+))?$");
 

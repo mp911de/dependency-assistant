@@ -40,14 +40,16 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * {@link VersionUpgradeLookupSupport} implementation for GitHub Actions
- * workflow files.
+ * {@code uses:} declarations.
  *
  * <p>Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
  * parsing the scalar text and resolving the ref against the shared cache via
- * {@link GitVersionResolver}. Remote API access is never triggered.
+ * {@link GitVersionResolver}. If the cache cannot resolve a tag-style ref, the
+ * raw ref may still be exposed as a plain {@link ArtifactVersion}. Remote API
+ * access is never triggered.
  *
- * <p>Only elements that are children of a {@code uses:} {@link YAMLKeyValue}
- * are considered. All other elements resolve to
+ * <p>Only elements inside the scalar value of a {@code uses:}
+ * {@link YAMLKeyValue} are considered. All other elements resolve to
  * {@link ArtifactReference#unresolved()}.
  *
  * @author Mark Paluch
@@ -59,7 +61,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	/**
 	 * Create a lookup service for the given project and build context.
 	 * @param project the IntelliJ project.
-	 * @param buildContext the workflow file context.
+	 * @param buildContext the GitHub Actions file context.
 	 */
 	VersionUpgradeLookupService(Project project, GitHubProjectContext buildContext) {
 		super(project, buildContext);
@@ -140,7 +142,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	/**
 	 * Return the {@link YAMLScalar} that is the value of a {@code uses:} key.
-	 * {@link YAMLScalar} that is the value of a {@code uses:} key.
 	 * @param element the element at the cursor position.
 	 * @return the scalar, or {@code null} if none found.
 	 */

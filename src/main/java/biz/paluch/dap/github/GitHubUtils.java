@@ -25,7 +25,7 @@ import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
 /**
- * Utilities for identifying GitHub Actions workflow files.
+ * Utilities for identifying GitHub Actions files.
  *
  * @author Mark Paluch
  */
@@ -34,12 +34,12 @@ class GitHubUtils {
 	private static final String WORKFLOWS_PATH_FRAGMENT = ".github/workflows/";
 
 	/**
-	 * Return whether the given file is a supported GitHub Actions workflow file.
-	 * <p>A supported file must be located under {@code .github/workflows/} and have
-	 * a {@code .yml} or {@code .yaml} extension or be named {@code action.yml} or
+	 * Return whether the given file is supported by the GitHub Actions integration.
+	 * <p>A supported file must be a YAML file and either live under
+	 * {@code .github/workflows/} or be named {@code action.yml} or
 	 * {@code action.yaml}.
 	 * @param file the PSI file to test.
-	 * @return {@literal true} if this file is a workflow file.
+	 * @return {@literal true} if this file is supported.
 	 */
 	static boolean isWorkflowFile(PsiFile file) {
 
@@ -50,12 +50,12 @@ class GitHubUtils {
 	}
 
 	/**
-	 * Return whether the given file is a supported GitHub Actions workflow file.
-	 * <p>A supported file must be located under {@code .github/workflows/} and have
-	 * a {@code .yml} or {@code .yaml} extension or be named {@code action.yml} or
+	 * Return whether the given file is supported by the GitHub Actions integration.
+	 * <p>A supported file must be a YAML file and either live under
+	 * {@code .github/workflows/} or be named {@code action.yml} or
 	 * {@code action.yaml}.
 	 * @param file the file to test.
-	 * @return {@literal true} if this file is a workflow file.
+	 * @return {@literal true} if this file is supported.
 	 */
 	static boolean isWorkflowFile(VirtualFile file) {
 

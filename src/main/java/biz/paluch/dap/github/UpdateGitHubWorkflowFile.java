@@ -45,9 +45,10 @@ import org.jspecify.annotations.Nullable;
  * that do not resolve to {@link GitVersion} are left untouched.
  *
  * <p>The existing pinning style is part of the contract. Version refs are
- * rendered as version refs, while SHA-pinned refs are rendered as SHAs with a
- * managed explanatory version comment. This keeps workflows reproducible while
- * still exposing semantic release information to the user.
+ * rendered as version refs. SHA-pinned refs are rendered as SHAs when the
+ * selected release has SHA metadata, with a managed explanatory version
+ * comment. This keeps workflows reproducible while still exposing semantic
+ * release information to the user.
  *
  * @author Mark Paluch
  * @see UsesRepositoryAction
@@ -65,10 +66,10 @@ class UpdateGitHubWorkflowFile {
 	}
 
 	/**
-	 * Apply matching GitHub Action updates to the given workflow file.
+	 * Apply matching GitHub Action updates to the given GitHub Actions YAML file.
 	 * <p>Only the {@code uses:} value and its managed version comment are changed.
 	 * Declarations without a matching update are left as-is.
-	 * @param psiFile the workflow PSI file
+	 * @param psiFile the GitHub Actions YAML PSI file
 	 * @param updates the dependency updates to apply
 	 */
 	public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
@@ -104,7 +105,7 @@ class UpdateGitHubWorkflowFile {
 	 * Return the editor offset immediately after the scalar value.
 	 * <p>For quoted scalars, the returned offset is before the closing quote so
 	 * completion handlers can leave the caret at the end of the inserted ref.
-	 * @param scalar the workflow scalar
+	 * @param scalar the GitHub Actions scalar
 	 * @return the absolute editor offset at the end of the scalar value
 	 */
 	public static int getValueEndOffset(YAMLScalar scalar) {

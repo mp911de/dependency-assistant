@@ -58,15 +58,16 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  * <li>All GitHub Releases provide the publication date used for ordering and
  * display, and</li>
- * <li>the latest 100 repository tags (one page only) provide commit hash used
- * for SHA-style ref resolution in case a GitHub repository does not use
- * releases but we still want to be able to resolve versions</li>
+ * <li>the latest repository tags, up to the configured page size, provide
+ * commit hashes for matching release entries and version candidates for
+ * repositories that do not publish GitHub Releases.</li>
  * </ul>
  *
  * <p>Many projects do not publish GitHub Releases; the tag fallback ensures
  * those still expose update candidates. Tag entries without a release
- * contribute a version with {@code null} date; release entries beyond the
- * latest 100 tags contribute a version with {@code null} SHA.
+ * contribute a version with {@code null} date and currently no cached SHA.
+ * Release entries without a matching fetched tag contribute a version with
+ * {@code null} SHA.
  *
  * <p>Results are cached into the shared {@link biz.paluch.dap.state.Cache} as
  * {@link CachedRelease} entries with the SHA stored in the optional {@code sha}
@@ -133,22 +134,14 @@ class GitHubReleaseSource implements ReleaseSource {
 		return fetchAllReleases(artifactId);
 	}
 
-	@Override
-	public CachedRelease toCachedRelease(Release release) {
-
-		if (release.version() instanceof GitVersion gitVersion) {
-			return CachedRelease.from(gitVersion.getVersion(), release.releaseDate(), gitVersion.getSha());
-		}
-		return CachedRelease.from(release);
-	}
-
 	/**
-	 * Fetch the union of GitHub Releases (all pages) and the latest
-	 * {@link #DEFAULT_TAGS_PAGE_SIZE} tags (one page) and combine them into a
-	 * deduplicated, version-keyed list of {@link Release} entries.
+	 * Fetch the union of GitHub Releases and the latest repository tags, then
+	 * combine them into a deduplicated, version-keyed list of {@link Release}
+	 * entries.
 	 *
 	 * @return the fetched releases, or an empty list if the fetch could not
-	 * complete.
+	 * complete for a recoverable error.
+	 * @throws ArtifactNotFoundException if the repository does not exist.
 	 */
 	public List<Release> fetchAllReleases(ArtifactId artifactId) {
 

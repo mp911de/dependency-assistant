@@ -32,10 +32,10 @@ import org.jspecify.annotations.Nullable;
  * Interface representing Groovy DSL {@code ext} property declarations.
  * <p>Captures the four supported declaration shapes behind one factory:
  * <ul>
- * <li>{@code ext { set('key', 'value') }} - {@link SetCall set-call form}</li>
- * <li>{@code ext { key = 'value' }} - {@link ExtAssignment plain assignment
+ * <li>{@code ext { set('key', 'value') }} {@link SetCall set-call form}</li>
+ * <li>{@code ext { key = 'value' }} {@link ExtAssignment plain assignment
  * inside an {@code ext} closure}</li>
- * <li>{@code ext.key = 'value'} - {@link ExtAssignment dot-qualified
+ * <li>{@code ext.key = 'value'} {@link ExtAssignment dot-qualified
  * assignment}</li>
  * <li>{@code def key = 'value'} / {@code String key = 'value'} -
  * {@link ScriptVariable top-level script variable}</li>

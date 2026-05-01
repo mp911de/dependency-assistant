@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for {@link GitHubAction}.
+ *
  * @author Mark Paluch
  */
 class GitHubActionUnitTests {
@@ -50,6 +51,13 @@ class GitHubActionUnitTests {
 	@Test
 	void rejectsLocalRefs() {
 		assertThat(GitHubAction.isValidUsage("./foo/bar@version")).isFalse();
+	}
+
+	@Test
+	void rejectsEmptyRepo() {
+		assertThat(GitHubAction.isValidUsage("foo/@version")).isFalse();
+		assertThat(GitHubAction.isValidUsage("foo//@version")).isFalse();
+		assertThat(GitHubAction.isValidUsage("/bar@version")).isFalse();
 	}
 
 }

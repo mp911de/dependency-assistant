@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  * <p>This record is the boundary between YAML syntax and dependency metadata.
  * It retains the repository coordinates that identify the action release source
  * and the raw ref that determines how updates should be rendered back into the
- * workflow file.
+ * source file.
  *
  * <p>Any path segment after the repository name is intentionally not part of
  * this contract. GitHub action releases are resolved at repository level, so
@@ -79,9 +79,10 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 	/**
 	 * Return the replacement text that preserves the workflow's ref style.
 	 * <p>Version-style declarations are updated with the release version.
-	 * SHA-pinned declarations are updated with the release commit SHA and carry the
-	 * resolved version as explanatory text, allowing the workflow to remain pinned
-	 * while the IDE still exposes semantic release information.
+	 * SHA-pinned declarations are updated with the release commit SHA when that
+	 * metadata is available and carry the resolved version as explanatory text. If
+	 * no SHA is available, the release version is returned as the safest available
+	 * replacement text.
 	 * @param version the resolved release version to render.
 	 */
 	public VersionText getVersion(GitVersion version) {
@@ -135,29 +136,33 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 	/**
 	 * Classification of a workflow {@code uses:} ref string.
 	 *
-	 * <p>The ref after {@code @} in a {@code uses:} declaration can take three
-	 * forms: a SHA-1 hash or a bare semantic version.
+	 * <p>The ref after {@code @} in a {@code uses:} declaration is classified by
+	 * the rendering model, not by Git semantics. Hex SHA prefixes are treated as
+	 * SHA-pinned refs. All other non-empty refs, including tags, branches, and
+	 * semantic versions with or without a {@code v} prefix, are rendered as
+	 * version-style refs.
 	 *
 	 * @author Mark Paluch
 	 */
 	enum WorkflowRefStyle {
 
 		/**
-		 * A full lowercase hex SHA-1 commit hash, e.g.
-		 * {@code be666c2fcd27ec809703dec50e508c2fdc7f6654}.
+		 * A lowercase hexadecimal commit SHA or SHA prefix, e.g.
+		 * {@code be666c2fcd27ec809703dec50e508c2fdc7f6654} or {@code be666c2f}.
 		 */
 		SHA,
 
 		/**
-		 * A semantic version without a leading {@code v} prefix, e.g. {@code 1.2.3}.
+		 * A non-SHA ref rendered directly as a version-style value.
 		 */
 		VERSION;
 
 		private static final Pattern FULL_SHA = Pattern.compile("^[0-9a-f]{4,40}$");
 
 		/**
-		 * Determine a {@link WorkflowRefStyle} from given version string. Defaults to
-		 * {@link #SHA} if the version is empty.
+		 * Determine a {@link WorkflowRefStyle} from the given ref string.
+		 * <p>An empty ref defaults to {@link #SHA}, matching the conservative behavior
+		 * for declarations that cannot reveal their original style.
 		 * @param version the raw version as written in the YAML file.
 		 * @return the resulting WorkflowRefStyle.
 		 */
