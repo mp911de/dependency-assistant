@@ -6,10 +6,7 @@
 	<extensions defaultExtensionNs="com.intellij">
 		<completion.contributor
 				language="XML"
-				implementationClass="biz.paluch.dap.support.ReleaseVersionCompletionContributor"/>
-		<completion.contributor
-				language="XML"
-				implementationClass="biz.paluch.dap.support.ReleaseVersionCompletionContributor"/>
+				implementationClass="biz.paluch.dap.maven.XmlReleaseVersionCompletionContributor"/>
 		<annotator language="XML"
 		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider

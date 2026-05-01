@@ -41,7 +41,7 @@ import org.jspecify.annotations.Nullable;
  * @see DependencyAssistant
  * @see ProjectDependencyContext
  */
-class DependencyAssistantDispatcher {
+public class DependencyAssistantDispatcher {
 
 	private static final ExtensionPointName<DependencyAssistant> INTEGRATIONS = ExtensionPointName
 			.create("biz.paluch.dap.assistant");
@@ -137,7 +137,7 @@ class DependencyAssistantDispatcher {
 	 * @param file the PSI file to resolve.
 	 * @return the context from the first matching integration, or {@code null}.
 	 */
-	static @Nullable ProjectDependencyContext findFirstContext(Project project, @Nullable PsiFile file) {
+	public static @Nullable ProjectDependencyContext findFirstContext(Project project, @Nullable PsiFile file) {
 
 		if (file == null) {
 			return null;

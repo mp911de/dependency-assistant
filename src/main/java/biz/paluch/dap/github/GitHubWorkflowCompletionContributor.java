@@ -19,13 +19,9 @@ package biz.paluch.dap.github;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactRelease;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
-import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ReleasesCompletionProvider;
-import biz.paluch.dap.support.ReleasesCompletionProvider.CompletionMetadata;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
@@ -62,33 +58,8 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	private static final ExtensionPointName<DependencyAssistant> ASSISTANTS = ExtensionPointName
 			.create("biz.paluch.dap.assistant");
 
-	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(element -> {
-
-		PsiFile file = element.getContainingFile();
-		if (!GitHubUtils.isWorkflowFile(file)) {
-			return null;
-		}
-
-		ProjectDependencyContext context = resolveContext(file);
-		if (context == null || context.isAbsent()) {
-			return null;
-		}
-
-		PsiElement position = PsiVisitors.unleaf(element);
-
-		VersionUpgradeLookupSupport lookup = context.getLookup(position);
-		ArtifactReference artifactReference = lookup.resolveArtifactReference(position);
-		if (!artifactReference.isResolved()) {
-			return null;
-		}
-
-		ArtifactVersion currentVersion = artifactReference.getDeclaration().isVersionDefined()
-				? artifactReference.getDeclaration().getVersion()
-				: null;
-
-		return new CompletionMetadata(artifactReference.getArtifactId(), currentVersion,
-				artifactReference.getDeclaration().getVersionLiteral());
-	}) {
+	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(
+			ReleasesCompletionProvider.resolver()) {
 
 		@Override
 		protected LookupElementBuilder postProcess(LookupElementBuilder element, PsiElement position,

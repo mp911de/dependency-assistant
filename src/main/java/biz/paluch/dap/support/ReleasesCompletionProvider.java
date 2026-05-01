@@ -16,14 +16,15 @@
 
 package biz.paluch.dap.support;
 
-import java.time.ZoneId;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -31,6 +32,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -41,10 +43,7 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.ElementManipulator;
 import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.xml.XmlTag;
-import com.intellij.psi.xml.XmlText;
 import com.intellij.util.ProcessingContext;
-import com.intellij.util.text.DateFormatUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -66,6 +65,34 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		this.metadataFunction = metadataFunction;
 	}
 
+	public static Function<PsiElement, @Nullable CompletionMetadata> resolver() {
+
+		return element -> {
+			ProjectDependencyContext context = context(element);
+			if (context == null) {
+				return null;
+			}
+
+			VersionUpgradeLookupSupport lookup = context.getLookup(element);
+			ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
+			if (!artifactReference.isResolved()) {
+				return null;
+			}
+
+			ArtifactVersion version = lookup.getCurrentVersion(artifactReference.getArtifactId());
+			if (version == null && artifactReference.getDeclaration().isVersionDefined()) {
+				version = artifactReference.getDeclaration().getVersion();
+			}
+
+			return new CompletionMetadata(artifactReference.getArtifactId(), version,
+					artifactReference.getDeclaration().getVersionLiteral());
+		};
+	}
+
+	private static @Nullable ProjectDependencyContext context(PsiElement element) {
+		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), element.getContainingFile());
+	}
+
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
 			CompletionResultSet result) {
@@ -74,6 +101,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		if (position == null) {
 			position = parameters.getPosition();
 		}
+		position = PsiVisitors.unleaf(position);
 
 		CompletionMetadata metadata = metadataFunction.apply(position);
 		if (metadata == null) {
@@ -102,18 +130,22 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 
 		ArtifactVersion currentVersion = metadata.currentVersion();
 		double priority = unique.size();
-
+		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		for (ArtifactRelease option : unique) {
 
 			Release release = option.release();
 			LookupElementBuilder element = LookupElementBuilder.create(release.version().toString());
 
-			if (release.releaseDate() != null) {
+			LocalDateTime releaseDate = release.releaseDate();
+			if (releaseDate != null) {
 
-				Date date = Date.from(release.releaseDate().toLocalDate().atStartOfDay()
-						.atZone(ZoneId.systemDefault()).toInstant());
-				String pretty = DateFormatUtil.formatPrettyDate(date);
-				element = element.withTailText(" (" + pretty + ")", true);
+				Duration age = Duration.between(releaseDate, LocalDateTime.now());
+
+				if (age.toDays() < 5) {
+					element = element.withItemTextUnderlined(true);
+				}
+
+				element = element.withTailText(" (" + formatter.format(releaseDate) + ")", true);
 			}
 
 			if (currentVersion != null) {
@@ -197,11 +229,14 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 
 	private static @Nullable PsiElement replaceVersion(PsiElement versionLiteral, String version) {
 
-		if (versionLiteral instanceof XmlTag tag) {
-			tag.getValue().setText(version);
-			return tag;
-		}
-
+		/*
+		 * if (versionLiteral instanceof XmlTag tag) {
+		 * 
+		 * XmlToken token =
+		 * SyntaxTraverser.psiTraverser(tag).filter(XmlToken.class).first(); if (token
+		 * != null) { tag.getValue().getTextRange().replace(token.getText(), version); }
+		 * else { tag.getValue().setText(version); } return tag; }
+		 */
 		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
 		if (manipulator == null) {
 			return null;
@@ -212,13 +247,6 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 	}
 
 	private static int getVersionTextEndOffset(PsiElement versionLiteral) {
-
-		if (versionLiteral instanceof XmlTag tag) {
-			XmlText[] textElements = tag.getValue().getTextElements();
-			if (textElements.length > 0) {
-				return textElements[textElements.length - 1].getTextRange().getEndOffset();
-			}
-		}
 
 		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
 		if (manipulator != null) {

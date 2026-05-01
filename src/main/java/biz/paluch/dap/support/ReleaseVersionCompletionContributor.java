@@ -16,18 +16,11 @@
 
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.support.ReleasesCompletionProvider.CompletionMetadata;
-import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.util.ProcessingContext;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Completion contributor that suggests cached release versions.
@@ -36,28 +29,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class ReleaseVersionCompletionContributor extends CompletionContributor {
 
-	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(element -> {
-
-		if (element instanceof LeafPsiElement) {
-			element = PsiVisitors.unleaf(element);
-		}
-
-		ProjectDependencyContext context = context(element);
-		if (context == null) {
-			return null;
-		}
-
-		VersionUpgradeLookupSupport lookup = context.getLookup(element);
-		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
-		if (!artifactReference.isResolved()) {
-			return null;
-		}
-
-		ArtifactVersion version = lookup.getCurrentVersion(artifactReference.getArtifactId());
-		return new CompletionMetadata(artifactReference.getArtifactId(),
-				version != null ? version : artifactReference.getDeclaration().getVersion(),
-				artifactReference.getDeclaration().getVersionLiteral());
-	});
+	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(
+			ReleasesCompletionProvider.resolver());
 
 	@Override
 	public void fillCompletionVariants(CompletionParameters parameters, CompletionResultSet result) {
@@ -68,10 +41,6 @@ public class ReleaseVersionCompletionContributor extends CompletionContributor {
 		}
 
 		provider.addCompletionVariants(parameters, new ProcessingContext(), result);
-	}
-
-	private static @Nullable ProjectDependencyContext context(PsiElement element) {
-		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), element.getContainingFile());
 	}
 
 }

@@ -93,8 +93,7 @@ class Notifications {
 	public static void releaseMetadataStale(Project project, Instant cacheUpdate,
 			Function<Project, Task> taskFunction) {
 
-		ZoneId zoneId = ZoneId.systemDefault();
-		String ago = agoText(cacheUpdate, Instant.now(), zoneId);
+		String ago = DateFormatUtil.formatBetweenDates(cacheUpdate.toEpochMilli(), Instant.now().toEpochMilli());
 
 		Notification notification = new Notification(
 				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.stale.releases.title"),
@@ -151,4 +150,5 @@ class Notifications {
 
 		return MessageBundle.message("cache-age.months-ago", months);
 	}
+
 }

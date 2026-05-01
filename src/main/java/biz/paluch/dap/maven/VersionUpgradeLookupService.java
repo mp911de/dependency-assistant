@@ -206,7 +206,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		ArtifactVersion currentVersion = getCurrentVersion(cache, propertyTag);
-		if (currentVersion == null || !property.hasArtifacts()) {
+		if (!property.hasArtifacts()) {
 			return ArtifactReference.unresolved();
 		}
 
@@ -216,7 +216,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(firstArtifact.toArtifactId()).declarationElement(propertyTag)
-					.versionSource(VersionSource.property(tagName)).version(currentVersion);
+					.versionSource(VersionSource.property(tagName));
+
+			if (currentVersion != null) {
+				it.version(currentVersion);
+			}
 
 			if (resolvedProperty != null) {
 				it.versionLiteral(resolvedProperty.valueLiteral());

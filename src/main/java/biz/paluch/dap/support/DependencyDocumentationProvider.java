@@ -236,6 +236,7 @@ public class DependencyDocumentationProvider
 			return null;
 		}
 
+		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		StringBuilder sb = new StringBuilder();
 
 		sb.append(DocumentationMarkup.DEFINITION_START);
@@ -255,7 +256,7 @@ public class DependencyDocumentationProvider
 			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.controls"),
 					artifactId));
 
-			java.util.List<Release> versions = cache.getReleases(artifactId);
+			List<Release> versions = cache.getReleases(artifactId);
 			if (versions.isEmpty()) {
 				continue;
 			}
@@ -291,7 +292,7 @@ public class DependencyDocumentationProvider
 				}
 				sb.append("</td><td>");
 				if (v.releaseDate() != null) {
-					sb.append(v.releaseDate().toLocalDate());
+					sb.append(formatter.formatLong(v.releaseDate()));
 				}
 				sb.append("</td></tr>");
 			}
@@ -311,6 +312,7 @@ public class DependencyDocumentationProvider
 			@Nullable Map<String, Image> iconImages) {
 
 		StringBuilder sb = new StringBuilder();
+		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 
 		sb.append(DocumentationMarkup.DEFINITION_START);
 		sb.append(artifactId);
@@ -356,7 +358,7 @@ public class DependencyDocumentationProvider
 				}
 				sb.append("</td><td>");
 				if (v.releaseDate() != null) {
-					sb.append(v.releaseDate().toLocalDate());
+					sb.append(formatter.formatLong(v.releaseDate()));
 				}
 				sb.append("</td></tr>");
 			}
