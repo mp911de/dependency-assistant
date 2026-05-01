@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  * YAML PSI parser for GitHub Actions workflow {@code uses:} declarations.
  *
  * <p>Scans a YAML workflow file for all {@code uses:} key-value pairs, parses
- * the scalar value into a {@link WorkflowUsesReference}, and collects the
+ * the scalar value into a {@link UsesRepositoryAction}, and collects the
  * results. References that represent local paths ({@code ./} or {@code ../}) or
  * Docker images ({@code docker://}) are silently ignored. References without an
  * {@code owner/repository@ref} structure are also ignored.
@@ -44,13 +44,13 @@ class GitHubWorkflowParser {
 	 * @param file the YAML workflow PSI file to scan.
 	 * @return the parsed references, possibly empty.
 	 */
-	public List<WorkflowUsesReference> parse(PsiFile file) {
+	public List<UsesRepositoryAction> parse(PsiFile file) {
 
-		List<WorkflowUsesReference> result = new ArrayList<>();
+		List<UsesRepositoryAction> result = new ArrayList<>();
 		SyntaxTraverser.psiTraverser(file).filter(YAMLKeyValue.class).forEach(keyValue -> {
 
 			if ("uses".equals(keyValue.getKeyText())) {
-				WorkflowUsesReference ref = parseUses(keyValue);
+				UsesRepositoryAction ref = parseUses(keyValue);
 				if (ref != null) {
 					result.add(ref);
 				}
@@ -62,19 +62,18 @@ class GitHubWorkflowParser {
 
 	/**
 	 * Parse a single {@code uses:} key-value pair into a
-	 * {@link WorkflowUsesReference}.
+	 * {@link UsesRepositoryAction}.
 	 * @param keyValue the YAML key-value PSI element.
 	 * @return the parsed reference, or {@code null} if the value cannot be parsed.
 	 */
-	public static @Nullable WorkflowUsesReference parseUses(YAMLKeyValue keyValue) {
+	public static @Nullable UsesRepositoryAction parseUses(YAMLKeyValue keyValue) {
 
 		PsiElement value = keyValue.getValue();
-		if (!(value instanceof YAMLScalar scalar)) {
+		if (!(value instanceof YAMLScalar scalar) || !scalar.isValid()) {
 			return null;
 		}
 
-		String text = scalar.getTextValue();
-		return parseUsesValue(text);
+		return parseUses(scalar.getTextValue());
 	}
 
 	/**
@@ -82,13 +81,8 @@ class GitHubWorkflowParser {
 	 * @param text the raw uses value string.
 	 * @return the parsed reference, or {@code null} if the value should be ignored.
 	 */
-	public static @Nullable WorkflowUsesReference parseUsesValue(String text) {
-
-		if (GitHubAction.isValidUsage(text)) {
-			GitHubAction action = GitHubAction.from(text);
-			return new WorkflowUsesReference(action.groupId(), action.artifactId(), action.version());
-		}
-		return null;
+	public static @Nullable UsesRepositoryAction parseUses(String text) {
+		return GitHubAction.isValidUsage(text) ? new UsesRepositoryAction(GitHubAction.from(text)) : null;
 	}
 
 }

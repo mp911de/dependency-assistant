@@ -27,12 +27,29 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
- * GitHub-specific extension to {@link ArtifactId}.
- * 
+ * GitHub repository action referenced from a workflow {@code uses:}
+ * declaration.
+ *
+ * <p>The dependency identity of a GitHub action is the repository that
+ * publishes it: {@code owner/repository}. Any workflow-local action path is
+ * deliberately ignored for identity and release lookup, since tags and SHAs
+ * belong to the Git repository rather than to a subdirectory inside it.
+ *
+ * <p>The {@linkplain #version() version} is the raw ref after {@code @}. It is
+ * retained as workflow metadata so callers can resolve, compare, and rewrite
+ * the declaration without conflating repository identity with the selected ref.
+ *
  * @author Mark Paluch
+ * @see UsesRepositoryAction
  */
 interface GitHubAction extends ArtifactId {
 
+	/**
+	 * Pattern for repository-backed GitHub Action {@code uses:} values.
+	 * <p>Local actions and Docker image references are intentionally excluded from
+	 * this contract because they are not resolved through GitHub repository release
+	 * metadata.
+	 */
 	Pattern USES = Pattern.compile(
 			"^(?<owner>[A-Za-z0-9-]{1,40})\\/" +
 					"(?<repo>[A-Za-z0-9-]{0,40})" +
@@ -40,32 +57,45 @@ interface GitHubAction extends ArtifactId {
 					"(?<version>\\S+)?\\s*(#(?<comment>[\\sA-Za-z0-9._-]+))?$");
 
 	/**
-	 * Return the version of the action.
+	 * Return the raw workflow ref for this action.
+	 * <p>The ref may represent a tag, branch, semantic version, or commit SHA and
+	 * is not normalized by this abstraction.
 	 */
 	String version();
 
 	/**
-	 * Return whether {@code id} is a safe, well-formed {@code uses} reference.
+	 * Determine whether the given value is a repository-backed GitHub Action
+	 * {@code uses:} declaration.
+	 * <p>A {@code false} result does not mean the workflow entry is invalid YAML;
+	 * it means the entry is outside the dependency model handled here.
+	 * @param uses the workflow value to inspect
+	 * @return {@code true} if the value can be represented as a
+	 * {@code GitHubAction}
 	 */
 	static boolean isValidUsage(@Nullable String uses) {
 		return StringUtils.hasText(uses) && USES.matcher(uses).matches();
 	}
 
+	/**
+	 * Return a repository action identity without a selected ref.
+	 * @param owner the GitHub repository owner
+	 * @param repository the GitHub repository name
+	 * @return the repository action identity
+	 */
 	static GitHubAction of(String owner, String repository) {
 		return new DefaultGitHubAction(owner, repository, "");
 	}
 
 	/**
-	 * Parse a GitHub ArtifactId from a {@code uses:} value. Supported forms are:
-	 * <pre class="code">
-	 * {owner}/{repo}@{ref}
-	 * {owner}/{repo}/{path}@{ref}
-	 * </pre>
+	 * Parse a repository-backed GitHub Action from a workflow {@code uses:} value.
+	 * <p>The returned action keeps the repository owner, repository name, and raw
+	 * ref. Path segments after the repository name and trailing workflow comments
+	 * are accepted by the parser but are not part of the dependency identity.
 	 *
-	 * @param uses the {@code uses} value.
-	 * @return the parsed artifact id.
+	 * @param uses the workflow {@code uses:} value
+	 * @return the parsed action
 	 * @throws IllegalArgumentException if the value is not a valid {@code uses:}
-	 * reference.
+	 * reference for this dependency model
 	 */
 	public static GitHubAction from(String uses) {
 

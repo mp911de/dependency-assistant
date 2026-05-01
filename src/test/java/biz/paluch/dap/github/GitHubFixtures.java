@@ -80,9 +80,9 @@ class GitHubFixtures {
 		Cache cache = new Cache();
 
 		CachedArtifact checkout = new CachedArtifact(CHECKOUT);
-		checkout.getReleases().add(new CachedRelease("4.2.0", "2024-10-01", SHA_V4));
-		checkout.getReleases().add(new CachedRelease("4.1.0", "2024-05-01", null));
-		checkout.getReleases().add(new CachedRelease("3.6.0", "2024-01-01", SHA_V3));
+		checkout.getReleases().add(new CachedRelease("v4.2.0", "2024-10-01", SHA_V4));
+		checkout.getReleases().add(new CachedRelease("v4.1.0", "2024-05-01", null));
+		checkout.getReleases().add(new CachedRelease("v3.6.0", "2024-01-01", SHA_V3));
 		cache.addArtifacts(List.of(checkout));
 
 		return cache;

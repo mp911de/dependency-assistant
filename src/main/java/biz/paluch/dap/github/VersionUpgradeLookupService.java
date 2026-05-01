@@ -34,6 +34,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
+import org.jetbrains.yaml.psi.YAMLMapping;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
@@ -94,7 +95,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue(scalar.getTextValue());
+		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
 		if (ref == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -109,11 +110,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			Dependency dependency = getProjectState().findDependency(artifactId);
 			if (dependency != null) {
 				builder.version(dependency.getCurrentVersion());
-			} else if (StringUtils.hasText(ref.rawVersion())) {
+			} else if (StringUtils.hasText(ref.version())) {
 				GitVersionResolver resolver = new GitVersionResolver(getCache());
-				Optional<GitVersion> version = resolver.resolve(artifactId, ref.rawVersion());
+				Optional<GitVersion> version = resolver.resolve(artifactId, ref.version());
 				if (version.isEmpty()) {
-					ArtifactVersion.from(ref.rawVersion()).ifPresent(builder::version);
+					ArtifactVersion.from(ref.version()).ifPresent(builder::version);
 				} else {
 					version.ifPresent(builder::version);
 				}
@@ -133,7 +134,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return getUsesScalar(scalar);
 		}
 
-		YAMLScalar scalar = PsiTreeUtil.getParentOfType(element, YAMLScalar.class, false, YAMLKeyValue.class);
+		YAMLScalar scalar = PsiTreeUtil.getParentOfType(element, YAMLScalar.class, false, YAMLMapping.class);
 		return scalar != null ? getUsesScalar(scalar) : null;
 	}
 

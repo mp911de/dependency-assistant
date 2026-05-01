@@ -30,7 +30,7 @@ public class GitHubWorkflowAnnotator extends NewerVersionAnnotator {
 
 	@Override
 	protected TextRange getTextRange(PsiElement element) {
-		return GitHubUtils.refTextRange(element);
+		return GitHubUtils.getVersionRange(element);
 	}
 
 }

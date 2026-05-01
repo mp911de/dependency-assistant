@@ -23,7 +23,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link WorkflowRefStyle}.
+ * Unit tests for {@link UsesRepositoryAction.WorkflowRefStyle}.
  *
  * @author Mark Paluch
  */
@@ -33,18 +33,20 @@ class WorkflowRefStyleUnitTests {
 
 	@Test
 	void classifiesFullSha() {
-		assertThat(WorkflowRefStyle.from(FULL_SHA)).isEqualTo(WorkflowRefStyle.SHA);
+		assertThat(UsesRepositoryAction.WorkflowRefStyle.from(FULL_SHA))
+				.isEqualTo(UsesRepositoryAction.WorkflowRefStyle.SHA);
 	}
 
 	@Test
 	void defaultsToSha() {
-		assertThat(WorkflowRefStyle.from("")).isEqualTo(WorkflowRefStyle.SHA);
+		assertThat(UsesRepositoryAction.WorkflowRefStyle.from("")).isEqualTo(UsesRepositoryAction.WorkflowRefStyle.SHA);
 	}
 
 	@ParameterizedTest
 	@ValueSource(strings = {"1.2.3", "4", "main", "1.2.3-alpha"})
 	void classifiesPlainVersion(String ref) {
-		assertThat(WorkflowRefStyle.from(ref)).isEqualTo(WorkflowRefStyle.VERSION);
+		assertThat(UsesRepositoryAction.WorkflowRefStyle.from(ref))
+				.isEqualTo(UsesRepositoryAction.WorkflowRefStyle.VERSION);
 	}
 
 }

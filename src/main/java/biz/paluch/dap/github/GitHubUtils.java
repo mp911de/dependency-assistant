@@ -21,6 +21,7 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
 /**
@@ -88,7 +89,7 @@ class GitHubUtils {
 	 * @return the ref-only text range, or the element's own text range if no
 	 * {@code uses:} scalar can be located from the element.
 	 */
-	static TextRange refTextRange(PsiElement element) {
+	public static TextRange getVersionRange(PsiElement element) {
 
 		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
 		if (scalar == null) {
@@ -107,10 +108,10 @@ class GitHubUtils {
 		int refStart = scalarRange.getStartOffset() + atIndex + 1;
 		int refEnd = scalarRange.getEndOffset();
 		// Trim a trailing matching quote when the scalar is quoted.
-		char first = text.charAt(0);
-		if ((first == '"' || first == '\'') && text.length() > 1 && text.charAt(text.length() - 1) == first) {
+		if (scalar instanceof YAMLQuotedText) {
 			refEnd -= 1;
 		}
+
 		return new TextRange(refStart, refEnd);
 	}
 

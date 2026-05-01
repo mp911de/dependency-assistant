@@ -160,7 +160,6 @@ class UpdateProjectState {
 		}
 	}
 
-
 	/**
 	 * Enumerate all workflow files under {@code .github/workflows/} in the
 	 * project's content scope.

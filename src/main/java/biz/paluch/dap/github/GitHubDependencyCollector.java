@@ -61,8 +61,8 @@ class GitHubDependencyCollector {
 	 */
 	public void doCollect(PsiFile file, DependencyCollector collector) {
 
-		List<WorkflowUsesReference> refs = parser.parse(file);
-		for (WorkflowUsesReference ref : refs) {
+		List<UsesRepositoryAction> refs = parser.parse(file);
+		for (UsesRepositoryAction ref : refs) {
 			ArtifactId artifactId = ref.toArtifactId();
 			VersionSource versionSource = ref.toVersionSource();
 			collector.registerDeclaration(artifactId, DeclarationSource.dependency(),

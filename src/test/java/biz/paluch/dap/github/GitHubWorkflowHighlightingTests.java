@@ -117,7 +117,7 @@ class GitHubWorkflowHighlightingTests {
 		YAMLScalar usesScalar = findFirstUsesScalar(workflowFile);
 		assertThat(usesScalar).isNotNull();
 
-		TextRange refRange = GitHubUtils.refTextRange(usesScalar);
+		TextRange refRange = GitHubUtils.getVersionRange(usesScalar);
 		String fileText = workflowFile.getText();
 		String scalarText = usesScalar.getText();
 		int atIndex = scalarText.indexOf('@');

@@ -59,6 +59,7 @@ public class ReleaseResolver {
 		}
 
 		List<RuntimeException> errors = new ArrayList<>();
+		ArtifactNotFoundException notFoundException = null;
 
 		for (Future<List<Release>> future : futures) {
 			try {
@@ -68,6 +69,7 @@ public class ReleaseResolver {
 			} catch (ExecutionException e) {
 
 				if (e.getCause() instanceof ArtifactNotFoundException) {
+					notFoundException = (ArtifactNotFoundException) e.getCause();
 					continue;
 				}
 				errors.add(e.getCause() instanceof RuntimeException re ? re
@@ -79,6 +81,9 @@ public class ReleaseResolver {
 			if (!errors.isEmpty()) {
 				throw errors.get(0);
 			}
+		}
+		if (result.isEmpty() && notFoundException != null) {
+			throw notFoundException;
 		}
 
 		if (!result.isEmpty() && currentVersion != null) {

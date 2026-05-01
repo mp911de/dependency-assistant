@@ -126,7 +126,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 								metadata.versionLiteral(), lookupElement.getLookupString()));
 			}
 
-			element = postProcess(parameters, position, currentVersion, option, versionsResult, element);
+			element = postProcess(element, position, option);
 
 			// TODO Elements are sometimes not sorted properly
 			versionsResult.addElement(PrioritizedLookupElement.withPriority(element, priority--));
@@ -157,9 +157,8 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		return result;
 	}
 
-	protected LookupElementBuilder postProcess(CompletionParameters parameters, PsiElement position,
-			@Nullable ArtifactVersion currentVersion, ArtifactRelease option, CompletionResultSet result,
-			LookupElementBuilder element) {
+	protected LookupElementBuilder postProcess(LookupElementBuilder element, PsiElement position,
+			ArtifactRelease option) {
 		return element;
 	}
 

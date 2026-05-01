@@ -24,7 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link GitHubWorkflowParser#parseUsesValue(String)}.
+ * Unit tests for {@link GitHubWorkflowParser#parseUses(String)}.
  *
  * @author Mark Paluch
  */
@@ -33,49 +33,49 @@ class GitHubWorkflowParserUnitTests {
 	@Test
 	void parsesVersionRef() {
 
-		WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue("actions/checkout@v4.2.0");
+		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses("actions/checkout@v4.2.0");
 
 		assertThat(ref).isNotNull();
 		assertThat(ref.owner()).isEqualTo("actions");
 		assertThat(ref.repository()).isEqualTo("checkout");
-		assertThat(ref.rawVersion()).isEqualTo("v4.2.0");
+		assertThat(ref.version()).isEqualTo("v4.2.0");
 	}
 
 	@Test
 	void parsesVersionRefWithoutVPrefix() {
 
-		WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue("actions/checkout@4.2.0");
+		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses("actions/checkout@4.2.0");
 
 		assertThat(ref).isNotNull();
-		assertThat(ref.rawVersion()).isEqualTo("4.2.0");
+		assertThat(ref.version()).isEqualTo("4.2.0");
 	}
 
 	@Test
 	void parsesShaRef() {
 
 		String sha = "aabbccddeeff001122334455667788990011aabb";
-		WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue("actions/checkout@" + sha);
+		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses("actions/checkout@" + sha);
 
 		assertThat(ref).isNotNull();
-		assertThat(ref.rawVersion()).isEqualTo(sha);
+		assertThat(ref.version()).isEqualTo(sha);
 	}
 
 	@Test
 	void parsesActionPath() {
 
-		WorkflowUsesReference ref = GitHubWorkflowParser
-				.parseUsesValue("actions/aws-actions/configure-aws-credentials@v4");
+		UsesRepositoryAction ref = GitHubWorkflowParser
+				.parseUses("actions/aws-actions/configure-aws-credentials@v4");
 
 		assertThat(ref).isNotNull();
 		assertThat(ref.owner()).isEqualTo("actions");
 		assertThat(ref.repository()).isEqualTo("aws-actions");
-		assertThat(ref.rawVersion()).isEqualTo("v4");
+		assertThat(ref.version()).isEqualTo("v4");
 	}
 
 	@Test
 	void toArtifactIdUsesGithubPrefix() {
 
-		WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue("actions/checkout@v4");
+		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses("actions/checkout@v4");
 
 		assertThat(ref).isNotNull();
 		assertThat(ref.toArtifactId()).isEqualTo(ArtifactId.of("actions", "checkout"));
@@ -93,7 +93,7 @@ class GitHubWorkflowParserUnitTests {
 			"owner@v1",
 	})
 	void ignoresInvalidOrLocalRefs(String input) {
-		assertThat(GitHubWorkflowParser.parseUsesValue(input)).isNull();
+		assertThat(GitHubWorkflowParser.parseUses(input)).isNull();
 	}
 
 }

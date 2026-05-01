@@ -49,13 +49,13 @@ class GitHubWorkflowCompletionTests {
 			    steps:
 			      - uses: actions/checkout@4.1.0
 			""")
-	void completesVersionRefsWithoutVPrefix(PsiFile workflowFile) {
+	void completesVersionRefs(PsiFile workflowFile) {
 
 		GitHubFixtures.analyze(workflowFile);
 		openAtCaretAfter(workflowFile, "@");
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("4.2.0", "4.1.0", "3.6.0");
+		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 
 	@Test
@@ -71,7 +71,7 @@ class GitHubWorkflowCompletionTests {
 		openAtCaretAfter(workflowFile, "@");
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("4.2.0", "4.1.0", "3.6.0");
+		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 
 	@Test
@@ -86,7 +86,7 @@ class GitHubWorkflowCompletionTests {
 		GitHubFixtures.analyze(workflowFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("4.2.0", "4.1.0", "3.6.0");
+		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 
 	@Test
@@ -104,7 +104,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("actions/checkout@d1185ce5 # 4.2.0");
+				.contains("actions/checkout@d1185ce5 # v4.2.0 # bar");
 	}
 
 	@Test
@@ -122,7 +122,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # 4.2.0 # here to stay");
+				.contains("checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0 # here to stay");
 	}
 
 	@Test
@@ -140,7 +140,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("\"actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530\" # 4.2.0");
+				.contains("\"actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530\" # v4.2.0");
 	}
 
 	@Test
@@ -184,7 +184,7 @@ class GitHubWorkflowCompletionTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: "actions/checkout@v4.<caret>" # keep me?
+			      - uses: "actions/checkout@v4.<caret>" # keep me
 			""")
 	void preservesClosingQuoteAndTrailingComment(PsiFile workflowFile) {
 
@@ -195,7 +195,7 @@ class GitHubWorkflowCompletionTests {
 
 		assertThat(fixture.getEditor().getDocument().getText())
 				.contains("\"actions/checkout@v4.2.0\"")
-				.contains("# keep me?");
+				.contains("# keep me");
 	}
 
 	private void openAtCaretAfter(PsiFile workflowFile, String anchor) {

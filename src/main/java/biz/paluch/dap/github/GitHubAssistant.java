@@ -31,6 +31,7 @@ import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -39,7 +40,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
@@ -235,8 +235,7 @@ public class GitHubAssistant implements DependencyAssistant {
 					return false;
 				}
 
-				YAMLScalar usesScalar = VersionUpgradeLookupService
-						.getUsesScalar(element instanceof LeafPsiElement leaf ? leaf.getParent() : element);
+				YAMLScalar usesScalar = VersionUpgradeLookupService.getUsesScalar(PsiVisitors.unleaf(element));
 				return usesScalar != null;
 			}
 
@@ -250,7 +249,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateGitHubWorkflowFile().applyUpdates(psiFile, updates);
+			new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
 		}
 
 	}

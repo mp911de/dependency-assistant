@@ -33,6 +33,21 @@ import org.jetbrains.plugins.github.util.GithubUrlUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
+ * Resolver for the GitHub repository metadata associated with workflow files in
+ * an IntelliJ project.
+ *
+ * <p>GitHub workflow support needs repository coordinates for two separate
+ * purposes: a stable {@link ProjectId} for persisted dependency state and the
+ * GitHub host from which action releases should be resolved. This resolver
+ * derives both from configured Git remotes instead of from the workflow YAML
+ * itself, because workflow files do not identify the repository that owns them.
+ *
+ * <p>Resolution is intentionally best-effort. If the anchor can be associated
+ * with a Git root, that root's preferred remote provides the metadata.
+ * Otherwise any configured GitHub remote may be used as a project-level
+ * fallback so that workflow assistance remains available in partially indexed
+ * or non-standard projects.
+ *
  * @author Mark Paluch
  */
 class GitRepositoryResolver {
@@ -47,16 +62,11 @@ class GitRepositoryResolver {
 	}
 
 	/**
-	 * Resolve the GitHub {@code owner/repository} that owns the given workflow file
-	 * by matching it against configured Git remotes.
-	 *
-	 * <p>Resolution order:
-	 * <ol>
-	 * <li>The Git repository whose root contains the workflow file: parse its
-	 * {@code origin} (or first) remote URL.</li>
-	 * <li>Any other configured Git repository whose remote parses to a
-	 * {@code owner/repository} pair.</li>
-	 * </ol>
+	 * Resolve repository metadata for the given anchor.
+	 * <p>The anchor is expected to be an existing directory in the project VFS. A
+	 * {@code null} result means no configured Git remote could be interpreted as a
+	 * GitHub or GitHub Enterprise repository; callers should then fall back to
+	 * host-agnostic GitHub support.
 	 */
 	public @Nullable GitRepositoryMetadata resolveOwnerAndRepository(
 			VirtualFile anchor) {
@@ -121,10 +131,14 @@ class GitRepositoryResolver {
 	}
 
 	/**
-	 * Parse a Git remote URL into a host plus owner/repository triple.
+	 * Parse a Git remote URL into GitHub repository metadata.
+	 * <p>Both public GitHub and GitHub Enterprise remotes are supported as long as
+	 * the IntelliJ GitHub URL utilities can extract an owner and repository. A
+	 * {@code null} result indicates that the URL is blank, malformed, or not a
+	 * supported GitHub remote.
 	 *
-	 * @return the parsed components, or {@code null} when the URL is not a
-	 * supported GitHub or GitHub-Enterprise remote.
+	 * @param url the remote URL to parse
+	 * @return the parsed metadata, or {@code null} if the URL is not supported
 	 */
 	public static @Nullable GitRepositoryMetadata parseGitUrl(@Nullable String url) {
 
@@ -143,7 +157,11 @@ class GitRepositoryResolver {
 	}
 
 	/**
-	 * Triple of host plus {@code owner/repository} extracted from a Git remote URL.
+	 * GitHub repository metadata extracted from a Git remote URL.
+	 *
+	 * <p>The host is retained so release lookup can target GitHub Enterprise when a
+	 * project is not hosted on {@code github.com}. The owner and repository form
+	 * the framework's project identity for workflow dependency state.
 	 *
 	 * @param host the GitHub host name (e.g. {@code github.com} or a GitHub
 	 * Enterprise host).
@@ -152,6 +170,13 @@ class GitRepositoryResolver {
 	 */
 	record GitRepositoryMetadata(String host, String owner, String repository) {
 
+		/**
+		 * Return the project identity for the given workflow file.
+		 * <p>The workflow file path is part of the identity because a repository may
+		 * contain several workflow files with independent dependency declarations.
+		 * @param buildFile the workflow file path
+		 * @return the project identity for the workflow
+		 */
 		public ProjectId toProjectId(String buildFile) {
 			return ProjectId.of(owner(), repository(), buildFile);
 		}

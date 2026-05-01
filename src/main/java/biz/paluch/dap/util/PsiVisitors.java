@@ -19,7 +19,9 @@ package biz.paluch.dap.util;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiRecursiveElementVisitor;
+import com.intellij.psi.impl.source.tree.LeafPsiElement;
 
 /**
  * Utility to create {@link com.intellij.psi.PsiElement}
@@ -27,6 +29,17 @@ import com.intellij.psi.PsiRecursiveElementVisitor;
  * @author Mark Paluch
  */
 public abstract class PsiVisitors {
+
+	/**
+	 * Ensure the element is not a {@link LeafPsiElement leaf} by returning its
+	 * parent {@code element} was a leaf.
+	 * @param element the potential leaf element.
+	 * @return {@code element} if it is not a {@link LeafPsiElement leaf}, otherwise
+	 * its {@link PsiElement#getParent() parent}.
+	 */
+	public static PsiElement unleaf(PsiElement element) {
+		return element instanceof LeafPsiElement ? element.getParent() : element;
+	}
 
 	/**
 	 * Create a {@link PsiRecursiveElementVisitor} to visit the entire PSI tree

@@ -112,8 +112,8 @@ class UpdateGitHubWorkflowFileTests {
 				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
 
 		assertThat(workflowFile.getText())
-				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0");
-		assertThat(workflowFile.getText()).contains("# custom note");
+				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + "   # v4.2.0");
+		assertThat(workflowFile.getText()).doesNotContain("# custom note");
 	}
 
 	@Test
@@ -187,7 +187,7 @@ class UpdateGitHubWorkflowFileTests {
 		DependencyUpdate update = new DependencyUpdate(id, targetVersion, dep.getDeclarationSources(),
 				dep.getVersionSources());
 
-		UpdateGitHubWorkflowFile updater = new UpdateGitHubWorkflowFile();
+		UpdateGitHubWorkflowFile updater = new UpdateGitHubWorkflowFile(file.getProject());
 
 		new BuildActionDelegate(file.getProject(), updater::applyUpdates, file.getVirtualFile())
 				.updateBuildFile(List.of(update));

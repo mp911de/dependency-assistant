@@ -56,10 +56,11 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The result is the union of two sources:
  * <ul>
- * <li>all GitHub Releases (paginated, walked completely) — provide the
- * publication date used for ordering and display, and</li>
- * <li>the latest 100 repository tags (one page only) — provide the full
- * 40-character SHA-1 commit hash used for SHA-style ref resolution.</li>
+ * <li>All GitHub Releases provide the publication date used for ordering and
+ * display, and</li>
+ * <li>the latest 100 repository tags (one page only) provide commit hash used
+ * for SHA-style ref resolution in case a GitHub repository does not use
+ * releases but we still want to be able to resolve versions</li>
  * </ul>
  *
  * <p>Many projects do not publish GitHub Releases; the tag fallback ensures
@@ -98,7 +99,7 @@ class GitHubReleaseSource implements ReleaseSource {
 		this(server, new ExecutorBackedClient(executor), DEFAULT_TAGS_PAGE_SIZE);
 	}
 
-	public GitHubReleaseSource(GithubServerPath server, GitHubApiClient client,
+	protected GitHubReleaseSource(GithubServerPath server, GitHubApiClient client,
 			int pageSize) {
 		this.server = server;
 		this.client = client;
@@ -107,9 +108,6 @@ class GitHubReleaseSource implements ReleaseSource {
 
 	/**
 	 * Create a release source for the given project.
-	 * 
-	 * @param project
-	 * @return
 	 */
 	public static GitHubReleaseSource from(Project project) {
 		return from(project, "");
@@ -117,10 +115,6 @@ class GitHubReleaseSource implements ReleaseSource {
 
 	/**
 	 * Create a release source for the given project and git host.
-	 * 
-	 * @param project
-	 * @param gitHost
-	 * @return
 	 */
 	public static GitHubReleaseSource from(Project project, String gitHost) {
 
@@ -133,7 +127,6 @@ class GitHubReleaseSource implements ReleaseSource {
 				: factory.create();
 		return new GitHubReleaseSource(resolved.server(), executor);
 	}
-
 
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId) {
@@ -152,15 +145,12 @@ class GitHubReleaseSource implements ReleaseSource {
 	/**
 	 * Fetch the union of GitHub Releases (all pages) and the latest
 	 * {@link #DEFAULT_TAGS_PAGE_SIZE} tags (one page) and combine them into a
-	 * deduplicated, version-keyed list of {@link GitRelease} entries.
-	 *
-	 * <p>On {@link IOException} or {@link ProcessCanceledException} the partial
-	 * result is discarded so the cache is not poisoned with truncated data.
+	 * deduplicated, version-keyed list of {@link Release} entries.
 	 *
 	 * @return the fetched releases, or an empty list if the fetch could not
 	 * complete.
 	 */
-	List<Release> fetchAllReleases(ArtifactId artifactId) {
+	public List<Release> fetchAllReleases(ArtifactId artifactId) {
 
 		try {
 			Map<String, String> shaByTag = fetchTagShas(artifactId);
@@ -170,7 +160,7 @@ class GitHubReleaseSource implements ReleaseSource {
 			throw ex;
 		} catch (GithubStatusCodeException ex) {
 			if (ex.getStatusCode() == 404) {
-				throw new ArtifactNotFoundException(ex.getMessage(), artifactId);
+				throw new ArtifactNotFoundException("Action repository not found", artifactId);
 			}
 			LOG.warn("Failed to fetch GitHub releases for %s: %s".formatted(artifactId, ex.getMessage()));
 			return List.of();
@@ -277,15 +267,6 @@ class GitHubReleaseSource implements ReleaseSource {
 		return client.loadAll(pages);
 	}
 
-	/**
-	 * Test seam abstracting over the {@link GithubApiRequestExecutor} +
-	 * {@link GithubApiPagesLoader} duo so unit tests do not need to instantiate a
-	 * real executor or wire its {@link GithubResponsePage} pagination state.
-	 *
-	 * <p>The {@link ProgressIndicator} is owned by the implementation; the
-	 * production client resolves it from {@link ProgressManager}, while tests never
-	 * need to construct one.
-	 */
 	interface GitHubApiClient {
 
 		<T> List<T> loadAll(GithubApiPagesLoader.Request<T> request) throws IOException;

@@ -21,25 +21,27 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.github.WorkflowUsesReference.VersionText;
+import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ReleasesCompletionProvider;
 import biz.paluch.dap.support.ReleasesCompletionProvider.CompletionMetadata;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
+import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.icons.AllIcons.Vcs;
 import com.intellij.openapi.extensions.ExtensionPointName;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
@@ -71,10 +73,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 			return null;
 		}
 
-		PsiElement position = element;
-		if (position instanceof LeafPsiElement) {
-			position = position.getParent();
-		}
+		PsiElement position = PsiVisitors.unleaf(element);
 
 		VersionUpgradeLookupSupport lookup = context.getLookup(position);
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(position);
@@ -91,41 +90,25 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	}) {
 
 		@Override
-		protected LookupElementBuilder postProcess(CompletionParameters parameters, PsiElement position,
-				@Nullable ArtifactVersion currentVersion, ArtifactRelease option, CompletionResultSet result,
-				LookupElementBuilder element) {
+		protected LookupElementBuilder postProcess(LookupElementBuilder element, PsiElement position,
+				ArtifactRelease option) {
 
 			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(position);
 			if (scalar == null || !(option.getVersion() instanceof GitVersion version)) {
 				return element;
 			}
 
-			WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue(scalar.getTextValue());
+			UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
 			if (ref == null) {
 				return element;
 			}
 
 			if (StringUtils.hasText(version.getSha())) {
-				element = element.withTypeText(version.getSha().substring(0, 8), Vcs.CommitNode, false);
+				element = element.withTypeText(version.getShortSha(), Vcs.CommitNode, false);
 			}
 
-			return element.withInsertHandler((insertionContext, lookupElement) -> {
-
-				if (scalar.isValid()) {
-					return;
-				}
-
-				VersionText insertText = ref.getVersion(version);
-				YAMLScalar updated = UpdateGitHubWorkflowFile.updateRef(scalar, insertText.text());
-				if (updated == null) {
-					return;
-				}
-				if (StringUtils.hasText(insertText.comment())) {
-					UpdateGitHubWorkflowFile.ensureVersionComment(updated, insertText.comment());
-				}
-				insertionContext.getEditor().getCaretModel()
-						.moveToOffset(UpdateGitHubWorkflowFile.getValueEndOffset(updated));
-			});
+			return element.withInsertHandler((insertionContext, lookupElement) -> insertVersion(insertionContext,
+					scalar, ref, version));
 		}
 
 		@Override
@@ -142,30 +125,13 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 	private static boolean isCaretInsideRef(CompletionParameters parameters) {
 
-		PsiElement position = parameters.getPosition();
-		if (position instanceof LeafPsiElement) {
-			position = position.getParent();
-		}
-		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(position);
+		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(parameters.getPosition());
 		if (scalar == null) {
 			return false;
 		}
 
-		String text = scalar.getText();
-		int atIndex = text.indexOf('@');
-		if (atIndex < 0) {
-			return false;
-		}
-
-		int caretInScalar = parameters.getOffset() - scalar.getTextRange().getStartOffset();
-		int end = text.length();
-		if (end > 0) {
-			char last = text.charAt(end - 1);
-			if (last == '"' || last == '\'') {
-				end--;
-			}
-		}
-		return caretInScalar > atIndex + 1 && caretInScalar < end;
+		TextRange versionRange = GitHubUtils.getVersionRange(scalar);
+		return versionRange.contains(parameters.getOffset());
 	}
 
 	public GitHubWorkflowCompletionContributor() {
@@ -221,16 +187,25 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 		return null;
 	}
 
-	private static String refPrefixAtCaret(CompletionParameters parameters) {
+	private static void insertVersion(InsertionContext context, YAMLScalar scalar, UsesRepositoryAction ref,
+			GitVersion version) {
 
-		// Compute the prefix relative to the start of the ref portion of the
-		// uses: scalar so that the completion engine's prefix-matching does not
-		// reject candidates that differ from the existing ref text.
-		PsiElement position = parameters.getPosition();
-		if (position instanceof LeafPsiElement) {
-			position = position.getParent();
+		if (!scalar.isValid()) {
+			return;
 		}
-		return getPrefix(parameters, position);
+
+		VersionText versionText = ref.getVersion(version);
+		YAMLScalar updated = new UpdateGitHubWorkflowFile(scalar.getProject()).updateVersionAndComment(scalar,
+				versionText);
+		if (updated == null) {
+			return;
+		}
+
+		context.getEditor().getCaretModel().moveToOffset(UpdateGitHubWorkflowFile.getValueEndOffset(updated));
+	}
+
+	private static String refPrefixAtCaret(CompletionParameters parameters) {
+		return getPrefix(parameters, PsiVisitors.unleaf(parameters.getPosition()));
 	}
 
 	private static String getPrefix(CompletionParameters parameters, PsiElement position) {
