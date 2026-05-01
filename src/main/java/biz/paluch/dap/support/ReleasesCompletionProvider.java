@@ -34,9 +34,15 @@ import biz.paluch.dap.state.DependencyAssistantService;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
+import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.openapi.util.TextRange;
+import com.intellij.psi.ElementManipulator;
+import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.xml.XmlTag;
+import com.intellij.psi.xml.XmlText;
 import com.intellij.util.ProcessingContext;
 import com.intellij.util.text.DateFormatUtil;
 import org.jetbrains.annotations.NotNull;
@@ -114,6 +120,12 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 				element = applyVersion(currentVersion, option.getVersion(), element);
 			}
 
+			if (metadata.versionLiteral() != null) {
+				element = element
+						.withInsertHandler((insertionContext, lookupElement) -> replaceVersion(insertionContext,
+								metadata.versionLiteral(), lookupElement.getLookupString()));
+			}
+
 			element = postProcess(parameters, position, currentVersion, option, versionsResult, element);
 
 			// TODO Elements are sometimes not sorted properly
@@ -170,10 +182,64 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 				: result;
 	}
 
+	private static void replaceVersion(InsertionContext context, PsiElement versionLiteral, String version) {
+
+		if (!versionLiteral.isValid()) {
+			return;
+		}
+
+		PsiElement updated = replaceVersion(versionLiteral, version);
+		if (updated == null || !updated.isValid()) {
+			return;
+		}
+
+		context.getEditor().getCaretModel().moveToOffset(getVersionTextEndOffset(updated));
+	}
+
+	private static @Nullable PsiElement replaceVersion(PsiElement versionLiteral, String version) {
+
+		if (versionLiteral instanceof XmlTag tag) {
+			tag.getValue().setText(version);
+			return tag;
+		}
+
+		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
+		if (manipulator == null) {
+			return null;
+		}
+
+		TextRange valueTextRange = ElementManipulators.getValueTextRange(versionLiteral);
+		return ElementManipulators.handleContentChange(versionLiteral, valueTextRange, version);
+	}
+
+	private static int getVersionTextEndOffset(PsiElement versionLiteral) {
+
+		if (versionLiteral instanceof XmlTag tag) {
+			XmlText[] textElements = tag.getValue().getTextElements();
+			if (textElements.length > 0) {
+				return textElements[textElements.length - 1].getTextRange().getEndOffset();
+			}
+		}
+
+		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
+		if (manipulator != null) {
+			return versionLiteral.getTextRange().getStartOffset()
+					+ ElementManipulators.getValueTextRange(versionLiteral).getEndOffset();
+		}
+
+		return versionLiteral.getTextRange().getEndOffset();
+	}
+
 	/**
 	 * Artifact metadata needed to build release completion suggestions.
 	 */
-	public record CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion) {
+	public record CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
+			@Nullable PsiElement versionLiteral) {
+
+		public CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion) {
+			this(artifactId, currentVersion, null);
+		}
+
 	}
 
 }

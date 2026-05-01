@@ -186,7 +186,7 @@ class GitHubWorkflowCompletionTests {
 			    steps:
 			      - uses: "actions/checkout@v4.<caret>" # keep me?
 			""")
-	void preservesClosingQuoteWhenReplacingTrailingLineContent(PsiFile workflowFile) {
+	void preservesClosingQuoteAndTrailingComment(PsiFile workflowFile) {
 
 		GitHubFixtures.analyze(workflowFile);
 
@@ -195,7 +195,7 @@ class GitHubWorkflowCompletionTests {
 
 		assertThat(fixture.getEditor().getDocument().getText())
 				.contains("\"actions/checkout@v4.2.0\"")
-				.doesNotContain("# keep me?");
+				.contains("# keep me?");
 	}
 
 	private void openAtCaretAfter(PsiFile workflowFile, String anchor) {

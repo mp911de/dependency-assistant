@@ -250,7 +250,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
+			new UpdateGitHubWorkflowFile().applyUpdates(psiFile, updates);
 		}
 
 	}

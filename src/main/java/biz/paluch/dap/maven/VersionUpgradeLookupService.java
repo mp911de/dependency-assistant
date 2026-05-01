@@ -220,6 +220,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 			if (resolvedProperty != null) {
 				it.versionLiteral(resolvedProperty.valueLiteral());
+			} else {
+				it.versionLiteral(propertyTag);
 			}
 		});
 	}

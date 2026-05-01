@@ -34,7 +34,6 @@ import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.icons.AllIcons.Vcs;
-import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
@@ -87,7 +86,8 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				? artifactReference.getDeclaration().getVersion()
 				: null;
 
-		return new CompletionMetadata(artifactReference.getArtifactId(), currentVersion);
+		return new CompletionMetadata(artifactReference.getArtifactId(), currentVersion,
+				artifactReference.getDeclaration().getVersionLiteral());
 	}) {
 
 		@Override
@@ -111,52 +111,21 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 			return element.withInsertHandler((insertionContext, lookupElement) -> {
 
-				Document document = insertionContext.getDocument();
+				if (scalar.isValid()) {
+					return;
+				}
+
 				VersionText insertText = ref.getVersion(version);
-				int startOffset = insertionContext.getStartOffset();
-				int replaceStart = findRefStartOffset(document, startOffset);
-				String closingQuoteSuffix = getClosingQuoteSuffix(scalar);
-				boolean preserveTrailing = !StringUtils.hasText(insertText.comment())
-						&& isCompleteRef(ref.rawVersion());
-
-				String text;
-				int replaceEnd;
-				if (preserveTrailing) {
-					text = insertText.text();
-					replaceEnd = findScalarValueEnd(document, replaceStart, closingQuoteSuffix);
-				} else {
-					text = insertText.text() + closingQuoteSuffix;
-					if (StringUtils.hasText(insertText.comment())) {
-						text += " # " + insertText.comment();
-					}
-					replaceEnd = getLineEndOffset(document, insertionContext.getTailOffset());
+				YAMLScalar updated = UpdateGitHubWorkflowFile.updateRef(scalar, insertText.text());
+				if (updated == null) {
+					return;
 				}
-
-				document.replaceString(replaceStart, replaceEnd, text);
-				insertionContext.getEditor().getCaretModel().moveToOffset(replaceStart + text.length());
+				if (StringUtils.hasText(insertText.comment())) {
+					UpdateGitHubWorkflowFile.ensureVersionComment(updated, insertText.comment());
+				}
+				insertionContext.getEditor().getCaretModel()
+						.moveToOffset(UpdateGitHubWorkflowFile.getValueEndOffset(updated));
 			});
-		}
-
-		private static int findRefStartOffset(Document document, int offset) {
-			CharSequence chars = document.getCharsSequence();
-
-			int lineNumber = document.getLineNumber(offset);
-			int lineStart = document.getLineStartOffset(lineNumber);
-			int at = -1;
-
-			for (int i = offset - 1; i >= lineStart; i--) {
-				if (chars.charAt(i) == '@') {
-					at = i;
-					break;
-				}
-
-				// Optional safety: stop if we move before the action name
-				if (Character.isWhitespace(chars.charAt(i)) || chars.charAt(i) == '"' || chars.charAt(i) == '\'') {
-					break;
-				}
-			}
-
-			return at >= 0 ? at + 1 : offset;
 		}
 
 		@Override
@@ -280,61 +249,6 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 			return "";
 		}
 		return text.substring(refStart, caretInScalar);
-	}
-
-
-	private static int getLineEndOffset(Document document, int offset) {
-
-		int boundedOffset = Math.max(0, Math.min(offset, document.getTextLength()));
-		return document.getLineEndOffset(document.getLineNumber(boundedOffset));
-	}
-
-	private static boolean isCompleteRef(@Nullable String rawVersion) {
-
-		if (rawVersion == null || rawVersion.isEmpty()) {
-			return false;
-		}
-		char last = rawVersion.charAt(rawVersion.length() - 1);
-		return last != '.' && last != '-';
-	}
-
-	private static int findScalarValueEnd(Document document, int afterAtOffset, String closingQuoteSuffix) {
-
-		CharSequence chars = document.getCharsSequence();
-		int lineEnd = getLineEndOffset(document, afterAtOffset);
-
-		if (!closingQuoteSuffix.isEmpty()) {
-			char quote = closingQuoteSuffix.charAt(0);
-			for (int i = afterAtOffset; i < lineEnd; i++) {
-				if (chars.charAt(i) == quote) {
-					return i;
-				}
-			}
-			return lineEnd;
-		}
-
-		for (int i = afterAtOffset; i < lineEnd; i++) {
-			char c = chars.charAt(i);
-			if (Character.isWhitespace(c) || c == '#') {
-				return i;
-			}
-		}
-		return lineEnd;
-	}
-
-	private static String getClosingQuoteSuffix(YAMLScalar scalar) {
-
-		String text = scalar.getText();
-		if (text.length() < 2) {
-			return "";
-		}
-
-		char first = text.charAt(0);
-		if (first != '"' && first != '\'') {
-			return "";
-		}
-
-		return text.charAt(text.length() - 1) == first ? String.valueOf(first) : "";
 	}
 
 }

@@ -54,7 +54,8 @@ public class ReleaseVersionCompletionContributor extends CompletionContributor {
 
 		ArtifactVersion version = lookup.getCurrentVersion(artifactReference.getArtifactId());
 		return new CompletionMetadata(artifactReference.getArtifactId(),
-				version != null ? version : artifactReference.getDeclaration().getVersion());
+				version != null ? version : artifactReference.getDeclaration().getVersion(),
+				artifactReference.getDeclaration().getVersionLiteral());
 	});
 
 	@Override
