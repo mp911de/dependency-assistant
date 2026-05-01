@@ -144,8 +144,8 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 	 * Return whether the given version can be compared with this one.
 	 */
 	default boolean canCompare(ArtifactVersion version) {
-		ArtifactVersion self = isWrapped() ? getVersion() : this;
-		ArtifactVersion other = version.isWrapped() ? version.getVersion() : version;
+		ArtifactVersion self = getVersion();
+		ArtifactVersion other = version.getVersion();
 		return self.getClass().equals(other.getClass());
 	}
 

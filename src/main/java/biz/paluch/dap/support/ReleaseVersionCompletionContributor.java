@@ -18,7 +18,7 @@ package biz.paluch.dap.support;
 
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.support.ReleasesSuggestionProvider.CompletionMetadata;
+import biz.paluch.dap.support.ReleasesCompletionProvider.CompletionMetadata;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -35,7 +35,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class ReleaseVersionCompletionContributor extends CompletionContributor {
 
-	private final ReleasesSuggestionProvider provider = new ReleasesSuggestionProvider(element -> {
+	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(element -> {
 
 		if (element instanceof LeafPsiElement) {
 			element = element.getParent();

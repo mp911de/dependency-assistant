@@ -20,6 +20,7 @@ import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 
+import biz.paluch.dap.ProjectId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -151,6 +152,9 @@ class GitRepositoryResolver {
 	 */
 	record GitRepositoryMetadata(String host, String owner, String repository) {
 
+		public ProjectId toProjectId(String buildFile) {
+			return ProjectId.of(owner(), repository(), buildFile);
+		}
 
 	}
 

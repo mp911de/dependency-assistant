@@ -90,7 +90,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
 		YAMLScalar scalar = findUsesScalar(element);
-		if (!buildContext.isAvailable() || scalar == null) {
+		if (buildContext.isAbsent() || scalar == null) {
 			return ArtifactReference.unresolved();
 		}
 

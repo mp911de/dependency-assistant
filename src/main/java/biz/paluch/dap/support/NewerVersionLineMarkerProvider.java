@@ -45,7 +45,7 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
-		if (context == null || !context.isVersionElement(element) || !context.isAvailable()) {
+		if (context == null || !context.isVersionElement(element) || context.isAbsent()) {
 			return null;
 		}
 

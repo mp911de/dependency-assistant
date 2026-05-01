@@ -18,6 +18,7 @@ package biz.paluch.dap.artifact;
 
 /**
  * Wrapper class for {@link ArtifactVersion} delegating to the wrapped version.
+ * 
  * @author Mark Paluch
  */
 abstract class ArtifactVersionWrapper implements ArtifactVersion {
@@ -26,11 +27,6 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 
 	protected ArtifactVersionWrapper(ArtifactVersion delegate) {
 		this.delegate = delegate;
-	}
-
-	@Override
-	public boolean canCompare(ArtifactVersion version) {
-		return version instanceof GitVersion;
 	}
 
 	@Override

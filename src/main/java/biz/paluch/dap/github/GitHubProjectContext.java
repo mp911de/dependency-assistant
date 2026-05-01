@@ -71,7 +71,7 @@ class GitHubProjectContext implements ProjectBuildContext {
 				: GitHubReleaseSource.from(project);
 
 		ProjectId projectId = gitRepository != null
-				? ProjectId.of("github:" + gitRepository.owner(), gitRepository.repository(), anchor.getPath())
+				? gitRepository.toProjectId(anchor.getPath())
 				: ProjectId.of("", "", anchor.getPath());
 		return new GitHubProjectContext(projectId, releaseSource);
 	}

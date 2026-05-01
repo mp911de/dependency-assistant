@@ -86,12 +86,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 	}
 
 	/**
-	 * Returns whether the context is available.
-	 */
-	@Override
-	boolean isAvailable();
-
-	/**
 	 * Returns the associated Maven id.
 	 */
 	MavenId getMavenId();

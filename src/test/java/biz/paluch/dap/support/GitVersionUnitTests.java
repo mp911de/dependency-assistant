@@ -57,7 +57,7 @@ class GitVersionUnitTests {
 	void canCompareReturnsFalseForNonGitVersion() {
 		GitVersion a = gitVersion("1.2.3");
 		ArtifactVersion semantic = ArtifactVersion.of("1.2.4");
-		assertThat(a.canCompare(semantic)).isFalse();
+		assertThat(a.canCompare(semantic)).isTrue();
 	}
 
 	@Test

@@ -83,12 +83,6 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	@Override
-	public boolean canCompare(ArtifactVersion version) {
-		return version instanceof GitVersion;
-	}
-
-
-	@Override
 	public boolean equals(Object o) {
 		if (!(o instanceof GitVersion that)) {
 			return false;

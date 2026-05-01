@@ -23,8 +23,8 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.github.WorkflowUsesReference.VersionText;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.ReleasesSuggestionProvider;
-import biz.paluch.dap.support.ReleasesSuggestionProvider.CompletionMetadata;
+import biz.paluch.dap.support.ReleasesCompletionProvider;
+import biz.paluch.dap.support.ReleasesCompletionProvider.CompletionMetadata;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
@@ -60,7 +60,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	private static final ExtensionPointName<DependencyAssistant> ASSISTANTS = ExtensionPointName
 			.create("biz.paluch.dap.assistant");
 
-	private final ReleasesSuggestionProvider provider = new ReleasesSuggestionProvider(element -> {
+	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(element -> {
 
 		PsiFile file = element.getContainingFile();
 		if (!GitHubUtils.isWorkflowFile(file)) {
@@ -68,7 +68,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 		}
 
 		ProjectDependencyContext context = resolveContext(file);
-		if (context == null) {
+		if (context == null || context.isAbsent()) {
 			return null;
 		}
 
@@ -87,8 +87,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				? artifactReference.getDeclaration().getVersion()
 				: null;
 
-		return new CompletionMetadata(artifactReference.getArtifactId(),
-				currentVersion);
+		return new CompletionMetadata(artifactReference.getArtifactId(), currentVersion);
 	}) {
 
 		@Override
@@ -101,8 +100,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				return element;
 			}
 
-			String scalarText = scalar.getTextValue();
-			WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue(scalarText);
+			WorkflowUsesReference ref = GitHubWorkflowParser.parseUsesValue(scalar.getTextValue());
 			if (ref == null) {
 				return element;
 			}
@@ -223,7 +221,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	private static boolean isAfterRefSeparatorInUsesScalar(PsiElement element) {
 
 		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
-		if (scalar == null) {
+		if (scalar == null || !scalar.isValid()) {
 			return false;
 		}
 

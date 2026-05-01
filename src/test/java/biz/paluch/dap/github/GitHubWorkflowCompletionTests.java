@@ -94,7 +94,7 @@ class GitHubWorkflowCompletionTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: actions/checkout@7b4f3880<caret>
+			      - uses: actions/checkout@7b4f3880<caret> # foo # bar
 			""")
 	void completesShortShaRef(PsiFile workflowFile) {
 
@@ -102,6 +102,7 @@ class GitHubWorkflowCompletionTests {
 
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+
 		assertThat(fixture.getEditor().getDocument().getText())
 				.contains("actions/checkout@d1185ce5 # 4.2.0");
 	}
@@ -111,7 +112,7 @@ class GitHubWorkflowCompletionTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: actions/checkout@<caret> # replace me
+			      - uses: actions/checkout@<caret> # replace me # here to stay
 			""")
 	void completesFullShaWithVersionComment(PsiFile workflowFile) {
 
@@ -121,7 +122,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # 4.2.0");
+				.contains("checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # 4.2.0 # here to stay");
 	}
 
 	@Test

@@ -116,7 +116,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (!candidate || !buildContext.isAvailable()) {
+		if (!candidate || buildContext.isAbsent()) {
 			return ArtifactReference.unresolved();
 		}
 

@@ -115,7 +115,7 @@ class MavenAssistant implements DependencyAssistant {
 		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
 		MavenProjectContext projectContext = MavenProjectContext.of(project, anchor);
 
-		if (!projectContext.isAvailable()) {
+		if (projectContext.isAbsent()) {
 			throw new IllegalStateException("No Maven project found for " + anchor);
 		}
 

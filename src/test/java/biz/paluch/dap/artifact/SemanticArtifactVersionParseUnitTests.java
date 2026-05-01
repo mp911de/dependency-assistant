@@ -155,7 +155,7 @@ class SemanticArtifactVersionParseUnitTests {
 		assertThat(plain.canCompare(prefixed)).isTrue();
 	}
 
-	@ParameterizedTest(name = "{0}")
+	@ParameterizedTest
 	@ValueSource(strings = {"1.0.0-dev", "1.0.0-dev.5", "1.0.0-nightly.20260426", "1.0.0-canary",
 			"1.0.0-pre", "1.0.0-pre.1", "1.0.0-next", "1.0.0-next.20260426", "1.0.0-preview",
 			"1.0.0-preview.3", "0.0.0-experimental"})

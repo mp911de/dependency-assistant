@@ -36,6 +36,14 @@ public interface ProjectBuildContext {
 	boolean isAvailable();
 
 	/**
+	 * Return whether this context is not {@link #isAvailable() available}.
+	 * @see #isAvailable()
+	 */
+	default boolean isAbsent() {
+		return !isAvailable();
+	}
+
+	/**
 	 * Return the build-tool agnostic project identity.
 	 * @throws IllegalStateException if the build context is not available.
 	 */

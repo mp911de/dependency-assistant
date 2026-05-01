@@ -69,7 +69,17 @@ record WorkflowUsesReference(String owner, String repository, @Nullable String r
 			return new VersionText(text, version.toString());
 		}
 
+		if (hasVPrefix(rawVersion()) && !hasVPrefix(text)) {
+			text = "v" + text;
+		}
+
 		return new VersionText(text, "");
+	}
+
+	private static boolean hasVPrefix(@Nullable String ref) {
+		return ref != null && ref.length() >= 2
+				&& (ref.charAt(0) == 'v' || ref.charAt(0) == 'V')
+				&& Character.isDigit(ref.charAt(1));
 	}
 
 

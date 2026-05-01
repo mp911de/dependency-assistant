@@ -96,7 +96,7 @@ class GradleAssistant implements DependencyAssistant {
 	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
 
 		GradleProjectContext context = GradleProjectContext.of(project, anchor);
-		if (!context.isAvailable()) {
+		if (context.isAbsent()) {
 			throw new IllegalStateException("No Gradle project found for " + anchor);
 		}
 
@@ -153,7 +153,7 @@ class GradleAssistant implements DependencyAssistant {
 			}
 
 			GradleProjectContext changedContext = GradleProjectContext.of(project, file);
-			if (!changedContext.isAvailable()) {
+			if (changedContext.isAbsent()) {
 				return;
 			}
 

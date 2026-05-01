@@ -26,6 +26,7 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
+import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,9 +52,6 @@ class MavenCompletionTests {
 	@Test
 	@EditorFile(name = "pom.xml", content = """
 			<project>
-				<groupId>com.example</groupId>
-				<artifactId>demo</artifactId>
-				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
 						<groupId>org.junit</groupId>
@@ -74,9 +72,76 @@ class MavenCompletionTests {
 	@Test
 	@EditorFile(name = "pom.xml", content = """
 			<project>
-				<groupId>com.example</groupId>
-				<artifactId>demo</artifactId>
-				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit</groupId>
+						<artifactId>junit-bom</artifactId>
+						<version>6.<caret>0.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void completesInlineVersionWithinWord(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+
+		assertThat(pomFile.getText()).contains("<version>6.1.0-M1</version>");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<properties>
+					<junit>6.0.<caret></junit>
+				</properties>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit</groupId>
+						<artifactId>junit-bom</artifactId>
+						<version>${junit}</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void completesPropertyVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<properties>
+					<junit>6.<caret>0.0</junit>
+				</properties>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit</groupId>
+						<artifactId>junit-bom</artifactId>
+						<version>${junit}</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void completesPropertyVersionWithinWord(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+
+		assertThat(pomFile.getText()).contains("<junit>6.1.0-M1</junit>");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
 				<dependencies>
 					<dependency>
 						<groupId>org.junit</groupId>
@@ -104,9 +169,6 @@ class MavenCompletionTests {
 	@Test
 	@EditorFile(name = "pom.xml", content = """
 			<project>
-				<groupId>com.example</groupId>
-				<artifactId>demo</artifactId>
-				<version>1.0.0</version>
 				<dependencyManagement>
 					<dependencies>
 						<dependency>

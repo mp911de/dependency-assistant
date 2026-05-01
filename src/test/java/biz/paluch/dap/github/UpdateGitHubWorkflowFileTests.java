@@ -56,14 +56,14 @@ class UpdateGitHubWorkflowFileTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: actions/checkout@4.1.0
+			      - uses: actions/checkout@4.1.0 # here to stay
 			""")
 	void updatesVersionRefWithoutVPrefix(PsiFile workflowFile) {
 
 		applyUpdate(workflowFile, "actions", "checkout", "4.1.0",
 				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("4.2.0")));
 
-		assertThat(workflowFile.getText()).contains("actions/checkout@4.2.0");
+		assertThat(workflowFile.getText()).contains("actions/checkout@4.2.0 # here to stay");
 		assertThat(workflowFile.getText()).doesNotContain("@v");
 	}
 
@@ -72,15 +72,15 @@ class UpdateGitHubWorkflowFileTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: actions/checkout@7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1
+			      - uses: actions/checkout@7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1 # replace # here to stay
 			""")
 	void updatesShaRefAndAddsVersionComment(PsiFile workflowFile) {
 
 		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("4.2.0")));
+				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
 
-		assertThat(workflowFile.getText()).contains("actions/checkout@" + GitHubFixtures.SHA_V4);
-		assertThat(workflowFile.getText()).contains("# v4.2.0");
+		assertThat(workflowFile.getText())
+				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # here to stay");
 	}
 
 	@Test
@@ -88,14 +88,14 @@ class UpdateGitHubWorkflowFileTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: actions/checkout@7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1 # v3.6.0
+			      - uses: actions/checkout@7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1 # v3.6.0 # foo
 			""")
 	void refreshesExistingManagedComment(PsiFile workflowFile) {
 
 		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("4.2.0")));
+				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
 
-		assertThat(workflowFile.getText()).contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0");
+		assertThat(workflowFile.getText()).contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # foo");
 		assertThat(workflowFile.getText()).doesNotContain("v3.6.0");
 	}
 
@@ -109,10 +109,10 @@ class UpdateGitHubWorkflowFileTests {
 	void preservesUnmanagedTrailingComment(PsiFile workflowFile) {
 
 		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("4.2.0")));
+				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
 
 		assertThat(workflowFile.getText())
-				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + "   # custom note");
+				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0");
 		assertThat(workflowFile.getText()).doesNotContain("v4.2.0");
 	}
 

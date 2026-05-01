@@ -44,9 +44,11 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Suggestion provider for version numbers.
+ * {@link CompletionProvider} releases.
+ * 
+ * @author Mark Paluch
  */
-public class ReleasesSuggestionProvider extends CompletionProvider<CompletionParameters> {
+public class ReleasesCompletionProvider extends CompletionProvider<CompletionParameters> {
 
 	private final Function<PsiElement, @Nullable CompletionMetadata> metadataFunction;
 
@@ -54,7 +56,7 @@ public class ReleasesSuggestionProvider extends CompletionProvider<CompletionPar
 	 * Create a provider using the function that extracts completion metadata from
 	 * the completion position.
 	 */
-	public ReleasesSuggestionProvider(Function<PsiElement, @Nullable CompletionMetadata> metadataFunction) {
+	public ReleasesCompletionProvider(Function<PsiElement, @Nullable CompletionMetadata> metadataFunction) {
 		this.metadataFunction = metadataFunction;
 	}
 
