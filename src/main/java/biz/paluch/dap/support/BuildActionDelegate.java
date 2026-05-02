@@ -24,6 +24,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.CommandProcessor;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
@@ -39,6 +40,8 @@ import com.intellij.psi.PsiManager;
  * @see UpdateBuildFile
  */
 public class BuildActionDelegate implements UpdateBuildFile {
+
+	private static final Logger LOG = Logger.getInstance(BuildActionDelegate.class);
 
 	private final Project project;
 
@@ -76,13 +79,17 @@ public class BuildActionDelegate implements UpdateBuildFile {
 			PsiFile psiFile = PsiManager.getInstance(project).findFile(buildFile);
 
 			if (psiFile == null) {
-				// TODO: Balloon notification
+				Notifications.error(project, MessageBundle.message("notification.update-build-file.error.title"),
+						MessageBundle.message("notification.update-build-file.no-file", buildFile.getPresentableUrl()));
 				return;
 			}
 			try {
 				updateAction.accept(psiFile, updates);
-			} catch (Exception e) {
-				// TODO: Balloon notification
+			} catch (Exception ex) {
+				LOG.warn("Build file update failed", ex);
+				Notifications.error(project, MessageBundle.message("notification.update-build-file.error.title"),
+						MessageBundle.message("notification.update-build-file.failed", buildFile.getPresentableUrl(),
+								Notifications.errorMessage(ex)));
 			}
 		};
 

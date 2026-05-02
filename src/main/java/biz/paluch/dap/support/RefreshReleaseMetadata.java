@@ -27,10 +27,10 @@ import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.support.DependencyCheck.ArtifactRefreshCandidate;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.util.TimeoutUtil;
 import com.intellij.util.progress.StepsProgressIndicator;
 import org.jspecify.annotations.Nullable;
@@ -41,6 +41,8 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class RefreshReleaseMetadata extends Task.Backgroundable {
+
+	private static final Logger LOG = Logger.getInstance(RefreshReleaseMetadata.class);
 
 	private final Project project;
 
@@ -102,11 +104,9 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 
 	@Override
 	public void onThrowable(Throwable error) {
-		error.printStackTrace();
-		// TODO: use balloon notifications
-		Messages.showMessageDialog(project,
-				MessageBundle.message("action.refresh-releases.task.error", error.getMessage()),
-				MessageBundle.message("error.title"), Messages.getErrorIcon());
+		LOG.warn("Dependency release metadata refresh failed", error);
+		Notifications.error(project,
+				MessageBundle.message("action.refresh-releases.task.error", Notifications.errorMessage(error)));
 	}
 
 	private @Nullable List<ArtifactId> getUpdates() {

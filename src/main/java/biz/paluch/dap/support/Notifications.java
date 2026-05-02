@@ -46,6 +46,33 @@ class Notifications {
 
 	private static final String STICKY_NOTIFICATION = "biz.paluch.dependency-assistant.releases-sticky";
 
+	private static final String ERROR_NOTIFICATION = "biz.paluch.dependency-assistant.errors";
+
+	/**
+	 * Notify the user about an error.
+	 */
+	public static void error(Project project, String content) {
+		error(project, MessageBundle.message("error.title"), content);
+	}
+
+	/**
+	 * Notify the user about an error.
+	 */
+	public static void error(Project project, String title, String content) {
+
+		Notification notification = new Notification(ERROR_NOTIFICATION, title, content, NotificationType.ERROR);
+		notification.notify(project);
+	}
+
+	/**
+	 * Return a displayable message for the given error.
+	 */
+	public static String errorMessage(Throwable error) {
+
+		String message = error.getMessage();
+		return message != null && !message.isBlank() ? message : error.getClass().getSimpleName();
+	}
+
 	/**
 	 * Notify the user that release metadata is unavailable and offer to update the
 	 * cache.

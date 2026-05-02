@@ -24,7 +24,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
@@ -74,10 +73,8 @@ class DependencyCheckTask extends Task.Backgroundable {
 	public void onThrowable(Throwable error) {
 		LOG.warn("Dependency check failed", error);
 
-		// TODO: use balloon notifications
-		Messages.showMessageDialog(project,
-				MessageBundle.message("action.check.dependencies.task.error", error.getMessage()),
-				MessageBundle.message("error.title"), Messages.getErrorIcon());
+		Notifications.error(project,
+				MessageBundle.message("action.check.dependencies.task.error", Notifications.errorMessage(error)));
 	}
 
 }
