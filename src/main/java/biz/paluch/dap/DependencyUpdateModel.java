@@ -173,7 +173,7 @@ class DependencyUpdateModel {
 		 */
 		Icon getIcon(UpgradeStrategy upgradeStrategy) {
 			return (switch (upgradeStrategy) {
-				case PATCH -> VersionAge.NEWER_PATCH;
+			case RELEASE, PATCH -> VersionAge.NEWER_PATCH;
 				case MINOR -> VersionAge.NEWER_MINOR;
 				case MAJOR, LATEST -> VersionAge.NEWER_MAJOR;
 				case PREVIEW -> VersionAge.PREVIEW;

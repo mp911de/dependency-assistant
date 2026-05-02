@@ -88,6 +88,9 @@ class GitHubAccountResolver {
 	 */
 	ResolvedAccount resolve() {
 
+
+		// TODO: TrustedProjects
+
 		Collection<GithubAccount> accounts = lookupAccounts();
 		if (accounts.isEmpty()) {
 			return ResolvedAccount.anonymous();

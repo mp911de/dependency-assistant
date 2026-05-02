@@ -44,8 +44,6 @@ import com.intellij.psi.ElementManipulator;
 import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
 import com.intellij.util.ProcessingContext;
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -194,9 +192,8 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		return element;
 	}
 
-	public static @NotNull LookupElementBuilder applyVersion(@NonNull ArtifactVersion currentVersion,
-			ArtifactVersion option,
-			LookupElementBuilder element) {
+	public static LookupElementBuilder applyVersion(ArtifactVersion currentVersion,
+			ArtifactVersion option, LookupElementBuilder element) {
 		if (option.isNewer(currentVersion)) {
 			element = element.bold();
 		}
@@ -204,7 +201,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 			element = element.withItemTextItalic(true);
 		}
 
-		VersionAge versionAge = VersionAge.fromVersions(currentVersion, option);
+		VersionAge versionAge = VersionAge.between(currentVersion, option);
 		return element.withIcon(versionAge.getIcon());
 	}
 

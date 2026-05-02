@@ -128,6 +128,24 @@ public enum UpgradeStrategy {
 					.findFirst().orElse(null);
 		}
 
+	},
+
+	/**
+	 * Select the newest non-preview release that is newer than {@code current}
+	 * considering major and minor version components.
+	 * <p>Returns {@literal null} when no qualifying release exists.
+	 */
+	RELEASE {
+
+		@Override
+		@Nullable
+		public Release select(ArtifactVersion current, Collection<Release> options) {
+			return options.stream() //
+					.filter(Predicate.not(Release::isPreview)) //
+					.filter(opt -> opt.isNewer(current) && opt.hasSameMajorMinor(current)) //
+					.findFirst().orElse(null);
+		}
+
 	};
 
 	/**

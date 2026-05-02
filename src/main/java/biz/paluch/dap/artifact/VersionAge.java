@@ -21,52 +21,110 @@ import javax.swing.*;
 import com.intellij.icons.AllIcons;
 
 /**
- * How a suggested version relates to the current version (for icon display).
+ * Coarse presentation category for a candidate artifact version.
+ *
+ * <p>{@code VersionAge} is the shared visual language for dependency update
+ * candidates in completion lists, dialogs, and generated documentation. It
+ * intentionally sits after version parsing and upgrade selection: callers use
+ * {@link ArtifactVersion} to compare concrete versions and
+ * {@link UpgradeStrategy} to select an update target, then use this type to
+ * present the candidate with consistent impact semantics.
+ *
+ * <p>The categories are not an ordering contract. They describe the
+ * relationship that is useful to a user reviewing an update: older, neutral,
+ * patch, minor, major, preview, or a stable release target.
+ *
+ * @author Mark Paluch
  */
 public enum VersionAge {
 
+	/**
+	 * Candidate version that compares older than the current version.
+	 */
 	OLDER,
 
+	/**
+	 * Neutral category for equal versions or callers that cannot provide a more
+	 * specific relationship.
+	 */
 	SAME_OR_UNKNOWN,
 
+	/**
+	 * Newer candidate in the same major/minor version line.
+	 */
 	NEWER_PATCH,
 
+	/**
+	 * Newer candidate in the same major version line, but outside the current
+	 * major/minor line.
+	 */
 	NEWER_MINOR,
 
+	/**
+	 * Newer candidate outside the current major line, or an update target that may
+	 * cross stable version boundaries.
+	 */
 	NEWER_MAJOR,
 
-	PREVIEW;
+	/**
+	 * Newer milestone or release candidate. Preview status takes precedence over
+	 * patch/minor/major presentation because it communicates release stability.
+	 */
+	PREVIEW,
 
 	/**
-	 * Return the icon classification for the given upgrade target.
+	 * Stable release target selected by policy rather than inferred from a concrete
+	 * version comparison.
+	 */
+	RELEASE;
+
+	/**
+	 * Return the presentation category for the given upgrade strategy.
+	 * <p>This method bridges a user-selected strategy to the same categories used
+	 * for concrete versions. It does not inspect available releases; it only
+	 * expresses the expected impact of the selected strategy.
+	 * @param target the selected upgrade strategy
+	 * @return the corresponding presentation category
 	 */
 	public static VersionAge fromTarget(UpgradeStrategy target) {
 
 		return switch (target) {
-			case PATCH -> NEWER_PATCH;
-			case MINOR -> NEWER_MINOR;
-			case MAJOR, LATEST -> NEWER_MAJOR;
-			case PREVIEW -> PREVIEW;
+		case PATCH -> NEWER_PATCH;
+		case MINOR -> NEWER_MINOR;
+		case MAJOR, LATEST -> NEWER_MAJOR;
+		case PREVIEW -> PREVIEW;
+		case RELEASE -> RELEASE;
 		};
 	}
 
 	/**
-	 * Compare two version-bearing objects using their {@link ArtifactVersion}.
+	 * Return how the candidate version relates to the current version.
+	 * <p>The result is meant for presentation and should not be used to select an
+	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; this method
+	 * classifies an already-known candidate according to the comparison and version
+	 * boundary contract of {@link ArtifactVersion}.
+	 * @param start the start version (or currently used version).
+	 * @param end the end version (or upgrade candidate version)
+	 * @return the end candidate version age category.
+	 * @see HasVersion
 	 */
-	public static VersionAge fromVersions(HasVersion currentVersion, HasVersion otherVersion) {
-
-		ArtifactVersion current = currentVersion.getVersion();
-		ArtifactVersion option = otherVersion.getVersion();
-
-		return fromVersions(current, option);
+	public static VersionAge between(HasVersion start, HasVersion end) {
+		return between(start.getVersion(), end.getVersion());
 	}
 
 	/**
-	 * Return how {@code option} relates to {@code current}.
+	 * Return how the candidate version relates to the current version.
+	 * <p>The result is meant for presentation and should not be used to select an
+	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; this method
+	 * classifies an already-known candidate according to the comparison and version
+	 * boundary contract of {@link ArtifactVersion}.
+	 * @param start the start version (or currently used version).
+	 * @param end the end version (or upgrade candidate version)
+	 * @return the end candidate version age category.
 	 */
-	public static VersionAge fromVersions(ArtifactVersion current, ArtifactVersion option) {
+	public static VersionAge between(ArtifactVersion start, ArtifactVersion end) {
 
-		int cmp = option.compareTo(current);
+		int cmp = end.compareTo(start);
 		if (cmp < 0) {
 			return OLDER;
 		}
@@ -75,15 +133,15 @@ public enum VersionAge {
 			return SAME_OR_UNKNOWN;
 		}
 
-		if (option.isMilestoneVersion() || option.isReleaseCandidateVersion()) {
+		if (end.isMilestoneVersion() || end.isReleaseCandidateVersion()) {
 			return PREVIEW;
 		}
 
-		if (option.hasSameMajorMinor(current) && option.isNewer(current)) {
+		if (end.hasSameMajorMinor(start) && end.isNewer(start)) {
 			return NEWER_PATCH;
 		}
 
-		if (option.hasSameMajor(current) && option.isNewer(current)) {
+		if (end.hasSameMajor(start) && end.isNewer(start)) {
 			return NEWER_MINOR;
 		}
 
@@ -91,30 +149,31 @@ public enum VersionAge {
 	}
 
 	/**
-	 * Return the IntelliJ icon associated with this version age.
+	 * Return the IntelliJ icon associated with this category.
 	 */
 	public Icon getIcon() {
 		return switch (this) {
-			case OLDER -> AllIcons.Nodes.Library;
-			case NEWER_PATCH -> AllIcons.Actions.StartDebugger;
-			case NEWER_MINOR -> AllIcons.Debugger.ThreadRunning;
-			case NEWER_MAJOR -> AllIcons.Actions.RunAll;
-			case PREVIEW -> AllIcons.Debugger.DebuggerSync;
-			case SAME_OR_UNKNOWN -> AllIcons.Nodes.PpLibFolder;
+		case OLDER -> AllIcons.Nodes.Library;
+		case RELEASE, NEWER_PATCH -> AllIcons.Actions.StartDebugger;
+		case NEWER_MINOR -> AllIcons.Debugger.ThreadRunning;
+		case NEWER_MAJOR -> AllIcons.Actions.RunAll;
+		case PREVIEW -> AllIcons.Debugger.DebuggerSync;
+		case SAME_OR_UNKNOWN -> AllIcons.Nodes.PpLibFolder;
 		};
 	}
 
 	/**
-	 * Documentation icon names.
+	 * Return the symbolic icon name used when rendering this category in
+	 * documentation.
 	 */
 	public String getIconName() {
 		return switch (this) {
-			case OLDER -> "AllIcons.Nodes.Library";
-			case NEWER_PATCH -> "AllIcons.Actions.StartDebugger";
-			case NEWER_MINOR -> "AllIcons.Debugger.ThreadRunning";
-			case NEWER_MAJOR -> "AllIcons.Actions.RunAll";
-			case PREVIEW -> "AllIcons.Debugger.DebuggerSync";
-			case SAME_OR_UNKNOWN -> "AllIcons.Nodes.PpLibFolder";
+		case OLDER -> "AllIcons.Nodes.Library";
+		case RELEASE, NEWER_PATCH -> "AllIcons.Actions.StartDebugger";
+		case NEWER_MINOR -> "AllIcons.Debugger.ThreadRunning";
+		case NEWER_MAJOR -> "AllIcons.Actions.RunAll";
+		case PREVIEW -> "AllIcons.Debugger.DebuggerSync";
+		case SAME_OR_UNKNOWN -> "AllIcons.Nodes.PpLibFolder";
 		};
 	}
 

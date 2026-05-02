@@ -10,6 +10,8 @@ repositories {
 	mavenCentral()
 	intellijPlatform {
 		defaultRepositories()
+		releases()
+		marketplace()
 	}
 }
 

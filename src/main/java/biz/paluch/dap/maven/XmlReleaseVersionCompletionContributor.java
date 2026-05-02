@@ -25,7 +25,6 @@ import com.intellij.patterns.XmlPatterns;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTokenType;
 import com.intellij.util.ProcessingContext;
-import org.jspecify.annotations.NonNull;
 
 /**
  * Completion contributor for Maven release versions.
@@ -42,7 +41,7 @@ public class XmlReleaseVersionCompletionContributor extends CompletionContributo
 		PatternCondition<XmlFile> isMavenFile = new PatternCondition<>("isMavenFile") {
 
 			@Override
-			public boolean accepts(@NonNull XmlFile xmlFile, ProcessingContext processingContext) {
+			public boolean accepts(XmlFile xmlFile, ProcessingContext processingContext) {
 				return MavenUtils.isMavenPomFile(xmlFile);
 			}
 

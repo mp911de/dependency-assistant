@@ -270,7 +270,7 @@ public class DependencyDocumentationProvider
 				sb.append("<tr>");
 
 				if (iconImages != null && artifactVersion != null) {
-					VersionAge age = VersionAge.fromVersions(artifactVersion, v);
+					VersionAge age = VersionAge.between(artifactVersion, v);
 					sb.append("<td>" + HtmlChunk.icon(age.getIconName(), age.getIcon()) + "</td>");
 				}
 
@@ -336,7 +336,7 @@ public class DependencyDocumentationProvider
 				sb.append("<tr>");
 
 				if (iconImages != null && artifactVersion != null) {
-					VersionAge age = VersionAge.fromVersions(artifactVersion, v);
+					VersionAge age = VersionAge.between(artifactVersion, v);
 					sb.append("<td>" + HtmlChunk.icon(age.getIconName(), age.getIcon()) + "</td>");
 				}
 

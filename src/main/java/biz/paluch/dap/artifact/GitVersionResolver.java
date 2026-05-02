@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.artifact;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.util.StringUtils;
@@ -36,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  * {@link CachedRelease} entries for the given artifact and matches the ref
  * against:
  * <ul>
- * <li>the stored SHA-1, accepting an unambiguous prefix; or</li>
+ * <li>the stored SHA, accepting an unambiguous prefix; or</li>
  * <li>the version string, also accepting an unambiguous prefix.</li>
  * </ul>
  * Ambiguous prefixes and unknown refs return {@link Optional#empty()} rather
@@ -44,7 +41,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class GitVersionResolver {
+public class GitVersionResolver {
 
 	private final Cache cache;
 
@@ -52,7 +49,7 @@ class GitVersionResolver {
 	 * Create a resolver backed by the given cache.
 	 * @param cache the shared release cache.
 	 */
-	GitVersionResolver(Cache cache) {
+	public GitVersionResolver(Cache cache) {
 		this.cache = cache;
 	}
 

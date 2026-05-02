@@ -40,7 +40,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.ClassUtils;
@@ -233,7 +232,7 @@ class GradleUtils {
 		return root;
 	}
 
-	private static @NonNull VirtualFile doFindProjectRoot(Project project, VirtualFile file) {
+	private static VirtualFile doFindProjectRoot(Project project, VirtualFile file) {
 
 		VirtualFile ceiling = resolveGradleProjectCeiling(project, file);
 		VirtualFile dir = file.isDirectory() ? file : file.getParent();

@@ -207,8 +207,9 @@ public abstract class VersionUpgradeLookupSupport {
 		Release major = UpgradeStrategy.MAJOR.select(current, options);
 		Release minor = UpgradeStrategy.MINOR.select(current, options);
 		Release patch = UpgradeStrategy.PATCH.select(current, options);
+		Release preview = current.isPreview() ? UpgradeStrategy.PREVIEW.select(current, options) : null;
 
-		if (major == null && minor == null && patch == null) {
+		if (major == null && minor == null && patch == null && preview == null) {
 			return UpgradeSuggestion.none();
 		}
 
@@ -220,9 +221,12 @@ public abstract class VersionUpgradeLookupSupport {
 		} else if (minor != null) {
 			strategy = UpgradeStrategy.MINOR;
 			bestOption = minor;
-		} else {
+		} else if (patch != null) {
 			strategy = UpgradeStrategy.PATCH;
 			bestOption = patch;
+		} else {
+			strategy = UpgradeStrategy.PREVIEW;
+			bestOption = preview;
 		}
 
 		return UpgradeSuggestion.of(strategy, bestOption, artifactReference);
@@ -244,8 +248,9 @@ public abstract class VersionUpgradeLookupSupport {
 		Release major = UpgradeStrategy.MAJOR.select(current, options);
 		Release minor = UpgradeStrategy.MINOR.select(current, options);
 		Release patch = UpgradeStrategy.PATCH.select(current, options);
+		Release preview = current.isPreview() ? UpgradeStrategy.PREVIEW.select(current, options) : null;
 
-		if (major == null && minor == null && patch == null) {
+		if (major == null && minor == null && patch == null && preview == null) {
 			return AvailableUpgrades.none();
 		}
 
@@ -265,6 +270,11 @@ public abstract class VersionUpgradeLookupSupport {
 		if (patch != null) {
 			strategy = UpgradeStrategy.PATCH;
 			upgrades.put(strategy, UpgradeSuggestion.of(strategy, patch, artifactReference));
+		}
+
+		if (preview != null) {
+			strategy = UpgradeStrategy.PREVIEW;
+			upgrades.put(strategy, UpgradeSuggestion.of(strategy, preview, artifactReference));
 		}
 
 		return AvailableUpgrades.of(artifactReference, upgrades.get(strategy),

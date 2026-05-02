@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.GitVersionResolver;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -71,6 +72,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	@Override
 	protected AvailableUpgrades suggestUpgrades(Cache cache, ArtifactReference artifactReference) {
 
+		// TODO duplicate
 		if (!artifactReference.isResolved()) {
 			return AvailableUpgrades.none();
 		}

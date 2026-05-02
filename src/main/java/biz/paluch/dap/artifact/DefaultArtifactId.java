@@ -16,35 +16,16 @@
 
 package biz.paluch.dap.artifact;
 
-import biz.paluch.dap.util.StringUtils;
-
-
 /**
- * Maven artifact coordinates (groupId + artifactId).
+ * Default artifact coordinates (groupId + artifactId).
+ * 
+ * @author Mark Paluch
  */
 record DefaultArtifactId(String groupId, String artifactId) implements ArtifactId {
 
-	/**
-	 * Create coordinates from another artifact id.
-	 */
-	public DefaultArtifactId(ArtifactId artifact) {
-		this(artifact.groupId(), artifact.artifactId());
-	}
-
-	/**
-	 * Return whether the artifact id has text.
-	 */
-	public boolean hasArtifactId() {
-		return StringUtils.hasText(artifactId);
-	}
-
 	@Override
 	public String toString() {
-
-		if (groupId.equals(artifactId)) {
-			return groupId;
-		}
-		return groupId + ":" + artifactId;
+		return groupId.equals(artifactId) ? groupId : groupId + ":" + artifactId;
 	}
 
 }

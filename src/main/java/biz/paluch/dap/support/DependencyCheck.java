@@ -149,15 +149,26 @@ class DependencyCheck {
 
 		ExecutorService executor = AppExecutorUtil.getAppExecutorService();
 		Collection<ReleaseSource> sources = collector.getReleaseSources();
-		ReleaseResolver resolver = new ReleaseResolver(sources, executor);
 		List<DependencyUpdateOption> items = new ArrayList<>();
 		List<String> errors = new ArrayList<>();
 		List<Future<ResolverResult>> futures = new ArrayList<>();
-		List<DeclaredDependency> tasks = new ArrayList<>(collector.getUsages());
+		List<DeclaredDependency> tasks = new ArrayList<>(
+				collector.getDeclarations().size() + collector.getUsages().size());
+		Set<ArtifactId> seen = new LinkedHashSet<>();
 
-		if (collector.isEmpty()) {
-			tasks.addAll(collector.getDeclarations());
-		}
+		collector.getUsages().forEach(it -> {
+			if (seen.add(it.getArtifactId())) {
+				tasks.add(it);
+			}
+		});
+
+		collector.getDeclarations().forEach(it -> {
+			if (it.getVersionSources().stream().anyMatch(VersionSource::isDefined)) {
+				if (seen.add(it.getArtifactId())) {
+					tasks.add(it);
+				}
+			}
+		});
 
 		for (DeclaredDependency declaredDependency : tasks) {
 			futures.add(executor.submit(() -> fetchReleases(indicator, declaredDependency.getArtifactId(), sources,
@@ -201,8 +212,7 @@ class DependencyCheck {
 
 
 	public DependencyUpdates updateReleaseMetadata(ProgressIndicator indicator,
-			List<ArtifactRefreshCandidate> candidates,
-			Consistency consistency) {
+			List<ArtifactRefreshCandidate> candidates, Consistency consistency) {
 
 		Cache cache = service.getCache();
 		ExecutorService executor = AppExecutorUtil.getAppExecutorService();

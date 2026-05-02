@@ -45,7 +45,7 @@ class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<Relea
 	public Component getListCellRendererComponent(JList<? extends Release> list, @Nullable Release value,
 			int index, boolean isSelected, boolean cellHasFocus) {
 		setText(value != null ? value.toString() : "");
-		setIcon(value != null ? VersionAge.fromVersions(currentVersion, value).getIcon() : null);
+		setIcon(value != null ? VersionAge.between(currentVersion, value).getIcon() : null);
 		return this;
 	}
 

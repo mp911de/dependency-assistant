@@ -421,7 +421,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			buttonPanel.setOpaque(true);
 			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
 				Release vo = option.getTargets().get(strategy);
-				if (vo == null || strategy == UpgradeStrategy.LATEST) {
+				if (vo == null || strategy == UpgradeStrategy.LATEST || strategy == UpgradeStrategy.RELEASE) {
 					continue;
 				}
 				Icon icon = VersionAge.fromTarget(strategy).getIcon();

@@ -33,6 +33,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Resolves available versions by fetching {@link Release}s from
  * {@link ReleaseSource}s.
+ * 
+ * @author Mark Paluch
  */
 public class ReleaseResolver {
 
@@ -46,6 +48,10 @@ public class ReleaseResolver {
 	public ReleaseResolver(Collection<ReleaseSource> sources, ExecutorService executor) {
 		this.sources = sources instanceof Set<ReleaseSource> s ? s : new LinkedHashSet<>(sources);
 		this.executor = executor;
+	}
+
+	public List<Release> getReleases(ArtifactId artifactId) {
+		return getReleases(artifactId, null);
 	}
 
 	public List<Release> getReleases(ArtifactId artifactId,
@@ -79,7 +85,7 @@ public class ReleaseResolver {
 
 		if (result.isEmpty() || errors.size() == sources.size()) {
 			if (!errors.isEmpty()) {
-				throw errors.get(0);
+				throw errors.getFirst();
 			}
 		}
 		if (result.isEmpty() && notFoundException != null) {

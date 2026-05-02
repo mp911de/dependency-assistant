@@ -18,8 +18,6 @@ package biz.paluch.dap.artifact;
 
 import java.util.Comparator;
 
-import org.jspecify.annotations.NonNull;
-
 /**
  * Artifact coordinates identified by {@code groupId} and {@code artifactId}.
  *
@@ -51,7 +49,7 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 	String artifactId();
 
 	@Override
-	default int compareTo(@NonNull ArtifactId o) {
+	default int compareTo(ArtifactId o) {
 		return ArtifactId.COMPARATOR.compare(this, o);
 	}
 
