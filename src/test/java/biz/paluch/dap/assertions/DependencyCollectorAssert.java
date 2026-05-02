@@ -31,7 +31,12 @@ import org.jspecify.annotations.Nullable;
 /**
  * AssertJ assertions for {@link DependencyCollector}.
  *
- * <p>Typical usage: <pre class="code">
+ * <p>The collector assertion models parser output as registered dependency
+ * usages. Methods that find a usage navigate to {@link DependencyUsageAssert}
+ * so tests can continue with assertions on version, declaration source, and
+ * version source.
+ *
+ * <p>Example: <pre class="code">
  * assertThat(collector).hasUsageCount(2);
  *
  * assertThat(collector)
@@ -56,13 +61,19 @@ public class DependencyCollectorAssert
 		super(collector, DependencyCollectorAssert.class);
 	}
 
+	/**
+	 * Returns this assertion object for AssertJ {@link AssertProvider} integration.
+	 */
 	@Override
 	public DependencyCollectorAssert assertThat() {
 		return this;
 	}
 
 	/**
-	 * Verify that the collector contains exactly the given number of usage entries.
+	 * Verifies that the actual collector contains exactly the given number of
+	 * dependency usages.
+	 * @param expected the expected number of dependency usages.
+	 * @return this assertion object.
 	 */
 	public DependencyCollectorAssert hasUsageCount(int expected) {
 		isNotNull();
@@ -75,15 +86,18 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * Verify that the collector contains no usage entries.
+	 * Verifies that the actual collector contains no dependency usages.
+	 * @return this assertion object.
 	 */
 	public DependencyCollectorAssert isEmpty() {
 		return hasUsageCount(0);
 	}
 
 	/**
-	 * Verify that no usage is registered for the given coordinates and return
-	 * {@code this} for further chaining.
+	 * Verifies that no dependency usage is registered for the given coordinates.
+	 * @param groupId the expected group id to be absent.
+	 * @param artifactId the expected artifact id to be absent.
+	 * @return this assertion object.
 	 */
 	public DependencyCollectorAssert hasNoDependencyUsage(String groupId, String artifactId) {
 		isNotNull();
@@ -97,7 +111,9 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * Verify that no usage is registered for the given artifact id.
+	 * Verifies that no dependency usage is registered for the given artifact id.
+	 * @param name the artifact id expected to be absent.
+	 * @return this assertion object.
 	 */
 	public DependencyCollectorAssert hasNoDependencyUsage(String name) {
 		isNotNull();
@@ -110,8 +126,11 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * Verify that a usage is registered for the given coordinates and navigate to a
-	 * {@link DependencyUsageAssert} for further assertions.
+	 * Verifies that a dependency usage is registered for the given coordinates and
+	 * returns an assertion object for that usage.
+	 * @param groupId the expected group id.
+	 * @param artifactId the expected artifact id.
+	 * @return an assertion object for the matching dependency usage.
 	 */
 	public DependencyUsageAssert hasDependencyUsage(String groupId, String artifactId) {
 		isNotNull();
@@ -126,8 +145,10 @@ public class DependencyCollectorAssert
 	}
 
 	/**
-	 * Verify that a usage is registered for the given artifact id and navigate to a
-	 * {@link DependencyUsageAssert} for further assertions.
+	 * Verifies that a dependency usage is registered for the given artifact id and
+	 * returns an assertion object for that usage.
+	 * @param name the expected artifact id.
+	 * @return an assertion object for the matching dependency usage.
 	 */
 	public DependencyUsageAssert hasDependencyUsage(String name) {
 		isNotNull();
@@ -147,12 +168,13 @@ public class DependencyCollectorAssert
 				.findFirst().orElse(null);
 	}
 
-
 	/**
 	 * AssertJ assertions for a single {@link Dependency} usage.
 	 *
-	 * <p>Instances are obtained via
-	 * {@link DependencyCollectorAssert#hasDependencyUsage(String, String)}.
+	 * <p>Instances are obtained from
+	 * {@link DependencyCollectorAssert#hasDependencyUsage(String, String)} or
+	 * {@link DependencyCollectorAssert#hasDependencyUsage(String)} after the
+	 * collector assertion has established that the requested usage exists.
 	 */
 	public static class DependencyUsageAssert
 			extends AbstractAssert<DependencyUsageAssert, Dependency> {
@@ -162,7 +184,10 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verify that the current version string equals the given value.
+		 * Verifies that the actual dependency's current version string equals the given
+		 * value.
+		 * @param expectedVersion the expected version string.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasVersion(String expectedVersion) {
 			isNotNull();
@@ -177,8 +202,10 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verify that at least one {@link DeclarationSource} in this dependency is an
-		 * instance of the given type.
+		 * Verifies that at least one {@link DeclarationSource} in the actual dependency
+		 * is an instance of the given type.
+		 * @param type the declaration source type expected to be present.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasDeclaration(Class<? extends DeclarationSource> type) {
 			isNotNull();
@@ -195,8 +222,10 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verify that at least one {@link DeclarationSource} in this dependency equals
-		 * the given value.
+		 * Verifies that at least one {@link DeclarationSource} in the actual dependency
+		 * equals the given value.
+		 * @param expected the declaration source expected to be present.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasDeclaration(DeclarationSource expected) {
 			isNotNull();
@@ -213,15 +242,21 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verify that the version is sourced from a Gradle property with the given name
-		 * (sugar for {@link VersionSource#property(String)}).
+		 * Verifies that the actual dependency version is sourced from a Gradle property
+		 * with the given name.
+		 * <p>This is convenience syntax for {@link #hasVersionSource(VersionSource)}
+		 * with {@link VersionSource#property(String)}.
+		 * @param propertyName the expected property name.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasPropertyVersion(String propertyName) {
 			return hasVersionSource(VersionSource.property(propertyName));
 		}
 
 		/**
-		 * Verify that the version is not sourced from a Gradle property reference.
+		 * Verifies that the actual dependency version is not sourced from a Gradle
+		 * property reference.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasNoPropertyVersion() {
 			isNotNull();
@@ -234,8 +269,10 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verify that at least one {@link VersionSource} in this dependency equals the
-		 * given value.
+		 * Verifies that at least one {@link VersionSource} in the actual dependency
+		 * equals the given value.
+		 * @param expected the version source expected to be present.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasVersionSource(VersionSource expected) {
 			isNotNull();
@@ -252,8 +289,10 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verify that at least one {@link VersionSource} in this dependency is an
-		 * instance of the given type.
+		 * Verifies that at least one {@link VersionSource} in the actual dependency is
+		 * an instance of the given type.
+		 * @param type the version source type expected to be present.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasVersionSource(Class<? extends VersionSource> type) {
 			isNotNull();
@@ -270,7 +309,9 @@ public class DependencyCollectorAssert
 		}
 
 		/**
-		 * Verify that the artifact id of this dependency equals the given value.
+		 * Verifies that the actual dependency artifact id equals the given value.
+		 * @param expected the expected artifact id.
+		 * @return this assertion object.
 		 */
 		public DependencyUsageAssert hasArtifactId(ArtifactId expected) {
 			isNotNull();

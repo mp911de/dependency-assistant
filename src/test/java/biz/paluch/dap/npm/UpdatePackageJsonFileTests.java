@@ -149,9 +149,7 @@ class UpdatePackageJsonFileTests {
 
 		assertThat(packageJson.getText()).contains("#v1.0.28");
 		assertThat(packageJson.getText()).doesNotContain("#v1.0.27");
-		// JSON does not permit comments; the rendered string must not append " #"
-		// metadata.
-		assertThat(packageJson.getText()).doesNotContain("# v1.0");
+		assertThat(packageJson.getText()).doesNotContain("# ");
 	}
 
 	@Test

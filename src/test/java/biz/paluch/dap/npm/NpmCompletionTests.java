@@ -60,6 +60,25 @@ class NpmCompletionTests {
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
 	}
 
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "axios": "5.3<caret>"
+			  }
+			}
+			""")
+	void completesExactVersionAtStartConsideringPrefix(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+		fixture.complete(CompletionType.BASIC);
+
+		assertThat(fixture.getLookupElementStrings())
+				.containsOnly("5.3.1", "5.3.0");
+		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
+		assertThat(packageJson.getText()).contains("\"axios\": \"5.3.1\"");
+	}
+
 
 	@Test
 	@EditorFile(name = "package.json", content = """
@@ -72,7 +91,7 @@ class NpmCompletionTests {
 	void completesExactElement(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.type("1");
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
@@ -85,7 +104,7 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "<caret>"
+			    "@springio/antora-xref-extension": "1<caret>"
 			  }
 			}
 			""")
@@ -93,12 +112,31 @@ class NpmCompletionTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		fixture.type("1");
-		assertThat(fixture.getLookup().isCompletion()).isTrue();
+		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(packageJson.getText()).contains("\"@springio/antora-xref-extension\": \"1.0.0-alpha.5\"");
+	}
+
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "@springio/antora-xref-extension": "1<caret>"
+			  }
+			}
+			""")
+	void completesStatementExactVersionAtStart(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings())
+				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+
+		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
 		assertThat(packageJson.getText()).contains("\"@springio/antora-xref-extension\": \"1.0.0-alpha.5\"");
 	}
 
@@ -114,7 +152,8 @@ class NpmCompletionTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		fixture.complete(CompletionType.BASIC);
+		fixture.completeBasic();
+		;
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
@@ -133,7 +172,7 @@ class NpmCompletionTests {
 	void completesExactWithModifierAtStart(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.complete(CompletionType.BASIC);
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
@@ -150,7 +189,7 @@ class NpmCompletionTests {
 	void completesExactWithModifierInsideVersion(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.complete(CompletionType.BASIC);
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
@@ -205,14 +244,14 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "1.0.0-alpha.1 - <caret>"
+			    "@springio/antora-xref-extension": "1.0.0-alpha.1 - 1<caret>"
 			  }
 			}
 			""")
 	void completesHyphenRangeAtSecondElementStart(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.type("1");
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
@@ -260,7 +299,7 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": ">=<caret>"
+			    "@springio/antora-xref-extension": ">=1<caret>"
 			  }
 			}
 			""")
@@ -268,7 +307,6 @@ class NpmCompletionTests {
 
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
-		fixture.type("1");
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
@@ -281,15 +319,14 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": ">=1.0.0-alpha.1 <<caret>"
+			    "@springio/antora-xref-extension": ">=1.0.0-alpha.1 <1<caret>"
 			  }
 			}
 			""")
 	void completesComparatorAtOfSecondVersionStart(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.complete(CompletionType.BASIC);
-		fixture.type("1");
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
@@ -424,14 +461,14 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "git+https://github.com/owner/repo.git#semver:<caret>"
+			    "@springio/antora-xref-extension": "git+https://github.com/owner/repo.git#semver:1<caret>"
 			  }
 			}
 			""")
 	void completesGitUrlAfterSemverType(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.type("1");
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
@@ -445,14 +482,14 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "springio/antora-xref-extension#<caret>"
+			    "@springio/antora-xref-extension": "springio/antora-xref-extension#1<caret>"
 			  }
 			}
 			""")
 	void completesGitHubUrlAfterHash(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.type("1");
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
@@ -473,7 +510,7 @@ class NpmCompletionTests {
 	void completesGitHubUrlInCommit(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
-		fixture.type("1");
+		fixture.completeBasic();
 
 		assertThat(fixture.getLookupElementStrings())
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");

@@ -28,8 +28,14 @@ import com.intellij.psi.SyntaxTraverser;
 import org.assertj.core.api.AssertProvider;
 
 /**
- * Test support for collecting and asserting IntelliJ gutter marks for a
- * {@link PsiFile}.
+ * Collects IntelliJ gutter marks for a {@link PsiFile} and exposes them as an
+ * AssertJ {@link AssertProvider}.
+ *
+ * <p>This type is the bridge between PSI-based tests and
+ * {@link GutterMarksAssert}. It invokes {@link NewerVersionLineMarkerProvider}
+ * directly so tests can assert the line markers that Dependency Assistant would
+ * contribute without relying on the full IDE daemon lifecycle.
+ *
  * <p>Instances are cached in {@link PsiFile} user data so that repeated
  * assertions can reuse the same collected marker state for a given file
  * fixture.
@@ -47,11 +53,12 @@ public class LineMarkers implements AssertProvider<GutterMarksAssert> {
 	}
 
 	/**
-	 * Collect the gutter marks exposed by {@link NewerVersionLineMarkerProvider}
+	 * Returns the gutter marks exposed by {@link NewerVersionLineMarkerProvider}
 	 * for the given file.
 	 * <p>The resulting {@code LineMarkers} instance is cached in the file's user
-	 * data and returned from subsequent invocations.
-	 *
+	 * data and reused by subsequent invocations. The collected list mirrors the
+	 * IDE's visible gutter model by deduplicating markers with the same anchor
+	 * element.
 	 * @param file the PSI file to inspect; must not be {@literal null}.
 	 * @return the collected line markers for the given file.
 	 */
@@ -91,8 +98,7 @@ public class LineMarkers implements AssertProvider<GutterMarksAssert> {
 	}
 
 	/**
-	 * Return an AssertJ facade for the collected gutter marks.
-	 *
+	 * Returns an AssertJ assertion object for the collected gutter marks.
 	 * @return an assertion object for the collected gutter marks.
 	 */
 	@Override

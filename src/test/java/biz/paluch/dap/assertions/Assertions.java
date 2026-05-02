@@ -23,35 +23,57 @@ import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 
 /**
- * Project-specific assertions.
+ * Project-specific AssertJ entry point.
+ *
+ * <p>This class extends AssertJ's standard
+ * {@link org.assertj.core.api.Assertions} facade and adds overloads for
+ * Dependency Assistant test infrastructure. Tests should statically import this
+ * type when they need both standard AssertJ assertions and project-specific
+ * assertions in the same file.
+ *
+ * <p>Example: <pre class="code">
+ * import static biz.paluch.dap.assertions.Assertions.assertThat;
+ *
+ * assertThat(collector).hasUsageCount(2);
+ * assertThat(buildFile).hasSingleGutterContaining("Patch", "6.0.3");
+ * assertThat(fixture).hasNoGutterMarks();
+ * </pre>
  *
  * @author Mark Paluch
  */
 public class Assertions extends org.assertj.core.api.Assertions {
 
 	/**
-	 * Create an assertion for the given {@link CodeInsightTestFixture}.
+	 * Creates a new assertion for the given IntelliJ fixture.
+	 * @param fixture the fixture under test.
+	 * @return the created assertion object.
 	 */
 	public static CodeInsightFixtureAssert assertThat(CodeInsightTestFixture fixture) {
 		return new CodeInsightFixtureAssert(fixture);
 	}
 
 	/**
-	 * Create an assertion for the given {@link CodeInsightTestFixture}.
+	 * Creates a new assertion for the given dependency collector.
+	 * @param collector the collector under test.
+	 * @return the created assertion object.
 	 */
 	public static DependencyCollectorAssert assertThat(DependencyCollector collector) {
 		return new DependencyCollectorAssert(collector);
 	}
 
 	/**
-	 * Create an assertion for the given {@link PsiElement}.
+	 * Creates a new assertion for the given PSI element.
+	 * @param element the PSI element under test.
+	 * @return the created assertion object.
 	 */
 	public static PsiElementAssert assertThat(PsiElement element) {
 		return new PsiElementAssert(element);
 	}
 
 	/**
-	 * Create an assertion for the given {@link PsiFile}.
+	 * Creates a new assertion for the given PSI file.
+	 * @param file the PSI file under test.
+	 * @return the created assertion object.
 	 */
 	public static PsiElementAssert assertThat(PsiFile file) {
 		return new PsiElementAssert(file);

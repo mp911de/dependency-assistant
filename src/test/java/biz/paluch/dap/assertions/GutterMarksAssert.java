@@ -25,26 +25,44 @@ import org.assertj.core.error.MessageFormatter;
 /**
  * AssertJ assertions for a list of {@link GutterMark} instances.
  *
+ * <p>This assertion type represents the collection-level view of line marker
+ * output. Methods either keep asserting on the collection or navigate to
+ * {@link GutterMarkAssert} once the requested marker is known to exist.
+ *
+ * <p>Example: <pre class="code">
+ * assertThat(fixture).gutters().hasSize(2);
+ * assertThat(fixture).gutters().gutterAt(0).tooltipContains("Patch");
+ * assertThat(fixture).gutters().hasSingleGutter().highlights("6.0.0");
+ * </pre>
+ *
  * @author Mark Paluch
  */
 public class GutterMarksAssert
 		extends AbstractAssert<GutterMarksAssert, List<GutterMark>> {
 
+	/**
+	 * Creates a new assertion object for the given gutter marks.
+	 * @param gutterMarks the gutter marks under test.
+	 */
 	public GutterMarksAssert(List<GutterMark> gutterMarks) {
 		super(gutterMarks, GutterMarksAssert.class);
 	}
 
 	/**
-	 * Verify a single gutter mark is present and that its tooltip contains all of
-	 * the given strings.
+	 * Verifies that the actual list contains exactly one gutter mark whose tooltip
+	 * contains all of the given fragments.
+	 * @param expected the fragments expected in the tooltip text.
+	 * @return this assertion object.
 	 */
-	public GutterMarksAssert hasSingleGutterContaining(String... expected) {
-		hasSingleGutter().tooltipContains(expected);
-		return this;
+	public GutterMarkAssert hasSingleGutterContaining(String... expected) {
+		return hasSingleGutter().tooltipContains(expected);
 	}
 
 	/**
-	 * Verify that exactly the given number of gutter marks are present.
+	 * Verifies that the actual list contains exactly the given number of gutter
+	 * marks.
+	 * @param expected the expected number of gutter marks.
+	 * @return this assertion object.
 	 */
 	public GutterMarksAssert hasSize(int expected) {
 		isNotNull();
@@ -60,7 +78,9 @@ public class GutterMarksAssert
 	}
 
 	/**
-	 * Verify that exactly one gutter mark is present and navigate to it.
+	 * Verifies that the actual list contains exactly one gutter mark and returns an
+	 * assertion object for it.
+	 * @return an assertion object for the single gutter mark.
 	 */
 	public GutterMarkAssert hasSingleGutter() {
 		hasSize(1);
@@ -68,14 +88,20 @@ public class GutterMarksAssert
 	}
 
 	/**
-	 * Navigate to the gutter mark at the given index.
+	 * Verifies that a gutter mark exists at the given index and returns an
+	 * assertion object for it.
+	 * @param index the zero-based gutter mark index.
+	 * @return an assertion object for the selected gutter mark.
 	 */
 	public GutterMarkAssert gutter(int index) {
 		return gutterAt(index);
 	}
 
 	/**
-	 * Navigate to the gutter mark at the given index.
+	 * Verifies that a gutter mark exists at the given index and returns an
+	 * assertion object for it.
+	 * @param index the zero-based gutter mark index.
+	 * @return an assertion object for the selected gutter mark.
 	 */
 	public GutterMarkAssert gutterAt(int index) {
 		isNotNull();
@@ -87,7 +113,8 @@ public class GutterMarksAssert
 	}
 
 	/**
-	 * Verify that no gutter marks are present.
+	 * Verifies that the actual list contains no gutter marks.
+	 * @return this assertion object.
 	 */
 	public GutterMarksAssert isEmpty() {
 		isNotNull();
@@ -102,7 +129,8 @@ public class GutterMarksAssert
 	}
 
 	/**
-	 * Verify that no gutter marks are present.
+	 * Verifies that the actual list contains no gutter marks.
+	 * @return this assertion object.
 	 */
 	public GutterMarksAssert hasNoGutterMarks() {
 		return isEmpty();

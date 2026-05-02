@@ -14,18 +14,28 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.support;
+package biz.paluch.dap.assertions;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.assertions.DependencyCollectorAssert.DependencyUsageAssert;
+import biz.paluch.dap.support.PropertyResolver;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.AssertProvider;
 
 /**
- * Test-oriented view over an updated build file.
- * <p>Combines dependency analysis via a {@link DependencyCollector} with
- * property resolution via a {@link PropertyResolver} so tests can assert
- * semantic update outcomes without duplicating parser setup.
+ * Test-oriented assertion fixture for an updated build file.
+ *
+ * <p>An updated file is represented by the dependency usages parsed after the
+ * update and the properties resolved from the same file. This allows update
+ * tests to assert semantic outcomes instead of repeating parser setup or
+ * matching raw file text.
+ *
+ * <p>Example: <pre class="code">
+ * UpdatedBuildFile.of(collector, properties, "build.gradle")
+ *     .assertThat()
+ *     .containsDependency("org.junit", "junit-bom", "6.0.3")
+ *     .hasProperty("junit.version", "6.0.3");
+ * </pre>
  *
  * @author Mark Paluch
  */
@@ -44,14 +54,22 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 	}
 
 	/**
-	 * Create an {@link UpdatedBuildFile} backed by the given dependency collector
-	 * and property resolver.
+	 * Creates a new updated build-file fixture backed by the given dependency
+	 * collector and property resolver.
+	 * @param collector the collector containing parsed dependency usages.
+	 * @param propertyResolver the resolver containing parsed properties.
+	 * @param fileName the file name used in assertion failure messages.
+	 * @return the created updated build-file fixture.
 	 */
 	public static UpdatedBuildFile of(DependencyCollector collector, PropertyResolver propertyResolver,
 			String fileName) {
 		return new UpdatedBuildFile(fileName, collector, propertyResolver);
 	}
 
+	/**
+	 * Returns an AssertJ assertion object for this updated build-file fixture.
+	 * @return the created assertion object.
+	 */
 	@Override
 	public UpdatedBuildFileAssert assertThat() {
 		return new UpdatedBuildFileAssert(this);
@@ -59,6 +77,10 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 
 	/**
 	 * AssertJ assertions for an {@link UpdatedBuildFile}.
+	 *
+	 * <p>Dependency assertions delegate to {@link DependencyCollectorAssert} and
+	 * therefore return {@link DependencyUsageAssert} when further assertions should
+	 * apply to the matching dependency usage.
 	 */
 	public static class UpdatedBuildFileAssert
 			extends AbstractAssert<UpdatedBuildFileAssert, UpdatedBuildFile> {
@@ -68,8 +90,11 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		}
 
 		/**
-		 * Verify that the analyzed file exposes a dependency or plugin usage for the
-		 * given coordinates and navigate to the corresponding usage assertions.
+		 * Verifies that the actual updated file exposes a dependency or plugin usage
+		 * for the given coordinates and returns an assertion object for that usage.
+		 * @param groupId the expected group id.
+		 * @param artifactId the expected artifact id.
+		 * @return an assertion object for the matching dependency usage.
 		 */
 		public DependencyUsageAssert containsDependency(String groupId, String artifactId) {
 			isNotNull();
@@ -78,8 +103,12 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		}
 
 		/**
-		 * Verify that the analyzed file exposes a dependency or plugin usage for the
-		 * given coordinates with the expected version.
+		 * Verifies that the actual updated file exposes a dependency or plugin usage
+		 * for the given coordinates with the expected version.
+		 * @param groupId the expected group id.
+		 * @param artifactId the expected artifact id.
+		 * @param version the expected dependency version.
+		 * @return this assertion object.
 		 */
 		public UpdatedBuildFileAssert containsDependency(String groupId, String artifactId, String version) {
 			containsDependency(groupId, artifactId).hasVersion(version);
@@ -87,8 +116,10 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		}
 
 		/**
-		 * Verify that the analyzed file exposes a dependency or plugin usage for the
-		 * given artifact id and navigate to the corresponding usage assertions.
+		 * Verifies that the actual updated file exposes a dependency or plugin usage
+		 * for the given artifact id and returns an assertion object for that usage.
+		 * @param artifactId the expected artifact id.
+		 * @return an assertion object for the matching dependency usage.
 		 */
 		public DependencyUsageAssert hasDependency(String artifactId) {
 			isNotNull();
@@ -97,8 +128,11 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		}
 
 		/**
-		 * Verify that the analyzed file exposes a dependency or plugin usage for the
-		 * given artifact id with the expected version.
+		 * Verifies that the actual updated file exposes a dependency or plugin usage
+		 * for the given artifact id with the expected version.
+		 * @param artifactId the expected artifact id.
+		 * @param version the expected dependency version.
+		 * @return this assertion object.
 		 */
 		public UpdatedBuildFileAssert hasDependency(String artifactId, String version) {
 			hasDependency(artifactId).hasVersion(version);
@@ -106,8 +140,11 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		}
 
 		/**
-		 * Verify that the updated file declares the given property with the expected
-		 * value.
+		 * Verifies that the actual updated file declares the given property with the
+		 * expected value.
+		 * @param propertyName the expected property name.
+		 * @param expectedValue the expected property value.
+		 * @return this assertion object.
 		 */
 		public UpdatedBuildFileAssert hasProperty(String propertyName, String expectedValue) {
 			isNotNull();
@@ -127,7 +164,9 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		}
 
 		/**
-		 * Verify that the updated file does not declare the given property.
+		 * Verifies that the actual updated file does not declare the given property.
+		 * @param propertyName the property name expected to be absent.
+		 * @return this assertion object.
 		 */
 		public UpdatedBuildFileAssert hasNoProperty(String propertyName) {
 			isNotNull();

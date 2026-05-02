@@ -21,15 +21,21 @@ import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.AssertProvider;
 
 /**
- * AssertJ entry point for {@link CodeInsightTestFixture}-based assertions.
+ * AssertJ entry point dedicated to {@link CodeInsightTestFixture}-based
+ * assertions.
  *
- * <p>Typical usage: <pre class="code">
- * import static ...CodeInsightAssertions.assertThat;
+ * <p>Use this facade when a test only needs code-insight assertions. Prefer
+ * {@link Assertions} in tests that also use standard AssertJ or dependency
+ * collector assertions.
+ *
+ * <p>Example: <pre class="code">
+ * import static biz.paluch.dap.assertions.CodeInsightAssertions.assertThat;
  *
  * assertThat(fixture).hasSingleGutterContaining("Patch", "4.0.5");
  * assertThat(fixture).hasSingleGutter().tooltipContains("Patch", "4.0.5");
  * assertThat(fixture).hasSingleGutter().hasPsiElementText("4.0.3");
  * assertThat(fixture).hasSingleGutter().hasPsiElementTextContaining("4.0");
+ * assertThat(fixture).hasSingleGutter().tooltipContains("4.0.5").highlights("4.0.3");
  * </pre>
  *
  * @author Mark Paluch
@@ -40,15 +46,20 @@ public class CodeInsightAssertions {
 	}
 
 	/**
-	 * Create an assertion for the given {@link CodeInsightTestFixture}.
+	 * Creates a new assertion for the given IntelliJ fixture.
+	 * @param fixture the fixture under test.
+	 * @return the created assertion object.
 	 */
 	public static CodeInsightFixtureAssert assertThat(CodeInsightTestFixture fixture) {
 		return new CodeInsightFixtureAssert(fixture);
 	}
 
-
 	/**
-	 * AssertJ assertions for {@link CodeInsightTestFixture}.
+	 * AssertJ assertions for a {@link CodeInsightTestFixture}.
+	 *
+	 * <p>The fixture assertion is primarily a navigation point to gutter mark
+	 * assertions. Gutter marks are resolved from the current fixture state when a
+	 * gutter assertion is requested.
 	 */
 	public static class CodeInsightFixtureAssert
 			extends AbstractAssert<CodeInsightFixtureAssert, CodeInsightTestFixture>
@@ -58,13 +69,18 @@ public class CodeInsightAssertions {
 			super(fixture, CodeInsightFixtureAssert.class);
 		}
 
+		/**
+		 * Returns this assertion object for AssertJ {@link AssertProvider} integration.
+		 */
 		@Override
 		public CodeInsightFixtureAssert assertThat() {
 			return this;
 		}
 
 		/**
-		 * Navigate to gutter mark assertions for all gutters found in the fixture.
+		 * Returns an assertion object for all gutter marks currently found in the
+		 * fixture.
+		 * @return the created gutter mark list assertion.
 		 */
 		public GutterMarksAssert gutters() {
 			isNotNull();
@@ -72,7 +88,10 @@ public class CodeInsightAssertions {
 		}
 
 		/**
-		 * Navigate to gutter mark assertions for all gutters found in the fixture.
+		 * Verifies that a gutter mark exists at the given index and returns an
+		 * assertion object for it.
+		 * @param index the zero-based gutter mark index.
+		 * @return an assertion object for the selected gutter mark.
 		 */
 		public GutterMarkAssert gutter(int index) {
 			isNotNull();
@@ -80,26 +99,32 @@ public class CodeInsightAssertions {
 		}
 
 		/**
-		 * Verify a single gutter mark is present and navigate to it.
+		 * Verifies that the fixture contains exactly one gutter mark and returns an
+		 * assertion object for it.
+		 * @return an assertion object for the single gutter mark.
 		 */
 		public GutterMarkAssert hasSingleGutter() {
 			return gutters().hasSingleGutter();
 		}
 
 		/**
-		 * Verify a single gutter mark is present and that its tooltip contains all of
-		 * the given strings.
+		 * Verifies that the fixture contains exactly one gutter mark whose tooltip
+		 * contains all of the given fragments.
+		 * @param expected the fragments expected in the tooltip text.
+		 * @return an assertion object for the asserted gutter mark.
 		 */
-		public GutterMarksAssert hasSingleGutterContaining(String... expected) {
+		public GutterMarkAssert hasSingleGutterContaining(String... expected) {
 			return gutters().hasSingleGutterContaining(expected);
 		}
 
 		/**
-		 * Verify that no gutter marks are present.
+		 * Verifies that the fixture contains no gutter marks.
+		 * @return an assertion object for the fixture gutter mark list.
 		 */
 		public GutterMarksAssert hasNoGutterMarks() {
 			return gutters().isEmpty();
 		}
 
 	}
+
 }

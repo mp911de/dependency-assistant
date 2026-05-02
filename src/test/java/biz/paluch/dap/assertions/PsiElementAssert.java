@@ -30,7 +30,18 @@ import org.assertj.core.api.AssertProvider;
 import org.jspecify.annotations.Nullable;
 
 /**
- * AssertJ assertions for {@link PsiElement} instances.
+ * AssertJ assertions for {@link PsiElement} and {@link PsiFile} instances.
+ *
+ * <p>This assertion type covers source text, caret placement, and gutter marks
+ * associated with the element's containing file. Caret assertions require the
+ * file to be open in an IntelliJ editor; gutter assertions collect line markers
+ * from the containing PSI file.
+ *
+ * <p>Example: <pre class="code">
+ * assertThat(buildFile).containsText("org.junit:junit-bom");
+ * assertThat(buildFile).caretBetween("version = \"", "\"");
+ * assertThat(buildFile).hasSingleGutter().tooltipContains("Patch", "6.0.3");
+ * </pre>
  *
  * @author Mark Paluch
  */
@@ -42,13 +53,19 @@ public class PsiElementAssert
 		super(element, PsiElementAssert.class);
 	}
 
+	/**
+	 * Returns this assertion object for AssertJ {@link AssertProvider} integration.
+	 */
 	@Override
 	public PsiElementAssert assertThat() {
 		return this;
 	}
 
 	/**
-	 * Verify that the PSI element text contains all of the given values.
+	 * Verifies that the actual PSI element text contains all of the given
+	 * fragments.
+	 * @param values the fragments expected to appear in the PSI text.
+	 * @return this assertion object.
 	 */
 	public PsiElementAssert containsText(CharSequence... values) {
 		isNotNull();
@@ -63,7 +80,10 @@ public class PsiElementAssert
 	}
 
 	/**
-	 * Verify that the PSI element text contains none of the given values.
+	 * Verifies that the actual PSI element text contains none of the given
+	 * fragments.
+	 * @param values the fragments expected to be absent from the PSI text.
+	 * @return this assertion object.
 	 */
 	public PsiElementAssert doesNotContainText(CharSequence... values) {
 		isNotNull();
@@ -78,7 +98,9 @@ public class PsiElementAssert
 	}
 
 	/**
-	 * Verify that the editor caret is immediately before the given text.
+	 * Verifies that the editor caret is immediately before the given text.
+	 * @param text the text expected after the caret.
+	 * @return this assertion object.
 	 */
 	public PsiElementAssert caretBefore(String text) {
 		CaretPosition caret = caretPosition();
@@ -90,7 +112,9 @@ public class PsiElementAssert
 	}
 
 	/**
-	 * Verify that the editor caret is immediately after the given text.
+	 * Verifies that the editor caret is immediately after the given text.
+	 * @param text the text expected before the caret.
+	 * @return this assertion object.
 	 */
 	public PsiElementAssert caretAfter(String text) {
 		CaretPosition caret = caretPosition();
@@ -102,8 +126,11 @@ public class PsiElementAssert
 	}
 
 	/**
-	 * Verify that the editor caret is immediately between the given prefix and
+	 * Verifies that the editor caret is immediately between the given prefix and
 	 * suffix.
+	 * @param prefix the text expected before the caret.
+	 * @param suffix the text expected after the caret.
+	 * @return this assertion object.
 	 */
 	public PsiElementAssert caretBetween(String prefix, String suffix) {
 		CaretPosition caret = caretPosition();
@@ -118,8 +145,9 @@ public class PsiElementAssert
 	}
 
 	/**
-	 * Navigate to gutter mark assertions for all gutters found in the containing
-	 * PSI file.
+	 * Returns an assertion object for all gutter marks collected from the
+	 * containing PSI file.
+	 * @return the created gutter mark list assertion.
 	 */
 	public GutterMarksAssert gutters() {
 		isNotNull();
@@ -127,43 +155,57 @@ public class PsiElementAssert
 	}
 
 	/**
-	 * Navigate to the gutter mark at the given index.
+	 * Verifies that a gutter mark exists at the given index and returns an
+	 * assertion object for it.
+	 * @param index the zero-based gutter mark index.
+	 * @return an assertion object for the selected gutter mark.
 	 */
 	public GutterMarkAssert gutter(int index) {
 		return gutters().gutter(index);
 	}
 
 	/**
-	 * Navigate to the gutter mark at the given index.
+	 * Verifies that a gutter mark exists at the given index and returns an
+	 * assertion object for it.
+	 * @param index the zero-based gutter mark index.
+	 * @return an assertion object for the selected gutter mark.
 	 */
 	public GutterMarkAssert gutterAt(int index) {
 		return gutters().gutterAt(index);
 	}
 
 	/**
-	 * Verify that exactly the given number of gutter marks are present.
+	 * Verifies that exactly the given number of gutter marks are present in the
+	 * containing PSI file.
+	 * @param expected the expected number of gutter marks.
+	 * @return an assertion object for the collected gutter marks.
 	 */
 	public GutterMarksAssert hasSize(int expected) {
 		return gutters().hasSize(expected);
 	}
 
 	/**
-	 * Verify that exactly one gutter mark is present and navigate to it.
+	 * Verifies that exactly one gutter mark is present in the containing PSI file
+	 * and returns an assertion object for it.
+	 * @return an assertion object for the single gutter mark.
 	 */
 	public GutterMarkAssert hasSingleGutter() {
 		return gutters().hasSingleGutter();
 	}
 
 	/**
-	 * Verify a single gutter mark is present and that its tooltip contains all of
-	 * the given strings.
+	 * Verifies that exactly one gutter mark is present in the containing PSI file
+	 * and that its tooltip contains all of the given fragments.
+	 * @param expected the fragments expected in the tooltip text.
+	 * @return an assertion object for the asserted gutter mark.
 	 */
-	public GutterMarksAssert hasSingleGutterContaining(String... expected) {
+	public GutterMarkAssert hasSingleGutterContaining(String... expected) {
 		return gutters().hasSingleGutterContaining(expected);
 	}
 
 	/**
-	 * Verify that no gutter marks are present.
+	 * Verifies that no gutter marks are present in the containing PSI file.
+	 * @return an assertion object for the collected gutter marks.
 	 */
 	public GutterMarksAssert hasNoGutterMarks() {
 		return gutters().isEmpty();
