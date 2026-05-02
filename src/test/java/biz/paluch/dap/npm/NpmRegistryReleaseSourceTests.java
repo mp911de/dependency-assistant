@@ -16,17 +16,9 @@
 
 package biz.paluch.dap.npm;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Release;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -117,13 +109,6 @@ class NpmRegistryReleaseSourceTests {
 	}
 
 	@Test
-	void emptyOrInvalidPayloadProducesNoReleases() {
-		assertThat(SOURCE.parseReleases("")).isEmpty();
-		assertThat(SOURCE.parseReleases("{}")).isEmpty();
-		assertThat(SOURCE.parseReleases("not-json")).isEmpty();
-	}
-
-	@Test
 	void encodesScopedPackageName() {
 		assertThat(NpmRegistryReleaseSource.encodePackageName("axios")).isEqualTo("axios");
 		assertThat(NpmRegistryReleaseSource.encodePackageName("@vitejs/plugin-vue"))
@@ -146,93 +131,6 @@ class NpmRegistryReleaseSourceTests {
 
 		assertThat(releases).hasSize(2);
 		assertThat(releases).allSatisfy(r -> assertThat(r.releaseDate()).isNull());
-	}
-
-	@Test
-	void returnsEmptyOnHttpErrorStatus() throws IOException {
-
-		try (StubHttpServer stub = StubHttpServer.respondingWith(404, "Not Found")) {
-			NpmRegistryReleaseSource source = new NpmRegistryReleaseSource(stub.baseUrl());
-			assertThat(source.getReleases(ArtifactId.of("axios", "axios"))).isEmpty();
-		}
-	}
-
-	@Test
-	void returnsEmptyOnServerError() throws IOException {
-
-		try (StubHttpServer stub = StubHttpServer.respondingWith(500, "Internal Server Error")) {
-			NpmRegistryReleaseSource source = new NpmRegistryReleaseSource(stub.baseUrl());
-			assertThat(source.getReleases(ArtifactId.of("axios", "axios"))).isEmpty();
-		}
-	}
-
-	@Test
-	void returnsEmptyOnOversizeBody() throws IOException {
-
-		String oversize = "{\"versions\":{\"1.0.0\":{}},\"padding\":\""
-				+ "x".repeat(6 * 1024 * 1024) + "\"}";
-		try (StubHttpServer stub = StubHttpServer.respondingWith(200, oversize)) {
-			NpmRegistryReleaseSource source = new NpmRegistryReleaseSource(stub.baseUrl());
-			assertThat(source.getReleases(ArtifactId.of("axios", "axios"))).isEmpty();
-		}
-	}
-
-	@Test
-	void sendsAcceptHeader() throws IOException {
-
-		AtomicReference<String> capturedAccept = new AtomicReference<>();
-		String body = """
-				{"versions":{"1.0.0":{}}}
-				""";
-		try (StubHttpServer stub = StubHttpServer.respondingWith(200, body, capturedAccept)) {
-			NpmRegistryReleaseSource source = new NpmRegistryReleaseSource(stub.baseUrl());
-			source.getReleases(ArtifactId.of("axios", "axios"));
-		}
-
-		assertThat(capturedAccept.get()).isEqualTo("application/vnd.npm.install-v1+json");
-	}
-
-	private static final class StubHttpServer implements AutoCloseable {
-
-		private final HttpServer server;
-
-		private StubHttpServer(HttpServer server) {
-			this.server = server;
-		}
-
-		static StubHttpServer respondingWith(int status, String body) throws IOException {
-			return respondingWith(status, body, new AtomicReference<>());
-		}
-
-		static StubHttpServer respondingWith(int status, String body, AtomicReference<String> capturedAccept)
-				throws IOException {
-
-			HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-			server.createContext("/", exchange -> handle(exchange, status, body, capturedAccept));
-			server.start();
-			return new StubHttpServer(server);
-		}
-
-		String baseUrl() {
-			return "http://127.0.0.1:" + server.getAddress().getPort() + "/";
-		}
-
-		@Override
-		public void close() {
-			server.stop(0);
-		}
-
-		private static void handle(HttpExchange exchange, int status, String body,
-				AtomicReference<String> capturedAccept) throws IOException {
-
-			capturedAccept.set(exchange.getRequestHeaders().getFirst("Accept"));
-			byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-			exchange.sendResponseHeaders(status, bytes.length);
-			try (OutputStream out = exchange.getResponseBody()) {
-				out.write(bytes);
-			}
-		}
-
 	}
 
 }

@@ -91,6 +91,12 @@ final class NpmGitUrlParser {
 		}
 		int slash = value.indexOf('/');
 		int hash = value.indexOf('#');
+		int colon = value.indexOf(':');
+		// Reject schemed values such as npm:, file:, link:, workspace: which carry a
+		// colon before any slash and are not Git shorthand.
+		if (colon >= 0 && (slash < 0 || colon < slash)) {
+			return false;
+		}
 		return slash > 0 && (hash < 0 || hash > slash);
 	}
 
