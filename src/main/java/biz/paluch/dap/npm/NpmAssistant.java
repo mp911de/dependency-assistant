@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.npm;
 
 import java.util.List;
 import javax.swing.*;
@@ -25,14 +25,18 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.*;
-import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclaredDependency;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import biz.paluch.dap.util.PsiVisitors;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.fileTypes.FileTypeManager;
@@ -43,39 +47,32 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
-import org.jetbrains.yaml.psi.YAMLQuotedText;
-import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * GitHub Actions implementation of {@link DependencyAssistant}.
+ * NPM implementation of {@link DependencyAssistant}.
  *
- * <p>Supports YAML files under {@code .github/workflows/} and GitHub Action
- * metadata files named {@code action.yml} or {@code action.yaml}. The assistant
- * is only active when both the YAML plugin and the GitHub plugin are available,
- * which is checked via class-availability guards so that the always-loaded
- * portion of this class never triggers loading of the optional plugin types
- * eagerly.
- *
- * <p>Each supported file forms its own lightweight project context keyed by the
- * file path.
+ * <p>Supports {@code package.json} files whose JSON root carries a
+ * {@code dependencies} or {@code devDependencies} object. The assistant relies
+ * on the bundled IntelliJ JSON support, declared via
+ * {@code com.intellij.modules.json} in the plugin XML.
  *
  * @author Mark Paluch
  */
-public class GitHubAssistant implements DependencyAssistant {
+public class NpmAssistant implements DependencyAssistant {
 
-	private static final PluginId YAML = PluginId.getId("org.jetbrains.yaml");
+	private static final PluginId JSON = PluginId.getId("com.intellij.modules.json");
 
-	private static final boolean AVAILABLE = isYamlAvailable();
+	private static final boolean AVAILABLE = isJsonAvailable();
 
 	@Override
 	public String getId() {
-		return "github";
+		return "npm";
 	}
 
 	@Override
 	public String getDisplayName() {
-		return GitHubInterface.INSTANCE.getDisplayName();
+		return NpmInterface.INSTANCE.getDisplayName();
 	}
 
 	@Override
@@ -85,55 +82,57 @@ public class GitHubAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean supports(PsiFile file) {
-		return AVAILABLE && GitHubUtils.isWorkflowFile(file);
+		return AVAILABLE && NpmUtils.isPackageJson(file);
 	}
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateProjectState(project).readAndUpdateAll(indicator);
+		new NpmIndexingTask(project).readAndUpdateAll(indicator);
 	}
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateProjectState(project).getAllDependencies(indicator);
+		return new NpmIndexingTask(project).getAllDependencies(indicator);
 	}
 
 	@Override
 	public ProjectDependencyContext createContext(Project project, PsiFile anchor) {
 
 		if (!supports(anchor)) {
-			throw new IllegalStateException("GitHub Actions integration does not support " + anchor);
+			throw new IllegalStateException("NPM integration does not support " + anchor);
 		}
 
-		GitHubProjectContext injected = anchor.getUserData(GitHubProjectContext.KEY);
+		NpmProjectContext injected = anchor.getUserData(NpmProjectContext.KEY);
 		if (injected != null) {
-			return new GitHubDependencyContext(project, anchor.getVirtualFile(), injected);
+			return new NpmDependencyContext(project, anchor.getVirtualFile(), injected);
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(project, it.getVirtualFile()));
+				it -> buildCachedContext(project, it));
 	}
 
-	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
-		return new GitHubDependencyContext(project, anchor, GitHubProjectContext.of(project, anchor));
+	private static ProjectDependencyContext buildCachedContext(Project project, PsiFile anchor) {
+
+		NpmProjectContext context = NpmProjectContext.of(project, anchor.getVirtualFile());
+		return new NpmDependencyContext(project, anchor.getVirtualFile(), context);
 	}
 
-	private static boolean isYamlAvailable() {
-		return PluginManagerCore.isPluginInstalled(YAML) && !PluginManagerCore.isDisabled(YAML)
-				&& FileTypeManager.getInstance().findFileTypeByName("YAML") != null;
+	private static boolean isJsonAvailable() {
+		return PluginManagerCore.isPluginInstalled(JSON) && !PluginManagerCore.isDisabled(JSON)
+				&& FileTypeManager.getInstance().findFileTypeByName("JSON") != null;
 	}
 
-	private static class GitHubDependencyContext implements ProjectDependencyContext {
+	private static class NpmDependencyContext implements ProjectDependencyContext {
 
 		private final Project project;
 
 		private final VirtualFile anchor;
 
-		private final GitHubProjectContext context;
+		private final NpmProjectContext context;
 
 		private final DependencyAssistantService service;
 
-		GitHubDependencyContext(Project project, VirtualFile anchor, GitHubProjectContext context) {
+		NpmDependencyContext(Project project, VirtualFile anchor, NpmProjectContext context) {
 			this.project = project;
 			this.anchor = anchor;
 			this.context = context;
@@ -147,7 +146,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
-			return GitHubInterface.INSTANCE;
+			return NpmInterface.INSTANCE;
 		}
 
 		@Override
@@ -163,27 +162,12 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public void invalidateState(PsiFile file) {
 
-			if (!GitHubUtils.isWorkflowFile(file)) {
+			if (!NpmUtils.isPackageJson(file)) {
 				return;
 			}
 
-			DependencyCollector collector = new GitHubDependencyCollector()
-					.collect(file);
+			DependencyCollector collector = new NpmDependencyCollector().collect(file);
 			ProjectState projectState = service.getProjectState(getProjectId());
-			Cache cache = service.getCache();
-
-			for (DeclaredDependency declaration : collector.getDeclarations()) {
-				Dependency dependency = resolveDependency(declaration,
-						cache.getReleases(declaration.getArtifactId()));
-				if (dependency != null) {
-
-					DeclarationSource declarationSource = dependency.getDeclarationSources().iterator().next();
-					VersionSource versionSource = dependency.getVersionSources().iterator().next();
-					collector.registerUsage(dependency.getArtifactId(), dependency.getCurrentVersion(),
-							declarationSource, versionSource);
-				}
-			}
-
 			projectState.invalidateDependencies();
 			projectState.setDependencies(collector);
 		}
@@ -196,42 +180,27 @@ public class GitHubAssistant implements DependencyAssistant {
 				return new DependencyCollector();
 			}
 
-			GitHubDependencyCollector collector = new GitHubDependencyCollector();
-			DependencyCollector result = collector.collect(psiFile);
-			result.addAllReleaseSources(getReleaseSources());
-
-			return result;
+			DependencyCollector collector = new NpmDependencyCollector().collect(psiFile);
+			collector.addAllReleaseSources(getReleaseSources());
+			return collector;
 		}
 
 		@Override
 		public @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
 
-			if (declaredDependency.getVersionSources().isEmpty()) {
+			if (declaredDependency.getVersionSources().isEmpty() || releases.isEmpty()) {
 				return null;
 			}
-
-			VersionSource source = declaredDependency.getVersionSources().iterator().next();
-			if (StringUtils.hasText(source.toString())) {
-				GitVersion gitVersion = GitVersionResolver.resolveVersion(source.toString(), releases);
-				return gitVersion != null ? Dependency.from(declaredDependency, gitVersion) : null;
-			}
-			return null;
+			return Dependency.from(declaredDependency, releases.getFirst().version());
 		}
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
 
-			if (GitHubUtils.isWorkflowFile(element.getContainingFile())) {
-
-				if (element instanceof YAMLQuotedText) {
-					return false;
-				}
-
-				YAMLScalar usesScalar = VersionUpgradeLookupService.getUsesScalar(PsiVisitors.unleaf(element));
-				return usesScalar != null;
+			if (!NpmUtils.isPackageJson(element.getContainingFile())) {
+				return false;
 			}
-
-			return false;
+			return NpmPsiUtils.findDependencyLiteral(element) != null;
 		}
 
 		@Override
@@ -241,21 +210,18 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
+			new UpdatePackageJsonFile(project).applyUpdates(psiFile, updates);
 		}
 
 	}
 
-	/**
-	 * GitHub Actions-specific user interface support.
-	 */
-	enum GitHubInterface implements InterfaceAssistant {
+	enum NpmInterface implements InterfaceAssistant {
 
 		INSTANCE;
 
 		@Override
 		public String getDisplayName() {
-			return MessageBundle.message("assistant.github");
+			return MessageBundle.message("assistant.npm");
 		}
 
 		@Override
@@ -265,7 +231,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public Icon getGutterIcon(ArtifactDeclaration declaration) {
-			return DependencyAssistantIcons.UPGRADE_GITHUB_ICON;
+			return DependencyAssistantIcons.UPGRADE_NPM_ICON;
 		}
 
 		@Override
@@ -275,7 +241,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public Icon getTableIcon(Dependency dependency) {
-			return DependencyAssistantIcons.ICON;
+			return DependencyAssistantIcons.NPM;
 		}
 
 		@Override

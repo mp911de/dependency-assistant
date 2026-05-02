@@ -26,7 +26,6 @@ import com.intellij.lang.annotation.Annotator;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Annotator that marks outdated dependency versions in supported build files.
@@ -38,11 +37,14 @@ public class NewerVersionAnnotator implements Annotator {
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
-		VersionUpgradeLookupSupport service = getVersionLookupSupport(element);
-		if (service == null) {
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
+				element.getContainingFile());
+
+		if (context == null || !context.isVersionElement(element) || context.isAbsent()) {
 			return;
 		}
 
+		VersionUpgradeLookupSupport service = context.getLookup(element);
 		UpgradeSuggestion suggestion = service.suggestUpgrade(element);
 
 		if (!suggestion.isPresent()) {
@@ -70,7 +72,7 @@ public class NewerVersionAnnotator implements Annotator {
 		}
 
 		AnnotationBuilder builder = holder.newAnnotation(NewerVersionSeveritiesProvider.NEWER_VERSION, message)
-				.range(getTextRange(element))
+				.range(getTextRange(element, context))
 				.textAttributes(NewerVersionSeveritiesProvider.NEWER_VERSION_KEY);
 
 		if (action != null) {
@@ -81,26 +83,11 @@ public class NewerVersionAnnotator implements Annotator {
 	}
 
 	/**
-	 * Return lookup support for the given element, if the containing file is
-	 * supported.
-	 */
-	protected @Nullable VersionUpgradeLookupSupport getVersionLookupSupport(PsiElement element) {
-
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
-				element.getContainingFile());
-
-		if (context == null || !context.isVersionElement(element) || context.isAbsent()) {
-			return null;
-		}
-
-		return context.getLookup(element);
-	}
-
-	/**
 	 * Return the text range used for the annotation highlight.
 	 */
-	protected TextRange getTextRange(PsiElement element) {
+	protected TextRange getTextRange(PsiElement element, ProjectDependencyContext context) {
 
+		// TODO: Refactoring
 		TextRange textRange = element.getTextRange();
 		if (element.getContainingFile().getName().endsWith(".versions.toml") && element.getText().startsWith("\"")) {
 			return new TextRange(textRange.getStartOffset() + 1, textRange.getEndOffset() - 1);

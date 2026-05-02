@@ -16,10 +16,9 @@
 
 package biz.paluch.dap.github;
 
-import java.util.regex.Pattern;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -49,7 +48,7 @@ import org.jspecify.annotations.Nullable;
  * 
  * @author Mark Paluch
  * @see GitHubWorkflowParser
- * @see WorkflowRefStyle
+ * @see RefStyle
  */
 record UsesRepositoryAction(String owner, String repository, @Nullable String version) {
 
@@ -83,24 +82,15 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 	 * metadata is available and carry the resolved version as explanatory text. If
 	 * no SHA is available, the release version is returned as the safest available
 	 * replacement text.
-	 * @param version the resolved release version to render.
+	 * @param gitVersion the resolved release version to render.
 	 */
-	public VersionText getVersion(GitVersion version) {
+	public VersionText getVersion(GitVersion gitVersion) {
 
-		WorkflowRefStyle style = WorkflowRefStyle.from(version());
-		String text = version.getVersion().toString();
+		RefStyle style = RefStyle.from(version());
+		String text = gitVersion.renderRef(style, version());
 
-		if (style == WorkflowRefStyle.SHA && StringUtils.hasText(version.getSha())) {
-
-			text = version.getSha();
-			if (StringUtils.hasText(version())) {
-				int shaLength = version().length();
-				if (shaLength < text.length()) {
-					text = text.substring(0, shaLength);
-				}
-			}
-
-			return new VersionText(text, version.toString());
+		if (style == RefStyle.SHA && StringUtils.hasText(gitVersion.getSha())) {
+			return new VersionText(text, gitVersion.toString());
 		}
 
 		return new VersionText(text, "");
@@ -111,8 +101,8 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 	 * <p>Callers use the style to preserve the user's pinning model when offering
 	 * completions or applying updates.
 	 */
-	public WorkflowRefStyle getStyle() {
-		return WorkflowRefStyle.from(version());
+	public RefStyle getStyle() {
+		return RefStyle.from(version());
 	}
 
 	/**
@@ -129,45 +119,6 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 		@Override
 		public String toString() {
 			return StringUtils.hasText(comment) ? "%s # %s".formatted(text, comment) : text;
-		}
-
-	}
-
-	/**
-	 * Classification of a workflow {@code uses:} ref string.
-	 *
-	 * <p>The ref after {@code @} in a {@code uses:} declaration is classified by
-	 * the rendering model, not by Git semantics. Hex SHA prefixes are treated as
-	 * SHA-pinned refs. All other non-empty refs, including tags, branches, and
-	 * semantic versions with or without a {@code v} prefix, are rendered as
-	 * version-style refs.
-	 *
-	 * @author Mark Paluch
-	 */
-	enum WorkflowRefStyle {
-
-		/**
-		 * A lowercase hexadecimal commit SHA or SHA prefix, e.g.
-		 * {@code be666c2fcd27ec809703dec50e508c2fdc7f6654} or {@code be666c2f}.
-		 */
-		SHA,
-
-		/**
-		 * A non-SHA ref rendered directly as a version-style value.
-		 */
-		VERSION;
-
-		private static final Pattern FULL_SHA = Pattern.compile("^[0-9a-f]{4,40}$");
-
-		/**
-		 * Determine a {@link WorkflowRefStyle} from the given ref string.
-		 * <p>An empty ref defaults to {@link #SHA}, matching the conservative behavior
-		 * for declarations that cannot reveal their original style.
-		 * @param version the raw version as written in the YAML file.
-		 * @return the resulting WorkflowRefStyle.
-		 */
-		static WorkflowRefStyle from(@Nullable String version) {
-			return StringUtils.isEmpty(version) || FULL_SHA.matcher(version).matches() ? SHA : VERSION;
 		}
 
 	}

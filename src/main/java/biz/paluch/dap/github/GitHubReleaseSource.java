@@ -76,7 +76,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see GitHubAccountResolver
  */
-class GitHubReleaseSource implements ReleaseSource {
+public class GitHubReleaseSource implements ReleaseSource {
 
 	private static final Logger LOG = Logger.getInstance(GitHubReleaseSource.class);
 
@@ -95,13 +95,11 @@ class GitHubReleaseSource implements ReleaseSource {
 	 * {@link GithubServerPath#DEFAULT_SERVER}); must not be {@literal null}.
 	 * @param executor the API request executor; must not be {@literal null}.
 	 */
-	public GitHubReleaseSource(GithubServerPath server,
-			GithubApiRequestExecutor executor) {
+	GitHubReleaseSource(GithubServerPath server, GithubApiRequestExecutor executor) {
 		this(server, new ExecutorBackedClient(executor), DEFAULT_TAGS_PAGE_SIZE);
 	}
 
-	protected GitHubReleaseSource(GithubServerPath server, GitHubApiClient client,
-			int pageSize) {
+	GitHubReleaseSource(GithubServerPath server, GitHubApiClient client, int pageSize) {
 		this.server = server;
 		this.client = client;
 		this.pageSize = pageSize;

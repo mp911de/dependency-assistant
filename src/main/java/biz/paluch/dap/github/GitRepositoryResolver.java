@@ -16,20 +16,17 @@
 
 package biz.paluch.dap.github;
 
-import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 
 import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
-import git4idea.remote.hosting.GitHostingUrlUtil;
 import git4idea.repo.GitRemote;
 import git4idea.repo.GitRepository;
 import git4idea.repo.GitRepositoryManager;
-import org.jetbrains.plugins.github.api.GHRepositoryPath;
-import org.jetbrains.plugins.github.util.GithubUrlUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -56,7 +53,7 @@ class GitRepositoryResolver {
 
 	private final GitRepositoryManager repositoryManager;
 
-	public GitRepositoryResolver(Project project) {
+	GitRepositoryResolver(Project project) {
 		this.project = project;
 		this.repositoryManager = GitRepositoryManager.getInstance(project);
 	}
@@ -68,8 +65,8 @@ class GitRepositoryResolver {
 	 * GitHub or GitHub Enterprise repository; callers should then fall back to
 	 * host-agnostic GitHub support.
 	 */
-	public @Nullable GitRepositoryMetadata resolveOwnerAndRepository(
-			VirtualFile anchor) {
+	@Nullable
+	GitRepositoryMetadata resolveOwnerAndRepository(VirtualFile anchor) {
 
 		if (!anchor.isValid() || !anchor.exists()) {
 			return null;
@@ -132,60 +129,7 @@ class GitRepositoryResolver {
 		}
 
 		GitRemote preferred = origin != null ? origin : first;
-		return preferred == null ? null : parseGitUrl(preferred.getFirstUrl());
-	}
-
-	/**
-	 * Parse a Git remote URL into GitHub repository metadata.
-	 * <p>Both public GitHub and GitHub Enterprise remotes are supported as long as
-	 * the IntelliJ GitHub URL utilities can extract an owner and repository. A
-	 * {@code null} result indicates that the URL is blank, malformed, or not a
-	 * supported GitHub remote.
-	 *
-	 * @param url the remote URL to parse
-	 * @return the parsed metadata, or {@code null} if the URL is not supported
-	 */
-	public static @Nullable GitRepositoryMetadata parseGitUrl(@Nullable String url) {
-
-		if (url == null || url.isBlank()) {
-			return null;
-		}
-
-		GHRepositoryPath repoPath = GithubUrlUtil.getUserAndRepositoryFromRemoteUrl(url);
-		URI uri = GitHostingUrlUtil.getUriFromRemoteUrl(url);
-
-		if (uri != null && repoPath != null) {
-			return new GitRepositoryMetadata(uri.getHost(), repoPath.getOwner(), repoPath.getRepository());
-		}
-
-		return null;
-	}
-
-	/**
-	 * GitHub repository metadata extracted from a Git remote URL.
-	 *
-	 * <p>The host is retained so release lookup can target GitHub Enterprise when a
-	 * project is not hosted on {@code github.com}. The owner and repository form
-	 * the framework's project identity for GitHub Actions dependency state.
-	 *
-	 * @param host the GitHub host name (e.g. {@code github.com} or a GitHub
-	 * Enterprise host).
-	 * @param owner the GitHub user or organization.
-	 * @param repository the repository name.
-	 */
-	record GitRepositoryMetadata(String host, String owner, String repository) {
-
-		/**
-		 * Return the project identity for the given GitHub Actions file.
-		 * <p>The file path is part of the identity because a repository may contain
-		 * several files with independent dependency declarations.
-		 * @param buildFile the GitHub Actions file path
-		 * @return the project identity for the file
-		 */
-		public ProjectId toProjectId(String buildFile) {
-			return ProjectId.of(owner(), repository(), buildFile);
-		}
-
+		return preferred == null ? null : GitRepositoryMetadata.parseGitUrl(preferred.getFirstUrl());
 	}
 
 }

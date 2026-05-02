@@ -82,6 +82,35 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 		return sha;
 	}
 
+	/**
+	 * Render this version as a ref string suitable for the given style.
+	 * <p>For {@link RefStyle#VERSION} or when no SHA metadata is available, the
+	 * version's tag form is returned. For {@link RefStyle#SHA} with SHA metadata,
+	 * the stored SHA is returned, truncated to the original committish length when
+	 * the original committish is shorter than the SHA. A {@literal null} or empty
+	 * {@code originalCommittish} preserves the full SHA.
+	 * @param style the rendering style, classified from the original committish.
+	 * @param originalCommittish the original committish text the user wrote; can be
+	 * {@literal null}.
+	 * @return the rendered ref string; guaranteed to be not {@literal null}.
+	 */
+	public String renderRef(RefStyle style, @Nullable String originalCommittish) {
+
+		if (style == RefStyle.VERSION || !StringUtils.hasText(sha)) {
+			return getVersion().toString();
+		}
+
+		String text = sha;
+		if (StringUtils.hasText(originalCommittish)) {
+			int length = originalCommittish.length();
+			if (length < text.length()) {
+				return text.substring(0, length);
+			}
+		}
+
+		return text;
+	}
+
 	@Override
 	public boolean equals(Object o) {
 		if (!(o instanceof GitVersion that)) {

@@ -20,8 +20,8 @@ import java.util.List;
 
 import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.github.GitRepositoryResolver.GitRepositoryMetadata;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;

@@ -57,6 +57,7 @@
 	</depends>
 	<depends optional="true" config-file="github.xml">org.jetbrains.plugins.github</depends>
 	<depends optional="true" config-file="git.xml">Git4Idea</depends>
+	<depends optional="true" config-file="npm.xml">com.intellij.modules.json</depends>
 
 	<resource-bundle>messages.MessageBundle</resource-bundle>
 

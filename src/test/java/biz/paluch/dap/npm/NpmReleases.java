@@ -1,0 +1,91 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package biz.paluch.dap.npm;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.CachedRelease;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Test fixture providing curated NPM {@link CachedArtifact} samples.
+ *
+ * <p>Mirrors {@link biz.paluch.dap.Releases} for the NPM ecosystem. Each
+ * artifact carries a representative slice of release history derived from a
+ * real NPM registry response so completion and line marker tests can exercise
+ * upgrade-strategy and version-comparison logic without dragging in the full
+ * upstream catalogue.
+ *
+ * @author Mark Paluch
+ */
+public final class NpmReleases {
+
+	private static final List<CachedArtifact> ALL = new ArrayList<>();
+
+	public static final CachedArtifact ANTORA_XREF_EXTENSION = create("@springio", "antora-xref-extension",
+			releases -> releases
+					.add("1.0.0-alpha.5", "2025-11-08")
+					.add("1.0.0-alpha.4", "2024-11-05")
+					.add("1.0.0-alpha.3", "2024-03-19")
+					.add("1.0.0-alpha.2", "2024-03-19")
+					.add("1.0.0-alpha.1", "2024-03-19"));
+
+	private NpmReleases() {
+	}
+
+	/**
+	 * @return all NPM artifacts registered in this fixture, in declaration order.
+	 */
+	public static List<CachedArtifact> all() {
+		return List.copyOf(ALL);
+	}
+
+	private static CachedArtifact create(String groupId, String artifactId, Consumer<ReleaseBuilder> configurer) {
+
+		CachedArtifact artifact = new CachedArtifact(groupId, artifactId);
+		configurer.accept(new ReleaseBuilder(artifact.getReleases()));
+		ALL.add(artifact);
+		return artifact;
+	}
+
+	/**
+	 * Fluent collector for {@link CachedRelease} entries on a single
+	 * {@link CachedArtifact}.
+	 */
+	static class ReleaseBuilder {
+
+		private final List<CachedRelease> releases;
+
+		private ReleaseBuilder(List<CachedRelease> releases) {
+			this.releases = releases;
+		}
+
+		ReleaseBuilder add(String version) {
+			return add(version, null);
+		}
+
+		ReleaseBuilder add(String version, @Nullable String date) {
+			releases.add(new CachedRelease(version, date));
+			return this;
+		}
+
+	}
+
+}

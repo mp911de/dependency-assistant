@@ -51,6 +51,11 @@ public class DependencyAssistantIcons {
 	public static final Icon UPGRADE_NPM_ICON = load("/META-INF/upgrade-icons/npm.svg");
 
 	/**
+	 * NPM icon.
+	 */
+	public static final Icon NPM = load("/META-INF/npm.svg");
+
+	/**
 	 * GitHub dependency update icon.
 	 */
 	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/upgrade-icons/github.svg");

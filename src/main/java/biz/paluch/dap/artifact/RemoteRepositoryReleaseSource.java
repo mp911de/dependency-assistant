@@ -20,8 +20,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.net.Authenticator;
-import java.net.PasswordAuthentication;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -36,17 +34,11 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.util.HttpClientFactory;
 import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.xml.MavenMetadataProjection;
 import biz.paluch.dap.xml.XmlBeamProjectorFactory;
-import com.intellij.credentialStore.Credentials;
-import com.intellij.openapi.application.Application;
-import com.intellij.openapi.application.ApplicationInfo;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ApplicationNamesInfo;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.util.net.JdkProxyProvider;
-import com.intellij.util.net.ProxyAuthentication;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -80,7 +72,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 	private static final int MAX_REDIRECT_HOPS = 10;
 
-	private static final String USER_AGENT = getUserAgent();
+	private static final HttpClient HTTP_CLIENT = HttpClientFactory.createHttpClient();
 
 	private final RemoteRepository repository;
 
@@ -183,7 +175,8 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 				if (version != null && dateStr != null) {
 					try {
-						result.put(version, LocalDateTime.from(DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER.parse(dateStr)));
+						result.put(version,
+								LocalDateTime.from(DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER.parse(dateStr)));
 					} catch (Exception e) {
 						LOG.debug("Could not parse directory listing date for version " + version, e);
 					}
@@ -194,7 +187,8 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		return result;
 	}
 
-	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri, @Nullable RepositoryCredentials credentials,
+	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
+			@Nullable RepositoryCredentials credentials,
 			boolean failOnNotFound, URI repositoryBaseUri) {
 
 		String url = uri.toASCIIString();
@@ -219,18 +213,11 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	private static @Nullable String fetchWithStandardRedirects(ArtifactId artifactId, URI uri, boolean failOnNotFound)
 			throws IOException, InterruptedException {
 
-		HttpClient client = HttpClient.newBuilder() //
-				.proxy(JdkProxyProvider.getInstance().getProxySelector()) //
-				.authenticator(new RepositoryAuthenticator()) //
-				.connectTimeout(Duration.ofSeconds(10)) //
-				.followRedirects(HttpClient.Redirect.NORMAL) //
-				.build();
-
-		HttpRequest request = HttpRequest.newBuilder(uri).header("User-Agent", USER_AGENT)
+		HttpRequest request = HttpRequest.newBuilder(uri).header("User-Agent", HttpClientFactory.getUserAgent())
 				.timeout(Duration.ofSeconds(10))
 				.GET().build();
 
-		HttpResponse<String> response = client.send(request, cappedUtf8BodyHandler());
+		HttpResponse<String> response = HTTP_CLIENT.send(request, cappedUtf8BodyHandler());
 
 		if (response.statusCode() >= 200 && response.statusCode() < 300) {
 			return response.body();
@@ -247,24 +234,18 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri)
 			throws IOException, InterruptedException {
 
-		HttpClient client = HttpClient.newBuilder() //
-				.proxy(JdkProxyProvider.getInstance().getProxySelector()) //
-				.authenticator(new RepositoryAuthenticator()) //
-				.connectTimeout(Duration.ofSeconds(10)) //
-				.followRedirects(HttpClient.Redirect.NEVER) //
-				.build();
-
 		URI current = uri;
 		for (int hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
 
-			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(current).header("User-Agent", USER_AGENT)
+			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(current)
+					.header("User-Agent", HttpClientFactory.getUserAgent())
 					.timeout(Duration.ofSeconds(10)).GET();
 
 			if (repositoryCredentialHostMatches(repositoryBaseUri, current)) {
 				requestBuilder.header("Authorization", basicAuthHeader(credentials));
 			}
 
-			HttpResponse<String> response = client.send(requestBuilder.build(), cappedUtf8BodyHandler());
+			HttpResponse<String> response = HTTP_CLIENT.send(requestBuilder.build(), cappedUtf8BodyHandler());
 			int status = response.statusCode();
 
 			if (status >= 200 && status < 300) {
@@ -363,48 +344,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 		String raw = credentials.username() + ":" + credentials.password();
 		return "Basic " + Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
-	}
-
-	private static class RepositoryAuthenticator extends Authenticator {
-
-		private final ProxyAuthentication proxyAuthentication = ProxyAuthentication.getInstance();
-
-		RepositoryAuthenticator() {
-		}
-
-		@Override
-		protected PasswordAuthentication getPasswordAuthentication() {
-
-			if (getRequestorType() == RequestorType.PROXY) {
-
-				Credentials knownAuthentication = proxyAuthentication.getKnownAuthentication(getRequestingHost(),
-						getRequestingPort());
-
-				if (knownAuthentication == null || knownAuthentication.getUserName() == null) {
-					return null;
-				}
-				return new PasswordAuthentication(knownAuthentication.getUserName(),
-						knownAuthentication.getPassword() != null ? knownAuthentication.getPassword().toCharArray() : new char[0]);
-			}
-
-			return null;
-		}
-
-	}
-
-	private static String getUserAgent() {
-
-		String userAgent;
-		Application app = ApplicationManager.getApplication();
-		if (app != null && !app.isDisposed()) {
-			String productName = ApplicationNamesInfo.getInstance().getFullProductName();
-			String version = ApplicationInfo.getInstance().getBuild().asStringWithoutProductCode();
-			userAgent = productName + '/' + version;
-		} else {
-			userAgent = "IntelliJ";
-		}
-
-		return userAgent;
 	}
 
 }

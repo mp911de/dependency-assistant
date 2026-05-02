@@ -21,8 +21,8 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
-import biz.paluch.dap.github.UsesRepositoryAction.WorkflowRefStyle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiComment;
@@ -52,7 +52,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  * @see UsesRepositoryAction
- * @see WorkflowRefStyle
+ * @see RefStyle
  */
 class UpdateGitHubWorkflowFile {
 

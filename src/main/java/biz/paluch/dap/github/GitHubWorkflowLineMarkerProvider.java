@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.github;
 
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.NewerVersionLineMarkerProvider;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
@@ -29,7 +30,7 @@ import com.intellij.psi.PsiElement;
 public class GitHubWorkflowLineMarkerProvider extends NewerVersionLineMarkerProvider {
 
 	@Override
-	protected TextRange getTextRange(PsiElement element) {
+	protected TextRange getTextRange(PsiElement element, ProjectDependencyContext context) {
 		return GitHubUtils.getVersionRange(element);
 	}
 

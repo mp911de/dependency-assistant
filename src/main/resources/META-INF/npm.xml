@@ -1,0 +1,17 @@
+<idea-plugin>
+	<extensions defaultExtensionNs="biz.paluch.dap">
+		<assistant implementation="biz.paluch.dap.npm.NpmAssistant"/>
+	</extensions>
+
+	<extensions defaultExtensionNs="com.intellij">
+		<completion.contributor
+				language="JSON"
+				order="first"
+				implementationClass="biz.paluch.dap.npm.NpmVersionCompletionContributor"/>
+		<annotator language="JSON"
+		           implementationClass="biz.paluch.dap.npm.NpmNewerVersionAnnotator"/>
+		<codeInsight.lineMarkerProvider
+				language="JSON"
+				implementationClass="biz.paluch.dap.npm.NpmLineMarkerProvider"/>
+	</extensions>
+</idea-plugin>

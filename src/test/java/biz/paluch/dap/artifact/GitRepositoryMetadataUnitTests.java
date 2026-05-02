@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.artifact;
 
-import biz.paluch.dap.github.GitRepositoryResolver.GitRepositoryMetadata;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 
 /**
- * Unit tests for {@link GitRepositoryResolver}.
+ * Unit tests for {@link GitRepositoryMetadata#parseGitUrl(String)}.
  *
  * @author Mark Paluch
  */
-class GitRepositoryResolverUnitTests {
+class GitRepositoryMetadataUnitTests {
 
 	@Test
 	void parsesHttpsGitHubUrl() {
 
-		GitRepositoryMetadata parsed = GitRepositoryResolver.parseGitUrl("https://github.com/octocat/hello-world.git");
+		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("https://github.com/octocat/hello-world.git");
 
 		assertThat(parsed).isNotNull();
 		assertThat(parsed.host()).isEqualTo("github.com");
@@ -42,7 +41,7 @@ class GitRepositoryResolverUnitTests {
 	@Test
 	void parsesSshGitHubEnterpriseUrl() {
 
-		GitRepositoryMetadata parsed = GitRepositoryResolver.parseGitUrl("git@github.example.com:owner/repo.git");
+		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("git@github.example.com:owner/repo.git");
 
 		assertThat(parsed).isNotNull();
 		assertThat(parsed.host()).isEqualTo("github.example.com");
@@ -53,7 +52,7 @@ class GitRepositoryResolverUnitTests {
 	@Test
 	void parsesSshUrlWithSchemeAndUserInfo() {
 
-		GitRepositoryMetadata parsed = GitRepositoryResolver.parseGitUrl("ssh://git@github.com/owner/repo.git");
+		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("ssh://git@github.com/owner/repo.git");
 
 		assertThat(parsed).isNotNull();
 		assertThat(parsed.host()).isEqualTo("github.com");
@@ -64,16 +63,16 @@ class GitRepositoryResolverUnitTests {
 	@Test
 	void rejectsBlankOrMalformedInput() {
 
-		assertThat(GitRepositoryResolver.parseGitUrl(null)).isNull();
-		assertThat(GitRepositoryResolver.parseGitUrl("")).isNull();
-		assertThat(GitRepositoryResolver.parseGitUrl("not-a-url")).isNull();
-		assertThat(GitRepositoryResolver.parseGitUrl("https://github.com/owner")).isNull();
+		assertThat(GitRepositoryMetadata.parseGitUrl(null)).isNull();
+		assertThat(GitRepositoryMetadata.parseGitUrl("")).isNull();
+		assertThat(GitRepositoryMetadata.parseGitUrl("not-a-url")).isNull();
+		assertThat(GitRepositoryMetadata.parseGitUrl("https://github.com/owner")).isNull();
 	}
 
 	@Test
 	void parseGitUrlExtractsOwnerAndRepository() {
 
-		GitRepositoryMetadata parsed = GitRepositoryResolver.parseGitUrl("git@github.example.com:acme/example.git");
+		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("git@github.example.com:acme/example.git");
 
 		assertThat(parsed).isNotNull();
 		assertThat(parsed.owner()).isEqualTo("acme");

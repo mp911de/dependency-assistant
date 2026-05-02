@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.npm;
 
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.NewerVersionAnnotator;
@@ -22,16 +22,20 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 
 /**
- * GitHub Actions annotator that highlights only the ref segment after {@code @}
- * in a repository-backed {@code uses:} declaration.
+ * Annotator that highlights the variant-defined replaceable range of an NPM
+ * dependency value.
+ *
+ * <p>The class is named {@code NpmNewerVersionAnnotator} to avoid collision
+ * with {@link NewerVersionAnnotator}, which sits in the {@code support}
+ * package.
  *
  * @author Mark Paluch
  */
-public class GitHubWorkflowAnnotator extends NewerVersionAnnotator {
+public class NpmNewerVersionAnnotator extends NewerVersionAnnotator {
 
 	@Override
 	protected TextRange getTextRange(PsiElement element, ProjectDependencyContext context) {
-		return GitHubUtils.getVersionRange(element);
+		return NpmPsiUtils.getVersionRange(element);
 	}
 
 }

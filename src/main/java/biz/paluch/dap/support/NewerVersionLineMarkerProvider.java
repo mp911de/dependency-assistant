@@ -68,7 +68,7 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 				String tooltipToUse = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
 						+ System.lineSeparator() + tooltip;
 
-				return new LineMarkerInfo<>(anchor, getTextRange(anchor),
+				return new LineMarkerInfo<>(anchor, getTextRange(anchor, context),
 						context.getInterfaceAssistant().getNavigateIcon(declaration),
 						e -> tooltipToUse,
 						(mouseEvent, psiElement) -> {
@@ -80,7 +80,7 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 			}
 		}
 
-		return new LineMarkerInfo<>(anchor, getTextRange(anchor),
+		return new LineMarkerInfo<>(anchor, getTextRange(anchor, context),
 				context.getInterfaceAssistant().getGutterIcon(declaration), e -> tooltip,
 				new ActionNavigationHandler("biz.paluch.dap.UpdateDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
@@ -104,8 +104,8 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 	/**
 	 * Return the text range used for the gutter marker.
 	 */
-	protected TextRange getTextRange(PsiElement element) {
-
+	protected TextRange getTextRange(PsiElement element, ProjectDependencyContext context) {
+		// TODO: Refactoring
 		TextRange textRange = element.getTextRange();
 		if (element.getContainingFile().getName().endsWith(".versions.toml") && element.getText().startsWith("\"")) {
 			return new TextRange(textRange.getStartOffset() + 1, textRange.getEndOffset() - 1);

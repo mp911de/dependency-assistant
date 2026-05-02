@@ -14,24 +14,24 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.npm;
 
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.support.NewerVersionAnnotator;
+import biz.paluch.dap.support.NewerVersionLineMarkerProvider;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 
 /**
- * GitHub Actions annotator that highlights only the ref segment after {@code @}
- * in a repository-backed {@code uses:} declaration.
+ * Line marker provider that positions the gutter icon on the variant-defined
+ * replaceable range of an NPM dependency value.
  *
  * @author Mark Paluch
  */
-public class GitHubWorkflowAnnotator extends NewerVersionAnnotator {
+public class NpmLineMarkerProvider extends NewerVersionLineMarkerProvider {
 
 	@Override
 	protected TextRange getTextRange(PsiElement element, ProjectDependencyContext context) {
-		return GitHubUtils.getVersionRange(element);
+		return NpmPsiUtils.getVersionRange(element);
 	}
 
 }

@@ -27,6 +27,7 @@ dependencies {
 		bundledPlugin("org.jetbrains.plugins.yaml")
 		bundledPlugin("org.jetbrains.plugins.github")
 		bundledPlugin("Git4Idea")
+		bundledPlugin("com.intellij.modules.json")
 		bundledModule("intellij.yaml.backend")
 	}
 	implementation("org.springframework:spring-core:7.0.6")

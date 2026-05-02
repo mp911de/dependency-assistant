@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.github.GitRepositoryResolver.GitRepositoryMetadata;
+import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import com.intellij.openapi.application.ApplicationManager;
