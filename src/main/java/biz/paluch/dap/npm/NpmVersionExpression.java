@@ -17,13 +17,20 @@
 package biz.paluch.dap.npm;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitArtifactId;
+import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.util.TextRange;
+import org.jetbrains.annotations.Contract;
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Classification of an accepted NPM version value declared inside
@@ -41,9 +48,140 @@ import com.intellij.openapi.util.TextRange;
  * @see NpmDependency
  */
 sealed interface NpmVersionExpression
-		permits NpmVersionExpression.Exact, NpmVersionExpression.RangeUpper,
-		NpmVersionExpression.Prefix, NpmVersionExpression.Alias,
-		NpmVersionExpression.Git {
+		permits NpmVersionExpression.Exact, NpmVersionExpression.Range,
+		NpmVersionExpression.SimpleRange, NpmVersionExpression.Prefix,
+		NpmVersionExpression.Alias, NpmVersionExpression.Git {
+
+	/**
+	 * Pattern for supported concrete NPM versions. <pre class="code">
+	 * &lt;number&gt;[.&lt;number&gt;][.&lt;number&gt;][-&lt;pre-release&gt; | +&lt;build&gt;]
+	 *
+	 * Examples: 1, 1.2, 1.2.3, 1.2.3-beta.1, 1.2.3+build.5
+	 * </pre>
+	 */
+	Pattern SEMVER = Pattern
+			.compile("\\d+(?:\\.\\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?");
+
+	/**
+	 * Pattern for NPM wildcard/prefix ranges. <pre class="code">
+	 * &lt;wildcard&gt;
+	 * &lt;number&gt;[.&lt;number&gt;]*.&lt;wildcard&gt;[.&lt;wildcard&gt;]*
+	 *
+	 * Examples: *, x, 2.x, 3.4.x, 1.*, 1.2.*
+	 * </pre>
+	 */
+	Pattern PREFIX_RANGE = Pattern
+			.compile("\\d+(?:\\.\\d+)*\\.(?:x|X|\\*)(?:\\.(?:x|X|\\*))*|\\d+\\.(?:x|X|\\*)|(?:x|X|\\*)");
+
+	/**
+	 * Pattern for NPM hyphen ranges. <pre class="code">
+	 * &lt;version&gt; - &lt;version&gt;
+	 *
+	 * Examples: 1.0.0 - 2.9999.9999, 1.2 - 2.0.0, 1.0.0-beta - 2.0.0
+	 * </pre>
+	 */
+	Pattern HYPHEN_RANGE = Pattern
+			.compile(
+					"(\\d+(?:\\.\\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?)\\s+-\\s+(\\d+(?:\\.\\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?)");
+
+	/**
+	 * Pattern for NPM comparator-pair ranges. <pre class="code">
+	 * [&lt;comparator&gt;] &lt;version&gt; &lt;whitespace&gt; [&lt;comparator&gt;]&lt;version&gt;
+	 *
+	 * Examples: &gt;=1.0.2 &lt;2.1.2, &gt;=1.0.2 &lt;=2.1.2, 1.0.0 &lt;2.0.0
+	 * </pre>
+	 */
+	Pattern COMPARATOR_PAIR = Pattern.compile(
+			"^((?:>=|>|<=|<|=)?\\s*\\d+(?:\\.\\d+)*(?:[-+][0-9A-Za-z.-]+)?)\\s+((?:>=|>|<=|<|=)?\\d+(?:\\.\\d+)*(?:[-+][0-9A-Za-z.-]+)?)$");
+
+	/**
+	 * Pattern for NPM package aliases. <pre class="code">
+	 * npm:[@]&lt;name&gt;[/&lt;name&gt;]@&lt;version-expression&gt;
+	 *
+	 * Examples: npm:react@18.2.0, npm:@scope/name@^1.2.3, npm:fork@~2.0.0
+	 * </pre>
+	 */
+	Pattern ALIAS = Pattern
+			.compile("npm:(@?[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)?)@(.+)$");
+
+	public static Exact exact(String value) {
+		Assert.hasText(value, "Exact value must not be empty or null");
+		return new Exact("", value);
+	}
+
+
+	public static Exact exact(String prefix, String value) {
+		Assert.hasText(value, "Exact value must not be empty or null");
+		return new Exact(prefix, value);
+	}
+
+	public static Range range(String lower, String upper) {
+		Assert.hasText(lower, "Lower value must not be empty or null");
+		Assert.hasText(upper, "upper value must not be empty or null");
+		return new Range(parse(lower), parse(upper));
+	}
+
+	/**
+	 * Classify the raw value of a {@code package.json} dependency entry.
+	 * @param value the dependency value text without surrounding quotes; can be
+	 * {@literal null}.
+	 * @return the parsed expression, or {@literal null} if the value is out of
+	 * scope or not classifiable.
+	 */
+	@Contract("null -> null")
+	public static @Nullable NpmVersionExpression parse(@Nullable String value) {
+
+		if (StringUtils.isEmpty(value) || value.contains("||")) {
+			return null;
+		}
+
+		value = value.trim();
+
+		if (Git.isGitUrl(value)) {
+			return Git.parse(value);
+		}
+
+		if (value.startsWith("npm:")) {
+			Matcher aliasMatcher = ALIAS.matcher(value);
+			if (aliasMatcher.matches()) {
+				NpmVersionExpression inner = parse(aliasMatcher.group(2));
+				if (inner == null || inner instanceof Alias) {
+					return null;
+				}
+				return new Alias(aliasMatcher.group(1), inner);
+			}
+			return null;
+		}
+
+		String trimmed = value.trim();
+		if (trimmed.equals("*") || trimmed.equalsIgnoreCase("latest")) {
+			return null;
+		}
+
+		if (PREFIX_RANGE.matcher(trimmed).matches()) {
+			return new Prefix(trimmed);
+		}
+
+		Matcher hyphen = HYPHEN_RANGE.matcher(trimmed);
+		if (hyphen.matches()) {
+			String lower = hyphen.group(1);
+			String upper = hyphen.group(2);
+			String separator = trimmed.substring(hyphen.end(1), hyphen.start(2));
+			return new SimpleRange(lower, separator, upper);
+		}
+
+		Matcher pair = COMPARATOR_PAIR.matcher(trimmed);
+		if (pair.matches()) {
+			NpmVersionExpression lower = parse(pair.group(1));
+			NpmVersionExpression upper = parse(pair.group(2));
+			if (lower == null || upper == null) {
+				return null;
+			}
+			return new Range(lower, upper);
+		}
+
+		return parseExact(trimmed);
+	}
 
 	/**
 	 * Return the substring of the raw declared value that updaters may rewrite,
@@ -84,13 +222,49 @@ sealed interface NpmVersionExpression
 	}
 
 
+	private static @Nullable NpmVersionExpression parseExact(String value) {
+
+		if (value.isEmpty()) {
+			return null;
+		}
+
+		String modifier = "";
+		String tail = value;
+		char first = value.charAt(0);
+		if (value.startsWith(">=") || value.startsWith("<=")) {
+			modifier = value.substring(0, 2);
+			tail = value.substring(2);
+		} else if (first == '^' || first == '~' || first == '=' || first == '>' || first == '<') {
+			modifier = String.valueOf(first);
+			tail = value.substring(1);
+		} else if (first == 'v' && value.length() > 1 && Character.isDigit(value.charAt(1))) {
+			tail = value;
+		}
+
+		if (tail.isEmpty()) {
+			return null;
+		}
+
+		String version = tail;
+		if (version.length() > 1 && version.charAt(0) == 'v' && Character.isDigit(version.charAt(1))) {
+			version = version.substring(1);
+		}
+		if (!SEMVER.matcher(version).matches()) {
+			return null;
+		}
+
+		return exact(modifier, tail);
+	}
+
 	/**
-	 * Exact version with an optional comparator or {@code v} prefix.
+	 * Exact version with an optional comparator.
 	 *
 	 * <p>Examples: {@code 1.6.8} (no modifier), {@code ^3.1.2}, {@code ~1.2.3},
-	 * {@code =1.0.0}, {@code v2.0.0-beta.1}. The {@code modifier} captures the
-	 * literal prefix (one of {@code ""}, {@code "^"}, {@code "~"}, {@code "="},
-	 * {@code "v"}).
+	 * {@code =1.0.0}, {@code <2.0.0}, {@code <=2.0.0}, {@code v2.0.0-beta.1}. The
+	 * {@code modifier} captures the literal operator (one of {@code ""},
+	 * {@code "^"}, {@code "~"}, {@code "="}, {@code "<"}, {@code "<="},
+	 * {@code ">"}, {@code ">="}). A leading {@code v} remains part of the
+	 * {@code version} text.
 	 *
 	 * @param modifier the literal modifier prefix; possibly empty.
 	 * @param version the version tail without the modifier.
@@ -118,31 +292,79 @@ sealed interface NpmVersionExpression
 			return version;
 		}
 
+		@Override
+		public String toString() {
+			return modifier + version;
+		}
+
 	}
 
 	/**
-	 * Hyphen range or comparator-pair range.
+	 * Comparator-pair range whose right-hand side is modeled as its own expression.
 	 *
-	 * <p>Examples: {@code "1.0.0 - 2.9999.9999"}, {@code ">=1.0.2 <2.1.2"}. The
-	 * {@code prefix} is the verbatim text up to and including the comparator that
-	 * introduces the upper bound (for hyphen ranges, the literal {@code " - "}; for
-	 * comparator pairs, the leading lower bound, separator, and the upper-bound
-	 * comparator). The concrete version is the upper bound.
+	 * <p>Example: {@code ">=1.0.2 <2.1.2"} is represented as
+	 * {@code Range(">=1.0.2 ", Exact("<", "2.1.2"))}. The {@code prefix} is the
+	 * verbatim lower-bound expression and separator. The nested expression
+	 * participates in replacement, rendering, and version-source lookup.
 	 *
-	 * @param prefix the leading text preserved verbatim during updates.
-	 * @param upper the upper-bound version that participates in updates.
+	 * @param lower the lower range boundary.
+	 * @param upper the upper range boundary.
 	 */
-	record RangeUpper(String prefix, String upper) implements NpmVersionExpression {
+	record Range(NpmVersionExpression lower, NpmVersionExpression upper) implements NpmVersionExpression {
 
 		@Override
 		public TextRange replaceableRange(String rawDeclared) {
-			int start = prefix.length();
-			return TextRange.from(start, upper.length());
+			String expressionRaw = rawDeclared.length() >= lower.text().length()
+					? rawDeclared.substring(lower.text().length())
+					: "";
+			TextRange expressionRange = upper.replaceableRange(expressionRaw);
+			return TextRange.from(lower.text().length() + expressionRange.getStartOffset(),
+					expressionRange.getLength());
 		}
 
 		@Override
 		public String renderUpdate(ArtifactVersion version) {
-			return prefix + version;
+			return lower() + upper.renderUpdate(version);
+		}
+
+		@Override
+		public boolean isUpdatable() {
+			return upper.isUpdatable();
+		}
+
+		@Override
+		public String text() {
+			return upper.text();
+		}
+
+		@Override
+		public String toString() {
+			return lower + " " + upper.toString();
+		}
+
+	}
+
+	/**
+	 * Hyphen range such as {@code "1.0.0 - 2.9999.9999"}.
+	 *
+	 * <p>The {@code separator} stores the verbatim whitespace and hyphen between
+	 * the lower and upper bounds so rendering preserves the original spacing. The
+	 * concrete version is the upper bound.
+	 *
+	 * @param lower the lower-bound version text.
+	 * @param separator the verbatim text between lower and upper bounds.
+	 * @param upper the upper-bound version that participates in updates.
+	 */
+	record SimpleRange(String lower, String separator, String upper) implements NpmVersionExpression {
+
+		@Override
+		public TextRange replaceableRange(String rawDeclared) {
+			return TextRange.from(lower.length() + separator.length(), upper.length());
+		}
+
+		@Override
+		public String renderUpdate(ArtifactVersion version) {
+			return lower + separator + version;
 		}
 
 		@Override
@@ -153,6 +375,11 @@ sealed interface NpmVersionExpression
 		@Override
 		public String text() {
 			return upper;
+		}
+
+		@Override
+		public String toString() {
+			return lower + separator + upper;
 		}
 
 	}
@@ -194,6 +421,11 @@ sealed interface NpmVersionExpression
 		public String getBaseVersion() {
 			int index = text.indexOf(".x");
 			return index != -1 ? text.substring(0, index) : text;
+		}
+
+		@Override
+		public String toString() {
+			return text();
 		}
 
 	}
@@ -240,6 +472,11 @@ sealed interface NpmVersionExpression
 			return inner.text();
 		}
 
+		@Override
+		public String toString() {
+			return packageName() + inner();
+		}
+
 	}
 
 	/**
@@ -253,9 +490,28 @@ sealed interface NpmVersionExpression
 	 * {@link NpmGitRef}, in keeping with the records-store-state-not-derivations
 	 * rule.
 	 *
+	 *
 	 * @param ref the resolved Git reference metadata.
 	 */
 	record Git(NpmGitRef ref) implements NpmVersionExpression {
+
+		static final Pattern SHORTHAND = Pattern
+				.compile("^(?<owner>[A-Za-z0-9._-]+)/(?<repo>[A-Za-z0-9._-]+?)(?:#(?<ref>.*))?$");
+
+		static final String SEMVER_PREFIX = "semver:";
+
+		/**
+		 * Return the offset of the first committish character within {@code raw},
+		 * skipping past the leading {@code semver:} marker when present.
+		 * @param raw the raw declared value containing a {@code #} at
+		 * {@code hashIndex}.
+		 * @param hashIndex the index of the {@code #} that introduces the committish.
+		 * @return the offset of the first committish character.
+		 */
+		static int committishStart(String raw, int hashIndex) {
+			int start = hashIndex + 1;
+			return raw.startsWith(SEMVER_PREFIX, start) ? start + SEMVER_PREFIX.length() : start;
+		}
 
 		@Override
 		public TextRange replaceableRange(String rawDeclared) {
@@ -265,7 +521,7 @@ sealed interface NpmVersionExpression
 				return TextRange.from(rawDeclared.length(), 0);
 			}
 
-			int committishStart = NpmGitUrlParser.committishStart(rawDeclared, hash);
+			int committishStart = committishStart(rawDeclared, hash);
 			return TextRange.from(committishStart, rawDeclared.length() - committishStart);
 		}
 
@@ -293,6 +549,152 @@ sealed interface NpmVersionExpression
 		 */
 		public GitArtifactId toArtifactId(ArtifactId artifactId) {
 			return ref.repository().toArtifactId(artifactId);
+		}
+
+		@Override
+		public String toString() {
+			return ref.toString();
+		}
+
+		private static boolean isUrlForm(String value) {
+			return value.startsWith("git+ssh://") || value.startsWith("git+https://")
+					|| value.startsWith("git://") || value.startsWith("git+http://");
+		}
+
+		private static boolean looksLikeShorthand(String value) {
+
+			if (value.contains("://") || value.startsWith("@") || value.startsWith("/")) {
+				return false;
+			}
+			int slash = value.indexOf('/');
+			int hash = value.indexOf('#');
+			int colon = value.indexOf(':');
+			// Reject schemed values such as npm:, file:, link:, workspace: which carry a
+			// colon before any slash and are not Git shorthand.
+			if (colon >= 0 && (slash < 0 || colon < slash)) {
+				return false;
+			}
+			return slash > 0 && (hash < 0 || hash > slash);
+		}
+
+		/**
+		 * <ul>
+		 * <li>{@code git+ssh://git@<host>[:/]<owner>/<repo>(.git)?(#<ref>)?}</li>
+		 * <li>{@code git+https://<host>/<owner>/<repo>(.git)?(#<ref>)?}</li>
+		 * <li>{@code git://<host>/<owner>/<repo>(.git)?(#<ref>)?}</li>
+		 * <li>shorthand {@code <owner>/<repo>(#<ref>)?}</li>
+		 * </ul>
+		 */
+		public static boolean isGitUrl(@Nullable String value) {
+			return StringUtils.hasText(value) && (isUrlForm(value) || looksLikeShorthand(value));
+		}
+
+		/**
+		 * Parse the given raw value as an NPM Git dependency reference.
+		 * @param raw the dependency value; can be {@literal null}.
+		 * @return the parsed Git variant, or {@literal null} if the input is not a
+		 * recognized Git form or does not resolve to a GitHub repository.
+		 */
+		public static NpmVersionExpression.@Nullable Git parse(String raw) {
+
+			Assert.hasText(raw, "Raw value must not be null or empty");
+
+			if (isUrlForm(raw)) {
+				return parseUrl(raw);
+			}
+
+			if (looksLikeShorthand(raw)) {
+				return parseShorthand(raw);
+			}
+
+			return null;
+		}
+
+		private static NpmVersionExpression.@Nullable Git parseUrl(String value) {
+
+			int hash = value.indexOf('#');
+			String urlPart = hash < 0 ? value : value.substring(0, hash);
+			String committishRaw = hash < 0 ? "" : value.substring(hash + 1);
+
+			String normalized = normalizeForResolver(urlPart);
+			GitRepositoryMetadata repository = GitRepositoryMetadata.parseGitUrl(normalized);
+			if (repository == null) {
+				return null;
+			}
+
+			NpmVersionExpression committish = stripSemverPrefix(committishRaw);
+			if (committish == null) {
+				return null;
+			}
+
+			return new NpmVersionExpression.Git(new NpmGitRef(urlPart + "#", repository, committish));
+		}
+
+		private static NpmVersionExpression.@Nullable Git parseShorthand(String value) {
+
+			java.util.regex.Matcher matcher = SHORTHAND.matcher(value);
+			if (!matcher.matches()) {
+				return null;
+			}
+
+			String owner = matcher.group("owner");
+			String repo = matcher.group("repo");
+			String ref = matcher.group("ref");
+
+			String url = "https://github.com/%s/%s.git".formatted(owner, repo);
+			GitRepositoryMetadata repository = GitRepositoryMetadata.parseGitUrl(url);
+			if (repository == null) {
+				return null;
+			}
+
+			String committishRaw = ref != null ? ref : "";
+			NpmVersionExpression committish = stripSemverPrefix(committishRaw);
+			if (committish == null) {
+				return null;
+			}
+			String prefix = value.replace(committishRaw, "");
+
+			return new NpmVersionExpression.Git(new NpmGitRef(prefix, repository, committish));
+		}
+
+		private static String normalizeForResolver(String urlPart) {
+
+			// "git+ssh://git@github.com:owner/repo.git" → "git@github.com:owner/repo.git"
+			if (urlPart.startsWith("git+ssh://")) {
+				return urlPart.substring("git+ssh://".length());
+			}
+			if (urlPart.startsWith("git+https://")) {
+				return urlPart.substring("git+".length());
+			}
+			if (urlPart.startsWith("git+http://")) {
+				return urlPart.substring("git+".length());
+			}
+			return urlPart;
+		}
+
+		/**
+		 * Strip a leading {@code semver:} marker and parse the inner expression through
+		 * the NPM version classifier. {@literal null} return signals the entry should
+		 * be skipped; an unprefixed committish falls back to a raw Git ref when it is
+		 * not package-version syntax.
+		 */
+		private static @Nullable NpmVersionExpression stripSemverPrefix(String committish) {
+
+			if (committish.startsWith(SEMVER_PREFIX)) {
+				String inner = committish.substring(SEMVER_PREFIX.length());
+				if (inner.isEmpty()) {
+					return null;
+				}
+
+				return NpmVersionExpression.parse(inner);
+			}
+
+			if (committish.isEmpty()) {
+				return new Exact("", "");
+			}
+
+			NpmVersionExpression parsed = NpmVersionExpression.parse(committish);
+			return parsed != null ? parsed : new Exact("", committish);
 		}
 
 	}

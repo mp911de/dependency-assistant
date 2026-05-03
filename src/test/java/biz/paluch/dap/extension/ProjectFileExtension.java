@@ -25,13 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileTypes.FileType;
-import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.EdtTestUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -77,14 +73,12 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 		Method testMethod = context.getRequiredTestMethod();
 		ProjectFile[] projectFileAnnotations = testMethod.getAnnotationsByType(ProjectFile.class);
 		EditorFile editorFile = testMethod.getAnnotation(EditorFile.class);
-
 		Map<String, PsiFile> byName = new LinkedHashMap<>();
 		List<PsiFile> projectFiles = new ArrayList<>();
 
 		if (projectFileAnnotations.length > 0 || editorFile != null) {
 			CodeInsightTestFixture fixture = CodeInsightFixtureExtension.getFixture(context);
 			EdtTestUtil.runInEdtAndWait(() -> {
-				ensureFileTypeAssociations(projectFileAnnotations, editorFile);
 				for (ProjectFile annotation : projectFileAnnotations) {
 					validateMethodLevelProjectFile(annotation);
 					String name = resolveName(annotation);
@@ -193,55 +187,6 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 	private static boolean isActive(ExtensionContext context) {
 		return context.getTestClass().isPresent()
 				&& context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class);
-	}
-
-	/**
-	 * Ensure that the file type manager has associated an appropriate
-	 * (non-plain-text) file type with each extension used by the files under test.
-	 * <p>In light test fixtures bundled plugins are available on the classpath, but
-	 * some plugin modules' file type registrations may not be active. For each
-	 * extension that currently maps to {@code PLAIN_TEXT} or {@code UNKNOWN}, this
-	 * method looks up a known {@link FileType} via {@link FileTypeBeans} and
-	 * registers the association so that files are parsed with the correct language
-	 * from the start.
-	 */
-	private static void ensureFileTypeAssociations(ProjectFile[] projectFiles, EditorFile editorFile) {
-
-		List<String> extensions = new ArrayList<>();
-		for (ProjectFile pf : projectFiles) {
-			extensions.add(extensionOf(resolveName(pf)));
-		}
-		if (editorFile != null) {
-			extensions.add(extensionOf(editorFile.name()));
-		}
-
-		FileTypeManager fileTypeManager = FileTypeManager.getInstance();
-		for (String ext : extensions) {
-			if (ext == null) {
-				continue;
-			}
-			FileType current = fileTypeManager.getFileTypeByExtension(ext);
-			String currentName = current.getName();
-			if (!"PLAIN_TEXT".equals(currentName) && !"UNKNOWN".equals(currentName)) {
-				continue;
-			}
-			// The extension is not associated with any non-plain file type.
-			// Look up the file type from the known registry and associate it.
-			FileType fileType = FileTypeBeans.findFileTypeForExtension(ext);
-			if (fileType == null) {
-				continue;
-			}
-
-			ApplicationManager.getApplication().runWriteAction(
-					() -> fileTypeManager.associateExtension(fileType, ext));
-
-			FileTypeBeans.ensureParserDefinition(ext);
-		}
-	}
-
-	private static @Nullable String extensionOf(String name) {
-		int dot = name.lastIndexOf('.');
-		return dot >= 0 ? name.substring(dot + 1) : null;
 	}
 
 

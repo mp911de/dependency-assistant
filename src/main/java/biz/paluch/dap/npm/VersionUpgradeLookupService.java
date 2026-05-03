@@ -70,7 +70,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		String raw = literal.getValue();
-		NpmVersionExpression expression = NpmPackageParser.parse(raw);
+		NpmVersionExpression expression = NpmVersionExpression.parse(raw);
 		ArtifactId artifactId = NpmPackageParser.toArtifactId(name);
 		VersionSource versionSource = expression != null ? expression.versionSource() : VersionSource.none();
 

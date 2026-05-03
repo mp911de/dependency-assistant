@@ -31,12 +31,13 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>The IDE annotator and line marker compute their highlight using the
  * variant's own {@link NpmVersionExpression#replaceableRange(String)} so that
- * {@code Exact}, {@code RangeUpper}, {@code Alias}, {@code Prefix}, and
- * {@code Git} entries each expose the same sub-range that the updater rewrites.
+ * {@code Exact}, {@code Range}, {@code SimpleRange}, {@code Alias},
+ * {@code Prefix}, and {@code Git} entries each expose the same sub-range that
+ * the updater rewrites.
  *
  * @author Mark Paluch
  */
-final class NpmPsiUtils {
+class NpmPsiUtils {
 
 	private NpmPsiUtils() {
 	}
@@ -55,7 +56,7 @@ final class NpmPsiUtils {
 		}
 
 		String rawValue = literal.getValue();
-		NpmVersionExpression expression = NpmPackageParser.parse(rawValue);
+		NpmVersionExpression expression = NpmVersionExpression.parse(rawValue);
 		if (expression == null) {
 			return literal.getTextRange();
 		}

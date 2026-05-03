@@ -104,7 +104,7 @@ class NpmPackageParser {
 			return null;
 		}
 
-		NpmVersionExpression expression = parse(literal.getValue());
+		NpmVersionExpression expression = NpmVersionExpression.parse(literal.getValue());
 		if (expression == null) {
 			return null;
 		}
@@ -116,19 +116,6 @@ class NpmPackageParser {
 		}
 
 		return new NpmDependency(artifactId, expression);
-	}
-
-	/**
-	 * Parse the raw value of a dependency entry. {@link NpmGitUrlParser} runs first
-	 * so a Git URL never falls through to the literal classifier.
-	 */
-	static @Nullable NpmVersionExpression parse(String raw) {
-
-		if (NpmGitUrlParser.isGitUrl(raw)) {
-			return NpmGitUrlParser.parse(raw);
-		}
-
-		return NpmVersionExpressionParser.parse(raw);
 	}
 
 	/**

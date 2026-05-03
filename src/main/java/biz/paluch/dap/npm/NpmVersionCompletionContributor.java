@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.npm.NpmVersionExpression.Git;
 import biz.paluch.dap.support.ReleasesCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
@@ -176,7 +177,7 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 			if (hash < 0 || view.caret() <= hash) {
 				return null;
 			}
-			int committishStart = NpmGitUrlParser.committishStart(view.content(), hash);
+			int committishStart = Git.committishStart(view.content(), hash);
 			if (view.caret() < committishStart
 					|| !HEX_REF.matcher(view.content().substring(committishStart)).matches()) {
 				return null;
@@ -261,7 +262,7 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 
 	}
 
-	private static final class RelaxedPrefixMatcher extends PrefixMatcher {
+	private static class RelaxedPrefixMatcher extends PrefixMatcher {
 
 		RelaxedPrefixMatcher(String prefix) {
 			super(prefix);

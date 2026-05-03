@@ -88,7 +88,7 @@ class UpdatePackageJsonFile {
 			return;
 		}
 
-		NpmVersionExpression expression = NpmPackageParser.parse(literal.getValue());
+		NpmVersionExpression expression = NpmVersionExpression.parse(literal.getValue());
 		if (expression == null) {
 			return;
 		}
@@ -131,7 +131,8 @@ class UpdatePackageJsonFile {
 		case NpmVersionExpression.Git git -> renderGitTail(git, update);
 		case NpmVersionExpression.Alias alias -> renderTail(alias.inner(), update);
 		case NpmVersionExpression.Exact exact -> update.version().toString();
-		case NpmVersionExpression.RangeUpper range -> update.version().toString();
+		case NpmVersionExpression.Range range -> renderTail(range.upper(), update);
+		case NpmVersionExpression.SimpleRange range -> update.version().toString();
 		case NpmVersionExpression.Prefix prefix -> update.version().toString();
 		};
 	}
