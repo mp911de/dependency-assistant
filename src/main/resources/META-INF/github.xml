@@ -11,9 +11,9 @@
 				order="first"
 				implementationClass="biz.paluch.dap.github.GitHubWorkflowCompletionContributor"/>
 		<annotator language="yaml"
-		           implementationClass="biz.paluch.dap.github.GitHubWorkflowAnnotator"/>
+		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="yaml"
-				implementationClass="biz.paluch.dap.github.GitHubWorkflowLineMarkerProvider"/>
+				implementationClass="biz.paluch.dap.support.NewerVersionLineMarkerProvider"/>
 	</extensions>
 </idea-plugin>

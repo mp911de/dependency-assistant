@@ -23,7 +23,6 @@ import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 
@@ -72,7 +71,7 @@ public class NewerVersionAnnotator implements Annotator {
 		}
 
 		AnnotationBuilder builder = holder.newAnnotation(NewerVersionSeveritiesProvider.NEWER_VERSION, message)
-				.range(getTextRange(element, context))
+				.range(context.getInterfaceAssistant().getHighlightRange(element))
 				.textAttributes(NewerVersionSeveritiesProvider.NEWER_VERSION_KEY);
 
 		if (action != null) {
@@ -80,19 +79,6 @@ public class NewerVersionAnnotator implements Annotator {
 		}
 
 		builder.create();
-	}
-
-	/**
-	 * Return the text range used for the annotation highlight.
-	 */
-	protected TextRange getTextRange(PsiElement element, ProjectDependencyContext context) {
-
-		// TODO: Refactoring
-		TextRange textRange = element.getTextRange();
-		if (element.getContainingFile().getName().endsWith(".versions.toml") && element.getText().startsWith("\"")) {
-			return new TextRange(textRange.getStartOffset() + 1, textRange.getEndOffset() - 1);
-		}
-		return textRange;
 	}
 
 }

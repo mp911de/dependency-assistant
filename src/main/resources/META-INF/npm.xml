@@ -9,9 +9,9 @@
 				order="first"
 				implementationClass="biz.paluch.dap.npm.NpmVersionCompletionContributor"/>
 		<annotator language="JSON"
-		           implementationClass="biz.paluch.dap.npm.NpmNewerVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="JSON"
-				implementationClass="biz.paluch.dap.npm.NpmLineMarkerProvider"/>
+				implementationClass="biz.paluch.dap.support.NewerVersionLineMarkerProvider"/>
 	</extensions>
 </idea-plugin>

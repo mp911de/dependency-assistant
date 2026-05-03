@@ -97,7 +97,10 @@ public class DependencyAssistantDispatcher {
 
 		for (DependencyAssistant assistant : INTEGRATIONS.getExtensionList()) {
 			if (assistant.supports(file)) {
-				consumer.accept(assistant.createContext(file.getProject(), file));
+				ProjectDependencyContext context = assistant.createContext(file.getProject(), file);
+				if (context.isAvailable()) {
+					consumer.accept(context);
+				}
 			}
 		}
 	}

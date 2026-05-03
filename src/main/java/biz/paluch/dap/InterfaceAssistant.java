@@ -21,7 +21,9 @@ import javax.swing.*;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 
 /**
  * User-interface metadata for a build-tool integration.
@@ -67,6 +69,20 @@ public interface InterfaceAssistant {
 	 */
 	default String getDocumentationText(ArtifactVersion artifactVersion) {
 		return artifactVersion.toString();
+	}
+
+	/**
+	 * Return the document range used by the annotator and gutter line marker to
+	 * highlight the version portion of {@code element}. Implementations narrow the
+	 * range to a build-tool-specific sub-range (e.g. the version string inside a
+	 * quoted TOML literal, the committish of a Git URL, the ref segment of a GitHub
+	 * Actions {@code uses:} declaration); the default returns the element's own
+	 * range so unrecognized inputs degrade gracefully.
+	 * @param element the element whose version sub-range should be highlighted.
+	 * @return the highlight range; guaranteed to be not {@literal null}.
+	 */
+	default TextRange getHighlightRange(PsiElement element) {
+		return element.getTextRange();
 	}
 
 }

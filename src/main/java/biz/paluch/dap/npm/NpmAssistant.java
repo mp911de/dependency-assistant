@@ -36,6 +36,7 @@ import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -251,6 +252,11 @@ public class NpmAssistant implements DependencyAssistant {
 		public String getDocumentationText(ArtifactVersion artifactVersion) {
 			return artifactVersion instanceof GitVersion gitVersion ? gitVersion.toDocumentationString()
 					: InterfaceAssistant.super.getDocumentationText(artifactVersion);
+		}
+
+		@Override
+		public TextRange getHighlightRange(PsiElement element) {
+			return NpmPsiUtils.getVersionRange(element);
 		}
 
 	}

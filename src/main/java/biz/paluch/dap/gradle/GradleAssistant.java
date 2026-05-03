@@ -37,6 +37,7 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -259,6 +260,22 @@ class GradleAssistant implements DependencyAssistant {
 			}
 
 			return GradleIcons.Gradle;
+		}
+
+		/**
+		 * Strip the surrounding quote characters from quoted version-catalog literals
+		 * ({@code .versions.toml}) so the highlight covers only the version text. All
+		 * other Gradle build files highlight the full element range.
+		 */
+		@Override
+		public TextRange getHighlightRange(PsiElement element) {
+
+			TextRange range = element.getTextRange();
+
+			if (GradleUtils.isVersionCatalog(element.getContainingFile()) && element.getText().startsWith("\"")) {
+				return new TextRange(range.getStartOffset() + 1, range.getEndOffset() - 1);
+			}
+			return range;
 		}
 
 	}

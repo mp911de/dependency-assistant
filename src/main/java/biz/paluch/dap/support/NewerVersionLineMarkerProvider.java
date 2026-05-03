@@ -18,6 +18,7 @@ package biz.paluch.dap.support;
 
 import java.awt.event.MouseEvent;
 
+import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
@@ -27,7 +28,6 @@ import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -57,6 +57,7 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 		String tooltip = suggestion.getMessage();
 		String accessibleName = MessageBundle.message("gutter.newer.accessible");
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
+		InterfaceAssistant ui = context.getInterfaceAssistant();
 
 		ArtifactDeclaration declaration = suggestion.getArtifactDeclaration();
 		PsiElement versionLiteral = declaration.getVersionLiteral();
@@ -68,8 +69,8 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 				String tooltipToUse = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
 						+ System.lineSeparator() + tooltip;
 
-				return new LineMarkerInfo<>(anchor, getTextRange(anchor, context),
-						context.getInterfaceAssistant().getNavigateIcon(declaration),
+				return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
+						ui.getNavigateIcon(declaration),
 						e -> tooltipToUse,
 						(mouseEvent, psiElement) -> {
 
@@ -80,8 +81,8 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 			}
 		}
 
-		return new LineMarkerInfo<>(anchor, getTextRange(anchor, context),
-				context.getInterfaceAssistant().getGutterIcon(declaration), e -> tooltip,
+		return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
+				ui.getGutterIcon(declaration), e -> tooltip,
 				new ActionNavigationHandler("biz.paluch.dap.UpdateDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 	}
@@ -99,18 +100,6 @@ public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
 			}
 		}
 
-	}
-
-	/**
-	 * Return the text range used for the gutter marker.
-	 */
-	protected TextRange getTextRange(PsiElement element, ProjectDependencyContext context) {
-		// TODO: Refactoring
-		TextRange textRange = element.getTextRange();
-		if (element.getContainingFile().getName().endsWith(".versions.toml") && element.getText().startsWith("\"")) {
-			return new TextRange(textRange.getStartOffset() + 1, textRange.getEndOffset() - 1);
-		}
-		return textRange;
 	}
 
 }

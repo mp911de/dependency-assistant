@@ -30,7 +30,6 @@ import com.intellij.codeInsight.completion.PlainPrefixMatcher;
 import com.intellij.codeInsight.completion.PrefixMatcher;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.json.psi.JsonStringLiteral;
-import com.intellij.json.psi.impl.JsonStringLiteralImpl;
 import com.intellij.openapi.editor.Document;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
@@ -43,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>{@link Intent#from(CompletionParameters)} inspects the {@link LiteralCaret
  * view of the literal being edited} and resolves a {@link PrefixMatcher matcher
- * the framework should filter on} together with an {@link Adjustments strategy
+ * the framework should filter on} together with an {@link Adjustment strategy
  * that fixes up the document} once the framework has written the chosen lookup
  * string.
  *
@@ -52,7 +51,6 @@ import org.jspecify.annotations.Nullable;
 public class NpmVersionCompletionContributor extends CompletionContributor {
 
 	private static final Pattern HEX_REF = Pattern.compile("^[0-9a-f]{4,40}$");
-
 
 	public NpmVersionCompletionContributor() {
 		extend(CompletionType.BASIC,
@@ -69,21 +67,14 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 					@Override
 					protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters,
 							CompletionResultSet result) {
-						Intent intent = Intent.from(parameters);
-						return result.withPrefixMatcher(intent.matcher());
+						return result.withPrefixMatcher(Intent.from(parameters).matcher());
 					}
 
 					@Override
 					protected LookupElementBuilder postProcess(CompletionParameters parameters,
-							LookupElementBuilder element, PsiElement position,
-							ArtifactRelease option) {
+							LookupElementBuilder element, PsiElement position, ArtifactRelease option) {
 						Intent intent = Intent.from(parameters);
-						NpmVersionExpression expression = position instanceof JsonStringLiteralImpl literal
-								? NpmPackageParser.parse(literal.getValue())
-								: null;
-						return element
-								.withInsertHandler((context, lookupElement) -> intent.apply(context, option, position,
-										expression));
+						return element.withInsertHandler((context, lookupElement) -> intent.apply(context, option));
 					}
 
 				});
@@ -150,13 +141,12 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 
 	/**
 	 * Resolved completion-session decisions: the prefix matcher the framework
-	 * should apply, the post-insertion {@link Adjustments}, and whether to restore
-	 * a missing closing quote.
+	 * should apply, the post-insertion {@link Adjustment}, and whether to restore a
+	 * missing closing quote.
 	 */
 	private record Intent(PrefixMatcher matcher, Adjustment adjustment, boolean addClosingQuote) {
 
-
-		private static final Intent EMPTY = new Intent(new PlainPrefixMatcher(""), Adjustments.NONE, false);
+		private static final Intent EMPTY = new Intent(new PlainPrefixMatcher(""), Adjustment.NONE, false);
 
 		/**
 		 * Compute the {@code Intent} from the caret position in the literal being
@@ -170,7 +160,9 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 				return EMPTY;
 			}
 			Intent gitSha = gitShaIntent(view);
-			return gitSha != null ? gitSha : defaultIntent(view);
+			return gitSha != null ? gitSha
+					: new Intent(new PlainPrefixMatcher(view.versionPrefix()),
+							Adjustment.NONE, !view.closed());
 		}
 
 		/**
@@ -190,40 +182,21 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 				return null;
 			}
 			String prefix = view.content().substring(committishStart, view.caret());
-			return new Intent(new RelaxedPrefixMatcher(prefix), Adjustments.GIT_SHA, !view.closed());
-		}
-
-		/**
-		 * Match the version-run prefix at the caret. Selects the comparator-pair
-		 * separator adjustment when the caret sits in the upper bound of a
-		 * comparator-pair range.
-		 */
-		private static Intent defaultIntent(LiteralCaret view) {
-
-			Adjustment adjustment = Adjustments.NONE;
-			if (NpmPackageParser.parse(view.content()) instanceof NpmVersionExpression.RangeUpper range
-					&& view.caret() > range.prefix().length() && !range.prefix().endsWith(" - ")) {
-				adjustment = Adjustments.comparatorPairSeparator(range.prefix());
-			}
-			return new Intent(new PlainPrefixMatcher(view.versionPrefix()), adjustment, !view.closed());
+			return new Intent(new RelaxedPrefixMatcher(prefix), Adjustment.GIT_SHA, !view.closed());
 		}
 
 		/**
 		 * Adjust the document state after the framework's lookup-string insertion.
-		 *
 		 * @param context the insertion context provided by the framework.
 		 * @param option the release the user selected.
-		 * @param position
-		 * @param expression
 		 */
-		void apply(InsertionContext context, ArtifactRelease option, PsiElement position,
-				@Nullable NpmVersionExpression expression) {
+		void apply(InsertionContext context, ArtifactRelease option) {
 
 			Document document = context.getDocument();
 			int start = context.getStartOffset();
 			int tail = trimTrailingVersionRun(document, context.getTailOffset());
 
-			tail = adjustment.apply(document, start, tail, option, position);
+			tail = adjustment.apply(document, start, tail, option);
 
 			if (addClosingQuote) {
 				document.insertString(tail, "\"");
@@ -232,6 +205,7 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 		}
 
 		private static int trimTrailingVersionRun(Document document, int tailOffset) {
+
 			String text = document.getText();
 			int end = tailOffset;
 			while (end < text.length() && isVersionChar(text.charAt(end))) {
@@ -245,26 +219,17 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 
 	}
 
-	interface Adjustment {
-
-		int apply(Document document, int startOffset, int tailOffset, ArtifactRelease option,
-				PsiElement position);
-
-	}
-
-
 	/**
 	 * Strategy that fixes up the document after the framework's lookup-string
 	 * insertion and returns the new tail offset.
 	 */
-	enum Adjustments implements Adjustment {
+	private enum Adjustment {
 
-		/** No further adjustment after the framework insertion. */
+		/** Leave the framework insertion unchanged. */
 		NONE {
 
 			@Override
-			public int apply(Document document, int startOffset, int tailOffset, ArtifactRelease option,
-					PsiElement position) {
+			int apply(Document document, int startOffset, int tailOffset, ArtifactRelease option) {
 				return tailOffset;
 			}
 
@@ -277,8 +242,8 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 		GIT_SHA {
 
 			@Override
-			public int apply(Document document, int startOffset, int tailOffset, ArtifactRelease option,
-					PsiElement position) {
+			int apply(Document document, int startOffset, int tailOffset, ArtifactRelease option) {
+
 				if (!(option.getVersion() instanceof GitVersion gitVersion)) {
 					return tailOffset;
 				}
@@ -292,43 +257,7 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 
 		};
 
-
-		/**
-		 * Insert a {@code " - "} separator before the upper-bound comparator of a
-		 * comparator-pair range, replacing the existing whitespace run.
-		 * @param comparatorPrefix the text of
-		 * {@link NpmVersionExpression.RangeUpper#prefix()} for the matched range,
-		 * comprising the lower bound plus the whitespace and comparator that introduce
-		 * the upper bound.
-		 * @return an {@code Adjustments} that performs the rewrite, or {@link #NONE} if
-		 * the prefix carries no whitespace before the comparator.
-		 */
-		static Adjustment comparatorPairSeparator(String comparatorPrefix) {
-
-			int comparatorEnd = comparatorPrefix.length();
-			int comparatorStart = comparatorEnd;
-			while (comparatorStart > 0 && "<>=".indexOf(comparatorPrefix.charAt(comparatorStart - 1)) >= 0) {
-				comparatorStart--;
-			}
-			int separatorStart = comparatorStart;
-			while (separatorStart > 0 && Character.isWhitespace(comparatorPrefix.charAt(separatorStart - 1))) {
-				separatorStart--;
-			}
-			int comparatorLength = comparatorEnd - comparatorStart;
-			int whitespaceLength = comparatorStart - separatorStart;
-			if (whitespaceLength == 0) {
-				return NONE;
-			}
-
-			return (document, startOffset, tailOffset, option, position) -> {
-				int compStart = startOffset - comparatorLength;
-				int sepStart = compStart - whitespaceLength;
-				document.replaceString(sepStart, compStart, " - ");
-				return tailOffset + 3 -
-						whitespaceLength;
-			};
-		}
-
+		abstract int apply(Document document, int startOffset, int tailOffset, ArtifactRelease option);
 
 	}
 

@@ -128,8 +128,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	private boolean isCompletionLookupElement(PsiElement element) {
-		return element instanceof XmlText
-				|| element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS;
+		return element.isValid() && (element instanceof XmlText
+				|| (element.getNode() != null
+						&& element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS));
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
