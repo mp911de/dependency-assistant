@@ -16,8 +16,12 @@
 
 package biz.paluch.dap.npm;
 
+import java.util.Optional;
+
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitArtifactId;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.util.TextRange;
 
@@ -61,6 +65,26 @@ sealed interface NpmVersionExpression
 	boolean isUpdatable();
 
 	/**
+	 * Return the verbatim version text declared in the file, used as the
+	 * {@link biz.paluch.dap.artifact.VersionSource VersionSource} payload.
+	 * {@link Alias} unwraps to its inner expression and {@link Git} returns the
+	 * committish.
+	 * @return the declared version text; guaranteed to be not {@literal null}.
+	 */
+	String text();
+
+	String renderUpdate(ArtifactVersion version);
+
+	default Optional<ArtifactVersion> artifactVersion() {
+		return ArtifactVersion.from(text());
+	}
+
+	default VersionSource versionSource() {
+		return StringUtils.hasText(text()) ? VersionSource.declared(text()) : VersionSource.none();
+	}
+
+
+	/**
 	 * Exact version with an optional comparator or {@code v} prefix.
 	 *
 	 * <p>Examples: {@code 1.6.8} (no modifier), {@code ^3.1.2}, {@code ~1.2.3},
@@ -80,8 +104,18 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
+		public String renderUpdate(ArtifactVersion version) {
+			return modifier + version;
+		}
+
+		@Override
 		public boolean isUpdatable() {
 			return true;
+		}
+
+		@Override
+		public String text() {
+			return version;
 		}
 
 	}
@@ -107,8 +141,18 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
+		public String renderUpdate(ArtifactVersion version) {
+			return prefix + version;
+		}
+
+		@Override
 		public boolean isUpdatable() {
 			return true;
+		}
+
+		@Override
+		public String text() {
+			return upper;
 		}
 
 	}
@@ -128,8 +172,28 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
+		public String renderUpdate(ArtifactVersion version) {
+			return version.toString();
+		}
+
+		@Override
 		public boolean isUpdatable() {
 			return false;
+		}
+
+		@Override
+		public String text() {
+			return text;
+		}
+
+		@Override
+		public VersionSource versionSource() {
+			return VersionSource.prefix(text());
+		}
+
+		public String getBaseVersion() {
+			int index = text.indexOf(".x");
+			return index != -1 ? text.substring(0, index) : text;
 		}
 
 	}
@@ -137,8 +201,8 @@ sealed interface NpmVersionExpression
 	/**
 	 * Aliased dependency declared as {@code npm:<packageName>@<inner>}.
 	 *
-	 * <p>The {@code inner} expression must classify as one of the non-alias
-	 * variants; nested aliases are rejected by the compact constructor.
+	 * <p>The {@code inner} expression must parse as one of the non-alias variants;
+	 * nested aliases are rejected by the compact constructor.
 	 *
 	 * @param packageName the aliased package name written between {@code npm:} and
 	 * {@code @}.
@@ -162,8 +226,18 @@ sealed interface NpmVersionExpression
 		}
 
 		@Override
+		public String renderUpdate(ArtifactVersion version) {
+			return "npm:" + packageName + "@" + inner.renderUpdate(version);
+		}
+
+		@Override
 		public boolean isUpdatable() {
 			return inner.isUpdatable();
+		}
+
+		@Override
+		public String text() {
+			return inner.text();
 		}
 
 	}
@@ -191,17 +265,23 @@ sealed interface NpmVersionExpression
 				return TextRange.from(rawDeclared.length(), 0);
 			}
 
-			int committishStart = hash + 1;
-			String afterHash = rawDeclared.substring(committishStart);
-			if (afterHash.startsWith("semver:")) {
-				committishStart += "semver:".length();
-			}
+			int committishStart = NpmGitUrlParser.committishStart(rawDeclared, hash);
 			return TextRange.from(committishStart, rawDeclared.length() - committishStart);
 		}
 
 		@Override
+		public String renderUpdate(ArtifactVersion version) {
+			return ref.renderUpdate(version);
+		}
+
+		@Override
 		public boolean isUpdatable() {
-			return StringUtils.hasText(ref.committish());
+			return StringUtils.hasText(text());
+		}
+
+		@Override
+		public String text() {
+			return ref.committish().text();
 		}
 
 		/**

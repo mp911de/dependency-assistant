@@ -56,7 +56,7 @@ class NpmVersionParserTests {
 	@Test
 	void parsesVPrefixedVersion() {
 		assertThat(NpmVersionExpressionParser.parse("v2.0.0-beta.1"))
-				.isEqualTo(new NpmVersionExpression.Exact("v", "2.0.0-beta.1"));
+				.isEqualTo(new NpmVersionExpression.Exact("", "v2.0.0-beta.1"));
 	}
 
 	@Test

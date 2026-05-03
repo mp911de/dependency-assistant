@@ -17,7 +17,6 @@
 package biz.paluch.dap.npm;
 
 import java.util.List;
-import java.util.Set;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -29,12 +28,6 @@ import com.intellij.psi.PsiFile;
  * {@code dependencies}/{@code devDependencies} entry with a
  * {@link DependencyCollector}.
  *
- * <p>The collector also returns the set of distinct GitHub hosts seen across
- * Git-backed entries so the project context can build one
- * {@link biz.paluch.dap.github.GitHubReleaseSource GitHub release source} per
- * host. Routing per host (rather than per dependency) keeps GitHub auth state
- * and rate limits aligned across declarations.
- *
  * @author Mark Paluch
  */
 class NpmDependencyCollector {
@@ -42,20 +35,9 @@ class NpmDependencyCollector {
 	private final NpmPackageParser parser = new NpmPackageParser();
 
 	/**
-	 * Result of a {@code package.json} scan.
-	 *
-	 * @param collector the populated dependency collector.
-	 * @param gitHosts the set of distinct GitHub hosts referenced by accepted Git
-	 * URLs; possibly empty.
-	 */
-	record CollectionResult(DependencyCollector collector, Set<String> gitHosts) {
-
-	}
-
-	/**
 	 * Collect NPM dependencies from the given {@code package.json} file.
 	 * @param file the JSON PSI file to scan; must not be {@literal null}.
-	 * @return the collection result.
+	 * @return the populated dependency collector.
 	 */
 	DependencyCollector collect(PsiFile file) {
 
@@ -63,28 +45,19 @@ class NpmDependencyCollector {
 		List<NpmDependency> dependencies = parser.parse(file);
 		for (NpmDependency dependency : dependencies) {
 
-			VersionSource versionSource = toVersionSource(dependency);
+			VersionSource versionSource = dependency.versionSource();
+			if (versionSource.isDefined() && !versionSource.isPrefix()) {
+				dependency.artifactVersion().ifPresent(version -> {
+					collector.registerUsage(dependency.artifactId(), version, DeclarationSource.dependency(),
+							versionSource);
+				});
+			}
+
 			collector.registerDeclaration(dependency.artifactId(), DeclarationSource.dependency(), versionSource);
 		}
 
 		return collector;
 	}
 
-	private static VersionSource toVersionSource(NpmDependency dependency) {
-
-		String raw = rawText(dependency.version());
-		return raw.isEmpty() ? VersionSource.none() : VersionSource.declared(raw);
-	}
-
-	private static String rawText(NpmVersionExpression expression) {
-
-		return switch (expression) {
-		case NpmVersionExpression.Exact exact -> exact.modifier() + exact.version();
-		case NpmVersionExpression.RangeUpper range -> range.prefix() + range.upper();
-		case NpmVersionExpression.Prefix prefix -> prefix.text();
-		case NpmVersionExpression.Alias alias -> "npm:%s@%s".formatted(alias.packageName(), rawText(alias.inner()));
-		case NpmVersionExpression.Git git -> git.ref().committish();
-		};
-	}
 
 }

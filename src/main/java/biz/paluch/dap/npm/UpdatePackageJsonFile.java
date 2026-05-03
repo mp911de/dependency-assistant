@@ -88,7 +88,7 @@ class UpdatePackageJsonFile {
 			return;
 		}
 
-		NpmVersionExpression expression = NpmPackageParser.classify(literal.getValue());
+		NpmVersionExpression expression = NpmPackageParser.parse(literal.getValue());
 		if (expression == null) {
 			return;
 		}
@@ -141,8 +141,8 @@ class UpdatePackageJsonFile {
 		if (!(update.version() instanceof GitVersion gitVersion)) {
 			return null;
 		}
-		RefStyle style = RefStyle.from(git.ref().committish());
-		return gitVersion.renderRef(style, git.ref().committish());
+		RefStyle style = RefStyle.from(git.ref().committish().text());
+		return gitVersion.renderRef(style, git.ref().committish().text());
 	}
 
 }

@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.npm;
 
+import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonStringLiteral;
@@ -54,7 +55,7 @@ final class NpmPsiUtils {
 		}
 
 		String rawValue = literal.getValue();
-		NpmVersionExpression expression = NpmPackageParser.classify(rawValue);
+		NpmVersionExpression expression = NpmPackageParser.parse(rawValue);
 		if (expression == null) {
 			return literal.getTextRange();
 		}
@@ -65,10 +66,26 @@ final class NpmPsiUtils {
 		return new TextRange(literalStart + replaceable.getStartOffset(), literalStart + replaceable.getEndOffset());
 	}
 
+	/**
+	 * Return whether the given JSON string literal is properly terminated with an
+	 * unescaped double-quote character. An unterminated literal arises when the
+	 * user is mid-typing and the parser has not yet observed the closing quote.
+	 * @param literal the literal to inspect; must not be {@literal null}.
+	 * @return {@literal true} if the literal text ends with an unescaped {@code "};
+	 * {@literal false} otherwise.
+	 */
+	static boolean isClosed(JsonStringLiteral literal) {
+		String text = literal.getText();
+		return text.length() >= 2 && text.charAt(text.length() - 1) == '"'
+				&& (text.length() < 3 || text.charAt(text.length() - 2) != '\\');
+	}
+
 	static @Nullable JsonStringLiteral findDependencyLiteral(PsiElement element) {
 
-		JsonStringLiteral literal = element instanceof JsonStringLiteral self ? self
-				: PsiTreeUtil.getParentOfType(element, JsonStringLiteral.class, false);
+		PsiElement unleaf = PsiVisitors.unleaf(element);
+
+		JsonStringLiteral literal = unleaf instanceof JsonStringLiteral self ? self
+				: PsiTreeUtil.getParentOfType(unleaf, JsonStringLiteral.class, true);
 		if (literal == null || literal.isPropertyName()) {
 			return null;
 		}

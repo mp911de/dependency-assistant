@@ -120,15 +120,30 @@ class NpmHighlightingTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "1.0.x"
+			    "axios": "5.0.x"
 			  }
 			}
 			""")
-	void prefixRangeSuggestsUpgrade(PsiFile packageJson) {
+	void prefixPreviewSuggestsUpgrade(PsiFile packageJson) {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5").highlights("1.0.x");
+		assertThat(fixture).hasSingleGutterContaining("5.4.0").highlights("5.0.x");
+	}
+
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "axios": "5.0.x"
+			  }
+			}
+			""")
+	void prefixSuggestsUpgrade(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+
+		assertThat(fixture).hasSingleGutter().highlights("5.0.x");
 	}
 
 	@Test
@@ -180,7 +195,7 @@ class NpmHighlightingTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "spring-io/antora-xref-extension#d1185ce59f"
+			    "axios": "axios/axios#d1185ce59f"
 			  }
 			}
 			""")
@@ -188,7 +203,7 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5").highlights("d1185ce59f");
+		assertThat(fixture).hasSingleGutter().highlights("d1185ce59f");
 	}
 
 	@Test

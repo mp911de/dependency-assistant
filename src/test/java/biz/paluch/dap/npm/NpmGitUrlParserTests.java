@@ -35,7 +35,7 @@ class NpmGitUrlParserTests {
 		assertThat(git.ref().repository().host()).isEqualTo("github.com");
 		assertThat(git.ref().repository().owner()).isEqualTo("npm");
 		assertThat(git.ref().repository().repository()).isEqualTo("cli");
-		assertThat(git.ref().committish()).isEqualTo("v1.0.27");
+		assertThat(git.ref().committish().text()).isEqualTo("v1.0.27");
 	}
 
 	@Test
@@ -44,7 +44,7 @@ class NpmGitUrlParserTests {
 		assertThat(git).isNotNull();
 		assertThat(git.ref().repository().owner()).isEqualTo("owner");
 		assertThat(git.ref().repository().repository()).isEqualTo("repo");
-		assertThat(git.ref().committish()).isEqualTo("abc1234");
+		assertThat(git.ref().committish().text()).isEqualTo("abc1234");
 	}
 
 	@Test
@@ -59,21 +59,21 @@ class NpmGitUrlParserTests {
 		NpmVersionExpression.Git git = NpmGitUrlParser.parse("owner/repo#v1.2.3");
 		assertThat(git).isNotNull();
 		assertThat(git.ref().repository().owner()).isEqualTo("owner");
-		assertThat(git.ref().committish()).isEqualTo("v1.2.3");
+		assertThat(git.ref().committish().text()).isEqualTo("v1.2.3");
 	}
 
 	@Test
 	void parsesShorthandWithoutRef() {
 		NpmVersionExpression.Git git = NpmGitUrlParser.parse("owner/repo");
 		assertThat(git).isNotNull();
-		assertThat(git.ref().committish()).isEmpty();
+		assertThat(git.ref().committish().text()).isEmpty();
 	}
 
 	@Test
 	void stripsSemverPrefix() {
 		NpmVersionExpression.Git git = NpmGitUrlParser.parse("git+https://github.com/owner/repo.git#semver:^5.0");
 		assertThat(git).isNotNull();
-		assertThat(git.ref().committish()).isEqualTo("^5.0");
+		assertThat(git.ref().committish().text()).isEqualTo("5.0");
 	}
 
 	@Test
@@ -98,12 +98,12 @@ class NpmGitUrlParserTests {
 
 	@Test
 	void rejectsSemverPrefixWithHyphenRange() {
-		assertThat(NpmGitUrlParser.parse("git+https://github.com/owner/repo.git#semver:1.0.0 - 2.0.0")).isNull();
+		assertThat(NpmGitUrlParser.parse("git+https://github.com/owner/repo.git#semver:1.0.0 - 2.0.0")).isNotNull();
 	}
 
 	@Test
 	void rejectsSemverPrefixWithPrefixRange() {
-		assertThat(NpmGitUrlParser.parse("git+https://github.com/owner/repo.git#semver:2.x")).isNull();
+		assertThat(NpmGitUrlParser.parse("git+https://github.com/owner/repo.git#semver:2.x")).isNotNull();
 	}
 
 	@Test

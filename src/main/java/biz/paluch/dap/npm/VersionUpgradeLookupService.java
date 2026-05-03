@@ -16,9 +16,13 @@
 
 package biz.paluch.dap.npm;
 
+import java.util.Optional;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.GitVersionResolver;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
@@ -66,37 +70,47 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		String raw = literal.getValue();
-		NpmVersionExpression expression = NpmPackageParser.classify(raw);
-		if (expression == null) {
-			return ArtifactReference.unresolved();
-		}
-
+		NpmVersionExpression expression = NpmPackageParser.parse(raw);
 		ArtifactId artifactId = NpmPackageParser.toArtifactId(name);
+		VersionSource versionSource = expression != null ? expression.versionSource() : VersionSource.none();
+
 		return ArtifactReference.from(builder -> {
 			builder.artifact(artifactId)
-					.versionSource(VersionSource.declared(raw))
+					.versionSource(versionSource)
 					.declarationElement(literal)
 					.versionLiteral(literal);
 
 			Dependency dependency = hasCachedState() ? getProjectState().findDependency(artifactId) : null;
-			if (dependency != null) {
+			if (dependency != null && dependency.getCurrentVersion() != null) {
 				builder.version(dependency.getCurrentVersion());
-			} else {
-				ArtifactVersion.from(extractCurrentVersionText(expression)).ifPresent(builder::version);
+				return;
 			}
+
+			if (expression == null) {
+				return;
+			}
+
+			if (expression instanceof NpmVersionExpression.Git(NpmGitRef ref)) {
+
+				GitVersionResolver resolver = new GitVersionResolver(getCache());
+				Optional<GitVersion> version = resolver.resolve(artifactId, ref.committish().text());
+				if (version.isPresent()) {
+					version.ifPresent(builder::version);
+					return;
+				}
+			}
+
+			if (expression instanceof NpmVersionExpression.Prefix prefix) {
+
+				Optional<ArtifactVersion> version = ArtifactVersion.from(prefix.getBaseVersion());
+				if (version.isPresent()) {
+					version.ifPresent(builder::version);
+					return;
+				}
+			}
+
+			ArtifactVersion.from(expression.text()).ifPresent(builder::version);
 		});
-	}
-
-	private static String extractCurrentVersionText(NpmVersionExpression expression) {
-
-		return switch (expression) {
-		case NpmVersionExpression.Exact exact -> exact.version();
-		case NpmVersionExpression.RangeUpper range -> range.upper();
-		case NpmVersionExpression.Alias alias -> extractCurrentVersionText(alias.inner());
-		case NpmVersionExpression.Git git -> git.ref().committish();
-		// Prefix has no concrete version; emitting empty avoids manufacturing one.
-		case NpmVersionExpression.Prefix prefix -> "";
-		};
 	}
 
 }

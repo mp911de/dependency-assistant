@@ -138,7 +138,6 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 			if (releaseDate != null) {
 
 				Duration age = Duration.between(releaseDate, LocalDateTime.now());
-
 				if (age.toDays() < 5) {
 					element = element.withItemTextUnderlined(true);
 				}
@@ -156,7 +155,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 								metadata.versionLiteral(), lookupElement.getLookupString()));
 			}
 
-			element = postProcess(element, position, option);
+			element = postProcess(parameters, element, position, option);
 
 			// TODO Elements are sometimes not sorted properly
 			versionsResult.addElement(PrioritizedLookupElement.withPriority(element, priority--));
@@ -187,7 +186,8 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		return result;
 	}
 
-	protected LookupElementBuilder postProcess(LookupElementBuilder element, PsiElement position,
+	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder element,
+			PsiElement position,
 			ArtifactRelease option) {
 		return element;
 	}

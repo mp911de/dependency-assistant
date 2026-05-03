@@ -62,7 +62,8 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 			ReleasesCompletionProvider.resolver()) {
 
 		@Override
-		protected LookupElementBuilder postProcess(LookupElementBuilder element, PsiElement position,
+		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder element,
+				PsiElement position,
 				ArtifactRelease option) {
 
 			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(position);

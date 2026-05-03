@@ -47,6 +47,13 @@ public abstract class VersionSource {
 	}
 
 	/**
+	 * Return whether the version is a prefix such as {@code 1.0.x}.
+	 */
+	public boolean isPrefix() {
+		return this instanceof VersionPrefix;
+	}
+
+	/**
 	 * Return whether this version source is property-based.
 	 */
 	public boolean isProperty() {
@@ -75,6 +82,16 @@ public abstract class VersionSource {
 	 */
 	public static VersionSource declared(String version) {
 		return new DeclaredVersion(version);
+	}
+
+
+	/**
+	 * Return a source representing a version prefix (such as {@code 1.0.x})
+	 * declared inline at the dependency site.
+	 * @param prefix the literal prefix.
+	 */
+	public static VersionSource prefix(String prefix) {
+		return new VersionPrefix(prefix);
 	}
 
 	/**
@@ -203,6 +220,49 @@ public abstract class VersionSource {
 		@Override
 		public int hashCode() {
 			return Objects.hashCode(version);
+		}
+
+	}
+
+	/**
+	 * Version source for a version prefix string (e.g. {@code 1.0.x}).
+	 */
+	public static class VersionPrefix extends VersionSource {
+
+		private final String prefix;
+
+		/**
+		 * Create a new {@code VersionPrefix}.
+		 * @param prefix the literal version string.
+		 */
+		public VersionPrefix(String prefix) {
+			Assert.hasText(prefix, "Version prefix must not be null or empty!");
+			this.prefix = prefix;
+		}
+
+		/**
+		 * Return the literal version string as declared in the build file.
+		 */
+		public String getVersion() {
+			return prefix;
+		}
+
+		@Override
+		public String toString() {
+			return prefix;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof VersionPrefix that)) {
+				return false;
+			}
+			return Objects.equals(prefix, that.prefix);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(prefix);
 		}
 
 	}

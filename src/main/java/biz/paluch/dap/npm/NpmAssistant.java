@@ -25,18 +25,12 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclaredDependency;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.fileTypes.FileTypeManager;
@@ -188,10 +182,16 @@ public class NpmAssistant implements DependencyAssistant {
 		@Override
 		public @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
 
-			if (declaredDependency.getVersionSources().isEmpty() || releases.isEmpty()) {
+			if (declaredDependency.getVersionSources().isEmpty()) {
 				return null;
 			}
-			return Dependency.from(declaredDependency, releases.getFirst().version());
+
+			VersionSource source = declaredDependency.getVersionSources().iterator().next();
+			if (StringUtils.hasText(source.toString())) {
+				GitVersion gitVersion = GitVersionResolver.resolveVersion(source.toString(), releases);
+				return gitVersion != null ? Dependency.from(declaredDependency, gitVersion) : null;
+			}
+			return null;
 		}
 
 		@Override
@@ -200,7 +200,10 @@ public class NpmAssistant implements DependencyAssistant {
 			if (!NpmUtils.isPackageJson(element.getContainingFile())) {
 				return false;
 			}
-			return NpmPsiUtils.findDependencyLiteral(element) != null;
+			// Only the JsonStringLiteral itself qualifies; firing for its child tokens
+			// would register a duplicate line marker on the same dependency value.
+			return element instanceof com.intellij.json.psi.JsonStringLiteral
+					&& NpmPsiUtils.findDependencyLiteral(element) != null;
 		}
 
 		@Override

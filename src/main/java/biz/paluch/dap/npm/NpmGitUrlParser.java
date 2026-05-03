@@ -19,6 +19,7 @@ package biz.paluch.dap.npm;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
+import biz.paluch.dap.npm.NpmVersionExpression.Exact;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -79,6 +80,19 @@ final class NpmGitUrlParser {
 		return null;
 	}
 
+	/**
+	 * Return the offset of the first committish character within {@code raw},
+	 * skipping past the leading {@code semver:} marker when present.
+	 * @param raw the raw declared value containing a {@code #} at
+	 * {@code hashIndex}.
+	 * @param hashIndex the index of the {@code #} that introduces the committish.
+	 * @return the offset of the first committish character.
+	 */
+	static int committishStart(String raw, int hashIndex) {
+		int start = hashIndex + 1;
+		return raw.startsWith(SEMVER_PREFIX, start) ? start + SEMVER_PREFIX.length() : start;
+	}
+
 	private static boolean isUrlForm(String value) {
 		return value.startsWith("git+ssh://") || value.startsWith("git+https://")
 				|| value.startsWith("git://") || value.startsWith("git+http://");
@@ -112,12 +126,12 @@ final class NpmGitUrlParser {
 			return null;
 		}
 
-		String committish = stripSemverPrefix(committishRaw);
+		NpmVersionExpression committish = stripSemverPrefix(committishRaw);
 		if (committish == null) {
 			return null;
 		}
 
-		return new NpmVersionExpression.Git(new NpmGitRef(repository, committish));
+		return new NpmVersionExpression.Git(new NpmGitRef(urlPart + "#", repository, committish));
 	}
 
 	private static NpmVersionExpression.@Nullable Git parseShorthand(String value) {
@@ -138,12 +152,13 @@ final class NpmGitUrlParser {
 		}
 
 		String committishRaw = ref != null ? ref : "";
-		String committish = stripSemverPrefix(committishRaw);
+		NpmVersionExpression committish = stripSemverPrefix(committishRaw);
 		if (committish == null) {
-			return null;
+			committish = new Exact("", "");
 		}
+		String prefix = value.replace(committishRaw, "");
 
-		return new NpmVersionExpression.Git(new NpmGitRef(repository, committish));
+		return new NpmVersionExpression.Git(new NpmGitRef(prefix, repository, committish));
 	}
 
 	private static String normalizeForResolver(String urlPart) {
@@ -166,24 +181,18 @@ final class NpmGitUrlParser {
 	 * rendered as a concrete committish. {@literal null} return signals the entry
 	 * should be skipped; an unprefixed committish is returned unchanged.
 	 */
-	private static @Nullable String stripSemverPrefix(String committish) {
+	private static @Nullable NpmVersionExpression stripSemverPrefix(String committish) {
 
-		if (!committish.startsWith(SEMVER_PREFIX)) {
-			return committish;
+		if (committish.contains(SEMVER_PREFIX)) {
+			String inner = committish.substring(SEMVER_PREFIX.length());
+			if (inner.isEmpty()) {
+				return null;
+			}
+
+			return NpmVersionExpressionParser.parse(inner);
 		}
 
-		String inner = committish.substring(SEMVER_PREFIX.length());
-		if (inner.isEmpty()) {
-			return null;
-		}
-
-		NpmVersionExpression parsed = NpmVersionExpressionParser.parse(inner);
-		if (parsed == null || parsed instanceof NpmVersionExpression.Prefix
-				|| parsed instanceof NpmVersionExpression.RangeUpper) {
-			return null;
-		}
-
-		return inner;
+		return NpmVersionExpressionParser.parse(committish);
 	}
 
 }

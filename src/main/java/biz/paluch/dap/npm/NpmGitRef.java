@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.npm;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
 
 /**
@@ -34,6 +35,10 @@ import biz.paluch.dap.artifact.GitRepositoryMetadata;
  * @author Mark Paluch
  * @see NpmVersionExpression.Git
  */
-record NpmGitRef(GitRepositoryMetadata repository, String committish) {
+record NpmGitRef(String prefix, GitRepositoryMetadata repository, NpmVersionExpression committish) {
+
+	public String renderUpdate(ArtifactVersion version) {
+		return prefix + committish.renderUpdate(version);
+	}
 
 }

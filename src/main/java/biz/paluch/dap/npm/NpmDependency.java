@@ -16,7 +16,11 @@
 
 package biz.paluch.dap.npm;
 
+import java.util.Optional;
+
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.VersionSource;
 
 /**
  * NPM dependency declared in {@code dependencies} or {@code devDependencies}.
@@ -37,5 +41,13 @@ import biz.paluch.dap.artifact.ArtifactId;
  * @author Mark Paluch
  */
 record NpmDependency(ArtifactId artifactId, NpmVersionExpression version) {
+
+	public VersionSource versionSource() {
+		return version.versionSource();
+	}
+
+	public Optional<ArtifactVersion> artifactVersion() {
+		return version().artifactVersion();
+	}
 
 }

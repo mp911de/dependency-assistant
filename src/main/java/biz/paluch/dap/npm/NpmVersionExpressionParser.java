@@ -19,6 +19,8 @@ package biz.paluch.dap.npm;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.util.StringUtils;
+import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -61,9 +63,10 @@ final class NpmVersionExpressionParser {
 	 * @return the parsed expression, or {@literal null} if the value is out of
 	 * scope or not classifiable.
 	 */
+	@Contract("null -> null")
 	static @Nullable NpmVersionExpression parse(@Nullable String raw) {
 
-		if (raw == null) {
+		if (StringUtils.isEmpty(raw)) {
 			return null;
 		}
 
@@ -130,11 +133,10 @@ final class NpmVersionExpressionParser {
 			modifier = String.valueOf(first);
 			tail = value.substring(1);
 		} else if (first == 'v' && value.length() > 1 && Character.isDigit(value.charAt(1))) {
-			modifier = "v";
-			tail = value.substring(1);
+			tail = value;
 		}
 
-		if (tail.isEmpty() || !SEMVER.matcher(tail).matches()) {
+		if (tail.isEmpty()) {
 			return null;
 		}
 
