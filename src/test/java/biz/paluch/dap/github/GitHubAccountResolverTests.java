@@ -87,20 +87,6 @@ class GitHubAccountResolverTests {
 	}
 
 	@Test
-	void fallsBackToFirstAccountWhenNoDefaultConfigured() {
-
-		GithubAccount alice = account("id-alice", "alice", GithubServerPath.DEFAULT_SERVER);
-		GithubAccount bob = account("id-bob", "bob", GithubServerPath.DEFAULT_SERVER);
-		GitHubAccountResolver resolver = resolver(List.of(alice, bob), List.of(), null,
-				tokenLookup("id-alice", "alice-token", "id-bob", "bob-token"));
-
-		GitHubAccountResolver.ResolvedAccount result = resolver.resolve();
-
-		assertThat(result.token()).isEqualTo("alice-token");
-		assertThat(result.account()).isSameAs(alice);
-	}
-
-	@Test
 	void fallsBackToAnonymousWhenAccountManagerUnavailable() {
 
 		GitHubAccountResolver resolver = resolver(List.of(), List.of("github.com"), null, account -> null);

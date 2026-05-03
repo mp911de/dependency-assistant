@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
@@ -88,31 +89,31 @@ class GitHubAccountResolver {
 	 */
 	ResolvedAccount resolve() {
 
-
-		// TODO: TrustedProjects
-
 		Collection<GithubAccount> accounts = lookupAccounts();
 		if (accounts.isEmpty()) {
 			return ResolvedAccount.anonymous();
 		}
 
-		Collection<String> remoteHosts = collectRemoteHosts();
+		if (project == null || TrustedProjects.isProjectTrusted(project)) {
 
-		for (GithubAccount account : accounts) {
-			if (accountMatchesHost(account, remoteHosts)) {
-				ResolvedAccount resolved = withToken(account);
-				if (resolved.isAuthenticated()) {
-					return resolved;
+			Collection<String> remoteHosts = collectRemoteHosts();
+
+			for (GithubAccount account : accounts) {
+				if (accountMatchesHost(account, remoteHosts)) {
+					ResolvedAccount resolved = withToken(account);
+					if (resolved.isAuthenticated()) {
+						return resolved;
+					}
 				}
+			}
+
+			GithubAccount defaultAccount = lookupDefaultAccount();
+			if (defaultAccount != null) {
+				return withToken(defaultAccount);
 			}
 		}
 
-		GithubAccount defaultAccount = lookupDefaultAccount();
-		if (defaultAccount != null) {
-			return withToken(defaultAccount);
-		}
-
-		return withToken(accounts.iterator().next());
+		return ResolvedAccount.anonymous();
 	}
 
 	/**

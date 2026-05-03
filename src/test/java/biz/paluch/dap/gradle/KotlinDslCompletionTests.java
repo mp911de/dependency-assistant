@@ -36,6 +36,7 @@ class KotlinDslCompletionTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
+	// TODO extend test cases
 	@BeforeEach
 	void setUp() {
 		GradleFixtures.setup(fixture.getProject());

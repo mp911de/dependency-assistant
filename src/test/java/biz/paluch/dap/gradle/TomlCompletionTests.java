@@ -34,6 +34,7 @@ import static org.assertj.core.api.Assertions.*;
 @CodeInsightFixtureTests
 class TomlCompletionTests {
 
+	// TODO extend test cases
 	private @TestFixture CodeInsightTestFixture fixture;
 
 	@BeforeEach

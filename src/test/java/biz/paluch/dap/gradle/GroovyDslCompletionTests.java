@@ -34,6 +34,7 @@ import static org.assertj.core.api.Assertions.*;
 @CodeInsightFixtureTests
 class GroovyDslCompletionTests {
 
+	// TODO: Extend test cases
 	private @TestFixture CodeInsightTestFixture fixture;
 
 	@BeforeEach
