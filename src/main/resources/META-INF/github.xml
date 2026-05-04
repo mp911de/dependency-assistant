@@ -14,6 +14,6 @@
 		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="yaml"
-				implementationClass="biz.paluch.dap.support.NewerVersionLineMarkerProvider"/>
+				implementationClass="biz.paluch.dap.github.GitHubLineMarkerProvider"/>
 	</extensions>
 </idea-plugin>

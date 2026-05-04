@@ -18,7 +18,7 @@ package biz.paluch.dap.support;
 
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.SequencedMap;
 
 import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -249,12 +249,14 @@ public abstract class VersionUpgradeLookupSupport {
 		Release minor = UpgradeStrategy.MINOR.select(current, options);
 		Release patch = UpgradeStrategy.PATCH.select(current, options);
 		Release preview = current.isPreview() ? UpgradeStrategy.PREVIEW.select(current, options) : null;
+		Release latestCandidate = UpgradeStrategy.LATEST.select(current, options);
+		Release latest = latestCandidate != null && latestCandidate.isNewer(current) ? latestCandidate : null;
 
 		if (major == null && minor == null && patch == null && preview == null) {
 			return AvailableUpgrades.none();
 		}
 
-		Map<UpgradeStrategy, UpgradeSuggestion> upgrades = new LinkedHashMap<>();
+		SequencedMap<UpgradeStrategy, UpgradeSuggestion> upgrades = new LinkedHashMap<>();
 		UpgradeStrategy strategy = null;
 
 		if (major != null) {
@@ -277,8 +279,7 @@ public abstract class VersionUpgradeLookupSupport {
 			upgrades.put(strategy, UpgradeSuggestion.of(strategy, preview, artifactReference));
 		}
 
-		return AvailableUpgrades.of(artifactReference, upgrades.get(strategy),
-				upgrades);
+		return AvailableUpgrades.of(artifactReference, upgrades.get(strategy), upgrades, latest);
 	}
 
 

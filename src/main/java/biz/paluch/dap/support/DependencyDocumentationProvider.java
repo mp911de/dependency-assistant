@@ -17,9 +17,11 @@
 package biz.paluch.dap.support;
 
 import java.awt.*;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.MessageBundle;
@@ -253,17 +255,23 @@ public class DependencyDocumentationProvider
 		for (CachedArtifact artifact : property.artifacts()) {
 
 			ArtifactId artifactId = artifact.toArtifactId();
-			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.controls"),
+			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.property-for"),
 					artifactId));
 
 			List<Release> versions = cache.getReleases(artifactId);
 			if (versions.isEmpty()) {
 				continue;
 			}
+			Set<String> seen = new HashSet<>();
 
 			sb.append("<table>");
 			int count = 0;
 			for (Release v : versions) {
+
+				if (!seen.add(v.version().getVersion().getVersion().toString())) {
+					continue;
+				}
+
 				if (count++ >= MAX_VERSIONS) {
 					break;
 				}
@@ -283,7 +291,7 @@ public class DependencyDocumentationProvider
 				if (current) {
 					sb.append("<b>");
 				}
-				sb.append(v.version());
+				sb.append(v.version().getVersion().getVersion());
 				if (current) {
 					sb.append("</b>");
 				}
@@ -326,10 +334,15 @@ public class DependencyDocumentationProvider
 		}
 
 		List<Release> versions = cache.getReleases(artifactId);
+		Set<String> seen = new HashSet<>();
 		if (!versions.isEmpty()) {
 			sb.append("<table>");
 			int count = 0;
 			for (Release v : versions) {
+
+				if (!seen.add(v.version().getVersion().getVersion().toString())) {
+					continue;
+				}
 				if (count++ >= MAX_VERSIONS) {
 					break;
 				}
@@ -349,7 +362,7 @@ public class DependencyDocumentationProvider
 				if (current) {
 					sb.append("<b>");
 				}
-				sb.append(v.version());
+				sb.append(v.version().getVersion().getVersion());
 				if (current) {
 					sb.append("</b>");
 				}

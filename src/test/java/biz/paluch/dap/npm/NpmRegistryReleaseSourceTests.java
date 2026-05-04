@@ -18,6 +18,7 @@ package biz.paluch.dap.npm;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import org.junit.jupiter.api.Test;
 
@@ -39,9 +40,9 @@ class NpmRegistryReleaseSourceTests {
 				{
 				  "name": "axios",
 				  "versions": {
-				    "1.6.7": {},
-				    "1.6.8": {},
-				    "1.7.0": {}
+				    "1.6.7": { "gitHead": "1111111"},
+				    "1.6.8": { "gitHead": "2222222"},
+				    "1.7.0": { "gitHead": "3333333"}
 				  },
 				  "time": {
 				    "1.6.7": "2024-02-01T10:00:00Z",
@@ -53,7 +54,9 @@ class NpmRegistryReleaseSourceTests {
 
 		List<Release> releases = SOURCE.parseReleases(body);
 
-		assertThat(releases).hasSize(3);
+		for (Release release : releases) {
+			assertThat(release.version()).isInstanceOf(GitVersion.class);
+		}
 		assertThat(releases).extracting(r -> r.version().toString())
 				.containsExactlyInAnyOrder("1.6.7", "1.6.8", "1.7.0");
 		assertThat(releases).allSatisfy(r -> assertThat(r.releaseDate()).isNotNull());

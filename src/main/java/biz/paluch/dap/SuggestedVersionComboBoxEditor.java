@@ -78,7 +78,12 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 
 		Release selected = null;
 		for (Release opt : options) {
-			if (currentValue != null && opt.version().equals(currentValue)) {
+
+			if (opt.version().canCompare(currentValue) && opt.version().compareTo(currentValue) == 0) {
+				selected = opt;
+				break;
+			}
+			if (opt.version().equals(currentValue)) {
 				selected = opt;
 			}
 		}

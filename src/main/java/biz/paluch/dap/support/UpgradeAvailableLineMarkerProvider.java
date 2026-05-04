@@ -18,12 +18,16 @@ package biz.paluch.dap.support;
 
 import java.awt.event.MouseEvent;
 
+import javax.swing.*;
+
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
+import com.intellij.codeInsight.daemon.GutterName;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
-import com.intellij.codeInsight.daemon.LineMarkerProvider;
+import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
@@ -34,12 +38,21 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Gutter line marker that indicates a newer dependency version.
+ * Gutter line marker that indicates dependency upgrade availability.
  *
  * @author Mark Paluch
  */
-public class NewerVersionLineMarkerProvider implements LineMarkerProvider {
+public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescriptor {
 
+	@Override
+	public @GutterName String getName() {
+		return MessageBundle.message("gutter.newer.accessible");
+	}
+
+	@Override
+	public Icon getIcon() {
+		return DependencyAssistantIcons.ICON;
+	}
 
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {

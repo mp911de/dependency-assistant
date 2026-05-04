@@ -19,6 +19,7 @@ package biz.paluch.dap.npm;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
@@ -28,7 +29,9 @@ import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonStringLiteral;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -72,12 +75,34 @@ class UpdatePackageJsonFile {
 			}
 
 			for (JsonProperty entry : dependencies.getPropertyList()) {
-				applyUpdates(updates, entry);
+				applyUpdates(entry, updates);
 			}
 		}
 	}
 
-	private void applyUpdates(List<DependencyUpdate> updates, JsonProperty entry) {
+	/**
+	 * Apply a single update at the given JSON string-literal anchor.
+	 * @param literal the JSON string literal of a {@code dependencies} or
+	 * {@code devDependencies} entry value; must not be {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 * @return {@literal true} if the rewrite was applied; {@literal false} on stale
+	 * PSI without error.
+	 * @throws IllegalStateException when the anchor resolves to an unexpected
+	 * element kind.
+	 */
+	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
+
+		JsonProperty property = literal instanceof JsonProperty p ? p
+				: PsiTreeUtil.getParentOfType(literal, JsonProperty.class);
+		if (property == null) {
+			throw new IllegalStateException(
+					"Unsupported version literal element: %s".formatted(literal.getClass().getName()));
+		}
+
+		applyUpdates(property, List.of(update));
+	}
+
+	private void applyUpdates(JsonProperty entry, List<DependencyUpdate> updates) {
 
 		String name = entry.getName();
 		if (!NpmPackageParser.NAME_ALLOWLIST.matcher(name).matches()) {
@@ -110,12 +135,17 @@ class UpdatePackageJsonFile {
 	}
 
 	private static @Nullable String render(NpmVersionExpression expression, String rawValue, DependencyUpdate update) {
+		return render(expression, rawValue, update.version());
+	}
+
+	private static @Nullable String render(NpmVersionExpression expression, String rawValue,
+			ArtifactVersion version) {
 
 		if (!expression.isUpdatable()) {
 			return null;
 		}
 
-		String tail = renderTail(expression, update);
+		String tail = renderTail(expression, version);
 		if (tail == null) {
 			return null;
 		}
@@ -125,25 +155,26 @@ class UpdatePackageJsonFile {
 		return rawValue.substring(0, start) + tail + rawValue.substring(end);
 	}
 
-	private static @Nullable String renderTail(NpmVersionExpression expression, DependencyUpdate update) {
+	private static @Nullable String renderTail(NpmVersionExpression expression,
+			ArtifactVersion version) {
 
 		return switch (expression) {
-		case NpmVersionExpression.Git git -> renderGitTail(git, update);
-		case NpmVersionExpression.Alias alias -> renderTail(alias.inner(), update);
-		case NpmVersionExpression.Exact exact -> update.version().toString();
-		case NpmVersionExpression.Range range -> renderTail(range.upper(), update);
-		case NpmVersionExpression.SimpleRange range -> update.version().toString();
-		case NpmVersionExpression.Prefix prefix -> update.version().toString();
+		case NpmVersionExpression.Git git -> renderGitTail(git, version);
+		case NpmVersionExpression.Alias alias -> renderTail(alias.inner(), version);
+		case NpmVersionExpression.Range range -> renderTail(range.upper(), version);
+		default -> version.toString();
 		};
 	}
 
-	private static @Nullable String renderGitTail(NpmVersionExpression.Git git, DependencyUpdate update) {
+	private static @Nullable String renderGitTail(NpmVersionExpression.Git git,
+			ArtifactVersion version) {
 
-		if (!(update.version() instanceof GitVersion gitVersion)) {
+		if (!(version instanceof GitVersion gitVersion)) {
 			return null;
 		}
 		RefStyle style = RefStyle.from(git.ref().committish().text());
 		return gitVersion.renderRef(style, git.ref().committish().text());
 	}
+
 
 }

@@ -241,6 +241,11 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
+			new UpdateGitHubWorkflowFile(project).applyUpdate((YAMLScalar) anchor, update);
+		}
+
+		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
 		}

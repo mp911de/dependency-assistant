@@ -173,6 +173,7 @@ public class Cache {
 
 		List<CachedRelease> converted = new ArrayList<>(releases.size());
 		for (Release release : releases) {
+			String versionText = release.version().toString();
 			converted.add(CachedRelease.from(release));
 		}
 		artifactToUse.replaceCachedReleases(converted);

@@ -102,6 +102,19 @@ class UpdateGitHubWorkflowFile {
 	}
 
 	/**
+	 * Apply a single update at the given YAML scalar anchor of a {@code uses:} key.
+	 */
+	public void applyUpdate(YAMLScalar scalar, DependencyUpdate update) {
+
+		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
+		if (ref == null || !StringUtils.hasText(ref.version())) {
+			return;
+		}
+
+		updateVersionAndComment(scalar, ref.getVersion((GitVersion) update.version()));
+	}
+
+	/**
 	 * Return the editor offset immediately after the scalar value.
 	 * <p>For quoted scalars, the returned offset is before the closing quote so
 	 * completion handlers can leave the caret at the end of the inserted ref.
@@ -186,5 +199,6 @@ class UpdateGitHubWorkflowFile {
 
 		return (YAMLScalar) replaced.getValue();
 	}
+
 
 }

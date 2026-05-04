@@ -32,6 +32,7 @@ import org.jetbrains.plugins.github.api.GithubServerPath;
  */
 public class GitReleaseSource implements ReleaseSource {
 
+	// TODO
 	private final Project project;
 
 	private final boolean strict;

@@ -171,8 +171,8 @@ class DependencyCheck {
 		});
 
 		for (DeclaredDependency declaredDependency : tasks) {
-			futures.add(executor.submit(() -> fetchReleases(indicator, declaredDependency.getArtifactId(), sources,
-					executor, cache, consistency)));
+			futures.add(executor.submit(() -> fetchReleases(indicator,
+					declaredDependency.getArtifactId(), sources, executor, cache, consistency)));
 		}
 
 		double total = futures.size();

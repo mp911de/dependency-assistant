@@ -213,6 +213,11 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
+			new UpdatePackageJsonFile(project).applyUpdate(anchor, update);
+		}
+
+		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			new UpdatePackageJsonFile(project).applyUpdates(psiFile, updates);
 		}

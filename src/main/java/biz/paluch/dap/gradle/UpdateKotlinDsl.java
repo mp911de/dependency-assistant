@@ -63,7 +63,7 @@ class UpdateKotlinDsl {
 			}
 
 			if (versioned.getVersionElement() instanceof KtStringTemplateExpression template) {
-				GradleUtils.updateVersion(KtLiterals.getText(template), newVersion, template::updateText);
+				updateVersion(template, newVersion);
 				return true;
 			}
 
@@ -71,6 +71,9 @@ class UpdateKotlinDsl {
 		}));
 	}
 
+	public static void updateVersion(KtStringTemplateExpression template, String newVersion) {
+		GradleUtils.updateVersion(KtLiterals.getText(template), newVersion, template::updateText);
+	}
 
 	/**
 	 * Finds and updates an {@code extra["key"]} assignment in a Kotlin DSL file
@@ -79,7 +82,7 @@ class UpdateKotlinDsl {
 	 *
 	 * @return {@literal true} if the property was found and updated.
 	 */
-	boolean updateExtraProperty(PsiFile file, String propertyKey, String newVersion) {
+	public static boolean updateExtraProperty(PsiFile file, String propertyKey, String newVersion) {
 
 		PropertyValue element = KotlinDslExtraParser.findExtraPropertyLocation(file, propertyKey);
 		if (element == null) {
@@ -99,7 +102,7 @@ class UpdateKotlinDsl {
 	 *
 	 * @return {@literal true} if the property was found and updated.
 	 */
-	boolean updateValProperty(PsiFile file, String propertyKey, String newVersion) {
+	static boolean updateValProperty(PsiFile file, String propertyKey, String newVersion) {
 
 		boolean[] updated = {false};
 		file.accept(PsiVisitors.visitTreeUntil(KtProperty.class, property -> {

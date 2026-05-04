@@ -17,6 +17,8 @@
 package biz.paluch.dap.support;
 
 import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
@@ -66,7 +68,7 @@ public class UpgradeSuggestion {
 	 * Return the localized gutter message for this suggestion.
 	 */
 	public String getMessage() {
-		String upgradeTarget = MessageBundle.message("dialog.upgradeTarget." + strategy);
+		String upgradeTarget = MessageBundle.message("upgrage-strategy." + strategy.name());
 		return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, getRelease().version().toString());
 	}
 
@@ -96,10 +98,26 @@ public class UpgradeSuggestion {
 	}
 
 	/**
+	 * Return the {@link ArtifactReference} for this suggestion.
+	 */
+	public ArtifactReference getArtifactReference() {
+		return artifactReference;
+	}
+
+	/**
 	 * Return the {@link ArtifactDeclaration} for this suggestion.
 	 */
 	public ArtifactDeclaration getArtifactDeclaration() {
 		return artifactReference.getDeclaration();
+	}
+
+	/**
+	 * Create a {@link DependencyUpdate} from this suggestion.
+	 */
+	public DependencyUpdate toDependencyUpdate() {
+
+		Dependency dependency = artifactReference.toDependency();
+		return DependencyUpdate.from(dependency, getRelease());
 	}
 
 }

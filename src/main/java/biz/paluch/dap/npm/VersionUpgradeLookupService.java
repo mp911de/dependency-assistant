@@ -80,16 +80,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					.declarationElement(literal)
 					.versionLiteral(literal);
 
-			Dependency dependency = hasCachedState() ? getProjectState().findDependency(artifactId) : null;
-			if (dependency != null && dependency.getCurrentVersion() != null) {
-				builder.version(dependency.getCurrentVersion());
-				return;
-			}
-
-			if (expression == null) {
-				return;
-			}
-
 			if (expression instanceof NpmVersionExpression.Git(NpmGitRef ref)) {
 
 				GitVersionResolver resolver = new GitVersionResolver(getCache());
@@ -109,7 +99,18 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				}
 			}
 
-			ArtifactVersion.from(expression.text()).ifPresent(builder::version);
+
+			if (expression != null) {
+				Optional<ArtifactVersion> version = ArtifactVersion.from(expression.text());
+				if (version.isPresent()) {
+					version.ifPresent(builder::version);
+					return;
+				}
+			}
+			Dependency dependency = hasCachedState() ? getProjectState().findDependency(artifactId) : null;
+			if (dependency != null && dependency.getCurrentVersion() != null) {
+				builder.version(dependency.getCurrentVersion());
+			}
 		});
 	}
 

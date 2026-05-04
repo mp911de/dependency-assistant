@@ -188,6 +188,11 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
+			new UpdateGradleFile(project).applyUpdate(anchor, update);
+		}
+
+		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			new UpdateGradleFile(project).applyUpdates(psiFile, updates);
 		}

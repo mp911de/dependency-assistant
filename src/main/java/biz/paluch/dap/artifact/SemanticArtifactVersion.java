@@ -207,18 +207,18 @@ class SemanticArtifactVersion implements ArtifactVersion {
 
 	@Override
 	public boolean isNewer(ArtifactVersion other) {
-		return other instanceof SemanticArtifactVersion sav && this.compareTo(sav) > 0;
+		return other.getVersion() instanceof SemanticArtifactVersion sav && this.compareTo(sav) > 0;
 	}
 
 	@Override
 	public boolean isOlder(ArtifactVersion other) {
-		return other instanceof SemanticArtifactVersion sav && this.compareTo(sav) < 0;
+		return other.getVersion() instanceof SemanticArtifactVersion sav && this.compareTo(sav) < 0;
 	}
 
 	@Override
 	public boolean isNewerMinor(ArtifactVersion other) {
 
-		if (other instanceof SemanticArtifactVersion sav) {
+		if (other.getVersion() instanceof SemanticArtifactVersion sav) {
 			return components.getMajor() == sav.components.getMajor() && sav.components.getMinor() > components.getMinor()
 					&& isNewer(sav);
 		}
@@ -228,12 +228,14 @@ class SemanticArtifactVersion implements ArtifactVersion {
 
 	@Override
 	public boolean hasSameMajorMinor(ArtifactVersion other) {
-		return other instanceof SemanticArtifactVersion sav && components.hasSameMajorMinor(sav.components);
+		return other.getVersion() instanceof SemanticArtifactVersion sav
+				&& components.hasSameMajorMinor(sav.components);
 	}
 
 	@Override
 	public boolean hasSameMajor(ArtifactVersion other) {
-		return other instanceof SemanticArtifactVersion sav && components.getMajor() == sav.components.getMajor();
+		return other.getVersion() instanceof SemanticArtifactVersion sav
+				&& components.getMajor() == sav.components.getMajor();
 	}
 
 	/**

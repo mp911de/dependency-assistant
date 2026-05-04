@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.github;
 
-import java.util.List;
 import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -24,11 +23,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.GitVersionResolver;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
@@ -67,28 +62,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	VersionUpgradeLookupService(Project project, GitHubProjectContext buildContext) {
 		super(project, buildContext);
 		this.buildContext = buildContext;
-	}
-
-	@Override
-	protected AvailableUpgrades suggestUpgrades(Cache cache, ArtifactReference artifactReference) {
-
-		// TODO duplicate
-		if (!artifactReference.isResolved()) {
-			return AvailableUpgrades.none();
-		}
-
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
-			return AvailableUpgrades.none();
-		}
-
-		List<Release> releases = cache.getReleases(declaration.getArtifactId());
-
-		if (releases.isEmpty()) {
-			return AvailableUpgrades.none();
-		}
-
-		return determineUpgrades(artifactReference, declaration.getVersion(), releases);
 	}
 
 	@Override

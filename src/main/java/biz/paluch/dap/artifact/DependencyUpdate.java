@@ -17,6 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
+import java.util.function.Predicate;
 
 /**
  * Value object to represent a dependency update.
@@ -32,9 +33,32 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 	/**
 	 * Create an update command from a selected update option.
 	 */
-	public static DependencyUpdate of(DependencyUpdateOption option) {
+	public static DependencyUpdate from(DependencyUpdateOption option) {
 		return new DependencyUpdate(option.getArtifactId(), option.getRequiredUpdateTo(),
 				option.getDependency().getDeclarationSources(), option.getDependency().getVersionSources());
+	}
+
+	/**
+	 * Create an update command from a dependency and release.
+	 */
+	public static DependencyUpdate from(Dependency dependency, Release release) {
+		return new DependencyUpdate(dependency.getArtifactId(), release.getVersion(),
+				dependency.getDeclarationSources(), dependency.getVersionSources());
+	}
+
+	/**
+	 * Evaluate the {@link Predicate} against the {@link VersionSource}s and return
+	 * {@code true} if any match.
+	 * @param versionSourcePredicate the predicate to evaluate.
+	 * @return {@code true} if any version source matches; {@code false} otherwise.
+	 */
+	public boolean hasVersionSource(Predicate<VersionSource> versionSourcePredicate) {
+		for (VersionSource versionSource : versionSources) {
+			if (versionSourcePredicate.test(versionSource)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }

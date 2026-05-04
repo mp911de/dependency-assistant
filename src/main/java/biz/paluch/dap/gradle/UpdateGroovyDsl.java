@@ -34,10 +34,7 @@ class UpdateGroovyDsl {
 
 	private final GroovyLookupSiteLocator siteLocator;
 
-	private final PropertyResolver propertyResolver;
-
 	UpdateGroovyDsl(PropertyResolver propertyResolver) {
-		this.propertyResolver = propertyResolver;
 		this.siteLocator = new GroovyLookupSiteLocator(propertyResolver);
 	}
 
@@ -60,10 +57,21 @@ class UpdateGroovyDsl {
 		}));
 	}
 
+	public static void updateExtProperty(GrLiteral literal, String newVersion) {
+
+		GroovyExtAssignment assignment = GroovyExtAssignment.from(literal);
+		if (assignment == null) {
+			return;
+		}
+
+		GroovyDslUtils.updateText(assignment.getValueLiteral(), newVersion);
+	}
+
 	/**
 	 * Update the inline declaration for the given artifact, if present.
 	 */
 	public void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
+
 		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
 
 			DependencySite site = siteLocator.locateDeclaration(call);
@@ -74,8 +82,7 @@ class UpdateGroovyDsl {
 			}
 
 			if (versioned.getVersionElement() instanceof GrLiteral literal) {
-				GradleUtils.updateVersion(GroovyDslUtils.getText(literal), newVersion,
-						it -> GroovyDslUtils.updateText(literal, it));
+				updateVersion(literal, newVersion);
 				return true;
 			}
 
@@ -83,4 +90,8 @@ class UpdateGroovyDsl {
 		}));
 	}
 
+	public static void updateVersion(GrLiteral literal, String newVersion) {
+		GradleUtils.updateVersion(GroovyDslUtils.getText(literal), newVersion,
+				it -> GroovyDslUtils.updateText(literal, it));
+	}
 }

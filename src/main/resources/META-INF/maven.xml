@@ -11,6 +11,6 @@
 		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="XML"
-				implementationClass="biz.paluch.dap.support.NewerVersionLineMarkerProvider"/>
+				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>
 	</extensions>
 </idea-plugin>

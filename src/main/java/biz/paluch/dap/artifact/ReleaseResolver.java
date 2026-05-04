@@ -69,7 +69,8 @@ public class ReleaseResolver {
 
 		for (Future<List<Release>> future : futures) {
 			try {
-				result.addAll(future.get());
+				List<Release> releases = future.get();
+				result.addAll(releases);
 			} catch (InterruptedException e) {
 				return new ArrayList<>(result);
 			} catch (ExecutionException e) {

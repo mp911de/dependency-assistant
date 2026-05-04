@@ -124,9 +124,12 @@ class NpmIndexingTask {
 		double current = 0;
 		for (VirtualFile file : packageFiles) {
 
-			PsiFile psiFile = psiManager.findFile(file);
-			if (psiFile != null) {
-				action.accept(psiFile);
+			if (!file.getPath().contains("node_modules")) {
+
+				PsiFile psiFile = psiManager.findFile(file);
+				if (psiFile != null) {
+					action.accept(psiFile);
+				}
 			}
 			current += 1;
 			if (!packageFiles.isEmpty()) {

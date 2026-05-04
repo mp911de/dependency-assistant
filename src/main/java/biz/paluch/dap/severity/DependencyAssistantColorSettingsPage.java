@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap;
+package biz.paluch.dap.severity;
 
 import java.util.Map;
 import javax.swing.*;
 
+import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.MessageBundle;
 import com.intellij.ide.highlighter.XmlFileHighlighter;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.fileTypes.SyntaxHighlighter;
@@ -27,15 +29,16 @@ import com.intellij.openapi.options.colors.ColorDescriptor;
 import com.intellij.openapi.options.colors.ColorSettingsPage;
 
 /**
- * Exposes {@link NewerVersionSeveritiesProvider#NEWER_VERSION_KEY} in Color Scheme so users can customise the highlight
- * applied to dependency versions that have a newer release available.
+ * Exposes {@link DependencyAssistantSeverities#UPGRADE_AVAILABLE_KEY} in Color
+ * Scheme so users can customise the highlight applied to dependency versions
+ * that have a newer release available.
  *
  * @author Mark Paluch
  */
 public class DependencyAssistantColorSettingsPage implements ColorSettingsPage {
 
 	private static final AttributesDescriptor[] DESCRIPTORS = { new AttributesDescriptor(
-			MessageBundle.lazyMessage("newer.severity"), NewerVersionSeveritiesProvider.NEWER_VERSION_KEY) };
+			MessageBundle.lazyMessage("newer.severity"), DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY)};
 
 	@Override
 	public AttributesDescriptor[] getAttributeDescriptors() {
@@ -68,14 +71,14 @@ public class DependencyAssistantColorSettingsPage implements ColorSettingsPage {
 				<dependency>
 				    <groupId>org.springframework</groupId>
 				    <artifactId>spring-core</artifactId>
-				    <version><NEWER>6.1.0</NEWER></version>
+				    <version><UPGRADE_AVAILABLE>6.1.0</UPGRADE_AVAILABLE></version>
 				</dependency>
 				""";
 	}
 
 	@Override
 	public Map<String, TextAttributesKey> getAdditionalHighlightingTagToDescriptorMap() {
-		return Map.of("NEWER", NewerVersionSeveritiesProvider.NEWER_VERSION_KEY);
+		return Map.of("UPGRADE_AVAILABLE", DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY);
 	}
 
 }

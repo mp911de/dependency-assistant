@@ -17,8 +17,10 @@
 package biz.paluch.dap.artifact;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedRelease;
@@ -99,7 +101,20 @@ public class GitVersionResolver {
 			}
 		}
 
-		return candidates.size() == 1 ? candidates.getFirst() : null;
+		if (candidates.isEmpty()) {
+			return null;
+		}
+
+		if (candidates.size() == 1) {
+			return candidates.getFirst();
+		}
+
+		Set<String> versions = new HashSet<>();
+		for (GitVersion candidate : candidates) {
+			versions.add(candidate.getVersion().getVersion().toString());
+		}
+
+		return versions.size() == 1 ? candidates.getFirst() : null;
 	}
 
 }

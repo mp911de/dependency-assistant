@@ -194,9 +194,6 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 
 	public static LookupElementBuilder applyVersion(ArtifactVersion currentVersion,
 			ArtifactVersion option, LookupElementBuilder element) {
-		if (option.isNewer(currentVersion)) {
-			element = element.bold();
-		}
 		if (option.isOlder(currentVersion)) {
 			element = element.withItemTextItalic(true);
 		}

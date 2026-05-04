@@ -22,15 +22,19 @@ import javax.swing.*;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.support.ReleaseDateFormatter;
 import com.intellij.util.ui.JBUI;
 import org.jspecify.annotations.Nullable;
 
 /**
- * List cell renderer that shows an icon (older / newer patch / minor / major) plus version text.
+ * List cell renderer that shows an icon (older / newer patch / minor / major)
+ * plus version text.
  */
 class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<Release> {
 
 	private final ArtifactVersion currentVersion;
+
+	private final ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 
 	/**
 	 * Create a renderer that classifies options relative to the current version.
@@ -44,7 +48,17 @@ class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<Relea
 	@Override
 	public Component getListCellRendererComponent(JList<? extends Release> list, @Nullable Release value,
 			int index, boolean isSelected, boolean cellHasFocus) {
-		setText(value != null ? value.toString() : "");
+
+		if (value == null) {
+			setText("");
+		} else {
+			String text = value.getVersion().getVersion().toString();
+			if (value.releaseDate() != null) {
+				text += " (" + formatter.format(value.releaseDate()) + ")";
+			}
+			setText(text);
+		}
+
 		setIcon(value != null ? VersionAge.between(currentVersion, value).getIcon() : null);
 		return this;
 	}

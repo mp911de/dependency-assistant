@@ -91,6 +91,18 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	VersionUpgradeLookupSupport getLookup(PsiElement element);
 
 	/**
+	 * Apply a single dependency update at the given PSI element.
+	 * <p>The method rewrites only that literal in place and never re-traverses the
+	 * containing file.
+	 * @param versionLiteral the version PSI element that triggered the update; must
+	 * not be {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 * @throws IllegalStateException when the anchor resolves to an unexpected
+	 * element kind.
+	 */
+	void applyUpdate(PsiElement versionLiteral, DependencyUpdate update);
+
+	/**
 	 * Apply the given dependency updates to the appropriate build files.
 	 * @param psiFile the anchor PSI file used for the write action.
 	 * @param updates the updates to apply.

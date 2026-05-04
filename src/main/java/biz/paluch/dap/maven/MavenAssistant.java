@@ -18,7 +18,6 @@ package biz.paluch.dap.maven;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
 import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistant;
@@ -47,7 +46,6 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
-import com.intellij.util.containers.ContainerUtil;
 import icons.MavenIcons;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -58,10 +56,6 @@ import org.jetbrains.idea.maven.project.MavenProjectsManager;
  * @author Mark Paluch
  */
 class MavenAssistant implements DependencyAssistant {
-
-	// TODO
-	private final ConcurrentMap<VirtualFile, ProjectDependencyContext> contexts = ContainerUtil
-			.createConcurrentWeakValueMap();
 
 	@Override
 	public String getId() {
@@ -198,6 +192,11 @@ class MavenAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookupSupport getLookup(PsiElement element) {
 			return VersionUpgradeLookupService.create(element);
+		}
+
+		@Override
+		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
+			new UpdatePomFile().applyUpdate(anchor, update);
 		}
 
 		@Override

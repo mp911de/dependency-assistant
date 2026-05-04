@@ -19,6 +19,7 @@ package biz.paluch.dap.support;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.Dependency;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -92,14 +93,21 @@ public class ArtifactReference {
 		return getDeclaration().getArtifactId();
 	}
 
+	/**
+	 * Create a {@link Dependency} from the resolved declaration.
+	 */
+	public Dependency toDependency() {
+
+		Assert.state(declaration != null, "No declaration available");
+
+		Dependency dep = new Dependency(getArtifactId(), getDeclaration().getVersion());
+		dep.addVersionSource(getDeclaration().getVersionSource());
+		return dep;
+	}
+
 	@Override
 	public String toString() {
-
-		if (declaration == null) {
-			return "Unresolved";
-		}
-
-		return "Resolved: " + declaration;
+		return declaration == null ? "Unresolved" : "Resolved: " + declaration;
 	}
 
 }

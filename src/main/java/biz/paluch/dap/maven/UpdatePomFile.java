@@ -26,7 +26,9 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jspecify.annotations.Nullable;
@@ -56,6 +58,26 @@ class UpdatePomFile {
 		for (DependencyUpdate update : updates) {
 			apply(root, update);
 		}
+	}
+
+	/**
+	 * Apply a single update at the given version literal. The literal must be the
+	 * {@code <version>} XML tag value or a {@code <properties>}-child tag value of
+	 * the same POM file.
+	 * @param versionLiteral the version PSI element; must not be {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 */
+	public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+
+		XmlTag versionTag = versionLiteral instanceof XmlTag tag ? tag
+				: PsiTreeUtil.getParentOfType(versionLiteral, XmlTag.class);
+
+		if (versionTag == null || !"version".equals(versionTag.getName()) && !isPropertiesChild(versionTag)) {
+			return;
+		}
+
+		String value = update.version().toString();
+		versionTag.getValue().setText(value);
 	}
 
 	private void apply(XmlTag projectTag, DependencyUpdate update) {
@@ -94,7 +116,7 @@ class UpdatePomFile {
 		for (XmlTag artifactTag : tags) {
 			XmlTag versionTag = artifactTag.findFirstSubTag("version");
 			if (versionTag != null) {
-				setTagValue(versionTag, newVersion);
+				versionTag.getValue().setText(newVersion);
 			}
 		}
 	}
@@ -107,7 +129,7 @@ class UpdatePomFile {
 		}
 		XmlTag prop = properties.findFirstSubTag(propertyName);
 		if (prop != null) {
-			setTagValue(prop, newVersion);
+			prop.getValue().setText(newVersion);
 		}
 	}
 
@@ -134,7 +156,7 @@ class UpdatePomFile {
 			findAndCollect(deps, groupId, artifactId, tags::add);
 		}
 
-		if (source instanceof DeclarationSource.Plugin & !(source instanceof DeclarationSource.Managed)) {
+		if (source instanceof DeclarationSource.Plugin && !(source instanceof DeclarationSource.Managed)) {
 			XmlTag build = searchRoot.findFirstSubTag("build");
 			XmlTag plugins = build != null ? build.findFirstSubTag("plugins") : null;
 			findAndCollect(plugins, groupId, artifactId, tags::add);
@@ -165,7 +187,8 @@ class UpdatePomFile {
 			}
 
 			XmlTag idTag = profile.findFirstSubTag("id");
-			String id = idTag != null ? getTagText(idTag) : null;
+			String id;
+			id = idTag != null ? idTag.getValue().getText() : null;
 			if (profileId.equals(id)) {
 				return profile;
 			}
@@ -193,17 +216,12 @@ class UpdatePomFile {
 
 	private static @Nullable String getSubTagText(XmlTag parent, String name) {
 		XmlTag tag = parent.findFirstSubTag(name);
-		return tag != null ? getTagText(tag) : null;
+		return tag != null ? tag.getValue().getText() : null;
 	}
 
-	private static String getTagText(XmlTag tag) {
-		String text = tag.getValue().getText();
-		return StringUtils.hasText(text) ? text.trim() : "";
+	private static boolean isPropertiesChild(XmlTag tag) {
+		XmlTag parent = tag.getParentTag();
+		return parent != null && "properties".equals(parent.getName());
 	}
-
-	private static void setTagValue(XmlTag tag, String value) {
-		tag.getValue().setText(value);
-	}
-
 
 }

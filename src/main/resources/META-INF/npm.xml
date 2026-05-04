@@ -12,6 +12,10 @@
 		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="JSON"
-				implementationClass="biz.paluch.dap.support.NewerVersionLineMarkerProvider"/>
+				implementationClass="biz.paluch.dap.npm.NpmLineMarkerProvider"/>
+
+		<platform.backend.documentation.targetProvider
+				implementation="biz.paluch.dap.npm.NpmDependencyDocumentationTargetProvider"/>
+
 	</extensions>
 </idea-plugin>

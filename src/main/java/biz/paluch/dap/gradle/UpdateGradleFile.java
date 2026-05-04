@@ -29,10 +29,14 @@ import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
@@ -97,6 +101,44 @@ class UpdateGradleFile {
 	}
 
 	/**
+	 * Apply a single update at the given Gradle version literal. The literal must
+	 * be one of the supported PSI shapes (Properties value, TOML literal, Groovy
+	 * literal, or Kotlin string template).
+	 * @param literal the version PSI element to rewrite; must not be
+	 * {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 */
+	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
+
+		String newVersion = update.version().toString();
+
+		switch (literal) {
+		case PropertyValueImpl propertyValue -> {
+			if (propertyValue.getParent() instanceof IProperty property) {
+				property.setValue(newVersion);
+			}
+		}
+		case TomlLiteral tomlLiteral -> {
+			updateTomlLiteral(tomlLiteral, newVersion);
+		}
+		case GrLiteral grLiteral -> {
+			if (update.hasVersionSource(VersionSource::isProperty)) {
+				UpdateGroovyDsl.updateExtProperty(grLiteral, newVersion);
+			} else {
+				UpdateGroovyDsl.updateVersion(grLiteral, newVersion);
+			}
+		}
+		case KtStringTemplateExpression ktExpression -> {
+			UpdateKotlinDsl.updateVersion(ktExpression, newVersion);
+		}
+		default -> {
+			throw new IllegalStateException(
+					"Unsupported version literal element: %s".formatted(literal.getClass().getName()));
+		}
+		}
+	}
+
+	/**
 	 * Updates a property value in a properties file or Groovy/Kotlin ext/extra
 	 * block.
 	 */
@@ -149,11 +191,15 @@ class UpdateGradleFile {
 				if (!(kv.getValue() instanceof TomlLiteral literal)) {
 					continue;
 				}
-				TomlLiteral newLiteral = new TomlPsiFactory(project, false)
-						.createLiteral("\"%s\"".formatted(newVersion));
-				literal.replace(newLiteral);
+				updateTomlLiteral(literal, newVersion);
 			}
 		}
+	}
+
+	private void updateTomlLiteral(TomlLiteral literal, String newVersion) {
+		TomlLiteral newLiteral = new TomlPsiFactory(project, false)
+				.createLiteral("\"%s\"".formatted(newVersion));
+		literal.replace(newLiteral);
 	}
 
 	/**
@@ -252,5 +298,6 @@ class UpdateGradleFile {
 			}
 		}
 	}
+
 
 }

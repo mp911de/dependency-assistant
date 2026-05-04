@@ -114,7 +114,8 @@ class DependencyUpdateModel {
 	 * Return the selected dependency updates.
 	 */
 	public List<DependencyUpdate> toDependencyUpdates() {
-		return updateOptions.stream().filter(DependencyUpdateOption::isApplyUpdate).map(DependencyUpdate::of).toList();
+		return updateOptions.stream().filter(DependencyUpdateOption::isApplyUpdate).map(DependencyUpdate::from)
+				.toList();
 	}
 
 	/**

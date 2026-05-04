@@ -68,7 +68,8 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 					@Override
 					protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters,
 							CompletionResultSet result) {
-						return result.withPrefixMatcher(Intent.from(parameters).matcher());
+						return parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")
+								: result.withPrefixMatcher(Intent.from(parameters).matcher());
 					}
 
 					@Override
@@ -162,7 +163,7 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 			}
 			Intent gitSha = gitShaIntent(view);
 			return gitSha != null ? gitSha
-					: new Intent(new PlainPrefixMatcher(view.versionPrefix()),
+					: new Intent(new PlainPrefixMatcher(view.versionPrefix(), true),
 							Adjustment.NONE, !view.closed());
 		}
 

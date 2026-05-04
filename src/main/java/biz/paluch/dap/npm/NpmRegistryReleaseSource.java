@@ -34,15 +34,19 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.util.HttpClientFactory;
+import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.util.LRUMap;
 import com.intellij.openapi.diagnostic.Logger;
 import org.jspecify.annotations.Nullable;
 
@@ -75,9 +79,11 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 
 	private static final long MAX_RESPONSE_BODY_BYTES = 5 * 1024 * 1024;
 
-	private static final String ACCEPT_HEADER = "application/vnd.npm.install-v1+json";
+	private static final String ACCEPT_HEADER = "application/json";
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
+
+	private static final LRUMap<ArtifactId, @Nullable AtomicInteger> KNOWN_FAILURES = new LRUMap<>(256, 256);
 
 	private final HttpClient client = HttpClientFactory.createHttpClient();
 
@@ -90,6 +96,11 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId) {
 
+		AtomicInteger counter = KNOWN_FAILURES.get(artifactId);
+		if (counter != null && counter.get() > 1) {
+			return List.of();
+		}
+
 		String packageName = toPackageName(artifactId);
 		URI uri = URI.create(registryBaseUrl + encodePackageName(packageName));
 
@@ -101,6 +112,11 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 
 			return parseReleases(body);
 		} catch (IOException | InterruptedException e) {
+			if (counter == null) {
+				counter = new AtomicInteger(0);
+			}
+			counter.incrementAndGet();
+			KNOWN_FAILURES.putIfAbsent(artifactId, counter);
 			throw new RuntimeException(e);
 		}
 	}
@@ -152,29 +168,41 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 
 				Map.Entry<String, JsonNode> entry = entries.next();
 				String versionString = entry.getKey();
-				if (versionString == null || versionString.isEmpty()) {
+				if (StringUtils.isEmpty(versionString)) {
 					continue;
 				}
 
-				ArtifactVersion.from(versionString).ifPresent(parsed -> {
+				JsonNode version = entry.getValue();
+				JsonNode gitHead = version.get("gitHead");
+
+				ArtifactVersion.from(versionString).ifPresent(it -> {
+
+					ArtifactVersion artifactVersion = it;
+					if (gitHead != null) {
+
+						String sha = gitHead.asText(null);
+						if (StringUtils.hasText(sha)) {
+							artifactVersion = GitVersion.of(sha, artifactVersion);
+						}
+					}
+
 					String publishedAt = time.path(versionString).asText(null);
 					if (publishedAt != null && !publishedAt.isEmpty()) {
 						try {
 							OffsetDateTime instant = OffsetDateTime.parse(publishedAt);
-							result.add(Release.of(parsed, instant.toLocalDateTime()));
+							result.add(Release.of(artifactVersion, instant.toLocalDateTime()));
 							return;
 						} catch (RuntimeException ignored) {
 							// fall through to date-less release
 						}
 					}
-					result.add(Release.of(parsed));
+					result.add(Release.of(artifactVersion));
 				});
 			}
 			return result;
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
-
 	}
 
 	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri) throws IOException, InterruptedException {

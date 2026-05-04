@@ -21,22 +21,23 @@ import javax.swing.*;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
-import com.intellij.codeInsight.intention.BaseElementAtCaretIntentionAction;
+import com.intellij.codeInsight.intention.HighPriorityAction;
+import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import org.jspecify.annotations.Nullable;
+import com.intellij.util.IncorrectOperationException;
 
 /**
- * Light-bulb intention action for supported dependency build files.
+ * Intention action for supported dependency build files.
  *
  * @author Mark Paluch
  */
-public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAction implements Iconable {
+public class UpgradeDependenciesIntention extends BaseIntentionAction
+		implements Iconable, HighPriorityAction {
 
 	/**
 	 * Singleton intention instance registered with IntelliJ.
@@ -54,21 +55,11 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 	}
 
 	@Override
-	public boolean isAvailable(Project project, Editor editor, @Nullable PsiElement element) {
+	public boolean isAvailable(Project project, Editor editor, PsiFile psiFile) {
 
-		if (element == null) {
-			return false;
-		}
-
-		PsiFile file = element.getContainingFile();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
-				file);
+				psiFile);
 		return context != null && context.isAvailable();
-	}
-
-	@Override
-	public boolean startInWriteAction() {
-		return false;
 	}
 
 	@Override
@@ -77,17 +68,12 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 	}
 
 	@Override
-	public void invoke(Project project, Editor editor, @Nullable PsiElement element) {
+	public void invoke(Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
 
-		if (element == null) {
-			return;
-		}
-
-		PsiFile file = element.getContainingFile();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
-				file);
+				psiFile);
 		if (context != null) {
-			ProgressManager.getInstance().run(new DependencyCheckTask(project, file.getVirtualFile(), context));
+			ProgressManager.getInstance().run(new DependencyCheckTask(project, psiFile.getVirtualFile(), context));
 		}
 	}
 
@@ -96,5 +82,9 @@ public class UpgradeDependenciesIntention extends BaseElementAtCaretIntentionAct
 		return DependencyAssistantIcons.ICON;
 	}
 
+	@Override
+	public Priority getPriority() {
+		return Priority.NORMAL;
+	}
 
 }

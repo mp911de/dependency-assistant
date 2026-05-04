@@ -88,12 +88,13 @@
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
 		<additionalTextAttributes scheme="Darcula"
 		                          file="colorSchemes/DependencyAssistantDarcula.xml"/>
+
 		<colorSettingsPage
-				implementation="biz.paluch.dap.DependencyAssistantColorSettingsPage"/>
+				implementation="biz.paluch.dap.severity.DependencyAssistantColorSettingsPage"/>
 		<projectService
 				serviceImplementation="biz.paluch.dap.state.DependencyAssistantService"/>
 		<severitiesProvider
-				implementation="biz.paluch.dap.NewerVersionSeveritiesProvider"/>
+				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
 				implementation="biz.paluch.dap.support.DependencyDocumentationProvider"/>
 		<intentionAction>
@@ -108,7 +109,7 @@
 		        text="Update Dependencies…">
 			<add-to-group group-id="ToolsMenu" anchor="last"/>
 		</action>
-		<action id="biz.paluch.dap.UpdateReleaseCache"
+		<action id="biz.paluch.dap.RefreshReleasesMetadataAction"
 		        class="biz.paluch.dap.support.RefreshReleasesMetadataAction"
 		        text="Refresh Dependency Release Metadata">
 			<add-to-group group-id="ToolsMenu" anchor="last"/>

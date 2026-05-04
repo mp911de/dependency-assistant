@@ -60,7 +60,7 @@ class NpmProjectContext implements ProjectBuildContext {
 
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 		if (GITHUB_AVAILABLE) {
-			return List.of(NpmRegistryReleaseSource.NPM_REGISTRY, new GitReleaseSource(project, true));
+			return List.of(new GitReleaseSource(project, true), NpmRegistryReleaseSource.NPM_REGISTRY);
 		}
 		return List.of(NpmRegistryReleaseSource.NPM_REGISTRY);
 	}
