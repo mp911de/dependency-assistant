@@ -296,6 +296,8 @@ class MavenParser {
 
 	/**
 	 * VersionProperty resolver within the scope of a single pom file.
+	 *
+	 * TODO: use actual PropertyResolver
 	 */
 	static class PropertyResolver {
 

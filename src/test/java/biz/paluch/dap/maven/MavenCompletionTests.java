@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.Releases;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -24,8 +23,9 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -155,7 +155,7 @@ class MavenCompletionTests {
 
 		MavenFixtures.analyze(pomFile);
 
-		ProjectState projectState = DependencyAssistantService.getInstance(pomFile.getProject())
+		ProjectState projectState = StateService.getInstance(pomFile.getProject())
 				.getProjectState(MavenFixtures.PROJECT_ID);
 		DependencyCollector collector = new DependencyCollector();
 		collector.registerUsage(Releases.JUNIT_BOM.toArtifactId(), ArtifactVersion.of("5.14.1"),

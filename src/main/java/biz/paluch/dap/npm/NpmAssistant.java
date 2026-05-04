@@ -22,13 +22,22 @@ import javax.swing.*;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectId;
-import biz.paluch.dap.artifact.*;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclaredDependency;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.state.GitVersionResolver;
+import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.plugins.PluginManagerCore;
@@ -125,13 +134,13 @@ public class NpmAssistant implements DependencyAssistant {
 
 		private final NpmProjectContext context;
 
-		private final DependencyAssistantService service;
+		private final StateService service;
 
 		NpmDependencyContext(Project project, VirtualFile anchor, NpmProjectContext context) {
 			this.project = project;
 			this.anchor = anchor;
 			this.context = context;
-			this.service = DependencyAssistantService.getInstance(project);
+			this.service = StateService.getInstance(project);
 		}
 
 		@Override

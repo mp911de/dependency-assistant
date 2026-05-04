@@ -18,11 +18,11 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
-import biz.paluch.dap.DependencyAssistantFixtures;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.gradle.GradleProjectContext.GradleBuildContextImpl;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
@@ -56,7 +56,7 @@ class GradleFixtures {
 		GradleProjectContext projectContext = new GradleBuildContextImpl(file.getProject(), "",
 				new ProjectId("demo", "demo", file.getVirtualFile().getPath()));
 		file.putUserData(GradleProjectContext.KEY, projectContext);
-		DependencyAssistantService.getInstance(file.getProject()).getProjectState(projectContext.getProjectId())
+		StateService.getInstance(file.getProject()).getProjectState(projectContext.getProjectId())
 				.setDependencies(collector);
 
 		return collector;

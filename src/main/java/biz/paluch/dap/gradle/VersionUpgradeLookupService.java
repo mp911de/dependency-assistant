@@ -16,8 +16,8 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
@@ -92,7 +92,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.buildContext = context;
 		this.candidate = GradleUtils.isGradleFile(file);
 
-		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		StateService service = StateService.getInstance(project);
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);

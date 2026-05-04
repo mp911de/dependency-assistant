@@ -18,10 +18,10 @@ package biz.paluch.dap.github;
 
 import java.util.List;
 
-import biz.paluch.dap.ProjectBuildContext;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -71,7 +71,7 @@ class GitHubProjectContext implements ProjectBuildContext {
 				: GitHubReleaseSource.from(project);
 
 		ProjectId projectId = gitRepository != null
-				? gitRepository.toProjectId(anchor.getPath())
+				? ProjectId.of(gitRepository.owner(), gitRepository.repository(), anchor.getPath())
 				: ProjectId.of("", "", anchor.getPath());
 		return new GitHubProjectContext(projectId, releaseSource);
 	}

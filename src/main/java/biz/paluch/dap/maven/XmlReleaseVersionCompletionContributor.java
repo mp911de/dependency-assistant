@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.support.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.patterns.PatternCondition;

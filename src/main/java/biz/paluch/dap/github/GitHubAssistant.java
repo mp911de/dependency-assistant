@@ -22,14 +22,15 @@ import javax.swing.*;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.GitVersionResolver;
+import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.PsiVisitors;
 import biz.paluch.dap.util.StringUtils;
@@ -132,13 +133,13 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		private final GitHubProjectContext context;
 
-		private final DependencyAssistantService service;
+		private final StateService service;
 
 		GitHubDependencyContext(Project project, VirtualFile anchor, GitHubProjectContext context) {
 			this.project = project;
 			this.anchor = anchor;
 			this.context = context;
-			this.service = DependencyAssistantService.getInstance(project);
+			this.service = StateService.getInstance(project);
 		}
 
 		@Override

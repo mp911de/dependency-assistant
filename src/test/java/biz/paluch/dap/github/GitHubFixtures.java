@@ -18,13 +18,13 @@ package biz.paluch.dap.github;
 
 import java.util.List;
 
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
@@ -51,7 +51,7 @@ class GitHubFixtures {
 	static void setup(Project project) {
 
 		Cache cache = buildCache();
-		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		StateService service = StateService.getInstance(project);
 		service.setCache(cache);
 	}
 
@@ -60,7 +60,7 @@ class GitHubFixtures {
 	 */
 	static DependencyCollector analyze(PsiFile file) {
 
-		DependencyAssistantService service = DependencyAssistantService.getInstance(file.getProject());
+		StateService service = StateService.getInstance(file.getProject());
 
 		GitHubReleaseSource releaseSource = new GitHubReleaseSource(
 				GithubServerPath.DEFAULT_SERVER, new EmptyApiClient(), 100);

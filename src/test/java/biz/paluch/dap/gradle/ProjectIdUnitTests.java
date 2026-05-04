@@ -19,7 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.HashMap;
 import java.util.Map;
 
-import biz.paluch.dap.ProjectId;
+import biz.paluch.dap.state.ProjectId;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;

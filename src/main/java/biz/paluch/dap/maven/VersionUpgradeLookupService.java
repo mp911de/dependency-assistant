@@ -21,8 +21,8 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectCache;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
@@ -72,7 +72,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.pom = pom instanceof XmlFile xmlFile ? xmlFile : null;
 		this.candidate = MavenUtils.isMavenPomFile(pom);
 
-		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		StateService service = StateService.getInstance(project);
 		this.cache = service.getCache();
 	}
 

@@ -27,7 +27,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
-import biz.paluch.dap.support.BuildActionDelegate;
+import biz.paluch.dap.assistant.BuildActionDelegate;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;

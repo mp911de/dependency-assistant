@@ -18,7 +18,6 @@ package biz.paluch.dap.artifact;
 
 import java.net.URI;
 
-import biz.paluch.dap.ProjectId;
 import git4idea.remote.hosting.GitHostingUrlUtil;
 import org.jetbrains.plugins.github.api.GHRepositoryPath;
 import org.jetbrains.plugins.github.util.GithubUrlUtil;
@@ -73,15 +72,5 @@ public record GitRepositoryMetadata(String host, String owner, String repository
 		return GitArtifactId.of(host(), owner(), repository(), originalArtifactId);
 	}
 
-	/**
-	 * Return the project identity for the given build file path.
-	 * <p>The file path is part of the identity because a repository may contain
-	 * several files with independent dependency declarations.
-	 * @param buildFile the build file path.
-	 * @return the project identity for the file.
-	 */
-	public ProjectId toProjectId(String buildFile) {
-		return ProjectId.of(owner(), repository(), buildFile);
-	}
 
 }

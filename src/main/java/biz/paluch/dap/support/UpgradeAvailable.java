@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.MessageBundle;
 import com.intellij.lang.annotation.ProblemGroup;
 
 /**

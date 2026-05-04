@@ -20,15 +20,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.SequencedMap;
 
-import biz.paluch.dap.ProjectBuildContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
@@ -67,7 +66,7 @@ public abstract class VersionUpgradeLookupSupport {
 	 */
 	public VersionUpgradeLookupSupport(Project project, ProjectBuildContext buildContext) {
 
-		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		StateService service = StateService.getInstance(project);
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.buildContext = buildContext;

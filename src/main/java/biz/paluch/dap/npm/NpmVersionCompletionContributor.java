@@ -20,8 +20,8 @@ import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.npm.NpmVersionExpression.Git;
-import biz.paluch.dap.support.ReleasesCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;

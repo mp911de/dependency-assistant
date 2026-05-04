@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.psi.PsiElement;

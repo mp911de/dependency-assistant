@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import com.intellij.json.JsonFileType;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -49,15 +49,15 @@ class NpmIndexingTask {
 
 	private final Project project;
 
-	private final DependencyAssistantService service;
+	private final StateService service;
 
 	private final PsiManager psiManager;
 
 	NpmIndexingTask(Project project) {
-		this(project, PsiManager.getInstance(project), DependencyAssistantService.getInstance(project));
+		this(project, PsiManager.getInstance(project), StateService.getInstance(project));
 	}
 
-	NpmIndexingTask(Project project, PsiManager psiManager, DependencyAssistantService service) {
+	NpmIndexingTask(Project project, PsiManager psiManager, StateService service) {
 		this.project = project;
 		this.service = service;
 		this.psiManager = psiManager;

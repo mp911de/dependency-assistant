@@ -68,7 +68,7 @@
 	</extensionPoints>
 
 	<applicationListeners>
-		<listener class="biz.paluch.dap.support.FlushStateOnSave"
+		<listener class="biz.paluch.dap.assistant.FlushStateOnSave"
 		          topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
 	</applicationListeners>
 
@@ -77,7 +77,7 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
-		<postStartupActivity implementation="biz.paluch.dap.support.PostStartup"/>
+		<postStartupActivity implementation="biz.paluch.dap.assistant.PostStartup"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.releases"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
@@ -92,25 +92,25 @@
 		<colorSettingsPage
 				implementation="biz.paluch.dap.severity.DependencyAssistantColorSettingsPage"/>
 		<projectService
-				serviceImplementation="biz.paluch.dap.state.DependencyAssistantService"/>
+				serviceImplementation="biz.paluch.dap.state.StateService"/>
 		<severitiesProvider
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
-				implementation="biz.paluch.dap.support.DependencyDocumentationProvider"/>
+				implementation="biz.paluch.dap.assistant.DependencyDocumentationProvider"/>
 		<intentionAction>
 			<category>Dependency Assistant</category>
-			<className>biz.paluch.dap.support.UpgradeDependenciesIntention</className>
+			<className>biz.paluch.dap.assistant.UpgradeDependenciesIntention</className>
 		</intentionAction>
 	</extensions>
 
 	<actions>
 		<action id="biz.paluch.dap.UpdateDependencies"
-		        class="biz.paluch.dap.support.UpdateDependenciesAction"
+		        class="biz.paluch.dap.assistant.UpdateDependenciesAction"
 		        text="Update Dependencies…">
 			<add-to-group group-id="ToolsMenu" anchor="last"/>
 		</action>
 		<action id="biz.paluch.dap.RefreshReleasesMetadataAction"
-		        class="biz.paluch.dap.support.RefreshReleasesMetadataAction"
+		        class="biz.paluch.dap.assistant.RefreshReleasesMetadataAction"
 		        text="Refresh Dependency Release Metadata">
 			<add-to-group group-id="ToolsMenu" anchor="last"/>
 		</action>

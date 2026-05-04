@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;

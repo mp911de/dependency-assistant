@@ -20,7 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -47,7 +47,7 @@ class GradleDependencyCollector {
 
 	private final Map<String, String> properties;
 
-	private final DependencyAssistantService service;
+	private final StateService service;
 
 	/**
 	 * Create a collector with no predefined Gradle properties.
@@ -61,7 +61,7 @@ class GradleDependencyCollector {
 	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
 		this.project = project;
-		this.service = DependencyAssistantService.getInstance(project);
+		this.service = StateService.getInstance(project);
 		this.properties = properties;
 	}
 

@@ -19,8 +19,8 @@ package biz.paluch.dap.github;
 import java.util.Collection;
 import java.util.List;
 
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
+import biz.paluch.dap.state.ProjectId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;

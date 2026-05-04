@@ -16,10 +16,10 @@
 
 package biz.paluch.dap.npm;
 
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
@@ -37,7 +37,7 @@ class NpmFixtures {
 
 		Cache cache = new Cache();
 		cache.addArtifacts(NpmReleases.all());
-		DependencyAssistantService service = DependencyAssistantService.getInstance(project);
+		StateService service = StateService.getInstance(project);
 		service.setCache(cache);
 	}
 
@@ -45,15 +45,14 @@ class NpmFixtures {
 	 * Analyze the given {@code package.json} file and register its dependency
 	 * state.
 	 *
-	 * <p>The returned collector is also stored in the shared
-	 * {@link DependencyAssistantService} for the corresponding project id, with a
-	 * test-scoped {@link NpmProjectContext} attached to the file's user data so
-	 * downstream IDE features can resolve the context without re-running file
-	 * detection.
+	 * <p>The returned collector is also stored in the shared {@link StateService}
+	 * for the corresponding project id, with a test-scoped
+	 * {@link NpmProjectContext} attached to the file's user data so downstream IDE
+	 * features can resolve the context without re-running file detection.
 	 */
 	static DependencyCollector analyze(PsiFile file) {
 
-		DependencyAssistantService service = DependencyAssistantService.getInstance(file.getProject());
+		StateService service = StateService.getInstance(file.getProject());
 		DependencyCollector collector = new NpmDependencyCollector().collect(file);
 
 		ProjectId projectId = ProjectId.of("npm", file.getVirtualFile().getNameWithoutExtension(),

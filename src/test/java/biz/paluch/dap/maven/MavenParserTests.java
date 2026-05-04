@@ -19,7 +19,6 @@ package biz.paluch.dap.maven;
 import java.util.HashMap;
 import java.util.Map;
 
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
@@ -27,6 +26,7 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.ProjectId;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;

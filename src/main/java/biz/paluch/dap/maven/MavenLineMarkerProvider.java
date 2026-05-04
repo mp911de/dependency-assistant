@@ -19,9 +19,9 @@ package biz.paluch.dap.maven;
 import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
 import biz.paluch.dap.maven.MavenAssistant.MavenInterface;
-import biz.paluch.dap.support.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.support.MessageBundle;
 
 /**
  * Gutter configurable for Maven.

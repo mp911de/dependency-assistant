@@ -21,12 +21,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import biz.paluch.dap.ProjectBuildContext;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;

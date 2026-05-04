@@ -11,7 +11,7 @@
 				order="first"
 				implementationClass="biz.paluch.dap.github.GitHubWorkflowCompletionContributor"/>
 		<annotator language="yaml"
-		           implementationClass="biz.paluch.dap.support.NewerVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="yaml"
 				implementationClass="biz.paluch.dap.github.GitHubLineMarkerProvider"/>

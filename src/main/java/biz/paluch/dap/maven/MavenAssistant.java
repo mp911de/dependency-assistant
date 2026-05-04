@@ -23,18 +23,18 @@ import javax.swing.*;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationManager;
@@ -126,7 +126,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		private final MavenProjectsManager manager;
 
-		private final DependencyAssistantService service;
+		private final StateService service;
 
 		MavenDependencyContext(Project project, VirtualFile anchor,
 				MavenProjectsManager manager, MavenProjectContext projectContext) {
@@ -135,7 +135,7 @@ class MavenAssistant implements DependencyAssistant {
 			this.projectContext = projectContext;
 			this.anchor = anchor;
 			this.manager = manager;
-			this.service = DependencyAssistantService.getInstance(project);
+			this.service = StateService.getInstance(project);
 		}
 
 		@Override

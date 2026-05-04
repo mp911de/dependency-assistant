@@ -18,12 +18,12 @@ package biz.paluch.dap.maven;
 
 import java.util.Map;
 
-import biz.paluch.dap.DependencyAssistantFixtures;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
@@ -64,7 +64,7 @@ class MavenFixtures {
 		new MavenParser(collector, properties).parsePomFile(new Cache(), (XmlFile) file);
 		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), null, MAVEN_ID);
 		file.putUserData(MavenProjectContext.KEY, projectContext);
-		DependencyAssistantService.getInstance(file.getProject()).getProjectState(PROJECT_ID)
+		StateService.getInstance(file.getProject()).getProjectState(PROJECT_ID)
 				.setDependencies(collector);
 
 		return collector;

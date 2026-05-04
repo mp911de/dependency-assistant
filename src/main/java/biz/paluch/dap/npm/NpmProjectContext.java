@@ -18,10 +18,10 @@ package biz.paluch.dap.npm;
 
 import java.util.List;
 
-import biz.paluch.dap.ProjectBuildContext;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.github.GitReleaseSource;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;

@@ -22,18 +22,18 @@ import javax.swing.*;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -114,7 +114,7 @@ class GradleAssistant implements DependencyAssistant {
 
 		private final ProjectId projectId;
 
-		private final DependencyAssistantService service;
+		private final StateService service;
 
 		GradleDependencyContext(Project project, VirtualFile anchor, GradleProjectContext delegate,
 				ProjectId projectId) {
@@ -123,7 +123,7 @@ class GradleAssistant implements DependencyAssistant {
 			this.anchor = anchor;
 			this.delegate = delegate;
 			this.projectId = projectId;
-			this.service = DependencyAssistantService.getInstance(project);
+			this.service = StateService.getInstance(project);
 		}
 
 		@Override

@@ -20,7 +20,7 @@ import java.util.Map;
 import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.support.MessageBundle;
 import com.intellij.ide.highlighter.XmlFileHighlighter;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.fileTypes.SyntaxHighlighter;

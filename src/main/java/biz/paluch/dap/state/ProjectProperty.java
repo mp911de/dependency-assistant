@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.state;
 
-import biz.paluch.dap.ProjectId;
-
 /**
  * Value object pairing a {@link VersionProperty} with the {@link ProjectId}
  * that owns it.

@@ -38,7 +38,10 @@ dependencies {
 
 	testImplementation("org.assertj:assertj-core:3.27.7")
 	testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
+	testImplementation("com.tngtech.archunit:archunit-junit5-api:1.4.1")
+
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	testRuntimeOnly("com.tngtech.archunit:archunit-junit5-engine:1.4.1")
 
 	// https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase
 	testImplementation("junit:junit:4.13.2")

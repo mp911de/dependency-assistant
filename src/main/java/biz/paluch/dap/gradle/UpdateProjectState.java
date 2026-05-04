@@ -21,11 +21,11 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.MessageBundle;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.state.DependencyAssistantService;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -47,7 +47,7 @@ class UpdateProjectState {
 
 	private final Project project;
 
-	private final DependencyAssistantService service;
+	private final StateService service;
 
 	private final PsiManager psiManager;
 
@@ -58,7 +58,7 @@ class UpdateProjectState {
 	 * @param project the IntelliJ project.
 	 */
 	public UpdateProjectState(Project project) {
-		this(project, PsiManager.getInstance(project), DependencyAssistantService.getInstance(project));
+		this(project, PsiManager.getInstance(project), StateService.getInstance(project));
 	}
 
 	/**
@@ -66,7 +66,7 @@ class UpdateProjectState {
 	 * @param project the IntelliJ project.
 	 * @param service the dependency assistant service to update.
 	 */
-	public UpdateProjectState(Project project, DependencyAssistantService service) {
+	public UpdateProjectState(Project project, StateService service) {
 		this(project, PsiManager.getInstance(project), service);
 	}
 
@@ -76,7 +76,7 @@ class UpdateProjectState {
 	 * @param psiManager the PSI manager to use.
 	 * @param service the dependency assistant service to update.
 	 */
-	public UpdateProjectState(Project project, PsiManager psiManager, DependencyAssistantService service) {
+	public UpdateProjectState(Project project, PsiManager psiManager, StateService service) {
 		this.project = project;
 		this.service = service;
 		this.psiManager = psiManager;

@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion {
+public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 
 	/**
 	 * Create a release version from numeric version components.
@@ -158,7 +158,6 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion>, HasVersion
 		return false;
 	}
 
-	@Override
 	default ArtifactVersion getVersion() {
 		return this;
 	}

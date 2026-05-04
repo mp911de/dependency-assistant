@@ -19,9 +19,9 @@ package biz.paluch.dap.github;
 import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
 import biz.paluch.dap.github.GitHubAssistant.GitHubInterface;
-import biz.paluch.dap.support.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.support.MessageBundle;
 
 /**
  * Gutter configurable for GitHub actions.

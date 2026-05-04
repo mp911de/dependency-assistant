@@ -20,7 +20,7 @@ import java.util.List;
 import javax.swing.*;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.MessageBundle;
+import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
 import com.intellij.codeInsight.daemon.impl.SeveritiesProvider;
 import com.intellij.lang.annotation.HighlightSeverity;

@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.state.DependencyAssistantService;
+import biz.paluch.dap.state.StateService;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -42,7 +42,7 @@ public class GradlePsiListener extends PsiTreeChangeAdapter implements PsiTreeCh
 		PsiManager psiManager = PsiManager.getInstance(project);
 		psiManager.addPsiTreeChangeListener(this, () -> {});
 
-		this.updateProjectState = new UpdateProjectState(project, DependencyAssistantService.getInstance(project));
+		this.updateProjectState = new UpdateProjectState(project, StateService.getInstance(project));
 	}
 
 	/**
