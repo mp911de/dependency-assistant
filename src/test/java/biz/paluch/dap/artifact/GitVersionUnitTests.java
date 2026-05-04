@@ -21,11 +21,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link GitVersion#renderRef(RefStyle, String)}.
+ * Unit tests for {@link GitVersion}.
  *
  * @author Mark Paluch
  */
-class GitVersionRenderRefTests {
+class GitVersionUnitTests {
 
 	private static final String SHA = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
 

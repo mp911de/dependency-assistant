@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.AssertionsForClassTypes.*;
 
 /**
- * Unit tests for {@link GitRepositoryMetadata#parseGitUrl(String)}.
+ * Unit tests for {@link GitRepositoryMetadata}.
  *
  * @author Mark Paluch
  */

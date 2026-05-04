@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-class CachedReleaseUnitTests {
+class ReleaseUnitTests {
 
 	@Test
 	void shouldCompareVersions() {
