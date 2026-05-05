@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.support;
 
 import java.util.List;
 
@@ -23,9 +23,6 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.UpgradeSuggestion;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.mock.MockPsiElement;
 import org.junit.jupiter.api.Test;
 

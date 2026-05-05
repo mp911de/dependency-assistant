@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.state;
 
 import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.CachedRelease;
-import biz.paluch.dap.state.GitVersionResolver;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;

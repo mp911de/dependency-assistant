@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.gradle;
+package biz.paluch.dap.state;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import biz.paluch.dap.state.ProjectId;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
