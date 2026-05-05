@@ -10,8 +10,6 @@ repositories {
 	mavenCentral()
 	intellijPlatform {
 		defaultRepositories()
-		releases()
-		marketplace()
 	}
 }
 
@@ -27,24 +25,26 @@ dependencies {
 		bundledPlugin("org.jetbrains.kotlin")
 		bundledPlugin("org.toml.lang")
 		bundledPlugin("org.jetbrains.plugins.yaml")
+		bundledModule("intellij.yaml.backend")
 		bundledPlugin("org.jetbrains.plugins.github")
 		bundledPlugin("Git4Idea")
 		bundledPlugin("com.intellij.modules.json")
-		bundledModule("intellij.yaml.backend")
 	}
+
 	implementation("org.springframework:spring-core:7.0.6")
 	implementation("org.xmlbeam:xmlprojector:1.4.26")
 	compileOnly("org.jspecify:jspecify:1.0.0")
 
 	testImplementation("org.assertj:assertj-core:3.27.7")
 	testImplementation("org.junit.jupiter:junit-jupiter:6.0.3")
+
+	// https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase
+	testImplementation("junit:junit:4.13.2")
+
 	testImplementation("com.tngtech.archunit:archunit-junit5-api:1.4.1")
 
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testRuntimeOnly("com.tngtech.archunit:archunit-junit5-engine:1.4.1")
-
-	// https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase
-	testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {

@@ -55,7 +55,7 @@ public class RefreshReleasesMetadataAction extends AnAction {
 		Project project = event.getProject();
 		Presentation presentation = event.getPresentation();
 
-		presentation.setText(MessageBundle.message("action.update.releases"));
+		presentation.setText(MessageBundle.message("action.refresh-releases"));
 		presentation.setIcon(DependencyAssistantIcons.ICON);
 
 		if (project == null) {

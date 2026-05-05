@@ -29,7 +29,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
 import org.jetbrains.plugins.github.api.GithubServerPath;
-import org.jetbrains.plugins.github.api.util.GithubApiPagesLoader;
 
 /**
  * Fixtures for GitHub Actions workflow tests.

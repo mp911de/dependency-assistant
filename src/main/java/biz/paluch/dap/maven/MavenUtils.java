@@ -27,7 +27,6 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
-import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;

@@ -43,13 +43,13 @@ import org.jspecify.annotations.NonNull;
  *
  * @author Mark Paluch
  */
-public class UpgradeDependencyAction extends PsiUpdateModCommandAction<PsiElement> implements LocalQuickFix {
+public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement> implements LocalQuickFix {
 
 	private final ProjectDependencyContext dependencyContext;
 
 	private final UpgradeSuggestion suggestion;
 
-	protected UpgradeDependencyAction(PsiElement element, ProjectDependencyContext dependencyContext,
+	protected UpdateDependencyAction(PsiElement element, ProjectDependencyContext dependencyContext,
 			UpgradeSuggestion suggestion) {
 		super(element);
 		this.dependencyContext = dependencyContext;
@@ -67,7 +67,7 @@ public class UpgradeDependencyAction extends PsiUpdateModCommandAction<PsiElemen
 	}
 
 	@Override
-	protected Presentation getPresentation(@NotNull ActionContext context, @NonNull PsiElement element) {
+	protected Presentation getPresentation(ActionContext context, PsiElement element) {
 
 		String strategy = MessageBundle.message("upgrade-strategy.%s".formatted(suggestion.getStrategy().name()));
 		String name = MessageBundle.message("UpgradeDependencyAction.name", strategy,

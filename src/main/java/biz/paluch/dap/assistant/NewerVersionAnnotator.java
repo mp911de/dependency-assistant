@@ -85,13 +85,13 @@ public class NewerVersionAnnotator implements Annotator {
 
 		if (action != null) {
 
-			builder = builder.newFix(new UpgradeDependencyAction(element, context, bestOption)).registerFix();
+			builder = builder.newFix(new UpdateDependencyAction(element, context, bestOption)).registerFix();
 
 			for (UpgradeSuggestion suggestion : upgrades.getUpgrades().values()) {
 				if (suggestion == bestOption) {
 					continue;
 				}
-				builder = builder.newFix(new UpgradeDependencyAction(element, context, suggestion)).registerFix();
+				builder = builder.newFix(new UpdateDependencyAction(element, context, suggestion)).registerFix();
 			}
 		}
 

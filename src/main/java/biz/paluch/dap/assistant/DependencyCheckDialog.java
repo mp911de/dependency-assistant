@@ -672,7 +672,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private final Set<SuggestedVersionComboBoxEditor> listeners = ConcurrentHashMap.newKeySet();
 
 		UpdateToColumn() {
-			super(MessageBundle.message("dialog.column.updateTo"));
+			super(MessageBundle.message("dialog.column.upgradeTo"));
 		}
 
 		@Override
@@ -741,7 +741,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private final ApplyUpdateCheckboxEditor editor = new ApplyUpdateCheckboxEditor();
 
 		DoUpdateColumn() {
-			super(MessageBundle.message("dialog.column.update"));
+			super(MessageBundle.message("dialog.column.upgrade"));
 		}
 
 		@Override

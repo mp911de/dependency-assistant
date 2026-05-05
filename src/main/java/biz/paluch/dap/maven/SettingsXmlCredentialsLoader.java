@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.artifact;
+package biz.paluch.dap.maven;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.artifact.RepositoryCredentials;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.idea.maven.project.MavenHomeKt;
@@ -50,7 +52,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class SettingsXmlCredentialsLoader {
+class SettingsXmlCredentialsLoader {
 
 	private static final Logger LOG = Logger.getInstance(SettingsXmlCredentialsLoader.class);
 
@@ -72,6 +74,10 @@ public class SettingsXmlCredentialsLoader {
 	 * @return map from server {@code <id>} to credentials.
 	 */
 	public static Map<String, RepositoryCredentials> load(Project project) {
+
+		if (!TrustedProjects.isProjectTrusted(project)) {
+			return Collections.emptyMap();
+		}
 
 		MavenProjectsManager mavenManager = MavenProjectsManager.getInstance(project);
 		if (mavenManager == null) {

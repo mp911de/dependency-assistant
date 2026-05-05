@@ -105,7 +105,7 @@ public class Notifications {
 		notification
 				.setSuggestionType(true)
 				.addAction(NotificationAction
-						.createSimpleExpiring(MessageBundle.message("notification.action.update.releases"), () -> {
+						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"), () -> {
 							ProgressManager.getInstance().run(taskFunction.apply(project));
 						}))
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
@@ -130,7 +130,7 @@ public class Notifications {
 		notification
 				.setSuggestionType(true)
 				.addAction(NotificationAction
-						.createSimpleExpiring(MessageBundle.message("notification.action.update.releases"), () -> {
+						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"), () -> {
 							ProgressManager.getInstance().run(taskFunction.apply(project));
 						}))
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),

@@ -16,12 +16,14 @@
 
 package biz.paluch.dap;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import com.intellij.openapi.util.IconLoader;
 
 /**
  * Icon utility class for Dependency Assistant icons.
+ *
+ * @author Mark Paluch
  */
 public class DependencyAssistantIcons {
 
@@ -31,51 +33,52 @@ public class DependencyAssistantIcons {
 	public static final Icon ICON = load("/META-INF/dependency-assistant.svg");
 
 	/**
-	 * Maven dependency update icon.
-	 */
-	public static final Icon UPGRADE_MAVEN_ICON = load("/META-INF/upgrade-icons/mavenProject.svg");
-
-	/**
-	 * Gradle dependency update icon.
-	 */
-	public static final Icon UPGRADE_GRADLE_ICON = load("/META-INF/upgrade-icons/gradle.svg");
-
-	/**
-	 * Library dependency update icon.
-	 */
-	public static final Icon UPGRADE_LIBRARY_ICON = load("/META-INF/upgrade-icons/library.svg");
-
-	/**
-	 * NPM dependency update icon.
-	 */
-	public static final Icon UPGRADE_NPM_ICON = load("/META-INF/upgrade-icons/npm.svg");
-
-	/**
-	 * NPM icon.
-	 */
-	public static final Icon NPM = load("/META-INF/npm.svg");
-
-	/**
-	 * GitHub dependency update icon.
-	 */
-	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/upgrade-icons/github.svg");
-
-	/**
-	 * TOML version catalog update icon.
-	 */
-	public static final Icon UPGRADE_TOML_ICON = load("/META-INF/upgrade-icons/toml.svg");
-
-	// TODO: UPGRADE_PROPERTY
-
-	/**
 	 * Property navigation gutter icon.
 	 */
-	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/propertyNavigate.svg");
+	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/icons/propertyNavigate.svg");
+
+	/**
+	 * Maven dependency upgrade icon.
+	 */
+	public static final Icon UPGRADE_MAVEN_ICON = load("/META-INF/icons/maven/upgrade-mavenProject.svg");
 
 	/**
 	 * TOML catalog navigation gutter icon.
 	 */
-	public static final Icon TOML_NAVIGATE = load("/META-INF/tomlNavigate.svg");
+	public static final Icon TOML_NAVIGATE = load("/META-INF/icons/gradle/tomlNavigate.svg");
+
+	/**
+	 * Gradle dependency upgrade icon.
+	 */
+	public static final Icon UPGRADE_GRADLE_ICON = load("/META-INF/icons/gradle/upgrade-gradle.svg");
+
+
+	/**
+	 * TOML version catalog upgrade icon.
+	 */
+	public static final Icon UPGRADE_TOML_ICON = load("/META-INF/icons/gradle/upgrade-toml.svg");
+
+	/**
+	 * Library dependency upgrade icon.
+	 */
+	public static final Icon UPGRADE_LIBRARY_ICON = load("/META-INF/icons/upgrade-library.svg");
+
+	/**
+	 * NPM dependency upgrade icon.
+	 */
+	public static final Icon UPGRADE_NPM_ICON = load("/META-INF/icons/npm/upgrade-npm.svg");
+
+	/**
+	 * NPM icon.
+	 */
+	public static final Icon NPM = load("/META-INF/icons/npm/npm.svg");
+
+	/**
+	 * GitHub dependency upgrade icon.
+	 */
+	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/icons/github/upgrade-github.svg");
+
+	// TODO: UPGRADE_PROPERTY
 
 	private static Icon load(String path) {
 		return IconLoader.getIcon(path, DependencyAssistantIcons.class.getClassLoader());

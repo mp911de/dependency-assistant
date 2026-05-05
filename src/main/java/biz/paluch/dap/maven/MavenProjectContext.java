@@ -24,9 +24,9 @@ import java.util.function.Function;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RepositoryCredentials;
-import biz.paluch.dap.artifact.SettingsXmlCredentialsLoader;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -35,6 +35,8 @@ import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Maven project context. Implements {@link ProjectBuildContext} so that all
@@ -78,18 +80,26 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return EmptyMavenContext.INSTANCE;
 		}
 		MavenProject mavenProject = projectsManager.findProject(file);
-		if (mavenProject == null) {
+		if (mavenProject == null || !isValid(mavenProject.getMavenId())) {
 			return EmptyMavenContext.INSTANCE;
 		}
 
-		return new MavenContextImpl(project, mavenProject, mavenProject.getMavenId());
+		return new MavenContextImpl(project, mavenProject);
+	}
+
+	static boolean isValid(MavenId mavenId) {
+		return StringUtils.hasText(mavenId.getGroupId()) && StringUtils.hasText(mavenId.getArtifactId());
+	}
+
+	static ProjectId createProjectId(MavenId mavenId) {
+		Assert.hasText(mavenId.getGroupId(), "groupId must not be null or empty");
+		Assert.hasText(mavenId.getArtifactId(), "groupId must not be null or empty");
+		return new ProjectId(mavenId.getGroupId(), mavenId.getArtifactId(), null);
 	}
 
 	/**
-	 * Returns the associated Maven id.
+	 * Return the Maven project.
 	 */
-	MavenId getMavenId();
-
 	MavenProject getMavenProject();
 
 	/**
@@ -101,28 +111,27 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		private final MavenProject mavenProject;
 
-		private final MavenId id;
-
 		private final ProjectId projectId;
 
 		/**
 		 * Create a context for the given Maven project.
 		 */
-		public MavenContextImpl(Project project, MavenProject mavenProject, MavenId id) {
+		public MavenContextImpl(Project project, MavenProject mavenProject) {
+			this(project, mavenProject.getMavenId(), mavenProject);
+		}
+
+		/**
+		 * Create a context for the given Maven project.
+		 */
+		public MavenContextImpl(Project project, MavenId id, MavenProject mavenProject) {
 			this.project = project;
 			this.mavenProject = mavenProject;
-			this.id = id;
-			this.projectId = ProjectId.of(id.getGroupId(), id.getArtifactId(), null);
+			this.projectId = createProjectId(id);
 		}
 
 		@Override
 		public boolean isAvailable() {
 			return true;
-		}
-
-		@Override
-		public MavenId getMavenId() {
-			return id;
 		}
 
 		@Override
@@ -155,11 +164,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 		@Override
 		public boolean isAvailable() {
 			return false;
-		}
-
-		@Override
-		public MavenId getMavenId() {
-			throw new IllegalStateException("Maven Context not available");
 		}
 
 		@Override

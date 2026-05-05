@@ -62,7 +62,7 @@ class MavenFixtures {
 
 		DependencyCollector collector = new DependencyCollector();
 		new MavenParser(collector, properties).parsePomFile(new Cache(), (XmlFile) file);
-		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), null, MAVEN_ID);
+		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), MAVEN_ID, null);
 		file.putUserData(MavenProjectContext.KEY, projectContext);
 		StateService.getInstance(file.getProject()).getProjectState(PROJECT_ID)
 				.setDependencies(collector);
