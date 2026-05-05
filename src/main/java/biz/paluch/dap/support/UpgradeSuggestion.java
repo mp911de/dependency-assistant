@@ -67,7 +67,7 @@ public class UpgradeSuggestion {
 	 * Return the localized gutter message for this suggestion.
 	 */
 	public String getMessage() {
-		String upgradeTarget = MessageBundle.message("upgrage-strategy." + strategy.name());
+		String upgradeTarget = MessageBundle.message("upgrade-strategy." + strategy.name());
 		return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, getRelease().version().toString());
 	}
 

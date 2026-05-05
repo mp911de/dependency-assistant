@@ -37,7 +37,7 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-public class UpdateDependenciesAction extends AnAction implements DumbAware {
+public class UpgradeDependenciesAction extends AnAction implements DumbAware {
 
 	@Override
 	public ActionUpdateThread getActionUpdateThread() {
@@ -79,7 +79,7 @@ public class UpdateDependenciesAction extends AnAction implements DumbAware {
 		Project project = event.getProject();
 		Presentation presentation = event.getPresentation();
 
-		presentation.setText(MessageBundle.message("biz.paluch.dap.UpdateDependencies.text"));
+		presentation.setText(MessageBundle.message("biz.paluch.dap.UpgradeDependencies.text"));
 		presentation.setDescription(MessageBundle.message("action.description"));
 		presentation.setIcon(DependencyAssistantIcons.ICON);
 

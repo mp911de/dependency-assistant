@@ -36,7 +36,7 @@ import com.intellij.psi.PsiManager;
 
 /**
  * Delegate to update the build file providing write action guarding.
- * 
+ *
  * @author Mark Paluch
  * @see UpdateBuildFile
  */
@@ -80,23 +80,23 @@ public class BuildActionDelegate implements UpdateBuildFile {
 			PsiFile psiFile = PsiManager.getInstance(project).findFile(buildFile);
 
 			if (psiFile == null) {
-				Notifications.error(project, MessageBundle.message("notification.update-build-file.error.title"),
-						MessageBundle.message("notification.update-build-file.no-file", buildFile.getPresentableUrl()));
+				Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
+						MessageBundle.message("UpdateBuildFile.notification.no-file", buildFile.getPresentableUrl()));
 				return;
 			}
 			try {
 				updateAction.accept(psiFile, updates);
 			} catch (Exception ex) {
 				LOG.warn("Build file update failed", ex);
-				Notifications.error(project, MessageBundle.message("notification.update-build-file.error.title"),
-						MessageBundle.message("notification.update-build-file.failed", buildFile.getPresentableUrl(),
+				Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
+						MessageBundle.message("UpdateBuildFile.notification.failed", buildFile.getPresentableUrl(),
 								Notifications.errorMessage(ex)));
 			}
 		};
 
 		ApplicationManager.getApplication().runWriteAction(() -> {
 			CommandProcessor.getInstance().executeCommand(project, updatePom,
-					MessageBundle.message("command.update.title"),
+					MessageBundle.message("UpdateBuildFile.title"),
 					null);
 		});
 	}

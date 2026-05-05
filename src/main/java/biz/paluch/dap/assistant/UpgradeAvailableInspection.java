@@ -93,7 +93,7 @@ public class UpgradeAvailableInspection extends LocalInspectionTool {
 				}
 
 				UpgradeSuggestion bestOption = upgrades.getUpgradeSuggestion();
-				String strategy = MessageBundle.message("upgrage-strategy." + bestOption.getStrategy());
+				String strategy = MessageBundle.message("upgrade-strategy." + bestOption.getStrategy());
 				String message = MessageBundle.message("inspection.upgrade-available.problem",
 						"'" + declaration.getArtifactId().artifactId() + "'", strategy,
 						bestOption.getRelease().getVersion());
@@ -201,9 +201,8 @@ public class UpgradeAvailableInspection extends LocalInspectionTool {
 
 		@Override
 		public String getText() {
-			String localizedStrategy = MessageBundle.message("dialog.upgradeTarget." + strategy);
-			return MessageBundle.message("inspection.newerVersion.fix.text", artifactDisplay,
-					update.version().toString(), localizedStrategy);
+			return MessageBundle.message("UpgradeDependencyAction.name", artifactDisplay,
+					update.version().toString());
 		}
 
 		@Override

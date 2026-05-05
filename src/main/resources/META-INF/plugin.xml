@@ -104,8 +104,8 @@
 	</extensions>
 
 	<actions>
-		<action id="biz.paluch.dap.UpdateDependencies"
-		        class="biz.paluch.dap.assistant.UpdateDependenciesAction"
+		<action id="biz.paluch.dap.UpgradeDependencies"
+		        class="biz.paluch.dap.assistant.UpgradeDependenciesAction"
 		        text="Update Dependencies…">
 			<add-to-group group-id="ToolsMenu" anchor="last"/>
 		</action>

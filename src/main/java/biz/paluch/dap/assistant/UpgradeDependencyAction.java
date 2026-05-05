@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
@@ -69,7 +69,7 @@ public class UpgradeDependencyAction extends PsiUpdateModCommandAction<PsiElemen
 	@Override
 	protected Presentation getPresentation(@NotNull ActionContext context, @NonNull PsiElement element) {
 
-		String strategy = MessageBundle.message("upgrage-strategy.%s".formatted(suggestion.getStrategy().name()));
+		String strategy = MessageBundle.message("upgrade-strategy.%s".formatted(suggestion.getStrategy().name()));
 		String name = MessageBundle.message("UpgradeDependencyAction.name", strategy,
 				suggestion.getRelease().getVersion());
 

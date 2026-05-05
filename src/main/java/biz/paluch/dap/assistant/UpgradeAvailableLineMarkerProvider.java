@@ -17,7 +17,8 @@
 package biz.paluch.dap.assistant;
 
 import java.awt.event.MouseEvent;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
@@ -98,7 +99,7 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 
 		return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
 				ui.getGutterIcon(declaration), e -> tooltip,
-				new ActionNavigationHandler("biz.paluch.dap.UpdateDependencies"),
+				new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 	}
 
