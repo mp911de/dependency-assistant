@@ -59,23 +59,7 @@ final class KotlinPluginIds {
 	static @Nullable PluginId fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
 			PropertyResolver scriptProperties) {
 
-		StringBuilder pluginId = new StringBuilder();
-		boolean[] failed = new boolean[1];
-
-		KtLiterals.doWithStrings(call, pluginId::append, expr -> {
-			String resolved = KotlinDslParser.resolveKotlinExpression(expr, scriptProperties);
-			if (resolved == null) {
-				failed[0] = true;
-			} else {
-				pluginId.append(resolved);
-			}
-		});
-
-		if (failed[0]) {
-			return null;
-		}
-
-		String id = scriptProperties.resolvePlaceholders(pluginId.toString());
+		String id = KtLiterals.from(call.getValueArgumentList()).toString(scriptProperties);
 		if (StringUtils.isEmpty(id)) {
 			return null;
 		}
@@ -111,7 +95,7 @@ final class KotlinPluginIds {
 			}
 		}
 
-		if (!StringUtils.hasText(versionText) || versionElement == null) {
+		if (!StringUtils.hasText(versionText)) {
 			return null;
 		}
 

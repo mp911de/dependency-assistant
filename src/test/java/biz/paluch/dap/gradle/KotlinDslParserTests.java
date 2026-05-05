@@ -336,7 +336,7 @@ class KotlinDslParserTests {
 		assertThat(collector)
 				.hasDependencyUsage("org.springframework.modulith", "spring-modulith-bom")
 				.hasVersion("2.0.4")
-				.hasDeclaration(DeclarationSource.dependency())
+				.hasDeclaration(DeclarationSource.managed())
 				.hasPropertyVersion("springModulithVersion");
 	}
 

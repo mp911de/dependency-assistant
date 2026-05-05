@@ -52,7 +52,6 @@ public class DependencyAssistantIcons {
 	 */
 	public static final Icon UPGRADE_GRADLE_ICON = load("/META-INF/icons/gradle/upgrade-gradle.svg");
 
-
 	/**
 	 * TOML version catalog upgrade icon.
 	 */

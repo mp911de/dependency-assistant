@@ -56,7 +56,6 @@ public class NewerVersionAnnotator implements Annotator {
 			return;
 		}
 
-		// TODO: Gutter text vs. file problems summary
 		IntentionAction action = UpgradeDependenciesIntention.INSTANCE;
 		UpgradeSuggestion bestOption = upgrades.getUpgradeSuggestion();
 		String message = bestOption.getMessage();

@@ -17,7 +17,6 @@
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -32,7 +31,16 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtCallElement;
+import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtExpression;
+import org.jetbrains.kotlin.psi.KtLambdaArgument;
+import org.jetbrains.kotlin.psi.KtLambdaExpression;
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.KtValueArgumentList;
+import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -52,70 +60,6 @@ class KotlinDslParser extends GradleParser {
 
 	KotlinDslParser(DependencyCollector collector, PropertyResolver propertyResolver) {
 		super(collector, propertyResolver);
-	}
-
-	/**
-	 * Resolve a Kotlin string-template expression against script properties.
-	 * <p>Used when parsing interpolated plugin ids and version literals.
-	 */
-	static @Nullable String resolveKotlinExpression(KtExpression expr, PropertyResolver properties) {
-
-		if (expr instanceof KtNameReferenceExpression ref) {
-			String name = ref.getReferencedName();
-			String value = properties.getProperty(name);
-			if (value == null) {
-				return null;
-			}
-			return properties.resolvePlaceholders(value);
-		}
-
-		if (expr instanceof KtCallExpression call && "property".equals(KotlinDslUtils.getKotlinCallName(call))) {
-			StringBuilder key = new StringBuilder();
-			KtLiterals.doWithStrings(call, key::append, e -> {
-			});
-
-			String k = key.toString();
-			String value = properties.getProperty(k);
-			if (value == null) {
-				return null;
-			}
-			return properties.resolvePlaceholders(value);
-		}
-
-		if (expr instanceof KtArrayAccessExpression arrayAccess) {
-			KtExpression receiver = arrayAccess.getArrayExpression();
-			List<KtExpression> indices = arrayAccess.getIndexExpressions();
-			if (receiver != null && "extra".equals(receiver.getText()) && indices.size() == 1) {
-				StringBuilder key = new StringBuilder();
-				KtLiterals.doWithStrings(indices.get(0), key::append, e -> {
-				});
-				String k = key.toString();
-				String value = properties.getProperty(k);
-				if (value == null) {
-					return null;
-				}
-				return properties.resolvePlaceholders(value);
-			}
-		}
-
-		if (expr instanceof KtDotQualifiedExpression dotQualified) {
-			KtExpression receiver = dotQualified.getReceiverExpression();
-			KtExpression selector = dotQualified.getSelectorExpression();
-			if ("project".equals(receiver.getText()) && selector instanceof KtCallExpression selectorCall
-					&& "property".equals(KotlinDslUtils.getKotlinCallName(selectorCall))) {
-				StringBuilder key = new StringBuilder();
-				KtLiterals.doWithStrings(selectorCall, key::append, e -> {
-				});
-				String k = key.toString();
-				String value = properties.getProperty(k);
-				if (value == null) {
-					return null;
-				}
-				return properties.resolvePlaceholders(value);
-			}
-		}
-
-		return null;
 	}
 
 	/**
@@ -296,8 +240,17 @@ class KotlinDslParser extends GradleParser {
 
 		KtStringTemplateExpression directNotation = findInlineDependencyLiteral(call, scriptProperties);
 		if (directNotation != null) {
-			return getDependencySite(call, directNotation,
-					KtLiterals.from(call.getValueArgumentList()).toString(), null);
+
+			KtCallExpression callExpression = PsiTreeUtil.findChildOfType(call.getValueArgumentList(),
+					KtCallExpression.class);
+
+			// skip 'implementation(platform' here, we will come to it on the next iteration
+			if (callExpression != null && KotlinDslUtils.isDependencyCall(callExpression)) {
+				return null;
+			}
+
+			String string = KtLiterals.from(call.getValueArgumentList()).toString();
+			return getDependencySite(call, directNotation, string, null);
 		}
 
 		KtVersion ktVersion = KtVersion.fromDependency(call);
@@ -350,7 +303,7 @@ class KotlinDslParser extends GradleParser {
 				continue;
 			}
 			if (gavTemplate == null && arg.getArgumentExpression() instanceof KtStringTemplateExpression expr) {
-				String text = resolveKotlinStringTemplate(expr, propertyResolver);
+				String text = KtLiterals.from(expr).toString(propertyResolver);
 				if (text != null && text.split(":").length == 2) {
 					gavTemplate = expr;
 				}
@@ -422,7 +375,7 @@ class KotlinDslParser extends GradleParser {
 
 		if (preferTemplate != null) {
 			KtLiterals literals = KtLiterals.from(preferTemplate);
-			version = resolveKotlinStringTemplate(preferTemplate, propertyResolver);
+			version = KtLiterals.from(preferTemplate).toString(propertyResolver);
 			versionLiteralElement = preferTemplate;
 			versionProperty = literals.hasProperty() ? literals.getProperty() : null;
 		} else if (preferNameRef != null) {
@@ -436,7 +389,8 @@ class KotlinDslParser extends GradleParser {
 			versionProperty = refName;
 		} else if (strictlyTemplate != null) {
 			KtLiterals literals = KtLiterals.from(strictlyTemplate);
-			String strictlyText = resolveKotlinStringTemplate(strictlyTemplate, propertyResolver);
+			String strictlyText = KtLiterals.from(strictlyTemplate)
+					.toString(propertyResolver);
 			if (GradleUtils.isVersionRange(literals.toString())) {
 				return null;
 			}
@@ -460,7 +414,7 @@ class KotlinDslParser extends GradleParser {
 			return null;
 		}
 
-		String gavText = resolveKotlinStringTemplate(gavTemplate, propertyResolver);
+		String gavText = KtLiterals.from(gavTemplate).toString(propertyResolver);
 		if (gavText == null) {
 			return null;
 		}
@@ -545,9 +499,9 @@ class KotlinDslParser extends GradleParser {
 		for (ValueArgument arg : call.getValueArguments()) {
 			String name = arg.getArgumentName() != null ? arg.getArgumentName().getAsName().asString() : null;
 			PsiElement expr = arg.getArgumentExpression();
-			String strVal = expr instanceof KtStringTemplateExpression st
-					? resolveKotlinStringTemplate(st, propertyResolver)
-					: null;
+			String strVal;
+			strVal = expr instanceof KtStringTemplateExpression st ? KtLiterals.from(st)
+					.toString(propertyResolver) : null;
 
 			if ("group".equals(name)) {
 				group = strVal;
@@ -561,7 +515,7 @@ class KotlinDslParser extends GradleParser {
 						versionLiteral = expr;
 						versionProperty = literals.getProperty();
 					} else {
-						version = renderKotlinStringTemplate(st);
+						version = literals.getText();
 						versionLiteral = expr;
 					}
 				} else if (expr instanceof KtNameReferenceExpression ref) {
@@ -579,71 +533,5 @@ class KotlinDslParser extends GradleParser {
 		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact, versionProperty, version,
 				call, versionLiteral);
 	}
-
-	/**
-	 * Extracts the property key referenced in a string template that contains a
-	 * single expression of the form {@code ${property("key")}},
-	 * {@code ${extra["key"]}}, {@code ${project.property("key")}}, or
-	 * {@code ${varName}}. Returns {@code null} when the template contains literals
-	 * or multiple/unsupported expressions.
-	 */
-	private static @Nullable String extractTemplatePropertyKey(KtStringTemplateExpression template) {
-
-		KtLiterals literals = KtLiterals.from(template);
-		return literals.toString();
-		/*
-		 * String[] result = {null}; boolean[] hasLiteral = {false};
-		 *
-		 * KotlinDslUtils.doWithStrings(template, text -> { if (!text.isEmpty()) {
-		 * hasLiteral[0] = true; } }, expression -> { String key =
-		 * KotlinDslUtils.getPropertyName(expression); if (StringUtils.hasText(key)) {
-		 * result[0] = key; } });
-		 *
-		 * if (hasLiteral[0]) { return null; } return result[0];
-		 */
-	}
-
-	private static @Nullable String resolveKotlinStringTemplate(KtStringTemplateExpression st,
-			PropertyResolver propertyResolver) {
-
-		StringBuilder builder = new StringBuilder();
-		boolean[] failed = new boolean[1];
-		KtLiterals.doWithStrings(st, builder::append, expression -> {
-
-			String resolved = resolveKotlinExpression(expression, propertyResolver);
-			if (resolved == null) {
-				failed[0] = true;
-			} else {
-				builder.append(resolved);
-			}
-		});
-
-		if (failed[0]) {
-			return null;
-		}
-		String merged = builder.toString();
-		return propertyResolver.resolvePlaceholders(merged);
-	}
-
-	private static String renderKotlinStringTemplate(KtStringTemplateExpression st) {
-
-		StringBuilder builder = new StringBuilder();
-		KtLiterals.doWithStrings(st, builder::append, expression -> {
-
-			if (expression instanceof KtCallExpression ktCall) {
-				String name = KotlinDslUtils.getKotlinCallName(ktCall);
-				StringBuilder property = new StringBuilder();
-				if ("property".equals(name)) {
-					KtLiterals.doWithStrings(ktCall, property::append, ignore -> {
-					});
-					String key = property.toString();
-					builder.append("${").append(key).append("}");
-				}
-			}
-		});
-
-		return builder.toString();
-	}
-
 
 }

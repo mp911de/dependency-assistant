@@ -61,10 +61,8 @@ class GradleUtils {
 	 */
 	static final Set<String> DEPENDENCY_CONFIGS = Set.of("implementation", "api", "runtimeOnly", "compileOnly",
 			"testImplementation", "testRuntimeOnly", "testCompileOnly", "androidTestImplementation",
-			"debugImplementation",
-			"releaseImplementation", "annotationProcessor", "kapt", "ksp", "provided", "compile", "runtime",
-			"testCompile",
-			"testRuntime", "classpath");
+			"debugImplementation", "releaseImplementation", "annotationProcessor", "kapt", "ksp", "provided", "compile",
+			"runtime", "testCompile", "testRuntime", "classpath");
 
 	/** Configuration names that represent a BOM / platform import (managed). */
 	static final Set<String> PLATFORM_FUNCTIONS = Set.of("platform", "enforcedPlatform", "mavenBom");

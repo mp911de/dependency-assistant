@@ -17,14 +17,22 @@
 package biz.paluch.dap.gradle;
 
 import java.util.List;
-import java.util.function.Consumer;
 
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.containers.JBIterable;
-import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
+import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry;
+import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression;
+import org.jetbrains.kotlin.psi.KtElement;
+import org.jetbrains.kotlin.psi.KtExpression;
+import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.jetbrains.kotlin.psi.KtReferenceExpression;
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -128,19 +136,31 @@ class KtLiterals {
 		}
 
 		List<KtLiteral> literals = SyntaxTraverser.psiTraverser(element)
-				.filter(KtStringTemplateExpression.class)
-				.filter(it -> PsiTreeUtil.getParentOfType(it, KtStringTemplateExpression.class) == null)
-				.flatMap(it -> JBIterable.of(it.getEntries()))
+				.expand(it -> !(it instanceof KtStringTemplateExpression
+						|| it instanceof KtNameReferenceExpression))
+				.filter(KtElement.class)
 				.flatMap(it -> {
 
-					if (it instanceof KtLiteralStringTemplateEntry literal) {
-						return JBIterable.of(
-								new KtLiteral(getText(literal), null, (KtElement) literal.getParent()));
+					if (it instanceof KtNameReferenceExpression referenceExpression) {
+						if (StringUtils.hasText(referenceExpression.getReferencedName())) {
+							return KtLiterals.property(referenceExpression.getReferencedName(),
+									referenceExpression).getLiterals();
+						}
+
+						if (StringUtils.hasText(referenceExpression.getName())) {
+							return KtLiterals.property(referenceExpression.getName(), referenceExpression)
+									.getLiterals();
+						}
 					}
 
-					if (it instanceof KtBlockStringTemplateEntry block) {
-						return JBIterable.from(block.getExpressions()).map(KtLiterals::fromPropertyCandidate)
-								.map(KtLiterals::getLiterals).flatMap(JBIterable::from);
+					if (it instanceof KtStringTemplateExpression kse) {
+
+						KtStringTemplateExpression parentOfType = PsiTreeUtil.getParentOfType(it,
+								KtStringTemplateExpression.class);
+						if (parentOfType == null) {
+							return from(kse).getLiterals();
+						}
+						return JBIterable.empty();
 					}
 
 					return JBIterable.empty();
@@ -163,47 +183,6 @@ class KtLiterals {
 	public static String getText(KtElement element) {
 		Assert.notNull(element, "Element must not be null");
 		return KtLiterals.from(element).getText();
-	}
-
-	// TODO
-	static void doWithStrings(KtStringTemplateExpression element, Consumer<String> text,
-			Consumer<KtExpression> expressionConsumer) {
-
-		for (PsiElement child : element.getChildren()) {
-			if (child instanceof KtStringTemplateExpression kse) {
-				doWithStrings(kse, text, expressionConsumer);
-			} else if (child instanceof KtBlockStringTemplateEntry block) {
-				for (KtExpression expression : block.getExpressions()) {
-					expressionConsumer.accept(expression);
-				}
-			} else if (child instanceof KtSimpleNameStringTemplateEntry simple) {
-				KtExpression expr = simple.getExpression();
-				if (expr == null) {
-					expr = PsiTreeUtil.getChildOfType(simple, KtNameReferenceExpression.class);
-				}
-				if (expr != null) {
-					expressionConsumer.accept(expr);
-				} else {
-					text.accept(child.getText());
-				}
-			} else {
-				text.accept(child.getText());
-			}
-		}
-	}
-
-	// TODO
-	static void doWithStrings(KtElement element, Consumer<String> text, Consumer<KtExpression> expressionConsumer) {
-
-		for (PsiElement child : element.getChildren()) {
-			if (child instanceof KtStringTemplateExpression kse) {
-				doWithStrings(kse, text, expressionConsumer);
-			} else if (child instanceof KtLiteralStringTemplateEntry kse) {
-				text.accept(kse.getText());
-			} else if (child instanceof KtElement kte) {
-				doWithStrings(kte, text, expressionConsumer);
-			}
-		}
 	}
 
 	/**
@@ -303,6 +282,20 @@ class KtLiterals {
 	}
 
 	/**
+	 * Create a {@link KtLiterals} instance that represents a single property.
+	 */
+	public KtLiterals asProperty() {
+		if (property != null && property.isProperty()) {
+			return new KtLiterals(property);
+		}
+		if (literals.isEmpty()) {
+			return EMPTY;
+		}
+		KtLiteral first = literals.getFirst();
+		return new KtLiterals(new KtLiteral(null, first.value(), first.expression()));
+	}
+
+	/**
 	 * Return the number of normalized fragments contributing to this instance.
 	 *
 	 * @return the fragment count; {@code 0} for an empty instance.
@@ -325,17 +318,30 @@ class KtLiterals {
 	}
 
 	/**
-	 * Create a {@link KtLiterals} instance that represents a single property.
+	 * Render the literals to {@code String} and resolve any property references.
+	 * @param propertyResolver the property resolver to use.
+	 * @return the rendered literal content, or the empty string if there are no
+	 * literal fragments.
 	 */
-	public KtLiterals asProperty() {
-		if (property != null && property.isProperty()) {
-			return new KtLiterals(property);
+	public String toString(PropertyResolver propertyResolver) {
+
+		StringBuilder builder = new StringBuilder();
+
+		for (KtLiteral literal : literals) {
+
+			if (literal.isProperty()) {
+				String value = propertyResolver.getProperty(literal.getProperty());
+				if (value != null) {
+					builder.append(value);
+				} else {
+					builder.append(literal);
+				}
+			} else {
+				builder.append(literal);
+			}
 		}
-		if (literals.isEmpty()) {
-			return EMPTY;
-		}
-		KtLiteral first = literals.getFirst();
-		return new KtLiterals(new KtLiteral(null, first.value(), first.expression()));
+
+		return builder.toString();
 	}
 
 	/**
