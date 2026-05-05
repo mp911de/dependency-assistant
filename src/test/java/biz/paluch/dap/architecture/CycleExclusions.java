@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.library.dependencies.SliceAssignment;
+import com.tngtech.archunit.library.dependencies.SliceIdentifier;
 
 /**
  * Value object describing exclusions for dependency cycle checks.
@@ -68,6 +70,19 @@ class CycleExclusions {
 		}
 
 		return isExcludedByPackage(javaClass) || isExcludedByClass(javaClass);
+	}
+
+	/**
+	 * Decorate the given {@link SliceAssignment} so that excluded classes are
+	 * dropped from slicing (mapped to {@link SliceIdentifier#ignore()}) before the
+	 * delegate sees them.
+	 *
+	 * @param delegate the underlying slice assignment to consult for retained
+	 * classes; must not be {@literal null}.
+	 * @return a slice assignment that honours these exclusions.
+	 */
+	SliceAssignment apply(SliceAssignment delegate) {
+		return new ExclusionAwareSliceAssignment(this, delegate);
 	}
 
 	private boolean isExcludedByPackage(JavaClass javaClass) {
@@ -121,6 +136,22 @@ class CycleExclusions {
 
 		boolean matches(JavaClass javaClass) {
 			return javaClass.getName().equals(this.className);
+		}
+
+	}
+
+	private record ExclusionAwareSliceAssignment(CycleExclusions exclusions,
+			SliceAssignment delegate) implements SliceAssignment {
+
+		@Override
+		public SliceIdentifier getIdentifierOf(JavaClass javaClass) {
+			return this.exclusions.isExcluded(javaClass) ? SliceIdentifier.ignore()
+					: this.delegate.getIdentifierOf(javaClass);
+		}
+
+		@Override
+		public String getDescription() {
+			return this.delegate.getDescription();
 		}
 
 	}

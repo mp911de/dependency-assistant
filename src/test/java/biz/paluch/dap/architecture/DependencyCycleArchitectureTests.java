@@ -16,35 +16,20 @@
 
 package biz.paluch.dap.architecture;
 
-import java.util.function.Function;
+import java.util.Arrays;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.DependencyDocumentationProvider;
-import biz.paluch.dap.github.GitHubWorkflowCompletionContributor;
-import biz.paluch.dap.maven.XmlReleaseVersionCompletionContributor;
-import biz.paluch.dap.npm.NpmVersionCompletionContributor;
-import biz.paluch.dap.severity.DependencyAssistantSeverities;
-import biz.paluch.dap.support.PropertyExpression;
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.library.dependencies.SliceAssignment;
-import com.tngtech.archunit.library.dependencies.SliceIdentifier;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.*;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 
 /**
  * Architecture tests for cyclic dependencies within the production code base.
- * <p>The package rule verifies that the root package and its top-level
- * subpackages do not form cycles. The class rule applies the same verification
- * at individual class level.
  *
  * @author Mark Paluch
  */
@@ -52,149 +37,97 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 		ExcludeInstrumentedTestCode.class})
 class DependencyCycleArchitectureTests {
 
-	private static final String ROOT_PACKAGE = "biz.paluch.dap";
-
-	private static final String ROOT_PACKAGE_PREFIX = ROOT_PACKAGE + ".";
-
-	// TODO: Allow self-encapsulated and sealed types to refer to themselves
 	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
-			.excludingClass(ArtifactId.class, "inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.artifact.Suffix", "inner and outer class design that depends on each other")
-			.excludingClass(ArtifactVersion.class, "inner and outer class design that depends on each other")
-			.excludingClass(DeclarationSource.class, "inner and outer class design that depends on each other")
-			.excludingClass(VersionSource.class, "inner and outer class design that depends on each other")
-			.excludingClass(ReleaseSource.class, "inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.gradle.GradlePlugin",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.gradle.KotlinExtraAssignment",
-					"inner and outer class design that depends on each other")
-			.excludingClass(NpmVersionCompletionContributor.class,
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.gradle.GradleRichVersion",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.gradle.GradleDependency",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.gradle.GroovyExtAssignment",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.maven.MavenProjectContext",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.xml.XmlBeamProjectorFactory",
-					"inner and outer class design that depends on each other")
-			.excludingClass(DependencyAssistantSeverities.class,
-					"inner and outer class design that depends on each other")
-			.excludingClass(PropertyExpression.class,
-					"inner and outer class design that depends on each other")
-			.excludingClass(GitHubWorkflowCompletionContributor.class,
-					"inner and outer class design that depends on each other")
-			.excludingClass(XmlReleaseVersionCompletionContributor.class,
-					"inner and outer class design that depends on each other")
-			.excludingClass(NpmVersionCompletionContributor.class,
-					"inner and outer class design that depends on each other")
-			.excludingClass(biz.paluch.dap.assistant.PostStartup.class,
-					"inner and outer class design that depends on each other")
 			.excludingClass(DependencyDocumentationProvider.class,
 					"TODO: refine design")
 			.excludingClass("biz.paluch.dap.maven.MavenParser",
 					"Fix todo's")
 			.excludingClass("biz.paluch.dap.gradle.KotlinPluginIds",
 					"Fix todo's")
-			.excludingClass("biz.paluch.dap.gradle.LookupSite",
-					"inner and outer class design that depends on each other")
+			.excludingClass("biz.paluch.dap.gradle.ExtraDeclaration",
+					"Fix todo's")
+			.excludingClass("biz.paluch.dap.gradle.GroovyDslUtils",
+					"Fix todo's")
 			.excludingClass("biz.paluch.dap.npm.NpmGitRef",
-					"inner and outer class design that depends on each other")
+					"Fix todo's")
 			.excludingClass("biz.paluch.dap.npm.NpmVersionExpression",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.support.ArtifactDeclaration",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.support.DependencySite",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.state.StateService",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.github.GitHubAction",
-					"inner and outer class design that depends on each other")
-			.excludingClass("biz.paluch.dap.gradle.GradlePropertyResolver",
-					"inner and outer class design that depends on each other")
+					"Fix todo's")
+			.excludingClass("biz.paluch.dap.gradle.KotlinDslSettingsParser",
+					"Fix todo's")
+			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
+					"Fix todo's")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
-					"inner and outer class design that depends on each other")
+					"Fix todo's")
 			.excludingClass(UpgradeStrategy.class, "wtf?");
 
-	private static final SliceAssignment TOP_LEVEL_PACKAGES = new SimpleSliceAssignment(
-			DependencyCycleArchitectureTests::topLevelPackageIdentifier);
-
-	private static final SliceAssignment INDIVIDUAL_CLASSES = new DependencyCycleSliceAssignment(
-			DependencyCycleArchitectureTests::classIdentifier);
+	@ArchTest
+	static final ArchRule packagesShouldBeFreeOfCycles = slices().assignedFrom(SliceRules.allPackages())
+			.should()
+			.beFreeOfCycles()
+			.as("Packages should be free of cyclic dependencies");
 
 	@ArchTest
-	static final ArchRule topLevelPackagesShouldBeFreeOfCycles = slices().assignedFrom(TOP_LEVEL_PACKAGES)
+	static final ArchRule classesShouldBeFreeOfCycles = slices()
+			.assignedFrom(EXCLUSIONS.apply(SliceRules.classesAndClosedHierarchies()))
 			.should()
 			.beFreeOfCycles()
-			.as("top-level packages should be free of cyclic dependencies");
+			.as("Classes should be free of cyclic dependencies");
 
-	// @ArchTest
-	// TODO: Formulate general rule that allows inner classes cycles and between an
-	// interface and its subtypes (e.g. default method creating a concrete type).
-	static final ArchRule classesShouldBeFreeOfCycles = slices().assignedFrom(INDIVIDUAL_CLASSES)
-			.should()
-			.beFreeOfCycles()
-			.as("production classes should be free of cyclic dependencies");
+	@ArchTest
+	static final ArchRule root = packageDependencies("biz.paluch.dap",
+			"artifact", "state", "support");
 
-	private static SliceIdentifier topLevelPackageIdentifier(JavaClass javaClass) {
-		String packageName = javaClass.getPackageName();
+	@ArchTest
+	static final ArchRule artifact = packageDependencies(
+			"artifact", "util", "xml");
 
-		if (packageName.equals(ROOT_PACKAGE)) {
-			return SliceIdentifier.of(ROOT_PACKAGE);
-		}
+	@ArchTest
+	static final ArchRule assistantPackage = packageDependencies(
+			"assistant", "biz.paluch.dap", "artifact", "severity", "state", "support", "util");
 
-		if (!packageName.startsWith(ROOT_PACKAGE_PREFIX)) {
-			return SliceIdentifier.ignore();
-		}
+	@ArchTest
+	static final ArchRule github = packageDependencies("github",
+			"biz.paluch.dap", "artifact", "assistant", "state", "support", "util");
 
-		int nextDot = packageName.indexOf('.', ROOT_PACKAGE_PREFIX.length());
-		String sliceName = nextDot == -1 ? packageName : packageName.substring(0, nextDot);
+	@ArchTest
+	static final ArchRule gradle = packageDependencies("gradle",
+			"biz.paluch.dap", "artifact", "assistant", "state", "support", "util");
 
-		return SliceIdentifier.of(sliceName);
-	}
+	@ArchTest
+	static final ArchRule maven = packageDependencies("maven",
+			"biz.paluch.dap",
+			"artifact", "assistant", "state", "support", "util");
 
-	private static SliceIdentifier classIdentifier(JavaClass javaClass) {
-		String packageName = javaClass.getPackageName();
+	@ArchTest
+	static final ArchRule npm = packageDependencies("npm", "biz.paluch.dap",
+			"artifact", "assistant", "state", "support", "util", "github");
 
-		if (!packageName.equals(ROOT_PACKAGE) && !packageName.startsWith(ROOT_PACKAGE_PREFIX)) {
-			return SliceIdentifier.ignore();
-		}
+	@ArchTest
+	static final ArchRule severity = packageDependencies("severity",
+			"biz.paluch.dap", "support");
 
-		return SliceIdentifier.of(javaClass.getName());
-	}
+	@ArchTest
+	static final ArchRule state = packageDependencies("state", "artifact",
+			"util");
 
-	private record DependencyCycleSliceAssignment(
-			Function<JavaClass, SliceIdentifier> identifierFunction) implements SliceAssignment {
+	@ArchTest
+	static final ArchRule support = packageDependencies("support", "artifact",
+			"state", "util");
 
-		@Override
-		public SliceIdentifier getIdentifierOf(JavaClass javaClass) {
-			return EXCLUSIONS.isExcluded(javaClass) ? SliceIdentifier.ignore()
-					: this.identifierFunction.apply(javaClass);
-		}
+	@ArchTest
+	static final ArchRule util = packageDependencies("util");
 
-		@Override
-		public String getDescription() {
-			return "Slice";
-		}
+	@ArchTest
+	static final ArchRule xml = packageDependencies("xml");
 
-	}
+	private static ArchRule packageDependencies(String packageUnderTest, String... allowedPackages) {
 
-	private record SimpleSliceAssignment(
-			Function<JavaClass, SliceIdentifier> identifierFunction) implements SliceAssignment {
-
-		@Override
-		public SliceIdentifier getIdentifierOf(JavaClass javaClass) {
-			return this.identifierFunction.apply(javaClass);
-		}
-
-		@Override
-		public String getDescription() {
-			return "Slice";
-		}
-
+		return classes().that()
+				.resideInAPackage(ArchRules.expandPackage(packageUnderTest))
+				.should()
+				.onlyDependOnClassesThat(ArchRules.residesInAnyPackage(packageUnderTest, allowedPackages))
+				.as(String.format("Package '%s' should only depend on classes in %s", packageUnderTest,
+						Arrays.asList(allowedPackages)));
 	}
 
 }
-

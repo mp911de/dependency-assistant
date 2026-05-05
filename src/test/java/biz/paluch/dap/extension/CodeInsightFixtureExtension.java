@@ -49,7 +49,7 @@ import org.junit.platform.commons.util.ReflectionUtils;
  * <li>non-static, non-final fields of type {@link IdeaProjectTestFixture}</li>
  * <li>test method or lifecycle method parameters of those same types</li>
  * </ul>
- * 
+ *
  * @author Mark Paluch
  */
 class CodeInsightFixtureExtension
@@ -68,8 +68,8 @@ class CodeInsightFixtureExtension
 		FixtureResource resource = context.getStore(NAMESPACE).get(STORE_KEY, FixtureResource.class);
 		if (resource == null) {
 			throw new ExtensionConfigurationException(
-					"No CodeInsightTestFixture available in current extension context — "
-							+ "ensure @CodeInsightFixtureTests is present and "
+					"No CodeInsightTestFixture available in current extension context. "
+							+ "Ensure @CodeInsightFixtureTests is present and "
 							+ CodeInsightFixtureExtension.class.getSimpleName() + " has run beforeEach");
 		}
 		return resource.codeInsightFixture();

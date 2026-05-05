@@ -46,8 +46,6 @@ class TomlArtifactResolverRegistryTests {
 
 		TomlReference reference = TomlReference.of("tools", null, "some-lib");
 
-		// File does not exist in the temp project, so resolution yields null — but the
-		// alias lookup itself succeeds (no unresolved-due-to-unknown-alias path taken).
 		assertThat(resolver.findCatalogForReference(reference, file.getVirtualFile())).isNull();
 	}
 

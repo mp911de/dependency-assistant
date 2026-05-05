@@ -115,7 +115,7 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 		RegisteredFiles files = extensionContext.getStore(NAMESPACE).get(FILES_KEY, RegisteredFiles.class);
 		if (files == null) {
 			throw new ParameterResolutionException(
-					"No registered files found — ensure beforeEach has run for this test");
+					"No registered files found. Ensure beforeEach has run for this test");
 		}
 
 		Parameter parameter = parameterContext.getParameter();
