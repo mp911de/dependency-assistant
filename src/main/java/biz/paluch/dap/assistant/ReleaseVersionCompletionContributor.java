@@ -26,6 +26,8 @@ import com.intellij.util.ProcessingContext;
 /**
  * Completion contributor that suggests cached release versions.
  *
+ * TODO: Kotlin completion sometimes doesn't work. TODO: Maven ctrl + space
+ * completion doesn't work.
  * @author Mark Paluch
  */
 public class ReleaseVersionCompletionContributor extends CompletionContributor {

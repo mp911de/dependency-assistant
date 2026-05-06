@@ -94,16 +94,13 @@ class UpdateProjectState {
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
 		DependencyCollector aggregate = new DependencyCollector();
-		StateService service = StateService.getInstance(project);
 		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(project);
 		GitHubDependencyCollector collector = new GitHubDependencyCollector();
 		Map<GitRepositoryMetadata, GitHubReleaseSource> releaseSources = new java.util.HashMap<>();
 
 		doWithAllFiles(psiFile -> {
 
-			DependencyCollector fileCollector = new DependencyCollector();
-			collector.doCollect(psiFile, fileCollector);
-			GitHubProjectContext context = GitHubProjectContext.of(project, psiFile.getVirtualFile());
+			collector.doCollect(psiFile, aggregate);
 			GitRepositoryMetadata coordinates = repositoryResolver.resolveOwnerAndRepository(psiFile.getVirtualFile());
 			if (coordinates != null) {
 				releaseSources.computeIfAbsent(coordinates,
@@ -114,7 +111,6 @@ class UpdateProjectState {
 				releaseSources.computeIfAbsent(coordinates,
 						it -> GitHubReleaseSource.from(project, coordinates.host()));
 			}
-			service.getProjectState(context.getProjectId()).setDependencies(fileCollector);
 		}, indicator);
 
 		if (releaseSources.isEmpty()) {

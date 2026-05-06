@@ -123,6 +123,7 @@ class KtVersion {
 							&& dotQualified.getSelectorExpression() instanceof KtCallExpression;
 				}).filter(KtExpression.class)
 				.flatMap(it -> {
+
 					String propertyName = KtLiterals.getText(it);
 					if (StringUtils.hasText(propertyName)) {
 						return JBIterable.of(it);

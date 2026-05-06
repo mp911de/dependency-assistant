@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Resolves available versions by fetching {@link Release}s from
  * {@link ReleaseSource}s.
- * 
+ *
  * @author Mark Paluch
  */
 public class ReleaseResolver {

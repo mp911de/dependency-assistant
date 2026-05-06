@@ -36,9 +36,9 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.psi.xml.XmlText;
 import com.intellij.psi.xml.XmlTokenType;
 import org.jspecify.annotations.Nullable;
 
@@ -116,6 +116,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
+		if (element.getNode() != null
+				&& element.getNode().getElementType() == XmlTokenType.XML_DATA_CHARACTERS) {
+			element = PsiTreeUtil.getParentOfType(element, XmlTag.class);
+		}
+
 		if (PomUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
 			return resolveArtifactDeclaration(versionTag);
 		}
@@ -134,9 +139,15 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	private boolean isCompletionLookupElement(PsiElement element) {
-		return element.isValid() && (element instanceof XmlText
-				|| (element.getNode() != null
-						&& element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS));
+
+
+		/*
+		 *
+		 * && (element instanceof XmlText || (element.getNode() != null &&
+		 * element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS))
+		 */
+
+		return element.isValid();
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {

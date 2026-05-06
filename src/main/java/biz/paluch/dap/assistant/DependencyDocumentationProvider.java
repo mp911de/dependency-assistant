@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
-import java.awt.*;
+import java.awt.Image;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,6 +40,7 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.model.Pointer;
 import com.intellij.openapi.project.Project;
@@ -67,7 +68,7 @@ public class DependencyDocumentationProvider
 	@Override
 	public @Nullable DocumentationTarget documentationTarget(PsiElement element, @Nullable PsiElement originalElement) {
 
-		PsiElement target = originalElement != null ? originalElement : element;
+		PsiElement target = PsiVisitors.unleaf(originalElement != null ? originalElement : element);
 		Project project = target.getProject();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
 				target.getContainingFile());
@@ -75,8 +76,8 @@ public class DependencyDocumentationProvider
 			return null;
 		}
 
-		VersionUpgradeLookupSupport lookup = context.getLookup(element);
-		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
+		VersionUpgradeLookupSupport lookup = context.getLookup(target);
+		ArtifactReference artifactReference = lookup.resolveArtifactReference(target);
 		if (!artifactReference.isResolved()) {
 			return null;
 		}
@@ -162,17 +163,18 @@ public class DependencyDocumentationProvider
 
 		private final InterfaceAssistant interfaceAssistant;
 
+		private final SmartPsiElementPointer<PsiElement> pointer;
+
 		public PropertyDocumentationTarget(PsiElement target, Cache cache, @Nullable ArtifactVersion currentVersion,
 				@Nullable String currentValue, VersionProperty property, InterfaceAssistant interfaceAssistant) {
 			super(target, cache, currentVersion, currentValue);
 			this.property = property;
 			this.interfaceAssistant = interfaceAssistant;
+			this.pointer = SmartPointerManager.createPointer(target);
 		}
 
 		@Override
 		public Pointer<? extends DocumentationTarget> createPointer() {
-
-			SmartPsiElementPointer<PsiElement> pointer = SmartPointerManager.createPointer(target);
 			return () -> {
 				PsiElement element = pointer.getElement();
 				return element != null
@@ -201,18 +203,19 @@ public class DependencyDocumentationProvider
 
 		private final InterfaceAssistant interfaceAssistant;
 
+		private final SmartPsiElementPointer<PsiElement> pointer;
+
 		public DependencyVersionTarget(PsiElement target, Cache cache, ArtifactId artifactId,
 				@Nullable ArtifactVersion currentVersion, @Nullable String currentValue,
 				InterfaceAssistant interfaceAssistant) {
 			super(target, cache, currentVersion, currentValue);
 			this.artifactId = artifactId;
 			this.interfaceAssistant = interfaceAssistant;
+			this.pointer = SmartPointerManager.createPointer(target);
 		}
 
 		@Override
 		public Pointer<? extends DocumentationTarget> createPointer() {
-
-			SmartPsiElementPointer<PsiElement> pointer = SmartPointerManager.createPointer(target);
 			return () -> {
 				PsiElement element = pointer.getElement();
 				return element != null
@@ -260,7 +263,7 @@ public class DependencyDocumentationProvider
 		for (CachedArtifact artifact : property.artifacts()) {
 
 			ArtifactId artifactId = artifact.toArtifactId();
-			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.property-for"),
+			sb.append("<p>%s <code>%s</code></p>".formatted(MessageBundle.message("documentation.property-for"),
 					artifactId));
 
 			List<Release> versions = cache.getReleases(artifactId);

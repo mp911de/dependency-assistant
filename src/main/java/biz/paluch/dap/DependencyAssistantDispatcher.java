@@ -123,8 +123,13 @@ public class DependencyAssistantDispatcher {
 
 		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
 
-			if (integration.supports(file)) {
-				return integration.createContext(file.getProject(), file);
+			if (!integration.supports(file)) {
+				continue;
+			}
+
+			ProjectDependencyContext context = integration.createContext(file.getProject(), file);
+			if (context.isAvailable()) {
+				return context;
 			}
 		}
 
@@ -145,8 +150,13 @@ public class DependencyAssistantDispatcher {
 		}
 
 		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
-			if (integration.supports(file)) {
-				return integration.createContext(project, file);
+			if (!integration.supports(file)) {
+				continue;
+			}
+
+			ProjectDependencyContext context = integration.createContext(project, file);
+			if (context.isAvailable()) {
+				return context;
 			}
 		}
 

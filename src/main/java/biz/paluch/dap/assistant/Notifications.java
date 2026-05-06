@@ -37,7 +37,7 @@ import com.intellij.util.text.DateFormatUtil;
 
 /**
  * Utility to manage Dependency Assistant notifications.
- * 
+ *
  * @author Mark Paluch
  */
 public class Notifications {
@@ -120,6 +120,7 @@ public class Notifications {
 	public static void releaseMetadataStale(Project project, Instant cacheUpdate,
 			Function<Project, Task> taskFunction) {
 
+		// TODO: 56 years ago?
 		String ago = DateFormatUtil.formatBetweenDates(cacheUpdate.toEpochMilli(), Instant.now().toEpochMilli());
 
 		Notification notification = new Notification(

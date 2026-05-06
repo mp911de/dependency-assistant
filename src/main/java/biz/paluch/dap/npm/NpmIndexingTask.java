@@ -90,10 +90,7 @@ class NpmIndexingTask {
 		NpmDependencyCollector collector = new NpmDependencyCollector();
 
 		doWithAllFiles(psiFile -> {
-
-			DependencyCollector collect = collector.collect(psiFile);
-			NpmProjectContext context = NpmProjectContext.of(project, psiFile.getVirtualFile());
-			service.getProjectState(context.getProjectId()).setDependencies(collect);
+			collector.doCollect(psiFile, aggregate);
 		}, indicator);
 
 		aggregate.addAllReleaseSources(NpmProjectContext.getReleaseSources(project));

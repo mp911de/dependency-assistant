@@ -96,14 +96,15 @@ class DependencyCheck {
 	public DependencyUpdates getDependencyUpdates(ProgressIndicator indicator, ProjectDependencyContext context,
 			Consistency consistency) {
 
-		return ApplicationManager.getApplication().runReadAction((Computable<DependencyUpdates>) () -> {
-			ProjectState projectState = service.getProjectState(context.getProjectId());
-			return getDependencyUpdates(indicator, context, () -> {
-				DependencyCollector collector = context.scanDependencies(indicator);
-				projectState.setDependencies(collector);
-				return collector;
-			}, consistency);
-		});
+		ProjectState projectState = service.getProjectState(context.getProjectId());
+		DependencyCollector collector = ApplicationManager.getApplication()
+				.runReadAction((Computable<DependencyCollector>) () -> {
+					DependencyCollector c = context.scanDependencies(indicator);
+					projectState.setDependencies(c);
+					return c;
+				});
+
+		return getDependencyUpdates(indicator, context, () -> collector, consistency);
 	}
 
 	/**
@@ -274,6 +275,7 @@ class DependencyCheck {
 
 		try {
 			indicator.setText(MessageBundle.message("action.check.dependency", artifactId));
+			indicator.checkCanceled();
 			ReleaseResolver resolver = new ReleaseResolver(sources, executor);
 			List<Release> releases;
 			if (consistency == Consistency.NO_CACHE) {

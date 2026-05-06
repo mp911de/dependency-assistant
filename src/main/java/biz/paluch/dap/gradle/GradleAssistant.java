@@ -17,7 +17,8 @@
 package biz.paluch.dap.gradle;
 
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
@@ -97,10 +98,6 @@ class GradleAssistant implements DependencyAssistant {
 	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
 
 		GradleProjectContext context = GradleProjectContext.of(project, anchor);
-		if (context.isAbsent()) {
-			throw new IllegalStateException("No Gradle project found for " + anchor);
-		}
-
 		return new GradleDependencyContext(project, anchor, context, context.getProjectId());
 	}
 
@@ -233,7 +230,7 @@ class GradleAssistant implements DependencyAssistant {
 		public Icon getGutterIcon(ArtifactDeclaration declaration) {
 
 			if (declaration.getVersionLiteral() instanceof TomlElement) {
-				return DependencyAssistantIcons.TOML_NAVIGATE;
+				return DependencyAssistantIcons.UPGRADE_TOML_ICON;
 			}
 
 			return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;

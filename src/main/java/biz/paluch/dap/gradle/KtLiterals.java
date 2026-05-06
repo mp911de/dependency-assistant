@@ -78,6 +78,13 @@ class KtLiterals {
 	}
 
 	/**
+	 * Return an empty instance.
+	 */
+	public static KtLiterals empty() {
+		return EMPTY;
+	}
+
+	/**
 	 * Create a {@link KtLiterals} view for the supplied Kotlin PSI element.
 	 * @param element the Kotlin PSI element to inspect.
 	 * @return a {@link KtLiterals} representing the supported fragments contained
@@ -109,6 +116,10 @@ class KtLiterals {
 			return new KtLiterals(new KtLiteral(entry.getText(), null, entry));
 		}
 		case KtNameReferenceExpression nameRef -> {
+			if (StringUtils.isEmpty(nameRef.getReferencedName())) {
+				return KtLiterals.empty();
+			}
+
 			return new KtLiterals(new KtLiteral(nameRef.getReferencedName(), null, nameRef));
 		}
 		case KtArrayAccessExpression arrayAccess when arrayAccess.getArrayExpression() != null
@@ -123,6 +134,10 @@ class KtLiterals {
 			}
 		}
 		case KtReferenceExpression nameRef -> {
+			if (StringUtils.isEmpty(nameRef.getName())) {
+				return KtLiterals.empty();
+			}
+
 			return KtLiterals.fromProperty(nameRef);
 		}
 		default -> {

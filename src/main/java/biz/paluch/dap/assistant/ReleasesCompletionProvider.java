@@ -52,7 +52,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * {@link CompletionProvider} releases.
- * 
+ *
+ * TODO: provide either SHA's and display text or version + display text to
+ * avoid messy completion.
+ *
  * @author Mark Paluch
  */
 public class ReleasesCompletionProvider extends CompletionProvider<CompletionParameters> {
@@ -229,7 +232,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 
 		/*
 		 * if (versionLiteral instanceof XmlTag tag) {
-		 * 
+		 *
 		 * XmlToken token =
 		 * SyntaxTraverser.psiTraverser(tag).filter(XmlToken.class).first(); if (token
 		 * != null) { tag.getValue().getTextRange().replace(token.getText(), version); }

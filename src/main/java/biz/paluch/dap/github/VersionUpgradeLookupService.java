@@ -28,6 +28,7 @@ import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLMapping;
@@ -66,6 +67,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
+
+		if (element instanceof LeafPsiElement) {
+			return ArtifactReference.unresolved();
+		}
 
 		YAMLScalar scalar = findUsesScalar(element);
 		if (buildContext.isAbsent() || scalar == null) {

@@ -42,6 +42,15 @@ class NpmDependencyCollector {
 	DependencyCollector collect(PsiFile file) {
 
 		DependencyCollector collector = new DependencyCollector();
+		doCollect(file, collector);
+		return collector;
+	}
+
+	/**
+	 * Collect NPM dependencies from the given {@code package.json} file.
+	 */
+	void doCollect(PsiFile file, DependencyCollector collector) {
+
 		List<NpmDependency> dependencies = parser.parse(file);
 		for (NpmDependency dependency : dependencies) {
 
@@ -55,8 +64,6 @@ class NpmDependencyCollector {
 
 			collector.registerDeclaration(dependency.artifactId(), DeclarationSource.dependency(), versionSource);
 		}
-
-		return collector;
 	}
 
 

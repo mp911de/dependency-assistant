@@ -30,6 +30,8 @@ public class DependencyAssistantState {
 
 	private @Tag Cache cache = new Cache();
 
+	// TODO: used state to avoid nagging.
+
 	/**
 	 * Return the persisted cache.
 	 *
