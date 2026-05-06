@@ -291,6 +291,7 @@ class GradleUtils {
 	 * {@code settings.gradle} found above that boundary is ignored so a stray
 	 * settings file cannot widen resolution scope.
 	 */
+	// TODO: Refine root detection
 	static VirtualFile findProjectRoot(Project project, VirtualFile file) {
 
 		String name = "ROOT: " + file.getCanonicalPath();

@@ -39,10 +39,10 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
-import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Computable;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jspecify.annotations.Nullable;
 
@@ -100,12 +100,11 @@ class DependencyCheck {
 			Consistency consistency) {
 
 		ProjectState projectState = service.getProjectState(context.getProjectId());
-		DependencyCollector collector = ApplicationManager.getApplication()
-				.runReadAction((Computable<DependencyCollector>) () -> {
-					DependencyCollector c = context.scanDependencies(indicator);
-					projectState.setDependencies(c);
-					return c;
-				});
+		DependencyCollector collector = ReadAction.nonBlocking(() -> {
+			DependencyCollector c = context.scanDependencies(indicator);
+			projectState.setDependencies(c);
+			return c;
+		}).inSmartMode(project).executeSynchronously();
 
 		String projectName = project.getName();
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
@@ -145,6 +144,7 @@ class DependencyCheck {
 
 		indicator.setText(
 				MessageBundle.message("action.index-dependencies.indexing.assistant", assistant.getDisplayName()));
+
 		DependencyCollector collector = assistant.getAllDependencies(project, indicator);
 		List<ArtifactId> usages = collector.getUsages().stream().map(Dependency::getArtifactId).toList();
 		List<ArtifactId> declarations = collector.getDeclarations().stream().map(DeclaredDependency::getArtifactId)
@@ -200,8 +200,11 @@ class DependencyCheck {
 
 		for (UpdateTask task : tasks) {
 			Future<ResolverResult> future = executor
-					.submit(() -> fetchReleases(indicator, task.getArtifactId(), task.sources(), executor,
-							cache, consistency));
+					.submit(() -> {
+				indicator.checkCanceled();
+				return fetchReleases(indicator, task.getArtifactId(), task.sources(), executor,
+						cache, consistency);
+			});
 			futures.put(task, future);
 		}
 
@@ -218,7 +221,13 @@ class DependencyCheck {
 			ResolverResult res;
 			try {
 				res = entry.getValue().get(10, TimeUnit.SECONDS);
+			} catch (ProcessCanceledException e) {
+				throw e;
 			} catch (ExecutionException e) {
+				if (e.getCause() instanceof ProcessCanceledException c) {
+					throw c;
+				}
+
 				String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
 				res = new ResolverResult("%s: %s".formatted(artifactId, msg), List.of());
 			} catch (InterruptedException e) {

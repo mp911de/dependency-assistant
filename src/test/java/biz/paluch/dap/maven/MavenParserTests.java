@@ -50,6 +50,10 @@ class MavenParserTests {
 		MavenFixtures.setup(fixture.getProject());
 	}
 
+	// -------------------------------------------------------------------------
+	// Dependencies
+	// -------------------------------------------------------------------------
+
 	@Test
 	@EditorFile(name = "pom.xml", content = """
 			<project>
@@ -116,48 +120,78 @@ class MavenParserTests {
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
-				<properties>
-					<commons.version>3.19.0</commons.version>
-				</properties>
-				<dependencies>
-					<dependency>
-						<groupId>org.apache.commons</groupId>
-						<artifactId>commons-lang3</artifactId>
-						<version>${commons.version}</version>
-					</dependency>
-				</dependencies>
+				<profiles>
+					<profile>
+						<id>foo</id>
+						<dependencies>
+							<dependency>
+								<groupId>org.springframework.boot</groupId>
+								<artifactId>spring-boot-dependencies</artifactId>
+								<version>3.5.0</version>
+							</dependency>
+						</dependencies>
+					</profile>
+				</profiles>
 			</project>
 			""")
-	void dependencyVersionResolvedViaProperty(PsiFile file) {
+	void parsesProfileDependency(PsiFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
 		assertThat(collector)
-				.hasDependencyUsage("commons-lang3")
-				.hasVersion("3.19.0")
-				.hasPropertyVersion("commons.version");
+				.hasDependencyUsage("spring-boot-dependencies")
+				.hasVersion("3.5.0")
+				.hasDeclaration(DeclarationSource.profileDependency("foo"));
 	}
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<project>
 				<groupId>com.example</groupId>
-				<artifactId>demo</artifactId>
+				<artifactId>parent</artifactId>
 				<version>1.0.0</version>
+				<dependencyManagement>
+					<dependencies>
+						<dependency>
+							<groupId>org.assertj</groupId>
+							<artifactId>assertj-core</artifactId>
+							<version>3.27.0</version>
+						</dependency>
+					</dependencies>
+				</dependencyManagement>
+			</project>
+			""")
+	@ProjectFile(name = "module/pom.xml", content = """
+			<project>
+				<parent>
+					<groupId>com.example</groupId>
+					<artifactId>parent</artifactId>
+					<version>1.0.0</version>
+				</parent>
+				<artifactId>module</artifactId>
 				<dependencies>
 					<dependency>
 						<groupId>org.apache.commons</groupId>
 						<artifactId>commons-lang3</artifactId>
+						<version>3.19.0</version>
 					</dependency>
 				</dependencies>
 			</project>
 			""")
-	void dependenciesWithoutVersionAreNotUpdateCandidates(PsiFile file) {
+	void multiModuleChildAddsDependenciesAlongsideParent(XmlFile parent, XmlFile child) {
 
-		DependencyCollector collector = MavenFixtures.analyze(file);
+		DependencyCollector collector = new DependencyCollector();
+		MavenParser parser = new MavenParser(collector, new HashMap<>());
+		parser.parsePomFile(new Cache(), parent);
+		parser.parsePomFile(new Cache(), child);
 
-		assertThat(collector).isEmpty();
+		assertThat(collector).hasDependencyUsage("assertj-core");
+		assertThat(collector).hasDependencyUsage("commons-lang3");
 	}
+
+	// -------------------------------------------------------------------------
+	// Plugins
+	// -------------------------------------------------------------------------
 
 	@Test
 	@EditorFile(name = "pom.xml", content = """
@@ -186,6 +220,38 @@ class MavenParserTests {
 				.hasDeclaration(DeclarationSource.plugin());
 	}
 
+	// -------------------------------------------------------------------------
+	// Properties
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<properties>
+					<commons.version>3.19.0</commons.version>
+				</properties>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-lang3</artifactId>
+						<version>${commons.version}</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void dependencyVersionResolvedViaProperty(PsiFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyUsage("commons-lang3")
+				.hasVersion("3.19.0")
+				.hasPropertyVersion("commons.version");
+	}
+
 	@Test
 	@EditorFile(name = "pom.xml", content = """
 			<?xml version="1.0" encoding="UTF-8"?>
@@ -211,6 +277,79 @@ class MavenParserTests {
 		Map<String, String> props = MavenParser.getProperties((XmlFile) file);
 
 		assertThat(props).containsEntry("root.prop", "root-value").containsEntry("profile.prop", "profile-value");
+	}
+
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>parent</artifactId>
+				<version>1.0.0</version>
+				<properties>
+					<junit.version>5.11.0</junit.version>
+				</properties>
+			</project>
+			""")
+	@ProjectFile(name = "module/pom.xml", content = """
+				<project>
+					<parent>
+						<groupId>com.example</groupId>
+						<artifactId>parent</artifactId>
+						<version>1.0.0</version>
+					</parent>
+					<artifactId>module</artifactId>
+					<dependencies>
+						<dependency>
+							<groupId>org.junit.jupiter</groupId>
+							<artifactId>junit-jupiter</artifactId>
+							<version>${junit.version}</version>
+						</dependency>
+					</dependencies>
+				</project>
+			""")
+	void multiModuleParentThenChildResolvesVersionFromParentProperty(XmlFile parent, XmlFile child) {
+
+		Cache cache = new Cache();
+		DependencyCollector propertyCollector = new DependencyCollector();
+		MavenParser parser = new MavenParser(propertyCollector, new HashMap<>());
+		parser.parsePomFile(cache, child);
+		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector);
+
+		DependencyCollector collector = new DependencyCollector();
+		parser = new MavenParser(collector, new HashMap<>());
+		parser.parsePomFile(cache, parent);
+
+		assertThat(collector)
+				.hasDependencyUsage("junit-jupiter")
+				.hasVersion("5.11.0")
+				.hasPropertyVersion("junit.version");
+	}
+
+	// -------------------------------------------------------------------------
+	// Declaration-only
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-lang3</artifactId>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void dependenciesWithoutVersionAreNotUpdateCandidates(PsiFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		// TODO: Record as usage for upgrade suggestions in the parent
+		assertThat(collector).isEmpty();
 	}
 
 	@Test
@@ -262,97 +401,6 @@ class MavenParserTests {
 				.hasVersion("2.0.4")
 				.hasPropertyVersion("bom.version");
 		assertThat(collector).hasDependencyUsage("org.apache.maven.plugins", "maven-surefire-plugin");
-	}
-
-	@Test
-	@ProjectFile(name = "pom.xml", content = """
-			<project>
-				<groupId>com.example</groupId>
-				<artifactId>parent</artifactId>
-				<version>1.0.0</version>
-				<properties>
-					<junit.version>5.11.0</junit.version>
-				</properties>
-			</project>
-			""")
-	@ProjectFile(name = "module/pom.xml", content = """
-				<project>
-					<parent>
-						<groupId>com.example</groupId>
-						<artifactId>parent</artifactId>
-						<version>1.0.0</version>
-					</parent>
-					<artifactId>module</artifactId>
-					<dependencies>
-						<dependency>
-							<groupId>org.junit.jupiter</groupId>
-							<artifactId>junit-jupiter</artifactId>
-							<version>${junit.version}</version>
-						</dependency>
-					</dependencies>
-				</project>
-			""")
-	void multiModuleParentThenChildResolvesVersionFromParentProperty(XmlFile parent, XmlFile child) {
-
-		Cache cache = new Cache();
-		DependencyCollector propertyCollector = new DependencyCollector();
-		MavenParser parser = new MavenParser(propertyCollector, new HashMap<>());
-		parser.parsePomFile(cache, child);
-		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector);
-
-		DependencyCollector collector = new DependencyCollector();
-		parser = new MavenParser(collector, new HashMap<>());
-		parser.parsePomFile(cache, parent);
-
-		assertThat(collector)
-				.hasDependencyUsage("junit-jupiter")
-				.hasVersion("5.11.0")
-				.hasPropertyVersion("junit.version");
-	}
-
-	@Test
-	@ProjectFile(name = "pom.xml", content = """
-			<project>
-				<groupId>com.example</groupId>
-				<artifactId>parent</artifactId>
-				<version>1.0.0</version>
-				<dependencyManagement>
-					<dependencies>
-						<dependency>
-							<groupId>org.assertj</groupId>
-							<artifactId>assertj-core</artifactId>
-							<version>3.27.0</version>
-						</dependency>
-					</dependencies>
-				</dependencyManagement>
-			</project>
-			""")
-	@ProjectFile(name = "module/pom.xml", content = """
-			<project>
-				<parent>
-					<groupId>com.example</groupId>
-					<artifactId>parent</artifactId>
-					<version>1.0.0</version>
-				</parent>
-				<artifactId>module</artifactId>
-				<dependencies>
-					<dependency>
-						<groupId>org.apache.commons</groupId>
-						<artifactId>commons-lang3</artifactId>
-						<version>3.19.0</version>
-					</dependency>
-				</dependencies>
-			</project>
-			""")
-	void multiModuleChildAddsDependenciesAlongsideParent(XmlFile parent, XmlFile child) {
-
-		DependencyCollector collector = new DependencyCollector();
-		MavenParser parser = new MavenParser(collector, new HashMap<>());
-		parser.parsePomFile(new Cache(), parent);
-		parser.parsePomFile(new Cache(), child);
-
-		assertThat(collector).hasDependencyUsage("assertj-core");
-		assertThat(collector).hasDependencyUsage("commons-lang3");
 	}
 
 }

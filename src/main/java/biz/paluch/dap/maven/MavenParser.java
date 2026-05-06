@@ -137,14 +137,7 @@ class MavenParser {
 		doParsePomFile(cache, pomFile, properties, propertyResolver);
 	}
 
-	/**
-	 * Parse dependencies, plugins, and properties from the given POM file.
-	 * @param cache the project cache used for property-to-artifact associations.
-	 * @param pomFile the POM file to parse.
-	 * @param properties declared within the POM file.
-	 * @param propertyResolver the property resolver to use.
-	 */
-	public void doParsePomFile(Cache cache, XmlFile pomFile, Map<String, PropertyValue> properties,
+	private void doParsePomFile(Cache cache, XmlFile pomFile, Map<String, PropertyValue> properties,
 			PropertyResolver propertyResolver) {
 
 		doWithArtifacts(propertyResolver, pomFile, (coordinate, usage) -> {
@@ -263,19 +256,19 @@ class MavenParser {
 		}
 
 		for (XmlTag profiles : root.findSubTags("profiles")) {
-			for (XmlTag profile : profiles.findSubTags("profiles")) {
+			for (XmlTag profile : profiles.findSubTags("profile")) {
 
 				String id = profile.getSubTagText("id");
 				if (StringUtils.isEmpty(id)) {
 					continue;
 				}
 
-				for (XmlTag dependencyManagement : root.findSubTags("dependencyManagement")) {
+				for (XmlTag dependencyManagement : profile.findSubTags("dependencyManagement")) {
 					doWithDependencies(dependencyManagement, resolver, DeclarationSource.profileManaged(id), callback);
 				}
-				doWithDependencies(root, resolver, DeclarationSource.profileDependency(id), callback);
+				doWithDependencies(profile, resolver, DeclarationSource.profileDependency(id), callback);
 
-				for (XmlTag build : root.findSubTags("build")) {
+				for (XmlTag build : profile.findSubTags("build")) {
 					for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
 						doWithPlugins(resolver, DeclarationSource.profilePluginManagement(id), callback,
 								pluginManagement);
@@ -303,6 +296,5 @@ class MavenParser {
 			}
 		}
 	}
-
 
 }

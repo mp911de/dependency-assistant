@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.Objects;
+
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -136,7 +138,9 @@ public abstract class DeclarationSource {
 	@Override
 	public abstract String toString();
 
-	/** Dependencies under project/dependencies. */
+	/**
+	 * Dependencies under project/dependencies.
+	 */
 	private static class Dependencies extends DeclarationSource implements Dependency {
 
 		/**
@@ -154,7 +158,9 @@ public abstract class DeclarationSource {
 
 	}
 
-	/** Dependencies under project/dependencyManagement. */
+	/**
+	 * Dependencies under project/dependencyManagement.
+	 */
 	private static class DependencyManagement extends DeclarationSource implements Dependency, Managed {
 
 		/**
@@ -172,20 +178,35 @@ public abstract class DeclarationSource {
 
 	}
 
-	/** Dependencies under a profile's dependencies. */
+	/**
+	 * Dependencies under a profile's dependencies.
+	 */
 	private static class ProfileDependencies extends DeclarationSource implements Dependency, Profile {
 
-		private final @Nullable String profileId;
+		private final String profileId;
 
-		private ProfileDependencies(@Nullable String profileId) {
+		private ProfileDependencies(String profileId) {
 			this.profileId = profileId;
 		}
 
 		/**
 		 * Return the Maven profile id.
 		 */
-		public @Nullable String getProfileId() {
+		public String getProfileId() {
 			return profileId;
+		}
+
+		@Override
+		public boolean equals(@Nullable Object o) {
+			if (o == null || getClass() != o.getClass())
+				return false;
+			ProfileDependencies that = (ProfileDependencies) o;
+			return Objects.equals(profileId, that.profileId);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(profileId);
 		}
 
 		@Override
@@ -195,20 +216,35 @@ public abstract class DeclarationSource {
 
 	}
 
-	/** Dependencies under a profile's dependencyManagement. */
+	/**
+	 * Dependencies under a profile's dependencyManagement.
+	 */
 	private static class ProfileDependencyManagement extends DeclarationSource implements Dependency, Profile, Managed {
 
-		private final @Nullable String profileId;
+		private final String profileId;
 
-		private ProfileDependencyManagement(@Nullable String profileId) {
+		private ProfileDependencyManagement(String profileId) {
 			this.profileId = profileId;
 		}
 
 		/**
 		 * Return the Maven profile id.
 		 */
-		public @Nullable String getProfileId() {
+		public String getProfileId() {
 			return profileId;
+		}
+
+		@Override
+		public boolean equals(@Nullable Object o) {
+			if (o == null || getClass() != o.getClass())
+				return false;
+			ProfileDependencyManagement that = (ProfileDependencyManagement) o;
+			return Objects.equals(profileId, that.profileId);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(profileId);
 		}
 
 		@Override
@@ -218,7 +254,9 @@ public abstract class DeclarationSource {
 
 	}
 
-	/** Plugins under project/build/plugins. */
+	/**
+	 * Plugins under project/build/plugins.
+	 */
 	private static class Plugins extends DeclarationSource implements Plugin {
 
 		/**
@@ -236,7 +274,9 @@ public abstract class DeclarationSource {
 
 	}
 
-	/** Plugins under project/build/pluginManagement. */
+	/**
+	 * Plugins under project/build/pluginManagement.
+	 */
 	private static class PluginManagement extends DeclarationSource implements Plugin, Managed {
 
 		/**
@@ -254,20 +294,35 @@ public abstract class DeclarationSource {
 
 	}
 
-	/** Plugins under a profile's build/plugins. */
+	/**
+	 * Plugins under a profile's build/plugins.
+	 */
 	private static class ProfilePlugins extends DeclarationSource implements Plugin, Profile {
 
-		private final @Nullable String profileId;
+		private final String profileId;
 
-		private ProfilePlugins(@Nullable String profileId) {
+		private ProfilePlugins(String profileId) {
 			this.profileId = profileId;
 		}
 
 		/**
 		 * Return the Maven profile id.
 		 */
-		public @Nullable String getProfileId() {
+		public String getProfileId() {
 			return profileId;
+		}
+
+		@Override
+		public boolean equals(@Nullable Object o) {
+			if (o == null || getClass() != o.getClass())
+				return false;
+			ProfilePlugins that = (ProfilePlugins) o;
+			return Objects.equals(profileId, that.profileId);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(profileId);
 		}
 
 		@Override
@@ -280,17 +335,30 @@ public abstract class DeclarationSource {
 	/** Plugins under a profile's build/pluginManagement. */
 	private static class ProfilePluginManagement extends DeclarationSource implements Plugin, Profile, Managed {
 
-		private final @Nullable String profileId;
+		private final String profileId;
 
-		private ProfilePluginManagement(@Nullable String profileId) {
+		private ProfilePluginManagement(String profileId) {
 			this.profileId = profileId;
 		}
 
 		/**
 		 * Return the Maven profile id.
 		 */
-		public @Nullable String getProfileId() {
+		public String getProfileId() {
 			return profileId;
+		}
+
+		@Override
+		public boolean equals(@Nullable Object o) {
+			if (o == null || getClass() != o.getClass())
+				return false;
+			ProfilePluginManagement that = (ProfilePluginManagement) o;
+			return Objects.equals(profileId, that.profileId);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(profileId);
 		}
 
 		@Override

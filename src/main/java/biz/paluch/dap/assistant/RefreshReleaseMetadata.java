@@ -27,7 +27,7 @@ import biz.paluch.dap.artifact.DependencyUpdates;
 import biz.paluch.dap.assistant.DependencyCheck.ArtifactRefreshCandidate;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
-import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
@@ -66,8 +66,8 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 		steps.setText(MessageBundle.message("action.index-dependencies.indexing"));
 
 		List<ArtifactRefreshCandidate> artifactIdentifiers = new ArrayList<>();
-		ApplicationManager.getApplication().runReadAction(() -> {
 
+		ReadAction.nonBlocking(() -> {
 			for (DependencyAssistant assistant : assistants) {
 				if (steps.isCanceled()) {
 					return;
@@ -77,7 +77,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 				steps.setFraction(1);
 				steps.nextStep();
 			}
-		});
+		}).inSmartMode(project).executeSynchronously();
 
 		if (steps.isCanceled()) {
 			return;
