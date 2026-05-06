@@ -16,8 +16,10 @@
 
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
@@ -27,7 +29,7 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Factory for {@link PluginId} instances parsed from Kotlin DSL plugin
+ * Factory for {@link DependencySite} instances parsed from Kotlin DSL plugin
  * declarations.
  * <p>Supports the conventional infix shape:
  *
@@ -41,9 +43,9 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-final class KotlinPluginIds {
+class KotlinPluginDependencySite {
 
-	private KotlinPluginIds() {
+	private KotlinPluginDependencySite() {
 	}
 
 	/**
@@ -56,7 +58,7 @@ final class KotlinPluginIds {
 	 * placeholders.
 	 * @return the parsed plugin declaration, or {@code null}.
 	 */
-	static @Nullable PluginId fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
+	static @Nullable DependencySite fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
 			PropertyResolver scriptProperties) {
 
 		String id = KtLiterals.from(call.getValueArgumentList()).toString(scriptProperties);
@@ -64,42 +66,49 @@ final class KotlinPluginIds {
 			return null;
 		}
 
-		String versionText = null;
-		String versionPropertyKey = null;
-		PsiElement versionElement = null;
-
-		if (be != null) {
-			PsiElement[] children = be.getChildren();
-			for (int i = 0; i < children.length; i++) {
-				PsiElement child = children[i];
-				if (child instanceof KtOperationReferenceExpression ops && "version".equals(ops.getReferencedName())
-						&& children.length > i + 1
-						&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
-
-					KtLiterals literals = KtLiterals.from(versionExpr);
-					if (!literals.hasText()) {
-						return null;
-					}
-
-					versionElement = versionExpr;
-					versionText = literals.toString();
-					if (literals.hasProperty() && literals.size() == 1) {
-						versionPropertyKey = literals.getProperty();
-						PropertyValue resolvedProperty = scriptProperties.getPropertyValue(versionPropertyKey);
-						if (resolvedProperty != null && resolvedProperty.getValueLiteral() != null) {
-							versionElement = resolvedProperty.getValueLiteral();
-						}
-					}
-					break;
-				}
-			}
-		}
-
-		if (!StringUtils.hasText(versionText)) {
+		KtStringTemplateExpression versionExpr = findVersionLiteral(be);
+		if (versionExpr == null) {
 			return null;
 		}
 
-		return new PluginId(call, versionElement, id, versionText, versionPropertyKey);
+		KtLiterals literals = KtLiterals.from(versionExpr);
+		if (!literals.hasText()) {
+			return null;
+		}
+
+		if (!GradlePluginId.isValidPluginId(id)) {
+			return null;
+		}
+
+		String versionText = literals.toString();
+		GradlePluginId artifactId = GradlePluginId.of(id);
+		if (literals.hasProperty()) {
+			return DependencySite.of(artifactId, VersionSource.property(literals.getProperty()), call);
+		}
+
+		DependencySite dependencySite = DependencySite.of(artifactId, VersionSource.declared(versionText), call);
+		return ArtifactVersion.from(versionText)
+				.map(it -> (DependencySite) dependencySite.withVersion(it, versionExpr))
+				.orElse(dependencySite);
+	}
+
+	private static @Nullable KtStringTemplateExpression findVersionLiteral(@Nullable KtBinaryExpression be) {
+
+		if (be == null) {
+			return null;
+		}
+
+		PsiElement[] children = be.getChildren();
+		for (int i = 0; i < children.length; i++) {
+			PsiElement child = children[i];
+			if (child instanceof KtOperationReferenceExpression ops && "version".equals(ops.getReferencedName())
+					&& children.length > i + 1
+					&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
+				return versionExpr;
+			}
+		}
+
+		return null;
 	}
 
 }

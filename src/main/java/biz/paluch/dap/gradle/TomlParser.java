@@ -29,8 +29,8 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
-import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
@@ -416,11 +416,11 @@ class TomlParser extends GradleParserSupport {
 
 			Assert.state(StringUtils.hasText(id) || StringUtils.hasText(module), "No identifier or module set");
 
-			PropertyExpression versionExpression = StringUtils.hasText(version) ? PropertyExpression.from(version)
-					: PropertyExpression.property(versionRef);
+			Expression versionExpression = StringUtils.hasText(version) ? Expression.from(version)
+					: Expression.property(versionRef);
 
 			if (StringUtils.hasText(id)) {
-				return of(GradlePlugin.of(id), versionExpression);
+				return of(GradlePluginId.of(id), versionExpression);
 			}
 
 			return of(GradleDependency.parse(getRequiredModule()).getId(), versionExpression);
@@ -437,31 +437,29 @@ class TomlParser extends GradleParserSupport {
 
 			Assert.state(StringUtils.hasText(id) || StringUtils.hasText(module), "No identifier or module set");
 
-			PropertyExpression versionExpression = StringUtils.hasText(this.version)
-					? PropertyExpression.from(this.version)
-					: PropertyExpression.property(versionRef);
+			Expression versionExpression = StringUtils.hasText(this.version)
+					? Expression.from(this.version)
+					: Expression.property(versionRef);
 
-			GradleDependency dependency = StringUtils.hasText(id) ? GradleDependency.parsePlugin(id)
-					: GradleDependency.parse(module);
-
-			Assert.state(dependency != null, () -> "Dependency is null: Id: %s Module: %s".formatted(id, module));
+			ArtifactId artifactId = StringUtils.hasText(id) ? GradlePluginId.of(id)
+					: GradleDependency.parse(module).getId();
 
 			return ArtifactVersion.from(this.version)
-					.map(it -> (DependencySite) VersionedDependencySite.of(dependency.getId(), it,
+					.map(it -> (DependencySite) VersionedDependencySite.of(artifactId, it,
 							getVersionSource(versionExpression),
 							declaration, version))
 					.orElseGet(() -> {
-						return DependencySite.of(dependency.getId(), getVersionSource(versionExpression), declaration);
+						return DependencySite.of(artifactId, getVersionSource(versionExpression), declaration);
 					});
 		}
 
-		private static VersionSource getVersionSource(PropertyExpression versionExpression) {
+		private static VersionSource getVersionSource(Expression versionExpression) {
 			return versionExpression.isProperty()
 					? VersionSource.versionCatalogProperty(versionExpression.getPropertyName())
 					: VersionSource.versionCatalog();
 		}
 
-		private static GradleDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
+		private static GradleDependency of(ArtifactId artifactId, Expression versionExpression) {
 
 			if (versionExpression.isProperty()) {
 				return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),

@@ -19,11 +19,12 @@ package biz.paluch.dap.gradle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
-import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
@@ -54,44 +55,8 @@ import org.jspecify.annotations.Nullable;
  */
 class KotlinDslParser extends GradleParser {
 
-	KotlinDslParser(DependencyCollector collector, Map<String, String> properties) {
-		super(collector, properties);
-	}
-
 	KotlinDslParser(DependencyCollector collector, PropertyResolver propertyResolver) {
 		super(collector, propertyResolver);
-	}
-
-	/**
-	 * Create a {@link DependencySite} from parsed Kotlin DSL dependency data.
-	 * <p>The supplied {@code declaration} and {@code version} elements are reused
-	 * as the PSI anchors for the resulting site.
-	 */
-	public static @Nullable DependencySite getDependencySite(KtCallElement declaration,
-			PsiElement version, String gav, @Nullable PropertyExpression versionExpression) {
-
-		if (version instanceof KtCallElement ktCall && GradleUtils.isPlugin(KotlinDslUtils.getKotlinCallName(ktCall))
-				&& KotlinDslUtils.isInsidePluginsBlock(version) && !gav.contains(":")
-				&& versionExpression != null) {
-			GradleDependency dependency = GradleDependency.of(GradlePlugin.of(gav), versionExpression);
-			return dependency.toDependencySite(declaration, version);
-		}
-
-		GradleDependency dependency = GradleDependency.parse(gav);
-		if (dependency == null) {
-			return null;
-		}
-
-		if (dependency.getVersionSource().isDefined()) {
-			return dependency.toDependencySite(declaration, version);
-		}
-
-		if (versionExpression == null
-				|| (!versionExpression.isProperty() && !StringUtils.hasText(versionExpression.toString()))) {
-			return null;
-		}
-
-		return dependency.withVersion(versionExpression).toDependencySite(declaration, version);
 	}
 
 	// -------------------------------------------------------------------------
@@ -233,9 +198,8 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		if (GradleUtils.isPlugin(methodName) && KotlinDslUtils.isInsidePluginsBlock(call)) {
-			PluginId id = KotlinPluginIds.fromBinary(call,
+			return KotlinPluginDependencySite.fromBinary(call,
 					PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class), scriptProperties);
-			return id != null ? id.toDependencySite() : null;
 		}
 
 		KtStringTemplateExpression directNotation = findInlineDependencyLiteral(call, scriptProperties);
@@ -250,7 +214,7 @@ class KotlinDslParser extends GradleParser {
 			}
 
 			String string = KtLiterals.from(call.getValueArgumentList()).toString();
-			return getDependencySite(call, directNotation, string, null);
+			return getDependencySite(string, call, null, directNotation);
 		}
 
 		KtVersion ktVersion = KtVersion.fromDependency(call);
@@ -258,22 +222,51 @@ class KotlinDslParser extends GradleParser {
 			return null;
 		}
 
-		PropertyExpression versionExpression;
 		PsiElement versionElement = ktVersion.getVersionElement();
-		if (ktVersion.hasProperty()) {
-			String property = ktVersion.getProperty();
-			versionExpression = PropertyExpression.property(property);
-			PropertyValue version = scriptProperties.getPropertyValue(property);
-			if (version != null) {
-				versionElement = version.getValueLiteral();
+		Expression expression = ktVersion.hasProperty() ? Expression.property(ktVersion.getProperty())
+				: Expression.from(ktVersion.getVersion());
+
+		return getDependencySite(KtLiterals.from(call.getValueArgumentList()).toString(), call, expression,
+				versionElement);
+	}
+
+	/**
+	 * Create a {@link DependencySite} from parsed Kotlin DSL dependency data.
+	 * <p>The supplied {@code declaration} and {@code versionElement} elements are
+	 * reused as the PSI anchors for the resulting site.
+	 */
+	public static @Nullable DependencySite getDependencySite(String gav, KtCallElement declaration,
+			@Nullable Expression versionExpression, @Nullable PsiElement versionElement) {
+
+		if (versionElement instanceof KtCallElement ktCall
+				&& GradleUtils.isPlugin(KotlinDslUtils.getKotlinCallName(ktCall))
+				&& KotlinDslUtils.isInsidePluginsBlock(versionElement)
+				&& versionExpression != null) {
+
+			if (!GradlePluginId.isValidPluginId(gav)) {
+				return null;
 			}
-		} else {
-			versionExpression = PropertyExpression.from(ktVersion.getVersion());
+
+			GradleDependency dependency = GradleDependency.of(GradlePluginId.of(gav), versionExpression);
+			return dependency.toDependencySite(declaration, versionElement);
 		}
 
-		return getDependencySite(call, versionElement != null ? versionElement : call,
-				KtLiterals.from(call.getValueArgumentList()).toString(), versionExpression);
+		GradleDependency dependency = GradleDependency.parse(gav);
+		if (dependency == null) {
+			return null;
+		}
+
+		if (versionExpression != null) {
+			dependency = dependency.withVersion(versionExpression);
+		}
+
+		if (versionElement != null) {
+			return dependency.toDependencySite(declaration, versionElement);
+		}
+
+		return dependency.toDependencySite(declaration);
 	}
+
 
 	/**
 	 * Parses a version-block dependency of the form: <pre class="code">
@@ -304,7 +297,7 @@ class KotlinDslParser extends GradleParser {
 			}
 			if (gavTemplate == null && arg.getArgumentExpression() instanceof KtStringTemplateExpression expr) {
 				String text = KtLiterals.from(expr).toString(propertyResolver);
-				if (text != null && text.split(":").length == 2) {
+				if (GradleArtifactId.isValid(text)) {
 					gavTemplate = expr;
 				}
 			}
@@ -370,7 +363,7 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		PsiElement versionLiteralElement;
-		String versionProperty = null;
+		String versionProperty;
 		String version;
 
 		if (preferTemplate != null) {
@@ -415,16 +408,10 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		String gavText = KtLiterals.from(gavTemplate).toString(propertyResolver);
-		if (gavText == null) {
-			return null;
-		}
+		ArtifactId artifactId = GradleArtifactId.from(gavText);
 
-		String[] parts = gavText.split(":");
-		String group = parts[0];
-		String artifact = parts[1];
-
-		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact, versionProperty, version,
-				call, versionLiteralElement);
+		return new NamedDependencyDeclaration(call.getContainingFile(), null, artifactId.groupId(),
+				artifactId.artifactId(), versionProperty, version, call, versionLiteralElement);
 	}
 
 	private static @Nullable PropertyValue resolveVersionProperty(PropertyResolver propertyResolver,
@@ -452,10 +439,7 @@ class KotlinDslParser extends GradleParser {
 
 			if (expression instanceof KtCallElement nested
 					&& GradleUtils.isPlatformSection(KotlinDslUtils.getKotlinCallName(nested))) {
-				KtStringTemplateExpression nestedTemplate = findInlineDependencyLiteral(nested, propertyResolver);
-				if (nestedTemplate != null) {
-					return nestedTemplate;
-				}
+				return findInlineDependencyLiteral(nested, propertyResolver);
 			}
 		}
 

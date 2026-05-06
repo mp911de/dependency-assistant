@@ -22,155 +22,131 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
-import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
-import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A Gradle dependency.
+ * Gradle-facing dependency descriptor used between parser extraction and the
+ * common dependency-site model.
+ *
+ * <p>This contract intentionally models less than Gradle's runtime dependency
+ * API. It captures the artifact identity and the origin of the version value so
+ * Groovy DSL, Kotlin DSL, version catalogs, dependency constraints, and plugin
+ * declarations can feed the same upgrade lookup infrastructure.
+ *
+ * <p>The artifact identity is already normalized when exposed through
+ * {@link #getId()}: module dependencies use their group/name coordinates, while
+ * plugin declarations can use {@link GradlePluginId}. Version information is
+ * kept as a {@link VersionSource} so downstream code can distinguish inline
+ * literals, properties, version-catalog entries, and declarations without
+ * re-parsing PSI.
+ *
+ * <p>Implementations represent the way the version is owned by the Gradle
+ * declaration: a dependency may have no local version, a literal version at the
+ * dependency site, or a property-backed version whose editable source lives
+ * elsewhere.
  *
  * @author Mark Paluch
+ * @see GradleArtifactId
+ * @see GradlePluginId
  */
 interface GradleDependency {
 
 	/**
-	 * @return the artifact identifier.
+	 * Return the dependency identity used by release lookup, caching, and UI
+	 * grouping.
+	 * <p>Version information is deliberately excluded from this identity and is
+	 * represented through {@link #getVersionSource()}.
 	 */
 	ArtifactId getId();
 
 	/**
-	 * @return the version source.
+	 * Return the source that owns the version value for this declaration.
+	 * <p>The source determines both how the current version is resolved and where
+	 * an update should be applied.
 	 */
 	VersionSource getVersionSource();
 
 	/**
-	 * Parse a Gradle GAV string {@code groupId:artifactId:version} or
-	 * {@code groupId:artifactId} into a {@code GradleDependency}.
+	 * Parse compact Gradle module notation into a dependency descriptor.
+	 * <p>This convenience variant is suitable for parser paths that have no
+	 * property context available. Property expressions in the version position are
+	 * still preserved as property-backed version sources.
 	 *
-	 * @param gav the GAV string.
-	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
-	 * could not be parsed because of e.g. missing segments.
+	 * @param gav compact Gradle module notation.
+	 * @return the dependency descriptor, or {@literal null} if the text is not a
+	 * compact module coordinate candidate.
 	 */
 	static @Nullable GradleDependency parse(String gav) {
 		return parse(gav, PropertyResolver.empty());
 	}
 
 	/**
-	 * Parse a Gradle GAV string {@code groupId:artifactId:version} or
-	 * {@code groupId:artifactId} into a {@code GradleDependency}. Parsing resolves
-	 * {@code groupId} and {@code artifactId} and returns the {@link VersionSource}
-	 * accordingly if the version is a property.
+	 * Parse compact Gradle module notation into a dependency descriptor using the
+	 * given property context.
+	 * <p>Coordinate expressions are resolved before the dependency crosses into the
+	 * common artifact model. Property-backed versions remain represented as a
+	 * {@link VersionSource} rather than being collapsed into an inline declaration
+	 * so the update path can still target the property owner.
 	 *
-	 * @param gav the GAV string.
-	 * @param propertyResolver the property resolver to resolve properties.
-	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
-	 * could not be parsed because of e.g. missing segments.
+	 * @param gav compact Gradle module notation.
+	 * @param propertyResolver property resolver to use for coordinate and version
+	 * expressions.
+	 * @return the dependency descriptor, or {@literal null} if the text is not a
+	 * compact module coordinate candidate.
 	 */
-	@Contract("null, _ -> null")
-	static @Nullable GradleDependency parse(@Nullable String gav, PropertyResolver propertyResolver) {
+	static @Nullable GradleDependency parse(String gav, PropertyResolver propertyResolver) {
 
-		if (StringUtils.isEmpty(gav)) {
+		if (!GradleArtifactId.isValid(gav)) {
 			return null;
 		}
 
-		String[] parts = gav.split(":");
-		return parts.length < 2 ? null : of(parts[0], parts[1], parts.length > 2 ? parts[2] : null, propertyResolver);
+		return of(GradleArtifactId.from(gav), propertyResolver);
 	}
 
 	/**
-	 * Parse a Gradle plugin coordinate string {@code pluginId} or
-	 * {@code pluginId:version} into a {@code GradleDependency}.
-	 *
-	 * @param idv the plugin coordinate string.
-	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
-	 * could not be parsed because of e.g. missing segments.
+	 * Adapt Gradle module coordinates into the dependency descriptor model.
+	 * <p>The coordinate's version segment determines which descriptor variant is
+	 * created: no version keeps the dependency as a reference, a property
+	 * expression keeps the version externally owned, and a literal version stays
+	 * with the declaration.
+	 * @param gav Gradle module coordinates extracted from a declaration.
+	 * @param resolver property resolver to use for coordinate and version
+	 * expressions.
+	 * @return the dependency descriptor.
 	 */
-	static @Nullable GradleDependency parsePlugin(String idv) {
-		return parsePlugin(idv, PropertyResolver.empty());
-	}
+	static GradleDependency of(GradleArtifactId gav, PropertyResolver resolver) {
 
-	/**
-	 * Parse a Gradle plugin coordinate string {@code pluginId} or
-	 * {@code pluginId:version} into a {@code GradleDependency}. Parsing resolves
-	 * {@code groupId} and {@code artifactId} and returns the {@link VersionSource}
-	 * accordingly if the version is a property.
-	 *
-	 * @param gav the plugin coordinate string.
-	 * @param propertyResolver the property resolver to resolve properties.
-	 * @return the parsed {@code GradleDependency} or {@literal null} if the string
-	 * could not be parsed because of e.g. missing segments.
-	 */
-	static @Nullable GradleDependency parsePlugin(String gav, PropertyResolver propertyResolver) {
+		if (StringUtils.hasText(gav.version())) {
 
-		String[] parts = gav.split(":");
-		return parts.length < 1 ? null : of(parts[0], parts[0], parts.length > 1 ? parts[1] : null, propertyResolver);
-	}
-
-	/**
-	 * Create a new {@code GradleDependency} from group, artifact, and version
-	 * strings.
-	 *
-	 * @param g groupId.
-	 * @param a artifactId.
-	 * @param v version, which may be {@code null} or a property reference like
-	 * {@code ${version}}.
-	 * @return the created {@code GradleDependency}.
-	 */
-	static GradleDependency of(String g, String a, @Nullable String v) {
-		return of(g, a, v, PropertyResolver.empty());
-	}
-
-	/**
-	 * Create a new {@code GradleDependency} from group, artifact, and version
-	 * strings.
-	 *
-	 * @param g groupId.
-	 * @param a artifactId.
-	 * @param v version, which may be {@code null} or a property reference like
-	 * {@code ${version}}.
-	 * @return the created {@code GradleDependency}.
-	 */
-	static GradleDependency of(String g, String a, @Nullable String v, PropertyResolver resolver) {
-
-		ArtifactId artifactId = getArtifactId(g, a, resolver);
-		if (StringUtils.hasText(v)) {
-
-			PropertyExpression expression = PropertyExpression.from(v);
+			Expression expression = Expression.from(gav.version());
 			if (expression.isProperty()) {
-				return new PropertyManagedDependency(artifactId, expression.getPropertyName(),
+				ArtifactId id = gav.resolve(resolver);
+				return new PropertyManagedDependency(id, expression.getPropertyName(),
 						VersionSource.property(expression.getPropertyName()));
 			}
 
-			return new SimpleDependency(artifactId, v, VersionSource.declared(v));
+			return new SimpleDependency(gav.resolveAll(resolver));
 		}
 
-		return new DependencyReference(artifactId);
+		return new DependencyReference(gav.resolve(resolver));
 	}
 
 	/**
-	 * Resolve the {@link ArtifactId} from the given group and artifact values.
-	 */
-	public static ArtifactId getArtifactId(String g, String a, PropertyResolver resolver) {
-
-		PropertyExpression group = PropertyExpression.from(g);
-		PropertyExpression artifact = PropertyExpression.from(a);
-
-		return ArtifactId.of(group.resolveRequired(resolver),
-				artifact.resolveRequired(resolver));
-	}
-
-	/**
-	 * Create a new {@code GradleDependency} using {@link ArtifactId} and a version
-	 * to determine whether it is a version-managed artifact.
+	 * Create a dependency descriptor when artifact identity and version expression
+	 * were parsed separately.
+	 * <p>This factory is used by declaration forms such as plugin DSL entries,
+	 * named dependency declarations, and version catalogs where the version does
+	 * not originate from compact {@code group:name:version} notation.
 	 *
 	 * @param artifactId artifact identifier.
-	 * @param versionExpression the property expression defining the version.
-	 * @return a new {@code GradleDependency}.
+	 * @param versionExpression version expression associated with the declaration.
+	 * @return the dependency descriptor.
 	 */
-	static GradleDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
+	static GradleDependency of(ArtifactId artifactId, Expression versionExpression) {
 
 		if (versionExpression.isProperty()) {
 			return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),
@@ -181,20 +157,46 @@ interface GradleDependency {
 	}
 
 	/**
-	 * Create a new {@code GradleDependency} with the same artifact but a different
-	 * version expression.
+	 * Return a dependency descriptor for the same artifact with a version obtained
+	 * from a separately parsed declaration component.
+	 * <p>Use this when a parser first discovers the module identity and later
+	 * associates a version block, catalog entry, or named version argument with
+	 * that identity.
 	 *
-	 * @param versionExpression the version expression to apply.
-	 * @return a new {@code GradleDependency} with the updated version expression.
+	 * @param expression the version expression to apply.
+	 * @return the dependency descriptor with the updated version source.
 	 */
-	default GradleDependency withVersion(PropertyExpression versionExpression) {
-		return of(getId(), versionExpression);
+	default GradleDependency withVersion(Expression expression) {
+		return of(getId(), expression);
 	}
 
-	default DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
+	/**
+	 * Adapt this descriptor to a PSI-backed dependency site using the declaration
+	 * element as its primary anchor.
+	 * @param declaration PSI element representing the dependency declaration.
+	 * @return the dependency site.
+	 */
+	default DependencySite toDependencySite(PsiElement declaration) {
 		return DependencySite.of(getId(), getVersionSource(), declaration);
 	}
 
+	/**
+	 * Adapt this descriptor to a PSI-backed dependency site with a distinct version
+	 * anchor.
+	 * <p>Parser implementations should prefer this variant when the editable
+	 * version literal is not the same PSI element as the dependency declaration.
+	 * @param declaration PSI element representing the dependency declaration.
+	 * @param version PSI element representing the editable version location.
+	 * @return the dependency site.
+	 */
+	default DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
+		return toDependencySite(declaration);
+	}
+
+	/**
+	 * Dependency declaration whose artifact is known but whose version is not owned
+	 * by the declaration site.
+	 */
 	record DependencyReference(ArtifactId id) implements GradleDependency {
 
 		@Override
@@ -209,7 +211,18 @@ interface GradleDependency {
 
 	}
 
+	/**
+	 * Dependency declaration with version text owned by the declaration site.
+	 * <p>The version is parsed opportunistically into an {@link ArtifactVersion}
+	 * when the descriptor is converted to a {@link DependencySite}; rich Gradle
+	 * version syntax that cannot be represented as a concrete artifact version is
+	 * still retained through the {@link VersionSource}.
+	 */
 	record SimpleDependency(ArtifactId id, String version, VersionSource versionSource) implements GradleDependency {
+
+		SimpleDependency(GradleArtifactId gav) {
+			this(gav, gav.version(), VersionSource.declared(gav.version()));
+		}
 
 		@Override
 		public ArtifactId getId() {
@@ -222,9 +235,14 @@ interface GradleDependency {
 		}
 
 		@Override
+		public DependencySite toDependencySite(PsiElement declaration) {
+			return toDependencySite(declaration, declaration);
+		}
+
+		@Override
 		public DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
 
-			DependencySite dependencySite = GradleDependency.super.toDependencySite(declaration, version);
+			DependencySite dependencySite = DependencySite.of(getId(), getVersionSource(), declaration);
 			Optional<ArtifactVersion> concreteVersion = GradleRichVersion.parse(version());
 			if (concreteVersion.isEmpty()) {
 				return dependencySite;
@@ -234,16 +252,15 @@ interface GradleDependency {
 
 	}
 
+	/**
+	 * Dependency declaration whose editable version value is owned by a named
+	 * property-like source.
+	 * <p>The dependency keeps both the artifact identity and the property name so
+	 * lookup code can resolve the current value and anchor updates at the property
+	 * declaration instead of the dependency usage.
+	 */
 	record PropertyManagedDependency(ArtifactId id, String property,
 			VersionSource versionSource) implements GradleDependency {
-
-		/**
-		 * Create a property-managed dependency from a version expression.
-		 */
-		public static PropertyManagedDependency of(ArtifactId artifactId, PropertyExpression versionExpression) {
-			return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),
-					VersionSource.property(versionExpression.getPropertyName()));
-		}
 
 		@Override
 		public ArtifactId getId() {

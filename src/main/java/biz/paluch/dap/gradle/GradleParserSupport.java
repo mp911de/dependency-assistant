@@ -24,7 +24,6 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
-import biz.paluch.dap.support.PropertyExpression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
@@ -78,13 +77,6 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 			@Nullable String version, PsiElement declaration, @Nullable PsiElement versionLiteral) {
 
 		/**
-		 * Create an empty declaration for the given build file.
-		 */
-		public NamedDependencyDeclaration(PsiFile containingFile) {
-			this(containingFile, null, null, null, null, null, null, null);
-		}
-
-		/**
 		 * Check whether the declaration is complete (having id and version information
 		 * or group and artifact with version information).
 		 */
@@ -111,28 +103,6 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 		}
 
 		/**
-		 * Resolve a {@link GradleDependency} from this declaration by resolving
-		 * properties if used in group and artifact identifiers using
-		 * {@link PropertyResolver}.
-		 * <p>As declarations can be incomplete (e.g. missing version information), make
-		 * sure to check {@link #isComplete()} before calling this method.
-		 * @param propertyResolver property resolver to resolve properties.
-		 * @return the resolved dependency.
-		 */
-		public GradleDependency toDependency(PropertyResolver propertyResolver) {
-
-			Assert.state(group != null && artifact != null, "Group and name must be set");
-			Assert.hasText(version, "Version must be set");
-
-			if (StringUtils.hasText(versionProperty)) {
-				ArtifactId artifactId = GradleDependency.getArtifactId(group, artifact, propertyResolver);
-				return GradleDependency.of(artifactId, PropertyExpression.property(versionProperty));
-			}
-
-			return GradleDependency.of(group, artifact, version, propertyResolver);
-		}
-
-		/**
 		 * Create a {@link DependencySite} from this declaration if it
 		 * {@link #isComplete() is complete}.
 		 */
@@ -140,41 +110,42 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 
 			Assert.state(isComplete(), "Declaration must be complete");
 
-			GradleDependency dependency = toDependency(propertyResolver);
+			ArtifactId artifactId = GradleArtifactId.from(ArtifactId.of(this.group, this.artifact), "")
+					.resolve(propertyResolver);
 
 			if (StringUtils.hasText(versionProperty)) {
 				PropertyValue element = propertyResolver.getPropertyValue(versionProperty);
+				VersionSource versionSource = VersionSource.property(versionProperty);
+
 				if (element != null) {
 					Optional<ArtifactVersion> version = ArtifactVersion.from(element.getValue());
 					if (version.isPresent()) {
-						return VersionedDependencySite.of(dependency.getId(), version
-								.get(), VersionSource.property(versionProperty), element.getValueLiteral(),
+						return VersionedDependencySite.of(artifactId, version
+								.get(), versionSource, element.getValueLiteral(),
 								declaration);
 					}
 				}
+
 				if (StringUtils.hasText(version)) {
 					Optional<ArtifactVersion> version = ArtifactVersion.from(version());
 					if (version.isPresent()) {
-						return VersionedDependencySite.of(dependency.getId(), version.get(),
-								VersionSource.property(versionProperty), declaration, getRequiredVersionLiteral());
+						return VersionedDependencySite.of(artifactId, version.get(),
+								versionSource, declaration, getRequiredVersionLiteral());
 					}
+				}
+
+				return DependencySite.of(artifactId, versionSource, declaration);
+			}
+
+			if (StringUtils.hasText(this.version)) {
+				Optional<ArtifactVersion> version = ArtifactVersion.from(version());
+				if (version.isPresent()) {
+					return VersionedDependencySite.of(artifactId, version.get(),
+							VersionSource.declared(this.version), declaration, getRequiredVersionLiteral());
 				}
 			}
 
-			return GradleDependency.of(group, artifact, version, propertyResolver).toDependencySite(declaration,
-					getRequiredVersionLiteral());
-		}
-
-		/**
-		 * Check whether the given {@link ArtifactId} matches this declaration.
-		 */
-		public boolean matches(ArtifactId id) {
-
-			if (GradlePlugin.isPlugin(id) && id.artifactId().equals(this.id)) {
-				return true;
-			}
-
-			return id.artifactId().equals(this.artifact) && id.groupId().equals(this.group);
+			return DependencySite.of(artifactId, VersionSource.none(), declaration);
 		}
 
 	}

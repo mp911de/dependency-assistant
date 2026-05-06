@@ -28,7 +28,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.support.DependencySite;
-import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
@@ -117,10 +117,10 @@ class GradleParser extends GradleParserSupport {
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);
 		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
 		boolean isDependencyConfig = GradleUtils.isDependencySection(methodName);
-		boolean isPlugin = GroovyDslUtils.isInsidePluginsBlock(call);
+		boolean isPlugin = GradleUtils.isPlugin(methodName) && GroovyDslUtils.isInsidePluginsBlock(call);
 
 		if (isPlugin) {
-			DependencySite pluginSite = parsePlugin(call, propertyResolver);
+			DependencySite pluginSite = GroovyPluginDependencySite.fromMethodCall(call, propertyResolver);
 			if (pluginSite != null) {
 				register(pluginSite, DeclarationSource.plugin(), propertyResolver);
 			}
@@ -277,33 +277,30 @@ class GradleParser extends GradleParserSupport {
 			return null;
 		}
 
-		String[] parts = gavText.split(":");
-		String group = parts[0];
-		String artifact = parts[1];
-
-		ArtifactId artifactId = GradleDependency.getArtifactId(group, artifact, propertyResolver);
+		ArtifactId artifactId = GradleArtifactId.from(gavText).resolve(propertyResolver);
 		VersionSource versionSource;
 		if (StringUtils.hasText(versionValue.versionProperty) || StringUtils.hasText(versionValue.version)) {
-			PropertyExpression expression = StringUtils.hasText(versionValue.versionProperty)
-					? PropertyExpression.property(versionValue.versionProperty)
-					: PropertyExpression.from(versionValue.version);
+			Expression expression = StringUtils.hasText(versionValue.versionProperty)
+					? Expression.property(versionValue.versionProperty)
+					: Expression.from(versionValue.version);
+
 			versionSource = expression.asVersionSource();
-			if (expression.isProperty()) {
-				PropertyValue propertyValue = propertyResolver.getPropertyValue(expression.getPropertyName());
-
-				if (propertyValue != null) {
-					Optional<ArtifactVersion> optionalVersion = ArtifactVersion.from(versionValue.version());
-					if (optionalVersion.isPresent()) {
-
-						return VersionedDependencySite.of(artifactId, optionalVersion.get(),
-								versionSource, call,
-								propertyValue.getValueLiteral());
-					}
-				}
-			}
 		} else {
 			versionSource = StringUtils.hasText(versionValue.version) ? VersionSource.declared(versionValue.version)
 					: VersionSource.none();
+		}
+
+		DependencySite dependencySite = DependencySite.of(artifactId, versionSource, call);
+		if (versionSource.isProperty()) {
+			PropertyValue propertyValue = propertyResolver
+					.getPropertyValue(((VersionSource.VersionProperty) versionSource).getProperty());
+
+			if (propertyValue != null) {
+				Optional<ArtifactVersion> optionalVersion = ArtifactVersion.from(versionValue.version());
+				if (optionalVersion.isPresent()) {
+					return dependencySite.withVersion(optionalVersion.get(), propertyValue.getValueLiteral());
+				}
+			}
 		}
 
 		if (versionValue.isPresent()) {
@@ -383,25 +380,6 @@ class GradleParser extends GradleParserSupport {
 				versionProperty, version, call, versionLiteral);
 	}
 
-	/**
-	 * Parse a Groovy plugin declaration inside a {@code plugins {}} block.
-	 * <pre class="code">
-	 * plugins {
-	 *     id 'org.springframework.boot' version '3.3.2'
-	 * }
-	 * </pre>
-	 *
-	 * @param call the method call to inspect.
-	 * @param propertyResolver property resolver used for property-backed versions.
-	 * @return the parsed plugin dependency, or {@code null} if the call does not
-	 * match the supported plugin declaration shape.
-	 */
-	private @Nullable DependencySite parsePlugin(GrMethodCall call, PropertyResolver propertyResolver) {
-
-		PluginId id = GroovyPluginIds.fromMethodCall(call, propertyResolver);
-		return id != null ? id.toDependencySite() : null;
-	}
-
 	private static @Nullable GrLiteral findCoordinateLiteral(GrMethodCall call) {
 
 		for (PsiElement argument : call.getArgumentList().getAllArguments()) {
@@ -410,7 +388,7 @@ class GradleParser extends GradleParserSupport {
 			}
 
 			String text = GroovyDslUtils.getText(literal);
-			if (StringUtils.hasText(text) && text.split(":").length == 2) {
+			if (GradleArtifactId.isValid(text)) {
 				return literal;
 			}
 		}

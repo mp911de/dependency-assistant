@@ -114,6 +114,8 @@ class GroovyDslExtParser {
 	public static Map<String, PropertyValue> parseLocalVariables(PsiFile file) {
 
 		Map<String, PropertyValue> elements = new LinkedHashMap<>();
+
+		// TODO: expand?
 		SyntaxTraverser.psiTraverser(file)
 				.filter(GrVariableDeclaration.class)
 				.forEach(decl -> {
@@ -125,16 +127,16 @@ class GroovyDslExtParser {
 					for (GrVariable variable : decl.getVariables()) {
 						String name = variable.getName();
 						GrExpression initializer = variable.getInitializerGroovy();
-						if (name != null && initializer instanceof GrLiteral literal
+						if (initializer instanceof GrLiteral literal
 								&& GroovyDslUtils.hasText(literal)) {
 							elements.put(name,
 									new PropertyValue(name, GroovyDslUtils.getRequiredText(literal), literal));
 							continue;
 						}
 
-						if (name != null && initializer instanceof GrString gstr && gstr.getInjections().length == 0) {
+						if (initializer instanceof GrString gstr && gstr.getInjections().length == 0) {
 							GrLiteral innerLiteral = PsiTreeUtil.findChildOfType(gstr, GrLiteral.class);
-							if (innerLiteral != null && GroovyDslUtils.hasText(innerLiteral)) {
+							if (GroovyDslUtils.hasText(innerLiteral)) {
 								elements.put(name,
 										new PropertyValue(name, GroovyDslUtils.getRequiredText(innerLiteral),
 												innerLiteral));

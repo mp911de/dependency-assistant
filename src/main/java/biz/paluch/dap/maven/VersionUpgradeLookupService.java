@@ -26,7 +26,7 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
-import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
@@ -140,7 +140,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				(XmlFile) versionTag.getContainingFile(),
 				it -> {
 
-					ResolvedProperty property = resolveProperty(PropertyExpression.property(it));
+					ResolvedProperty property = resolveProperty(Expression.property(it));
 					if (property != null) {
 						return property.value();
 					}
@@ -153,7 +153,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		String version = versionTag.getValue().getText().trim();
-		PropertyExpression expression = PropertyExpression.from(version);
+		Expression expression = Expression.from(version);
 
 		if (expression.isProperty()) {
 
@@ -178,7 +178,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	@Nullable
-	private ResolvedProperty resolveProperty(PropertyExpression expression) {
+	private ResolvedProperty resolveProperty(Expression expression) {
 
 		XmlTag propertyValue = null;
 		while (expression.isProperty()) {
@@ -186,7 +186,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			String propertyName = expression.getPropertyName();
 			propertyValue = properties.findProperty(buildContext.getMavenProject(), propertyName);
 			if (propertyValue != null) {
-				expression = PropertyExpression.from(propertyValue.getValue().getTrimmedText());
+				expression = Expression.from(propertyValue.getValue().getTrimmedText());
 			} else {
 				return null;
 			}
@@ -212,7 +212,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		String tagName = propertyTag.getLocalName();
-		ResolvedProperty resolvedProperty = resolveProperty(PropertyExpression.property(tagName));
+		ResolvedProperty resolvedProperty = resolveProperty(Expression.property(tagName));
 		CachedArtifact firstArtifact = property.artifacts().getFirst();
 
 		return ArtifactReference.from(it -> {
@@ -255,7 +255,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private @Nullable ArtifactVersion getCurrentVersion(VersionProperty property, XmlTag propertyTag) {
 
-		PropertyExpression expression = PropertyExpression.from(propertyTag.getValue().getText().trim());
+		Expression expression = Expression.from(propertyTag.getValue().getText().trim());
 		if (expression.isProperty()) {
 			return null;
 		}

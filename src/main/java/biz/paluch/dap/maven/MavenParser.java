@@ -34,7 +34,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.support.PropertyExpression;
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
@@ -210,7 +210,7 @@ class MavenParser {
 	private VersionSource getVersionSource(@Nullable String version) {
 
 		if (StringUtils.hasText(version)) {
-			PropertyExpression expression = PropertyExpression.from(version);
+			Expression expression = Expression.from(version);
 			if (expression.isProperty()) {
 				return VersionSource.property(expression.getPropertyName());
 			}

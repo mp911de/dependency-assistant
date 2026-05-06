@@ -34,25 +34,25 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public abstract class PropertyExpression {
+public abstract class Expression {
 
 	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([^}]*)\\}");
 
 	private final String value;
 
-	private PropertyExpression(String value) {
+	private Expression(String value) {
 		this.value = value;
 	}
 
 	/**
-	 * Create a {@link PropertyExpression} from the given value.
+	 * Create a {@link Expression} from the given value.
 	 *
 	 * @param value the source value.
-	 * @return a {@link PropertyReference} if the value is a property expression;
-	 * otherwise a {@link LiteralValue}.
+	 * @return a {@link Reference} if the value is a property expression; otherwise
+	 * a {@link LiteralValue}.
 	 */
 	@Contract("null -> fail; _ -> new")
-	public static PropertyExpression from(@Nullable String value) {
+	public static Expression from(@Nullable String value) {
 
 		Assert.notNull(value, "Value must not be null");
 
@@ -60,7 +60,7 @@ public abstract class PropertyExpression {
 
 			Matcher matcher = PROPERTY_PATTERN.matcher(value);
 			if (matcher.matches()) {
-				return new PropertyReference(matcher.group(1));
+				return new Reference(matcher.group(1));
 			}
 
 			return new LiteralValue(value);
@@ -70,15 +70,15 @@ public abstract class PropertyExpression {
 	}
 
 	/**
-	 * Create a {@link PropertyExpression} from the given value.
+	 * Create a {@link Expression} from the given value.
 	 *
 	 * @param value the source value.
 	 */
 	@Contract("null -> fail; _ -> new")
-	public static PropertyExpression property(@Nullable String value) {
+	public static Expression property(@Nullable String value) {
 
 		Assert.notNull(value, "Value must not be null");
-		return new PropertyReference(value);
+		return new Reference(value);
 	}
 
 	/**
@@ -144,12 +144,12 @@ public abstract class PropertyExpression {
 	}
 
 	/**
-	 * {@link PropertyExpression} representing a property reference such as
+	 * {@link Expression} representing a property reference such as
 	 * {@code ${spring.version}}.
 	 */
-	private static class PropertyReference extends PropertyExpression {
+	private static class Reference extends Expression {
 
-		private PropertyReference(String propertyName) {
+		private Reference(String propertyName) {
 			super(propertyName);
 		}
 
@@ -171,9 +171,9 @@ public abstract class PropertyExpression {
 	}
 
 	/**
-	 * {@link PropertyExpression} representing a literal, non-expression value.
+	 * {@link Expression} representing a literal, non-expression value.
 	 */
-	private static class LiteralValue extends PropertyExpression {
+	private static class LiteralValue extends Expression {
 
 		private LiteralValue(String value) {
 			super(value);

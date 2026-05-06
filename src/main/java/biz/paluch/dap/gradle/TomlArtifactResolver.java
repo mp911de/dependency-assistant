@@ -19,12 +19,8 @@ package biz.paluch.dap.gradle;
 import java.util.ArrayList;
 import java.util.List;
 
-import biz.paluch.dap.gradle.LookupSite.PropertyLookupSite;
-import biz.paluch.dap.gradle.LookupSite.ResolvedSite;
-import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.VersionedDependencySite;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -34,7 +30,6 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlFile;
-import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
 
 import static biz.paluch.dap.gradle.TomlParser.*;
@@ -51,56 +46,14 @@ class TomlArtifactResolver {
 
 	private final PsiFile file;
 
-	private final @Nullable ProjectState projectState;
-
 	private final @Nullable VersionCatalogRegistry registry;
 
-	private final TomlLookupSiteLocator tomlSiteLocator = new TomlLookupSiteLocator();
-
 	TomlArtifactResolver(Project project, PsiFile file,
-			@Nullable ProjectState projectState) {
-		this(project, file, projectState, null);
-	}
-
-	TomlArtifactResolver(Project project, PsiFile file,
-			@Nullable ProjectState projectState,
 			@Nullable VersionCatalogRegistry registry) {
 
 		this.project = project;
 		this.file = file;
-		this.projectState = projectState;
 		this.registry = registry;
-	}
-
-	/**
-	 * Resolves the {@link ArtifactReference} from a {@link TomlLiteral literal} by
-	 * classifying it through {@link TomlLookupSiteLocator} and dispatching the
-	 * resulting {@link LookupSite} to the same primitives used by
-	 * {@link GradleLookupSiteResolver}.
-	 *
-	 * @param literal the TOML literal.
-	 * @return the resolved artifact reference result.
-	 */
-	public ArtifactReference resolveTomlLiteral(TomlLiteral literal) {
-		return resolveLookupSite(tomlSiteLocator.locate(literal));
-	}
-
-	private ArtifactReference resolveLookupSite(LookupSite site) {
-
-		if (site.isAbsent()) {
-			return ArtifactReference.unresolved();
-		}
-
-		if (site instanceof PropertyLookupSite propertySite) {
-			return ArtifactReferenceUtils.resolve(propertySite, projectState);
-		}
-
-		if (site instanceof ResolvedSite(VersionedDependencySite versionedDependency)) {
-			return ArtifactReferenceUtils.resolve(versionedDependency,
-					() -> GradlePropertyResolver.forFile(file));
-		}
-
-		return ArtifactReference.unresolved();
 	}
 
 	/**

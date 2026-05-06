@@ -21,18 +21,18 @@ import java.util.Objects;
 import biz.paluch.dap.artifact.ArtifactId;
 
 /**
- * Default {@link GradlePlugin} implementation.
+ * Default {@link GradlePluginId} implementation.
  *
  * @author Mark Paluch
  */
-class DefaultGradlePlugin implements GradlePlugin {
+class DefaultGradlePluginId implements GradlePluginId {
 
 	private final ArtifactId id;
 
 	/**
 	 * Create a plugin artifact id adapter.
 	 */
-	public DefaultGradlePlugin(ArtifactId id) {
+	public DefaultGradlePluginId(ArtifactId id) {
 		this.id = id;
 	}
 
@@ -53,6 +53,9 @@ class DefaultGradlePlugin implements GradlePlugin {
 
 	@Override
 	public boolean equals(Object o) {
+		if (o instanceof ArtifactId that) {
+			return id.equals(that);
+		}
 		if (this == o) {
 			return true;
 		}

@@ -55,6 +55,7 @@ class GroovyDslSettingsParser {
 		Map<String, String> catalogs = new LinkedHashMap<>();
 		AtomicReference<String> defaultAlias = new AtomicReference<>(TomlParser.LIBS);
 
+		// TODO: Expand
 		SyntaxTraverser.psiTraverser(file).filter(GrMethodCall.class)
 				.filter(it -> "dependencyResolutionManagement".equals(GroovyDslUtils.getGroovyMethodName(it)))
 				.flatMap(it -> JBIterable.of(it.getClosureArguments()))

@@ -757,16 +757,6 @@ class KotlinDslParserTests {
 	@Test
 	@EditorFile(name = "build.gradle.kts", content = """
 			plugins {
-			    id("${property("myPlugin")}") version "1.0"
-			}
-			""")
-	void pluginIdInvalidFormatSkipped(PsiFile buildFile) {
-		assertThat(GradleFixtures.analyze(buildFile, Map.of("myPlugin", "../evil"))).isEmpty();
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
-			plugins {
 			    id("${property("pluginId")}") version "${property("pluginVer")}"
 			}
 			""")

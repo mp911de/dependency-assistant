@@ -96,7 +96,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
-		this.tomlResolver = new TomlArtifactResolver(project, file, projectState, this.registry);
+		this.tomlResolver = new TomlArtifactResolver(project, file, this.registry);
 		this.groovySiteLocator = new GroovyLookupSiteLocator(this.propertyResolver, this.registry);
 		this.kotlinSiteLocator = new KotlinLookupSiteLocator(this.propertyResolver, this.registry);
 		this.tomlSiteLocator = new TomlLookupSiteLocator();

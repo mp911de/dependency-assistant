@@ -21,30 +21,30 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link GradlePlugin}.
+ * Unit tests for {@link GradlePluginId}.
  *
  * @author Mark Paluch
  */
-public class GradlePluginUnitTests {
+public class GradlePluginIdUnitTests {
 
 	@Test
 	void isValidPluginId_acceptsNormalId() {
-		assertThat(GradlePlugin.isValidPluginId("org.springframework.boot")).isTrue();
+		assertThat(GradlePluginId.isValidPluginId("org.springframework.boot")).isTrue();
 	}
 
 	@Test
 	void isValidPluginId_rejectsPathTraversal() {
-		assertThat(GradlePlugin.isValidPluginId("../evil")).isFalse();
+		assertThat(GradlePluginId.isValidPluginId("../evil")).isFalse();
 	}
 
 	@Test
 	void isValidPluginId_rejectsEmpty() {
-		assertThat(GradlePlugin.isValidPluginId("")).isFalse();
+		assertThat(GradlePluginId.isValidPluginId("")).isFalse();
 	}
 
 	@Test
 	void isValidPluginId_rejectsUrlSpecial() {
-		assertThat(GradlePlugin.isValidPluginId("org@attacker.com/x")).isFalse();
+		assertThat(GradlePluginId.isValidPluginId("org@attacker.com/x")).isFalse();
 	}
 
 }

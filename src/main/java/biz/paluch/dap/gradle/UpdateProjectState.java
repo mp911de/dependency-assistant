@@ -64,15 +64,6 @@ class UpdateProjectState {
 	/**
 	 * Create a new {@code UpdateProjectState}.
 	 * @param project the IntelliJ project.
-	 * @param service the dependency assistant service to update.
-	 */
-	public UpdateProjectState(Project project, StateService service) {
-		this(project, PsiManager.getInstance(project), service);
-	}
-
-	/**
-	 * Create a new {@code UpdateProjectState}.
-	 * @param project the IntelliJ project.
 	 * @param psiManager the PSI manager to use.
 	 * @param service the dependency assistant service to update.
 	 */
@@ -81,16 +72,6 @@ class UpdateProjectState {
 		this.service = service;
 		this.psiManager = psiManager;
 		this.collector = new GradleDependencyCollector(project);
-	}
-
-	/**
-	 * Read and update dependency state for the given file.
-	 * @param file the file to inspect.
-	 */
-	public void readAndUpdate(PsiFile file) {
-		if (GradleUtils.isGradleFile(file)) {
-			ApplicationManager.getApplication().runReadAction(() -> update(file));
-		}
 	}
 
 	/**

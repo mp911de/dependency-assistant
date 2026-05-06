@@ -43,17 +43,14 @@ import org.jspecify.annotations.Nullable;
  */
 class KtVersion {
 
-	private final @Nullable KtCallElement version;
-
 	private final @Nullable KtExpression versionLiteral;
 
 	private final @Nullable KtLiterals versionLiterals;
 
 	private final Map<String, Constraint> constraints;
 
-	private KtVersion(@Nullable KtCallElement version, @Nullable KtExpression versionLiteral,
+	private KtVersion(@Nullable KtExpression versionLiteral,
 			Map<String, Constraint> constraints) {
-		this.version = version;
 		this.versionLiteral = versionLiteral;
 		this.versionLiterals = versionLiteral != null ? KtLiterals.from(versionLiteral) : null;
 		this.constraints = constraints;
@@ -76,7 +73,7 @@ class KtVersion {
 
 			KtExpression property = getVersionLiteral(dependency.getValueArgumentList());
 			if (property != null) {
-				return new KtVersion(null, property, Map.of());
+				return new KtVersion(property, Map.of());
 			}
 
 			return null;
@@ -109,7 +106,7 @@ class KtVersion {
 				});
 
 		KtExpression versionLiteral = getVersionLiteral(versionCall.getValueArgumentList());
-		return new KtVersion(versionCall, versionLiteral, constraints);
+		return new KtVersion(versionLiteral, constraints);
 	}
 
 	@Contract("null -> null")
@@ -120,10 +117,10 @@ class KtVersion {
 		}
 
 		return SyntaxTraverser.psiTraverser(element)
-				.filter(it -> !KtLambdaExpression.class.isInstance(it))
+				.filter(it -> !(it instanceof KtLambdaExpression))
 				.filter(it -> {
 					return it instanceof KtReferenceExpression || it instanceof KtDotQualifiedExpression dotQualified
-							&& dotQualified.getSelectorExpression() instanceof KtCallExpression selectorCall;
+							&& dotQualified.getSelectorExpression() instanceof KtCallExpression;
 				}).filter(KtExpression.class)
 				.flatMap(it -> {
 					String propertyName = KtLiterals.getText(it);
@@ -133,19 +130,6 @@ class KtVersion {
 
 					return JBIterable.empty();
 				}).first();
-	}
-
-	/**
-	 * Return the named version constraint that was declared within the
-	 * {@code version { ... }} block.
-	 *
-	 * @param name the constraint name, for example {@code strictly} or
-	 * {@code prefer}.
-	 * @return the matching constraint or {@code null} if no such constraint is
-	 * present.
-	 */
-	public @Nullable Constraint getConstraint(String name) {
-		return constraints.get(name);
 	}
 
 	/**

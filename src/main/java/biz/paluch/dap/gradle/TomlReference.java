@@ -134,10 +134,6 @@ class TomlReference {
 		return key;
 	}
 
-	private boolean isPlugin() {
-		return TomlParser.PLUGINS.equals(section);
-	}
-
 	private static List<String> split(String identifier) {
 
 		Assert.notNull(identifier, "TOML identifier alias must not be null");

@@ -23,7 +23,16 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.Contract;
-import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
+import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtBlockExpression;
+import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtExpression;
+import org.jetbrains.kotlin.psi.KtLambdaExpression;
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.jetbrains.kotlin.psi.KtQualifiedExpression;
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -66,10 +75,6 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 		return null;
 	}
 
-	static void from(KtArrayAccessExpression arrayAccess) {
-
-	}
-
 	/**
 	 * Return the first string template appended within a {@code buildString { }}
 	 * call.
@@ -100,15 +105,6 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 			}
 		}
 		return null;
-	}
-
-	/**
-	 * Return the string literal used as an {@code also} receiver, if present.
-	 */
-	public static @Nullable String extractAlsoReceiverStringLiteral(KtNameReferenceExpression itRef) {
-
-		KtStringTemplateExpression receiver = KotlinExtraAssignment.findAlsoReceiverStringTemplate(itRef);
-		return receiver != null ? KtLiterals.getText(receiver) : null;
 	}
 
 	private static @Nullable KtLambdaExpression findTrailingLambda(KtCallExpression call) {

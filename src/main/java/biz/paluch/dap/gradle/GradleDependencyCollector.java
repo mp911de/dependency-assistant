@@ -43,8 +43,6 @@ import com.intellij.psi.PsiFile;
  */
 class GradleDependencyCollector {
 
-	private final Project project;
-
 	private final Map<String, String> properties;
 
 	private final StateService service;
@@ -60,7 +58,6 @@ class GradleDependencyCollector {
 	 * Create a collector using properties already known for the project.
 	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
-		this.project = project;
 		this.service = StateService.getInstance(project);
 		this.properties = properties;
 	}

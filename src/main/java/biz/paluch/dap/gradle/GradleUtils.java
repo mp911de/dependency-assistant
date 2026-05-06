@@ -284,21 +284,21 @@ class GradleUtils {
 	 * Returns the element call refers to a plugin section configuration.
 	 */
 	public static boolean isPluginSection(@Nullable String name) {
-		return PLUGINS.equals(name);
+		return StringUtils.hasText(name) && PLUGINS.equals(name);
 	}
 
 	/**
 	 * Returns the element call refers to a dependency configuration.
 	 */
-	public static boolean isDependencySection(String name) {
-		return DEPENDENCY_CONFIGS.contains(name);
+	public static boolean isDependencySection(@Nullable String name) {
+		return StringUtils.hasText(name) && DEPENDENCY_CONFIGS.contains(name);
 	}
 
 	/**
 	 * Returns the element call refers to a managed (platform) configuration.
 	 */
-	public static boolean isPlatformSection(String name) {
-		return PLATFORM_FUNCTIONS.contains(name);
+	public static boolean isPlatformSection(@Nullable String name) {
+		return StringUtils.hasText(name) && PLATFORM_FUNCTIONS.contains(name);
 	}
 
 	// -------------------------------------------------------------------------

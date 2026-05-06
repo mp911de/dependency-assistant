@@ -121,7 +121,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);
 		boolean isPlugin = GroovyDslUtils.isInsidePluginsBlock(call);
 		if (isPlugin && GradleUtils.isPlugin(methodName)) {
-			return locatePluginDeclaration(call);
+			return GroovyPluginDependencySite.fromMethodCall(call, propertyResolver);
 		}
 
 		if (GradleParser.isMapStyleDeclarationCandidate(call)) {
@@ -132,12 +132,6 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		}
 
 		return GradleParser.parseDependency(call, propertyResolver);
-	}
-
-	private @Nullable DependencySite locatePluginDeclaration(GrMethodCall call) {
-
-		PluginId pluginId = GroovyPluginIds.fromMethodCall(call, propertyResolver);
-		return pluginId != null ? pluginId.toDependencySite() : null;
 	}
 
 	private LookupSite locatePropertyLiteral(GrLiteral literal) {
@@ -259,12 +253,12 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 * </pre>
 	 *
 	 * @param literal the literal to inspect.
-	 * @param scriptProperties property resolver used for dependency metadata.
+	 * @param propertyResolver property resolver used for dependency metadata.
 	 * @return the resolved dependency site, or {@code null} if the literal does not
 	 * belong to a supported version block.
 	 */
 	private static @Nullable VersionedDependencySite resolveVersionBlockLiteral(GrLiteral literal,
-			PropertyResolver scriptProperties) {
+			PropertyResolver propertyResolver) {
 
 		if (PsiTreeUtil.getParentOfType(literal, GrStringInjection.class) != null) {
 			return null;
@@ -299,10 +293,10 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 		GrLiteral gavLiteral = null;
 		for (PsiElement arg : depCall.getArgumentList().getAllArguments()) {
-			if (arg instanceof GrLiteral lit) {
-				String text = GroovyDslUtils.getText(lit);
-				if (text.split(":").length == 2) {
-					gavLiteral = lit;
+			if (arg instanceof GrLiteral gavCandidate) {
+				String text = GroovyDslUtils.getText(gavCandidate);
+				if (GradleArtifactId.isValid(text)) {
+					gavLiteral = gavCandidate;
 					break;
 				}
 			}
@@ -312,16 +306,13 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			return null;
 		}
 
-		String gavText = GroovyDslUtils.getText(gavLiteral);
-		if (StringUtils.isEmpty(gavText)) {
+		String gav = GroovyDslUtils.getText(gavLiteral);
+		if (!GradleArtifactId.isValid(gav)) {
 			return null;
 		}
-		String[] parts = gavText.split(":");
-		String group = parts[0];
-		String artifact = parts[1];
-		String version = GroovyDslUtils.getText(literal);
 
-		ArtifactId artifactId = GradleDependency.getArtifactId(group, artifact, scriptProperties);
+		String version = GroovyDslUtils.getText(literal);
+		ArtifactId artifactId = GradleArtifactId.from(gav).resolve(propertyResolver);
 
 		return ArtifactVersion.from(version).map(
 				it -> VersionedDependencySite.of(artifactId, it, VersionSource.declared(version), depCall, literal))
@@ -431,8 +422,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			return null;
 		}
 
-		PluginId id = GroovyPluginIds.fromMethodCall(idCall, scriptProperties);
-		return id != null ? id.toDependencySite() : null;
+		return GroovyPluginDependencySite.fromMethodCall(idCall, scriptProperties);
 	}
 
 	/**

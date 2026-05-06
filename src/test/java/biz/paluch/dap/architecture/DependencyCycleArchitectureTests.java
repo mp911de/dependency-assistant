@@ -42,8 +42,6 @@ class DependencyCycleArchitectureTests {
 					"TODO: refine design")
 			.excludingClass("biz.paluch.dap.maven.MavenParser",
 					"Fix todo's")
-			.excludingClass("biz.paluch.dap.gradle.KotlinPluginIds",
-					"Fix todo's")
 			.excludingClass("biz.paluch.dap.gradle.ExtraDeclaration",
 					"Fix todo's")
 			.excludingClass("biz.paluch.dap.gradle.GroovyDslUtils",

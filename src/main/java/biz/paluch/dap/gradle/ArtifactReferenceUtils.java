@@ -22,8 +22,6 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.VersionProperty;
-import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
-import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
@@ -64,33 +62,6 @@ class ArtifactReferenceUtils {
 			ArtifactVersion.from(site.version()).ifPresent(it::version);
 			it.versionLiteral(site.versionElement());
 		});
-	}
-
-	/**
-	 * Resolve the given {@link GradleDependency} to an {@link ArtifactReference}.
-	 *
-	 * @param dependency the dependency.
-	 * @param declaration the declaration (usage) element.
-	 * @param version the version literal element.
-	 * @param propertyResolver property resolver to resolve property-managed
-	 * dependencies.
-	 * @return the resolved artifact reference.
-	 */
-	public static ArtifactReference resolve(GradleDependency dependency, PsiElement declaration, PsiElement version,
-			PropertyResolver propertyResolver) {
-
-		if (dependency instanceof PropertyManagedDependency managed) {
-
-			PropertyValue element = propertyResolver.getPropertyValue(managed.property());
-			return fromPropertyManaged(managed, declaration, element == null ? null : element.getValue(),
-					element == null ? null : element.getValueLiteral());
-		}
-
-		if (dependency instanceof SimpleDependency simple) {
-			return fromSimple(simple, declaration, version);
-		}
-
-		return ArtifactReference.unresolved();
 	}
 
 	/**
@@ -162,40 +133,6 @@ class ArtifactReferenceUtils {
 			it.artifact(dependencySite.getArtifactId())
 					.versionSource(dependencySite.getVersionSource())
 					.declarationElement(dependencySite.getDeclarationElement());
-		});
-	}
-
-	/**
-	 * Create a resolved {@link ArtifactReference} from a property-managed
-	 * dependency.
-	 */
-	private static ArtifactReference fromPropertyManaged(PropertyManagedDependency managed,
-			PsiElement declarationElement, @Nullable String resolvedVersion, @Nullable PsiElement versionPsi) {
-
-		return ArtifactReference.from(it -> {
-			it.artifact(managed.getId()).declarationElement(declarationElement)
-					.versionSource(managed.getVersionSource());
-			if (StringUtils.hasText(resolvedVersion)) {
-				ArtifactVersion.from(resolvedVersion).ifPresent(it::version);
-			}
-			if (versionPsi != null) {
-				it.versionLiteral(versionPsi);
-			}
-		});
-	}
-
-	/**
-	 * Create a resolved {@link ArtifactReference} from a simple dependency.
-	 */
-	private static ArtifactReference fromSimple(SimpleDependency simple, PsiElement declarationElement,
-			@Nullable PsiElement versionPsi) {
-
-		return ArtifactReference.from(it -> {
-			it.artifact(simple.getId()).declarationElement(declarationElement).versionSource(simple.getVersionSource());
-			ArtifactVersion.from(simple.version()).ifPresent(it::version);
-			if (versionPsi != null) {
-				it.versionLiteral(versionPsi);
-			}
 		});
 	}
 

@@ -16,12 +16,34 @@
 
 package biz.paluch.dap.artifact;
 
+import org.springframework.util.ObjectUtils;
+
 /**
  * Default artifact coordinates (groupId + artifactId).
- * 
+ *
  * @author Mark Paluch
  */
 record DefaultArtifactId(String groupId, String artifactId) implements ArtifactId {
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof ArtifactId that) {
+			return groupId.equals(that.groupId()) && artifactId.equals(that.artifactId());
+		}
+		if (!(o instanceof DefaultArtifactId that)) {
+			return false;
+		}
+		if (!ObjectUtils.nullSafeEquals(groupId, that.groupId)) {
+			return false;
+		}
+		return ObjectUtils.nullSafeEquals(artifactId, that.artifactId);
+	}
+
+	@Override
+	public int hashCode() {
+		return ObjectUtils.nullSafeHash(
+				groupId, artifactId);
+	}
 
 	@Override
 	public String toString() {

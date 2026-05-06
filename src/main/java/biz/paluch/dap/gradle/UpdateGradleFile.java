@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
@@ -90,13 +89,7 @@ class UpdateGradleFile {
 				continue;
 			}
 
-			for (DeclarationSource declSrc : update.declarationSources()) {
-				if (declSrc instanceof DeclarationSource.Plugin) {
-					updatePlugin(buildFile, propertyResolver, update.coordinate(), newVersion);
-				} else {
-					updateDeclaration(buildFile, propertyResolver, update.coordinate(), newVersion);
-				}
-			}
+			updateDeclaration(buildFile, propertyResolver, update.coordinate(), newVersion);
 		}
 	}
 
@@ -164,9 +157,8 @@ class UpdateGradleFile {
 
 		// Kotlin DSL: extra["key"] = "value" or val key = "value"
 		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
-			UpdateKotlinDsl kotlinDsl = new UpdateKotlinDsl(PropertyResolver.empty());
-			if (!kotlinDsl.updateExtraProperty(file, propertyKey, newVersion)) {
-				kotlinDsl.updateValProperty(file, propertyKey, newVersion);
+			if (!UpdateKotlinDsl.updateExtraProperty(file, propertyKey, newVersion)) {
+				UpdateKotlinDsl.updateValProperty(file, propertyKey, newVersion);
 			}
 		}
 	}
@@ -226,31 +218,6 @@ class UpdateGradleFile {
 		// Kotlin DSL
 		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
 			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, artifactId, newVersion);
-		}
-	}
-
-	/**
-	 * Updates the plugin versions.
-	 */
-	private void updatePlugin(PsiFile file, GradlePropertyResolver propertyResolver, ArtifactId id, String newVersion) {
-
-		// TOML
-		VirtualFile virtualFile = file.getVirtualFile();
-
-		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
-			updateDeclaration(tomlFile, id, newVersion);
-			return;
-		}
-
-		// Groovy DSL
-		if (GradleUtils.isGroovyDsl(virtualFile)) {
-			new UpdateGroovyDsl(propertyResolver).updateDeclaration(file, id, newVersion);
-			return;
-		}
-
-		// Kotlin DSL
-		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
-			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, id, newVersion);
 		}
 	}
 

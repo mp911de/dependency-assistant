@@ -42,7 +42,7 @@ class TomlArtifactResolverRegistryTests {
 		PsiFile file = fixture.configureByText("build.gradle.kts", "");
 		VersionCatalogRegistry registry = new VersionCatalogRegistry(
 				Map.of("tools", "gradle/tools.versions.toml"), "tools");
-		TomlArtifactResolver resolver = new TomlArtifactResolver(fixture.getProject(), file, null, registry);
+		TomlArtifactResolver resolver = new TomlArtifactResolver(fixture.getProject(), file, registry);
 
 		TomlReference reference = TomlReference.of("tools", null, "some-lib");
 
@@ -55,7 +55,7 @@ class TomlArtifactResolverRegistryTests {
 		PsiFile file = fixture.configureByText("build.gradle.kts", "");
 		VersionCatalogRegistry registry = new VersionCatalogRegistry(
 				Map.of("tools", "gradle/tools.versions.toml"), "tools");
-		TomlArtifactResolver resolver = new TomlArtifactResolver(fixture.getProject(), file, null, registry);
+		TomlArtifactResolver resolver = new TomlArtifactResolver(fixture.getProject(), file, registry);
 
 		TomlReference reference = TomlReference.of("unknown", null, "some-lib");
 

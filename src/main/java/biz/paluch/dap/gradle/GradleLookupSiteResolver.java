@@ -62,7 +62,7 @@ class GradleLookupSiteResolver {
 			return ArtifactReferenceUtils.resolve(propertySite, projectState);
 		}
 
-		if (site instanceof LookupSite.ArtifactIdLookupSite(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement, @Nullable PsiElement versionElement)) {
+		if (site instanceof LookupSite.ArtifactIdLookupSite(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement, PsiElement versionElement)) {
 			return ArtifactReferenceUtils.resolve(artifactId, versionSource, declarationElement, versionElement,
 					propertyResolver);
 		}

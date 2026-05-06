@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -24,39 +26,41 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Factory for {@link PluginId} instances parsed from Groovy DSL plugin
+ * Factory for {@link DependencySite} instances parsed from Groovy DSL plugin
  * declarations.
  *
  * @author Mark Paluch
  */
-final class GroovyPluginIds {
+class GroovyPluginDependencySite {
 
-	private GroovyPluginIds() {
+	private GroovyPluginDependencySite() {
 	}
 
 	/**
 	 * Parse a Groovy plugin declaration.
 	 */
-	static @Nullable PluginId fromMethodCall(GrMethodCall call,
-			PropertyResolver properties) {
+	static @Nullable DependencySite fromMethodCall(GrMethodCall call,
+			PropertyResolver propertyResolver) {
 
 		GrLiteral idLiteral = findFirstLiteralArgument(call);
 		if (idLiteral == null) {
 			return null;
 		}
 
-		String resolvedId = properties.resolvePlaceholders(GroovyDslUtils.getText(idLiteral));
+		String id = propertyResolver.resolvePlaceholders(GroovyDslUtils.getText(idLiteral));
 		GrLiteral versionLiteral = findInlineVersionLiteral(call);
 		if (versionLiteral == null) {
 			versionLiteral = findChainedVersionLiteral(call);
 		}
 
-		if (versionLiteral == null) {
+		if (versionLiteral == null || !GradlePluginId.isValidPluginId(id)) {
 			return null;
 		}
 
 		String versionText = GroovyDslUtils.getText(versionLiteral);
-		return new PluginId(idLiteral, versionLiteral, resolvedId, versionText, null);
+		Expression expression = Expression.from(versionText);
+
+		return GradleDependency.of(GradlePluginId.of(id), expression).toDependencySite(call, versionLiteral);
 	}
 
 	private static @Nullable GrLiteral findFirstLiteralArgument(GrMethodCall call) {
