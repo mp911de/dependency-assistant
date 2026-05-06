@@ -19,25 +19,46 @@ package biz.paluch.dap.state;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Build-tool-agnostic project identity expressed as coordinates
- * ({@code groupId}, {@code artifactId}, and {@code buildFile}).
+ * Build-tool-agnostic identity for dependency state owned by a project context.
  *
- * TODO: Explain group/artifact id in various contexts such as gradle having
- * multiple files per project or GHAactions not having a groupId for an action
- * file.
+ * <p>The {@code groupId} and {@code artifactId} components are logical
+ * namespace/name slots, not necessarily Maven coordinates. Maven can map them
+ * directly from its model, Gradle derives them from imported project metadata,
+ * NPM uses an ecosystem namespace with the {@code package.json} name, and
+ * GitHub-oriented contexts use repository coordinates when available.
+ *
+ * <p>The optional {@code buildFile} component scopes the identity to a concrete
+ * descriptor when one logical IDE project can contain multiple independently
+ * tracked dependency contexts. Gradle build files, {@code package.json} files,
+ * and GitHub Actions workflow files use this component to keep dependency state
+ * isolated per descriptor. Build models that already provide a sufficiently
+ * unique project identity may leave it {@literal null}.
+ *
+ * @param groupId logical namespace of the project context.
+ * @param artifactId logical name of the project context.
+ * @param buildFile optional descriptor path used to disambiguate project
+ * contexts.
  * @author Mark Paluch
  */
 public record ProjectId(String groupId, String artifactId, @Nullable String buildFile) {
 
 	/**
-	 * Create a project id without a build-file descriptor.
+	 * Create a project identity that is fully represented by its logical namespace
+	 * and name.
+	 * @param groupId logical namespace of the project context.
+	 * @param artifactId logical name of the project context.
+	 * @return the project identity.
 	 */
 	public static ProjectId of(String groupId, String artifactId) {
 		return new ProjectId(groupId, artifactId, null);
 	}
 
 	/**
-	 * Create a project id with an optional build-file descriptor.
+	 * Create a project identity scoped to a concrete build or package descriptor.
+	 * @param groupId logical namespace of the project context.
+	 * @param artifactId logical name of the project context.
+	 * @param buildFile descriptor path used to disambiguate project contexts.
+	 * @return the project identity.
 	 */
 	public static ProjectId of(String groupId, String artifactId, String buildFile) {
 		return new ProjectId(groupId, artifactId, buildFile);

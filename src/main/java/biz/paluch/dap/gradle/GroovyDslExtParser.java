@@ -115,8 +115,8 @@ class GroovyDslExtParser {
 
 		Map<String, PropertyValue> elements = new LinkedHashMap<>();
 
-		// TODO: expand?
 		SyntaxTraverser.psiTraverser(file)
+				.expand(it -> !(it instanceof GrVariableDeclaration))
 				.filter(GrVariableDeclaration.class)
 				.forEach(decl -> {
 

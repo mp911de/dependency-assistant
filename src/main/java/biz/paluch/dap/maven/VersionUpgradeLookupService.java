@@ -27,6 +27,8 @@ import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.Expression;
+import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
@@ -55,6 +57,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final MavenProperties properties;
 
+	private final PropertyResolver propertyResolver;
+
 	private VersionUpgradeLookupService(PsiFile file) {
 		this(file.getProject(), file);
 	}
@@ -74,6 +78,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		StateService service = StateService.getInstance(project);
 		this.cache = service.getCache();
+
+		this.propertyResolver = this.properties.getPropertyResolver(context.getMavenProject(), this.pom);
 	}
 
 	static VersionUpgradeLookupService create(PsiElement element) {
@@ -136,18 +142,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
-		MavenParser.PropertyResolver resolver = new MavenParser.PropertyResolver(
-				(XmlFile) versionTag.getContainingFile(),
-				it -> {
 
-					ResolvedProperty property = resolveProperty(Expression.property(it));
-					if (property != null) {
-						return property.value();
-					}
-					return null;
-				});
-
-		ArtifactId artifactId = MavenParser.parseArtifactId(parentTag, resolver::resolvePropertyValue);
+		ArtifactId artifactId = MavenParser.parseArtifactId(parentTag, propertyResolver);
 		if (artifactId == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -163,7 +159,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 						.versionSource(VersionSource.property(expression.getPropertyName()));
 				if (property != null) {
 					ArtifactVersion.from(property.value()).ifPresent(it::version);
-					it.versionLiteral(property.valueLiteral());
+					it.versionLiteral(property.propertyValue().getValueLiteral());
 				}
 			});
 		}
@@ -180,13 +176,13 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	@Nullable
 	private ResolvedProperty resolveProperty(Expression expression) {
 
-		XmlTag propertyValue = null;
+		PropertyValue propertyValue = null;
 		while (expression.isProperty()) {
 
 			String propertyName = expression.getPropertyName();
-			propertyValue = properties.findProperty(buildContext.getMavenProject(), propertyName);
+			propertyValue = propertyResolver.getPropertyValue(propertyName);
 			if (propertyValue != null) {
-				expression = Expression.from(propertyValue.getValue().getTrimmedText());
+				expression = Expression.from(propertyValue.getValue());
 			} else {
 				return null;
 			}
@@ -196,7 +192,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return null;
 		}
 
-		return new ResolvedProperty(propertyValue.getValue().getTrimmedText(), propertyValue);
+		return new ResolvedProperty(propertyValue.getValue(), propertyValue);
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(ProjectCache cache, XmlTag propertyTag) {
@@ -224,7 +220,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			}
 
 			if (resolvedProperty != null) {
-				it.versionLiteral(resolvedProperty.valueLiteral());
+				it.versionLiteral(resolvedProperty.propertyValue().getValueLiteral());
 			} else {
 				it.versionLiteral(propertyTag);
 			}
@@ -267,8 +263,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return ArtifactVersion.from(expression.toString()).orElse(null);
 	}
 
-	private record ResolvedProperty(String value, PsiElement valueLiteral) {
-
+	private record ResolvedProperty(String value, PropertyValue propertyValue) {
 	}
 
 }

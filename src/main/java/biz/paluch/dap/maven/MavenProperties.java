@@ -21,15 +21,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Utilities to access Maven properties.
@@ -38,7 +38,6 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenProperties {
 
-	private final Project project;
 	private final PsiManager psiManager;
 	private final MavenProjectsManager manager;
 
@@ -47,7 +46,7 @@ class MavenProperties {
 	 * @param project the IntelliJ project.
 	 */
 	public MavenProperties(Project project) {
-		this(project, PsiManager.getInstance(project), MavenProjectsManager.getInstance(project));
+		this(PsiManager.getInstance(project), MavenProjectsManager.getInstance(project));
 	}
 
 	/**
@@ -56,7 +55,6 @@ class MavenProperties {
 	 * @param manager the Maven projects manager to inspect.
 	 */
 	public MavenProperties(Project project, MavenProjectsManager manager) {
-		this.project = project;
 		this.psiManager = PsiManager.getInstance(project);
 		this.manager = manager;
 	}
@@ -67,10 +65,30 @@ class MavenProperties {
 	 * @param psiManager the PSI manager to use.
 	 * @param manager the Maven projects manager to inspect.
 	 */
-	public MavenProperties(Project project, PsiManager psiManager, MavenProjectsManager manager) {
-		this.project = project;
+	public MavenProperties(PsiManager psiManager, MavenProjectsManager manager) {
 		this.psiManager = psiManager;
 		this.manager = manager;
+	}
+
+	/**
+	 * Return all properties visible to the given Maven project.
+	 * @param mavenProject the Maven project to inspect.
+	 */
+	public Map<String, PropertyValue> parseAllProperties(MavenProject mavenProject) {
+
+		Map<String, PropertyValue> properties = new HashMap<>();
+		List<MavenProject> hierarchy = getProjects(mavenProject);
+
+		for (int i = hierarchy.size() - 1; i >= 0; i--) {
+			MavenProject project = hierarchy.get(i);
+			PsiFile pomFile = psiManager.findFile(project.getFile());
+
+			if (pomFile instanceof XmlFile xmlFile) {
+				properties.putAll(MavenParser.parseProperties(xmlFile));
+			}
+		}
+
+		return properties;
 	}
 
 	/**
@@ -80,45 +98,8 @@ class MavenProperties {
 	public Map<String, String> getAllProperties(MavenProject mavenProject) {
 
 		Map<String, String> properties = new HashMap<>();
-
-		List<MavenProject> hierarchy = getProjects(mavenProject);
-
-		for (int i = hierarchy.size() - 1; i >= 0; i--) {
-			MavenProject project = hierarchy.get(i);
-			PsiFile pomFile = psiManager.findFile(project.getFile());
-
-			if (pomFile instanceof XmlFile xmlFile) {
-				properties.putAll(MavenParser.getProperties(xmlFile));
-			}
-		}
-
+		parseAllProperties(mavenProject).forEach((k, v) -> properties.put(k, v.getValue()));
 		return properties;
-	}
-
-	/**
-	 * Find the XML tag that declares the given property.
-	 * @param mavenProject the Maven project to inspect.
-	 * @param property the property name to find.
-	 */
-	public @Nullable XmlTag findProperty(MavenProject mavenProject, String property) {
-
-		List<MavenProject> hierarchy = getProjects(mavenProject);
-
-		for (int i = hierarchy.size() - 1; i >= 0; i--) {
-			MavenProject project = hierarchy.get(i);
-			PsiFile pomFile = psiManager.findFile(project.getFile());
-
-			if (pomFile instanceof XmlFile xmlFile && xmlFile.getDocument() != null) {
-
-				Map<String, MavenParser.MavenProperty> properties = MavenParser.parseProperties(xmlFile);
-				MavenParser.MavenProperty mavenProperty = properties.get(property);
-				if (mavenProperty != null) {
-					return mavenProperty.valueElement();
-				}
-			}
-		}
-
-		return null;
 	}
 
 	private List<MavenProject> getProjects(MavenProject mavenProject) {
@@ -137,4 +118,13 @@ class MavenProperties {
 		}
 		return hierarchy;
 	}
+
+	/**
+	 * Create a composite property resolver for the given Maven project.
+	 */
+	public PropertyResolver getPropertyResolver(MavenProject mavenProject, XmlFile pom) {
+		return new MavenProjectMetadataPropertyResolver(pom)
+				.withFallback(PropertyResolver.fromMap(parseAllProperties(mavenProject)));
+	}
+
 }

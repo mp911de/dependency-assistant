@@ -154,4 +154,8 @@ public class CachedArtifact {
 		return ArtifactId.of(getGroupId(), getArtifactId());
 	}
 
+	@Override
+	public String toString() {
+		return groupId + ":" + artifactId + ", Release count: " + releases.size();
+	}
 }

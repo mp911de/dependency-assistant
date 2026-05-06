@@ -26,12 +26,14 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 
@@ -127,9 +129,14 @@ class UpdateProjectState {
 	 */
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
+		MavenProperties properties = new MavenProperties(project);
 		DependencyCollector collector = new DependencyCollector();
 		doWithAllFiles(it -> {
-			this.collector.doCollect(it, collector);
+
+			MavenProjectContext context = MavenProjectContext.of(project, it);
+			PropertyResolver propertyResolver = properties.getPropertyResolver(context.getMavenProject(), (XmlFile) it);
+
+			this.collector.doCollect(it, collector, propertyResolver);
 		}, indicator);
 
 		collector.addAllReleaseSources(MavenUtils.getReleaseSources(project));

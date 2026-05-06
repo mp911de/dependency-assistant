@@ -20,6 +20,7 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 
@@ -62,6 +63,17 @@ class MavenDependencyCollector {
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
 			MavenParser parser = new MavenParser(collector, properties);
 			parser.parsePomFile(cache, xmlFile);
+		}
+	}
+
+	/**
+	 * Collect declarations from the given Maven PSI file into {@code collector}.
+	 */
+	protected void doCollect(PsiFile psiFile, DependencyCollector collector, PropertyResolver propertyResolver) {
+
+		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
+			MavenParser parser = new MavenParser(collector, properties);
+			parser.parsePomFile(cache, xmlFile, propertyResolver);
 		}
 	}
 
