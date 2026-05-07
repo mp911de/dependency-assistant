@@ -18,7 +18,8 @@ package biz.paluch.dap.maven;
 
 import java.util.List;
 import java.util.Map;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
@@ -144,13 +145,18 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return MavenInterface.INSTANCE;
+		public ProjectId getProjectId() {
+			return projectContext.getProjectId();
 		}
 
 		@Override
-		public ProjectId getProjectId() {
-			return projectContext.getProjectId();
+		public List<ReleaseSource> getReleaseSources() {
+			return projectContext.getReleaseSources();
+		}
+
+		@Override
+		public InterfaceAssistant getInterfaceAssistant() {
+			return MavenInterface.INSTANCE;
 		}
 
 		@Override
@@ -163,11 +169,6 @@ class MavenAssistant implements DependencyAssistant {
 			ProjectState projectState = service.getProjectState(getProjectId());
 			projectState.invalidateDependencies();
 			projectState.setDependencies(collect(file, projectContext.getMavenProject()));
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return projectContext.getReleaseSources();
 		}
 
 		@Override

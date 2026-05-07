@@ -98,7 +98,7 @@ class GradleAssistant implements DependencyAssistant {
 	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
 
 		GradleProjectContext context = GradleProjectContext.of(project, anchor);
-		return new GradleDependencyContext(project, anchor, context, context.getProjectId());
+		return new GradleDependencyContext(project, anchor, context);
 	}
 
 	private static class GradleDependencyContext implements ProjectDependencyContext {
@@ -109,38 +109,34 @@ class GradleAssistant implements DependencyAssistant {
 
 		private final GradleProjectContext delegate;
 
-		private final ProjectId projectId;
-
 		private final StateService service;
 
-		GradleDependencyContext(Project project, VirtualFile anchor, GradleProjectContext delegate,
-				ProjectId projectId) {
+		GradleDependencyContext(Project project, VirtualFile anchor, GradleProjectContext delegate) {
 
 			this.project = project;
 			this.anchor = anchor;
 			this.delegate = delegate;
-			this.projectId = projectId;
 			this.service = StateService.getInstance(project);
 		}
 
 		@Override
 		public boolean isAvailable() {
-			return true;
-		}
-
-		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return GradleInterface.INSTANCE;
+			return delegate.isAvailable();
 		}
 
 		@Override
 		public ProjectId getProjectId() {
-			return projectId;
+			return delegate.getProjectId();
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
 			return delegate.getReleaseSources();
+		}
+
+		@Override
+		public InterfaceAssistant getInterfaceAssistant() {
+			return GradleInterface.INSTANCE;
 		}
 
 		@Override

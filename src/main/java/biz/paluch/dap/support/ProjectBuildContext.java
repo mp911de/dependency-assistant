@@ -22,22 +22,44 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 
 /**
- * Build-tool agnostic context for the build file currently open in the editor.
+ * Build-tool-agnostic view of the dependency context bound to a project build
+ * file.
  *
- * <p>Provides project identity and release sources without exposing Maven or
- * Gradle-specific APIs to callers.
+ * <p>This contract is intentionally narrower than a full integration context:
+ * it exposes only the stable project identity and release-source topology
+ * needed by shared state, lookup, and dependency-check infrastructure.
+ * Build-tool specific services such as parsing, PSI rewriting, and UI behavior
+ * remain with the concrete integration layer.
+ *
+ * <p>A context may be unavailable when the anchor file is outside an imported
+ * or otherwise supported project model. Callers that operate opportunistically
+ * over arbitrary PSI should check {@link #isAvailable()} before accessing
+ * project state or release sources.
+ *
+ * <p>The returned {@link ProjectId} identifies where dependency state is
+ * stored, while {@link ReleaseSource release sources} describe where version
+ * candidates should be obtained for dependencies declared in that context. Both
+ * are scoped to the same logical dependency domain, which may be a Maven
+ * project, a Gradle build file, a {@code package.json}, or a workflow
+ * descriptor.
  *
  * @author Mark Paluch
+ * @see ProjectId
+ * @see ReleaseSource
  */
 public interface ProjectBuildContext {
 
 	/**
-	 * Return whether this context is backed by a known, importable project.
+	 * Return whether this context is backed by a supported project model.
+	 * <p>Unavailable contexts are sentinels used by integrations that inspect files
+	 * before a build model, package descriptor, or repository context can be
+	 * established.
 	 */
 	boolean isAvailable();
 
 	/**
-	 * Return whether this context is not {@link #isAvailable() available}.
+	 * Return whether this context cannot provide project state or release-source
+	 * metadata.
 	 * @see #isAvailable()
 	 */
 	default boolean isAbsent() {
@@ -45,13 +67,20 @@ public interface ProjectBuildContext {
 	}
 
 	/**
-	 * Return the build-tool agnostic project identity.
+	 * Return the build-tool-agnostic identity used for dependency state.
+	 * <p>The identity must use the same scoping rules as
+	 * {@link #getReleaseSources()} so cached dependencies, property mappings, and
+	 * release lookups refer to the same dependency domain.
 	 * @throws IllegalStateException if the build context is not available.
 	 */
 	ProjectId getProjectId();
 
 	/**
-	 * Return release sources associated with the bound project.
+	 * Return the release sources associated with this dependency domain.
+	 * <p>The returned sources are integration-specific adapters hidden behind the
+	 * common {@link ReleaseSource} contract. They should reflect the repositories,
+	 * registries, or hosting services that apply to dependencies owned by
+	 * {@link #getProjectId()}.
 	 * @throws IllegalStateException if the build context is not available.
 	 */
 	List<ReleaseSource> getReleaseSources();

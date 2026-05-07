@@ -17,13 +17,23 @@
 package biz.paluch.dap.github;
 
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.*;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.DeclaredDependency;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
@@ -148,11 +158,6 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return GitHubInterface.INSTANCE;
-		}
-
-		@Override
 		public ProjectId getProjectId() {
 			return context.getProjectId();
 		}
@@ -160,6 +165,11 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
 			return context.getReleaseSources();
+		}
+
+		@Override
+		public InterfaceAssistant getInterfaceAssistant() {
+			return GitHubInterface.INSTANCE;
 		}
 
 		@Override

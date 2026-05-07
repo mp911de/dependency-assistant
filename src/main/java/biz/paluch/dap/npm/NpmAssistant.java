@@ -17,7 +17,8 @@
 package biz.paluch.dap.npm;
 
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
@@ -149,11 +150,6 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return NpmInterface.INSTANCE;
-		}
-
-		@Override
 		public ProjectId getProjectId() {
 			return context.getProjectId();
 		}
@@ -161,6 +157,11 @@ public class NpmAssistant implements DependencyAssistant {
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
 			return context.getReleaseSources();
+		}
+
+		@Override
+		public InterfaceAssistant getInterfaceAssistant() {
+			return NpmInterface.INSTANCE;
 		}
 
 		@Override
