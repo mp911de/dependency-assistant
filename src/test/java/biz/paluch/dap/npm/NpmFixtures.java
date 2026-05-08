@@ -25,7 +25,7 @@ import com.intellij.psi.PsiFile;
 
 /**
  * Fixtures for NPM {@code package.json} tests.
- * 
+ *
  * @author Mark Paluch
  */
 class NpmFixtures {
@@ -53,7 +53,7 @@ class NpmFixtures {
 	static DependencyCollector analyze(PsiFile file) {
 
 		StateService service = StateService.getInstance(file.getProject());
-		DependencyCollector collector = new NpmDependencyCollector().collect(file);
+		DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(file);
 
 		ProjectId projectId = ProjectId.of("npm", file.getVirtualFile().getNameWithoutExtension(),
 				file.getVirtualFile().getPath());

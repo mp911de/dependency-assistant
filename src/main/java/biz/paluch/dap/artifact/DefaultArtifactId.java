@@ -41,8 +41,7 @@ record DefaultArtifactId(String groupId, String artifactId) implements ArtifactI
 
 	@Override
 	public int hashCode() {
-		return ObjectUtils.nullSafeHash(
-				groupId, artifactId);
+		return ObjectUtils.nullSafeHash(groupId, artifactId);
 	}
 
 	@Override

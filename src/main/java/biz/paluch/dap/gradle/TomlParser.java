@@ -211,9 +211,11 @@ class TomlParser extends GradleParserSupport {
 				.forEach(kv -> {
 					String key = TomlParser.getTomlKeyName(kv.getKey());
 					PsiElement valuePsi = kv.getValue();
-					String value = TomlParser.getText(valuePsi);
-					if (StringUtils.hasText(key) && StringUtils.hasText(value)) {
-						map.put(key, new PropertyValue(key, value, valuePsi));
+					if (valuePsi != null) {
+						String value = TomlParser.getText(valuePsi);
+						if (StringUtils.hasText(key) && StringUtils.hasText(value)) {
+							map.put(key, new PropertyValue(key, value, valuePsi));
+						}
 					}
 				});
 

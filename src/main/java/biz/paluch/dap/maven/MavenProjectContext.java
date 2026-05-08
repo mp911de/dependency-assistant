@@ -152,6 +152,16 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return MavenUtils.getReleaseSources(remoteRepositories);
 		}
 
+		@Override
+		public boolean isAbsent() {
+			return MavenProjectContext.super.isAbsent();
+		}
+
+		@Override
+		public String toString() {
+			return "%s, MavenProject: %s".formatted(projectId, mavenProject);
+		}
+
 	}
 
 	/**
@@ -179,6 +189,11 @@ interface MavenProjectContext extends ProjectBuildContext {
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
 			throw new IllegalStateException("Maven Context not available");
+		}
+
+		@Override
+		public String toString() {
+			return "Absent Maven Context";
 		}
 
 	}

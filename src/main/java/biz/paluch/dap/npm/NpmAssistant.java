@@ -133,30 +133,30 @@ public class NpmAssistant implements DependencyAssistant {
 
 		private final VirtualFile anchor;
 
-		private final NpmProjectContext context;
+		private final NpmProjectContext projectContext;
 
 		private final StateService service;
 
-		NpmDependencyContext(Project project, VirtualFile anchor, NpmProjectContext context) {
+		NpmDependencyContext(Project project, VirtualFile anchor, NpmProjectContext projectContext) {
 			this.project = project;
 			this.anchor = anchor;
-			this.context = context;
+			this.projectContext = projectContext;
 			this.service = StateService.getInstance(project);
 		}
 
 		@Override
 		public boolean isAvailable() {
-			return context.isAvailable();
+			return projectContext.isAvailable();
 		}
 
 		@Override
 		public ProjectId getProjectId() {
-			return context.getProjectId();
+			return projectContext.getProjectId();
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return context.getReleaseSources();
+			return projectContext.getReleaseSources();
 		}
 
 		@Override
@@ -171,7 +171,7 @@ public class NpmAssistant implements DependencyAssistant {
 				return;
 			}
 
-			DependencyCollector collector = new NpmDependencyCollector().collect(file);
+			DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(file);
 			ProjectState projectState = service.getProjectState(getProjectId());
 			projectState.invalidateDependencies();
 			projectState.setDependencies(collector);
@@ -185,7 +185,7 @@ public class NpmAssistant implements DependencyAssistant {
 				return new DependencyCollector();
 			}
 
-			DependencyCollector collector = new NpmDependencyCollector().collect(psiFile);
+			DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(psiFile);
 			collector.addAllReleaseSources(getReleaseSources());
 			return collector;
 		}
@@ -219,7 +219,7 @@ public class NpmAssistant implements DependencyAssistant {
 
 		@Override
 		public VersionUpgradeLookupSupport getLookup(PsiElement element) {
-			return new VersionUpgradeLookupService(project, context);
+			return new VersionUpgradeLookupService(project, projectContext);
 		}
 
 		@Override
@@ -230,6 +230,11 @@ public class NpmAssistant implements DependencyAssistant {
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			new UpdatePackageJsonFile(project).applyUpdates(psiFile, updates);
+		}
+
+		@Override
+		public String toString() {
+			return "NpmDependencyContext[%s] %s".formatted(anchor, projectContext);
 		}
 
 	}

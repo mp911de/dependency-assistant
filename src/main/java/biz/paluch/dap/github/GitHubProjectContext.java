@@ -86,17 +86,14 @@ class GitHubProjectContext implements ProjectBuildContext {
 		return projectId;
 	}
 
-	/**
-	 * Return the typed release source for this GitHub Actions file.
-	 * @return the release source; guaranteed to be not {@literal null}.
-	 */
-	GitHubReleaseSource getReleaseSource() {
-		return releaseSource;
-	}
-
 	@Override
 	public List<ReleaseSource> getReleaseSources() {
 		return List.of(releaseSource);
+	}
+
+	@Override
+	public String toString() {
+		return "%s".formatted(projectId);
 	}
 
 }

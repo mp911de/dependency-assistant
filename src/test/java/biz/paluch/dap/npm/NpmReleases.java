@@ -47,6 +47,14 @@ public final class NpmReleases {
 					.add("1.0.0-alpha.2", "2024-03-19")
 					.add("1.0.0-alpha.1", "2024-03-19"));
 
+	public static final CachedArtifact GH_ANTORA_XREF_EXTENSION = create("spring-io", "antora-xref-extension",
+			releases -> releases
+					.add("1.0.0-alpha.5", "2025-11-08", "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1")
+					.add("1.0.0-alpha.4", "2024-11-05", "d1185ce59f7757407fe6a5febb1e03e3dba2a530")
+					.add("1.0.0-alpha.3", "2024-03-19", "aaabbdde59f7757407fe6a5febb1e03e3dba2a530")
+					.add("1.0.0-alpha.2", "2024-03-19")
+					.add("1.0.0-alpha.1", "2024-03-19"));
+
 	public static final CachedArtifact AXIOS = create("axios", "axios",
 			releases -> releases
 					.add("6.0.0", "2025-11-08", "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1")

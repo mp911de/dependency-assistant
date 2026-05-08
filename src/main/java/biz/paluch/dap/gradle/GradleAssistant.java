@@ -108,31 +108,31 @@ class GradleAssistant implements DependencyAssistant {
 
 		private final VirtualFile anchor;
 
-		private final GradleProjectContext delegate;
+		private final GradleProjectContext projectContext;
 
 		private final StateService service;
 
-		GradleDependencyContext(Project project, VirtualFile anchor, GradleProjectContext delegate) {
+		GradleDependencyContext(Project project, VirtualFile anchor, GradleProjectContext projectContext) {
 
 			this.project = project;
 			this.anchor = anchor;
-			this.delegate = delegate;
+			this.projectContext = projectContext;
 			this.service = StateService.getInstance(project);
 		}
 
 		@Override
 		public boolean isAvailable() {
-			return delegate.isAvailable();
+			return projectContext.isAvailable();
 		}
 
 		@Override
 		public ProjectId getProjectId() {
-			return delegate.getProjectId();
+			return projectContext.getProjectId();
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return delegate.getReleaseSources();
+			return projectContext.getReleaseSources();
 		}
 
 		@Override
@@ -166,7 +166,7 @@ class GradleAssistant implements DependencyAssistant {
 			}
 
 			DependencyCollector collector = new GradleDependencyCollector(project).collect(psiFile);
-			collector.addAllReleaseSources(delegate.getReleaseSources());
+			collector.addAllReleaseSources(projectContext.getReleaseSources());
 
 			return collector;
 		}
@@ -200,6 +200,11 @@ class GradleAssistant implements DependencyAssistant {
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			new UpdateGradleFile(project).applyUpdates(psiFile, updates);
+		}
+
+		@Override
+		public String toString() {
+			return "GradleDependencyContext[%s] %s".formatted(anchor, projectContext);
 		}
 
 	}

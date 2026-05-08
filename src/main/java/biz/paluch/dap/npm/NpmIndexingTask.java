@@ -87,7 +87,7 @@ class NpmIndexingTask {
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
 		DependencyCollector aggregate = new DependencyCollector();
-		NpmDependencyCollector collector = new NpmDependencyCollector();
+		NpmDependencyCollector collector = new NpmDependencyCollector(service.getCache());
 
 		doWithAllFiles(psiFile -> {
 			collector.doCollect(psiFile, aggregate);
@@ -108,7 +108,7 @@ class NpmIndexingTask {
 			return;
 		}
 
-		DependencyCollector collector = new NpmDependencyCollector().collect(file);
+		DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(file);
 		NpmProjectContext context = NpmProjectContext.of(file);
 		ProjectState projectState = this.service.getProjectState(context.getProjectId());
 		projectState.setDependencies(collector);

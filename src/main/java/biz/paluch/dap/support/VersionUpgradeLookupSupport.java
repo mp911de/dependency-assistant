@@ -116,8 +116,9 @@ public abstract class VersionUpgradeLookupSupport {
 	}
 
 	/**
-	 * Return the current version of the dependency with the given artifact id.
-	 * @param artifactId the artifact id to locate.
+	 * Return the current version of the dependency with the given artifact
+	 * reference.
+	 * @param reference the artifact to locate.
 	 * @return the current artifact version, or {@code null} if project state is
 	 * unavailable or the dependency is not known.
 	 */
@@ -186,8 +187,7 @@ public abstract class VersionUpgradeLookupSupport {
 	 * @param artifactReference the reference to evaluate.
 	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
 	 */
-	protected AvailableUpgrades suggestUpgrades(Cache cache,
-			ArtifactReference artifactReference) {
+	protected AvailableUpgrades suggestUpgrades(Cache cache, ArtifactReference artifactReference) {
 
 		if (!artifactReference.isResolved()) {
 			return AvailableUpgrades.none();

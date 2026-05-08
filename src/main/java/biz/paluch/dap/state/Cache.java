@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
@@ -122,9 +123,10 @@ public class Cache {
 			}
 		}
 
+		ArtifactId artifactIdToUse = artifactId instanceof GitArtifactId gid ? gid.releaseSource() : artifactId;
 		synchronized (artifacts) {
 			for (CachedArtifact artifact : artifacts) {
-				if (artifact.matches(artifactId)) {
+				if (artifact.matches(artifactIdToUse)) {
 					return artifact.getVersionOptions();
 				}
 			}

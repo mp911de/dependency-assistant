@@ -215,6 +215,11 @@ class MavenAssistant implements DependencyAssistant {
 			return collector;
 		}
 
+		@Override
+		public String toString() {
+			return "MavenDependencyContext[%s] %s".formatted(anchor, projectContext);
+		}
+
 	}
 
 	/**

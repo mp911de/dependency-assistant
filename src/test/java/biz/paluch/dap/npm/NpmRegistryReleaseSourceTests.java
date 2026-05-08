@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.npm;
 
+import java.io.IOException;
 import java.util.List;
 
 import biz.paluch.dap.artifact.GitVersion;
@@ -34,7 +35,7 @@ class NpmRegistryReleaseSourceTests {
 	private static final NpmRegistryReleaseSource SOURCE = NpmRegistryReleaseSource.NPM_REGISTRY;
 
 	@Test
-	void parsesAxiosLikePayload() {
+	void parsesAxiosLikePayload() throws IOException {
 
 		String body = """
 				{
@@ -63,7 +64,7 @@ class NpmRegistryReleaseSourceTests {
 	}
 
 	@Test
-	void parsesScopedPackagePayload() {
+	void parsesScopedPackagePayload() throws IOException {
 
 		String body = """
 				{
@@ -86,7 +87,7 @@ class NpmRegistryReleaseSourceTests {
 	}
 
 	@Test
-	void preservesPreReleaseVersions() {
+	void preservesPreReleaseVersions() throws IOException {
 
 		String body = """
 				{
@@ -119,7 +120,7 @@ class NpmRegistryReleaseSourceTests {
 	}
 
 	@Test
-	void parsesPayloadWithoutTimeMap() {
+	void parsesPayloadWithoutTimeMap() throws IOException {
 
 		String body = """
 				{

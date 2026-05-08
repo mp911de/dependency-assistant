@@ -21,7 +21,9 @@ import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
+import com.intellij.patterns.PsiElementPattern;
 import com.intellij.patterns.XmlPatterns;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.util.ProcessingContext;
 
@@ -32,26 +34,36 @@ import com.intellij.util.ProcessingContext;
  */
 public class MavenReleaseVersionCompletionContributor extends CompletionContributor {
 
+	private static final PatternCondition<XmlFile> IS_MAVEN_FILE = new PatternCondition<>("isMavenFile") {
+
+		@Override
+		public boolean accepts(XmlFile xmlFile, ProcessingContext processingContext) {
+			return MavenUtils.isMavenPomFile(xmlFile);
+		}
+
+	};
+
+	private static final PsiElementPattern.Capture<PsiElement> DEPENDENCY_VERSION = PlatformPatterns.psiElement() //
+			.inside(XmlPatterns.xmlTag().withLocalName("version")
+					.inside(PlatformPatterns.or(XmlPatterns.xmlTag().withLocalName("dependency"),
+							XmlPatterns.xmlTag().withLocalName("plugin")))
+					.inside(XmlPatterns.xmlFile().with(IS_MAVEN_FILE)));
+
+	private static final PsiElementPattern.Capture<PsiElement> PROPERTIES = PlatformPatterns.psiElement() //
+			.inside(XmlPatterns.xmlTag().withAncestor(2, XmlPatterns.xmlTag().withName("properties"))
+					.inside(XmlPatterns.xmlFile().with(IS_MAVEN_FILE)));
+
 	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
 
 	public MavenReleaseVersionCompletionContributor() {
+		extend(CompletionType.BASIC, DEPENDENCY_VERSION, provider);
+		extend(CompletionType.BASIC, PROPERTIES, provider);
+	}
 
-		PatternCondition<XmlFile> isMavenFile = new PatternCondition<>("isMavenFile") {
-
-			@Override
-			public boolean accepts(XmlFile xmlFile, ProcessingContext processingContext) {
-				return MavenUtils.isMavenPomFile(xmlFile);
-			}
-
-		};
-
-		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
-				.inside(XmlPatterns.xmlFile().with(isMavenFile)) //
-				.inside(XmlPatterns.xmlTag().withLocalName("version")), provider);
-
-		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
-				.inside(XmlPatterns.xmlFile().with(isMavenFile)) //
-				.inside(XmlPatterns.xmlTag().withParent(XmlPatterns.xmlTag().withName("properties"))), provider);
+	@Override
+	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
+		return ReleasesCompletionProvider.isVersionCharacter(typeChar)
+				&& (PROPERTIES.accepts(position) || DEPENDENCY_VERSION.accepts(position));
 	}
 
 }

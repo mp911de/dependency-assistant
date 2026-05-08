@@ -17,10 +17,14 @@
 package biz.paluch.dap.npm;
 
 import java.util.List;
+import java.util.Optional;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.GitVersionResolver;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -33,6 +37,12 @@ import com.intellij.psi.PsiFile;
 class NpmDependencyCollector {
 
 	private final NpmPackageParser parser = new NpmPackageParser();
+
+	private final GitVersionResolver gitVersionResolver;
+
+	public NpmDependencyCollector(Cache cache) {
+		this.gitVersionResolver = new GitVersionResolver(cache);
+	}
 
 	/**
 	 * Collect NPM dependencies from the given {@code package.json} file.
@@ -56,10 +66,20 @@ class NpmDependencyCollector {
 
 			VersionSource versionSource = dependency.versionSource();
 			if (versionSource.isDefined() && !versionSource.isPrefix()) {
-				dependency.artifactVersion().ifPresent(version -> {
-					collector.registerUsage(dependency.artifactId(), version, DeclarationSource.dependency(),
-							versionSource);
-				});
+
+				if (dependency.version() instanceof NpmVersionExpression.Git git) {
+					Optional<GitVersion> version = gitVersionResolver.resolve(dependency.artifactId(), git.text());
+					version.ifPresent(it -> {
+						collector.registerUsage(dependency.artifactId(), it, DeclarationSource.dependency(),
+								versionSource);
+					});
+
+				} else {
+					dependency.artifactVersion().ifPresent(version -> {
+						collector.registerUsage(dependency.artifactId(), version, DeclarationSource.dependency(),
+								versionSource);
+					});
+				}
 			}
 
 			collector.registerDeclaration(dependency.artifactId(), DeclarationSource.dependency(), versionSource);

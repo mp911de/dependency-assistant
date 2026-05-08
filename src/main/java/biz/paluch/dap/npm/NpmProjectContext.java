@@ -46,7 +46,7 @@ class NpmProjectContext implements ProjectBuildContext {
 
 	private static final PluginId GITHUB = PluginId.getId("org.jetbrains.plugins.github");
 
-	private static final boolean GITHUB_AVAILABLE = PluginManagerCore.isPluginInstalled(GITHUB)
+	static final boolean GITHUB_AVAILABLE = PluginManagerCore.isPluginInstalled(GITHUB)
 			&& !PluginManagerCore.isDisabled(GITHUB);
 
 	private final List<ReleaseSource> releaseSources;
@@ -100,4 +100,8 @@ class NpmProjectContext implements ProjectBuildContext {
 		return releaseSources;
 	}
 
+	@Override
+	public String toString() {
+		return "%s, ReleaseSources: %s".formatted(projectId, releaseSources);
+	}
 }

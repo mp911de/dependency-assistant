@@ -72,5 +72,4 @@ public record GitRepositoryMetadata(String host, String owner, String repository
 		return GitArtifactId.of(host(), owner(), repository(), originalArtifactId);
 	}
 
-
 }

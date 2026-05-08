@@ -135,7 +135,7 @@ interface GitHubAction extends ArtifactId {
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(owner, repository, version);
+			return Objects.hash(owner, repository);
 		}
 
 		@Override

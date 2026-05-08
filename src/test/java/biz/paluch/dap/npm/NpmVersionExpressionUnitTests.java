@@ -319,6 +319,24 @@ class NpmVersionExpressionUnitTests {
 	}
 
 	@Test
+	void parsesGitVer() {
+
+		NpmVersionExpression expression = NpmVersionExpression.parse("git+https://github.com/owner/repo.git#");
+
+		assertThat(expression).isNotNull();
+		assertThat(expression.text()).isEmpty();
+	}
+
+	@Test
+	void parsesGitSemVer() {
+
+		NpmVersionExpression expression = NpmVersionExpression.parse("git+https://github.com/owner/repo.git#semver:");
+
+		assertThat(expression).isNotNull();
+		assertThat(expression.text()).isEmpty();
+	}
+
+	@Test
 	void parsesShorthand() {
 
 		NpmVersionExpression.Git git = Git.parse("owner/repo#v1.2.3");
@@ -371,7 +389,6 @@ class NpmVersionExpressionUnitTests {
 		assertThat(Git.parse("git+ssh://garbage")).isNull();
 		assertThat(Git.parse("https://example.com/foo/bar.tgz")).isNull();
 		assertThat(Git.parse("tarball://example.com/foo.tgz")).isNull();
-		assertThat(Git.parse("git+https://github.com/owner/repo.git#semver:")).isNull();
 	}
 
 	@ParameterizedTest

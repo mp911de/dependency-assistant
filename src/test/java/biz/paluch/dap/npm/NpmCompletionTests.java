@@ -475,7 +475,7 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "git+https://github.com/owner/repo.git#semver:<caret>"
+			    "@springio/antora-xref-extension": "git+https://github.com/spring-io/antora-xref-extension.git#semver:<caret>"
 			  }
 			}
 			""")
@@ -492,7 +492,23 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "git+https://github.com/owner/repo.git#semver:1<caret>"
+			    "@springio/antora-xref-extension": "git+https://github.com/owner/repo.git#semver:<caret>"
+			  }
+			}
+			""")
+	void considersGitAsArtifactSource(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+		fixture.complete(CompletionType.BASIC);
+
+		assertThat(fixture.getLookupElementStrings()).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "@springio/antora-xref-extension": "git+https://github.com/spring-io/antora-xref-extension.git#semver:1<caret>"
 			  }
 			}
 			""")
@@ -506,7 +522,7 @@ class NpmCompletionTests {
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson).containsText(
-				"\"@springio/antora-xref-extension\": \"git+https://github.com/owner/repo.git#semver:1.0.0-alpha.5\"")
+				"\"@springio/antora-xref-extension\": \"git+https://github.com/spring-io/antora-xref-extension.git#semver:1.0.0-alpha.5\"")
 				.caretAfter("alpha.5");
 	}
 
@@ -514,7 +530,7 @@ class NpmCompletionTests {
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "springio/antora-xref-extension#1<caret>"
+			    "@springio/antora-xref-extension": "spring-io/antora-xref-extension#1<caret>"
 			  }
 			}
 			""")
@@ -528,14 +544,14 @@ class NpmCompletionTests {
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson.getText())
-				.contains("\"@springio/antora-xref-extension\": \"springio/antora-xref-extension#1.0.0-alpha.5\"");
+				.contains("\"@springio/antora-xref-extension\": \"spring-io/antora-xref-extension#1.0.0-alpha.5\"");
 	}
 
 	@Test
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
-			    "@springio/antora-xref-extension": "springio/antora-xref-extension#aaa<caret>bbdde"
+			    "@springio/antora-xref-extension": "spring-io/antora-xref-extension#aaa<caret>bbdde"
 			  }
 			}
 			""")
@@ -549,7 +565,7 @@ class NpmCompletionTests {
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson)
-				.containsText("\"@springio/antora-xref-extension\": \"springio/antora-xref-extension#7b4f3880\"")
+				.containsText("\"@springio/antora-xref-extension\": \"spring-io/antora-xref-extension#7b4f3880\"")
 				.caretAfter("7b4f3880");
 	}
 

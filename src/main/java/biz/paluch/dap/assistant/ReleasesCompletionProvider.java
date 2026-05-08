@@ -51,6 +51,7 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.ElementManipulator;
 import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.util.ProcessingContext;
 import org.jspecify.annotations.Nullable;
 
@@ -63,20 +64,6 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 public class ReleasesCompletionProvider extends CompletionProvider<CompletionParameters> {
-
-	private static @Nullable ProjectDependencyContext context(PsiElement element) {
-		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), element.getContainingFile());
-	}
-
-	/**
-	 * Return whether the {@code typedChar} is a typical version character such as a
-	 * letter, digit or dot.
-	 * @param typedChar the character to check.
-	 * @return whether the character is a version character.
-	 */
-	public static boolean isVersionCharacter(char typedChar) {
-		return Character.isLetterOrDigit(typedChar) || typedChar == '.';
-	}
 
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
@@ -190,10 +177,6 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		}
 	}
 
-	protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
-		return RefStyle.VERSION;
-	}
-
 	private @Nullable CompletionMetadata getCompletionMetadata(PsiElement element) {
 
 		ProjectDependencyContext context = context(element);
@@ -215,6 +198,20 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		return new CompletionMetadata(artifactReference.getArtifactId(), version,
 				artifactReference.getDeclaration().getVersionLiteral());
 	}
+
+	protected boolean canComplete(PsiFile file) {
+		if (DependencyAssistantDispatcher.findFirstContext(file.getProject(), file) == null) {
+			return false;
+		}
+
+		return true;
+	}
+
+	protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
+		return RefStyle.VERSION;
+	}
+
+
 
 	private Set<String> getAlreadyContributed(CompletionParameters parameters, CompletionResultSet result) {
 		Set<String> alreadyContributed = new HashSet<>();
@@ -248,6 +245,20 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
 		return parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")
 				: result;
+	}
+
+	/**
+	 * Return whether the {@code typedChar} is a typical version character such as a
+	 * letter, digit or dot.
+	 * @param typedChar the character to check.
+	 * @return whether the character is a version character.
+	 */
+	public static boolean isVersionCharacter(char typedChar) {
+		return Character.isLetterOrDigit(typedChar) || typedChar == '.';
+	}
+
+	private static @Nullable ProjectDependencyContext context(PsiElement element) {
+		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), element.getContainingFile());
 	}
 
 	private static void replaceVersion(InsertionContext context, PsiElement versionLiteral, String version) {

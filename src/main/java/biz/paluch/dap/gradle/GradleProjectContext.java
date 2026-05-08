@@ -157,13 +157,13 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 		private final String linkedProjectPath;
 
-		private final ProjectId identity;
+		private final ProjectId projectId;
 
-		GradleBuildContextImpl(Project project, String linkedProjectPath, ProjectId identity) {
+		GradleBuildContextImpl(Project project, String linkedProjectPath, ProjectId projectId) {
 
 			this.project = project;
 			this.linkedProjectPath = linkedProjectPath;
-			this.identity = identity;
+			this.projectId = projectId;
 		}
 
 		@Override
@@ -173,7 +173,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 		@Override
 		public ProjectId getProjectId() {
-			return identity;
+			return projectId;
 		}
 
 		@Override
@@ -183,6 +183,11 @@ interface GradleProjectContext extends ProjectBuildContext {
 					linkedProjectPath);
 
 			return GradleProjectContext.getReleaseSources(remoteRepositories);
+		}
+
+		@Override
+		public String toString() {
+			return "%s, Linked path: %s".formatted(projectId, linkedProjectPath);
 		}
 
 	}
@@ -209,6 +214,10 @@ interface GradleProjectContext extends ProjectBuildContext {
 			throw new IllegalStateException("Gradle BuildContext not available");
 		}
 
+		@Override
+		public String toString() {
+			return "Absent Gradle BuildContext";
+		}
 	}
 
 }

@@ -71,21 +71,6 @@ sealed interface NpmVersionExpression
 		NpmVersionExpression.Alias, NpmVersionExpression.Git {
 
 	/**
-	 * Pattern for concrete NPM version texts accepted by this classifier.
-	 *
-	 * <pre class="code">
-	 * &lt;number&gt;[.&lt;number&gt;][.&lt;number&gt;][-&lt;pre-release&gt; | +&lt;build&gt;]
-	 *
-	 * Examples: 1, 1.2, 1.2.3, 1.2.3-beta.1, 1.2.3+build.5
-	 * </pre>
-	 *
-	 * <p>This pattern is intentionally update-oriented and not a complete npm
-	 * semver validator.
-	 */
-	Pattern SEMVER = Pattern
-			.compile("\\d+(?:\\.\\d+){0,2}(?:[-+][0-9A-Za-z.-]+)?");
-
-	/**
 	 * Pattern for NPM wildcard/prefix ranges recognized by this classifier.
 	 *
 	 * <pre class="code">
@@ -301,7 +286,6 @@ sealed interface NpmVersionExpression
 		return StringUtils.hasText(text()) ? VersionSource.declared(text()) : VersionSource.none();
 	}
 
-
 	private static @Nullable NpmVersionExpression parseExact(String value) {
 
 		if (value.isEmpty()) {
@@ -328,6 +312,16 @@ sealed interface NpmVersionExpression
 		}
 
 		return null;
+	}
+
+	/**
+	 * Post-process the given artifact ID to apply any normalization.
+	 * @param artifactId the artifact ID to post-process; must not be
+	 * {@literal null}.
+	 * @return the post-processed artifact ID.
+	 */
+	default ArtifactId postProcess(ArtifactId artifactId) {
+		return artifactId;
 	}
 
 	/**
@@ -641,6 +635,11 @@ sealed interface NpmVersionExpression
 			return ref.committish().text();
 		}
 
+		@Override
+		public ArtifactId postProcess(ArtifactId artifactId) {
+			return toArtifactId(artifactId);
+		}
+
 		/**
 		 * Return a {@link GitArtifactId} that keeps the declared NPM package
 		 * coordinates while routing release lookup to the Git repository referenced by
@@ -732,7 +731,7 @@ sealed interface NpmVersionExpression
 
 			NpmVersionExpression committish = stripSemverPrefix(committishRaw);
 			if (committish == null) {
-				return null;
+				committish = new Exact("", "");
 			}
 
 			return new NpmVersionExpression.Git(new NpmGitRef(urlPart + "#", repository, committish));
@@ -791,7 +790,7 @@ sealed interface NpmVersionExpression
 			if (committish.startsWith(SEMVER_PREFIX)) {
 				String inner = committish.substring(SEMVER_PREFIX.length());
 				if (inner.isEmpty()) {
-					return null;
+					return new Exact("", "");
 				}
 
 				return NpmVersionExpression.parse(inner);

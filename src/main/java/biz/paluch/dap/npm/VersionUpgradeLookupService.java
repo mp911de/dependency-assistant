@@ -47,9 +47,12 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final NpmProjectContext buildContext;
 
+	private final GitVersionResolver gitVersionResolver;
+
 	VersionUpgradeLookupService(Project project, NpmProjectContext buildContext) {
 		super(project, buildContext);
 		this.buildContext = buildContext;
+		this.gitVersionResolver = new GitVersionResolver(getCache());
 	}
 
 	@Override
@@ -71,7 +74,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		String raw = literal.getValue();
 		NpmVersionExpression expression = NpmVersionExpression.parse(raw);
-		ArtifactId artifactId = NpmPackageParser.toArtifactId(name);
+
+		ArtifactId initial = NpmPackageParser.toArtifactId(name);
+		ArtifactId artifactId = expression != null ? expression.postProcess(initial) : initial;
 		VersionSource versionSource = expression != null ? expression.versionSource() : VersionSource.none();
 
 		return ArtifactReference.from(builder -> {
@@ -81,9 +86,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					.versionLiteral(literal);
 
 			if (expression instanceof NpmVersionExpression.Git(NpmGitRef ref)) {
-
-				GitVersionResolver resolver = new GitVersionResolver(getCache());
-				Optional<GitVersion> version = resolver.resolve(artifactId, ref.committish().text());
+				Optional<GitVersion> version = gitVersionResolver.resolve(artifactId, ref.committish().text());
 				if (version.isPresent()) {
 					version.ifPresent(builder::version);
 					return;
@@ -91,14 +94,12 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			}
 
 			if (expression instanceof NpmVersionExpression.Prefix prefix) {
-
 				Optional<ArtifactVersion> version = ArtifactVersion.from(prefix.getBaseVersion());
 				if (version.isPresent()) {
 					version.ifPresent(builder::version);
 					return;
 				}
 			}
-
 
 			if (expression != null) {
 				Optional<ArtifactVersion> version = ArtifactVersion.from(expression.text());

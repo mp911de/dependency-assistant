@@ -16,18 +16,11 @@
 
 package biz.paluch.dap.artifact;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpResponse.BodyHandler;
-import java.net.http.HttpResponse.BodySubscribers;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -43,7 +36,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import biz.paluch.dap.util.HttpClientFactory;
+import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.xml.MavenMetadataProjection;
 import biz.paluch.dap.xml.XmlBeamProjectorFactory;
@@ -77,11 +70,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	private static final DateTimeFormatter DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER = DateTimeFormatter
 			.ofPattern("dd-MMM-uuuu HH:mm", Locale.ENGLISH);
 
-	private static final long MAX_RESPONSE_BODY_BYTES = 5 * 1024 * 1024;
-
 	private static final int MAX_REDIRECT_HOPS = 10;
-
-	private static final HttpClient HTTP_CLIENT = HttpClientFactory.createHttpClient();
 
 	private final RemoteRepository repository;
 
@@ -121,24 +110,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			result.add(new Release(av, releaseDates.get(av.toString())));
 		}
 
-		boolean missing = false;
-
-		for (Release release : result) {
-			if (release.releaseDate() == null) {
-				System.out.println(repository.url() + " " + artifactId + " " + repository.id());
-				missing = true;
-				break;
-			}
-		}
-
-		if (missing && !repositoryBaseUri.toString().contains("https://plugins.gradle.org/m2/")) {
-
-			synchronized (MAVEN_CENTRAL) {
-				fetchUrl(artifactId, directoryUri, repository.credentials(), false,
-						repositoryBaseUri);
-			}
-		}
-
 		return result;
 	}
 
@@ -154,7 +125,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 		List<ArtifactVersion> result = new ArrayList<>();
 		for (String v : versions) {
-			String trimmed = v != null ? v.trim() : "";
+			String trimmed = StringUtils.hasText(v) ? v.trim() : "";
 			if (trimmed.endsWith("-SNAPSHOT") || trimmed.isEmpty()) {
 				continue;
 			}
@@ -215,8 +186,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	}
 
 	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
-			@Nullable RepositoryCredentials credentials,
-			boolean failOnNotFound, URI repositoryBaseUri) {
+			@Nullable RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri) {
 
 		String url = uri.toASCIIString();
 		try {
@@ -225,39 +195,29 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			}
 			return fetchWithStandardRedirects(artifactId, uri, failOnNotFound);
 		} catch (InterruptedException e) {
+			LOG.debug("%s: HTTP fetch interrupted: %s".formatted(artifactId, url), e);
 			Thread.currentThread().interrupt();
-			LOG.debug("HTTP fetch interrupted: " + url, e);
-			return null;
-		} catch (UncheckedIOException e) {
-			LOG.debug("HTTP fetch failed: " + url, e.getCause() != null ? e.getCause() : e);
 			return null;
 		} catch (IOException e) {
-			LOG.debug("HTTP fetch failed: " + url, e);
-			return null;
+			throw new UncheckedIOException("%s: Failed to fetch %s".formatted(artifactId, url), e);
 		}
 	}
 
 	private static @Nullable String fetchWithStandardRedirects(ArtifactId artifactId, URI uri, boolean failOnNotFound)
 			throws IOException, InterruptedException {
 
-		HttpRequest request = HttpRequest.newBuilder(uri).header("User-Agent", HttpClientFactory.getUserAgent())
-				.timeout(Duration.ofSeconds(10))
-				.GET().build();
+		HttpResponse<String> response = HttpClientUtil.sendRequest(it -> it.GET().uri(uri),
+				HttpClientUtil.cappedUtf8BodyHandler());
 
-		HttpResponse<String> response = HTTP_CLIENT.send(request, cappedUtf8BodyHandler());
-
-		if (response.statusCode() >= 200 && response.statusCode() < 300) {
-			String body = response.body();
-			if (body == null) {
-				System.out.println();
-			}
-			return body;
+		if (HttpClientUtil.hasBody(response)) {
+			return response.body();
 		}
 
 		if (failOnNotFound && response.statusCode() == 404) {
-			throw new ArtifactNotFoundException(uri + ": HTTP Status 404", artifactId);
+			throw new ArtifactNotFoundException("%s: HTTP Status 404".formatted(uri), artifactId);
 		}
-		LOG.debug("HTTP " + response.statusCode() + " fetching: " + uri);
+
+		LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, response.statusCode(), uri));
 		return null;
 	}
 
@@ -268,23 +228,17 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		URI current = uri;
 		for (int hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
 
-			HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(current)
-					.header("User-Agent", HttpClientFactory.getUserAgent())
-					.timeout(Duration.ofSeconds(10)).GET();
-
-			if (repositoryCredentialHostMatches(repositoryBaseUri, current)) {
-				requestBuilder.header("Authorization", basicAuthHeader(credentials));
-			}
-
-			HttpResponse<String> response = HTTP_CLIENT.send(requestBuilder.build(), cappedUtf8BodyHandler());
+			URI uriToUse = current;
+			HttpResponse<String> response = HttpClientUtil.sendRequest(it -> {
+				it.GET();
+				if (repositoryCredentialHostMatches(repositoryBaseUri, uriToUse)) {
+					it.header("Authorization", basicAuthHeader(credentials));
+				}
+			}, HttpClientUtil.cappedUtf8BodyHandler());
 			int status = response.statusCode();
 
-			if (status >= 200 && status < 300) {
-				String body = response.body();
-				if (body == null) {
-					System.out.println();
-				}
-				return body;
+			if (HttpClientUtil.hasBody(response)) {
+				return response.body();
 			}
 
 			if (failOnNotFound && status == 404) {
@@ -294,56 +248,25 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			if (status >= 300 && status < 400) {
 				Optional<String> location = response.headers().firstValue("location");
 				if (location.isEmpty()) {
-					LOG.debug("HTTP " + status + " without Location header fetching: " + current);
+					LOG.debug(
+							"%s: HTTP %d without Location header fetching: %s".formatted(artifactId, status, current));
 					return null;
 				}
 				URI next = current.resolve(URI.create(location.get().trim()));
 				if (!repositoryCredentialHostMatches(repositoryBaseUri, next)) {
-					LOG.debug("Refusing cross-host redirect from " + current + " to " + next);
+					LOG.debug("%s: Refusing cross-host redirect from %s to %s".formatted(artifactId, current, next));
 					return null;
 				}
 				current = next;
 				continue;
 			}
 
-			LOG.debug("HTTP " + status + " fetching: " + current);
+			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, status, current));
 			return null;
 		}
 
-		LOG.debug("Too many redirects fetching: " + uri);
+		LOG.debug("%s: Too many redirects fetching: %s".formatted(artifactId, uri));
 		return null;
-	}
-
-	private static BodyHandler<String> cappedUtf8BodyHandler() {
-
-		return responseInfo -> BodySubscribers.mapping(BodySubscribers.ofInputStream(), in -> {
-			try {
-				return readUtf8StreamCapped(in, MAX_RESPONSE_BODY_BYTES);
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
-			}
-		});
-	}
-
-	private static String readUtf8StreamCapped(InputStream in, long maxBytes) throws IOException {
-
-		try (in) {
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buf = new byte[16384];
-			long total = 0;
-			while (true) {
-				int n = in.read(buf);
-				if (n == -1) {
-					break;
-				}
-				total += n;
-				if (total > maxBytes) {
-					throw new IOException("Response body exceeds maximum size");
-				}
-				out.write(buf, 0, n);
-			}
-			return out.toString(StandardCharsets.UTF_8);
-		}
 	}
 
 	private static boolean repositoryCredentialHostMatches(URI repositoryBase, URI requestTarget) {

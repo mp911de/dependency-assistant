@@ -123,6 +123,11 @@ public class GitArtifactId implements ArtifactId {
 
 	@Override
 	public boolean equals(@Nullable Object o) {
+
+		if (o instanceof ArtifactId that) {
+			return declared.equals(that);
+		}
+
 		if (o == null || getClass() != o.getClass())
 			return false;
 		GitArtifactId that = (GitArtifactId) o;
@@ -132,7 +137,7 @@ public class GitArtifactId implements ArtifactId {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(host, declared, releaseSource);
+		return declared.hashCode();
 	}
 
 	@Override

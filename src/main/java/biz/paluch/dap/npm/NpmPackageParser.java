@@ -109,12 +109,7 @@ class NpmPackageParser {
 			return null;
 		}
 
-		ArtifactId artifactId = toArtifactId(name);
-
-		if (expression instanceof NpmVersionExpression.Git git) {
-			artifactId = git.toArtifactId(artifactId);
-		}
-
+		ArtifactId artifactId = expression.postProcess(toArtifactId(name));
 		return new NpmDependency(artifactId, expression);
 	}
 

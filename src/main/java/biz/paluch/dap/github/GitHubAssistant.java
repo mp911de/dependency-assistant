@@ -141,30 +141,30 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		private final VirtualFile anchor;
 
-		private final GitHubProjectContext context;
+		private final GitHubProjectContext projectContext;
 
 		private final StateService service;
 
-		GitHubDependencyContext(Project project, VirtualFile anchor, GitHubProjectContext context) {
+		GitHubDependencyContext(Project project, VirtualFile anchor, GitHubProjectContext projectContext) {
 			this.project = project;
 			this.anchor = anchor;
-			this.context = context;
+			this.projectContext = projectContext;
 			this.service = StateService.getInstance(project);
 		}
 
 		@Override
 		public boolean isAvailable() {
-			return context.isAvailable();
+			return projectContext.isAvailable();
 		}
 
 		@Override
 		public ProjectId getProjectId() {
-			return context.getProjectId();
+			return projectContext.getProjectId();
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return context.getReleaseSources();
+			return projectContext.getReleaseSources();
 		}
 
 		@Override
@@ -248,7 +248,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public VersionUpgradeLookupSupport getLookup(PsiElement element) {
-			return new VersionUpgradeLookupService(project, context);
+			return new VersionUpgradeLookupService(project, projectContext);
 		}
 
 		@Override
@@ -259,6 +259,11 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
+		}
+
+		@Override
+		public String toString() {
+			return "GitHubDependencyContext[%s] %s".formatted(anchor, projectContext);
 		}
 
 	}
