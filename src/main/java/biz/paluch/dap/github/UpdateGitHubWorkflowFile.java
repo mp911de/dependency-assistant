@@ -193,7 +193,7 @@ class UpdateGitHubWorkflowFile {
 			if (comment != null) {
 				comment.replace(newComment);
 			} else {
-				mapping.addAfter(replaced, newComment);
+				mapping.addAfter(newComment, replaced);
 			}
 		}
 

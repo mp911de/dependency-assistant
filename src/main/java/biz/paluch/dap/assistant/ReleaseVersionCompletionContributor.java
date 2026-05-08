@@ -32,8 +32,7 @@ import com.intellij.util.ProcessingContext;
  */
 public class ReleaseVersionCompletionContributor extends CompletionContributor {
 
-	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(
-			ReleasesCompletionProvider.resolver());
+	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
 
 	@Override
 	public void fillCompletionVariants(CompletionParameters parameters, CompletionResultSet result) {

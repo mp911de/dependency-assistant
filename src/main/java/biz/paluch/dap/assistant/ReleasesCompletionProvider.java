@@ -22,13 +22,14 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.state.Cache;
@@ -37,12 +38,15 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.completion.PrioritizedLookupElement;
+import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.ElementManipulator;
 import com.intellij.psi.ElementManipulators;
@@ -60,42 +64,18 @@ import org.jspecify.annotations.Nullable;
  */
 public class ReleasesCompletionProvider extends CompletionProvider<CompletionParameters> {
 
-	private final Function<PsiElement, @Nullable CompletionMetadata> metadataFunction;
-
-	/**
-	 * Create a provider using the function that extracts completion metadata from
-	 * the completion position.
-	 */
-	public ReleasesCompletionProvider(Function<PsiElement, @Nullable CompletionMetadata> metadataFunction) {
-		this.metadataFunction = metadataFunction;
-	}
-
-	public static Function<PsiElement, @Nullable CompletionMetadata> resolver() {
-
-		return element -> {
-			ProjectDependencyContext context = context(element);
-			if (context == null) {
-				return null;
-			}
-
-			VersionUpgradeLookupSupport lookup = context.getLookup(element);
-			ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
-			if (!artifactReference.isResolved()) {
-				return null;
-			}
-
-			ArtifactVersion version = lookup.getCurrentVersion(artifactReference.getArtifactId());
-			if (version == null && artifactReference.getDeclaration().isVersionDefined()) {
-				version = artifactReference.getDeclaration().getVersion();
-			}
-
-			return new CompletionMetadata(artifactReference.getArtifactId(), version,
-					artifactReference.getDeclaration().getVersionLiteral());
-		};
-	}
-
 	private static @Nullable ProjectDependencyContext context(PsiElement element) {
 		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), element.getContainingFile());
+	}
+
+	/**
+	 * Return whether the {@code typedChar} is a typical version character such as a
+	 * letter, digit or dot.
+	 * @param typedChar the character to check.
+	 * @return whether the character is a version character.
+	 */
+	public static boolean isVersionCharacter(char typedChar) {
+		return Character.isLetterOrDigit(typedChar) || typedChar == '.';
 	}
 
 	@Override
@@ -108,10 +88,12 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		}
 		position = PsiVisitors.unleaf(position);
 
-		CompletionMetadata metadata = metadataFunction.apply(position);
+		CompletionMetadata metadata = getCompletionMetadata(position);
 		if (metadata == null) {
 			return;
 		}
+
+		RefStyle refStyle = getRefStyle(position, metadata);
 
 		StateService service = StateService
 				.getInstance(parameters.getPosition().getProject());
@@ -123,13 +105,13 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		}
 
 		// Run all remaining contributors first and pass their results through
-		// unchanged.
-		// Collect the lookup strings they contribute so we can skip our own duplicates.
+		// unchanged. Collect the lookup strings they contribute so we can skip our own
+		// duplicates.
 		Set<String> alreadyContributed = getAlreadyContributed(parameters, result);
 
+		// TODO: Gradle lookup missing version, TOML, Kotlin completion
 		// Show all cached versions on a second invocation (Ctrl+Space twice)
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
-
 		List<ArtifactRelease> unique = releases.stream()
 				.filter(opt -> !alreadyContributed.contains(opt.release().version().toString())).toList();
 
@@ -139,7 +121,27 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		for (ArtifactRelease option : unique) {
 
 			Release release = option.release();
-			LookupElementBuilder element = LookupElementBuilder.create(release.version().toString());
+			ArtifactVersion completionVersion = release.version();
+			String completion;
+			Set<String> lookupStrings = new HashSet<>();
+
+			if (completionVersion instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())
+					&& refStyle == RefStyle.SHA) {
+				completion = gitVersion.getSha();
+				lookupStrings.add(gitVersion.getSha());
+				lookupStrings.add(gitVersion.getShortSha());
+			} else {
+				completion = completionVersion.toString();
+			}
+
+			lookupStrings.add(completionVersion.toString());
+			lookupStrings.add(completionVersion.getVersion().toString());
+			lookupStrings.add(completionVersion.getVersion().getVersion().toString());
+
+			LookupElementBuilder element = LookupElementBuilder.create(completion)
+					.withPresentableText(completionVersion.getVersion().getVersion().toString())
+					.withLookupStrings(lookupStrings);
+			String typeText = "";
 
 			LocalDateTime releaseDate = release.releaseDate();
 			if (releaseDate != null) {
@@ -149,11 +151,29 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 					element = element.withItemTextUnderlined(true);
 				}
 
-				element = element.withTailText(" (" + formatter.format(releaseDate) + ")", true);
+				typeText = formatter.format(releaseDate);
+			}
+
+			if (option.getVersion() instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())) {
+
+				typeText = gitVersion.getShortSha() + " " + typeText;
+				element = element.withTypeText(typeText.trim(), AllIcons.Vcs.CommitNode, false);
+			} else {
+				element = element.withTypeText(typeText.trim(), false);
 			}
 
 			if (currentVersion != null) {
-				element = applyVersion(currentVersion, option.getVersion(), element);
+
+				if (option.isOlder(currentVersion)) {
+					element = element.withItemTextItalic(true);
+				}
+
+				VersionAge versionAge = VersionAge.between(currentVersion, completionVersion);
+				element = element.withIcon(versionAge.getIcon());
+			}
+
+			if (option.getVersion().isPreview()) {
+				element = element.withIcon(VersionAge.PREVIEW.getIcon());
 			}
 
 			if (metadata.versionLiteral() != null) {
@@ -165,8 +185,35 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 			element = postProcess(parameters, element, position, option);
 
 			// TODO Elements are sometimes not sorted properly
-			versionsResult.addElement(PrioritizedLookupElement.withPriority(element, priority--));
+			versionsResult.addElement(PrioritizedLookupElement.withPriority(
+					element.withAutoCompletionPolicy(AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE), priority--));
 		}
+	}
+
+	protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
+		return RefStyle.VERSION;
+	}
+
+	private @Nullable CompletionMetadata getCompletionMetadata(PsiElement element) {
+
+		ProjectDependencyContext context = context(element);
+		if (context == null) {
+			return null;
+		}
+
+		VersionUpgradeLookupSupport lookup = context.getLookup(element);
+		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
+		if (!artifactReference.isResolved()) {
+			return null;
+		}
+
+		ArtifactVersion version = lookup.getCurrentVersion(artifactReference);
+		if (version == null && artifactReference.getDeclaration().isVersionDefined()) {
+			version = artifactReference.getDeclaration().getVersion();
+		}
+
+		return new CompletionMetadata(artifactReference.getArtifactId(), version,
+				artifactReference.getDeclaration().getVersionLiteral());
 	}
 
 	private Set<String> getAlreadyContributed(CompletionParameters parameters, CompletionResultSet result) {
@@ -193,20 +240,9 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		return result;
 	}
 
-	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder element,
-			PsiElement position,
-			ArtifactRelease option) {
-		return element;
-	}
-
-	public static LookupElementBuilder applyVersion(ArtifactVersion currentVersion,
-			ArtifactVersion option, LookupElementBuilder element) {
-		if (option.isOlder(currentVersion)) {
-			element = element.withItemTextItalic(true);
-		}
-
-		VersionAge versionAge = VersionAge.between(currentVersion, option);
-		return element.withIcon(versionAge.getIcon());
+	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
+			PsiElement element, ArtifactRelease option) {
+		return builder;
 	}
 
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {

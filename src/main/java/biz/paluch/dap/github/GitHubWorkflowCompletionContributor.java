@@ -16,14 +16,12 @@
 
 package biz.paluch.dap.github;
 
-import biz.paluch.dap.DependencyAssistant;
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.util.PsiVisitors;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -31,16 +29,14 @@ import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
-import com.intellij.icons.AllIcons.Vcs;
-import com.intellij.openapi.extensions.ExtensionPointName;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.util.ProcessingContext;
+import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Completion contributor for GitHub Actions {@code uses:} refs.
@@ -55,42 +51,51 @@ import org.jspecify.annotations.Nullable;
  */
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
-	private static final ExtensionPointName<DependencyAssistant> ASSISTANTS = ExtensionPointName
-			.create("biz.paluch.dap.assistant");
-
-	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(
-			ReleasesCompletionProvider.resolver()) {
+	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
 
 		@Override
-		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder element,
-				PsiElement position, ArtifactRelease option) {
+		protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
 
-			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(position);
-			if (scalar == null || !(option.getVersion() instanceof GitVersion version)) {
-				return element;
+			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
+			if (scalar != null) {
+				UsesRepositoryAction action = GitHubWorkflowParser.parseUses(scalar.getTextValue());
+				if (action != null) {
+					action.getStyle();
+				}
 			}
-
-			UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
-			if (ref == null) {
-				return element;
-			}
-
-			if (StringUtils.hasText(version.getSha())) {
-				element = element.withTypeText(version.getShortSha(), Vcs.CommitNode, false);
-			}
-
-			return element.withInsertHandler((insertionContext, lookupElement) -> insertVersion(insertionContext,
-					scalar, ref, version));
+			return super.getRefStyle(element, metadata);
 		}
 
 		@Override
 		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
-
 			if (parameters.getInvocationCount() > 1 || isCaretInsideRef(parameters)) {
 				return result.withPrefixMatcher("");
 			}
 
 			return result.withPrefixMatcher(refPrefixAtCaret(parameters));
+		}
+
+		@Override
+		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
+				PsiElement element, ArtifactRelease option) {
+
+			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
+			if (scalar == null || !(option.getVersion() instanceof GitVersion version)) {
+				return builder;
+			}
+
+			UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
+			if (ref == null) {
+				return builder;
+			}
+			Project project = scalar.getProject();
+			return builder.withInsertHandler((insertionContext, lookupElement) -> {
+
+				if (option.getVersion() instanceof GitVersion gitVersion) {
+					VersionText text = ref.getVersion(gitVersion);
+					new UpdateGitHubWorkflowFile(project).updateVersionAndComment(scalar, text);
+				}
+			});
 		}
 
 	};
@@ -108,6 +113,19 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 	public GitHubWorkflowCompletionContributor() {
 		extend(CompletionType.BASIC,
+				PlatformPatterns.psiElement(PsiElement.class)
+						.withAncestor(2, PlatformPatterns.psiElement(YAMLScalar.class))
+						.withAncestor(5, PlatformPatterns.psiElement(YAMLKeyValue.class))
+						.with(new PatternCondition<>("afterGitHubWorkflowUsesRefSeparator") {
+
+							@Override
+							public boolean accepts(PsiElement element, ProcessingContext context) {
+								return isAfterRefSeparatorInUsesScalar(element);
+							}
+						}),
+				provider);
+
+		extend(CompletionType.BASIC,
 				PlatformPatterns.psiElement()
 						.with(new PatternCondition<>("afterGitHubWorkflowUsesRefSeparator") {
 
@@ -122,7 +140,8 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return typeChar == '@' && VersionUpgradeLookupService.findUsesScalar(position) != null;
+		return (typeChar == '@' || ReleasesCompletionProvider.isVersionCharacter(typeChar))
+				&& VersionUpgradeLookupService.findUsesScalar(position) != null;
 	}
 
 	private static boolean isAfterRefSeparatorInUsesScalar(PsiElement element) {
@@ -147,16 +166,6 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 		int offset = element.getTextRange().getStartOffset() - scalar.getTextRange().getStartOffset();
 		return Math.max(0, Math.min(offset, text.length()));
-	}
-
-	private static @Nullable ProjectDependencyContext resolveContext(PsiFile file) {
-
-		for (DependencyAssistant assistant : ASSISTANTS.getExtensionList()) {
-			if (assistant.supports(file)) {
-				return assistant.createContext(file.getProject(), file);
-			}
-		}
-		return null;
 	}
 
 	private static void insertVersion(InsertionContext context, YAMLScalar scalar, UsesRepositoryAction ref,

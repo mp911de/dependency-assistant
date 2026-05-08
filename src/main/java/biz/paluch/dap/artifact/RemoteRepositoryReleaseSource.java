@@ -30,7 +30,16 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -110,6 +119,24 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		List<Release> result = new ArrayList<>();
 		for (ArtifactVersion av : versions) {
 			result.add(new Release(av, releaseDates.get(av.toString())));
+		}
+
+		boolean missing = false;
+
+		for (Release release : result) {
+			if (release.releaseDate() == null) {
+				System.out.println(repository.url() + " " + artifactId + " " + repository.id());
+				missing = true;
+				break;
+			}
+		}
+
+		if (missing && !repositoryBaseUri.toString().contains("https://plugins.gradle.org/m2/")) {
+
+			synchronized (MAVEN_CENTRAL) {
+				fetchUrl(artifactId, directoryUri, repository.credentials(), false,
+						repositoryBaseUri);
+			}
 		}
 
 		return result;
@@ -220,7 +247,11 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		HttpResponse<String> response = HTTP_CLIENT.send(request, cappedUtf8BodyHandler());
 
 		if (response.statusCode() >= 200 && response.statusCode() < 300) {
-			return response.body();
+			String body = response.body();
+			if (body == null) {
+				System.out.println();
+			}
+			return body;
 		}
 
 		if (failOnNotFound && response.statusCode() == 404) {
@@ -249,7 +280,11 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			int status = response.statusCode();
 
 			if (status >= 200 && status < 300) {
-				return response.body();
+				String body = response.body();
+				if (body == null) {
+					System.out.println();
+				}
+				return body;
 			}
 
 			if (failOnNotFound && status == 404) {

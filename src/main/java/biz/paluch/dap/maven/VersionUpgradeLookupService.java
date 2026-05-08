@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.Properties;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
@@ -139,8 +141,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	}
 
 	private boolean isCompletionLookupElement(PsiElement element) {
-
-
 		/*
 		 *
 		 * && (element instanceof XmlText || (element.getNode() != null &&
@@ -148,6 +148,32 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		 */
 
 		return element.isValid();
+	}
+
+	@Override
+	public @Nullable ArtifactVersion getCurrentVersion(ArtifactReference reference) {
+
+		ArtifactVersion currentVersion = super.getCurrentVersion(reference);
+
+		if (currentVersion == null && reference.isResolved()
+				&& reference.getDeclaration().getVersionSource() instanceof VersionSource.VersionProperty property) {
+			PropertyValue value = propertyResolver.getPropertyValue(property.getProperty());
+			if (value != null) {
+				ArtifactVersion version = ArtifactVersion.from(value.getValue())
+						.orElse(null);
+				if (version != null) {
+					return version;
+				}
+			}
+
+			Properties properties = buildContext.getMavenProject().getProperties();
+			String propertyValue = properties.getProperty(property.getProperty());
+			if (StringUtils.hasText(propertyValue)) {
+				return ArtifactVersion.from(propertyValue).orElse(null);
+			}
+		}
+
+		return currentVersion;
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {

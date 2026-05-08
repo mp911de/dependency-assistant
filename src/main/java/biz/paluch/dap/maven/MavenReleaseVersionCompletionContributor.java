@@ -23,20 +23,18 @@ import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.XmlPatterns;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.psi.xml.XmlTokenType;
 import com.intellij.util.ProcessingContext;
 
 /**
  * Completion contributor for Maven release versions.
- * 
+ *
  * @author Mark Paluch
  */
-public class XmlReleaseVersionCompletionContributor extends CompletionContributor {
+public class MavenReleaseVersionCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider(
-			ReleasesCompletionProvider.resolver());
+	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
 
-	public XmlReleaseVersionCompletionContributor() {
+	public MavenReleaseVersionCompletionContributor() {
 
 		PatternCondition<XmlFile> isMavenFile = new PatternCondition<>("isMavenFile") {
 
@@ -47,12 +45,11 @@ public class XmlReleaseVersionCompletionContributor extends CompletionContributo
 
 		};
 
-		extend(CompletionType.BASIC, PlatformPatterns.psiElement().withElementType(XmlTokenType.XML_DATA_CHARACTERS) //
+		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
 				.inside(XmlPatterns.xmlFile().with(isMavenFile)) //
 				.inside(XmlPatterns.xmlTag().withLocalName("version")), provider);
 
 		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
-				.withElementType(XmlTokenType.XML_DATA_CHARACTERS) //
 				.inside(XmlPatterns.xmlFile().with(isMavenFile)) //
 				.inside(XmlPatterns.xmlTag().withParent(XmlPatterns.xmlTag().withName("properties"))), provider);
 	}

@@ -136,8 +136,17 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return tomlSiteLocator.locate(literal);
 		}
 
-		if (GradleUtils.isGradlePropertiesFile(vf) && element instanceof PropertyValueImpl propertyValue) {
-			return locateGradlePropertySite(propertyValue);
+		if (GradleUtils.isGradlePropertiesFile(vf)) {
+
+			if (element instanceof PropertyValueImpl propertyValue) {
+				return locateGradlePropertySite(propertyValue);
+			}
+
+			if (element instanceof Property property) {
+				return locateGradlePropertySite(property);
+			}
+
+			return LookupSite.absent();
 		}
 
 		if (GradleUtils.isGroovyDsl(vf) && element instanceof GroovyPsiElement groovyElement) {
@@ -158,8 +167,17 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return LookupSite.absent();
 		}
 
-		if (StringUtils.hasText(property.getName()) && StringUtils.hasText(property.getValue())) {
-			return LookupSite.ofProperty(property.getName(), property.getValue(), property, element);
+		return locateGradlePropertySite(property);
+	}
+
+	private LookupSite locateGradlePropertySite(Property property) {
+
+		if (StringUtils.isEmpty(property.getKey()) || projectState == null) {
+			return LookupSite.absent();
+		}
+
+		if (StringUtils.hasText(property.getName())) {
+			return LookupSite.ofProperty(property.getName(), property.getValue(), property, property);
 		}
 
 		return LookupSite.absent();

@@ -68,6 +68,10 @@ public class DependencyAssistantDispatcher {
 		return false;
 	}
 
+	public static boolean supports(PsiFile psiFile) {
+		return findFirstContext(psiFile) != null;
+	}
+
 	/**
 	 * Return all integrations that apply to the given project.
 	 * @param project the project to collect integrations for.
@@ -162,5 +166,4 @@ public class DependencyAssistantDispatcher {
 
 		return null;
 	}
-
 }

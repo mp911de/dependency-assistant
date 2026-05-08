@@ -121,6 +121,21 @@ public abstract class VersionUpgradeLookupSupport {
 	 * @return the current artifact version, or {@code null} if project state is
 	 * unavailable or the dependency is not known.
 	 */
+	public @Nullable ArtifactVersion getCurrentVersion(ArtifactReference reference) {
+
+		if (projectState == null || !reference.isResolved()) {
+			return null;
+		}
+
+		return getCurrentVersion(reference.getArtifactId());
+	}
+
+	/**
+	 * Return the current version of the dependency with the given artifact id.
+	 * @param artifactId the artifact id to locate.
+	 * @return the current artifact version, or {@code null} if project state is
+	 * unavailable or the dependency is not known.
+	 */
 	public @Nullable ArtifactVersion getCurrentVersion(ArtifactId artifactId) {
 
 		if (projectState == null) {

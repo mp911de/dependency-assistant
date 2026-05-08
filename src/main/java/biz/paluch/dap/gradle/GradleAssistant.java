@@ -36,6 +36,7 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.icons.AllIcons;
+import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
@@ -172,7 +173,18 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-			return GradleUtils.isGradleFile(element.getContainingFile());
+
+			PsiFile file = element.getContainingFile();
+
+			if (GradleUtils.isGradleFile(file)) {
+				if (GradleUtils.isGradlePropertiesFile(file)) {
+					return element instanceof PropertyValueImpl;
+				}
+
+				return true;
+			}
+
+			return false;
 		}
 
 		@Override

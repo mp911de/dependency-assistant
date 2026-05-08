@@ -82,6 +82,18 @@ public interface DependencyAssistant {
 	 * Create the file-scoped dependency context for the given anchor file.
 	 * <p>Callers are expected to invoke this method only after
 	 * {@link #supports(PsiFile)} returned {@literal true}.
+	 * @param anchor the build file or catalog file that anchors the operation.
+	 * @return a file-scoped context.
+	 * @throws IllegalStateException if this integration does not own the file.
+	 */
+	default ProjectDependencyContext createContext(PsiFile anchor) {
+		return createContext(anchor.getProject(), anchor);
+	}
+
+	/**
+	 * Create the file-scoped dependency context for the given anchor file.
+	 * <p>Callers are expected to invoke this method only after
+	 * {@link #supports(PsiFile)} returned {@literal true}.
 	 * @param project the IntelliJ project.
 	 * @param anchor the build file or catalog file that anchors the operation.
 	 * @return a file-scoped context.

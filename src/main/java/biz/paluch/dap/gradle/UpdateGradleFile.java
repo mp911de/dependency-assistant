@@ -125,8 +125,6 @@ class UpdateGradleFile {
 			UpdateKotlinDsl.updateVersion(ktExpression, newVersion);
 		}
 		default -> {
-			throw new IllegalStateException(
-					"Unsupported version literal element: %s".formatted(literal.getClass().getName()));
 		}
 		}
 	}
