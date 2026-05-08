@@ -101,7 +101,8 @@ class KotlinPluginDependencySite {
 		PsiElement[] children = be.getChildren();
 		for (int i = 0; i < children.length; i++) {
 			PsiElement child = children[i];
-			if (child instanceof KtOperationReferenceExpression ops && "version".equals(ops.getReferencedName())
+			if (child instanceof KtOperationReferenceExpression ops
+					&& GradleUtils.VERSION.equals(ops.getReferencedName())
 					&& children.length > i + 1
 					&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
 				return versionExpr;

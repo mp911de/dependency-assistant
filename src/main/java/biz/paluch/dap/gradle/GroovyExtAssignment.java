@@ -87,7 +87,7 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 		static @Nullable SetCall from(GrLiteral literal) {
 
 			GrMethodCall setCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-			if (setCall == null || !"set".equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
+			if (setCall == null || !GradleUtils.SET.equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
 				return null;
 			}
 
@@ -153,11 +153,12 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 			GrExpression qualifier = ref.getQualifierExpression();
 			PsiElement anchor = valueContext != null ? valueContext : lhs;
 
-			if (qualifier == null && GroovyDslUtils.isInsideGroovyBlock(anchor, "ext"::equals)) {
+			if (qualifier == null && GroovyDslUtils.isInsideGroovyBlock(anchor, GradleUtils.EXT::equals)) {
 				return ref.getReferenceName();
 			}
 
-			if (qualifier instanceof GrReferenceExpression qualRef && "ext".equals(qualRef.getReferenceName())) {
+			if (qualifier instanceof GrReferenceExpression qualRef
+					&& GradleUtils.EXT.equals(qualRef.getReferenceName())) {
 				return ref.getReferenceName();
 			}
 

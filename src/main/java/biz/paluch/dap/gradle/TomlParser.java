@@ -67,32 +67,37 @@ class TomlParser extends GradleParserSupport {
 	/**
 	 * TOML table name for plugin aliases.
 	 */
-	public static final String PLUGINS = "plugins";
+	public static final String PLUGINS = GradleUtils.PLUGINS;
 
 	/**
 	 * TOML table name for bundles.
 	 */
-	public static final String BUNDLES = "bundles";
+	public static final String BUNDLES = GradleUtils.BUNDLES;
 
 	/**
 	 * TOML key name for inline versions.
 	 */
-	public static final String VERSION = "version";
+	public static final String VERSION = GradleUtils.VERSION;
+
+	/**
+	 * TOML key name for referenced versions.
+	 */
+	public static final String VERSION_REF = GradleUtils.VERSION_REF;
 
 	/**
 	 * TOML table name for version aliases.
 	 */
-	public static final String VERSIONS = "versions";
+	public static final String VERSIONS = GradleUtils.VERSIONS;
 
 	/**
 	 * Default Gradle version catalog accessor root.
 	 */
-	public static final String LIBS = "libs";
+	public static final String LIBS = GradleUtils.LIBS;
 
 	/**
 	 * TOML table name for library aliases.
 	 */
-	public static final String LIBRARIES = "libraries";
+	public static final String LIBRARIES = GradleUtils.LIBRARIES;
 
 	private final Map<String, String> properties;
 
@@ -267,12 +272,12 @@ class TomlParser extends GradleParserSupport {
 			String key = getTomlKeyName(inner.getKey());
 			String val = getText(inner.getValue());
 			switch (key) {
-			case "id" -> id = val;
-			case "module" -> module = val;
-			case "group" -> group = val;
-			case "name" -> name = val;
-			case "version.ref" -> versionRef = val;
-			case "version" -> {
+			case GradleUtils.ID -> id = val;
+			case GradleUtils.MODULE -> module = val;
+			case GradleUtils.GROUP -> group = val;
+			case GradleUtils.NAME -> name = val;
+			case GradleUtils.VERSION_REF -> versionRef = val;
+			case GradleUtils.VERSION -> {
 				version = val;
 				versionLiteral = inner.getValue();
 			}

@@ -64,7 +64,8 @@ class GroovyDslExtParser {
 				.filter(it -> it instanceof GrMethodCall || it instanceof GrAssignmentExpression)
 				.forEach(it -> {
 // ext { key = 'value' } or ext { set('key', 'value') }
-					if (it instanceof GrMethodCall call && "ext".equals(GroovyDslUtils.getGroovyMethodName(call))) {
+					if (it instanceof GrMethodCall call
+							&& GradleUtils.EXT.equals(GroovyDslUtils.getGroovyMethodName(call))) {
 						elements.putAll(collectExtClosureProperties(call));
 					}
 					// ext.key = 'value'
@@ -171,7 +172,7 @@ class GroovyDslExtParser {
 
 					// set() call form: set('springVersion', '6.1.0')
 					if (child instanceof GrMethodCall setCall
-							&& "set".equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
+							&& GradleUtils.SET.equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
 						PsiElement[] args = setCall.getArgumentList().getAllArguments();
 						if (args.length >= 2 && args[0] instanceof GrLiteral keyLit
 								&& keyLit.getValue() instanceof String key
@@ -196,7 +197,8 @@ class GroovyDslExtParser {
 
 		Map<String, PropertyValue> elements = new LinkedHashMap<>();
 		GrExpression qualifier = ref.getQualifierExpression();
-		if (qualifier instanceof GrReferenceExpression qualRef && "ext".equals(qualRef.getReferenceName())) {
+		if (qualifier instanceof GrReferenceExpression qualRef
+				&& GradleUtils.EXT.equals(qualRef.getReferenceName())) {
 			String key = ref.getReferenceName();
 			if (key != null && rhs instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
 				elements.put(key, new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));

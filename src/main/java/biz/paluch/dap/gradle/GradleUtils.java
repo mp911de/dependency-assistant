@@ -72,6 +72,86 @@ class GradleUtils {
 	 */
 	static final String PLUGINS = "plugins";
 
+	/**
+	 * Name of the dependencies section.
+	 */
+	static final String DEPENDENCIES = "dependencies";
+
+	/**
+	 * Name of the {@code id} plugin/catalog key.
+	 */
+	static final String ID = "id";
+
+	/**
+	 * Name of the {@code alias} catalog consumer call.
+	 */
+	static final String ALIAS = "alias";
+
+	/**
+	 * Name of the {@code group} dependency key.
+	 */
+	static final String GROUP = "group";
+
+	/**
+	 * Name of the {@code name} dependency key.
+	 */
+	static final String NAME = "name";
+
+	/**
+	 * Name of the {@code module} catalog key.
+	 */
+	static final String MODULE = "module";
+
+	/**
+	 * Name of the {@code version} dependency key/call.
+	 */
+	static final String VERSION = "version";
+
+	/**
+	 * Name of the {@code version.ref} catalog key.
+	 */
+	static final String VERSION_REF = "version.ref";
+
+	/**
+	 * Name of the catalog {@code libs} accessor root.
+	 */
+	static final String LIBS = "libs";
+
+	/**
+	 * Name of the catalog {@code libraries} table.
+	 */
+	static final String LIBRARIES = "libraries";
+
+	/**
+	 * Name of the catalog {@code versions} table.
+	 */
+	static final String VERSIONS = "versions";
+
+	/**
+	 * Name of the catalog {@code bundles} table.
+	 */
+	static final String BUNDLES = "bundles";
+
+	/**
+	 * Name of the Groovy {@code ext} property block/qualifier.
+	 */
+	static final String EXT = "ext";
+
+	/**
+	 * Name of the Groovy {@code set} property method.
+	 */
+	static final String SET = "set";
+
+	/**
+	 * Name of Gradle's {@code prefer(...)} version declaration.
+	 */
+	static final String PREFER = "prefer";
+
+	/**
+	 * Name of Gradle's {@code strictly(...)} version declaration.
+	 */
+	static final String STRICTLY = "strictly";
+
 	/** Name of the Gradle Settings file. */
 	public static final String GROOVY_SETTINGS = "settings.gradle";
 
@@ -277,7 +357,7 @@ class GradleUtils {
 	 * Returns the element call refers to a plugin configuration.
 	 */
 	public static boolean isPlugin(@Nullable String name) {
-		return "id".equals(name);
+		return ID.equals(name);
 	}
 
 	/**
@@ -439,7 +519,7 @@ class GradleUtils {
 			return false;
 		}
 
-		if ("alias".equals(name)
+		if (ALIAS.equals(name)
 				|| GradleUtils.isPlugin(name) || GradleUtils.isDependencySection(name)
 				|| GradleUtils.isPlatformSection(name)) {
 			return true;

@@ -66,7 +66,7 @@ class KtVersion {
 
 		KtCallElement version = SyntaxTraverser.psiTraverser(dependency)
 				.filter(KtCallElement.class)
-				.filter(it -> "version".equals(KotlinDslUtils.getKotlinCallName(it)))
+				.filter(it -> GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(it)))
 				.first();
 
 		if (version == null) {
@@ -89,7 +89,7 @@ class KtVersion {
 	 */
 	public static @Nullable KtVersion fromVersion(KtCallElement versionCall) {
 
-		if (!"version".equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
+		if (!GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
 			return null;
 		}
 

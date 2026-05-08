@@ -153,7 +153,7 @@ class KotlinDslParser extends GradleParser {
 			return site;
 		}
 
-		if (!KotlinDslUtils.isInsideBlock(call, "dependencies"::equals) && !isPlatform) {
+		if (!KotlinDslUtils.isInsideBlock(call, GradleUtils.DEPENDENCIES::equals) && !isPlatform) {
 			return null;
 		}
 
@@ -311,7 +311,7 @@ class KotlinDslParser extends GradleParser {
 		if (trailingLambda.getBodyExpression() != null) {
 			for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(trailingLambda.getBodyExpression(),
 					KtCallExpression.class)) {
-				if ("version".equals(KotlinDslUtils.getKotlinCallName(inner))) {
+				if (GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(inner))) {
 					versionCall = inner;
 					break;
 				}
@@ -487,11 +487,11 @@ class KotlinDslParser extends GradleParser {
 			strVal = expr instanceof KtStringTemplateExpression st ? KtLiterals.from(st)
 					.toString(propertyResolver) : null;
 
-			if ("group".equals(name)) {
+			if (GradleUtils.GROUP.equals(name)) {
 				group = strVal;
-			} else if ("name".equals(name)) {
+			} else if (GradleUtils.NAME.equals(name)) {
 				artifact = strVal;
-			} else if ("version".equals(name)) {
+			} else if (GradleUtils.VERSION.equals(name)) {
 				if (expr instanceof KtStringTemplateExpression st) {
 					KtLiterals literals = KtLiterals.from(st);
 					if (literals.hasProperty() && propertyResolver.containsProperty(literals.getProperty())) {

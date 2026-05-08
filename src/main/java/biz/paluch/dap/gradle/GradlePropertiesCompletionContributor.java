@@ -20,10 +20,7 @@ import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.lang.properties.psi.Property;
-import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
-import com.intellij.psi.PsiFile;
-import com.intellij.util.ProcessingContext;
 
 /**
  * Completion contributor for Gradle properties.
@@ -36,17 +33,10 @@ public class GradlePropertiesCompletionContributor extends CompletionContributor
 
 	public GradlePropertiesCompletionContributor() {
 
-		PatternCondition<PsiFile> isGradleProperties = new PatternCondition<>("isGradleProperties") {
-
-			@Override
-			public boolean accepts(PsiFile file, ProcessingContext processingContext) {
-				return GradleUtils.isGradlePropertiesFile(file);
-			}
-
-		};
-
-		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
-				.withParent(Property.class).inFile(PlatformPatterns.psiFile().with(isGradleProperties)),
+		extend(CompletionType.BASIC,
+				PlatformPatterns.psiElement()
+						.withParent(Property.class)
+						.inFile(PlatformPatterns.psiFile().withName(GradleUtils.GRADLE_PROPERTIES)),
 				provider);
 	}
 

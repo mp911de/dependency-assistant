@@ -39,12 +39,12 @@ interface GradleVersionConstraint {
 	/**
 	 * Constraint name for Gradle's {@code prefer(...)} version declaration.
 	 */
-	String PREFER = "prefer";
+	String PREFER = GradleUtils.PREFER;
 
 	/**
 	 * Constraint name for Gradle's {@code strictly(...)} version declaration.
 	 */
-	String STRICTLY = "strictly";
+	String STRICTLY = GradleUtils.STRICTLY;
 
 	/**
 	 * Return the declared version text for this constraint.

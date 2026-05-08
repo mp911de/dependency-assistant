@@ -235,14 +235,12 @@ class GroovyDslUtils {
 	static @Nullable GrExpression getFirstGroovyCatalogArgumentExpression(GrMethodCall call) {
 
 		GrArgumentList argList = call.getArgumentList();
-		if (argList == null) {
-			return null;
-		}
-		for (PsiElement a : argList.getAllArguments()) {
-			if (a instanceof GrNamedArgument named) {
+
+		for (PsiElement arg : argList.getAllArguments()) {
+			if (arg instanceof GrNamedArgument named) {
 				return unwrapGroovyParentheses(named.getExpression());
 			}
-			if (a instanceof GrExpression ex) {
+			if (arg instanceof GrExpression ex) {
 				return unwrapGroovyParentheses(ex);
 			}
 		}

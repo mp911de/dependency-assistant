@@ -28,8 +28,6 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
@@ -170,30 +168,25 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	private @Nullable DependencySite resolvePropertyDeclaration(
 			GrReferenceExpression refExpr) {
 
-		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(refExpr, GrNamedArgument.class);
-		if (namedArgument != null && "version".equals(namedArgument.getLabelName())) {
+		if (GradleParser.isVersionNamedArgumentReference(refExpr)) {
 			if (PsiTreeUtil.getParentOfType(refExpr, GrStringInjection.class) != null) {
 				return null;
 			}
 
-			PsiElement versionExpr = namedArgument.getExpression();
-			if (versionExpr != null
-					&& (versionExpr == refExpr || PsiTreeUtil.isAncestor(versionExpr, refExpr, false))) {
-				GrMethodCall declarationCall = PsiTreeUtil.getParentOfType(namedArgument, GrMethodCall.class);
-				if (declarationCall != null) {
+			GrMethodCall declarationCall = GradleParser.findVersionNamedArgumentDependencyCall(refExpr);
+			if (declarationCall != null) {
 
-					if (GradleParser.isMapStyleDeclarationCandidate(declarationCall)) {
-						DependencySite site = GradleParser.parseMapDeclaration(declarationCall,
-								propertyResolver);
-						if (site != null) {
-							return site;
-						}
-					}
-
-					DependencySite site = GradleParser.parseVersionBlockDependency(declarationCall, propertyResolver);
+				if (GradleParser.isMapStyleDeclarationCandidate(declarationCall)) {
+					DependencySite site = GradleParser.parseMapDeclaration(declarationCall,
+							propertyResolver);
 					if (site != null) {
 						return site;
 					}
+				}
+
+				DependencySite site = GradleParser.parseVersionBlockDependency(declarationCall, propertyResolver);
+				if (site != null) {
+					return site;
 				}
 			}
 		}
@@ -201,12 +194,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		GrMethodCall enclosingCall = PsiTreeUtil.getParentOfType(refExpr, GrMethodCall.class);
 		if (enclosingCall != null
 				&& GradleVersionConstraint.isConstraint(GroovyDslUtils.getGroovyMethodName(enclosingCall))) {
-			/*
-			 * if (PsiTreeUtil.getParentOfType(refExpr, GrStringInjection.class) == null) {
-			 * return null; }
-			 */
 
-			GrMethodCall dependencyCall = findVersionBlockDependencyCall(enclosingCall);
+			GrMethodCall dependencyCall = GradleParser.findVersionBlockDependencyCall(enclosingCall);
 			if (dependencyCall != null) {
 				DependencySite site = GradleParser.parseMapDeclaration(dependencyCall,
 						propertyResolver);
@@ -269,7 +258,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			return null;
 		}
 		String innerName = GroovyDslUtils.getGroovyMethodName(preferOrStrictlyCall);
-		if (!GradleVersionConstraint.PREFER.equals(innerName) && !GradleVersionConstraint.STRICTLY.equals(innerName)) {
+		if (!GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER)
+				&& !GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY)) {
 			return null;
 		}
 
@@ -286,7 +276,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			}
 		}
 
-		GrMethodCall depCall = findVersionBlockDependencyCall(preferOrStrictlyCall);
+		GrMethodCall depCall = GradleParser.findVersionBlockDependencyCall(preferOrStrictlyCall);
 		if (depCall == null) {
 			return null;
 		}
@@ -361,15 +351,16 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		}
 
 		if (GradleParser.isMapStyleDeclarationCandidate(call)) {
-			GrNamedArgument[] namedArguments = call.getNamedArguments();
-			if (namedArguments.length >= 2 && element.getParent() instanceof GrNamedArgument namedArgument) {
-				if ("version".equals(namedArgument.getLabelName())) {
-					site = GradleParser.parseMapDeclaration(call, scriptProperties);
-					if (site != null) {
-						return site;
-					}
+			if (GradleParser.isVersionNamedArgumentLiteral(element)) {
+				site = GradleParser.parseMapDeclaration(call, scriptProperties);
+				if (site != null) {
+					return site;
 				}
 			}
+		}
+
+		if (!GradleParser.isDirectDependencyNotationLiteral(element)) {
+			return null;
 		}
 
 		String[] parts = text.split(":");
@@ -406,63 +397,12 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		// call.invokedExpression must be a `version` GrReferenceExpression whose
 		// qualifier
 		// is the inner `id 'pluginId'` method call.
-		if (!(call.getInvokedExpression() instanceof GrReferenceExpression versionRef)) {
-			return null;
-		}
-		if (!"version".equals(versionRef.getReferenceName())) {
-			return null;
-		}
-
-		if (!(versionRef.getQualifierExpression() instanceof GrMethodCall idCall)
-				|| !GroovyDslUtils.isInsidePluginsBlock(idCall)) {
-			return null;
-		}
-
-		if (!GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(idCall))) {
+		GrMethodCall idCall = GradleParser.findPluginIdCallForVersionCall(call);
+		if (idCall == null) {
 			return null;
 		}
 
 		return GroovyPluginDependencySite.fromMethodCall(idCall, scriptProperties);
-	}
-
-	/**
-	 * Walks up from a {@code prefer} or {@code strictly} call to the enclosing
-	 * dependency method call, returning the outer {@link GrMethodCall} when the
-	 * full version-block structure is present, or {@code null} otherwise.
-	 * <p>The expected structure is: <pre class="code">
-	 * depCall("g:a") {          // outer GrMethodCall (returned)
-	 *     version {             // version call inside dep closure
-	 *         prefer "1.0"      // preferOrStrictlyCall (starting point)
-	 *     }
-	 * }
-	 * </pre>
-	 */
-	static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
-
-		GrClosableBlock versionClosure = PsiTreeUtil.getParentOfType(preferOrStrictlyCall, GrClosableBlock.class);
-		if (versionClosure == null) {
-			return null;
-		}
-
-		GrMethodCall versionCall = PsiTreeUtil.getParentOfType(versionClosure, GrMethodCall.class);
-		if (versionCall == null || !"version".equals(GroovyDslUtils.getGroovyMethodName(versionCall))) {
-			return null;
-		}
-
-		GrClosableBlock depClosure = PsiTreeUtil.getParentOfType(versionCall, GrClosableBlock.class);
-		if (depClosure == null) {
-			return null;
-		}
-
-		GrMethodCall depCall = PsiTreeUtil.getParentOfType(depClosure, GrMethodCall.class);
-		if (depCall == null) {
-			return null;
-		}
-		String depCallName = GroovyDslUtils.getGroovyMethodName(depCall);
-		if (!GradleUtils.isDependencySection(depCallName) && !GradleUtils.isPlatformSection(depCallName)) {
-			return null;
-		}
-		return depCall;
 	}
 
 

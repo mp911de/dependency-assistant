@@ -54,7 +54,7 @@ public class TomlCompletionContributor extends CompletionContributor {
 			@Override
 			public boolean accepts(TomlKeyValue keyValue, ProcessingContext processingContext) {
 				String tomlKeyName = TomlParser.getTomlKeyName(keyValue.getKey());
-				return TomlParser.VERSION.equals(tomlKeyName) || "version.ref".equals(tomlKeyName);
+				return TomlParser.VERSION.equals(tomlKeyName) || TomlParser.VERSION_REF.equals(tomlKeyName);
 			}
 
 		};

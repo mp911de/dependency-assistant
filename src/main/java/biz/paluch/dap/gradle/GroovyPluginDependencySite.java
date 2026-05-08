@@ -79,7 +79,7 @@ class GroovyPluginDependencySite {
 
 		for (GroovyPsiElement argument : call.getArgumentList().getAllArguments()) {
 			if (!sawVersionKeyword && argument instanceof GrReferenceExpression referenceExpression
-					&& "version".equals(referenceExpression.getReferenceName())) {
+					&& GradleUtils.VERSION.equals(referenceExpression.getReferenceName())) {
 				sawVersionKeyword = true;
 				continue;
 			}
@@ -95,7 +95,7 @@ class GroovyPluginDependencySite {
 	private static @Nullable GrLiteral findChainedVersionLiteral(GrMethodCall call) {
 
 		if (!(call.getParent() instanceof GrReferenceExpression versionRef)
-				|| !"version".equals(versionRef.getReferenceName())
+				|| !GradleUtils.VERSION.equals(versionRef.getReferenceName())
 				|| !(versionRef.getParent() instanceof GrMethodCall outerCall)) {
 			return null;
 		}

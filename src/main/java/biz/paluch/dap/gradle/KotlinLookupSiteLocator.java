@@ -99,7 +99,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 					&& valueArgument.getArgumentName() instanceof KtValueArgumentName argumentName) {
 
 				String name = argumentName.getAsName().asString();
-				if ("version".equals(name)) {
+				if (GradleUtils.VERSION.equals(name)) {
 					return call;
 				}
 
@@ -118,7 +118,7 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			while (previous != null && !(previous instanceof PsiFile)) {
 
 				if (previous instanceof KtOperationReferenceExpression ops) {
-					if ("version".equals(ops.getReferencedName())) {
+					if (GradleUtils.VERSION.equals(ops.getReferencedName())) {
 						for (PsiElement child : binary.getChildren()) {
 							if (child instanceof KtCallExpression nested && KotlinDslUtils.isDependencyCall(nested)) {
 								return nested;
@@ -146,14 +146,14 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 					versionCall = (KtCallExpression) PsiTreeUtil.findFirstParent(element, it -> {
 						return it instanceof KtCallExpression candidate
-								&& "version".equals(KotlinDslUtils.getKotlinCallName(candidate));
+								&& GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(candidate));
 					});
 				}
 			} else {
 				versionCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
 			}
 
-			if (versionCall != null && "version".equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
+			if (versionCall != null && GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
 
 				KtCallExpression depCall = PsiTreeUtil.getParentOfType(versionCall,
 						KtCallExpression.class);

@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -39,6 +40,7 @@ import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
@@ -79,6 +81,256 @@ class GradleParser extends GradleParserSupport {
 
 		return GradleUtils.isPlatformSection(methodName) || GradleUtils.isDependencySection(methodName)
 				|| GroovyDslUtils.isInsidePluginsBlock(call);
+	}
+
+	/**
+	 * Return whether the literal can represent a Groovy string value.
+	 */
+	static boolean isStringLiteral(GrLiteral literal) {
+		return literal.getValue() instanceof String;
+	}
+
+	/**
+	 * Return whether the literal is the coordinate argument in a direct dependency
+	 * notation call.
+	 */
+	static boolean isDirectDependencyNotationLiteral(GrLiteral literal) {
+
+		if (literal.getParent() instanceof GrNamedArgument) {
+			return false;
+		}
+
+		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
+		return call != null && isDependencyOrPlatformCall(call) && isArgumentOfCall(literal, call)
+				&& call.getClosureArguments().length == 0;
+	}
+
+	/**
+	 * Return whether the literal is a {@code version: '...'} value in map-style
+	 * dependency notation.
+	 */
+	static boolean isVersionNamedArgumentLiteral(GrLiteral literal) {
+
+		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(literal, GrNamedArgument.class);
+		return namedArgument != null && isVersionNamedArgument(namedArgument)
+				&& isExpressionOfNamedArgument(literal, namedArgument)
+				&& isNamedArgumentOfDependencyCall(namedArgument);
+	}
+
+	/**
+	 * Return whether the reference is a {@code version: property} value in
+	 * map-style dependency notation.
+	 */
+	static boolean isVersionNamedArgumentReference(GrReferenceExpression reference) {
+
+		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(reference, GrNamedArgument.class);
+		return namedArgument != null && isVersionNamedArgument(namedArgument)
+				&& isExpressionOfNamedArgument(reference, namedArgument)
+				&& isNamedArgumentOfDependencyCall(namedArgument);
+	}
+
+	/**
+	 * Return whether the literal is an argument to a version-block constraint call.
+	 */
+	static boolean isVersionBlockLiteral(GrLiteral literal, String constraintName) {
+
+		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
+		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+				&& isArgumentOfCall(literal, constraintCall)
+				&& findVersionBlockDependencyCall(constraintCall) != null;
+	}
+
+	/**
+	 * Return whether the reference is an argument to a version-block constraint
+	 * call.
+	 */
+	static boolean isVersionBlockReference(GrReferenceExpression reference, String constraintName) {
+
+		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(reference, GrMethodCall.class);
+		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+				&& isArgumentOfCall(reference, constraintCall)
+				&& findVersionBlockDependencyCall(constraintCall) != null;
+	}
+
+	/**
+	 * Return whether the literal is the version argument in a Groovy plugin
+	 * declaration.
+	 */
+	static boolean isPluginVersionLiteral(GrLiteral literal) {
+
+		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
+		return call != null && isPluginVersionCall(call) && isArgumentOfCall(literal, call);
+	}
+
+	/**
+	 * Return whether the literal is a Groovy local/ext property that backs a
+	 * supported dependency version reference.
+	 */
+	static boolean isBackingVersionPropertyLiteral(GrLiteral literal) {
+
+		GroovyExtAssignment assignment = GroovyExtAssignment.from(literal);
+		if (assignment == null) {
+			return false;
+		}
+
+		PsiFile file = literal.getContainingFile();
+		if (file == null) {
+			return false;
+		}
+
+		for (GrReferenceExpression reference : SyntaxTraverser.psiTraverser(file)
+				.filter(GrReferenceExpression.class)) {
+			if (assignment.getKey().equals(reference.getReferenceName()) && isVersionPropertyReference(reference)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Return whether the reference is a Groovy version-catalog accessor argument.
+	 */
+	static boolean isCatalogAccessorReference(GrReferenceExpression reference) {
+
+		GrMethodCall call = PsiTreeUtil.getParentOfType(reference, GrMethodCall.class);
+		if (call == null || !GradleUtils.isCatalogConsumerCall(GroovyDslUtils.getGroovyMethodName(call))) {
+			return false;
+		}
+
+		if (GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(call))
+				&& !GroovyDslUtils.isInsidePluginsBlock(call)) {
+			return false;
+		}
+
+		GrExpression argument = GroovyDslUtils.getFirstGroovyCatalogArgumentExpression(call);
+		return argument != null && PsiTreeUtil.isAncestor(argument, reference, false)
+				&& isLibsCatalogReference(argument);
+	}
+
+	/**
+	 * Return the dependency call that owns a version named-argument value.
+	 */
+	static @Nullable GrMethodCall findVersionNamedArgumentDependencyCall(PsiElement element) {
+
+		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(element, GrNamedArgument.class);
+		if (namedArgument == null || !isVersionNamedArgument(namedArgument)
+				|| !isExpressionOfNamedArgument(element, namedArgument)) {
+			return null;
+		}
+
+		return findNamedArgumentDependencyCall(namedArgument);
+	}
+
+	/**
+	 * Walks up from a {@code prefer} or {@code strictly} call to the enclosing
+	 * dependency method call, returning the outer {@link GrMethodCall} when the
+	 * full version-block structure is present, or {@code null} otherwise.
+	 */
+	static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
+
+		GrClosableBlock versionClosure = PsiTreeUtil.getParentOfType(preferOrStrictlyCall, GrClosableBlock.class);
+		if (versionClosure == null) {
+			return null;
+		}
+
+		GrMethodCall versionCall = PsiTreeUtil.getParentOfType(versionClosure, GrMethodCall.class);
+		if (versionCall == null || !GradleUtils.VERSION.equals(GroovyDslUtils.getGroovyMethodName(versionCall))) {
+			return null;
+		}
+
+		GrClosableBlock depClosure = PsiTreeUtil.getParentOfType(versionCall, GrClosableBlock.class);
+		if (depClosure == null) {
+			return null;
+		}
+
+		GrMethodCall depCall = PsiTreeUtil.getParentOfType(depClosure, GrMethodCall.class);
+		if (depCall == null || !isDependencyOrPlatformCall(depCall)) {
+			return null;
+		}
+
+		return depCall;
+	}
+
+	/**
+	 * Return the plugin {@code id(...)} call if {@code call} is the chained
+	 * {@code version(...)} call in a Groovy plugin declaration.
+	 */
+	static @Nullable GrMethodCall findPluginIdCallForVersionCall(GrMethodCall call) {
+
+		if (!(call.getInvokedExpression() instanceof GrReferenceExpression versionReference)) {
+			return null;
+		}
+
+		if (!GradleUtils.VERSION.equals(versionReference.getReferenceName())) {
+			return null;
+		}
+
+		if (!(versionReference.getQualifierExpression() instanceof GrMethodCall idCall)) {
+			return null;
+		}
+
+		if (!GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(idCall))
+				|| !GroovyDslUtils.isInsidePluginsBlock(idCall)) {
+			return null;
+		}
+
+		return idCall;
+	}
+
+	private static boolean isVersionNamedArgument(GrNamedArgument namedArgument) {
+		return GradleUtils.VERSION.equals(namedArgument.getLabelName());
+	}
+
+	private static boolean isExpressionOfNamedArgument(PsiElement element, GrNamedArgument namedArgument) {
+
+		PsiElement expression = namedArgument.getExpression();
+		return expression != null && (expression == element || PsiTreeUtil.isAncestor(expression, element, false));
+	}
+
+	private static @Nullable GrMethodCall findNamedArgumentDependencyCall(GrNamedArgument namedArgument) {
+
+		GrMethodCall call = PsiTreeUtil.getParentOfType(namedArgument, GrMethodCall.class);
+		return call != null && isDependencyOrPlatformCall(call) ? call : null;
+	}
+
+	private static boolean isNamedArgumentOfDependencyCall(GrNamedArgument namedArgument) {
+		return findNamedArgumentDependencyCall(namedArgument) != null;
+	}
+
+	private static boolean isVersionConstraintCall(GrMethodCall call, String constraintName) {
+		return constraintName.equals(GroovyDslUtils.getGroovyMethodName(call));
+	}
+
+	private static boolean isPluginVersionCall(GrMethodCall call) {
+		return findPluginIdCallForVersionCall(call) != null;
+	}
+
+	private static boolean isVersionPropertyReference(GrReferenceExpression reference) {
+		return isVersionNamedArgumentReference(reference)
+				|| isVersionBlockReference(reference, GradleVersionConstraint.PREFER)
+				|| isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY);
+	}
+
+	private static boolean isLibsCatalogReference(GrExpression expression) {
+		return GroovyDslUtils.getTomlReference(expression, Set.of(TomlParser.LIBS)) != null;
+	}
+
+	private static boolean isDependencyOrPlatformCall(GrMethodCall call) {
+
+		String methodName = GroovyDslUtils.getGroovyMethodName(call);
+		return GradleUtils.isDependencySection(methodName) || GradleUtils.isPlatformSection(methodName);
+	}
+
+	private static boolean isArgumentOfCall(PsiElement element, GrMethodCall call) {
+
+		for (PsiElement argument : call.getArgumentList().getAllArguments()) {
+			if (argument == element || PsiTreeUtil.isAncestor(argument, element, false)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -247,7 +499,7 @@ class GradleParser extends GradleParserSupport {
 			return null;
 		}
 
-		GrMethodCall versionCall = findNestedMethodCall(depClosure, "version");
+		GrMethodCall versionCall = findNestedMethodCall(depClosure, GradleUtils.VERSION);
 
 		if (versionCall == null) {
 			return null;
@@ -338,11 +590,11 @@ class GradleParser extends GradleParserSupport {
 			PsiElement val = arg.getExpression();
 			String strVal = val instanceof GrLiteral lit ? GroovyDslUtils.getText(lit) : null;
 
-			if ("group".equals(key)) {
+			if (GradleUtils.GROUP.equals(key)) {
 				group = !StringUtils.isEmpty(strVal) ? propertyResolver.resolvePlaceholders(strVal) : strVal;
-			} else if ("name".equals(key)) {
+			} else if (GradleUtils.NAME.equals(key)) {
 				artifact = !StringUtils.isEmpty(strVal) ? propertyResolver.resolvePlaceholders(strVal) : strVal;
-			} else if ("version".equals(key)) {
+			} else if (GradleUtils.VERSION.equals(key)) {
 
 				if (val instanceof GrReferenceExpression ref) {
 					String refName = GroovyDslUtils.getRequiredText(ref);
