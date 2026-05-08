@@ -40,7 +40,24 @@ import com.intellij.util.net.ProxyAuthentication;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Utility to create HTTP clients and issue requests.
+ * Shared HTTP access point for dependency metadata retrieval.
+ *
+ * <p>The assistant resolves Maven repository metadata and NPM registry
+ * documents from background tasks that should behave like IDE-originated
+ * network traffic. This utility centralizes that policy by using IntelliJ's
+ * proxy selector, proxy credentials, redirect handling, request timeout, and a
+ * product-specific {@code User-Agent}.
+ *
+ * <p>Callers provide only the request-specific details, such as URI, method,
+ * authentication headers, and the response body handler. The shared client and
+ * concurrency guard keep metadata refreshes from creating an unbounded number
+ * of simultaneous outbound connections.
+ *
+ * <p>The default body handler is intentionally conservative: metadata responses
+ * are treated as UTF-8 text and rejected once they exceed the configured size
+ * cap. Release sources should translate transport failures into their own
+ * domain behavior, for example by returning no releases or raising an
+ * artifact-not-found signal.
  *
  * @author Mark Paluch
  */
@@ -61,6 +78,12 @@ public class HttpClientUtil {
 			.followRedirects(HttpClient.Redirect.NORMAL) //
 			.build();
 
+	/**
+	 * Return the process-wide {@code User-Agent} used for metadata requests.
+	 * <p>The value is derived from IntelliJ product information when the
+	 * application is available and falls back to a generic IDE identifier in
+	 * non-application contexts.
+	 */
 	public static String getUserAgent() {
 		return USER_AGENT;
 	}
@@ -81,9 +104,17 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Send an HTTP request.
-	 * @throws InterruptedException
-	 * @throws IOException
+	 * Send a request through the shared IDE-aware HTTP client.
+	 * <p>The request customizer is responsible for the request-specific parts of
+	 * the builder. This method applies the common {@code User-Agent}, timeout,
+	 * redirect, proxy, and concurrency policies before performing the blocking
+	 * send.
+	 * @param requestBuilderConsumer callback that configures the request builder.
+	 * @param bodyHandler body handler used to convert the response.
+	 * @return the HTTP response.
+	 * @throws InterruptedException if the calling task is cancelled or interrupted
+	 * while waiting for capacity or a response.
+	 * @throws IOException if the request cannot be sent or the body handler fails.
 	 */
 	public static <T> HttpResponse<T> sendRequest(Consumer<HttpRequest.Builder> requestBuilderConsumer,
 			HttpResponse.BodyHandler<T> bodyHandler) throws InterruptedException, IOException {
@@ -103,8 +134,10 @@ public class HttpClientUtil {
 	}
 
 	/**
-	 * Body handler that reads the response body into a string and limits at
-	 * {@link #MAX_RESPONSE_BODY_BYTES}.
+	 * Return the standard text body handler for remote metadata documents.
+	 * <p>The body is decoded as UTF-8 and rejected when it exceeds the internal
+	 * response-size cap. Use a different handler only when the caller has a
+	 * specific reason to consume a different payload shape.
 	 */
 	public static HttpResponse.BodyHandler<String> cappedUtf8BodyHandler() {
 
@@ -139,13 +172,22 @@ public class HttpClientUtil {
 		}
 	}
 
+	/**
+	 * Return whether the response status represents a successful response that can
+	 * be interpreted as carrying metadata.
+	 * <p>Callers remain responsible for any domain-specific handling of empty
+	 * success bodies or non-success statuses such as {@code 404}.
+	 */
 	public static boolean hasBody(HttpResponse<?> response) {
 		return response.statusCode() >= 200 && response.statusCode() < 300;
 	}
 
 	/**
-	 * {@link Authenticator} that uses the {@link ProxyAuthentication} to
-	 * authenticate against a proxy.
+	 * {@link Authenticator} bridge from JDK HTTP client proxy challenges to
+	 * IntelliJ's proxy credential store.
+	 * <p>Only proxy authentication is handled here. Origin-server authentication
+	 * remains under caller control so repository-specific credentials can be scoped
+	 * by the release source that owns the request.
 	 */
 	public static class ProxyAwareAuthenticator extends Authenticator {
 
