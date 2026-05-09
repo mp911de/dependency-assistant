@@ -65,7 +65,8 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			return null;
 		}
 
-		UpgradeSuggestion suggestion = context.getLookup(element).suggestUpgrade(element);
+		UpgradeSuggestion suggestion = context.getLookup(element, element.getContainingFile().getVirtualFile())
+				.suggestUpgrade(element);
 		if (!suggestion.isPresent()) {
 			return null;
 		}

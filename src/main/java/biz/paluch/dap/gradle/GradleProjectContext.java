@@ -218,6 +218,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 		public String toString() {
 			return "Absent Gradle BuildContext";
 		}
+
 	}
 
 }

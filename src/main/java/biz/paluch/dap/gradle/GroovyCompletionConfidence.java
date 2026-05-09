@@ -23,6 +23,10 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.ThreeState;
 
 /**
+ * {@link CompletionConfidence} implementation that prevents autopopup
+ * suppression in Gradle Groovy DSL files when the context is supported by the
+ * {@link DependencyAssistantDispatcher}.
+ *
  * @author Mark Paluch
  */
 public class GroovyCompletionConfidence extends CompletionConfidence {

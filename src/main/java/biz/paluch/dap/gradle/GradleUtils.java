@@ -178,7 +178,10 @@ class GradleUtils {
 	 * Return whether the given {@link PsiFile} is a Gradle-related file.
 	 */
 	public static boolean isGradleFile(@Nullable PsiFile file) {
-		return file != null && isGradleFile(file.getVirtualFile());
+		if (file == null) {
+			return false;
+		}
+		return isGradleScript(file) || isGradlePropertiesFile(file) || isVersionCatalog(file);
 	}
 
 	/**

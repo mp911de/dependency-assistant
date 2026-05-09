@@ -191,7 +191,7 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element) {
+		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
 			return VersionUpgradeLookupService.create(element);
 		}
 

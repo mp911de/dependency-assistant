@@ -71,7 +71,6 @@
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
 		<additionalTextAttributes scheme="Darcula"
 		                          file="colorSchemes/DependencyAssistantDarcula.xml"/>
-
 		<colorSettingsPage
 				implementation="biz.paluch.dap.severity.DependencyAssistantColorSettingsPage"/>
 		<projectService

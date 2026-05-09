@@ -161,6 +161,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 		extend(CompletionType.BASIC, BACKING_VERSION_PROPERTY, provider);
 	}
 
+
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 

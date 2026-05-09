@@ -72,7 +72,8 @@ public class UpgradeAvailableInspection extends LocalInspectionTool {
 					return;
 				}
 
-				VersionUpgradeLookupSupport lookup = context.getLookup(element);
+				VersionUpgradeLookupSupport lookup = context.getLookup(element,
+						element.getContainingFile().getVirtualFile());
 				AvailableUpgrades upgrades = lookup.suggestUpgrades(element);
 				if (!upgrades.isPresent()) {
 					return;

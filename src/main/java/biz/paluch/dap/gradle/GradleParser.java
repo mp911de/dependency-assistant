@@ -19,7 +19,6 @@ package biz.paluch.dap.gradle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -40,7 +39,6 @@ import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
@@ -290,10 +288,6 @@ class GradleParser extends GradleParserSupport {
 		return isVersionNamedArgumentReference(reference)
 				|| isVersionBlockReference(reference, GradleVersionConstraint.PREFER)
 				|| isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY);
-	}
-
-	private static boolean isLibsCatalogReference(GrExpression expression) {
-		return GroovyDslUtils.getTomlReference(expression, Set.of(TomlParser.LIBS)) != null;
 	}
 
 	private static boolean isDependencyOrPlatformCall(GrMethodCall call) {

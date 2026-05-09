@@ -218,7 +218,7 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element) {
+		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
 			return new VersionUpgradeLookupService(project, projectContext);
 		}
 

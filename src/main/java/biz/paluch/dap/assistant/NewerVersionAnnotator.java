@@ -49,7 +49,7 @@ public class NewerVersionAnnotator implements Annotator {
 			return;
 		}
 
-		VersionUpgradeLookupSupport service = context.getLookup(element);
+		VersionUpgradeLookupSupport service = context.getLookup(element, element.getContainingFile().getVirtualFile());
 		AvailableUpgrades upgrades = service.suggestUpgrades(element);
 
 		if (!upgrades.isPresent()) {

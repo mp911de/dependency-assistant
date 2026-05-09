@@ -41,7 +41,7 @@ class TomlLookupSiteLocator implements LookupSiteLocator<TomlLiteral> {
 		if (TomlParser.isInsideTable(literal, TomlParser.VERSIONS::equals)) {
 			String propertyName = TomlParser.getTomlKeyName(keyValue.getKey());
 			String rawVersion = TomlParser.getText(literal);
-			if (rawVersion == null || StringUtils.isEmpty(rawVersion) || StringUtils.isEmpty(propertyName)) {
+			if (StringUtils.isEmpty(propertyName)) {
 				return LookupSite.absent();
 			}
 			return LookupSite.ofProperty(propertyName, rawVersion, keyValue, literal);

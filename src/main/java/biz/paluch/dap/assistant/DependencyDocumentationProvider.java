@@ -76,7 +76,7 @@ public class DependencyDocumentationProvider
 			return null;
 		}
 
-		VersionUpgradeLookupSupport lookup = context.getLookup(target);
+		VersionUpgradeLookupSupport lookup = context.getLookup(target, target.getContainingFile().getVirtualFile());
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(target);
 		if (!artifactReference.isResolved()) {
 			return null;

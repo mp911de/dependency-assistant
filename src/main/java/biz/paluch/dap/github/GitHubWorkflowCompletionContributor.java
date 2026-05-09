@@ -53,7 +53,6 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  */
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
-
 	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
 
 		@Override
@@ -72,7 +71,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				return result.withPrefixMatcher("");
 			}
 
-			return result.withPrefixMatcher(refPrefixAtCaret(parameters));
+			return super.getPrefixMatcher(parameters, result);
 		}
 
 		@Override

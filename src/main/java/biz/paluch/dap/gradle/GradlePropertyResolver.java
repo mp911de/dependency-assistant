@@ -185,6 +185,11 @@ class GradlePropertyResolver implements PropertyResolver {
 
 		@Override
 		public CachedValueProvider.@Nullable Result<GradlePropertyResolver> compute() {
+
+			if (virtualFile == null) {
+				return CachedValueProvider.Result.create(ABSENT, PsiModificationTracker.MODIFICATION_COUNT);
+			}
+
 			PsiFile psiFile = psiManager.findFile(virtualFile);
 			if (psiFile == null) {
 				return CachedValueProvider.Result.create(ABSENT, PsiModificationTracker.MODIFICATION_COUNT);

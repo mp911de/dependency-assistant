@@ -2,18 +2,4 @@
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.github.GitHubAssistant"/>
 	</extensions>
-
-	<extensions defaultExtensionNs="com.intellij">
-		<projectService
-				serviceImplementation="biz.paluch.dap.github.GitHubAccountResolver"/>
-		<completion.contributor
-				language="yaml"
-				order="first"
-				implementationClass="biz.paluch.dap.github.GitHubWorkflowCompletionContributor"/>
-		<annotator language="yaml"
-		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
-		<codeInsight.lineMarkerProvider
-				language="yaml"
-				implementationClass="biz.paluch.dap.github.GitHubLineMarkerProvider"/>
-	</extensions>
 </idea-plugin>

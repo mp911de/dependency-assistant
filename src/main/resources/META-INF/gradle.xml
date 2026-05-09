@@ -6,9 +6,9 @@
 		<completion.confidence language="Groovy" order="first"
 		                       implementationClass="biz.paluch.dap.gradle.GroovyCompletionConfidence"/>
 		<completion.confidence language="TOML" order="first"
-		                       implementationClass="biz.paluch.dap.gradle.GroovyCompletionConfidence"/>
+		                       implementationClass="biz.paluch.dap.gradle.TomlCompletionConfidence"/>
 		<completion.confidence language="Properties" order="first"
-		                       implementationClass="biz.paluch.dap.gradle.GroovyCompletionConfidence"/>
+		                       implementationClass="biz.paluch.dap.gradle.GradlePropertiesCompletionConfidence"/>
 		<completion.confidence language="kotlin" order="first"
 		                       implementationClass="biz.paluch.dap.gradle.KotlinCompletionConfidence"/>
 		<completion.contributor

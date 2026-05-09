@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
@@ -217,7 +219,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			return LookupSite.absent();
 		}
 
-		GrMethodCall catalogCall = GroovyDslUtils.findEnclosingGroovyCatalogAccessorCall(element, registry);
+		GrMethodCall catalogCall = GroovyDslUtils.findEnclosingGroovyCatalogAccessorCall(element);
 		if (catalogCall == null) {
 			return LookupSite.absent();
 		}
@@ -227,7 +229,12 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			return LookupSite.absent();
 		}
 
-		TomlReference reference = GroovyDslUtils.getTomlReference(expression, registry.catalogPaths().keySet());
+		List<String> segments = GroovyDslUtils.getVersionCatalogSegments(expression);
+		if (segments.isEmpty() || !registry.containsAlias(segments.getFirst())) {
+			return LookupSite.absent();
+		}
+
+		TomlReference reference = TomlReference.from(segments, registry.catalogPaths().keySet());
 		return reference != null ? LookupSite.ofTomlReference(reference, catalogCall) : LookupSite.absent();
 	}
 

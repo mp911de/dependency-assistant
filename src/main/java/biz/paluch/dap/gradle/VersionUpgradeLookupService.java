@@ -26,7 +26,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jspecify.annotations.Nullable;
@@ -48,6 +47,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	private final boolean candidate;
 
 	private final @Nullable ProjectState projectState;
+
+	private final VirtualFile virtualFile;
 
 	private final PsiFile file;
 
@@ -79,14 +80,25 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	 * @param file the Gradle-related file to inspect.
 	 */
 	public VersionUpgradeLookupService(Project project, PsiFile file) {
-		this(project, file, GradleProjectContext.of(project, file));
+		this(project, file, file.getVirtualFile(), GradleProjectContext.of(project, file));
 	}
 
-	private VersionUpgradeLookupService(Project project, PsiFile file, GradleProjectContext context) {
+	/**
+	 * Create a new {@code VersionUpgradeLookupService}.
+	 * @param project the IntelliJ project.
+	 * @param psiFile the Gradle-related file to inspect.
+	 */
+	public VersionUpgradeLookupService(Project project, PsiFile psiFile, VirtualFile virtualFile) {
+		this(project, psiFile, virtualFile, GradleProjectContext.of(project, virtualFile));
+	}
+
+	private VersionUpgradeLookupService(Project project, PsiFile file, VirtualFile virtualFile,
+			GradleProjectContext context) {
 
 		super(project, context);
 
 		this.file = file;
+		this.virtualFile = virtualFile;
 		this.buildContext = context;
 		this.candidate = GradleUtils.isGradleFile(file);
 
@@ -102,15 +114,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				this.tomlResolver);
 	}
 
-	/**
-	 * Return the cached lookup service for the file containing the given element.
-	 * @param element the PSI element that belongs to a Gradle-related file.
-	 */
-	public static VersionUpgradeLookupService create(PsiElement element) {
-		return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
-				VersionUpgradeLookupService::new);
-	}
-
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
@@ -118,36 +121,32 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		VirtualFile vf = this.file.getVirtualFile();
-		LookupSite lookupSite = findLookupSite(element, vf);
+		LookupSite lookupSite = findLookupSite(element);
 		return lookupSite.isPresent() ? lookupSiteResolver.resolve(lookupSite) : ArtifactReference.unresolved();
 	}
 
 	/**
 	 * Find the Gradle lookup site represented by the given element.
 	 * @param element the PSI element under inspection.
-	 * @param vf the backing virtual file.
 	 */
-	public LookupSite findLookupSite(PsiElement element, VirtualFile vf) {
+	public LookupSite findLookupSite(PsiElement element) {
 
-		if (GradleUtils.isVersionCatalog(vf) && element instanceof TomlLiteral literal) {
+		PsiFile file = element.getContainingFile();
+		if (GradleUtils.isVersionCatalog(file) && element instanceof TomlLiteral literal) {
 			return tomlSiteLocator.locate(literal);
 		}
 
-		if (GradleUtils.isGradlePropertiesFile(vf)) {
-
+		if (GradleUtils.isGradlePropertiesFile(file)) {
 			if (GradlePropertiesParser.isPropertyValueElement(element)) {
 				return locateGradlePropertySite(element);
 			}
-
 			if (element instanceof Property property) {
 				return locateGradlePropertySite(property);
 			}
-
 			return LookupSite.absent();
 		}
 
-		if (GradleUtils.isGroovyDsl(vf) && element instanceof GroovyPsiElement groovyElement) {
+		if (GradleUtils.isGroovyDsl(file) && element instanceof GroovyPsiElement groovyElement) {
 			return groovySiteLocator.locate(groovyElement);
 		}
 

@@ -53,6 +53,8 @@ import org.springframework.util.Assert;
  */
 public abstract class VersionUpgradeLookupSupport {
 
+	private final Project project;
+
 	private final @Nullable ProjectState projectState;
 
 	private final ProjectBuildContext buildContext;
@@ -66,10 +68,15 @@ public abstract class VersionUpgradeLookupSupport {
 	 */
 	public VersionUpgradeLookupSupport(Project project, ProjectBuildContext buildContext) {
 
+		this.project = project;
 		StateService service = StateService.getInstance(project);
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.buildContext = buildContext;
+	}
+
+	public Project getProject() {
+		return project;
 	}
 
 	/**

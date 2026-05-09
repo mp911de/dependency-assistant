@@ -24,19 +24,19 @@ import com.intellij.util.ThreeState;
 
 /**
  * {@link CompletionConfidence} implementation that prevents autopopup
- * suppression in Gradle Kotlin DSL files when the context is supported by the
+ * suppression in Gradle properties files when the context is supported by the
  * {@link DependencyAssistantDispatcher}.
  *
  * @author Mark Paluch
  */
-public class KotlinCompletionConfidence extends CompletionConfidence {
+public class GradlePropertiesCompletionConfidence extends CompletionConfidence {
 
 	@Override
 	public ThreeState shouldSkipAutopopup(Editor editor, PsiElement contextElement, PsiFile psiFile,
 			int offset) {
 
 		if (GradleUtils.isGradleFile(psiFile) && DependencyAssistantDispatcher.supports(psiFile)
-				&& KotlinCompletionContributor.isSupportedCompletionSite(contextElement)) {
+				&& GradlePropertiesCompletionContributor.isSupportedCompletionSite(contextElement)) {
 			return ThreeState.NO;
 		}
 

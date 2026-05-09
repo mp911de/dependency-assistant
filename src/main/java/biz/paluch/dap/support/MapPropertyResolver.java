@@ -35,6 +35,11 @@ record MapPropertyResolver(Map<String, ? extends Property> properties) implement
 	}
 
 	@Override
+	public boolean containsProperty(String key) {
+		return properties.containsKey(key);
+	}
+
+	@Override
 	public @Nullable String getProperty(String propertyKey) {
 		Property element = properties.get(propertyKey);
 		return element != null ? element.getValue() : null;

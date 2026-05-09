@@ -24,10 +24,12 @@ import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
@@ -48,6 +50,7 @@ import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.ElementManipulator;
 import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
@@ -57,9 +60,6 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * {@link CompletionProvider} releases.
- *
- * TODO: provide either SHA's and display text or version + display text to
- * avoid messy completion.
  *
  * @author Mark Paluch
  */
@@ -75,13 +75,13 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		}
 		position = PsiVisitors.unleaf(position);
 
-		CompletionMetadata metadata = getCompletionMetadata(position);
+		CompletionMetadata metadata = getCompletionMetadata(position, parameters.getOriginalFile(),
+				parameters.getOriginalFile().getVirtualFile());
 		if (metadata == null) {
 			return;
 		}
 
 		RefStyle refStyle = getRefStyle(position, metadata);
-
 		StateService service = StateService
 				.getInstance(parameters.getPosition().getProject());
 		List<ArtifactRelease> releases = findOptions(metadata.artifactId(), service.getCache());
@@ -96,8 +96,6 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		// duplicates.
 		Set<String> alreadyContributed = getAlreadyContributed(parameters, result);
 
-		// TODO: Gradle lookup missing version, TOML, Kotlin completion
-		// Show all cached versions on a second invocation (Ctrl+Space twice)
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
 		List<ArtifactRelease> unique = releases.stream()
 				.filter(opt -> !alreadyContributed.contains(opt.release().version().toString())).toList();
@@ -112,7 +110,8 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 			String completion;
 			Set<String> lookupStrings = new HashSet<>();
 
-			if (completionVersion instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())
+			if (completionVersion instanceof GitVersion gitVersion && supports(position, gitVersion)
+					&& StringUtils.hasText(gitVersion.getSha())
 					&& refStyle == RefStyle.SHA) {
 				completion = gitVersion.getSha();
 				lookupStrings.add(gitVersion.getSha());
@@ -157,6 +156,12 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 
 				VersionAge versionAge = VersionAge.between(currentVersion, completionVersion);
 				element = element.withIcon(versionAge.getIcon());
+			} else {
+				InterfaceAssistant interfaceAssistant = metadata.context()
+						.getInterfaceAssistant();
+
+				element = element
+						.withIcon(interfaceAssistant.getTableIcon(new Dependency(metadata.artifactId, currentVersion)));
 			}
 
 			if (option.getVersion().isPreview()) {
@@ -177,14 +182,15 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		}
 	}
 
-	private @Nullable CompletionMetadata getCompletionMetadata(PsiElement element) {
+	private @Nullable CompletionMetadata getCompletionMetadata(PsiElement element, PsiFile psiFile,
+			VirtualFile containingFile) {
 
-		ProjectDependencyContext context = context(element);
+		ProjectDependencyContext context = context(element, psiFile);
 		if (context == null) {
 			return null;
 		}
 
-		VersionUpgradeLookupSupport lookup = context.getLookup(element);
+		VersionUpgradeLookupSupport lookup = context.getLookup(element, containingFile);
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
 		if (!artifactReference.isResolved()) {
 			return null;
@@ -196,22 +202,16 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		}
 
 		return new CompletionMetadata(artifactReference.getArtifactId(), version,
-				artifactReference.getDeclaration().getVersionLiteral());
+				artifactReference.getDeclaration().getVersionLiteral(), context);
 	}
 
-	protected boolean canComplete(PsiFile file) {
-		if (DependencyAssistantDispatcher.findFirstContext(file.getProject(), file) == null) {
-			return false;
-		}
-
+	protected boolean supports(PsiElement element, GitVersion gitVersion) {
 		return true;
 	}
 
 	protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
 		return RefStyle.VERSION;
 	}
-
-
 
 	private Set<String> getAlreadyContributed(CompletionParameters parameters, CompletionResultSet result) {
 		Set<String> alreadyContributed = new HashSet<>();
@@ -244,7 +244,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
 		return parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")
-				: result;
+				: result.withPrefixMatcher(getPrefix(parameters));
 	}
 
 	/**
@@ -257,8 +257,37 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		return Character.isLetterOrDigit(typedChar) || typedChar == '.';
 	}
 
-	private static @Nullable ProjectDependencyContext context(PsiElement element) {
-		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), element.getContainingFile());
+	protected static String getPrefix(CompletionParameters parameters) {
+
+		PsiElement position = parameters.getOriginalPosition();
+		if (position == null) {
+			position = parameters.getPosition();
+		}
+		position = PsiVisitors.unleaf(position);
+
+		return getPrefix(parameters, position);
+	}
+
+	protected static String getPrefix(CompletionParameters parameters, PsiElement literal) {
+
+		String text = literal.getText();
+		int caretInScalar = parameters.getOffset() - literal.getTextRange().getStartOffset();
+		caretInScalar = Math.clamp(caretInScalar, 0, text.length());
+
+		int start = caretInScalar;
+		while (start > 0 && isVersionChar(text.charAt(start - 1))) {
+			start--;
+		}
+
+		return text.substring(start, caretInScalar);
+	}
+
+	private static boolean isVersionChar(char c) {
+		return Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_' || c == '+';
+	}
+
+	private static @Nullable ProjectDependencyContext context(PsiElement element, PsiFile psiFile) {
+		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), psiFile);
 	}
 
 	private static void replaceVersion(InsertionContext context, PsiElement versionLiteral, String version) {
@@ -309,10 +338,11 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 	 * Artifact metadata needed to build release completion suggestions.
 	 */
 	public record CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
-			@Nullable PsiElement versionLiteral) {
+			@Nullable PsiElement versionLiteral, ProjectDependencyContext context) {
 
-		public CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion) {
-			this(artifactId, currentVersion, null);
+		public CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
+				ProjectDependencyContext context) {
+			this(artifactId, currentVersion, null, context);
 		}
 
 	}

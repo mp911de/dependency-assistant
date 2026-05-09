@@ -46,4 +46,8 @@ public class GradlePropertiesCompletionContributor extends CompletionContributor
 		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && GRADLE_PROPERTY_VALUE.accepts(position);
 	}
 
+	public static boolean isSupportedCompletionSite(PsiElement position) {
+		return GRADLE_PROPERTY_VALUE.accepts(position);
+	}
+
 }

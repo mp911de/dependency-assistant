@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -26,6 +27,8 @@ import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SyntaxTraverser;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyElementTypes;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
@@ -201,8 +204,7 @@ class GroovyDslUtils {
 	 * argument is a {@code libs.…} reference chain and that contains
 	 * {@code element}.
 	 */
-	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element,
-			VersionCatalogRegistry registry) {
+	static @Nullable GrMethodCall findEnclosingGroovyCatalogAccessorCall(PsiElement element) {
 
 		if (!(element instanceof GrReferenceExpression) || !(element.getParent() instanceof GrArgumentList args)) {
 			return null;
@@ -217,7 +219,7 @@ class GroovyDslUtils {
 		}
 
 		GrExpression arg = getFirstGroovyCatalogArgumentExpression(call);
-		if (arg == null || !isGroovyLibsCatalogRootExpression(arg, registry)) {
+		if (arg == null) {
 			return null;
 		}
 
@@ -227,7 +229,6 @@ class GroovyDslUtils {
 	public static boolean isGroovyCatalogConsumerCall(GrMethodCall call) {
 
 		String name = getGroovyMethodName(call);
-
 		return GradleUtils.isCatalogConsumerCall(name)
 				&& (!GradleUtils.isPlugin(name) || KotlinDslUtils.isInsidePluginsBlock(call));
 	}
@@ -249,8 +250,16 @@ class GroovyDslUtils {
 
 	static boolean isGroovyLibsCatalogRootExpression(GrExpression expr, VersionCatalogRegistry registry) {
 
-		TomlReference reference = getTomlReference(expr, registry.catalogPaths().keySet());
-		return reference != null;
+		List<String> list = getVersionCatalogSegments(expr);
+
+		return list.size() > 1 && registry.catalogPaths().containsKey(list.getFirst());
+	}
+
+	public static List<String> getVersionCatalogSegments(GrExpression expr) {
+		return SyntaxTraverser.psiTraverser(expr)
+				.expand(it -> it instanceof GrReferenceExpression)
+				.filterTypes(GroovyElementTypes.IDENTIFIER::equals)
+				.map(PsiElement::getText).toList();
 	}
 
 	static @Nullable TomlReference getTomlReference(GrExpression expr, Set<String> knownAliases) {

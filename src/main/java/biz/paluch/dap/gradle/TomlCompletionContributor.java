@@ -85,4 +85,8 @@ public class TomlCompletionContributor extends CompletionContributor {
 				&& (VERSION_KEY.accepts(position) || VERSION_PROPERTY.accepts(position));
 	}
 
+	public static boolean isSupportedCompletionSite(PsiElement position) {
+		return VERSION_KEY.accepts(position) || VERSION_PROPERTY.accepts(position);
+	}
+
 }

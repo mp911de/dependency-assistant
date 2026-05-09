@@ -18,14 +18,14 @@ package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
-import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
-import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.json.psi.JsonObject;
+import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonStringLiteral;
-import com.intellij.openapi.util.TextRange;
+import com.intellij.patterns.ElementPattern;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
 
@@ -36,85 +36,47 @@ import com.intellij.psi.PsiElement;
  */
 public class NpmVersionCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider contributor = new ReleasesCompletionProvider() {
-
-		@Override
-		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters,
-				CompletionResultSet result) {
-
-			JsonStringLiteral literal = NpmPsiUtils.findDependencyLiteral(parameters.getPosition());
-
-			if (parameters.getInvocationCount() > 1) {
-				return result.withPrefixMatcher("");
-			}
-			if (literal != null) {
-				return result.withPrefixMatcher(getPrefix(parameters, literal));
-			}
-
-			return result;
-		}
+	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
 
 		@Override
 		protected LookupElementBuilder postProcess(CompletionParameters parameters,
 				LookupElementBuilder builder, PsiElement element, ArtifactRelease option) {
+
+			JsonStringLiteral literal = NpmPsiUtils.findDependencyLiteral(parameters.getPosition());
+			boolean closed = literal == null || NpmPsiUtils.isClosed(literal);
+
 			return builder.withInsertHandler((context, lookupElement) -> {
+
+				if (!closed) {
+					context.getDocument().insertString(context.getTailOffset(), "\"");
+				}
 			});
 		}
 
 	};
 
+	private static final ElementPattern<JsonProperty> DEPENDENCIES = PlatformPatterns.or(
+			PlatformPatterns.psiElement(JsonProperty.class).withName("dependencies"),
+			PlatformPatterns.psiElement(JsonProperty.class).withName("devDependencies"));
+
+	private static final ElementPattern<JsonStringLiteral> DEPENDENCY_VALUE = PlatformPatterns
+			.psiElement(JsonStringLiteral.class)
+			.withParent(PlatformPatterns.psiElement(JsonProperty.class)
+					.withParent(PlatformPatterns.psiElement(JsonObject.class)
+							.withParent(DEPENDENCIES)));
+
+	private static final ElementPattern<PsiElement> LOCATION = PlatformPatterns.psiElement()
+			.inside(DEPENDENCY_VALUE)
+			.inside(PlatformPatterns.psiFile().withName(NpmUtils.PACKAGE_JSON));
+
 	public NpmVersionCompletionContributor() {
-		extend(CompletionType.BASIC, PlatformPatterns.psiElement().with(PatternConditions.conditional(
-				"inNpmDependencyValue", (PsiElement element) -> NpmPsiUtils.findDependencyLiteral(element) != null)),
-				contributor);
-	}
-
-	public static TextRange getVersionRange(JsonStringLiteral literal) {
-
-		// Use raw text to keep offsets aligned with the document, even for quoted
-		// scalars.
-		String text = literal.getText();
-		int atIndex = text.indexOf('#');
-		if (atIndex == -1) {
-			atIndex = text.indexOf('@');
-		}
-		if (atIndex < 0) {
-			return literal.getTextRange();
-		}
-
-		TextRange scalarRange = literal.getTextRange();
-		int refStart = scalarRange.getStartOffset() + atIndex + 1;
-		int refEnd = scalarRange.getEndOffset();
-		// Trim a trailing matching quote when the scalar is quoted.
-
-		return new TextRange(refStart, refEnd);
-	}
-
-	private static String getPrefix(CompletionParameters parameters, JsonStringLiteral literal) {
-		String text = literal.getText();
-		int atIndex = text.indexOf("IntellijIdeaRulezzz");
-		if (atIndex == -1) {
-			atIndex = text.indexOf('@');
-		}
-		if (atIndex < 0) {
-			return "";
-		}
-		int caretInScalar = parameters.getOffset() - literal.getTextRange().getStartOffset();
-		int refStart = atIndex + 1;
-		if (caretInScalar < refStart || caretInScalar > text.length()) {
-			return "";
-		}
-		return text.substring(refStart, caretInScalar);
+		extend(CompletionType.BASIC, LOCATION, provider);
 	}
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-
-		// TODO: @ and # only for Git dependencies/or npm:?
-		// TODO: "bootstrap-vue": "npm:@ankurk91/bootstrap-vue#2.23.1" missing
-		// highlighting
 		return (ReleasesCompletionProvider.isVersionCharacter(typeChar) || typeChar == '#' || typeChar == '@')
-				&& NpmPsiUtils.findDependencyLiteral(position) != null;
+				&& LOCATION.accepts(position);
 	}
 
 }

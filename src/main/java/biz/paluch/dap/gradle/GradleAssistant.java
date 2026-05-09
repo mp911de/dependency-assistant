@@ -92,13 +92,10 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(project, anchor.getVirtualFile()));
-	}
-
-	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
-
-		GradleProjectContext context = GradleProjectContext.of(project, anchor);
-		return new GradleDependencyContext(project, anchor, context);
+				it -> {
+					GradleProjectContext context = GradleProjectContext.of(project, anchor);
+					return new GradleDependencyContext(project, anchor.getVirtualFile(), context);
+				});
 	}
 
 	private static class GradleDependencyContext implements ProjectDependencyContext {
@@ -187,8 +184,8 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupService getLookup(PsiElement element) {
-			return VersionUpgradeLookupService.create(element);
+		public VersionUpgradeLookupService getLookup(PsiElement element, VirtualFile file) {
+			return new VersionUpgradeLookupService(project, element.getContainingFile(), file);
 		}
 
 		@Override
@@ -252,7 +249,8 @@ class GradleAssistant implements DependencyAssistant {
 		public Icon getNavigateIcon(ArtifactDeclaration declaration) {
 
 			PsiElement versionLiteral = declaration.getVersionLiteral();
-			if (declaration.getVersionSource() instanceof VersionSource.VersionCatalog
+			if ((declaration.getVersionSource() instanceof VersionSource.VersionCatalog
+					|| declaration.getVersionSource() instanceof VersionSource.VersionCatalogProperty)
 					&& versionLiteral instanceof TomlElement) {
 				return DependencyAssistantIcons.TOML_NAVIGATE;
 			}
