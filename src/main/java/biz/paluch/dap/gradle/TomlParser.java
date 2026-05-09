@@ -183,9 +183,9 @@ class TomlParser extends GradleParserSupport {
 
 	/**
 	 * Return whether the given element is inside a TOML table matching the
-	 * predicate.
+	 * conditional.
 	 * @param element the PSI element to inspect.
-	 * @param predicate table-name predicate.
+	 * @param predicate table-name conditional.
 	 */
 	public static boolean isInsideTable(PsiElement element, Predicate<String> predicate) {
 		return SyntaxTraverser.revPsiTraverser().api.parents(element).filter(TomlTable.class).filter(it -> {
@@ -323,9 +323,16 @@ class TomlParser extends GradleParserSupport {
 	/**
 	 * Return the name of the given TOML table.
 	 */
-	public static @Nullable String getTomlTableName(TomlTable table) {
+	public static String getTomlTableName(TomlTable table) {
 		TomlKey key = table.getHeader().getKey();
 		return getText(key);
+	}
+
+	/**
+	 * Return the text of the given TOML key.
+	 */
+	public static String getTomlKeyName(TomlKeyValue keyValue) {
+		return getTomlKeyName(keyValue.getKey());
 	}
 
 	/**
@@ -362,7 +369,12 @@ class TomlParser extends GradleParserSupport {
 	 * @param element the PSI element to extract the text from.
 	 * @return the string value.
 	 */
-	public static String getText(PsiElement element) {
+	public static String getText(@Nullable PsiElement element) {
+
+		if (element == null) {
+			return "";
+		}
+
 		if (element instanceof TomlLiteral literal) {
 			return StringUtils.unquote(literal.getText());
 		}

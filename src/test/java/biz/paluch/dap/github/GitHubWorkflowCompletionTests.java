@@ -47,12 +47,28 @@ class GitHubWorkflowCompletionTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: actions/checkout@4.1.0
+			      - uses: actions/checkout<caret>
+			""")
+	void completesInitialVersionRefs(PsiFile workflowFile) {
+
+		GitHubFixtures.analyze(workflowFile);
+
+		fixture.type('@');
+		fixture.completeBasic();
+
+		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
+	}
+
+	@Test
+	@EditorFile(name = ".github/workflows/ci.yml", content = """
+			jobs:
+			  build:
+			    steps:
+			      - uses: actions/checkout@<caret>4.1.0
 			""")
 	void completesVersionRefs(PsiFile workflowFile) {
 
 		GitHubFixtures.analyze(workflowFile);
-		openAtCaretAfter(workflowFile, "@");
 
 		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
@@ -63,12 +79,11 @@ class GitHubWorkflowCompletionTests {
 			jobs:
 			  build:
 			    steps:
-			      - uses: actions/checkout@7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1
+			      - uses: actions/checkout@<caret>7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1
 			""")
 	void completesShaRefsWithFullSha(PsiFile workflowFile) {
 
 		GitHubFixtures.analyze(workflowFile);
-		openAtCaretAfter(workflowFile, "@");
 
 		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
@@ -196,13 +211,6 @@ class GitHubWorkflowCompletionTests {
 		assertThat(fixture.getEditor().getDocument().getText())
 				.contains("\"actions/checkout@v4.2.0\"")
 				.contains("# keep me");
-	}
-
-	private void openAtCaretAfter(PsiFile workflowFile, String anchor) {
-
-		String text = workflowFile.getText();
-		int caret = text.indexOf(anchor) + anchor.length();
-		fixture.getEditor().getCaretModel().moveToOffset(Math.min(caret, text.length()));
 	}
 
 }

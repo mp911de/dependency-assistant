@@ -79,7 +79,7 @@ public interface ProjectState {
 	 * Find a property by name using the given filter.
 	 *
 	 * @param propertyName the property name to locate.
-	 * @param filter the predicate that must accept the matching property.
+	 * @param filter the conditional that must accept the matching property.
 	 * @return the matching property, or {@code null}.
 	 */
 	@Nullable
@@ -102,7 +102,7 @@ public interface ProjectState {
 	 * Find a project property by name using the given filter.
 	 *
 	 * @param propertyName the property name to locate.
-	 * @param filter the predicate that must accept the matching property.
+	 * @param filter the conditional that must accept the matching property.
 	 * @return the matching project property, or {@code null}.
 	 */
 	@Nullable

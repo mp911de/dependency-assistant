@@ -75,7 +75,7 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId) {
 
-		if (artifactId instanceof GitArtifactId && NpmProjectContext.GITHUB_AVAILABLE) {
+		if (artifactId instanceof GitArtifactId && NpmUtils.GITHUB_AVAILABLE) {
 			return List.of();
 		}
 

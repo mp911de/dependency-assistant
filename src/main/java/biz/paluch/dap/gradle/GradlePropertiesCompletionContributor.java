@@ -19,8 +19,10 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
-import com.intellij.lang.properties.psi.Property;
+import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.patterns.PlatformPatterns;
+import com.intellij.patterns.PsiElementPattern;
+import com.intellij.psi.PsiElement;
 
 /**
  * Completion contributor for Gradle properties.
@@ -31,13 +33,17 @@ public class GradlePropertiesCompletionContributor extends CompletionContributor
 
 	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
 
-	public GradlePropertiesCompletionContributor() {
+	private static final PsiElementPattern.Capture<PsiElement> GRADLE_PROPERTY_VALUE = PlatformPatterns.psiElement()
+			.inside(PlatformPatterns.psiElement(PropertyValueImpl.class))
+			.inFile(PlatformPatterns.psiFile().withName(GradleUtils.GRADLE_PROPERTIES));
 
-		extend(CompletionType.BASIC,
-				PlatformPatterns.psiElement()
-						.withParent(Property.class)
-						.inFile(PlatformPatterns.psiFile().withName(GradleUtils.GRADLE_PROPERTIES)),
-				provider);
+	public GradlePropertiesCompletionContributor() {
+		extend(CompletionType.BASIC, GRADLE_PROPERTY_VALUE, provider);
+	}
+
+	@Override
+	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
+		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && GRADLE_PROPERTY_VALUE.accepts(position);
 	}
 
 }

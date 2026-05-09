@@ -72,7 +72,7 @@ class GroovyDslUtils {
 
 	/**
 	 * Return whether the element is nested inside a Groovy block accepted by
-	 * {@code predicate}.
+	 * {@code conditional}.
 	 */
 	public static boolean isInsideGroovyBlock(PsiElement element, Predicate<String> predicate) {
 
@@ -224,7 +224,7 @@ class GroovyDslUtils {
 		return call;
 	}
 
-	private static boolean isGroovyCatalogConsumerCall(GrMethodCall call) {
+	public static boolean isGroovyCatalogConsumerCall(GrMethodCall call) {
 
 		String name = getGroovyMethodName(call);
 

@@ -17,6 +17,7 @@
 package biz.paluch.dap.gradle;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -32,16 +33,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.kotlin.psi.KtBinaryExpression;
-import org.jetbrains.kotlin.psi.KtCallElement;
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLambdaArgument;
-import org.jetbrains.kotlin.psi.KtLambdaExpression;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
-import org.jetbrains.kotlin.psi.KtValueArgumentList;
-import org.jetbrains.kotlin.psi.ValueArgument;
+import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -132,6 +124,297 @@ class KotlinDslParser extends GradleParser {
 			return null;
 		}
 		return parseDependencySite(call, isPlugin, isPlatform, propertyResolver);
+	}
+
+	/**
+	 * Return whether the literal is the coordinate argument in a direct Kotlin DSL
+	 * dependency or platform notation call.
+	 */
+	static boolean isDirectDependencyNotationLiteral(KtStringTemplateExpression literal) {
+
+		KtValueArgument valueArgument = PsiTreeUtil.getParentOfType(literal, KtValueArgument.class);
+		if (valueArgument != null && valueArgument.getArgumentName() != null) {
+			return false;
+		}
+
+		KtCallExpression call = PsiTreeUtil.getParentOfType(literal, KtCallExpression.class);
+		return call != null && isDependencyOrPlatformCall(call) && isArgumentOfCall(literal, call)
+				&& call.getLambdaArguments().isEmpty();
+	}
+
+	/**
+	 * Return whether the literal is a {@code version = "..."} value in map-style
+	 * dependency notation.
+	 */
+	static boolean isVersionNamedArgumentLiteral(KtStringTemplateExpression literal) {
+
+		KtValueArgument namedArgument = PsiTreeUtil.getParentOfType(literal, KtValueArgument.class);
+		return namedArgument != null && isVersionNamedArgument(namedArgument)
+				&& isExpressionOfValueArgument(literal, namedArgument)
+				&& isNamedArgumentOfDependencyCall(namedArgument);
+	}
+
+	/**
+	 * Return whether the reference is a {@code version = property} value in
+	 * map-style dependency notation.
+	 */
+	static boolean isVersionNamedArgumentReference(KtNameReferenceExpression reference) {
+
+		KtValueArgument namedArgument = PsiTreeUtil.getParentOfType(reference, KtValueArgument.class);
+		return namedArgument != null && isVersionNamedArgument(namedArgument)
+				&& isExpressionOfValueArgument(reference, namedArgument)
+				&& isNamedArgumentOfDependencyCall(namedArgument);
+	}
+
+	/**
+	 * Return whether the literal is an argument to a Kotlin version-block
+	 * constraint call.
+	 */
+	static boolean isVersionBlockLiteral(KtStringTemplateExpression literal, String constraintName) {
+
+		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(literal, KtCallExpression.class);
+		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+				&& isArgumentOfCall(literal, constraintCall)
+				&& findVersionBlockDependencyCall(constraintCall) != null;
+	}
+
+	/**
+	 * Return whether the reference is an argument to a Kotlin version-block
+	 * constraint call.
+	 */
+	static boolean isVersionBlockReference(KtNameReferenceExpression reference, String constraintName) {
+
+		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(reference, KtCallExpression.class);
+		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+				&& isArgumentOfCall(reference, constraintCall)
+				&& findVersionBlockDependencyCall(constraintCall) != null;
+	}
+
+	/**
+	 * Return whether the literal is the version operand in a Kotlin plugin
+	 * declaration.
+	 */
+	static boolean isPluginVersionLiteral(KtStringTemplateExpression literal) {
+
+		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(literal, KtBinaryExpression.class);
+		if (binary == null || !isRightSideOfBinary(literal, binary)) {
+			return false;
+		}
+
+		return findPluginIdCallForVersionBinary(binary) != null;
+	}
+
+	/**
+	 * Return whether the literal declares a Kotlin property or extra property that
+	 * backs a supported dependency version reference.
+	 */
+	static boolean isBackingVersionPropertyLiteral(KtStringTemplateExpression literal) {
+
+		String propertyName = findBackingVersionPropertyName(literal);
+		if (!StringUtils.hasText(propertyName)) {
+			return false;
+		}
+
+		PsiFile file = literal.getContainingFile();
+		if (file == null) {
+			return false;
+		}
+
+		return isReferencedBySupportedVersionSite(file, propertyName);
+	}
+
+	/**
+	 * Walk up from a {@code prefer(...)} or {@code strictly(...)} call to the
+	 * enclosing dependency call.
+	 */
+	static @Nullable KtCallExpression findVersionBlockDependencyCall(KtCallExpression preferOrStrictlyCall) {
+
+		KtLambdaExpression versionLambda = PsiTreeUtil.getParentOfType(preferOrStrictlyCall,
+				KtLambdaExpression.class);
+		if (versionLambda == null) {
+			return null;
+		}
+
+		KtCallExpression versionCall = PsiTreeUtil.getParentOfType(versionLambda, KtCallExpression.class);
+		if (versionCall == null || !GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
+			return null;
+		}
+
+		KtLambdaExpression dependencyLambda = PsiTreeUtil.getParentOfType(versionCall, KtLambdaExpression.class);
+		if (dependencyLambda == null) {
+			return null;
+		}
+
+		KtCallExpression dependencyCall = PsiTreeUtil.getParentOfType(dependencyLambda, KtCallExpression.class);
+		if (dependencyCall == null || !isDependencyOrPlatformCall(dependencyCall)) {
+			return null;
+		}
+
+		return dependencyCall;
+	}
+
+	private static @Nullable KtCallElement findPluginIdCallForVersionBinary(KtBinaryExpression binary) {
+
+		if (!GradleUtils.VERSION.equals(binary.getOperationReference().getReferencedName())) {
+			return null;
+		}
+
+		KtExpression left = binary.getLeft();
+		if (left instanceof KtCallElement call && GradleUtils.isPlugin(KotlinDslUtils.getKotlinCallName(call))
+				&& KotlinDslUtils.isInsidePluginsBlock(call)) {
+			return call;
+		}
+
+		if (left != null) {
+			KtCallElement call = PsiTreeUtil.findChildOfType(left, KtCallElement.class);
+			if (call != null && GradleUtils.isPlugin(KotlinDslUtils.getKotlinCallName(call))
+					&& KotlinDslUtils.isInsidePluginsBlock(call)) {
+				return call;
+			}
+		}
+
+		return null;
+	}
+
+	private static @Nullable String findBackingVersionPropertyName(KtStringTemplateExpression literal) {
+
+		KtProperty property = PsiTreeUtil.getParentOfType(literal, KtProperty.class);
+		if (property != null) {
+			KtExpression initializer = property.getInitializer();
+			if (initializer != null
+					&& (initializer == literal || PsiTreeUtil.isAncestor(initializer, literal, false))) {
+				return property.getName();
+			}
+
+			if (property.hasDelegateExpression()
+					&& property.getDelegateExpression() instanceof KtCallExpression delegateCall
+					&& "extra".equals(KotlinDslUtils.getKotlinCallName(delegateCall))
+					&& isArgumentOfCall(literal, delegateCall)) {
+				return property.getName();
+			}
+		}
+
+		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(literal, KtBinaryExpression.class);
+		KotlinExtraAssignment assignment = KotlinExtraAssignment.from(binary);
+		if (assignment == null) {
+			assignment = KotlinExtraAssignment.fromAlsoReceiver(literal);
+		}
+
+		if (assignment != null && assignment.getValueLiteral() == literal) {
+			return assignment.getKey();
+		}
+
+		return null;
+	}
+
+	private static boolean isReferencedBySupportedVersionSite(PsiFile file, String propertyName) {
+
+		for (KtNameReferenceExpression reference : SyntaxTraverser.psiTraverser(file)
+				.filter(KtNameReferenceExpression.class)) {
+			if (propertyName.equals(reference.getReferencedName()) && isVersionPropertyReference(reference)) {
+				return true;
+			}
+		}
+
+		for (KtArrayAccessExpression arrayAccess : SyntaxTraverser.psiTraverser(file)
+				.filter(KtArrayAccessExpression.class)) {
+			if (propertyName.equals(getExtraPropertyKey(arrayAccess)) && isExtraPropertyReference(arrayAccess)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static boolean isVersionPropertyReference(KtNameReferenceExpression reference) {
+		return isVersionNamedArgumentReference(reference)
+				|| isVersionBlockReference(reference, GradleVersionConstraint.PREFER)
+				|| isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY)
+				|| isReferenceInsideSupportedVersionLiteral(reference);
+	}
+
+	private static boolean isReferenceInsideSupportedVersionLiteral(PsiElement reference) {
+
+		KtStringTemplateExpression template = PsiTreeUtil.getParentOfType(reference, KtStringTemplateExpression.class);
+		return template != null && isSupportedVersionLiteral(template);
+	}
+
+	private static boolean isExtraPropertyReference(KtArrayAccessExpression arrayAccess) {
+		return isReferenceInsideSupportedVersionLiteral(arrayAccess);
+	}
+
+	private static boolean isSupportedVersionLiteral(KtStringTemplateExpression template) {
+		return isDirectDependencyNotationLiteral(template)
+				|| isVersionNamedArgumentLiteral(template)
+				|| isVersionBlockLiteral(template, GradleVersionConstraint.PREFER)
+				|| isVersionBlockLiteral(template, GradleVersionConstraint.STRICTLY)
+				|| isPluginVersionLiteral(template);
+	}
+
+	private static @Nullable String getExtraPropertyKey(KtArrayAccessExpression arrayAccess) {
+
+		if (!(arrayAccess.getArrayExpression() instanceof KtNameReferenceExpression nameReference)
+				|| !"extra".equals(nameReference.getReferencedName())) {
+			return null;
+		}
+
+		for (KtExpression indexExpression : arrayAccess.getIndexExpressions()) {
+			String key = KtLiterals.getText(indexExpression);
+			if (StringUtils.hasText(key)) {
+				return key;
+			}
+		}
+
+		return null;
+	}
+
+	private static boolean isVersionNamedArgument(ValueArgument namedArgument) {
+		return namedArgument.getArgumentName() != null
+				&& GradleUtils.VERSION.equals(namedArgument.getArgumentName().getAsName().asString());
+	}
+
+	private static boolean isExpressionOfValueArgument(PsiElement element, ValueArgument valueArgument) {
+
+		KtExpression expression = valueArgument.getArgumentExpression();
+		return expression != null && (expression == element || PsiTreeUtil.isAncestor(expression, element, false));
+	}
+
+	private static boolean isNamedArgumentOfDependencyCall(ValueArgument namedArgument) {
+
+		if (!(namedArgument instanceof PsiElement element)) {
+			return false;
+		}
+
+		KtCallExpression call = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+		return call != null && isDependencyOrPlatformCall(call);
+	}
+
+	private static boolean isVersionConstraintCall(KtCallExpression call, String constraintName) {
+		return constraintName.equals(KotlinDslUtils.getKotlinCallName(call));
+	}
+
+	private static boolean isDependencyOrPlatformCall(KtCallElement call) {
+
+		String methodName = KotlinDslUtils.getKotlinCallName(call);
+		return GradleUtils.isDependencySection(methodName) || GradleUtils.isPlatformSection(methodName);
+	}
+
+	private static boolean isArgumentOfCall(PsiElement element, KtCallElement call) {
+
+		for (ValueArgument argument : call.getValueArguments()) {
+			KtExpression expression = argument.getArgumentExpression();
+			if (expression != null && (expression == element || PsiTreeUtil.isAncestor(expression, element, false))) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static boolean isRightSideOfBinary(PsiElement element, KtBinaryExpression binary) {
+
+		KtExpression right = binary.getRight();
+		return right != null && (right == element || PsiTreeUtil.isAncestor(right, element, false));
 	}
 
 	private static @Nullable DependencySite parseDependencySite(KtCallElement call, boolean isPlugin,
@@ -444,6 +727,14 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		return null;
+	}
+
+	static List<String> getSegments(KtDotQualifiedExpression dots) {
+		return SyntaxTraverser.psiTraverser(dots)
+				.expand(it -> !(it instanceof KtNameReferenceExpression))
+				.filter(KtNameReferenceExpression.class)
+				.map(it -> KtLiterals.from(it).toString())
+				.toList();
 	}
 
 	/**

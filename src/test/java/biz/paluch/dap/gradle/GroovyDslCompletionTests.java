@@ -172,12 +172,13 @@ class GroovyDslCompletionTests {
 			    implementation libs.junit<caret>
 			}
 			""")
-	void completesCatalogAccessorReference(PsiFile toml, @ProjectFile("build.gradle") PsiFile buildFile) {
+	void doesNotCompleteCatalogAccessorReference(PsiFile toml, @ProjectFile("build.gradle") PsiFile buildFile) {
 
 		GradleFixtures.analyze(toml, buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		assertThat(fixture.getLookupElementStrings()).isEmpty();
 	}
 
 	@Test

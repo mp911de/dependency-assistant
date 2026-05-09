@@ -21,20 +21,22 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
+import biz.paluch.dap.util.PatternConditions;
 import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
-import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
+import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
-import com.intellij.util.ProcessingContext;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
@@ -51,17 +53,15 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  */
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
-	private final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
+
+	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
 
 		@Override
 		protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
 
-			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
-			if (scalar != null) {
-				UsesRepositoryAction action = GitHubWorkflowParser.parseUses(scalar.getTextValue());
-				if (action != null) {
-					action.getStyle();
-				}
+			UsesRepositoryAction action = VersionUpgradeLookupService.findUsesRepository(element);
+			if (action != null) {
+				action.getStyle();
 			}
 			return super.getRefStyle(element, metadata);
 		}
@@ -80,25 +80,61 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				PsiElement element, ArtifactRelease option) {
 
 			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
-			if (scalar == null || !(option.getVersion() instanceof GitVersion version)) {
+			UsesRepositoryAction action = VersionUpgradeLookupService.findUsesRepository(element);
+			if (scalar == null || action == null || !(option.getVersion() instanceof GitVersion version)) {
 				return builder;
 			}
 
-			UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
-			if (ref == null) {
-				return builder;
-			}
-			Project project = scalar.getProject();
+			SmartPsiElementPointer<YAMLScalar> pointer = SmartPointerManager.createPointer(scalar);
+			Project project = element.getProject();
 			return builder.withInsertHandler((insertionContext, lookupElement) -> {
 
-				if (option.getVersion() instanceof GitVersion gitVersion) {
-					VersionText text = ref.getVersion(gitVersion);
-					new UpdateGitHubWorkflowFile(project).updateVersionAndComment(scalar, text);
-				}
+				YAMLScalar toUpdate = pointer.getElement();
+				VersionText text = action.getVersion(version);
+				new UpdateGitHubWorkflowFile(project).updateVersionAndComment(toUpdate, text);
 			});
 		}
-
 	};
+
+	// Version/ref completion after the `@` separator in `owner/repository@ref`.
+	private static final PatternCondition<PsiElement> AFTER_GITHUB_WORKFLOW_USES_REF_SEPARATOR = PatternConditions
+			.conditional("afterGitHubWorkflowUsesRefSeparator",
+					GitHubWorkflowCompletionContributor::isAfterRefSeparatorInUsesScalar);
+
+	// YAML key-value declarations such as `uses: actions/checkout@v4`.
+	private static final PsiElementPattern.Capture<YAMLKeyValue> GITHUB_WORKFLOW_USES_KEY_VALUE = PlatformPatterns
+			.psiElement(YAMLKeyValue.class).with(PatternConditions
+					.conditional("isGitHubWorkflowUsesKeyValue",
+							GitHubWorkflowCompletionContributor::isUsesKeyValue));
+
+	private static final PsiElementPattern.Capture<PsiElement> GITHUB_WORKFLOW_USES_REF_IN_SCALAR = PlatformPatterns
+			.psiElement(PsiElement.class)
+			.inside(PlatformPatterns.psiElement(YAMLScalar.class).withParent(GITHUB_WORKFLOW_USES_KEY_VALUE))
+			.with(AFTER_GITHUB_WORKFLOW_USES_REF_SEPARATOR);
+
+	private static final PsiElementPattern.Capture<PsiElement> GITHUB_WORKFLOW_USES_REF = PlatformPatterns
+			.psiElement()
+			.with(AFTER_GITHUB_WORKFLOW_USES_REF_SEPARATOR);
+
+
+	public GitHubWorkflowCompletionContributor() {
+		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF_IN_SCALAR, provider);
+		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF, provider);
+	}
+
+	@Override
+	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
+
+		if (typeChar == '@') {
+			return VersionUpgradeLookupService.findUsesScalar(position) != null;
+		}
+
+		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
+	}
+
+	private static boolean isSupportedCompletionSite(PsiElement position) {
+		return GITHUB_WORKFLOW_USES_REF_IN_SCALAR.accepts(position) || GITHUB_WORKFLOW_USES_REF.accepts(position);
+	}
 
 	private static boolean isCaretInsideRef(CompletionParameters parameters) {
 
@@ -111,37 +147,8 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 		return versionRange.contains(parameters.getOffset());
 	}
 
-	public GitHubWorkflowCompletionContributor() {
-		extend(CompletionType.BASIC,
-				PlatformPatterns.psiElement(PsiElement.class)
-						.withAncestor(2, PlatformPatterns.psiElement(YAMLScalar.class))
-						.withAncestor(5, PlatformPatterns.psiElement(YAMLKeyValue.class))
-						.with(new PatternCondition<>("afterGitHubWorkflowUsesRefSeparator") {
-
-							@Override
-							public boolean accepts(PsiElement element, ProcessingContext context) {
-								return isAfterRefSeparatorInUsesScalar(element);
-							}
-						}),
-				provider);
-
-		extend(CompletionType.BASIC,
-				PlatformPatterns.psiElement()
-						.with(new PatternCondition<>("afterGitHubWorkflowUsesRefSeparator") {
-
-							@Override
-							public boolean accepts(PsiElement element, ProcessingContext context) {
-								return isAfterRefSeparatorInUsesScalar(element);
-							}
-
-						}),
-				provider);
-	}
-
-	@Override
-	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return (typeChar == '@' || ReleasesCompletionProvider.isVersionCharacter(typeChar))
-				&& VersionUpgradeLookupService.findUsesScalar(position) != null;
+	private static boolean isUsesKeyValue(YAMLKeyValue keyValue) {
+		return "uses".equals(keyValue.getKeyText());
 	}
 
 	private static boolean isAfterRefSeparatorInUsesScalar(PsiElement element) {
@@ -166,23 +173,6 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 		int offset = element.getTextRange().getStartOffset() - scalar.getTextRange().getStartOffset();
 		return Math.max(0, Math.min(offset, text.length()));
-	}
-
-	private static void insertVersion(InsertionContext context, YAMLScalar scalar, UsesRepositoryAction ref,
-			GitVersion version) {
-
-		if (!scalar.isValid()) {
-			return;
-		}
-
-		VersionText versionText = ref.getVersion(version);
-		YAMLScalar updated = new UpdateGitHubWorkflowFile(scalar.getProject()).updateVersionAndComment(scalar,
-				versionText);
-		if (updated == null) {
-			return;
-		}
-
-		context.getEditor().getCaretModel().moveToOffset(UpdateGitHubWorkflowFile.getValueEndOffset(updated));
 	}
 
 	private static String refPrefixAtCaret(CompletionParameters parameters) {

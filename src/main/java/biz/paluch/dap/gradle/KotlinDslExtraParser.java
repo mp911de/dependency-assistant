@@ -154,7 +154,7 @@ class KotlinDslExtraParser {
 		return KotlinExtraAssignment.from(expression) != null;
 	}
 
-	private static @Nullable PropertyValue toPropertyValue(KotlinExtraAssignment assignment) {
+	private static PropertyValue toPropertyValue(KotlinExtraAssignment assignment) {
 
 		String value = assignment.getValue();
 		return new PropertyValue(assignment.getKey(), value, assignment.getValueLiteral());

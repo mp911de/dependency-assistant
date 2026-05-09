@@ -16,10 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import biz.paluch.dap.gradle.KtVersion.Constraint;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
@@ -32,7 +28,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
-
 /**
  * Kotlin DSL PSI locator for semantic {@link LookupSite lookup sites} and
  * parser-backed dependency declarations.
@@ -44,10 +39,6 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 	private final PropertyResolver propertyResolver;
 
 	private final @Nullable VersionCatalogRegistry registry;
-
-	KotlinLookupSiteLocator(PropertyResolver propertyResolver) {
-		this(propertyResolver, null);
-	}
 
 	KotlinLookupSiteLocator(PropertyResolver propertyResolver, @Nullable VersionCatalogRegistry registry) {
 		this.propertyResolver = propertyResolver;
@@ -170,7 +161,6 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			}
 		}
 
-
 		return null;
 	}
 
@@ -216,54 +206,6 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 		KotlinExtraAssignment assignment = KotlinExtraAssignment.from(element);
 		return assignment != null ? assignment.getKey() : null;
-	}
-
-	/**
-	 * Unwrap nested {@link KtParenthesizedExpression} nodes.
-	 */
-	static KtExpression unwrapParenthesizedExpression(KtExpression expression) {
-
-		KtExpression e = expression;
-		while (e instanceof KtParenthesizedExpression paren) {
-			KtExpression inner = paren.getExpression();
-			if (inner == null) {
-				break;
-			}
-			e = inner;
-		}
-		return e;
-	}
-
-	static List<String> collectKotlinCatalogDotSegments(KtExpression expr) {
-
-		List<String> reversed = new ArrayList<>();
-		KtExpression cur = expr;
-		while (cur instanceof KtDotQualifiedExpression dq) {
-			String seg = kotlinSelectorToSegment(dq.getSelectorExpression());
-			if (seg == null) {
-				return List.of();
-			}
-			reversed.add(seg);
-			cur = dq.getReceiverExpression();
-		}
-		if (cur instanceof KtNameReferenceExpression ref) {
-			reversed.add(ref.getReferencedName());
-		} else {
-			return reversed;
-		}
-		Collections.reverse(reversed);
-		return reversed;
-	}
-
-	private static @Nullable String kotlinSelectorToSegment(@Nullable KtExpression selector) {
-
-		if (selector instanceof KtNameReferenceExpression ref) {
-			return ref.getReferencedName();
-		}
-		if (selector instanceof KtCallExpression call && call.getValueArguments().isEmpty()) {
-			return KotlinDslUtils.getKotlinCallName(call);
-		}
-		return null;
 	}
 
 	/**
@@ -393,43 +335,23 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			return LookupSite.absent();
 		}
 
+		if (!(element instanceof KtDotQualifiedExpression dots)
+				|| !(element.getParent() instanceof KtValueArgument arg)) {
+			return LookupSite.absent();
+		}
+
 		KtCallExpression catalogCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
-		while (catalogCall != null && !isCatalogConsumerCall(catalogCall)) {
-			catalogCall = PsiTreeUtil.getParentOfType(catalogCall, KtCallExpression.class);
-		}
-		if (catalogCall == null) {
+		if (!KotlinDslUtils.isCatalogConsumerCall(catalogCall)) {
 			return LookupSite.absent();
 		}
 
-		KtExpression argument = KotlinDslUtils.getFirstValueArgument(catalogCall);
-		if (argument == null) {
-			return LookupSite.absent();
-		}
-
-		KtExpression canonicalAccessor = unwrapParenthesizedExpression(argument);
-		if (!(element instanceof KtExpression ktExpr) || !canonicalAccessor.equals(ktExpr)) {
-			return LookupSite.absent();
-		}
-
-		TomlReference reference = TomlReference.from(
-				collectKotlinCatalogDotSegments(canonicalAccessor),
+		TomlReference reference = TomlReference.from(KotlinDslParser.getSegments(dots),
 				registry.catalogPaths().keySet());
 		if (reference == null) {
 			return LookupSite.absent();
 		}
 
 		return LookupSite.ofTomlReference(reference, catalogCall);
-	}
-
-	private static boolean isCatalogConsumerCall(@Nullable KtCallExpression call) {
-
-		if (call == null) {
-			return false;
-		}
-
-		String name = KotlinDslUtils.getKotlinCallName(call);
-		return GradleUtils.isCatalogConsumerCall(name)
-				&& (!GradleUtils.isPlugin(name) || KotlinDslUtils.isInsidePluginsBlock(call));
 	}
 
 }

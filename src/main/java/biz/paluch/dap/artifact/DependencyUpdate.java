@@ -49,7 +49,7 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 	/**
 	 * Evaluate the {@link Predicate} against the {@link VersionSource}s and return
 	 * {@code true} if any match.
-	 * @param versionSourcePredicate the predicate to evaluate.
+	 * @param versionSourcePredicate the conditional to evaluate.
 	 * @return {@code true} if any version source matches; {@code false} otherwise.
 	 */
 	public boolean hasVersionSource(Predicate<VersionSource> versionSourcePredicate) {

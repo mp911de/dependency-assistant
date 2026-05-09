@@ -110,7 +110,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	 * @param element the element at the cursor position.
 	 * @return the scalar, or {@code null} if none found.
 	 */
-	static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
+	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
 
 		if (element instanceof YAMLScalar scalar) {
 			return getUsesScalar(scalar);
@@ -125,7 +125,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	 * @param element the element at the cursor position.
 	 * @return the scalar, or {@code null} if none found.
 	 */
-	static @Nullable YAMLScalar getUsesScalar(PsiElement element) {
+	public static @Nullable YAMLScalar getUsesScalar(PsiElement element) {
 
 		YAMLScalar scalar = element instanceof YAMLScalar s ? s
 				: null;
@@ -133,6 +133,14 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			if ("uses".equals(keyValue.getKeyText())) {
 				return scalar;
 			}
+		}
+		return null;
+	}
+
+	public static @Nullable UsesRepositoryAction findUsesRepository(PsiElement element) {
+		YAMLScalar scalar = findUsesScalar(element);
+		if (scalar != null) {
+			return GitHubWorkflowParser.parseUses(scalar.getTextValue());
 		}
 		return null;
 	}

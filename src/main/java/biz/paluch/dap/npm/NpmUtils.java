@@ -16,10 +16,12 @@
 
 package biz.paluch.dap.npm;
 
+import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonValue;
+import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
@@ -36,6 +38,11 @@ import com.intellij.psi.PsiFile;
  */
 class NpmUtils {
 
+	static final PluginId GITHUB = PluginId.getId("org.jetbrains.plugins.github");
+
+	static final boolean GITHUB_AVAILABLE = PluginManagerCore.isPluginInstalled(GITHUB)
+			&& !PluginManagerCore.isDisabled(GITHUB);
+
 	static final String PACKAGE_JSON = "package.json";
 
 	private NpmUtils() {
@@ -49,12 +56,7 @@ class NpmUtils {
 	 */
 	static boolean isPackageJson(PsiFile file) {
 
-		if (file.getUserData(NpmProjectContext.KEY) != null) {
-			return true;
-		}
-
-		VirtualFile virtualFile = file.getVirtualFile();
-		if (virtualFile == null || !PACKAGE_JSON.equals(virtualFile.getName())) {
+		if (!PACKAGE_JSON.equals(file.getName())) {
 			return false;
 		}
 

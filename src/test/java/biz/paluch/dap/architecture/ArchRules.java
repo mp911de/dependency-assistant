@@ -35,7 +35,7 @@ class ArchRules {
 	}
 
 	/**
-	 * Create a predicate that matches classes that reside in the given package or
+	 * Create a conditional that matches classes that reside in the given package or
 	 * any of the given allowed packages.
 	 */
 	static DescribedPredicate<JavaClass> residesInAnyPackage(String packageUnderTest, String... allowedPackages) {

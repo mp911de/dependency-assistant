@@ -17,6 +17,7 @@
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.patterns.PatternCondition;
@@ -25,7 +26,6 @@ import com.intellij.patterns.PsiElementPattern;
 import com.intellij.patterns.XmlPatterns;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.util.ProcessingContext;
 
 /**
  * Completion contributor for Maven release versions.
@@ -34,14 +34,8 @@ import com.intellij.util.ProcessingContext;
  */
 public class MavenReleaseVersionCompletionContributor extends CompletionContributor {
 
-	private static final PatternCondition<XmlFile> IS_MAVEN_FILE = new PatternCondition<>("isMavenFile") {
-
-		@Override
-		public boolean accepts(XmlFile xmlFile, ProcessingContext processingContext) {
-			return MavenUtils.isMavenPomFile(xmlFile);
-		}
-
-	};
+	private static final PatternCondition<XmlFile> IS_MAVEN_FILE = PatternConditions.conditional("isMavenFile",
+			MavenUtils::isMavenPomFile);
 
 	private static final PsiElementPattern.Capture<PsiElement> DEPENDENCY_VERSION = PlatformPatterns.psiElement() //
 			.inside(XmlPatterns.xmlTag().withLocalName("version")

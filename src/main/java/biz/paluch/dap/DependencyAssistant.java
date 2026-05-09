@@ -51,14 +51,14 @@ public interface DependencyAssistant {
 
 	/**
 	 * Return whether this integration applies to the given project.
-	 * <p>This predicate must not trigger I/O or PSI access.
+	 * <p>This conditional must not trigger I/O or PSI access.
 	 * @param project the IntelliJ project to inspect.
 	 */
 	boolean supports(Project project);
 
 	/**
 	 * Return whether this integration owns the given file.
-	 * <p>This predicate must not trigger I/O or PSI access.
+	 * <p>This conditional must not trigger I/O or PSI access.
 	 * @param file the file to inspect.
 	 */
 	boolean supports(PsiFile file);

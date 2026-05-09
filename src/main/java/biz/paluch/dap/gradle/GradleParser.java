@@ -189,26 +189,6 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Return whether the reference is a Groovy version-catalog accessor argument.
-	 */
-	static boolean isCatalogAccessorReference(GrReferenceExpression reference) {
-
-		GrMethodCall call = PsiTreeUtil.getParentOfType(reference, GrMethodCall.class);
-		if (call == null || !GradleUtils.isCatalogConsumerCall(GroovyDslUtils.getGroovyMethodName(call))) {
-			return false;
-		}
-
-		if (GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(call))
-				&& !GroovyDslUtils.isInsidePluginsBlock(call)) {
-			return false;
-		}
-
-		GrExpression argument = GroovyDslUtils.getFirstGroovyCatalogArgumentExpression(call);
-		return argument != null && PsiTreeUtil.isAncestor(argument, reference, false)
-				&& isLibsCatalogReference(argument);
-	}
-
-	/**
 	 * Return the dependency call that owns a version named-argument value.
 	 */
 	static @Nullable GrMethodCall findVersionNamedArgumentDependencyCall(PsiElement element) {

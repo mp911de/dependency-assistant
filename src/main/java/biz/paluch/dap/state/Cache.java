@@ -220,7 +220,7 @@ public class Cache {
 	 * supplied filter.
 	 *
 	 * @param propertyName the property name to locate.
-	 * @param filter the predicate that must accept the matching property.
+	 * @param filter the conditional that must accept the matching property.
 	 * @return the first matching project property, or {@code null} if none matches.
 	 */
 	public @Nullable ProjectProperty findProperty(String propertyName, Predicate<VersionProperty> filter) {

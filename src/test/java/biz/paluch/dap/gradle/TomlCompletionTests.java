@@ -56,4 +56,21 @@ class TomlCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 	}
 
+	@Test
+	@EditorFile(name = "libs.versions.toml", content = """
+			[versions]
+			junit = "6.0.<caret>"
+
+			[libraries]
+			junit-jupiter = { module = "org.junit:junit-bom", version.ref = "junit" }
+			""")
+	void completesQuotedPropertyLiteral(PsiFile tomlFile) {
+
+		GradleFixtures.analyze(tomlFile);
+
+		fixture.completeBasic();
+
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+	}
+
 }

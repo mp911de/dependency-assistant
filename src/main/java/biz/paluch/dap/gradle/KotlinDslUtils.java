@@ -117,4 +117,15 @@ class KotlinDslUtils {
 		return null;
 	}
 
+	public static boolean isCatalogConsumerCall(@Nullable KtCallExpression call) {
+
+		if (call == null) {
+			return false;
+		}
+
+		String name = KotlinDslUtils.getKotlinCallName(call);
+		return GradleUtils.isCatalogConsumerCall(name)
+				&& (!GradleUtils.isPlugin(name) || KotlinDslUtils.isInsidePluginsBlock(call));
+	}
+
 }

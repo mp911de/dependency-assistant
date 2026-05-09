@@ -18,6 +18,7 @@ package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -25,10 +26,8 @@ import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.json.psi.JsonStringLiteral;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.PsiElement;
-import com.intellij.util.ProcessingContext;
 
 /**
  * Completion contributor for NPM dependency version strings.
@@ -65,15 +64,9 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 	};
 
 	public NpmVersionCompletionContributor() {
-		extend(CompletionType.BASIC,
-				PlatformPatterns.psiElement().with(new PatternCondition<>("inNpmDependencyValue") {
-
-					@Override
-					public boolean accepts(PsiElement element, ProcessingContext context) {
-						return NpmPsiUtils.findDependencyLiteral(element) != null;
-					}
-
-				}), contributor);
+		extend(CompletionType.BASIC, PlatformPatterns.psiElement().with(PatternConditions.conditional(
+				"inNpmDependencyValue", (PsiElement element) -> NpmPsiUtils.findDependencyLiteral(element) != null)),
+				contributor);
 	}
 
 	public static TextRange getVersionRange(JsonStringLiteral literal) {

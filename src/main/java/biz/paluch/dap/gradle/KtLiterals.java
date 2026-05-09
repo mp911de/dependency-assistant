@@ -209,6 +209,9 @@ class KtLiterals {
 	 */
 	public static KtLiterals fromPropertyCall(KtCallExpression call) {
 		KtExpression arg = KotlinDslUtils.getFirstValueArgument(call);
+		if (arg == null) {
+			return KtLiterals.empty();
+		}
 		String propertyName = getText(arg);
 		return property(propertyName, arg);
 	}

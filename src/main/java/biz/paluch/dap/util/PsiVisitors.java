@@ -61,8 +61,8 @@ public abstract class PsiVisitors {
 	 * {@code psiElementType}.
 	 * <p>The visitor stops subtree navigation once {@link Predicate
 	 * actionAndExitCondition} returns {@literal true}.
-	 * @param actionAndExitCondition the action to invoke. If the predicate returns
-	 * {@literal true}, then the visitor will stop to navigate the tree.
+	 * @param actionAndExitCondition the action to invoke. If the conditional
+	 * returns {@literal true}, then the visitor will stop to navigate the tree.
 	 * @return a new {@link PsiRecursiveElementVisitor}.
 	 */
 	public static <T> PsiRecursiveElementVisitor visitTreeUntil(Class<T> psiElementType,

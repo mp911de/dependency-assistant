@@ -125,7 +125,7 @@ interface GradleArtifactId extends ArtifactId {
 	}
 
 	/**
-	 * Lightweight parser-dispatch predicate for Gradle module notation.
+	 * Lightweight parser-dispatch conditional for Gradle module notation.
 	 * <p>This method is intended to distinguish compact coordinate strings from
 	 * other Gradle argument forms. It should not be used as a general-purpose
 	 * validator for dependency notation accepted by Gradle itself.

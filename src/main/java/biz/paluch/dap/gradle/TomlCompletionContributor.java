@@ -17,17 +17,18 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
+import com.intellij.patterns.ElementPattern;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
-import com.intellij.patterns.PsiElementPattern;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.util.ProcessingContext;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
+import org.toml.lang.psi.TomlLiteral;
 import org.toml.lang.psi.TomlTable;
-import org.toml.lang.psi.TomlValue;
 
 /**
  * Completion contributor for Gradle version catalogs.
@@ -38,67 +39,50 @@ public class TomlCompletionContributor extends CompletionContributor {
 
 	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
 
+	private static final PatternCondition<PsiFile> IS_VERSION_CATALOG = PatternConditions.conditional(
+			"isVersionCatalog", GradleUtils::isVersionCatalog);
+
+	public static final PatternCondition<TomlTable> PLUGIN_LIBRARY_TABLE = PatternConditions
+			.conditional("pluginsOrLibraries", it -> {
+				String keyName = TomlParser.getTomlTableName(it);
+				return TomlParser.LIBRARIES.equals(keyName) || TomlParser.PLUGINS.equals(keyName);
+			});
+
+	public static final PatternCondition<TomlTable> VERSIONS_TABLE = PatternConditions
+			.conditional("versionsTable", it -> {
+				String keyName = TomlParser.getTomlTableName(it);
+				return TomlParser.VERSIONS.equals(keyName);
+			});
+
+	public static final PatternCondition<TomlKeyValue> VERSION_OR_REF = PatternConditions
+			.conditional("versionOrVersionRef", it -> {
+				String keyName = TomlParser.getTomlKeyName(it);
+				return TomlParser.VERSION_REF.equals(keyName) || TomlParser.VERSION.equals(keyName);
+			});
+
+	private static final ElementPattern<PsiElement> VERSION_KEY = PlatformPatterns.psiElement() //
+			.inside(PlatformPatterns.psiElement(TomlLiteral.class)
+					.withParent(PlatformPatterns.psiElement(TomlKeyValue.class).with(VERSION_OR_REF)
+							.withParent(TomlInlineTable.class)
+							.withAncestor(5, PlatformPatterns.psiElement(TomlTable.class).with(PLUGIN_LIBRARY_TABLE))))
+			.inside(PlatformPatterns.psiFile().with(IS_VERSION_CATALOG));
+
+	private static final ElementPattern<PsiElement> VERSION_PROPERTY = PlatformPatterns.psiElement() //
+			.inside(PlatformPatterns.psiElement(TomlLiteral.class)
+					.withParent(PlatformPatterns.psiElement(TomlKeyValue.class)
+							.withParent(PlatformPatterns.psiElement(TomlTable.class).with(VERSIONS_TABLE))))
+			.inside(PlatformPatterns.psiFile().with(IS_VERSION_CATALOG));
+
 	public TomlCompletionContributor() {
 
-		PatternCondition<PsiFile> isVersionCatalog = new PatternCondition<>("isVersionCatalog") {
+		extend(CompletionType.BASIC, VERSION_KEY, provider);
+		extend(CompletionType.BASIC, VERSION_PROPERTY, provider);
+	}
 
-			@Override
-			public boolean accepts(PsiFile psiFile, ProcessingContext processingContext) {
-				return GradleUtils.isVersionCatalog(psiFile);
-			}
-
-		};
-
-		PatternCondition<TomlKeyValue> isVersionKey = new PatternCondition<>("isVersionKey") {
-
-			@Override
-			public boolean accepts(TomlKeyValue keyValue, ProcessingContext processingContext) {
-				String tomlKeyName = TomlParser.getTomlKeyName(keyValue.getKey());
-				return TomlParser.VERSION.equals(tomlKeyName) || TomlParser.VERSION_REF.equals(tomlKeyName);
-			}
-
-		};
-
-		PatternCondition<TomlTable> isPluginOrDependencyTable = new PatternCondition<>("isPluginOrDependencyTable") {
-
-			@Override
-			public boolean accepts(TomlTable table, ProcessingContext processingContext) {
-				String tableName = TomlParser.getTomlTableName(table);
-				return TomlParser.PLUGINS.equals(tableName) || TomlParser.LIBRARIES.equals(tableName);
-			}
-
-		};
-
-		PatternCondition<TomlTable> isVersionTable = new PatternCondition<>("isVersionTable") {
-
-			@Override
-			public boolean accepts(TomlTable table, ProcessingContext processingContext) {
-				String tableName = TomlParser.getTomlTableName(table);
-				return TomlParser.VERSIONS.equals(tableName);
-			}
-
-		};
-
-		PsiElementPattern.Capture<TomlKeyValue> kv = PlatformPatterns.psiElement(TomlKeyValue.class);
-
-		PsiElementPattern.Capture<TomlTable> dependencyTable = PlatformPatterns.psiElement(TomlTable.class)
-				.with(isPluginOrDependencyTable);
-
-		PsiElementPattern.Capture<TomlTable> versionTable = PlatformPatterns.psiElement(TomlTable.class)
-				.with(isVersionTable);
-
-		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
-				.inside(PlatformPatterns.psiElement(TomlValue.class)
-						.withParent(kv.with(isVersionKey).withParent(TomlInlineTable.class).withAncestor(5,
-								dependencyTable)))
-				.inside(PlatformPatterns.psiFile().with(isVersionCatalog)),
-				provider);
-
-		extend(CompletionType.BASIC, PlatformPatterns.psiElement() //
-				.inside(PlatformPatterns.psiElement(TomlValue.class)
-						.withParent(kv.withParent(versionTable)))
-				.inside(PlatformPatterns.psiFile().with(isVersionCatalog)),
-				provider);
+	@Override
+	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
+		return ReleasesCompletionProvider.isVersionCharacter(typeChar)
+				&& (VERSION_KEY.accepts(position) || VERSION_PROPERTY.accepts(position));
 	}
 
 }

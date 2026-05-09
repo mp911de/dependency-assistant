@@ -22,8 +22,6 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.github.GitReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
-import com.intellij.ide.plugins.PluginManagerCore;
-import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -44,11 +42,6 @@ class NpmProjectContext implements ProjectBuildContext {
 	 */
 	static final Key<NpmProjectContext> KEY = Key.create("NpmProjectContext");
 
-	private static final PluginId GITHUB = PluginId.getId("org.jetbrains.plugins.github");
-
-	static final boolean GITHUB_AVAILABLE = PluginManagerCore.isPluginInstalled(GITHUB)
-			&& !PluginManagerCore.isDisabled(GITHUB);
-
 	private final List<ReleaseSource> releaseSources;
 
 	private final ProjectId projectId;
@@ -59,7 +52,7 @@ class NpmProjectContext implements ProjectBuildContext {
 	}
 
 	public static List<ReleaseSource> getReleaseSources(Project project) {
-		if (GITHUB_AVAILABLE) {
+		if (NpmUtils.GITHUB_AVAILABLE) {
 			return List.of(new GitReleaseSource(project, true), NpmRegistryReleaseSource.NPM_REGISTRY);
 		}
 		return List.of(NpmRegistryReleaseSource.NPM_REGISTRY);

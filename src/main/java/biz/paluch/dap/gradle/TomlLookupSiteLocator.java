@@ -81,6 +81,7 @@ class TomlLookupSiteLocator implements LookupSiteLocator<TomlLiteral> {
 
 	private static boolean isInlineVersionLiteral(TomlLiteral literal) {
 
+		// TODO: KeyValue
 		PsiElement parent = literal.getParent();
 		return parent != null && parent.getFirstChild() != null
 				&& TomlParser.VERSION.equals(parent.getFirstChild().getText().trim());

@@ -20,12 +20,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyValue;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.lang.properties.psi.Property;
+import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Parser for {@code gradle.properties}.
@@ -35,15 +38,49 @@ import com.intellij.psi.PsiFile;
 class GradlePropertiesParser {
 
 	/**
+	 * Return whether {@code element} is inside the editable value of a
+	 * {@code gradle.properties} property.
+	 */
+	static boolean isPropertyValueElement(PsiElement element) {
+		return getPropertyValueElement(element) != null;
+	}
+
+	/**
+	 * Return the enclosing property value PSI element, if any.
+	 */
+	static @Nullable PropertyValueImpl getPropertyValueElement(PsiElement element) {
+
+		if (element instanceof PropertyValueImpl propertyValue) {
+			return propertyValue;
+		}
+
+		return PsiTreeUtil.getParentOfType(element, PropertyValueImpl.class, false);
+	}
+
+	/**
+	 * Return the property owning {@code element} when the element belongs to a
+	 * property value.
+	 */
+	static @Nullable Property getProperty(PsiElement element) {
+
+		PropertyValueImpl propertyValue = getPropertyValueElement(element);
+		if (propertyValue == null) {
+			return null;
+		}
+
+		return PsiTreeUtil.getParentOfType(propertyValue, Property.class);
+	}
+
+	/**
 	 * Loads all properties from a {@code gradle.properties} PSI file into a map.
 	 */
-	public static Map<String, Property> parseGradleProperties(PsiFile file) {
+	public static Map<String, biz.paluch.dap.support.Property> parseGradleProperties(PsiFile file) {
 
 		if (!(file instanceof PropertiesFile propsFile)) {
 			return Map.of();
 		}
 
-		Map<String, Property> result = new LinkedHashMap<>();
+		Map<String, biz.paluch.dap.support.Property> result = new LinkedHashMap<>();
 		doParseProperties(propsFile, it -> result.put(it.getKey(), it));
 		return result;
 	}

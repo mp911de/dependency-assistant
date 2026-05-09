@@ -22,13 +22,11 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.Property;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
-import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jspecify.annotations.Nullable;
@@ -138,8 +136,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		if (GradleUtils.isGradlePropertiesFile(vf)) {
 
-			if (element instanceof PropertyValueImpl propertyValue) {
-				return locateGradlePropertySite(propertyValue);
+			if (GradlePropertiesParser.isPropertyValueElement(element)) {
+				return locateGradlePropertySite(element);
 			}
 
 			if (element instanceof Property property) {
@@ -160,9 +158,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return LookupSite.absent();
 	}
 
-	private LookupSite locateGradlePropertySite(PropertyValueImpl element) {
+	private LookupSite locateGradlePropertySite(PsiElement element) {
 
-		Property property = PsiTreeUtil.getParentOfType(element, Property.class);
+		Property property = GradlePropertiesParser.getProperty(element);
 		if (property == null || StringUtils.isEmpty(property.getKey()) || projectState == null) {
 			return LookupSite.absent();
 		}
