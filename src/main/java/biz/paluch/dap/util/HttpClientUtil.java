@@ -19,204 +19,135 @@ package biz.paluch.dap.util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UncheckedIOException;
-import java.net.Authenticator;
-import java.net.PasswordAuthentication;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.concurrent.Semaphore;
+import java.util.function.Function;
 
-import com.intellij.credentialStore.Credentials;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
-import com.intellij.util.Consumer;
-import com.intellij.util.net.IdeProxySelector;
-import com.intellij.util.net.ProxyAuthentication;
+import com.intellij.util.io.HttpRequests;
+import com.intellij.util.io.RequestBuilder;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Shared HTTP access point for dependency metadata retrieval.
- *
- * <p>The assistant resolves Maven repository metadata and NPM registry
- * documents from background tasks that should behave like IDE-originated
- * network traffic. This utility centralizes that policy by using IntelliJ's
- * proxy selector, proxy credentials, redirect handling, request timeout, and a
- * product-specific {@code User-Agent}.
- *
- * <p>Callers provide only the request-specific details, such as URI, method,
- * authentication headers, and the response body handler. The shared client and
- * concurrency guard keep metadata refreshes from creating an unbounded number
- * of simultaneous outbound connections.
- *
- * <p>The default body handler is intentionally conservative: metadata responses
- * are treated as UTF-8 text and rejected once they exceed the configured size
- * cap. Release sources should translate transport failures into their own
- * domain behavior, for example by returning no releases or raising an
- * artifact-not-found signal.
+ * Shared helpers for IDE-aware HTTP access.
+ * <p>HTTP transport itself uses {@link com.intellij.util.io.HttpRequests},
+ * which natively integrates with the IDE proxy selector, proxy authentication,
+ * and progress-indicator cancellation. This class only centralizes the
+ * {@code User-Agent} computation that release sources apply to their requests.
  *
  * @author Mark Paluch
  */
 public class HttpClientUtil {
 
-	private static final long MAX_RESPONSE_BODY_BYTES = 5 * 1024 * 1024;
+	/**
+	 * Maximum response body size accepted by metadata fetches (5 MB).
+	 */
+	public static final int MAX_RESPONSE_BODY_BYTES = 5 * 1024 * 1024;
 
-	private static final String USER_AGENT = doGetUserAgent();
+	/**
+	 * Connect timeout for metadata fetches (10 seconds).
+	 */
+	public static final int CONNECT_TIMEOUT_MS = 10_000;
+
+	/**
+	 * Read timeout for metadata fetches (10 seconds).
+	 */
+	public static final int READ_TIMEOUT_MS = 10_000;
 
 	private static final Semaphore semaphore = new Semaphore(24);
 
-	private static final Duration TIMEOUT = Duration.ofSeconds(10);
-
-	private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder() //
-			.proxy(IdeProxySelector.getDefault()) //
-			.authenticator(ProxyAwareAuthenticator.INSTANCE) //
-			.connectTimeout(TIMEOUT) //
-			.followRedirects(HttpClient.Redirect.NORMAL) //
-			.build();
-
-	/**
-	 * Return the process-wide {@code User-Agent} used for metadata requests.
-	 * <p>The value is derived from IntelliJ product information when the
-	 * application is available and falls back to a generic IDE identifier in
-	 * non-application contexts.
-	 */
-	public static String getUserAgent() {
-		return USER_AGENT;
+	private HttpClientUtil() {
 	}
 
-	private static String doGetUserAgent() {
+	public static @Nullable String fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction)
+			throws IOException {
 
-		String userAgent;
-		Application app = ApplicationManager.getApplication();
-		if (app != null && !app.isDisposed()) {
-			String productName = ApplicationNamesInfo.getInstance().getFullProductName();
-			String version = ApplicationInfo.getInstance().getBuild().asStringWithoutProductCode();
-			userAgent = productName + '/' + version;
-		} else {
-			userAgent = "IntelliJ";
-		}
-
-		return userAgent;
-	}
-
-	/**
-	 * Send a request through the shared IDE-aware HTTP client.
-	 * <p>The request customizer is responsible for the request-specific parts of
-	 * the builder. This method applies the common {@code User-Agent}, timeout,
-	 * redirect, proxy, and concurrency policies before performing the blocking
-	 * send.
-	 * @param requestBuilderConsumer callback that configures the request builder.
-	 * @param bodyHandler body handler used to convert the response.
-	 * @return the HTTP response.
-	 * @throws InterruptedException if the calling task is cancelled or interrupted
-	 * while waiting for capacity or a response.
-	 * @throws IOException if the request cannot be sent or the body handler fails.
-	 */
-	public static <T> HttpResponse<T> sendRequest(Consumer<HttpRequest.Builder> requestBuilderConsumer,
-			HttpResponse.BodyHandler<T> bodyHandler) throws InterruptedException, IOException {
 		try {
-
-			HttpRequest.Builder builder = HttpRequest.newBuilder();
-			requestBuilderConsumer.accept(builder);
-
 			semaphore.acquire();
-			HttpRequest request = builder.header("User-Agent", HttpClientUtil.getUserAgent())
-					.timeout(TIMEOUT).build();
+			RequestBuilder requestBuilder = HttpRequests.request(uri.toASCIIString()) //
+					.userAgent(HttpClientUtil.getUserAgent()) //
+					.connectTimeout(HttpClientUtil.CONNECT_TIMEOUT_MS) //
+					.readTimeout(HttpClientUtil.READ_TIMEOUT_MS);
 
-			return HTTP_CLIENT.send(request, bodyHandler);
+			return requestFunction.apply(requestBuilder).connect(HttpClientUtil::readUtf8StreamCapped);
+		} catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
+			return null;
 		} finally {
 			semaphore.release();
 		}
 	}
 
 	/**
-	 * Return the standard text body handler for remote metadata documents.
-	 * <p>The body is decoded as UTF-8 and rejected when it exceeds the internal
-	 * response-size cap. Use a different handler only when the caller has a
-	 * specific reason to consume a different payload shape.
+	 * Return the {@code User-Agent} for metadata requests.
+	 * <p>The value is derived from IntelliJ product information when the
+	 * application is available and falls back to a generic IDE identifier in
+	 * non-application contexts.
+	 *
+	 * @return the user agent string.
 	 */
-	public static HttpResponse.BodyHandler<String> cappedUtf8BodyHandler() {
+	public static String getUserAgent() {
 
-		return responseInfo -> HttpResponse.BodySubscribers.mapping(HttpResponse.BodySubscribers.ofInputStream(),
-				in -> {
-					try {
-						return readUtf8StreamCapped(in, MAX_RESPONSE_BODY_BYTES);
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
-					}
-				});
+		Application app = ApplicationManager.getApplication();
+		if (app != null && !app.isDisposed()) {
+			String productName = ApplicationNamesInfo.getInstance().getFullProductName();
+			String version = ApplicationInfo.getInstance().getBuild().asStringWithoutProductCode();
+			return productName + '/' + version;
+		}
+		return "IntelliJ";
 	}
 
-	private static String readUtf8StreamCapped(InputStream in, long maxBytes) throws IOException {
+	/**
+	 * Read the response body as a UTF-8 string, streaming with a hard size cap.
+	 * <p>The body is read in 8&nbsp;KB chunks and the cumulative size is checked
+	 * after each read. Reads exceeding {@link #MAX_RESPONSE_BODY_BYTES} fail with
+	 * an {@link IOException} before the full body is materialised, preventing a
+	 * hostile or oversized response from being fully allocated in memory.
+	 *
+	 * @param request the HTTP request to read; must not be {@literal null}.
+	 * @return the response body decoded as UTF-8.
+	 * @throws IOException if the response exceeds {@link #MAX_RESPONSE_BODY_BYTES}
+	 * or the underlying stream fails.
+	 */
+	public static String readUtf8StreamCapped(HttpRequests.Request request) throws IOException {
 
-		try (in) {
+		try (InputStream in = request.getInputStream()) {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			byte[] buf = new byte[16384];
+			byte[] buf = new byte[8 * 1024];
 			long total = 0;
-			while (true) {
-				int n = in.read(buf);
-				if (n == -1) {
-					break;
+			int read;
+			while ((read = in.read(buf)) >= 0) {
+				total += read;
+				if (total > MAX_RESPONSE_BODY_BYTES) {
+					throw new IOException("Response body exceeds %d bytes".formatted(MAX_RESPONSE_BODY_BYTES));
 				}
-				total += n;
-				if (total > maxBytes) {
-					throw new IOException("Response body exceeds maximum size");
-				}
-				out.write(buf, 0, n);
+				out.write(buf, 0, read);
 			}
 			return out.toString(StandardCharsets.UTF_8);
 		}
 	}
 
 	/**
-	 * Return whether the response status represents a successful response that can
-	 * be interpreted as carrying metadata.
-	 * <p>Callers remain responsible for any domain-specific handling of empty
-	 * success bodies or non-success statuses such as {@code 404}.
+	 * Return the effective port for the given URI.
 	 */
-	public static boolean hasBody(HttpResponse<?> response) {
-		return response.statusCode() >= 200 && response.statusCode() < 300;
-	}
+	public static int getEffectivePort(URI uri) {
 
-	/**
-	 * {@link Authenticator} bridge from JDK HTTP client proxy challenges to
-	 * IntelliJ's proxy credential store.
-	 * <p>Only proxy authentication is handled here. Origin-server authentication
-	 * remains under caller control so repository-specific credentials can be scoped
-	 * by the release source that owns the request.
-	 */
-	public static class ProxyAwareAuthenticator extends Authenticator {
-
-		public static final ProxyAwareAuthenticator INSTANCE = new ProxyAwareAuthenticator();
-
-		private final ProxyAuthentication proxyAuthentication = ProxyAuthentication.getInstance();
-
-		ProxyAwareAuthenticator() {
+		int port = uri.getPort();
+		if (port != -1) {
+			return port;
 		}
-
-		@Override
-		protected @Nullable PasswordAuthentication getPasswordAuthentication() {
-
-			if (getRequestorType() == RequestorType.PROXY) {
-
-				Credentials knownAuthentication = proxyAuthentication.getKnownAuthentication(getRequestingHost(),
-						getRequestingPort());
-
-				if (knownAuthentication == null || knownAuthentication.getUserName() == null) {
-					return null;
-				}
-				return new PasswordAuthentication(knownAuthentication.getUserName(),
-						knownAuthentication.getPassword() != null ? knownAuthentication.getPassword().toCharArray()
-								: new char[0]);
-			}
-
-			return null;
+		String scheme = uri.getScheme();
+		if ("https".equalsIgnoreCase(scheme)) {
+			return 443;
 		}
-
+		if ("http".equalsIgnoreCase(scheme)) {
+			return 80;
+		}
+		return -1;
 	}
 
 }

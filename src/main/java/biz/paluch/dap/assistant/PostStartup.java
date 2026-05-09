@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import biz.paluch.dap.DependencyAssistant;
@@ -71,6 +72,10 @@ public class PostStartup implements ProjectActivity {
 		}
 
 		StateService service = StateService.getInstance(project);
+		if (!service.hasBeenUsed()) {
+			return;
+		}
+
 		Cache cache = service.getCache();
 
 		if (!cache.hasReleases()) {
@@ -78,8 +83,10 @@ public class PostStartup implements ProjectActivity {
 			return;
 		}
 
-		if (cache.getAge().compareTo(Duration.ofDays(2)) > 0) {
-			Notifications.releaseMetadataStale(project, cache.getLastUpdate(),
+		Duration age = cache.getAge();
+		Instant lastUpdate = cache.getLastUpdate();
+		if (age != null && lastUpdate != null && age.compareTo(Duration.ofDays(2)) > 0) {
+			Notifications.releaseMetadataStale(project, lastUpdate,
 					RefreshReleaseMetadata::new);
 		}
 	}

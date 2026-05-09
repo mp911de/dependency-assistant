@@ -35,7 +35,6 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
@@ -92,12 +91,12 @@ public class NpmAssistant implements DependencyAssistant {
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new NpmIndexingTask(project).readAndUpdateAll(indicator);
+		new UpdateProjectState(project).readAndUpdateAll(indicator);
 	}
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new NpmIndexingTask(project).getAllDependencies(indicator);
+		return new UpdateProjectState(project).getAllDependencies(indicator);
 	}
 
 	@Override
@@ -171,10 +170,7 @@ public class NpmAssistant implements DependencyAssistant {
 				return;
 			}
 
-			DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(file);
-			ProjectState projectState = service.getProjectState(getProjectId());
-			projectState.invalidateDependencies();
-			projectState.setDependencies(collector);
+			new UpdateProjectState(project).update(file);
 		}
 
 		@Override

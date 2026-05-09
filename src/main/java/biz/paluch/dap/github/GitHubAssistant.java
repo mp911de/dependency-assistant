@@ -25,7 +25,6 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -34,11 +33,8 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
@@ -102,7 +98,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateProjectState(project).readAndUpdateAll(indicator);
+		new UpdateProjectState(project).readAndUpdateAll(it -> createContext(project, it), indicator);
 	}
 
 	@Override
@@ -143,13 +139,10 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		private final GitHubProjectContext projectContext;
 
-		private final StateService service;
-
 		GitHubDependencyContext(Project project, VirtualFile anchor, GitHubProjectContext projectContext) {
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
-			this.service = StateService.getInstance(project);
 		}
 
 		@Override
@@ -179,25 +172,7 @@ public class GitHubAssistant implements DependencyAssistant {
 				return;
 			}
 
-			DependencyCollector collector = new GitHubDependencyCollector()
-					.collect(file);
-			ProjectState projectState = service.getProjectState(getProjectId());
-			Cache cache = service.getCache();
-
-			for (DeclaredDependency declaration : collector.getDeclarations()) {
-				Dependency dependency = resolveDependency(declaration,
-						cache.getReleases(declaration.getArtifactId()));
-				if (dependency != null) {
-
-					DeclarationSource declarationSource = dependency.getDeclarationSources().iterator().next();
-					VersionSource versionSource = dependency.getVersionSources().iterator().next();
-					collector.registerUsage(dependency.getArtifactId(), dependency.getCurrentVersion(),
-							declarationSource, versionSource);
-				}
-			}
-
-			projectState.invalidateDependencies();
-			projectState.setDependencies(collector);
+			new UpdateProjectState(project).update(file, it -> this);
 		}
 
 		@Override

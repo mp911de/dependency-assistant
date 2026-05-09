@@ -50,22 +50,21 @@
 		                dynamic="true"/>
 	</extensionPoints>
 
-	<applicationListeners>
-		<listener class="biz.paluch.dap.assistant.FlushStateOnSave"
-		          topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
-	</applicationListeners>
-
 	<extensions defaultExtensionNs="org.jetbrains.kotlin">
 		<supportsKotlinPluginMode supportsK1="true" supportsK2="true"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
 		<postStartupActivity implementation="biz.paluch.dap.assistant.PostStartup"/>
+		<actionOnSave implementation="biz.paluch.dap.assistant.FlushStateOnSave"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.releases"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.releases-sticky"
 		                   displayType="STICKY_BALLOON"
+		                   bundle="messages.MessageBundle" key="plugin.name"/>
+		<notificationGroup id="biz.paluch.dependency-assistant.errors"
+		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
 		<additionalTextAttributes scheme="Default"
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>

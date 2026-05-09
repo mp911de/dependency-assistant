@@ -18,8 +18,10 @@ package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
@@ -104,9 +106,14 @@ class MavenProperties {
 
 	private List<MavenProject> getProjects(MavenProject mavenProject) {
 		List<MavenProject> hierarchy = new ArrayList<>();
+		Set<MavenId> visited = new HashSet<>();
 		MavenProject current = mavenProject;
 
 		while (current != null) {
+			MavenId currentId = current.getMavenId();
+			if (currentId != null && !visited.add(currentId)) {
+				break;
+			}
 			hierarchy.add(current);
 
 			MavenId parentId = current.getParentId();

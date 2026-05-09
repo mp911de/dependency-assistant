@@ -35,17 +35,12 @@ import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 
 /**
- * Background task that walks the project's JSON files, filters to
- * {@code package.json} entries with a {@code dependencies} or
- * {@code devDependencies} object, and seeds the per-file project state.
- *
- * <p>Mirrors the structure of {@code biz.paluch.dap.github.UpdateProjectState}
- * but is named to avoid collision with the existing trio of {@code
- * UpdateProjectState} classes.
+ * Service to read npm {@code package.json} files and update the dependency
+ * state.
  *
  * @author Mark Paluch
  */
-class NpmIndexingTask {
+class UpdateProjectState {
 
 	private final Project project;
 
@@ -53,11 +48,11 @@ class NpmIndexingTask {
 
 	private final PsiManager psiManager;
 
-	NpmIndexingTask(Project project) {
+	UpdateProjectState(Project project) {
 		this(project, PsiManager.getInstance(project), StateService.getInstance(project));
 	}
 
-	NpmIndexingTask(Project project, PsiManager psiManager, StateService service) {
+	UpdateProjectState(Project project, PsiManager psiManager, StateService service) {
 		this.project = project;
 		this.service = service;
 		this.psiManager = psiManager;
@@ -111,6 +106,7 @@ class NpmIndexingTask {
 		DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(file);
 		NpmProjectContext context = NpmProjectContext.of(file);
 		ProjectState projectState = this.service.getProjectState(context.getProjectId());
+		projectState.invalidateDependencies();
 		projectState.setDependencies(collector);
 	}
 
@@ -121,6 +117,7 @@ class NpmIndexingTask {
 		double current = 0;
 		for (VirtualFile file : packageFiles) {
 
+			indicator.checkCanceled();
 			if (!file.getPath().contains("node_modules")) {
 
 				PsiFile psiFile = psiManager.findFile(file);

@@ -16,10 +16,8 @@
 
 package biz.paluch.dap.assistant;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -105,9 +103,10 @@ public class Notifications {
 		notification
 				.setSuggestionType(true)
 				.addAction(NotificationAction
-						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"), () -> {
-							ProgressManager.getInstance().run(taskFunction.apply(project));
-						}))
+						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"),
+								() -> {
+									ProgressManager.getInstance().run(taskFunction.apply(project));
+								}))
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
 						notification::expire))
 				.notify(project);
@@ -120,8 +119,7 @@ public class Notifications {
 	public static void releaseMetadataStale(Project project, Instant cacheUpdate,
 			Function<Project, Task> taskFunction) {
 
-		// TODO: 56 years ago?
-		String ago = DateFormatUtil.formatBetweenDates(cacheUpdate.toEpochMilli(), Instant.now().toEpochMilli());
+		String ago = getDurationMessage(cacheUpdate);
 
 		Notification notification = new Notification(
 				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.stale.releases.title"),
@@ -131,52 +129,22 @@ public class Notifications {
 		notification
 				.setSuggestionType(true)
 				.addAction(NotificationAction
-						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"), () -> {
-							ProgressManager.getInstance().run(taskFunction.apply(project));
-						}))
+						.createSimpleExpiring(MessageBundle.message("notification.action.refresh-releases-metadata"),
+								() -> {
+									ProgressManager.getInstance().run(taskFunction.apply(project));
+								}))
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
 						notification::expire))
 				.notify(project);
 	}
 
-	/**
-	 * Return a localized age description for the given instant range.
-	 */
-	public static String agoText(Instant pastInstant, Instant nowInstant, ZoneId zone) {
-
-		LocalDate past = pastInstant.atZone(zone).toLocalDate();
-		LocalDate now = nowInstant.atZone(zone).toLocalDate();
-
-		long days = ChronoUnit.DAYS.between(past, now);
-
-		if (days < 0) {
-			return DateFormatUtil.formatBetweenDates(pastInstant.toEpochMilli(), nowInstant.toEpochMilli());
+	private static String getDurationMessage(Instant cacheUpdate) {
+		Instant now = Instant.now();
+		Duration cacheUpdated = Duration.between(cacheUpdate, now);
+		if (cacheUpdated.toDays() > 60) {
+			return MessageBundle.message("cache-age.long-time-ago");
 		}
-
-		if (days == 0 || days == 1) {
-			return DateFormatUtil.formatPrettyDateTime(pastInstant.toEpochMilli());
-		}
-
-		if (days < 7) {
-			return MessageBundle.message("cache-age.days-ago", days);
-		}
-
-		if (days < 14) {
-			return MessageBundle.message("cache-age.a-week-ago");
-		}
-
-		if (days < 30) {
-			return MessageBundle.message("cache-age.days-ago", days);
-		}
-
-		long months = ChronoUnit.MONTHS.between(past.withDayOfMonth(1),
-				now.withDayOfMonth(1));
-
-		if (months <= 1) {
-			return MessageBundle.message("cache-age.a-month-ago", days);
-		}
-
-		return MessageBundle.message("cache-age.months-ago", months);
+		return DateFormatUtil.formatBetweenDates(cacheUpdate.toEpochMilli(), now.toEpochMilli());
 	}
 
 }

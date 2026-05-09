@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -42,6 +41,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.util.LRUMap;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -73,7 +74,7 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId) {
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
 		if (artifactId instanceof GitArtifactId && NpmUtils.GITHUB_AVAILABLE) {
 			return List.of();
@@ -86,6 +87,7 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 
 		String packageName = toPackageName(artifactId);
 		URI uri = URI.create(registryBaseUrl + encodePackageName(packageName));
+		indicator.checkCanceled();
 
 		try {
 			String body = fetchUrl(artifactId, uri);
@@ -94,10 +96,6 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 			}
 
 			return parseReleases(body);
-		} catch (InterruptedException e) {
-			LOG.debug("%s: HTTP fetch interrupted: %s".formatted(artifactId, uri), e);
-			Thread.currentThread().interrupt();
-			return List.of();
 		} catch (IOException e) {
 			if (counter == null) {
 				counter = new AtomicInteger(0);
@@ -188,21 +186,17 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 		return result;
 	}
 
-	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri) throws IOException, InterruptedException {
+	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri) throws IOException {
 
-		HttpResponse<String> response = HttpClientUtil.sendRequest(it -> it.GET().header("Accept", ACCEPT_HEADER),
-				HttpClientUtil.cappedUtf8BodyHandler());
-
-		if (response.statusCode() >= 200 && response.statusCode() < 300) {
-			return response.body();
+		try {
+			return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(ACCEPT_HEADER));
+		} catch (HttpRequests.HttpStatusException e) {
+			if (e.getStatusCode() == 404) {
+				throw new ArtifactNotFoundException(e.getMessage(), artifactId);
+			}
+			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, e.getStatusCode(), uri), e);
+			return null;
 		}
-
-		if (response.statusCode() == 404) {
-			throw new ArtifactNotFoundException(response.body(), artifactId);
-		}
-
-		LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, response.statusCode(), uri));
-		return null;
 	}
 
 

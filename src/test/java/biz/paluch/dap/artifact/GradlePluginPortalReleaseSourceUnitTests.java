@@ -18,6 +18,7 @@ package biz.paluch.dap.artifact;
 
 import java.util.List;
 
+import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -33,7 +34,8 @@ class GradlePluginPortalReleaseSourceUnitTests {
 	void returnsEmptyListForRegularLibraryArtifact() {
 
 		ArtifactId library = ArtifactId.of("org.springframework", "spring-core");
-		List<Release> releases = GradlePluginPortalReleaseSource.INSTANCE.getReleases(library);
+		List<Release> releases = GradlePluginPortalReleaseSource.INSTANCE.getReleases(library,
+				new AbstractProgressIndicatorBase());
 
 		assertThat(releases).isEmpty();
 	}

@@ -145,6 +145,7 @@ class UpdateProjectState {
 
 		for (GradleProjectSettings setting : settings) {
 
+			indicator.checkCanceled();
 			indicator.setText(
 					MessageBundle.message("action.check.dependencies.progress.collecting",
 							setting.getExternalProjectPath()));
@@ -171,16 +172,16 @@ class UpdateProjectState {
 	 */
 	public void update(PsiFile file) {
 
-		if (GradleUtils.isGradleFile(file)) {
+		if (!GradleUtils.isGradleFile(file)) {
+			return;
+		}
 
-			GradleProjectContext context = GradleProjectContext.of(project, file);
+		GradleProjectContext context = GradleProjectContext.of(project, file);
 
-			if (context.isAvailable()) {
-				DependencyCollector collector = this.collector.collect(file);
-				ProjectState projectState = this.service.getProjectState(context.getProjectId());
-
-				projectState.setDependencies(collector);
-			}
+		if (context.isAvailable()) {
+			DependencyCollector collector = this.collector.collect(file);
+			ProjectState projectState = this.service.getProjectState(context.getProjectId());
+			projectState.setDependencies(collector);
 		}
 	}
 

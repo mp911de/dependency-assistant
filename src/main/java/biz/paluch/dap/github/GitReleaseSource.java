@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubServerPath;
 
@@ -90,7 +91,7 @@ public class GitReleaseSource implements ReleaseSource {
 	 * @return releases obtained from the selected GitHub release source.
 	 */
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId) {
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
 		ReleaseSource releaseSource;
 		ArtifactId id = artifactId;
@@ -107,7 +108,7 @@ public class GitReleaseSource implements ReleaseSource {
 					host -> GitHubReleaseSource.from(project, host));
 		}
 
-		return releaseSource.getReleases(id);
+		return releaseSource.getReleases(id, indicator);
 	}
 
 }

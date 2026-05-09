@@ -27,7 +27,11 @@ import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
+import com.intellij.openapi.progress.EmptyProgressIndicator;
+import com.intellij.openapi.progress.ProgressIndicator;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -50,29 +54,51 @@ public class ReleaseResolver {
 		this.executor = executor;
 	}
 
-	public List<Release> getReleases(ArtifactId artifactId) {
-		return getReleases(artifactId, null);
+	public List<Release> getReleases(ArtifactId artifactId, @Nullable ProgressIndicator indicator) {
+		return getReleases(artifactId, null, indicator);
 	}
 
-	public List<Release> getReleases(ArtifactId artifactId,
-			@Nullable ArtifactVersion currentVersion) {
+	/**
+	 * Resolve releases for the given artifact across all configured sources.
+	 *
+	 * @param artifactId the artifact to resolve releases for; must not be
+	 * {@literal null}.
+	 * @param currentVersion the current version to retain in the result; can be
+	 * {@literal null}.
+	 * @param indicator the progress indicator to use for cancellation; can be
+	 * {@literal null} in which case an {@link EmptyProgressIndicator} is
+	 * substituted.
+	 * @return the resolved releases, newest first; guaranteed to be not
+	 * {@literal null}.
+	 */
+	public List<Release> getReleases(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
+			@Nullable ProgressIndicator indicator) {
 
+		ProgressIndicator progressIndicator = indicator != null ? indicator : new EmptyProgressIndicator();
 		Set<Release> result = new TreeSet<>(Comparator.<Release>naturalOrder().reversed());
 		List<Future<List<Release>>> futures = new ArrayList<>();
 		for (ReleaseSource source : sources) {
-			Future<List<Release>> future = executor.submit(() -> source.getReleases(artifactId));
+			progressIndicator.checkCanceled();
+			Future<List<Release>> future = executor.submit(() -> source.getReleases(artifactId, progressIndicator));
 			futures.add(future);
 		}
 
 		List<RuntimeException> errors = new ArrayList<>();
 		ArtifactNotFoundException notFoundException = null;
 
-		for (Future<List<Release>> future : futures) {
+		for (int i = 0; i < futures.size(); i++) {
+			Future<List<Release>> future = futures.get(i);
 			try {
-				List<Release> releases = future.get();
+				List<Release> releases = future.get(10, TimeUnit.SECONDS);
 				result.addAll(releases);
 			} catch (InterruptedException e) {
+				future.cancel(true);
+				cancelRemaining(futures, i + 1);
+				Thread.currentThread().interrupt();
 				return new ArrayList<>(result);
+			} catch (TimeoutException e) {
+				future.cancel(true);
+				errors.add(new RuntimeException("Release source timed out", e));
 			} catch (ExecutionException e) {
 
 				if (e.getCause() instanceof ArtifactNotFoundException) {
@@ -98,6 +124,12 @@ public class ReleaseResolver {
 		}
 
 		return new ArrayList<>(result);
+	}
+
+	private static void cancelRemaining(List<Future<List<Release>>> futures, int from) {
+		for (int j = from; j < futures.size(); j++) {
+			futures.get(j).cancel(true);
+		}
 	}
 
 }

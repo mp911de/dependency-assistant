@@ -21,9 +21,16 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
+import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.DeclaredDependency;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.application.ApplicationManager;
@@ -72,18 +79,20 @@ class UpdateProjectState {
 
 	/**
 	 * Read and update dependency state for all supported GitHub Actions files.
-	 * @param indicator the progress indicator to report to.
 	 */
-	public void readAndUpdateAll(ProgressIndicator indicator) {
-		ApplicationManager.getApplication().runReadAction(() -> updateAll(indicator));
+	public void readAndUpdateAll(Function<PsiFile, ProjectDependencyContext> contextFunction,
+			ProgressIndicator indicator) {
+		ApplicationManager.getApplication().runReadAction(() -> updateAll(contextFunction, indicator));
 	}
 
 	/**
 	 * Update dependency state for all supported GitHub Actions files.
 	 * @param indicator the progress indicator to report to.
 	 */
-	public void updateAll(ProgressIndicator indicator) {
-		doWithAllFiles(this::update, indicator);
+	public void updateAll(Function<PsiFile, ProjectDependencyContext> contextFunction, ProgressIndicator indicator) {
+		doWithAllFiles(file -> {
+			update(file, contextFunction);
+		}, indicator);
 	}
 
 	/**
@@ -123,18 +132,37 @@ class UpdateProjectState {
 
 	/**
 	 * Update dependency state for the given GitHub Actions file.
-	 * @param file the GitHub Actions file to inspect.
 	 */
-	public void update(PsiFile file) {
+	public void update(PsiFile file, Function<PsiFile, ProjectDependencyContext> contextFunction) {
 
-		if (GitHubUtils.isWorkflowFile(file)) {
-
-			GitHubProjectContext context = GitHubProjectContext.of(project, file.getVirtualFile());
-			DependencyCollector collector = new GitHubDependencyCollector().collect(file);
-			ProjectState projectState = this.service.getProjectState(context.getProjectId());
-
-			projectState.setDependencies(collector);
+		if (!GitHubUtils.isWorkflowFile(file)) {
+			return;
 		}
+		ProjectDependencyContext context = contextFunction.apply(file);
+
+		if (context.isAbsent()) {
+			return;
+		}
+
+		DependencyCollector collector = new GitHubDependencyCollector()
+				.collect(file);
+		ProjectState projectState = service.getProjectState(context.getProjectId());
+		Cache cache = service.getCache();
+
+		for (DeclaredDependency declaration : collector.getDeclarations()) {
+			Dependency dependency = context.resolveDependency(declaration,
+					cache.getReleases(declaration.getArtifactId()));
+			if (dependency != null) {
+
+				DeclarationSource declarationSource = dependency.getDeclarationSources().iterator().next();
+				VersionSource versionSource = dependency.getVersionSources().iterator().next();
+				collector.registerUsage(dependency.getArtifactId(), dependency.getCurrentVersion(),
+						declarationSource, versionSource);
+			}
+		}
+
+		projectState.invalidateDependencies();
+		projectState.setDependencies(collector);
 	}
 
 	/**
@@ -149,6 +177,7 @@ class UpdateProjectState {
 		double current = 0;
 		for (VirtualFile workflowFile : workflowFiles) {
 
+			indicator.checkCanceled();
 			PsiFile file = psiManager.findFile(workflowFile);
 			if (file != null) {
 				action.accept(file);

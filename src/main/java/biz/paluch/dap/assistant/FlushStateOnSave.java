@@ -21,49 +21,27 @@ import java.util.List;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
-import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.fileEditor.FileDocumentManagerListener;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectLocator;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
  * Listener that re-collects dependency state when supported build files change.
  *
  * @author Mark Paluch
  */
-public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.ActionOnSave
-		implements FileDocumentManagerListener {
+public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.ActionOnSave {
 
 	private final FileDocumentManager documentManager = FileDocumentManager.getInstance();
 
 	@Override
-	public void fileContentReloaded(VirtualFile file, Document document) {
-
-		Project project = ProjectLocator.getInstance().guessProjectForFile(file);
-		if (project == null) {
-			return;
-		}
-
-		invalidateState(project, List.of(file));
-	}
-
-	@Override
-	public void afterDocumentSaved(Document document) {
-
-		VirtualFile virtualFile = documentManager.getFile(document);
-		if (virtualFile != null) {
-			fileContentReloaded(virtualFile, document);
-		}
-	}
-
-	@Override
 	public boolean isEnabledForProject(Project project) {
-		return true;
+		return DependencyAssistantDispatcher.supports(project);
 	}
 
 	@Override
@@ -84,7 +62,11 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 
 	private void invalidateState(Project project, List<VirtualFile> files) {
 
-		ApplicationManager.getApplication().runReadAction(() -> {
+		if (files.isEmpty()) {
+			return;
+		}
+
+		ReadAction.nonBlocking(() -> {
 
 			PsiManager psiManager = PsiManager.getInstance(project);
 
@@ -97,7 +79,8 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 
 				DependencyAssistantDispatcher.doWithContext(psiFile, context -> context.invalidateState(psiFile));
 			}
-		});
+			return null;
+		}).inSmartMode(project).expireWith(project).submit(AppExecutorUtil.getAppExecutorService());
 	}
 
 }

@@ -55,7 +55,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 	 */
 	static GradleProjectContext of(Project project, @Nullable PsiFile file) {
 
-		if (file == null) {
+		if (!GradleUtils.isGradleFile(file)) {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 

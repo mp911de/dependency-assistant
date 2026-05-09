@@ -17,6 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.net.URI;
+import java.util.regex.Pattern;
 
 import git4idea.remote.hosting.GitHostingUrlUtil;
 import org.jetbrains.plugins.github.api.GHRepositoryPath;
@@ -43,6 +44,8 @@ import org.jspecify.annotations.Nullable;
  */
 public record GitRepositoryMetadata(String host, String owner, String repository) {
 
+	private static final Pattern GITHUB_NAME = Pattern.compile("[A-Za-z0-9._-]+");
+
 	/**
 	 * Parse a Git remote URL into GitHub repository metadata.
 	 * <p>Both public GitHub and GitHub Enterprise remotes are supported as long as
@@ -61,11 +64,17 @@ public record GitRepositoryMetadata(String host, String owner, String repository
 		GHRepositoryPath repoPath = GithubUrlUtil.getUserAndRepositoryFromRemoteUrl(url);
 		URI uri = GitHostingUrlUtil.getUriFromRemoteUrl(url);
 
-		if (uri != null && repoPath != null) {
-			return new GitRepositoryMetadata(uri.getHost(), repoPath.getOwner(), repoPath.getRepository());
+		if (uri == null || repoPath == null) {
+			return null;
 		}
 
-		return null;
+		String owner = repoPath.getOwner();
+		String repository = repoPath.getRepository();
+		if (!GITHUB_NAME.matcher(owner).matches() || !GITHUB_NAME.matcher(repository).matches()) {
+			return null;
+		}
+
+		return new GitRepositoryMetadata(uri.getHost(), owner, repository);
 	}
 
 	public GitArtifactId toArtifactId(ArtifactId originalArtifactId) {

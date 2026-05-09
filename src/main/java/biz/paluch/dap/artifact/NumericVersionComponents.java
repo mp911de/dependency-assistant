@@ -270,7 +270,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.lang.Object#equals(java.lang.Object)
 	 */
 	@Override
@@ -280,22 +280,31 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 			return true;
 		}
 
-		if (!(obj instanceof NumericVersionComponents)) {
+		if (!(obj instanceof NumericVersionComponents other)) {
 			return false;
 		}
 
-		return toString().equals(obj.toString());
+		return compareTo(other) == 0;
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see java.lang.Object#hashCode()
 	 */
 	@Override
 	public int hashCode() {
 
-		return Arrays.hashCode(parts);
+		int last = parts.length;
+		while (last > 0 && parts[last - 1].signum() == 0) {
+			last--;
+		}
+		int result = 1;
+		for (int i = 0; i < last; i++) {
+			BigDecimal canonical = parts[i].signum() == 0 ? BigDecimal.ZERO : parts[i].stripTrailingZeros();
+			result = 31 * result + canonical.hashCode();
+		}
+		return result;
 	}
 
 	/*

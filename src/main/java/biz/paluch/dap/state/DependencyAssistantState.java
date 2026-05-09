@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * You may obtain a snapshot of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.state;
 
+import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 
 /**
@@ -30,7 +31,11 @@ public class DependencyAssistantState {
 
 	private @Tag Cache cache = new Cache();
 
-	// TODO: used state to avoid nagging.
+	/**
+	 * Flag whether Dependency Assistant has been used actively.
+	 */
+	@Attribute
+	private volatile boolean usedOnce = false;
 
 	/**
 	 * Return the persisted cache.
@@ -48,6 +53,23 @@ public class DependencyAssistantState {
 	 */
 	public void setCache(Cache cache) {
 		this.cache = cache;
+	}
+
+	/**
+	 * @return {@literal true} if Dependency Assistant has been used actively.
+	 */
+	public boolean isUsedOnce() {
+		return usedOnce;
+	}
+
+	/**
+	 * Set whether Dependency Assistant has been used actively.
+	 * 
+	 * @param usedOnce {@literal true} if Dependency Assistant has been used
+	 * actively.
+	 */
+	public void setUsedOnce(boolean usedOnce) {
+		this.usedOnce = usedOnce;
 	}
 
 }

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * You may obtain a snapshot of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -45,7 +45,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-@State(name = "DependencyAssistant", storages = @Storage("dependency-assistant.xml"), defaultStateAsResource = true)
+@State(name = "DependencyAssistant", storages = @Storage("dependency-assistant.xml"))
 public class StateService implements PersistentStateComponent<DependencyAssistantState> {
 
 	private final DependencyAssistantState state = new DependencyAssistantState();
@@ -64,12 +64,17 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 
 	/**
 	 * Return the state object managed by IntelliJ persistence.
+	 * <p>The returned state is a snapshot that decouples platform serialization
+	 * from concurrent cache mutations performed by background tasks.
 	 *
 	 * @return the persistent service state.
 	 */
 	@Override
 	public DependencyAssistantState getState() {
-		return state;
+
+		DependencyAssistantState snapshot = new DependencyAssistantState();
+		snapshot.setCache(state.getCache().snapshot());
+		return snapshot;
 	}
 
 	/**
@@ -119,18 +124,22 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		return getCache().hasReleases() || getCache().hasDependencies();
 	}
 
+	/**
+	 * Return {@literal true} if Dependency Assistant has been used actively.
+	 */
+	public boolean hasBeenUsed() {
+		return state.isUsedOnce();
+	}
+
 	class DefaultProjectState implements ProjectState {
 
 		private final ProjectId identity;
-
-		private final ProjectCache projectCache;
 
 		/**
 		 * Create a state facade for the given project identity.
 		 */
 		public DefaultProjectState(ProjectId identity) {
 			this.identity = identity;
-			this.projectCache = getCache().getProject(identity);
 		}
 
 		@Override
@@ -147,7 +156,7 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		@Override
 		public void setDependencies(DependencyCollector collector) {
 			dependencies.put(identity, collector);
-			projectCache.setProperties(collector);
+			getCache().getProject(identity).setProperties(collector);
 		}
 
 		@Override

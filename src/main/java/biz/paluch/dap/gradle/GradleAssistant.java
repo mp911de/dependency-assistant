@@ -31,7 +31,6 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
@@ -138,19 +137,7 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public void invalidateState(PsiFile file) {
-
-			if (!GradleUtils.isGradleFile(file)) {
-				return;
-			}
-
-			GradleProjectContext changedContext = GradleProjectContext.of(project, file);
-			if (changedContext.isAbsent()) {
-				return;
-			}
-
-			ProjectState projectState = service.getProjectState(changedContext.getProjectId());
-			projectState.invalidateDependencies();
-			projectState.setDependencies(new GradleDependencyCollector(project).collect(file));
+			new UpdateProjectState(project).update(file);
 		}
 
 		@Override

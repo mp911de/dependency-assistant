@@ -133,6 +133,7 @@ class DependencyCheck {
 			}
 		}
 
+		this.service.getState().setUsedOnce(true);
 		return fetchUpdates(indicator, projectName, tasks, consistency, 0.5);
 	}
 
@@ -201,10 +202,10 @@ class DependencyCheck {
 		for (UpdateTask task : tasks) {
 			Future<ResolverResult> future = executor
 					.submit(() -> {
-				indicator.checkCanceled();
-				return fetchReleases(indicator, task.getArtifactId(), task.sources(), executor,
-						cache, consistency);
-			});
+						indicator.checkCanceled();
+						return fetchReleases(indicator, task.getArtifactId(), task.sources(), executor,
+								cache, consistency);
+					});
 			futures.put(task, future);
 		}
 
@@ -213,28 +214,41 @@ class DependencyCheck {
 		int i = 0;
 		for (Map.Entry<UpdateTask, Future<ResolverResult>> entry : futures.entrySet()) {
 
-			indicator.checkCanceled();
+			try {
+				indicator.checkCanceled();
+			} catch (ProcessCanceledException e) {
+				cancelRemainingFutures(futures);
+				throw e;
+			}
 
 			String artifactId = entry.getKey().getArtifactId().toString();
 			indicator.setText2(artifactId);
 
 			ResolverResult res;
+			boolean abort = false;
 			try {
 				res = entry.getValue().get(10, TimeUnit.SECONDS);
 			} catch (ProcessCanceledException e) {
+				entry.getValue().cancel(true);
+				cancelRemainingFutures(futures);
 				throw e;
 			} catch (ExecutionException e) {
 				if (e.getCause() instanceof ProcessCanceledException c) {
+					entry.getValue().cancel(true);
+					cancelRemainingFutures(futures);
 					throw c;
 				}
 
-				String msg = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-				res = new ResolverResult("%s: %s".formatted(artifactId, msg), List.of());
+				entry.getValue().cancel(true);
+				Throwable cause = e.getCause() != null ? e.getCause() : e;
+				res = new ResolverResult("%s: %s".formatted(artifactId, cause.getMessage()), List.of());
 			} catch (InterruptedException e) {
+				res = cancelAndRecord(entry, futures, e);
 				Thread.currentThread().interrupt();
-				res = new ResolverResult("%s: %s".formatted(artifactId, e.getMessage()), List.of());
+				abort = true;
 			} catch (TimeoutException e) {
-				res = new ResolverResult("%s: %s".formatted(artifactId, e.getMessage()), List.of());
+				res = cancelAndRecord(entry, futures, e);
+				abort = true;
 			}
 			if (res.error() != null) {
 				errors.add(res.error());
@@ -247,12 +261,35 @@ class DependencyCheck {
 			if (dependency != null) {
 				items.add(new DependencyUpdateOption(dependency, res.releases()));
 			}
+
+			i++;
+
+			if (abort) {
+				break;
+			}
 		}
 
 		cache.recordUpdate();
 
 		items.sort(Comparator.comparing(DependencyUpdateOption::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 		return new DependencyUpdates(projectName, items, errors);
+	}
+
+	private static void cancelRemainingFutures(Map<UpdateTask, Future<ResolverResult>> futures) {
+		for (Future<ResolverResult> future : futures.values()) {
+			if (!future.isDone()) {
+				future.cancel(true);
+			}
+		}
+	}
+
+	private static ResolverResult cancelAndRecord(Map.Entry<UpdateTask, Future<ResolverResult>> entry,
+			Map<UpdateTask, Future<ResolverResult>> futures, Throwable cause) {
+
+		entry.getValue().cancel(true);
+		cancelRemainingFutures(futures);
+		String artifactId = entry.getKey().getArtifactId().toString();
+		return new ResolverResult("%s: %s".formatted(artifactId, cause.getMessage()), List.of());
 	}
 
 	private ResolverResult fetchReleases(ProgressIndicator indicator, ArtifactId artifactId,
@@ -266,17 +303,19 @@ class DependencyCheck {
 			ReleaseResolver resolver = new ReleaseResolver(sources, executor);
 			List<Release> releases;
 			if (consistency == Consistency.NO_CACHE) {
-				releases = resolver.getReleases(artifactId, null);
+				releases = resolver.getReleases(artifactId, indicator);
 				cache.putVersionOptions(artifactId, releases);
 			} else {
 
 				releases = cache.getReleases(artifactId, consistency == Consistency.CACHED);
 				if (CollectionUtils.isEmpty(releases)) {
-					releases = resolver.getReleases(artifactId, null);
+					releases = resolver.getReleases(artifactId, indicator);
 					cache.putVersionOptions(artifactId, releases);
 				}
 			}
 			return new ResolverResult(null, releases);
+		} catch (ProcessCanceledException e) {
+			throw e;
 		} catch (Exception e) {
 			return new ResolverResult(artifactId + ": " + e.getMessage(), List.of());
 		}

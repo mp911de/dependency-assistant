@@ -19,7 +19,6 @@ package biz.paluch.dap.artifact;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -30,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -41,6 +39,8 @@ import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.xml.MavenMetadataProjection;
 import biz.paluch.dap.xml.XmlBeamProjectorFactory;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -53,7 +53,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	/**
 	 * Release source for Maven Central.
 	 */
-	public static RemoteRepositoryReleaseSource MAVEN_CENTRAL = new RemoteRepositoryReleaseSource(
+	public static final RemoteRepositoryReleaseSource MAVEN_CENTRAL = new RemoteRepositoryReleaseSource(
 			RemoteRepository.mavenCentral());
 
 	private static final Logger LOG = Logger.getInstance(RemoteRepositoryReleaseSource.class);
@@ -70,8 +70,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	private static final DateTimeFormatter DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER = DateTimeFormatter
 			.ofPattern("dd-MMM-uuuu HH:mm", Locale.ENGLISH);
 
-	private static final int MAX_REDIRECT_HOPS = 10;
-
 	private final RemoteRepository repository;
 
 	/**
@@ -82,7 +80,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId) {
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
 		String path = artifactId.groupId().replace(".", "/") + "/" + artifactId.artifactId() + "/";
 		String metadataPath = path + "maven-metadata.xml";
@@ -94,7 +92,9 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		URI repositoryBaseUri = URI.create(base).normalize();
 		URI metadataUri = repositoryBaseUri.resolve(metadataPath);
 		URI directoryUri = repositoryBaseUri.resolve(path);
+		indicator.checkCanceled();
 		String xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true, repositoryBaseUri);
+		indicator.checkCanceled();
 		String directoryListing = fetchUrl(artifactId, directoryUri, repository.credentials(), false,
 				repositoryBaseUri);
 
@@ -188,85 +188,25 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
 			@Nullable RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri) {
 
-		String url = uri.toASCIIString();
 		try {
-			if (credentials != null) {
-				return fetchWithCredentialBinding(artifactId, uri, credentials, failOnNotFound, repositoryBaseUri);
+			return HttpClientUtil.fetchUrl(uri, requestBuilder -> {
+				return requestBuilder.tuner(connection -> {
+					if (credentials != null
+							&& repositoryCredentialHostMatches(repositoryBaseUri, URI.create(connection.getURL()
+									.toString()))) {
+						connection.addRequestProperty("Authorization", basicAuthHeader(credentials));
+					}
+				});
+			});
+		} catch (HttpRequests.HttpStatusException e) {
+			if (failOnNotFound && e.getStatusCode() == 404) {
+				throw new ArtifactNotFoundException("%s: HTTP Status 404".formatted(uri), artifactId);
 			}
-			return fetchWithStandardRedirects(artifactId, uri, failOnNotFound);
-		} catch (InterruptedException e) {
-			LOG.debug("%s: HTTP fetch interrupted: %s".formatted(artifactId, url), e);
-			Thread.currentThread().interrupt();
+			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, e.getStatusCode(), uri), e);
 			return null;
 		} catch (IOException e) {
-			throw new UncheckedIOException("%s: Failed to fetch %s".formatted(artifactId, url), e);
+			throw new UncheckedIOException("%s: Failed to fetch %s".formatted(artifactId, uri), e);
 		}
-	}
-
-	private static @Nullable String fetchWithStandardRedirects(ArtifactId artifactId, URI uri, boolean failOnNotFound)
-			throws IOException, InterruptedException {
-
-		HttpResponse<String> response = HttpClientUtil.sendRequest(it -> it.GET().uri(uri),
-				HttpClientUtil.cappedUtf8BodyHandler());
-
-		if (HttpClientUtil.hasBody(response)) {
-			return response.body();
-		}
-
-		if (failOnNotFound && response.statusCode() == 404) {
-			throw new ArtifactNotFoundException("%s: HTTP Status 404".formatted(uri), artifactId);
-		}
-
-		LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, response.statusCode(), uri));
-		return null;
-	}
-
-	private static @Nullable String fetchWithCredentialBinding(ArtifactId artifactId, URI uri,
-			RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri)
-			throws IOException, InterruptedException {
-
-		URI current = uri;
-		for (int hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
-
-			URI uriToUse = current;
-			HttpResponse<String> response = HttpClientUtil.sendRequest(it -> {
-				it.GET();
-				if (repositoryCredentialHostMatches(repositoryBaseUri, uriToUse)) {
-					it.header("Authorization", basicAuthHeader(credentials));
-				}
-			}, HttpClientUtil.cappedUtf8BodyHandler());
-			int status = response.statusCode();
-
-			if (HttpClientUtil.hasBody(response)) {
-				return response.body();
-			}
-
-			if (failOnNotFound && status == 404) {
-				throw new ArtifactNotFoundException(current + ": HTTP Status 404", artifactId);
-			}
-
-			if (status >= 300 && status < 400) {
-				Optional<String> location = response.headers().firstValue("location");
-				if (location.isEmpty()) {
-					LOG.debug(
-							"%s: HTTP %d without Location header fetching: %s".formatted(artifactId, status, current));
-					return null;
-				}
-				URI next = current.resolve(URI.create(location.get().trim()));
-				if (!repositoryCredentialHostMatches(repositoryBaseUri, next)) {
-					LOG.debug("%s: Refusing cross-host redirect from %s to %s".formatted(artifactId, current, next));
-					return null;
-				}
-				current = next;
-				continue;
-			}
-
-			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, status, current));
-			return null;
-		}
-
-		LOG.debug("%s: Too many redirects fetching: %s".formatted(artifactId, uri));
-		return null;
 	}
 
 	private static boolean repositoryCredentialHostMatches(URI repositoryBase, URI requestTarget) {
@@ -279,23 +219,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		if (!baseHost.equalsIgnoreCase(targetHost)) {
 			return false;
 		}
-		return effectivePort(repositoryBase) == effectivePort(requestTarget);
-	}
-
-	private static int effectivePort(URI uri) {
-
-		int port = uri.getPort();
-		if (port != -1) {
-			return port;
-		}
-		String scheme = uri.getScheme();
-		if ("https".equalsIgnoreCase(scheme)) {
-			return 443;
-		}
-		if ("http".equalsIgnoreCase(scheme)) {
-			return 80;
-		}
-		return -1;
+		return HttpClientUtil.getEffectivePort(repositoryBase) == HttpClientUtil.getEffectivePort(requestTarget);
 	}
 
 	private static String basicAuthHeader(RepositoryCredentials credentials) {

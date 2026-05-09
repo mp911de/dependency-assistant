@@ -168,6 +168,7 @@ class UpdateProjectState {
 		double current = 0;
 		for (MavenProject mavenProject : projects) {
 
+			indicator.checkCanceled();
 			indicator
 					.setText(MessageBundle.message("action.index-dependencies.indexing.assistant",
 							mavenProject.getMavenId()));
@@ -185,16 +186,17 @@ class UpdateProjectState {
 	 */
 	public void update(PsiFile file) {
 
-		if (MavenUtils.isMavenPomFile(file)) {
+		if (!MavenUtils.isMavenPomFile(file)) {
+			return;
+		}
 
-			MavenProjectContext context = MavenProjectContext.of(project, file);
+		MavenProjectContext context = MavenProjectContext.of(project, file);
 
-			if (context.isAvailable()) {
-				DependencyCollector collector = this.collector.collect(file);
-				ProjectState projectState = this.service.getProjectState(context.getProjectId());
-
-				projectState.setDependencies(collector);
-			}
+		if (context.isAvailable()) {
+			DependencyCollector collector = this.collector.collect(file);
+			ProjectState projectState = this.service.getProjectState(context.getProjectId());
+			projectState.invalidateDependencies();
+			projectState.setDependencies(collector);
 		}
 	}
 

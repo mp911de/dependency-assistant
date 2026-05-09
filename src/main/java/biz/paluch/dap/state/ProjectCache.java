@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * You may obtain a snapshot of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -179,10 +179,10 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	@Transient
 	public void setProperties(DependencyCollector collector) {
 
-		this.properties.clear();
-		this.propertyMap.clear();
-
 		synchronized (this) {
+
+			this.properties.clear();
+			this.propertyMap.clear();
 
 			for (DeclaredDependency declaration : collector.getDeclarations()) {
 
@@ -217,7 +217,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	 * @return the matching property, or {@code null} if none is known.
 	 */
 	@Transient
-	public @Nullable VersionProperty getProperty(String propertyName) {
+	public synchronized @Nullable VersionProperty getProperty(String propertyName) {
 
 		if (propertyMap.size() != properties.size()) {
 
@@ -260,6 +260,26 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		}
 
 		return true;
+	}
+
+	/**
+	 * Return a deep snapshot of this cache entry safe to hand off to the platform
+	 * serializer while concurrent mutations may still be in progress.
+	 * <p>{@link VersionProperty} entries are mutable; each is copied so that the
+	 * snapshot does not share state with the live cache.
+	 *
+	 * @return a snapshot suitable for serialization.
+	 */
+	synchronized ProjectCache snapshot() {
+
+		ProjectCache copy = new ProjectCache();
+		copy.artifactId = this.artifactId;
+		copy.groupId = this.groupId;
+		copy.descriptor = this.descriptor;
+		for (VersionProperty property : this.properties) {
+			copy.properties.add(property.snapshot());
+		}
+		return copy;
 	}
 
 	@Override

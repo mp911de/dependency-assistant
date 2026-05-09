@@ -32,7 +32,6 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
@@ -161,14 +160,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public void invalidateState(PsiFile file) {
-
-			if (!MavenUtils.isMavenPomFile(file)) {
-				return;
-			}
-
-			ProjectState projectState = service.getProjectState(getProjectId());
-			projectState.invalidateDependencies();
-			projectState.setDependencies(collect(file, projectContext.getMavenProject()));
+			new UpdateProjectState(project).readAndUpdate(file);
 		}
 
 		@Override

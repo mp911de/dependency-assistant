@@ -19,6 +19,7 @@ package biz.paluch.dap.artifact;
 import java.util.List;
 import java.util.Set;
 
+import com.intellij.openapi.progress.ProgressIndicator;
 import org.jetbrains.idea.maven.indices.MavenGAVIndex;
 
 /**
@@ -41,12 +42,16 @@ public interface ReleaseSource {
 	/**
 	 * Return all known releases for the given artifact at this source.
 	 * <p>The returned list may be unsorted and may contain release, preview, and
-	 * snapshot versions.
+	 * snapshot versions. Implementations should periodically call
+	 * {@link ProgressIndicator#checkCanceled()} during long-running fetches to
+	 * honor user cancellation.
 	 * @param artifactId the artifact whose releases to retrieve.
+	 * @param indicator the progress indicator used to honor cancellation; must not
+	 * be {@literal null}.
 	 * @return the releases known to this source.
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
 	 */
-	List<Release> getReleases(ArtifactId artifactId);
+	List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator);
 
 	/**
 	 * Return the built-in {@link ReleaseSource} backed by Maven Central.
@@ -81,10 +86,9 @@ public interface ReleaseSource {
 		}
 
 		@Override
-		public List<Release> getReleases(ArtifactId artifactId) {
+		public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
 			Set<String> versions = index.getVersions(artifactId.groupId(), artifactId.artifactId());
-
 			return versions.stream().map(Release::of).toList();
 		}
 	}

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * You may obtain a snapshot of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -64,7 +64,7 @@ public class Cache {
 	 * update has been applied yet.
 	 */
 	@Attribute
-	private long lastUpdateTimestamp = 0L;
+	private volatile long lastUpdateTimestamp = 0L;
 
 	private final @XCollection(propertyElementName = "artifacts", elementName = "artifact", style = XCollection.Style.v2) List<CachedArtifact> artifacts = new ArrayList<>();
 
@@ -73,10 +73,15 @@ public class Cache {
 
 	/**
 	 * Return the {@link Instant} of the last recorded cache update.
+	 *
+	 * @return the last-update instant, or {@literal null} if no update has been
+	 * applied yet.
 	 */
-	public Instant getLastUpdate() {
-		return Instant.ofEpochMilli(lastUpdateTimestamp);
+	public @Nullable Instant getLastUpdate() {
+		long timestamp = lastUpdateTimestamp;
+		return timestamp == 0L ? null : Instant.ofEpochMilli(timestamp);
 	}
+
 
 	/**
 	 * Return a snapshot of the known project cache entries.
@@ -118,7 +123,7 @@ public class Cache {
 		if (ensureRecent) {
 			Duration age = getAge();
 
-			if (age.compareTo(CACHE_EXPIRATION) > 0) {
+			if (age == null || age.compareTo(CACHE_EXPIRATION) > 0) {
 				return List.of();
 			}
 		}
@@ -157,9 +162,13 @@ public class Cache {
 	 */
 	public void putVersionOptions(ArtifactId artifactId, List<Release> releases) {
 
-		CachedArtifact artifactToUse;
+		List<CachedRelease> converted = new ArrayList<>(releases.size());
+		for (Release release : releases) {
+			converted.add(CachedRelease.from(release));
+		}
+
 		synchronized (artifacts) {
-			artifactToUse = null;
+			CachedArtifact artifactToUse = null;
 			for (CachedArtifact artifact : artifacts) {
 				if (artifact.matches(artifactId)) {
 					artifactToUse = artifact;
@@ -170,14 +179,8 @@ public class Cache {
 				artifactToUse = new CachedArtifact(artifactId);
 				artifacts.add(artifactToUse);
 			}
+			artifactToUse.replaceCachedReleases(converted);
 		}
-
-		List<CachedRelease> converted = new ArrayList<>(releases.size());
-		for (Release release : releases) {
-			String versionText = release.version().toString();
-			converted.add(CachedRelease.from(release));
-		}
-		artifactToUse.replaceCachedReleases(converted);
 	}
 
 	/**
@@ -297,13 +300,45 @@ public class Cache {
 	/**
 	 * Return the age of the cache relative to the last recorded update.
 	 *
-	 * @return the duration since {@link #recordUpdate()} or the configured
-	 * timestamp was last applied.
+	 * @return the duration since {@link #recordUpdate()} was last applied, or
+	 * {@literal null} if no update has been applied yet.
 	 */
-	public Duration getAge() {
-		Instant instant = CLOCK.instant();
-		Instant lastUpdateInstant = Instant.ofEpochMilli(lastUpdateTimestamp);
-		return Duration.between(lastUpdateInstant, instant);
+	public @Nullable Duration getAge() {
+		Instant lastUpdate = getLastUpdate();
+		if (lastUpdate == null) {
+			return null;
+		}
+		return Duration.between(lastUpdate, CLOCK.instant());
+	}
+
+	/**
+	 * Return a deep snapshot of this cache safe for serialization while concurrent
+	 * mutations may still be in progress.
+	 *
+	 * @return a snapshot suitable for serialization.
+	 */
+	Cache snapshot() {
+
+		Cache copy = new Cache();
+		copy.lastUpdateTimestamp = this.lastUpdateTimestamp;
+
+		synchronized (artifacts) {
+			for (CachedArtifact artifact : artifacts) {
+				CachedArtifact artifactCopy = new CachedArtifact(artifact.getGroupId(), artifact.getArtifactId());
+				artifactCopy.replaceCachedReleases(new ArrayList<>(artifact.getReleases()));
+				copy.artifacts.add(artifactCopy);
+			}
+		}
+
+		synchronized (projects) {
+			for (ProjectCache project : projects) {
+				if (project != null) {
+					copy.projects.add(project.snapshot());
+				}
+			}
+		}
+
+		return copy;
 	}
 
 }

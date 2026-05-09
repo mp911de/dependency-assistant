@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * You may obtain a snapshot of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -174,6 +174,23 @@ public class VersionProperty {
 	 */
 	public boolean hasArtifacts() {
 		return !artifacts.isEmpty();
+	}
+
+	/**
+	 * Return a snapshot of this property safe to hand off to the platform
+	 * serializer while concurrent mutations may still be in progress.
+	 *
+	 * @return a snapshot with independent artifact list.
+	 */
+	VersionProperty snapshot() {
+
+		VersionProperty copy;
+		synchronized (this.artifacts) {
+			copy = new VersionProperty(this.name, new ArrayList<>(this.artifacts));
+		}
+		copy.declared = this.declared;
+		copy.used = this.used;
+		return copy;
 	}
 
 }

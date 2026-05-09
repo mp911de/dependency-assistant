@@ -25,6 +25,7 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
+import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
@@ -95,13 +96,13 @@ class GitHubFixtures {
 	static class EmptyApiClient implements GitHubReleaseSource.GitHubApiClient {
 
 		@Override
-		public <T> List<T> loadAll(GithubApiPagesLoader.Request<T> request) {
+		public <T> List<T> loadAll(ProgressIndicator indicator, GithubApiPagesLoader.Request<T> request) {
 			return List.of();
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public <T> T loadOne(GithubApiRequest<T> request) {
+		public <T> T loadOne(ProgressIndicator indicator, GithubApiRequest<T> request) {
 			return (T) new org.jetbrains.plugins.github.api.data.GithubResponsePage<>(List.of(), null, null, null,
 					null);
 		}

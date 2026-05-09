@@ -18,6 +18,8 @@ package biz.paluch.dap.artifact;
 
 import java.util.List;
 
+import com.intellij.openapi.progress.ProgressIndicator;
+
 /**
  * {@link ReleaseSource} for Gradle Plugin Portal marker artifacts.
  *
@@ -44,7 +46,7 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId) {
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
 		if (!artifactId.groupId().equals(artifactId.artifactId())) {
 			return List.of();
@@ -53,7 +55,7 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 		String pluginId = artifactId.groupId();
 		ArtifactId markerArtifact = ArtifactId.of(pluginId, pluginId + ".gradle.plugin");
 
-		return GRADLE_PLUGIN_PORTAL.getReleases(markerArtifact);
+		return GRADLE_PLUGIN_PORTAL.getReleases(markerArtifact, indicator);
 	}
 
 }

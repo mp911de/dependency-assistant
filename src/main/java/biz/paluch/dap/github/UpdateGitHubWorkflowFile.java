@@ -111,7 +111,11 @@ class UpdateGitHubWorkflowFile {
 			return;
 		}
 
-		updateVersionAndComment(scalar, ref.getVersion((GitVersion) update.version()));
+		if (!(update.version() instanceof GitVersion gitVersion)) {
+			return;
+		}
+
+		updateVersionAndComment(scalar, ref.getVersion(gitVersion));
 	}
 
 	/**
