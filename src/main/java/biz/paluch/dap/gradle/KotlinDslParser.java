@@ -323,7 +323,24 @@ class KotlinDslParser extends GradleParser {
 			}
 		}
 
+		for (KtCallExpression call : SyntaxTraverser.psiTraverser(file)
+				.filter(KtCallExpression.class)) {
+			if (isPropertyCallReference(call, propertyName) && isReferenceInsideSupportedVersionLiteral(call)) {
+				return true;
+			}
+		}
+
 		return false;
+	}
+
+	private static boolean isPropertyCallReference(KtCallExpression call, String propertyName) {
+
+		if (!"property".equals(KotlinDslUtils.getKotlinCallName(call))) {
+			return false;
+		}
+
+		KtExpression argument = KotlinDslUtils.getFirstValueArgument(call);
+		return argument != null && propertyName.equals(KtLiterals.getText(argument));
 	}
 
 	private static boolean isVersionPropertyReference(KtNameReferenceExpression reference) {

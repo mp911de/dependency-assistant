@@ -17,6 +17,7 @@
 package biz.paluch.dap.gradle;
 
 import java.util.Locale;
+import java.util.function.Predicate;
 
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
@@ -36,7 +37,6 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
-import org.jetbrains.plugins.groovy.lang.psi.patterns.GroovyPatterns;
 
 /**
  * Completion contributor for Gradle Groovy DSL.
@@ -68,24 +68,22 @@ public class GroovyCompletionContributor extends CompletionContributor {
 	private static final PatternCondition<PsiFile> IS_GRADLE_GROOVY_DSL_FILE = PatternConditions.conditional(
 			"isGradleGroovyDslFile", GradleUtils::isGroovyDsl);
 
-	private static final PatternCondition<GrLiteral> DIRECT_DEPENDENCY_NOTATION = PatternConditions.conditional(
-			"directDependencyNotation", literal -> GradleParser.isStringLiteral(literal)
-					&& GradleParser.isDirectDependencyNotationLiteral(literal));
+	private static final PatternCondition<PsiElement> DIRECT_DEPENDENCY_NOTATION_POSITION = literalPosition(
+			"directDependencyNotationPosition", GradleParser::isDirectDependencyNotationLiteral);
 
-	private static final PatternCondition<GrLiteral> VERSION_NAMED_ARGUMENT_LITERAL = PatternConditions.conditional(
-			"versionNamedArgumentLiteral", literal -> GradleParser.isStringLiteral(literal)
-					&& GradleParser.isVersionNamedArgumentLiteral(literal));
+	private static final PatternCondition<PsiElement> VERSION_NAMED_ARGUMENT_LITERAL_POSITION = literalPosition(
+			"versionNamedArgumentLiteralPosition", GradleParser::isVersionNamedArgumentLiteral);
 
 	private static final PatternCondition<GrReferenceExpression> VERSION_NAMED_ARGUMENT_REFERENCE = PatternConditions
 			.conditional("versionNamedArgumentReference", GradleParser::isVersionNamedArgumentReference);
 
-	private static final PatternCondition<GrLiteral> PREFER_VERSION_BLOCK_LITERAL = PatternConditions.conditional(
-			"preferVersionBlockLiteral", literal -> GradleParser.isStringLiteral(literal)
-					&& GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER));
+	private static final PatternCondition<PsiElement> PREFER_VERSION_BLOCK_POSITION = literalPosition(
+			"preferVersionBlockPosition",
+			literal -> GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER));
 
-	private static final PatternCondition<GrLiteral> STRICTLY_VERSION_BLOCK_LITERAL = PatternConditions.conditional(
-			"strictlyVersionBlockLiteral", literal -> GradleParser.isStringLiteral(literal)
-					&& GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY));
+	private static final PatternCondition<PsiElement> STRICTLY_VERSION_BLOCK_POSITION = literalPosition(
+			"strictlyVersionBlockPosition",
+			literal -> GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY));
 
 	private static final PatternCondition<GrReferenceExpression> PREFER_VERSION_BLOCK_REFERENCE = PatternConditions
 			.conditional("preferVersionBlockReference",
@@ -95,28 +93,26 @@ public class GroovyCompletionContributor extends CompletionContributor {
 			.conditional("strictlyVersionBlockReference",
 					reference -> GradleParser.isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY));
 
-	private static final PatternCondition<GrLiteral> PLUGIN_VERSION_LITERAL = PatternConditions.conditional(
-			"pluginVersionLiteral", literal -> GradleParser.isStringLiteral(literal)
-					&& GradleParser.isPluginVersionLiteral(literal));
+	private static final PatternCondition<PsiElement> PLUGIN_VERSION_POSITION = literalPosition(
+			"pluginVersionPosition", GradleParser::isPluginVersionLiteral);
 
-	private static final PatternCondition<GrLiteral> BACKING_VERSION_PROPERTY_LITERAL = PatternConditions.conditional(
-			"backingVersionPropertyLiteral", literal -> GradleParser.isStringLiteral(literal)
-					&& GradleParser.isBackingVersionPropertyLiteral(literal));
+	private static final PatternCondition<PsiElement> BACKING_VERSION_PROPERTY_POSITION = literalPosition(
+			"backingVersionPropertyPosition", GradleParser::isBackingVersionPropertyLiteral);
 
-	private static final PsiElementPattern.Capture<PsiElement> INLINE_DEPENDENCY_NOTATION = insideGradleGroovyFile(
-			GroovyPatterns.groovyLiteralExpression().with(DIRECT_DEPENDENCY_NOTATION));
+	private static final PsiElementPattern.Capture<PsiElement> INLINE_DEPENDENCY_NOTATION = inGradleGroovyFile(
+			DIRECT_DEPENDENCY_NOTATION_POSITION);
 
-	private static final PsiElementPattern.Capture<PsiElement> MAP_LITERAL_VERSION = insideGradleGroovyFile(
-			GroovyPatterns.groovyLiteralExpression().with(VERSION_NAMED_ARGUMENT_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> MAP_LITERAL_VERSION = inGradleGroovyFile(
+			VERSION_NAMED_ARGUMENT_LITERAL_POSITION);
 
 	private static final PsiElementPattern.Capture<PsiElement> MAP_PROPERTY_VERSION = insideGradleGroovyFile(
 			PlatformPatterns.psiElement(GrReferenceExpression.class).with(VERSION_NAMED_ARGUMENT_REFERENCE));
 
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_LITERAL_VERSION = insideGradleGroovyFile(
-			GroovyPatterns.groovyLiteralExpression().with(PREFER_VERSION_BLOCK_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_LITERAL_VERSION = inGradleGroovyFile(
+			PREFER_VERSION_BLOCK_POSITION);
 
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_LITERAL_VERSION = insideGradleGroovyFile(
-			GroovyPatterns.groovyLiteralExpression().with(STRICTLY_VERSION_BLOCK_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_LITERAL_VERSION = inGradleGroovyFile(
+			STRICTLY_VERSION_BLOCK_POSITION);
 
 	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_PROPERTY_VERSION = insideGradleGroovyFile(
 			PlatformPatterns.psiElement(GrReferenceExpression.class).with(PREFER_VERSION_BLOCK_REFERENCE));
@@ -124,11 +120,11 @@ public class GroovyCompletionContributor extends CompletionContributor {
 	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_PROPERTY_VERSION = insideGradleGroovyFile(
 			PlatformPatterns.psiElement(GrReferenceExpression.class).with(STRICTLY_VERSION_BLOCK_REFERENCE));
 
-	private static final PsiElementPattern.Capture<PsiElement> PLUGIN_DSL_VERSION = insideGradleGroovyFile(
-			GroovyPatterns.groovyLiteralExpression().with(PLUGIN_VERSION_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> PLUGIN_DSL_VERSION = inGradleGroovyFile(
+			PLUGIN_VERSION_POSITION);
 
-	private static final PsiElementPattern.Capture<PsiElement> BACKING_VERSION_PROPERTY = insideGradleGroovyFile(
-			GroovyPatterns.groovyLiteralExpression().with(BACKING_VERSION_PROPERTY_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> BACKING_VERSION_PROPERTY = inGradleGroovyFile(
+			BACKING_VERSION_PROPERTY_POSITION);
 
 	public GroovyCompletionContributor() {
 
@@ -177,6 +173,23 @@ public class GroovyCompletionContributor extends CompletionContributor {
 		return PlatformPatterns.psiElement()
 				.inside(pattern)
 				.inside(PlatformPatterns.psiFile().with(IS_GRADLE_GROOVY_DSL_FILE));
+	}
+
+	private static PsiElementPattern.Capture<PsiElement> inGradleGroovyFile(
+			PatternCondition<? super PsiElement> condition) {
+
+		return PlatformPatterns.psiElement()
+				.with(condition)
+				.inside(PlatformPatterns.psiFile().with(IS_GRADLE_GROOVY_DSL_FILE));
+	}
+
+	private static PatternCondition<PsiElement> literalPosition(String name,
+			Predicate<GrLiteral> predicate) {
+
+		return PatternConditions.conditional(name, position -> {
+			GrLiteral literal = PsiTreeUtil.getParentOfType(position, GrLiteral.class, false);
+			return literal != null && GradleParser.isStringLiteral(literal) && predicate.test(literal);
+		});
 	}
 
 	public static boolean isSupportedCompletionSite(PsiElement position) {

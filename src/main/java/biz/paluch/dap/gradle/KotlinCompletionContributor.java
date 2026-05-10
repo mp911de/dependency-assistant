@@ -17,6 +17,7 @@
 package biz.paluch.dap.gradle;
 
 import java.util.Locale;
+import java.util.function.Predicate;
 
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
@@ -72,26 +73,26 @@ public class KotlinCompletionContributor extends CompletionContributor {
 
 	// Inline dependency/platform notation such as
 	// `implementation("group:name:version")`.
-	private static final PatternCondition<KtStringTemplateExpression> DIRECT_DEPENDENCY_NOTATION = PatternConditions
-			.conditional("directDependencyNotation", KotlinDslParser::isDirectDependencyNotationLiteral);
+	private static final PatternCondition<PsiElement> DIRECT_DEPENDENCY_NOTATION_POSITION = literalPosition(
+			"directDependencyNotationPosition", KotlinDslParser::isDirectDependencyNotationLiteral);
 
 	// Map notation with a literal version such as `version = "1.0.0"`.
-	private static final PatternCondition<KtStringTemplateExpression> VERSION_NAMED_ARGUMENT_LITERAL = PatternConditions
-			.conditional("versionNamedArgumentLiteral", KotlinDslParser::isVersionNamedArgumentLiteral);
+	private static final PatternCondition<PsiElement> VERSION_NAMED_ARGUMENT_LITERAL_POSITION = literalPosition(
+			"versionNamedArgumentLiteralPosition", KotlinDslParser::isVersionNamedArgumentLiteral);
 
 	// Map notation with a property reference such as `version = junit`.
 	private static final PatternCondition<KtNameReferenceExpression> VERSION_NAMED_ARGUMENT_REFERENCE = PatternConditions
 			.conditional("versionNamedArgumentReference", KotlinDslParser::isVersionNamedArgumentReference);
 
 	// Version blocks with literal preferred versions such as `prefer("1.0.0")`.
-	private static final PatternCondition<KtStringTemplateExpression> PREFER_VERSION_BLOCK_LITERAL = PatternConditions
-			.conditional("preferVersionBlockLiteral",
-					literal -> KotlinDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER));
+	private static final PatternCondition<PsiElement> PREFER_VERSION_BLOCK_POSITION = literalPosition(
+			"preferVersionBlockPosition",
+			literal -> KotlinDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER));
 
 	// Version blocks with literal strict versions such as `strictly("1.0.0")`.
-	private static final PatternCondition<KtStringTemplateExpression> STRICTLY_VERSION_BLOCK_LITERAL = PatternConditions
-			.conditional("strictlyVersionBlockLiteral",
-					literal -> KotlinDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY));
+	private static final PatternCondition<PsiElement> STRICTLY_VERSION_BLOCK_POSITION = literalPosition(
+			"strictlyVersionBlockPosition",
+			literal -> KotlinDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY));
 
 	// Version blocks with preferred property references such as `prefer(junit)`.
 	private static final PatternCondition<KtNameReferenceExpression> PREFER_VERSION_BLOCK_REFERENCE = PatternConditions
@@ -104,28 +105,28 @@ public class KotlinCompletionContributor extends CompletionContributor {
 					reference -> KotlinDslParser.isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY));
 
 	// Plugin DSL version clauses such as `id("plugin.id") version "1.0.0"`.
-	private static final PatternCondition<KtStringTemplateExpression> PLUGIN_VERSION_LITERAL = PatternConditions
-			.conditional("pluginVersionLiteral", KotlinDslParser::isPluginVersionLiteral);
+	private static final PatternCondition<PsiElement> PLUGIN_VERSION_POSITION = literalPosition(
+			"pluginVersionPosition", KotlinDslParser::isPluginVersionLiteral);
 
 	// Backing Kotlin/extra properties such as `val junit = "1.0.0"` or
 	// `extra["junit"] = "1.0.0"`.
-	private static final PatternCondition<KtStringTemplateExpression> BACKING_VERSION_PROPERTY_LITERAL = PatternConditions
-			.conditional("backingVersionPropertyLiteral", KotlinDslParser::isBackingVersionPropertyLiteral);
+	private static final PatternCondition<PsiElement> BACKING_VERSION_PROPERTY_POSITION = literalPosition(
+			"backingVersionPropertyPosition", KotlinDslParser::isBackingVersionPropertyLiteral);
 
-	private static final PsiElementPattern.Capture<PsiElement> INLINE_DEPENDENCY_NOTATION = insideGradleKotlinFile(
-			PlatformPatterns.psiElement(KtStringTemplateExpression.class).with(DIRECT_DEPENDENCY_NOTATION));
+	private static final PsiElementPattern.Capture<PsiElement> INLINE_DEPENDENCY_NOTATION = inGradleKotlinFile(
+			DIRECT_DEPENDENCY_NOTATION_POSITION);
 
-	private static final PsiElementPattern.Capture<PsiElement> MAP_LITERAL_VERSION = insideGradleKotlinFile(
-			PlatformPatterns.psiElement(KtStringTemplateExpression.class).with(VERSION_NAMED_ARGUMENT_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> MAP_LITERAL_VERSION = inGradleKotlinFile(
+			VERSION_NAMED_ARGUMENT_LITERAL_POSITION);
 
 	private static final PsiElementPattern.Capture<PsiElement> MAP_PROPERTY_VERSION = insideGradleKotlinFile(
 			PlatformPatterns.psiElement(KtNameReferenceExpression.class).with(VERSION_NAMED_ARGUMENT_REFERENCE));
 
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_LITERAL_VERSION = insideGradleKotlinFile(
-			PlatformPatterns.psiElement(KtStringTemplateExpression.class).with(PREFER_VERSION_BLOCK_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_LITERAL_VERSION = inGradleKotlinFile(
+			PREFER_VERSION_BLOCK_POSITION);
 
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_LITERAL_VERSION = insideGradleKotlinFile(
-			PlatformPatterns.psiElement(KtStringTemplateExpression.class).with(STRICTLY_VERSION_BLOCK_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_LITERAL_VERSION = inGradleKotlinFile(
+			STRICTLY_VERSION_BLOCK_POSITION);
 
 	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_PROPERTY_VERSION = insideGradleKotlinFile(
 			PlatformPatterns.psiElement(KtNameReferenceExpression.class).with(PREFER_VERSION_BLOCK_REFERENCE));
@@ -133,11 +134,11 @@ public class KotlinCompletionContributor extends CompletionContributor {
 	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_PROPERTY_VERSION = insideGradleKotlinFile(
 			PlatformPatterns.psiElement(KtNameReferenceExpression.class).with(STRICTLY_VERSION_BLOCK_REFERENCE));
 
-	private static final PsiElementPattern.Capture<PsiElement> PLUGIN_DSL_VERSION = insideGradleKotlinFile(
-			PlatformPatterns.psiElement(KtStringTemplateExpression.class).with(PLUGIN_VERSION_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> PLUGIN_DSL_VERSION = inGradleKotlinFile(
+			PLUGIN_VERSION_POSITION);
 
-	private static final PsiElementPattern.Capture<PsiElement> BACKING_VERSION_PROPERTY = insideGradleKotlinFile(
-			PlatformPatterns.psiElement(KtStringTemplateExpression.class).with(BACKING_VERSION_PROPERTY_LITERAL));
+	private static final PsiElementPattern.Capture<PsiElement> BACKING_VERSION_PROPERTY = inGradleKotlinFile(
+			BACKING_VERSION_PROPERTY_POSITION);
 
 	public KotlinCompletionContributor() {
 
@@ -186,6 +187,24 @@ public class KotlinCompletionContributor extends CompletionContributor {
 		return PlatformPatterns.psiElement()
 				.inside(pattern)
 				.inside(PlatformPatterns.psiFile().with(IS_GRADLE_KOTLIN_DSL_FILE));
+	}
+
+	private static PsiElementPattern.Capture<PsiElement> inGradleKotlinFile(
+			PatternCondition<? super PsiElement> condition) {
+
+		return PlatformPatterns.psiElement()
+				.with(condition)
+				.inside(PlatformPatterns.psiFile().with(IS_GRADLE_KOTLIN_DSL_FILE));
+	}
+
+	private static PatternCondition<PsiElement> literalPosition(String name,
+			Predicate<KtStringTemplateExpression> predicate) {
+
+		return PatternConditions.conditional(name, position -> {
+			KtStringTemplateExpression literal = PsiTreeUtil.getParentOfType(position,
+					KtStringTemplateExpression.class, false);
+			return literal != null && predicate.test(literal);
+		});
 	}
 
 	public static boolean isSupportedCompletionSite(PsiElement position) {

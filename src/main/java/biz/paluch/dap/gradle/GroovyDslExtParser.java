@@ -129,7 +129,7 @@ class GroovyDslExtParser {
 						String name = variable.getName();
 						GrExpression initializer = variable.getInitializerGroovy();
 						if (initializer instanceof GrLiteral literal
-								&& GroovyDslUtils.hasText(literal)) {
+								&& isStringLiteral(literal)) {
 							elements.put(name,
 									new PropertyValue(name, GroovyDslUtils.getRequiredText(literal), literal));
 							continue;
@@ -137,7 +137,7 @@ class GroovyDslExtParser {
 
 						if (initializer instanceof GrString gstr && gstr.getInjections().length == 0) {
 							GrLiteral innerLiteral = PsiTreeUtil.findChildOfType(gstr, GrLiteral.class);
-							if (GroovyDslUtils.hasText(innerLiteral)) {
+							if (innerLiteral != null && isStringLiteral(innerLiteral)) {
 								elements.put(name,
 										new PropertyValue(name, GroovyDslUtils.getRequiredText(innerLiteral),
 												innerLiteral));
@@ -163,7 +163,7 @@ class GroovyDslExtParser {
 						GrExpression rhs = assign.getRValue();
 						if (lhs instanceof GrReferenceExpression ref && ref.getQualifierExpression() == null) {
 							String key = ref.getReferenceName();
-							if (key != null && rhs instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
+							if (key != null && rhs instanceof GrLiteral literal && isStringLiteral(literal)) {
 								elements.put(key,
 										new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
 							}
@@ -176,7 +176,7 @@ class GroovyDslExtParser {
 						PsiElement[] args = setCall.getArgumentList().getAllArguments();
 						if (args.length >= 2 && args[0] instanceof GrLiteral keyLit
 								&& keyLit.getValue() instanceof String key
-								&& args[1] instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
+								&& args[1] instanceof GrLiteral literal && isStringLiteral(literal)) {
 							elements.put(key,
 									new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
 						}
@@ -200,12 +200,16 @@ class GroovyDslExtParser {
 		if (qualifier instanceof GrReferenceExpression qualRef
 				&& GradleUtils.EXT.equals(qualRef.getReferenceName())) {
 			String key = ref.getReferenceName();
-			if (key != null && rhs instanceof GrLiteral literal && GroovyDslUtils.hasText(literal)) {
+			if (key != null && rhs instanceof GrLiteral literal && isStringLiteral(literal)) {
 				elements.put(key, new PropertyValue(key, GroovyDslUtils.getRequiredText(literal), literal));
 			}
 		}
 
 		return elements;
+	}
+
+	private static boolean isStringLiteral(GrLiteral literal) {
+		return literal.getValue() instanceof String;
 	}
 
 }

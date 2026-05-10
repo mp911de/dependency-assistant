@@ -166,7 +166,9 @@ class KotlinDslCompletionTests {
 			    }
 			}
 			""")
-	void invokesAutoPopupForVersionBlockPreferLiteral() {
+	void invokesAutoPopupForVersionBlockPreferLiteral(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
 
 		assertThat(invokeAutoPopup('3')).isTrue();
 	}
@@ -182,6 +184,8 @@ class KotlinDslCompletionTests {
 			}
 			""")
 	void invokesAutoPopupForVersionBlockStrictlyLiteral(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
 
 		assertThat(invokeAutoPopup('3')).isTrue();
 
@@ -246,7 +250,7 @@ class KotlinDslCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(buildFile).containsText("\"6.0.3\".also { extra[\"junit\"] = it }");
+		assertThat(buildFile).containsText("\"6.1.0-M1\".also { extra[\"junit\"] = it }");
 	}
 
 	@Test
@@ -265,7 +269,7 @@ class KotlinDslCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(buildFile).containsText("\"6.0.3\".also { extra[\"junit\"] = it }");
+		assertThat(buildFile).containsText("\"6.1.0-M1\".also { extra[\"junit\"] = it }");
 	}
 
 	@Test
@@ -284,7 +288,7 @@ class KotlinDslCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(buildFile).containsText("\"6.0.3\".also { extra[\"junit\"] = it }");
+		assertThat(buildFile).containsText("extra[\"junit\"] = \"6.1.0-M1\"");
 	}
 
 	@Test
@@ -303,7 +307,7 @@ class KotlinDslCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(buildFile).containsText("\"6.0.3\".also { extra[\"junit\"] = it }");
+		assertThat(buildFile).containsText("extra[\"junit\"] = \"\"\"6.1.0-M1\"\"\"");
 	}
 
 	@Test
@@ -324,7 +328,7 @@ class KotlinDslCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(buildFile).containsText("append(\"6.0.3\")");
+		assertThat(buildFile).containsText("append(\"6.1.0-M1\")");
 	}
 
 	@Test

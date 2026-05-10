@@ -287,7 +287,22 @@ class GradleParser extends GradleParserSupport {
 	private static boolean isVersionPropertyReference(GrReferenceExpression reference) {
 		return isVersionNamedArgumentReference(reference)
 				|| isVersionBlockReference(reference, GradleVersionConstraint.PREFER)
-				|| isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY);
+				|| isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY)
+				|| isReferenceInsideSupportedVersionLiteral(reference);
+	}
+
+	private static boolean isReferenceInsideSupportedVersionLiteral(GrReferenceExpression reference) {
+
+		GrLiteral literal = PsiTreeUtil.getParentOfType(reference, GrLiteral.class);
+		return literal != null && isSupportedVersionLiteral(literal);
+	}
+
+	private static boolean isSupportedVersionLiteral(GrLiteral literal) {
+		return isDirectDependencyNotationLiteral(literal)
+				|| isVersionNamedArgumentLiteral(literal)
+				|| isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER)
+				|| isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY)
+				|| isPluginVersionLiteral(literal);
 	}
 
 	private static boolean isDependencyOrPlatformCall(GrMethodCall call) {

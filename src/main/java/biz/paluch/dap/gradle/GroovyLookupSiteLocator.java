@@ -82,6 +82,11 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 		if (element instanceof GrLiteral literal) {
 
+			LookupSite versionBlockSite = locateVersionBlockLiteral(literal);
+			if (versionBlockSite.isPresent()) {
+				return versionBlockSite;
+			}
+
 			LookupSite propertySite = locatePropertyLiteral(literal);
 			if (propertySite.isPresent()) {
 				return propertySite;
@@ -238,6 +243,21 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		return reference != null ? LookupSite.ofTomlReference(reference, catalogCall) : LookupSite.absent();
 	}
 
+	private LookupSite locateVersionBlockLiteral(GrLiteral literal) {
+
+		DependencySite site = resolveVersionBlockLiteral(literal, propertyResolver);
+		if (site == null) {
+			return LookupSite.absent();
+		}
+
+		if (site instanceof VersionedDependencySite) {
+			return LookupSite.from(site);
+		}
+
+		return new LookupSite.ArtifactIdLookupSite(site.getArtifactId(), site.getVersionSource(),
+				site.getDeclarationElement(), literal);
+	}
+
 	/**
 	 * Resolve a version-block literal inside a Groovy dependency declaration.
 	 * <p>Matches literals used in declarations such as: <pre class="code">
@@ -253,7 +273,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 * @return the resolved dependency site, or {@code null} if the literal does not
 	 * belong to a supported version block.
 	 */
-	private static @Nullable VersionedDependencySite resolveVersionBlockLiteral(GrLiteral literal,
+	private static @Nullable DependencySite resolveVersionBlockLiteral(GrLiteral literal,
 			PropertyResolver propertyResolver) {
 
 		if (PsiTreeUtil.getParentOfType(literal, GrStringInjection.class) != null) {
@@ -310,10 +330,11 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 		String version = GroovyDslUtils.getText(literal);
 		ArtifactId artifactId = GradleArtifactId.from(gav).resolve(propertyResolver);
+		VersionSource versionSource = VersionSource.declared(version);
 
 		return ArtifactVersion.from(version).map(
-				it -> VersionedDependencySite.of(artifactId, it, VersionSource.declared(version), depCall, literal))
-				.orElse(null);
+				it -> (DependencySite) VersionedDependencySite.of(artifactId, it, versionSource, depCall, literal))
+				.orElseGet(() -> DependencySite.of(artifactId, versionSource, depCall));
 	}
 
 	/**
