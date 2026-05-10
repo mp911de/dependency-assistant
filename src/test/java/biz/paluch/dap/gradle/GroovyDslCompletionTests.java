@@ -20,13 +20,14 @@ import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
+import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for Groovy DSL completion.
@@ -42,6 +43,10 @@ class GroovyDslCompletionTests {
 	void setUp() {
 		GradleFixtures.setup(fixture.getProject());
 	}
+
+	// -------------------------------------------------------------------------
+	// GAV style
+	// -------------------------------------------------------------------------
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
@@ -61,9 +66,50 @@ class GroovyDslCompletionTests {
 			}
 			""")
 	void invokesAutoPopupForPlatformGavVersion() {
-
 		assertThat(invokeAutoPopup('3')).isTrue();
 	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom<caret>'
+			}
+			""")
+	void invokesAutoPopupForCompactNotationColon() {
+
+		assertThat(invokeAutoPopup(':')).isTrue();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			println 'org.junit:junit-bom<caret>'
+			""")
+	void doesNotInvokeAutoPopupForUnrelatedColon() {
+
+		assertThat(invokeAutoPopup(':')).isFalse();
+	}
+
+	// -------------------------------------------------------------------------
+	// Plugins
+	// -------------------------------------------------------------------------
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			plugins {
+			    id 'org.springframework.boot' version '4.0.<caret>'
+			}
+			""")
+	void completesPluginDslVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("4.0.5");
+	}
+
+	// -------------------------------------------------------------------------
+	// Map style
+	// -------------------------------------------------------------------------
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
@@ -78,6 +124,20 @@ class GroovyDslCompletionTests {
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation group: 'org.junit', name: 'junit-bom', version: '6.0.<caret>'
+			}
+			""")
+	void invokesAutoPopupForRegisteredVersionLiteral(PsiFile buildFile) {
+
+		assertThat(invokeAutoPopup('3')).isTrue();
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("version: '6.0.<caret>'");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
 			def junit = '6.0.<caret>'
 			dependencies {
 			    implementation group: 'org.junit', name: 'junit-bom', version: junit
@@ -85,8 +145,19 @@ class GroovyDslCompletionTests {
 			""")
 	void completesMapNotationPropertyBackedVersion(PsiFile buildFile) {
 
-		assertCompletes(buildFile, "6.0.3");
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile)
+				.containsText("junit = '6.0.3'");
 	}
+
+	// -------------------------------------------------------------------------
+	// Version block
+	// -------------------------------------------------------------------------
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
@@ -113,9 +184,15 @@ class GroovyDslCompletionTests {
 			    }
 			}
 			""")
-	void invokesAutoPopupForVersionBlockStrictlyLiteral() {
+	void invokesAutoPopupForVersionBlockStrictlyLiteral(PsiFile buildFile) {
 
 		assertThat(invokeAutoPopup('3')).isTrue();
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("strictly '6.0.3'");
 	}
 
 	@Test
@@ -131,7 +208,10 @@ class GroovyDslCompletionTests {
 			""")
 	void completesVersionBlockPropertyBackedPrefer(PsiFile buildFile) {
 
-		assertCompletes(buildFile, "6.0.3");
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 	}
 
 	@Test
@@ -148,38 +228,15 @@ class GroovyDslCompletionTests {
 			""")
 	void completesVersionVariable(PsiFile buildFile) {
 
-		assertCompletes(buildFile, "6.0.3");
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle", content = """
-			plugins {
-			    id 'org.springframework.boot' version '4.0.<caret>'
-			}
-			""")
-	void completesPluginDslVersion(PsiFile buildFile) {
-
-		assertCompletes(buildFile, "4.0.5");
-	}
-
-	@Test
-	@ProjectFile(name = "gradle/libs.versions.toml", content = """
-			[libraries]
-			junit = { module = "org.junit:junit-bom", version = "6.0.0" }
-			""")
-	@EditorFile(name = "build.gradle", content = """
-			dependencies {
-			    implementation libs.junit<caret>
-			}
-			""")
-	void doesNotCompleteCatalogAccessorReference(PsiFile toml, @ProjectFile("build.gradle") PsiFile buildFile) {
-
-		GradleFixtures.analyze(toml, buildFile);
+		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-
-		assertThat(fixture.getLookupElementStrings()).isEmpty();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
 	}
+
+	// -------------------------------------------------------------------------
+	// Properties
+	// -------------------------------------------------------------------------
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
@@ -198,45 +255,17 @@ class GroovyDslCompletionTests {
 
 	@Test
 	@EditorFile(name = "build.gradle", content = """
-			dependencies {
-			    implementation 'org.junit:junit-bom<caret>'
-			}
-			""")
-	void invokesAutoPopupForCompactNotationColon() {
-
-		assertThat(invokeAutoPopup(':')).isTrue();
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle", content = """
-			println 'org.junit:junit-bom<caret>'
-			""")
-	void doesNotInvokeAutoPopupForUnrelatedColon() {
-
-		assertThat(invokeAutoPopup(':')).isFalse();
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle", content = """
-			dependencies {
-			    implementation group: 'org.junit', name: 'junit-bom', version: '6.0.<caret>'
-			}
-			""")
-	void invokesAutoPopupForRegisteredVersionLiteral() {
-
-		assertThat(invokeAutoPopup('3')).isTrue();
-	}
-
-	@Test
-	@EditorFile(name = "build.gradle", content = """
 			def junit = '6.0.<caret>'
 			dependencies {
 			    implementation group: 'org.junit', name: 'junit-bom', version: junit
 			}
 			""")
-	void invokesAutoPopupForBackingVersionProperty() {
+	void invokesAutoPopupForBackingVersionProperty(PsiFile buildFile) {
 
 		assertThat(invokeAutoPopup('3')).isTrue();
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("junit = '6.0.3'");
 	}
 
 	@Test
@@ -249,12 +278,89 @@ class GroovyDslCompletionTests {
 		assertThat(invokeAutoPopup('3')).isFalse();
 	}
 
-	private void assertCompletes(PsiFile buildFile, String expectedVersion) {
+	@EditorFile(name = "build.gradle", content = """
+			ext {
+			    junit = '<caret>'
+			}
+			dependencies {
+			    implementation group: 'org.junit', name: 'junit-bom', version: junit
+			}
+			""")
+	@Test
+	void completesExtBlockProperty(PsiFile buildFile) {
 
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains(expectedVersion);
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("junit = '6.0.3'");
+	}
+
+	@EditorFile(name = "build.gradle", content = """
+			ext.junit = '<caret>'
+			dependencies {
+			    implementation group: 'org.junit', name: 'junit-bom', version: junit
+			}
+			""")
+	@Test
+	void completesExtDotProperty(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("ext.junit = '6.0.3'");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			ext {
+			    set('junit', "<caret>")
+			}
+			dependencyManagement {
+			    imports {
+			        mavenBom "org.junit:junit-bom:${junit}"
+			    }
+			}
+			""")
+	void completesExtSetProperty(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.type('6');
+		fixture.completeBasic();
+
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("set('junit', \"6.0.3\")");
+	}
+
+	// -------------------------------------------------------------------------
+	// Version Catalog
+	// -------------------------------------------------------------------------
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+			junit = { module = "org.junit:junit-bom", version = "6.0.0" }
+			""")
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation libs.junit<caret>
+			}
+			""")
+	void doesNotCompleteCatalogAccessorReference(PsiFile toml, @ProjectFile("build.gradle") PsiFile buildFile) {
+
+		GradleFixtures.analyze(toml, buildFile);
+
+		fixture.completeBasic();
+
+		assertThat(fixture.getLookupElementStrings()).isEmpty();
 	}
 
 	private boolean invokeAutoPopup(char typeChar) {

@@ -25,7 +25,8 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
+
 
 /**
  * PSI-level integration tests for GitHub Actions workflow completion.
@@ -71,6 +72,7 @@ class GitHubWorkflowCompletionTests {
 		GitHubFixtures.analyze(workflowFile);
 
 		fixture.completeBasic();
+
 		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 
@@ -86,6 +88,7 @@ class GitHubWorkflowCompletionTests {
 		GitHubFixtures.analyze(workflowFile);
 
 		fixture.completeBasic();
+
 		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 
@@ -101,6 +104,7 @@ class GitHubWorkflowCompletionTests {
 		GitHubFixtures.analyze(workflowFile);
 
 		fixture.completeBasic();
+
 		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 
@@ -118,8 +122,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("actions/checkout@d1185ce5 # v4.2.0 # bar");
+		assertThat(workflowFile)
+				.containsText("actions/checkout@d1185ce5 # v4.2.0 # bar");
 	}
 
 	@Test

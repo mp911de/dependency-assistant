@@ -2,6 +2,14 @@
 <list>
 	<option name="UPGRADE_AVAILABLE">
 		<value>
+			<option name="BACKGROUND" value="067C063A"/>
+			<option name="ERROR_STRIPE_COLOR" value="C0E1B4FF"/>
+			<option name="FONT_TYPE" value="0"/>
+		</value>
+	</option>
+
+	<option name="UPGRADE_SUGGESTION">
+		<value>
 			<option name="BACKGROUND" value="C2FFC24F"/>
 			<option name="ERROR_STRIPE_COLOR" value="ABEF92FF"/>
 			<option name="FONT_TYPE" value="0"/>

@@ -17,7 +17,8 @@
 package biz.paluch.dap.severity;
 
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.support.MessageBundle;
@@ -34,20 +35,36 @@ import com.intellij.openapi.editor.colors.TextAttributesKey;
 public class DependencyAssistantSeverities extends SeveritiesProvider {
 
 	/**
-	 * Text attributes key for newer dependency versions.
+	 * Text attributes key for upgrade available dependencies.
 	 */
 	public static final TextAttributesKey UPGRADE_AVAILABLE_KEY = TextAttributesKey
 			.createTextAttributesKey("UPGRADE_AVAILABLE");
 
 	/**
-	 * Generic newer-version highlight severity.
+	 * Text attributes key for upgrade suggestions.
+	 */
+	public static final TextAttributesKey UPGRADE_SUGGESTION_KEY = TextAttributesKey
+			.createTextAttributesKey("UPGRADE_SUGGESTION");
+
+	/**
+	 * Upgrade available highlight severity.
 	 */
 	public static final HighlightSeverity UPGRADE_AVAILABLE = new HighlightSeverity(
 			UPGRADE_AVAILABLE_KEY.getExternalName(),
 			HighlightSeverity.INFORMATION.myVal + 5, //
-			MessageBundle.lazyMessage("newer.severity"), //
-			MessageBundle.lazyMessage("newer.severity.capitalized"), //
-			MessageBundle.lazyMessage("newer.severity.count.message"));
+			MessageBundle.lazyMessage("severity.upgrade.available"), //
+			MessageBundle.lazyMessage("severity.upgrade.available.capitalized"), //
+			MessageBundle.lazyMessage("severity.upgrade.available.count.message"));
+
+	/**
+	 * Upgrade suggestion highlight severity.
+	 */
+	public static final HighlightSeverity UPGRADE_SUGGESTION = new HighlightSeverity(
+			UPGRADE_SUGGESTION_KEY.getExternalName(),
+			HighlightSeverity.INFORMATION.myVal + 5, //
+			MessageBundle.lazyMessage("severity.upgrade.suggestion"), //
+			MessageBundle.lazyMessage("severity.upgrade.suggestion.capitalized"), //
+			MessageBundle.lazyMessage("severity.upgrade.suggestion.count.message"));
 
 	/**
 	 * Create a new {@code DependencyAssistantSeverities}.
@@ -58,9 +75,9 @@ public class DependencyAssistantSeverities extends SeveritiesProvider {
 	@Override
 	public List<HighlightInfoType> getSeveritiesHighlightInfoTypes() {
 
-		class GENERIC extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+		class UA extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
 
-			private GENERIC(HighlightSeverity severity, TextAttributesKey attributesKey) {
+			private UA(HighlightSeverity severity, TextAttributesKey attributesKey) {
 				super(severity, attributesKey);
 			}
 
@@ -71,7 +88,21 @@ public class DependencyAssistantSeverities extends SeveritiesProvider {
 
 		}
 
-		return List.of(new GENERIC(UPGRADE_AVAILABLE, UPGRADE_AVAILABLE_KEY));
+		class US extends HighlightInfoType.HighlightInfoTypeImpl implements HighlightInfoType.Iconable {
+
+			private US(HighlightSeverity severity, TextAttributesKey attributesKey) {
+				super(severity, attributesKey);
+			}
+
+			@Override
+			public Icon getIcon() {
+				return DependencyAssistantIcons.ICON;
+			}
+
+		}
+
+		return List.of(new UA(UPGRADE_AVAILABLE, UPGRADE_AVAILABLE_KEY),
+				new US(UPGRADE_SUGGESTION, UPGRADE_SUGGESTION_KEY));
 	}
 
 }
