@@ -19,12 +19,14 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
+
 
 /**
  * PSI-level integration tests for TOML completion.
@@ -34,7 +36,6 @@ import static org.assertj.core.api.Assertions.*;
 @CodeInsightFixtureTests
 class TomlCompletionTests {
 
-	// TODO extend test cases
 	private @TestFixture CodeInsightTestFixture fixture;
 
 	@BeforeEach
@@ -52,8 +53,26 @@ class TomlCompletionTests {
 		GradleFixtures.analyze(tomlFile);
 
 		fixture.completeBasic();
-
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(tomlFile).containsText("version = \"6.0.3\" }");
+	}
+
+	@Test
+	@EditorFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+			junit = { module = "org.junit:junit-bom", version = "<caret>6.0.3" }
+			""")
+	void completesQuotedVersionLiteralAtStart(PsiFile tomlFile) {
+
+		GradleFixtures.analyze(tomlFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(tomlFile).containsText("version = \"6.1.0-M1\" }").caretBetween("6.1.0-M1", "\"");
 	}
 
 	@Test
@@ -69,8 +88,11 @@ class TomlCompletionTests {
 		GradleFixtures.analyze(tomlFile);
 
 		fixture.completeBasic();
-
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(tomlFile).containsText("junit = \"6.0.3\"").caretBetween("6.0.3", "\"");
 	}
+
 
 }

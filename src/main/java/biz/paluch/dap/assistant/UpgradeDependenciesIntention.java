@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
@@ -57,10 +57,7 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 
 	@Override
 	public boolean isAvailable(Project project, Editor editor, PsiFile psiFile) {
-
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
-				psiFile);
-		return context != null && context.isAvailable();
+		return DependencyAssistantDispatcher.supports(psiFile);
 	}
 
 	@Override
@@ -73,7 +70,7 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
 				psiFile);
-		if (context != null) {
+		if (context.isAvailable()) {
 			ProgressManager.getInstance().run(new DependencyCheckTask(project, psiFile.getVirtualFile(), context));
 		}
 	}

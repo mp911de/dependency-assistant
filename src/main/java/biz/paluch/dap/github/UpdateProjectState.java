@@ -104,7 +104,7 @@ class UpdateProjectState {
 
 		DependencyCollector aggregate = new DependencyCollector();
 		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(project);
-		GitHubDependencyCollector collector = new GitHubDependencyCollector();
+		GitHubDependencyCollector collector = new GitHubDependencyCollector(project);
 		Map<GitRepositoryMetadata, GitHubReleaseSource> releaseSources = new java.util.HashMap<>();
 
 		doWithAllFiles(psiFile -> {
@@ -144,7 +144,7 @@ class UpdateProjectState {
 			return;
 		}
 
-		DependencyCollector collector = new GitHubDependencyCollector()
+		DependencyCollector collector = new GitHubDependencyCollector(project)
 				.collect(file);
 		ProjectState projectState = service.getProjectState(context.getProjectId());
 		Cache cache = service.getCache();

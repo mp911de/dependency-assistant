@@ -50,7 +50,7 @@ record AntoraBundleUrl(String host, String owner, String repository, String vers
 
 	private static final Pattern URL = Pattern.compile(
 			"^https?://(?<host>[A-Za-z0-9._-]+(?::[0-9]+)?)/(?<owner>[A-Za-z0-9._-]+)/(?<repository>[A-Za-z0-9._-]+)"
-					+ "/releases/download/(?<version>[A-Za-z0-9._+%-]+)/(?<asset>[A-Za-z0-9._/-]+)$");
+					+ "/releases/download/(?<version>[A-Za-z0-9._+%-]*)/(?<asset>[A-Za-z0-9._/-]+)$");
 
 	/**
 	 * Parse the given URL string into an {@code AntoraBundleUrl}.
@@ -84,7 +84,7 @@ record AntoraBundleUrl(String host, String owner, String repository, String vers
 	 * Return the declared version source for this bundle URL.
 	 */
 	VersionSource toVersionSource() {
-		return VersionSource.declared(version);
+		return StringUtils.hasText(version) ? VersionSource.declared(version) : VersionSource.none();
 	}
 
 }

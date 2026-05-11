@@ -64,6 +64,19 @@ class GitHubProjectContext implements ProjectBuildContext {
 	 */
 	public static GitHubProjectContext of(Project project, VirtualFile anchor) {
 
+		GitHubProjectContext cached = anchor.getUserData(KEY);
+
+		if (cached != null) {
+			return cached;
+		}
+		cached = create(project, anchor);
+		anchor.putUserData(KEY, cached);
+
+		return cached;
+	}
+
+	private static GitHubProjectContext create(Project project, VirtualFile anchor) {
+
 		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(project);
 		GitRepositoryMetadata gitRepository = repositoryResolver.resolveOwnerAndRepository(anchor);
 		GitHubReleaseSource releaseSource = gitRepository != null

@@ -25,6 +25,7 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
@@ -61,12 +62,16 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
-		if (context == null || !context.isVersionElement(element) || context.isAbsent()) {
+		if (context.isAbsent()) {
 			return null;
 		}
 
-		UpgradeSuggestion suggestion = context.getLookup(element, element.getContainingFile().getVirtualFile())
-				.suggestUpgrade(element);
+		AvailableUpgrades upgrades = UpgradeSuggestions.suggest(context, element);
+		if (!upgrades.isPresent()) {
+			return null;
+		}
+
+		UpgradeSuggestion suggestion = upgrades.getUpgradeSuggestion();
 		if (!suggestion.isPresent()) {
 			return null;
 		}

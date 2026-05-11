@@ -16,14 +16,7 @@
 
 package biz.paluch.dap.architecture;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
 import com.tngtech.archunit.core.domain.JavaClass;
-import com.tngtech.archunit.core.domain.JavaModifier;
 import com.tngtech.archunit.library.dependencies.SliceAssignment;
 import com.tngtech.archunit.library.dependencies.SliceIdentifier;
 
@@ -61,7 +54,7 @@ class SliceRules {
 	 * @return a {@link SliceAssignment} keyed by the type-family anchor.
 	 */
 	static SliceAssignment classesAndClosedHierarchies() {
-		return new ClassesAndClosedHierarchies();
+		return new Classes();
 	}
 
 
@@ -84,78 +77,16 @@ class SliceRules {
 
 	}
 
-	/**
-	 * Slice assignment that maps each class to its top-level enclosing type and
-	 * additionally collapses same-package supertype/subtype chains into a single
-	 * slice. The slice identifier is the lexicographically lowest type in the
-	 * closed hierarchy, which keeps visitor- and template-style designs (a base
-	 * type and its same-package implementations referencing each other) from being
-	 * reported as cycles.
-	 */
-	static class ClassesAndClosedHierarchies implements SliceAssignment {
+	static class Classes implements SliceAssignment {
 
 		@Override
 		public SliceIdentifier getIdentifierOf(JavaClass javaClass) {
-			JavaClass topLevel = javaClass;
-
-			while (topLevel.getEnclosingClass().isPresent()) {
-				topLevel = topLevel.getEnclosingClass().get();
-			}
-
-			return SliceIdentifier.of(findTypeFamilyAnchor(topLevel));
+			return SliceIdentifier.of(javaClass.getName());
 		}
 
 		@Override
 		public String getDescription() {
 			return "Class";
-		}
-
-		private static String findTypeFamilyAnchor(JavaClass topLevel) {
-			String packageName = topLevel.getPackageName();
-			Set<String> visited = new TreeSet<>();
-			return findTypeFamilyAnchor(topLevel, packageName, visited).getName();
-		}
-
-		private static JavaClass findTypeFamilyAnchor(JavaClass type, String packageName, Set<String> visited) {
-
-			if (!visited.add(type.getName())) {
-				return type;
-			}
-
-			List<JavaClass> localParents = new ArrayList<>();
-
-			type.getRawSuperclass()
-					.filter(candidate -> isSamePackageType(candidate, packageName))
-					.ifPresent(localParents::add);
-
-			for (JavaClass interfaceType : type.getRawInterfaces()) {
-				if (isSamePackageType(interfaceType, packageName)) {
-					localParents.add(interfaceType);
-				}
-			}
-
-			if (localParents.isEmpty()) {
-				return type;
-			}
-
-			localParents.sort(Comparator.comparing(JavaClass::getName));
-
-			JavaClass anchor = type;
-
-			for (JavaClass candidate : localParents) {
-				JavaClass resolved = findTypeFamilyAnchor(candidate, packageName, visited);
-
-				if (anchor == type || resolved.getName().compareTo(anchor.getName()) < 0) {
-					anchor = resolved;
-				}
-			}
-
-			return anchor;
-		}
-
-		private static boolean isSamePackageType(JavaClass type, String packageName) {
-			return !type.isPrimitive() && !type.isArray() && !type.getModifiers().contains(JavaModifier.PRIVATE)
-					&& packageName.equals(type.getPackageName());
 		}
 
 	}

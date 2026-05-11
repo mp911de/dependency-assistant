@@ -72,7 +72,7 @@ public class DependencyDocumentationProvider
 		Project project = target.getProject();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
 				target.getContainingFile());
-		if (context == null) {
+		if (context.isAbsent()) {
 			return null;
 		}
 

@@ -223,7 +223,7 @@ public class UpgradeAvailableInspection extends LocalInspectionTool {
 		public void invoke(Project project, PsiFile file, PsiElement startElement, PsiElement endElement) {
 
 			ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, file);
-			if (context == null) {
+			if (context.isAbsent()) {
 				return;
 			}
 			context.applyUpdate(startElement, update);

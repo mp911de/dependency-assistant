@@ -20,11 +20,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.openapi.extensions.ExtensionPointName;
+import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.CachedValuesManager;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -69,7 +77,7 @@ public class DependencyAssistantDispatcher {
 	}
 
 	public static boolean supports(PsiFile psiFile) {
-		return findFirstContext(psiFile) != null;
+		return findFirstContext(psiFile).isAvailable();
 	}
 
 	/**
@@ -113,7 +121,7 @@ public class DependencyAssistantDispatcher {
 	 * @param element the PSI element to resolve.
 	 * @return the context from the first matching integration, or {@code null}.
 	 */
-	public static @Nullable ProjectDependencyContext findFirstContext(PsiElement element) {
+	public static ProjectDependencyContext findFirstContext(PsiElement element) {
 		return findFirstContext(element instanceof PsiFile file ? file : element.getContainingFile());
 	}
 
@@ -123,21 +131,8 @@ public class DependencyAssistantDispatcher {
 	 * @param file the PSI file to resolve.
 	 * @return the context from the first matching integration, or {@code null}.
 	 */
-	public static @Nullable ProjectDependencyContext findFirstContext(PsiFile file) {
-
-		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
-
-			if (!integration.supports(file)) {
-				continue;
-			}
-
-			ProjectDependencyContext context = integration.createContext(file.getProject(), file);
-			if (context.isAvailable()) {
-				return context;
-			}
-		}
-
-		return null;
+	public static ProjectDependencyContext findFirstContext(PsiFile file) {
+		return findFirstContext(file.getProject(), file);
 	}
 
 	/**
@@ -145,25 +140,92 @@ public class DependencyAssistantDispatcher {
 	 * owns the given PSI file.
 	 * @param project the project that contains the file.
 	 * @param file the PSI file to resolve.
-	 * @return the context from the first matching integration, or {@code null}.
+	 * @return the context from the first matching integration or an
+	 * {@link ProjectDependencyContext#isAbsent() absent} context.
 	 */
-	public static @Nullable ProjectDependencyContext findFirstContext(Project project, @Nullable PsiFile file) {
+	public static ProjectDependencyContext findFirstContext(Project project, @Nullable PsiFile file) {
 
 		if (file == null) {
-			return null;
+			return AbsentDependencyContext.ABSENT;
 		}
 
-		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
-			if (!integration.supports(file)) {
-				continue;
+		return CachedValuesManager.getProjectPsiDependentCache(file, it -> {
+
+			if (it == null) {
+				return AbsentDependencyContext.ABSENT;
 			}
 
-			ProjectDependencyContext context = integration.createContext(project, file);
-			if (context.isAvailable()) {
-				return context;
-			}
-		}
+			for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
+				if (!integration.supports(file)) {
+					continue;
+				}
 
-		return null;
+				ProjectDependencyContext context = integration.createContext(project, it);
+				if (context.isAvailable()) {
+					return context;
+				}
+			}
+
+			return AbsentDependencyContext.ABSENT;
+		});
 	}
+
+
+	enum AbsentDependencyContext implements ProjectDependencyContext {
+
+		ABSENT;
+
+
+		@Override
+		public InterfaceAssistant getInterfaceAssistant() {
+			throw new IllegalStateException("No dependency context available");
+		}
+
+		@Override
+		public void invalidateState(PsiFile file) {
+			throw new IllegalStateException("No dependency context available");
+		}
+
+		@Override
+		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
+			throw new IllegalStateException("No dependency context available");
+		}
+
+		@Override
+		public boolean isVersionElement(PsiElement element) {
+			return false;
+		}
+
+		@Override
+		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
+			throw new IllegalStateException("No dependency context available");
+		}
+
+		@Override
+		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+			throw new IllegalStateException("No dependency context available");
+		}
+
+		@Override
+		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+			throw new IllegalStateException("No dependency context available");
+		}
+
+		@Override
+		public boolean isAvailable() {
+			return false;
+		}
+
+		@Override
+		public ProjectId getProjectId() {
+			throw new IllegalStateException("No dependency context available");
+		}
+
+		@Override
+		public List<ReleaseSource> getReleaseSources() {
+			return List.of();
+		}
+
+	}
+
 }

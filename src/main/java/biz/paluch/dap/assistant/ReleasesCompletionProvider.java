@@ -186,7 +186,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 			VirtualFile containingFile) {
 
 		ProjectDependencyContext context = context(element, psiFile);
-		if (context == null) {
+		if (context.isAbsent()) {
 			return null;
 		}
 
@@ -286,7 +286,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		return Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_' || c == '+';
 	}
 
-	private static @Nullable ProjectDependencyContext context(PsiElement element, PsiFile psiFile) {
+	private static ProjectDependencyContext context(PsiElement element, PsiFile psiFile) {
 		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), psiFile);
 	}
 

@@ -17,7 +17,6 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
@@ -49,12 +48,13 @@ class TomlLookupSiteLocator implements LookupSiteLocator<TomlLiteral> {
 
 		if (TomlParser.isInsideTable(literal, it -> TomlParser.LIBRARIES.equals(it) || TomlParser.PLUGINS.equals(it))) {
 
-			if (keyValue.getValue() != literal && !isInlineVersionLiteral(literal)) {
+			String keyName = TomlParser.getTomlKeyName(keyValue.getKey());
+			if (keyValue.getValue() != literal && !TomlParser.VERSION.equals(keyName)) {
 				return LookupSite.absent();
 			}
 
 			TomlKeyValue declarationKeyValue = keyValue;
-			if (isInlineVersionLiteral(literal)) {
+			if (TomlParser.VERSION.equals(keyName)) {
 				TomlInlineTable inlineTable = PsiTreeUtil.getParentOfType(literal, TomlInlineTable.class);
 				if (inlineTable == null) {
 					return LookupSite.absent();
@@ -77,14 +77,6 @@ class TomlLookupSiteLocator implements LookupSiteLocator<TomlLiteral> {
 		}
 
 		return LookupSite.absent();
-	}
-
-	private static boolean isInlineVersionLiteral(TomlLiteral literal) {
-
-		// TODO: KeyValue
-		PsiElement parent = literal.getParent();
-		return parent != null && parent.getFirstChild() != null
-				&& TomlParser.VERSION.equals(parent.getFirstChild().getText().trim());
 	}
 
 }

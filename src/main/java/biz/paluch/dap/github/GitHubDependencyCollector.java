@@ -17,12 +17,18 @@
 package biz.paluch.dap.github;
 
 import java.util.List;
+import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.state.GitVersionResolver;
+import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -40,6 +46,15 @@ import com.intellij.psi.PsiFile;
 class GitHubDependencyCollector {
 
 	private final GitHubWorkflowParser parser = new GitHubWorkflowParser();
+
+	private final StateService service;
+
+	private final GitVersionResolver versionResolver;
+
+	public GitHubDependencyCollector(Project project) {
+		this.service = StateService.getInstance(project);
+		this.versionResolver = new GitVersionResolver(service.getCache());
+	}
 
 	/**
 	 * Collect repository-backed {@code uses:} references from the given GitHub
@@ -67,8 +82,19 @@ class GitHubDependencyCollector {
 		for (UsesRepositoryAction ref : refs) {
 			ArtifactId artifactId = ref.toArtifactId();
 			VersionSource versionSource = ref.toVersionSource();
+
 			collector.registerDeclaration(artifactId, DeclarationSource.dependency(),
 					versionSource);
+
+			if (StringUtils.hasText(ref.version())) {
+				Optional<GitVersion> version = versionResolver.resolve(artifactId, ref.version());
+				if (version.isPresent()) {
+					version.ifPresent(gitVersion -> collector.registerUsage(artifactId, gitVersion,
+							DeclarationSource.dependency(),
+							versionSource));
+					return;
+				}
+			}
 
 			ArtifactVersion.from(ref.version())
 					.ifPresent(version -> collector.registerUsage(artifactId, version, DeclarationSource.dependency(),

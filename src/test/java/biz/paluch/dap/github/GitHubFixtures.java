@@ -64,7 +64,7 @@ class GitHubFixtures {
 
 		GitHubReleaseSource releaseSource = new GitHubReleaseSource(
 				GithubServerPath.DEFAULT_SERVER, new EmptyApiClient(), 100);
-		DependencyCollector collector = new GitHubDependencyCollector().collect(file);
+		DependencyCollector collector = new GitHubDependencyCollector(file.getProject()).collect(file);
 
 		GitHubProjectContext projectContext = new GitHubProjectContext(
 				new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()), releaseSource);

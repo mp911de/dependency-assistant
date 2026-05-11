@@ -332,7 +332,10 @@ public abstract class DeclarationSource {
 
 	}
 
-	/** Plugins under a profile's build/pluginManagement. */
+
+	/**
+	 * Plugins under a profile's build/pluginManagement.
+	 */
 	private static class ProfilePluginManagement extends DeclarationSource implements Plugin, Profile, Managed {
 
 		private final String profileId;

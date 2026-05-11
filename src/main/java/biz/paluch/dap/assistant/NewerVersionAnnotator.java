@@ -24,7 +24,6 @@ import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeAvailable;
 import biz.paluch.dap.support.UpgradeSuggestion;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
@@ -42,16 +41,12 @@ public class NewerVersionAnnotator implements Annotator {
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
-				element.getContainingFile());
-
-		if (context == null || !context.isVersionElement(element) || context.isAbsent()) {
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
+		if (context.isAbsent()) {
 			return;
 		}
 
-		VersionUpgradeLookupSupport service = context.getLookup(element, element.getContainingFile().getVirtualFile());
-		AvailableUpgrades upgrades = service.suggestUpgrades(element);
-
+		AvailableUpgrades upgrades = UpgradeSuggestions.suggest(context, element);
 		if (!upgrades.isPresent()) {
 			return;
 		}

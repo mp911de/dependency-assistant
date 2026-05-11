@@ -23,6 +23,7 @@ import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -58,7 +59,27 @@ class AntoraPlaybookCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(playbookFile).containsText("/download/v0.3.0/ui-bundle.zip");
+		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip");
+	}
+
+	@Disabled("TODO")
+	@Test
+	@EditorFile(name = "antora-playbook.yml", content = """
+			ui:
+			  bundle:
+			    url: https://github.com/spring-io/antora-ui-spring/releases/download/<caret>/ui-bundle.zip
+			""")
+	void completesVersionsInsideSegmentWithTab(PsiFile playbookFile) {
+
+		AntoraFixtures.analyze(playbookFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("v0.4.26", "v0.4.25", "v0.3.0");
+
+		fixture.completeBasic();
+		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
+
+		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip");
 	}
 
 	@Test

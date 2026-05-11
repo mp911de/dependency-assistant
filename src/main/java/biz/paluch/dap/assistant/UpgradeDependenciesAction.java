@@ -63,7 +63,7 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware {
 		PsiFile psiFile = event.getData(CommonDataKeys.PSI_FILE);
 
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, psiFile);
-		if (psiFile == null || context == null) {
+		if (psiFile == null || context.isAbsent()) {
 			Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.noSupportedFile"),
 					MessageBundle.message("action.check.dependencies.noEditorOpen.title"),
 					Messages.getInformationIcon());
@@ -91,7 +91,7 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware {
 
 		presentation.setVisible(DependencyAssistantDispatcher.supports(project));
 		presentation.setEnabled(DependencyAssistantDispatcher.findFirstContext(project,
-				event.getData(CommonDataKeys.PSI_FILE)) != null);
+				event.getData(CommonDataKeys.PSI_FILE)).isAvailable());
 	}
 
 }

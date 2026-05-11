@@ -182,7 +182,7 @@ public class GitHubAssistant implements DependencyAssistant {
 				return new DependencyCollector();
 			}
 
-			GitHubDependencyCollector collector = new GitHubDependencyCollector();
+			GitHubDependencyCollector collector = new GitHubDependencyCollector(project);
 			DependencyCollector result = collector.collect(psiFile);
 			result.addAllReleaseSources(getReleaseSources());
 
