@@ -91,6 +91,25 @@ class UpdateProjectState {
 	}
 
 	/**
+	 * Update dependency state for the given Gradle file.
+	 * @param file the Gradle-related file to inspect.
+	 */
+	public void update(PsiFile file) {
+
+		if (!GradleUtils.isGradleFile(file)) {
+			return;
+		}
+
+		GradleProjectContext context = GradleProjectContext.of(project, file);
+
+		if (context.isAvailable()) {
+			DependencyCollector collector = this.collector.collect(file);
+			ProjectState projectState = this.service.getProjectState(context.getProjectId());
+			projectState.setDependencies(collector);
+		}
+	}
+
+	/**
 	 * Return dependencies collected from all linked Gradle files.
 	 * @param indicator the progress indicator to report to.
 	 */
@@ -163,25 +182,6 @@ class UpdateProjectState {
 
 			current += 1;
 			indicator.setFraction(current / settings.size());
-		}
-	}
-
-	/**
-	 * Update dependency state for the given Gradle file.
-	 * @param file the Gradle-related file to inspect.
-	 */
-	public void update(PsiFile file) {
-
-		if (!GradleUtils.isGradleFile(file)) {
-			return;
-		}
-
-		GradleProjectContext context = GradleProjectContext.of(project, file);
-
-		if (context.isAvailable()) {
-			DependencyCollector collector = this.collector.collect(file);
-			ProjectState projectState = this.service.getProjectState(context.getProjectId());
-			projectState.setDependencies(collector);
 		}
 	}
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.antora;
 
 import java.util.List;
 
@@ -51,38 +51,40 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
+import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * GitHub Actions implementation of {@link DependencyAssistant}.
+ * Antora playbook implementation of {@link DependencyAssistant}.
  *
- * <p>Supports YAML files under {@code .github/workflows/} and GitHub Action
- * metadata files named {@code action.yml} or {@code action.yaml}. The assistant
- * is only active when both the YAML plugin and the GitHub plugin are available,
- * which is checked via class-availability guards so that the always-loaded
- * portion of this class never triggers loading of the optional plugin types
- * eagerly.
+ * <p>Supports YAML files named {@code antora-playbook.yml} whose
+ * {@code ui.bundle.url} declaration references a Git-hosted release asset. The
+ * assistant is only active when the YAML plugin is available, which is checked
+ * via class-availability guards so that the always-loaded portion of this class
+ * never triggers loading of the optional plugin types eagerly.
  *
  * <p>Each supported file forms its own lightweight project context keyed by the
  * file path.
  *
  * @author Mark Paluch
  */
-public class GitHubAssistant implements DependencyAssistant {
+public class AntoraAssistant implements DependencyAssistant {
 
 	private static final PluginId YAML = PluginId.getId("org.jetbrains.plugins.yaml");
 
-	private static final boolean AVAILABLE = isYamlAvailable();
+	private static final PluginId GITHUB = PluginId.getId("org.jetbrains.plugins.github");
+
+	private static final boolean AVAILABLE = isYamlAvailable() && isGitHubAvailable();
 
 	@Override
 	public String getId() {
-		return "github";
+		return "antora";
 	}
 
 	@Override
 	public String getDisplayName() {
-		return GitHubInterface.INSTANCE.getDisplayName();
+		return AntoraInterface.INSTANCE.getDisplayName();
 	}
 
 	@Override
@@ -92,7 +94,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean supports(PsiFile file) {
-		return AVAILABLE && GitHubUtils.isWorkflowFile(file);
+		return AVAILABLE && AntoraUtils.isPlaybookFile(file);
 	}
 
 	@Override
@@ -109,20 +111,19 @@ public class GitHubAssistant implements DependencyAssistant {
 	public ProjectDependencyContext createContext(Project project, PsiFile anchor) {
 
 		if (!supports(anchor)) {
-			throw new IllegalStateException("GitHub Actions integration does not support " + anchor);
+			throw new IllegalStateException("Antora playbook integration does not support " + anchor);
 		}
 
-		GitHubProjectContext injected = anchor.getUserData(GitHubProjectContext.KEY);
+		AntoraProjectContext injected = anchor.getUserData(AntoraProjectContext.KEY);
 		if (injected != null) {
-			return new GitHubDependencyContext(project, anchor.getVirtualFile(), injected);
+			return new AntoraDependencyContext(project, anchor.getVirtualFile(), injected);
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(project, it.getVirtualFile()));
-	}
-
-	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
-		return new GitHubDependencyContext(project, anchor, GitHubProjectContext.of(project, anchor));
+				it -> {
+					AntoraProjectContext context = AntoraProjectContext.of(project, it.getVirtualFile());
+					return new AntoraDependencyContext(project, it.getVirtualFile(), context);
+				});
 	}
 
 	private static boolean isYamlAvailable() {
@@ -130,15 +131,19 @@ public class GitHubAssistant implements DependencyAssistant {
 				&& FileTypeManager.getInstance().findFileTypeByName("YAML") != null;
 	}
 
-	private static class GitHubDependencyContext implements ProjectDependencyContext {
+	private static boolean isGitHubAvailable() {
+		return PluginManagerCore.isPluginInstalled(GITHUB) && !PluginManagerCore.isDisabled(GITHUB);
+	}
+
+	private static class AntoraDependencyContext implements ProjectDependencyContext {
 
 		private final Project project;
 
 		private final VirtualFile anchor;
 
-		private final GitHubProjectContext projectContext;
+		private final AntoraProjectContext projectContext;
 
-		GitHubDependencyContext(Project project, VirtualFile anchor, GitHubProjectContext projectContext) {
+		AntoraDependencyContext(Project project, VirtualFile anchor, AntoraProjectContext projectContext) {
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
@@ -161,13 +166,13 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
-			return GitHubInterface.INSTANCE;
+			return AntoraInterface.INSTANCE;
 		}
 
 		@Override
 		public void invalidateState(PsiFile file) {
 
-			if (!GitHubUtils.isWorkflowFile(file)) {
+			if (!AntoraUtils.isPlaybookFile(file)) {
 				return;
 			}
 
@@ -182,11 +187,9 @@ public class GitHubAssistant implements DependencyAssistant {
 				return new DependencyCollector();
 			}
 
-			GitHubDependencyCollector collector = new GitHubDependencyCollector();
-			DependencyCollector result = collector.collect(psiFile);
-			result.addAllReleaseSources(getReleaseSources());
-
-			return result;
+			DependencyCollector collector = new AntoraDependencyCollector().collect(psiFile);
+			collector.addAllReleaseSources(getReleaseSources());
+			return collector;
 		}
 
 		@Override
@@ -207,13 +210,16 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public boolean isVersionElement(PsiElement element) {
 
-			if (GitHubUtils.isWorkflowFile(element.getContainingFile())) {
-
-				YAMLScalar usesScalar = VersionUpgradeLookupService.getUsesScalar(PsiVisitors.unleaf(element));
-				return usesScalar != null;
+			if (!AntoraUtils.isPlaybookFile(element.getContainingFile())) {
+				return false;
 			}
 
-			return false;
+			if (element instanceof YAMLQuotedText) {
+				return false;
+			}
+
+			YAMLScalar scalar = VersionUpgradeLookupService.getBundleUrlScalar(PsiVisitors.unleaf(element));
+			return scalar != null;
 		}
 
 		@Override
@@ -222,32 +228,32 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
-			new UpdateGitHubWorkflowFile(project).applyUpdate((YAMLScalar) anchor, update);
+		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+			new UpdateAntoraPlaybookFile(project).applyUpdate((YAMLScalar) versionLiteral, update);
 		}
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
+			new UpdateAntoraPlaybookFile(project).applyUpdates(psiFile, updates);
 		}
 
 		@Override
 		public String toString() {
-			return "GitHubDependencyContext[%s] %s".formatted(anchor, projectContext);
+			return "AntoraDependencyContext[%s] %s".formatted(anchor, projectContext);
 		}
 
 	}
 
 	/**
-	 * GitHub Actions-specific user interface support.
+	 * Antora-specific user interface support.
 	 */
-	enum GitHubInterface implements InterfaceAssistant {
+	enum AntoraInterface implements InterfaceAssistant {
 
 		INSTANCE;
 
 		@Override
 		public String getDisplayName() {
-			return MessageBundle.message("assistant.github");
+			return MessageBundle.message("assistant.antora");
 		}
 
 		@Override
@@ -278,7 +284,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public TextRange getHighlightRange(PsiElement element) {
-			return GitHubUtils.getVersionRange(element);
+			return AntoraUtils.getVersionRange(element);
 		}
 
 	}

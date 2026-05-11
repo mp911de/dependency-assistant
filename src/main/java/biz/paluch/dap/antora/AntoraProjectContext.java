@@ -1,0 +1,100 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package biz.paluch.dap.antora;
+
+import java.util.List;
+
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.github.GitReleaseSource;
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.ProjectBuildContext;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
+import com.intellij.openapi.vfs.VirtualFile;
+
+/**
+ * {@link ProjectBuildContext} for a single Antora playbook file.
+ *
+ * <p>Each {@code antora-playbook.yml} file produces its own context so that
+ * dependency state for independent playbooks remains isolated. Release lookup
+ * uses a strict {@link GitReleaseSource} keyed on the host parsed from the
+ * declared {@code ui.bundle.url}.
+ *
+ * @author Mark Paluch
+ */
+class AntoraProjectContext implements ProjectBuildContext {
+
+	/**
+	 * Key used to inject a test-scoped context into a PSI file's user data.
+	 */
+	static final Key<AntoraProjectContext> KEY = Key.create("AntoraProjectContext");
+
+	private final ProjectId projectId;
+
+	private final List<ReleaseSource> releaseSources;
+
+	/**
+	 * Create a context for the given project identity and release sources.
+	 * @param projectId the project identity.
+	 * @param releaseSources the release sources for this Antora playbook.
+	 */
+	AntoraProjectContext(ProjectId projectId, List<ReleaseSource> releaseSources) {
+		this.projectId = projectId;
+		this.releaseSources = releaseSources;
+	}
+
+	/**
+	 * Create a context for the given project and anchor playbook file.
+	 * @param project the IntelliJ project.
+	 * @param anchor the Antora playbook file.
+	 * @return the context to be used.
+	 */
+	static AntoraProjectContext of(Project project, VirtualFile anchor) {
+
+		ProjectId projectId = ProjectId.of("antora", anchor.getNameWithoutExtension(), anchor.getPath());
+		return new AntoraProjectContext(projectId, getReleaseSources(project));
+	}
+
+	/**
+	 * Return the project-scoped Antora release sources.
+	 * @param project the IntelliJ project.
+	 */
+	static List<ReleaseSource> getReleaseSources(Project project) {
+		return List.of(new GitReleaseSource(project, true));
+	}
+
+	@Override
+	public boolean isAvailable() {
+		return true;
+	}
+
+	@Override
+	public ProjectId getProjectId() {
+		return projectId;
+	}
+
+	@Override
+	public List<ReleaseSource> getReleaseSources() {
+		return releaseSources;
+	}
+
+	@Override
+	public String toString() {
+		return projectId.toString();
+	}
+
+}

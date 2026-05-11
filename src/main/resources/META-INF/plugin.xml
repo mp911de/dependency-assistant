@@ -8,13 +8,13 @@
 
 	<description><![CDATA[
 		<p>
-			Provides assisted upgrading of Maven, Gradle, GitHub Actions, and NPM dependencies in your IDE. The plugin highlights dependency declarations for newer versions and offers a controlled path to apply updates without replacing your own judgment about when to upgrade.
+			Provides assisted upgrading of Maven, Gradle, GitHub Actions, NPM, and Antora dependencies in your IDE. The plugin highlights dependency declarations for newer versions and offers a controlled path to apply updates without replacing your own judgment about when to upgrade.
 		</p>
 
 		The support includes:
 		<ul>
   <li>Scanning of <code>pom.xml</code> (Maven), <code>build.gradle(.kts)</code>, <code>gradle.properties</code>,
-      <code>settings.gradle(.kts)</code>, <code>gradle/libs.versions.toml</code> (Gradle), <code>action.yaml</code> and workflows (GitHub Action), <code>package.json</code> (NPM)</li>
+      <code>settings.gradle(.kts)</code>, <code>gradle/libs.versions.toml</code> (Gradle), <code>action.yaml</code> and workflows (GitHub Action), <code>package.json</code> (NPM), <code>antora-playbook.yml</code> (Antora)</li>
   <li>Determining version update candidates against remote repositories</li>
   <li>Selection of dependencies and plugins to update</li>
   <li>Supports Maven Central, custom Maven repositories, npmjs, and GitHub as release metadata sources</li>

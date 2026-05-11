@@ -6,6 +6,10 @@
 				language="yaml"
 				order="first"
 				implementationClass="biz.paluch.dap.github.GitHubWorkflowCompletionContributor"/>
+		<completion.contributor
+				language="yaml"
+				order="first"
+				implementationClass="biz.paluch.dap.antora.AntoraPlaybookCompletionContributor"/>
 		<annotator language="yaml"
 		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider

@@ -33,15 +33,15 @@ import org.springframework.util.Assert;
 class SemanticArtifactVersion implements ArtifactVersion {
 
 	private static final Pattern DOT_SUFFIX_PATTERN = Pattern
-			.compile("((\\d+)(\\.\\d+)+)(\\.((SR\\d+)|(RC\\d+)|(M\\d+)|(BUILD-SNAPSHOT)|(RELEASE)))");
+			.compile("((\\d+)(\\.\\d+)*)(\\.((SR\\d+)|(RC\\d+)|(M\\d+)|(BUILD-SNAPSHOT)|(RELEASE)))");
 
 	private static final Pattern MODIFIER_PATTERN = Pattern
-			.compile("((\\d+)(\\.\\d+)+)(-((RC\\d+)|(M\\d+)|(SNAPSHOT)))?");
+			.compile("((\\d+)(\\.\\d+)*)(-((RC\\d+)|(M\\d+)|(SNAPSHOT)))?");
 
 	private static final Pattern SEMVER_PATTERN = Pattern
-			.compile("((\\d+)(\\.\\d+)+)(([.-])" + Suffix.SEMVER_QUALIFIER_PATTERN + ")?");
+			.compile("((\\d+)(\\.\\d+)*)(([.-])" + Suffix.SEMVER_QUALIFIER_PATTERN + ")?");
 
-	private static final Pattern VERSION_FALLBACK_PATTERN = Pattern.compile("((\\d+)(\\.\\d+)+)([.-])?(.*)");
+	private static final Pattern VERSION_FALLBACK_PATTERN = Pattern.compile("((\\d+)(\\.\\d+)*)([.-])?(.*)");
 
 	private final String version;
 

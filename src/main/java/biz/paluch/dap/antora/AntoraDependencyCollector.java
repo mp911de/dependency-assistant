@@ -14,37 +14,33 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.github;
+package biz.paluch.dap.antora;
 
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiFile;
 
 /**
- * Scans a single supported GitHub Actions YAML file and registers
- * repository-backed {@code uses:} references with a
- * {@link DependencyCollector}.
+ * Scans a single Antora playbook file and registers its {@code ui.bundle.url}
+ * references with a {@link DependencyCollector}.
  *
  * <p>This collector is intentionally syntax-only. It records the repository
- * identity and declared ref as found in the workflow and leaves cache-based
- * version resolution to the project context and lookup services. This keeps
- * workflow scanning independent of release metadata availability.
+ * identity and declared version as found in the playbook and leaves cache-based
+ * version resolution to the project context and lookup services.
  *
  * @author Mark Paluch
  */
-class GitHubDependencyCollector {
+class AntoraDependencyCollector {
 
-	private final GitHubWorkflowParser parser = new GitHubWorkflowParser();
+	private final AntoraPlaybookParser parser = new AntoraPlaybookParser();
 
 	/**
-	 * Collect repository-backed {@code uses:} references from the given GitHub
-	 * Actions file.
-	 * @param file the YAML PSI file to scan.
+	 * Collect Antora bundle URL references from the given playbook file.
+	 * @param file the Antora playbook PSI file to scan.
 	 * @return the populated dependency collector.
 	 */
 	DependencyCollector collect(PsiFile file) {
@@ -56,23 +52,18 @@ class GitHubDependencyCollector {
 	}
 
 	/**
-	 * Collect repository-backed {@code uses:} references from the given GitHub
-	 * Actions file and register them as declarations.
-	 * @param file the YAML PSI file to scan.
+	 * Collect Antora bundle URL references from the given playbook file and
+	 * register them as declarations on the given collector.
+	 * @param file the Antora playbook PSI file to scan.
 	 * @param collector the collector to populate with the discovered dependencies.
 	 */
-	public void doCollect(PsiFile file, DependencyCollector collector) {
+	void doCollect(PsiFile file, DependencyCollector collector) {
 
-		List<UsesRepositoryAction> refs = parser.parse(file);
-		for (UsesRepositoryAction ref : refs) {
+		List<AntoraBundleUrl> refs = parser.parse(file);
+		for (AntoraBundleUrl ref : refs) {
 			ArtifactId artifactId = ref.toArtifactId();
 			VersionSource versionSource = ref.toVersionSource();
-			collector.registerDeclaration(artifactId, DeclarationSource.dependency(),
-					versionSource);
-
-			ArtifactVersion.from(ref.version())
-					.ifPresent(version -> collector.registerUsage(artifactId, version, DeclarationSource.dependency(),
-							versionSource));
+			collector.registerDeclaration(artifactId, DeclarationSource.dependency(), versionSource);
 		}
 	}
 

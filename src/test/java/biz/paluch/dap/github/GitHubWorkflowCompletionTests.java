@@ -57,7 +57,9 @@ class GitHubWorkflowCompletionTests {
 		fixture.type('@');
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
+		// Empty ref after `@` is SHA-style per `RefStyle.from(...)`, so SHA-aware
+		// releases insert their SHA. v4.1.0 has no SHA metadata and falls through.
+		assertThat(fixture.getLookupElementStrings()).contains(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
 	}
 
 	@Test
@@ -89,7 +91,8 @@ class GitHubWorkflowCompletionTests {
 
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
+		// Full-SHA ref selects SHA insertion for SHA-aware releases.
+		assertThat(fixture.getLookupElementStrings()).contains(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
 	}
 
 	@Test
@@ -105,7 +108,8 @@ class GitHubWorkflowCompletionTests {
 
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
+		// Full-SHA ref selects SHA insertion for SHA-aware releases.
+		assertThat(fixture.getLookupElementStrings()).contains(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
 	}
 
 	@Test

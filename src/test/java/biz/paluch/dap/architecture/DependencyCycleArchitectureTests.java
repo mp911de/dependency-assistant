@@ -84,6 +84,10 @@ class DependencyCycleArchitectureTests {
 			"assistant", "biz.paluch.dap", "artifact", "severity", "state", "support", "util");
 
 	@ArchTest
+	static final ArchRule antora = packageDependencies("antora",
+			"biz.paluch.dap", "artifact", "assistant", "state", "support", "util", "github");
+
+	@ArchTest
 	static final ArchRule github = packageDependencies("github",
 			"biz.paluch.dap", "artifact", "assistant", "state", "support", "util");
 

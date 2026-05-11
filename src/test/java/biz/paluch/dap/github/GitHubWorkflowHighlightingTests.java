@@ -139,7 +139,22 @@ class GitHubWorkflowHighlightingTests {
 
 		GitHubFixtures.analyze(workflowFile);
 
-		assertThat(workflowFile).hasSingleGutterContaining("4.2.0");
+		assertThat(workflowFile).hasSingleGutterContaining("4.2.0")
+				.highlights("7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1");
+	}
+
+	@Test
+	@EditorFile(name = ".github/workflows/ci.yml", content = """
+			jobs:
+			  build:
+			    steps:
+			      - uses: 'actions/checkout@7b4f388' # v3.6.0
+			""")
+	void highlightsShortShaStyleRefForUpgrade(PsiFile workflowFile) {
+
+		GitHubFixtures.analyze(workflowFile);
+
+		assertThat(workflowFile).hasSingleGutter().highlights("7b4f388");
 	}
 
 	private static YAMLScalar findFirstUsesScalar(PsiFile file) {

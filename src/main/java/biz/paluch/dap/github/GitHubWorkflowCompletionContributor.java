@@ -22,7 +22,6 @@ import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.util.PatternConditions;
-import biz.paluch.dap.util.PsiVisitors;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -35,6 +34,7 @@ import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
@@ -53,16 +53,15 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  */
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
+	private static final String ANTORA_PLAYBOOK_FILE_NAME = "antora-playbook.yml";
+
+	private static final ReleasesCompletionProvider PROVIDER = new ReleasesCompletionProvider() {
 
 		@Override
 		protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
 
 			UsesRepositoryAction action = VersionUpgradeLookupService.findUsesRepository(element);
-			if (action != null) {
-				action.getStyle();
-			}
-			return super.getRefStyle(element, metadata);
+			return action != null ? action.getStyle() : super.getRefStyle(element, metadata);
 		}
 
 		@Override
@@ -117,12 +116,16 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 
 	public GitHubWorkflowCompletionContributor() {
-		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF_IN_SCALAR, provider);
-		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF, provider);
+		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF_IN_SCALAR, PROVIDER);
+		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF, PROVIDER);
 	}
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
+
+		if (isAntoraPlaybook(position)) {
+			return false;
+		}
 
 		if (typeChar == '@') {
 			return VersionUpgradeLookupService.findUsesScalar(position) != null;
@@ -147,6 +150,10 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	}
 
 	private static boolean isUsesKeyValue(YAMLKeyValue keyValue) {
+
+		if (isAntoraPlaybook(keyValue)) {
+			return false;
+		}
 		return "uses".equals(keyValue.getKeyText());
 	}
 
@@ -154,6 +161,10 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
 		if (scalar == null || !scalar.isValid()) {
+			return false;
+		}
+
+		if (isAntoraPlaybook(scalar)) {
 			return false;
 		}
 
@@ -174,26 +185,10 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 		return Math.max(0, Math.min(offset, text.length()));
 	}
 
-	private static String refPrefixAtCaret(CompletionParameters parameters) {
-		return getPrefix(parameters, PsiVisitors.unleaf(parameters.getPosition()));
-	}
+	private static boolean isAntoraPlaybook(PsiElement element) {
 
-	private static String getPrefix(CompletionParameters parameters, PsiElement position) {
-		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(position);
-		if (scalar == null) {
-			return "";
-		}
-		String text = scalar.getText();
-		int atIndex = text.indexOf('@');
-		if (atIndex < 0) {
-			return "";
-		}
-		int caretInScalar = parameters.getOffset() - scalar.getTextRange().getStartOffset();
-		int refStart = atIndex + 1;
-		if (caretInScalar < refStart || caretInScalar > text.length()) {
-			return "";
-		}
-		return text.substring(refStart, caretInScalar);
+		PsiFile containingFile = element.getContainingFile();
+		return containingFile != null && ANTORA_PLAYBOOK_FILE_NAME.equals(containingFile.getName());
 	}
 
 }
