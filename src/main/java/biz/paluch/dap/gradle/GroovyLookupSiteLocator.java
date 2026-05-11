@@ -141,7 +141,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 	private LookupSite locatePropertyLiteral(GrLiteral literal) {
 
-		Property property = GroovyDslUtils.findGroovyExtPropertyVersionElement(literal);
+		Property property = GroovyExtAssignment.findGroovyExtPropertyVersionElement(literal);
 		if (property == null && propertyResolver instanceof GradlePropertyResolver resolver) {
 			property = resolver.findBindingForValueLiteral(literal);
 		}

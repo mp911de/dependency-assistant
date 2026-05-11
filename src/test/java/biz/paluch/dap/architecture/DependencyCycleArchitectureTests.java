@@ -18,12 +18,16 @@ package biz.paluch.dap.architecture;
 
 import java.util.Arrays;
 
-import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.assistant.DependencyDocumentationProvider;
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.PropertyResolver;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.library.dependencies.SliceAssignment;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.*;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
@@ -38,25 +42,28 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 class DependencyCycleArchitectureTests {
 
 	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
-			.excludingClass(DependencyDocumentationProvider.class,
-					"TODO: refine design")
-			.excludingClass("biz.paluch.dap.maven.MavenParser",
-					"Fix todo's")
-			.excludingClass("biz.paluch.dap.gradle.ExtraDeclaration",
-					"Fix todo's")
-			.excludingClass("biz.paluch.dap.gradle.GroovyDslUtils",
-					"Fix todo's")
 			.excludingClass("biz.paluch.dap.npm.NpmGitRef",
-					"Fix todo's")
-			.excludingClass("biz.paluch.dap.npm.NpmVersionExpression",
-					"Fix todo's")
-			.excludingClass("biz.paluch.dap.gradle.KotlinDslSettingsParser",
 					"Fix todo's")
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
 					"Fix todo's")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
-					"Fix todo's")
-			.excludingClass(UpgradeStrategy.class, "wtf?");
+					"Fix todo's");
+
+	/*
+	 * Variant 1: explicit closed hierarchy declaration. DeclarationSource, its
+	 * nested marker types, nested implementations, and imported subtypes become one
+	 * class slice.
+	 */
+	private static final SliceAssignment CLASSES_AND_HIERARCHIES = SliceRules.classes(
+			it -> {
+				it.withStrictClosedHierarchy(ArtifactVersion.class)
+						.withStrictClosedHierarchy(PropertyResolver.class)
+						.withClosedHierarchy(DependencySite.class)
+						.withClosedHierarchy(ReleaseSource.class)
+						.withStrictClosedHierarchy(ArtifactId.class)
+						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradlePluginId")
+						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradleArtifactId");
+			});
 
 	@ArchTest
 	static final ArchRule packagesShouldBeFreeOfCycles = slices().assignedFrom(SliceRules.allPackages())
@@ -66,7 +73,7 @@ class DependencyCycleArchitectureTests {
 
 	@ArchTest
 	static final ArchRule classesShouldBeFreeOfCycles = slices()
-			.assignedFrom(EXCLUSIONS.apply(SliceRules.classesAndClosedHierarchies()))
+			.assignedFrom(EXCLUSIONS.apply(CLASSES_AND_HIERARCHIES))
 			.should()
 			.beFreeOfCycles()
 			.as("Classes should be free of cyclic dependencies");

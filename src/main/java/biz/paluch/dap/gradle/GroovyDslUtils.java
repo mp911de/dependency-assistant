@@ -16,14 +16,9 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Predicate;
 
-import biz.paluch.dap.support.Property;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -47,24 +42,6 @@ import org.springframework.util.Assert;
  * @author Mark Paluch
  */
 class GroovyDslUtils {
-
-	/**
-	 * Returns a {@link PropertyValue} when {@code element} is the <em>value</em>
-	 * literal of a Groovy {@code ext} property declaration, or {@code null}
-	 * otherwise.
-	 * <p>The supported declaration forms are detected via
-	 * {@link GroovyExtAssignment#from(PsiElement)}.
-	 */
-	public static @Nullable Property findGroovyExtPropertyVersionElement(PsiElement element) {
-
-		GroovyExtAssignment assignment = GroovyExtAssignment.from(element);
-		if (assignment == null) {
-			return null;
-		}
-
-		String value = getText(assignment.getValueLiteral());
-		return new PropertyValue(assignment.getKey(), value, assignment.getValueLiteral());
-	}
 
 	/**
 	 * Return whether the element is nested inside a Groovy {@code plugins} block.
@@ -248,41 +225,11 @@ class GroovyDslUtils {
 		return null;
 	}
 
-	static boolean isGroovyLibsCatalogRootExpression(GrExpression expr, VersionCatalogRegistry registry) {
-
-		List<String> list = getVersionCatalogSegments(expr);
-
-		return list.size() > 1 && registry.catalogPaths().containsKey(list.getFirst());
-	}
-
 	public static List<String> getVersionCatalogSegments(GrExpression expr) {
 		return SyntaxTraverser.psiTraverser(expr)
 				.expand(it -> it instanceof GrReferenceExpression)
 				.filterTypes(GroovyElementTypes.IDENTIFIER::equals)
 				.map(PsiElement::getText).toList();
-	}
-
-	static @Nullable TomlReference getTomlReference(GrExpression expr, Set<String> knownAliases) {
-
-		GrExpression e = unwrapGroovyParentheses(expr);
-		if (e == null) {
-			return null;
-		}
-		ArrayList<String> segments = new ArrayList<>();
-		GrExpression cur = e;
-		while (cur instanceof GrReferenceExpression ref) {
-			String name = GroovyDslUtils.getText(ref);
-			if (name == null) {
-				return null;
-			}
-			segments.add(name);
-			cur = ref.getQualifierExpression();
-		}
-		if (cur != null) {
-			return null;
-		}
-		Collections.reverse(segments);
-		return TomlReference.from(segments, knownAliases);
 	}
 
 	/**
