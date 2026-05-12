@@ -80,6 +80,7 @@ class GradleAssistant implements DependencyAssistant {
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
+		new GradleInitService().execute(project, null);
 		new UpdateProjectState(project).readAndUpdateAll(indicator);
 	}
 
@@ -159,15 +160,19 @@ class GradleAssistant implements DependencyAssistant {
 
 			PsiFile file = element.getContainingFile();
 
-			if (GradleUtils.isGradleFile(file)) {
-				if (GradleUtils.isGradlePropertiesFile(file)) {
-					return GradlePropertiesParser.isPropertyValueElement(element);
-				}
-
-				return true;
+			if (!GradleUtils.isGradleFile(file)) {
+				return false;
 			}
 
-			return false;
+			if (GradleUtils.isGradlePropertiesFile(file)) {
+				return GradlePropertiesParser.isPropertyValueElement(element);
+			}
+
+			if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file)) {
+				return KotlinLookupSiteLocator.isVersionElement(element);
+			}
+
+			return true;
 		}
 
 		@Override

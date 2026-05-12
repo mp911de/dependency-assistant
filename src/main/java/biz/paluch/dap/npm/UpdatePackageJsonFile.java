@@ -138,7 +138,7 @@ class UpdatePackageJsonFile {
 		return render(expression, rawValue, update.version());
 	}
 
-	private static @Nullable String render(NpmVersionExpression expression, String rawValue,
+	static @Nullable String render(NpmVersionExpression expression, String rawValue,
 			ArtifactVersion version) {
 
 		if (!expression.isUpdatable()) {

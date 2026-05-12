@@ -84,6 +84,12 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					.declarationElement(scalar)
 					.versionLiteral(scalar);
 
+			Optional<ArtifactVersion> version = ArtifactVersion.from(bundleUrl.version());
+			if (version.isPresent()) {
+				version.ifPresent(builder::version);
+				return;
+			}
+
 			Dependency dependency = getProjectState().findDependency(artifactId);
 			if (dependency != null) {
 				builder.version(dependency.getCurrentVersion());
@@ -96,7 +102,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				resolved.ifPresent(builder::version);
 				return;
 			}
-			ArtifactVersion.from(bundleUrl.version()).ifPresent(builder::version);
+
 		});
 	}
 

@@ -80,13 +80,14 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 			GitVersion gitVersion = option.getVersion() instanceof GitVersion gv ? gv
 					: GitVersion.of(option.getVersion());
 
+			String originalValue = scalar.getTextValue();
 			SmartPsiElementPointer<YAMLScalar> pointer = SmartPointerManager.createPointer(scalar);
 			Project project = element.getProject();
 			return builder.withInsertHandler((insertionContext, lookupElement) -> {
 
 				YAMLScalar toUpdate = pointer.getElement();
 				if (toUpdate != null) {
-					new UpdateAntoraPlaybookFile(project).updateVersion(toUpdate, gitVersion);
+					new UpdateAntoraPlaybookFile(project).updateVersion(toUpdate, originalValue, gitVersion);
 				}
 			});
 		}

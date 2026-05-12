@@ -2,7 +2,11 @@
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.gradle.GradleAssistant"/>
 	</extensions>
+
 	<extensions defaultExtensionNs="com.intellij">
+
+		<postStartupActivity
+				implementation="biz.paluch.dap.gradle.GradleInitService"/>
 		<completion.confidence language="Groovy" order="first"
 		                       implementationClass="biz.paluch.dap.gradle.GroovyCompletionConfidence"/>
 		<completion.confidence language="TOML" order="first"

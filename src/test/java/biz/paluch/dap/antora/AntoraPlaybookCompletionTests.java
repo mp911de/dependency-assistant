@@ -23,7 +23,6 @@ import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -62,7 +61,6 @@ class AntoraPlaybookCompletionTests {
 		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip");
 	}
 
-	@Disabled("TODO")
 	@Test
 	@EditorFile(name = "antora-playbook.yml", content = """
 			ui:

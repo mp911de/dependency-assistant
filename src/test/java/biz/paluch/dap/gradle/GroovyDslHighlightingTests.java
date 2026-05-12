@@ -76,6 +76,19 @@ class GroovyDslHighlightingTests {
 		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
 	}
 
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:['
+			}
+			""")
+	void ignoresIncompleteGavRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		assertThat(fixture).hasNoGutterMarks();
+	}
+
 	// -------------------------------------------------------------------------
 	// Constraints
 	// -------------------------------------------------------------------------

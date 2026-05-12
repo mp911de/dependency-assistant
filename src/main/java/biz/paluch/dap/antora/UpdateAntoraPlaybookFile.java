@@ -99,8 +99,20 @@ class UpdateAntoraPlaybookFile {
 	 * @param newVersion the resolved release version to render.
 	 */
 	void updateVersion(YAMLScalar scalar, GitVersion newVersion) {
+		updateVersion(scalar, scalar.getTextValue(), newVersion);
+	}
 
-		String value = scalar.getTextValue();
+	/**
+	 * Update an Antora playbook {@code ui.bundle.url} scalar using the given
+	 * original URL value. Completion insertion may have already edited the live
+	 * scalar, so the original value is used to preserve the asset path around the
+	 * selected version.
+	 * @param scalar the scalar to replace.
+	 * @param value the original scalar text value.
+	 * @param newVersion the resolved release version to render.
+	 */
+	void updateVersion(YAMLScalar scalar, String value, GitVersion newVersion) {
+
 		AntoraBundleUrl bundleUrl = AntoraBundleUrl.from(value);
 		if (bundleUrl == null) {
 			return;

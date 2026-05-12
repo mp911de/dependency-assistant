@@ -20,6 +20,7 @@ import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.util.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utilities for Gradle rich-version declarations.
@@ -36,22 +37,21 @@ class GradleRichVersion {
 	/**
 	 * Derive a concrete version anchor from a raw Gradle rich-version declaration.
 	 */
-	static Optional<ArtifactVersion> parse(String raw) {
-		if (isDynamic(raw)) {
+	static Optional<ArtifactVersion> parse(@Nullable String raw) {
+		if (!StringUtils.hasText(raw) || isDynamic(raw)) {
 			return Optional.empty();
 		}
 
 		BangBangVersion bangBang = BangBangVersion.parse(raw);
-		if (bangBang != null && StringUtils.hasText(bangBang.prefer())) {
-			Optional<ArtifactVersion> preferred = ArtifactVersion.from(bangBang.prefer().trim());
-			if (preferred.isPresent()) {
-				return preferred;
-			}
+		if (bangBang != null) {
+			return bangBang.anchor();
 		}
 
-		String candidate = bangBang != null ? bangBang.strictly() : raw;
-		VersionRange range = VersionRange.parse(candidate);
-		return (range != null ? range.anchor() : ArtifactVersion.from(candidate.trim()));
+		VersionRange range = VersionRange.parse(raw);
+		if (range != null) {
+			return range.anchor();
+		}
+		return hasRangeSyntax(raw) ? Optional.empty() : ArtifactVersion.from(raw.trim());
 	}
 
 	/**
@@ -69,13 +69,20 @@ class GradleRichVersion {
 		}
 
 		VersionRange range = VersionRange.parse(raw);
-		return (range != null ? range.update(newVersion) : newVersion);
+		if (range != null) {
+			return range.update(newVersion);
+		}
+		return hasRangeSyntax(raw) ? raw : newVersion;
 	}
 
 	private static boolean isDynamic(String raw) {
 		String trimmed = raw.trim();
 		return trimmed.endsWith(".+") || trimmed.equals("+") || trimmed.equals("latest.release")
 				|| trimmed.equals("latest.integration");
+	}
+
+	private static boolean hasRangeSyntax(String raw) {
+		return raw.contains("[") || raw.contains("]") || raw.contains("(") || raw.contains(")") || raw.contains(",");
 	}
 
 	private record BangBangVersion(String strictly, String prefer) {
@@ -95,29 +102,56 @@ class GradleRichVersion {
 			return newVersion + BANG_BANG;
 		}
 
+		Optional<ArtifactVersion> anchor() {
+			VersionRange range = VersionRange.parse(this.strictly);
+			Optional<ArtifactVersion> strict = Optional.empty();
+			if (range != null) {
+				strict = range.anchor();
+			} else {
+				if (hasRangeSyntax(this.strictly)) {
+					return Optional.empty();
+				}
+				strict = ArtifactVersion.from(this.strictly.trim());
+				if (strict.isEmpty()) {
+					return Optional.empty();
+				}
+			}
+
+			return StringUtils.hasText(this.prefer) ? ArtifactVersion.from(this.prefer.trim()) : strict;
+		}
+
 	}
 
 	private record VersionRange(String prefix, char start, String lowerBound, String upperBound, char end,
 			String suffix) {
 
-		static VersionRange parse(String raw) {
+		static @Nullable VersionRange parse(String raw) {
 			int leadingWhitespace = leadingWhitespace(raw);
 			int trailingWhitespace = trailingWhitespace(raw);
 			String trimmed = raw.substring(leadingWhitespace, raw.length() - trailingWhitespace);
 
-			if (!hasRangeDelimiters(trimmed)) {
+			if (!hasRangeDelimiters(trimmed) || trimmed.length() < 3) {
 				return null;
 			}
 
 			String content = trimmed.substring(1, trimmed.length() - 1);
 			int comma = content.indexOf(',');
-			if (comma == -1) {
+			if (comma == -1 || comma != content.lastIndexOf(',')) {
+				return null;
+			}
+
+			String lowerBound = content.substring(0, comma);
+			String upperBound = content.substring(comma + 1);
+			if (!StringUtils.hasText(lowerBound) && !StringUtils.hasText(upperBound)) {
+				return null;
+			}
+			if (!isVersionBound(lowerBound) || !isVersionBound(upperBound)) {
 				return null;
 			}
 
 			return new VersionRange(raw.substring(0, leadingWhitespace), trimmed.charAt(0),
-					content.substring(0, comma), content.substring(comma + 1),
-					trimmed.charAt(trimmed.length() - 1), raw.substring(raw.length() - trailingWhitespace));
+					lowerBound, upperBound, trimmed.charAt(trimmed.length() - 1),
+					raw.substring(raw.length() - trailingWhitespace));
 		}
 
 		Optional<ArtifactVersion> anchor() {
@@ -166,6 +200,11 @@ class GradleRichVersion {
 			boolean lowerDelimiter = first == '[' || first == '(' || first == ']';
 			boolean upperDelimiter = last == ']' || last == ')' || last == '[';
 			return lowerDelimiter && upperDelimiter;
+		}
+
+		private static boolean isVersionBound(String value) {
+			String trimmed = value.trim();
+			return trimmed.isEmpty() || ArtifactVersion.from(trimmed).isPresent();
 		}
 
 	}

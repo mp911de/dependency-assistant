@@ -24,7 +24,6 @@ import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -44,9 +43,7 @@ class NpmCompletionTests {
 		NpmFixtures.setup(fixture.getProject());
 	}
 
-	// TODO
 	@Test
-	@Disabled
 	@EditorFile(name = "package.json", content = """
 			{
 			  "dependencies": {
@@ -63,7 +60,47 @@ class NpmCompletionTests {
 				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
-		assertThat(packageJson.getText()).contains("extension\": \"<caret>1.0.0-alpha.5\"");
+		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
+	}
+
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "@springio/antora-xref-extension": "<caret>1.0.0-alpha.1"
+			  }
+			}
+			""")
+	void completesExactVersionAtStartTab(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+		fixture.complete(CompletionType.BASIC);
+
+		assertThat(fixture.getLookupElementStrings())
+				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+
+		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
+		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
+	}
+
+	@Test
+	@EditorFile(name = "package.json", content = """
+			{
+			  "dependencies": {
+			    "@springio/antora-xref-extension": "<caret>1.0.0-alpha.1"
+			  }
+			}
+			""")
+	void completesExactVersionAtStartTabComplete(PsiFile packageJson) {
+
+		NpmFixtures.analyze(packageJson);
+		fixture.complete(CompletionType.BASIC);
+
+		assertThat(fixture.getLookupElementStrings())
+				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+
+		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
+		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
 	}
 
 	@Test

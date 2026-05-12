@@ -46,6 +46,23 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 	}
 
 	/**
+	 * Return whether the given PSI element is a version element suitable for
+	 * highlighting or annotation.
+	 */
+	public static boolean isVersionElement(PsiElement element) {
+		if (element instanceof KtStringTemplateEntry versionCandidate) {
+			if (versionCandidate.getParent() instanceof KtStringTemplateExpression expression) {
+				PsiElement[] children = expression.getChildren();
+				if (children.length > 1 && children[0] == element) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Find the dependency call that owns the given PSI element.
 	 * <p>Used by lookup-site resolution to map version literals, named arguments,
 	 * and version-constraint entries back to their declaration call.
@@ -262,6 +279,12 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 			if (versionCandidate.getParent() instanceof KtStringTemplateExpression expression) {
 				PsiElement[] children = expression.getChildren();
 				if (children.length > 1 && children[0] == element) {
+
+					KtCallExpression declaration = findDependencyExpression(expression);
+					if (declaration != null) {
+						return LookupSite.from(KotlinDslParser.parseDependencySite(declaration, propertyResolver));
+					}
+
 					return LookupSite.absent();
 				}
 			}
