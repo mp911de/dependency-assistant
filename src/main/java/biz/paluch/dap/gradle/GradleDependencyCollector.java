@@ -25,23 +25,24 @@ import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Collects dependency coordinates from Gradle build files associated with the
- * project root that contains the given anchor file.
- * <p>The collection process:
- * <ol>
- * <li>Loads {@code gradle.properties} from the project root to build a property
- * map.</li>
- * <li>Parses the anchor file itself using the appropriate parser (Groovy,
- * Kotlin, Properties, or TOML).</li>
- * <li>If the anchor file is not a {@code build.gradle(.kts)}, also scans for
- * {@code gradle/libs.versions.toml} if it exists.</li>
- * </ol>
+ * Collects dependency coordinates from a Gradle file using the appropriate
+ * parser for Groovy DSL, Kotlin DSL, {@code gradle.properties}, or
+ * {@code *.versions.toml} version catalogs.
+ * <p>When the anchor file is a Gradle build or settings script, the collector
+ * additionally parses sibling {@code gradle.properties} and
+ * {@code gradle/libs.versions.toml} files located at the project root (if
+ * present) so accessor expressions referencing properties or catalog aliases
+ * resolve consistently.
  *
  * @author Mark Paluch
  */
 class GradleDependencyCollector {
+
+	private final Project project;
 
 	private final Map<String, String> properties;
 
@@ -58,23 +59,57 @@ class GradleDependencyCollector {
 	 * Create a collector using properties already known for the project.
 	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
+		this.project = project;
 		this.service = StateService.getInstance(project);
 		this.properties = properties;
 	}
 
 	/**
-	 * Collects artifact declarations from {@code buildFile} (and any sibling files
-	 * such as {@code gradle.properties} or {@code libs.versions.toml} in the same
-	 * directory tree).
+	 * Collect artifact declarations from {@code buildFile}.
+	 * <p>When {@code buildFile} is a Gradle build or settings script, the collector
+	 * also parses, in order, the project-root {@code gradle.properties} and
+	 * {@code gradle/libs.versions.toml} files before the anchor itself. A sibling
+	 * that is identical to the anchor is skipped to avoid double-parsing. Missing
+	 * files or unresolvable PSI silently skip.
 	 *
-	 * @param buildFile the Gradle file.
-	 * @return a populated {@link DependencyCollector}.
+	 * @param buildFile the Gradle file, must not be {@literal null}.
+	 * @return a populated {@link DependencyCollector}, guaranteed to be not
+	 * {@literal null}.
 	 */
 	public DependencyCollector collect(PsiFile buildFile) {
 
 		DependencyCollector collector = new DependencyCollector();
+
+		if (GradleUtils.isGradleScript(buildFile)) {
+			VirtualFile root = GradleUtils.findProjectRoot(buildFile);
+			VirtualFile anchorFile = buildFile.getVirtualFile();
+
+			collectSibling(root, GradleUtils.GRADLE_PROPERTIES, anchorFile, collector);
+			collectSibling(root, GradleUtils.DEFAULT_TOML_LOCATION, anchorFile, collector);
+		}
+
 		doCollect(buildFile, collector);
 		return collector;
+	}
+
+	private void collectSibling(@Nullable VirtualFile root, String relativePath, @Nullable VirtualFile anchor,
+			DependencyCollector collector) {
+
+		if (root == null) {
+			return;
+		}
+
+		VirtualFile sibling = root.findFileByRelativePath(relativePath);
+		if (sibling == null || sibling.equals(anchor)) {
+			return;
+		}
+
+		PsiFile psiFile = PsiManager.getInstance(project).findFile(sibling);
+		if (psiFile == null) {
+			return;
+		}
+
+		doCollect(psiFile, collector);
 	}
 
 	/**

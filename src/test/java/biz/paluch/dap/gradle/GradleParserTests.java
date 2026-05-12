@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -884,6 +885,61 @@ class GradleParserTests {
 				.hasDependencyUsage("org.springframework.modulith", "spring-modulith-bom")
 				.hasVersion("2.0.4")
 				.hasPropertyVersion("springModulithVersion");
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+			guava = "com.google.guava:guava:32.1.3-jre"
+			""")
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:6.0.0")
+			}
+			""")
+	void kotlinBuildScriptDiscoversCatalogFromGradleDir(@ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+		assertThat(collector).hasDependencyUsage("com.google.guava", "guava").hasVersion("32.1.3-jre");
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+			guava = "com.google.guava:guava:32.1.3-jre"
+			""")
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'org.junit:junit-bom:6.0.0'
+			}
+			""")
+	void groovyBuildScriptDiscoversCatalogFromGradleDir(@ProjectFile("build.gradle") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
+		assertThat(collector).hasDependencyUsage("com.google.guava", "guava").hasVersion("32.1.3-jre");
+	}
+
+	@Test
+	@ProjectFile(name = "gradle.properties", content = """
+			junitVersion=6.0.0
+			""")
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:${property("junitVersion")}")
+			}
+			""")
+	void buildScriptDiscoversGradlePropertiesFromProjectRoot(@ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junitVersion");
 	}
 
 }

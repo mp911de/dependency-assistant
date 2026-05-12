@@ -206,4 +206,17 @@ class TomlParserTests {
 				.hasVersion("2.0.0");
 	}
 
+	@Test
+	@EditorFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+			guava = "com.google.guava:guava:32.1.3-jre"
+			""")
+	void tomlAnchorDoesNotDoubleParse(PsiFile tomlFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(tomlFile);
+
+		assertThat(collector).hasUsageCount(1);
+		assertThat(collector).hasDependencyUsage("com.google.guava", "guava").hasVersion("32.1.3-jre");
+	}
+
 }
