@@ -16,9 +16,9 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.Locale;
 import java.util.function.Predicate;
 
+import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import biz.paluch.dap.util.StringUtils;
@@ -26,7 +26,8 @@ import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
-import com.intellij.codeInsight.completion.CompletionUtilCore;
+import com.intellij.codeInsight.lookup.Lookup;
+import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.patterns.ElementPattern;
 import com.intellij.patterns.PatternCondition;
@@ -55,12 +56,28 @@ public class GroovyCompletionContributor extends CompletionContributor {
 				return result.withPrefixMatcher("");
 			}
 
-			GrLiteral literal = PsiTreeUtil.getParentOfType(parameters.getPosition(), GrLiteral.class, false);
-			if (literal == null) {
+			GrLiteral literal = getLiteral(parameters.getPosition());
+			PsiElement versionElement = literal != null ? literal
+					: GradleParser.findCommandPlatformString(parameters.getPosition());
+			if (versionElement == null) {
 				return result;
 			}
 
-			return result.withPrefixMatcher(getVersionPrefix(parameters, literal));
+			return result.withPrefixMatcher(GradleCompletionSupport.getVersionPrefix(parameters, versionElement));
+		}
+
+		@Override
+		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
+				PsiElement element, ArtifactRelease option) {
+
+			GrLiteral literal = getLiteral(element);
+			if ((literal == null || !GradleParser.isDirectDependencyNotationLiteral(literal))
+					&& GradleParser.findCommandPlatformString(element) == null) {
+				return builder;
+			}
+
+			return builder.withInsertHandler((context, lookupElement) -> GradleCompletionSupport
+					.trimInsertedVersionSuffix(context, context.getCompletionChar() == Lookup.REPLACE_SELECT_CHAR));
 		}
 
 	};
@@ -70,6 +87,10 @@ public class GroovyCompletionContributor extends CompletionContributor {
 
 	private static final PatternCondition<PsiElement> DIRECT_DEPENDENCY_NOTATION_POSITION = literalPosition(
 			"directDependencyNotationPosition", GradleParser::isDirectDependencyNotationLiteral);
+
+	private static final PatternCondition<PsiElement> COMMAND_PLATFORM_STRING_POSITION = PatternConditions
+			.conditional("commandPlatformStringPosition",
+					position -> GradleParser.findCommandPlatformString(position) != null);
 
 	private static final PatternCondition<PsiElement> VERSION_NAMED_ARGUMENT_LITERAL_POSITION = literalPosition(
 			"versionNamedArgumentLiteralPosition", GradleParser::isVersionNamedArgumentLiteral);
@@ -102,6 +123,9 @@ public class GroovyCompletionContributor extends CompletionContributor {
 	private static final PsiElementPattern.Capture<PsiElement> INLINE_DEPENDENCY_NOTATION = inGradleGroovyFile(
 			DIRECT_DEPENDENCY_NOTATION_POSITION);
 
+	private static final PsiElementPattern.Capture<PsiElement> COMMAND_PLATFORM_STRING = inGradleGroovyFile(
+			COMMAND_PLATFORM_STRING_POSITION);
+
 	private static final PsiElementPattern.Capture<PsiElement> MAP_LITERAL_VERSION = inGradleGroovyFile(
 			VERSION_NAMED_ARGUMENT_LITERAL_POSITION);
 
@@ -131,6 +155,9 @@ public class GroovyCompletionContributor extends CompletionContributor {
 		// implementation 'group:name:version' and platform/enforcedPlatform string
 		// notation.
 		extend(CompletionType.BASIC, INLINE_DEPENDENCY_NOTATION, provider);
+
+		// implementation platform "group:name:version" command notation.
+		extend(CompletionType.BASIC, COMMAND_PLATFORM_STRING, provider);
 
 		// implementation group: 'group', name: 'name', version: 'version'.
 		extend(CompletionType.BASIC, MAP_LITERAL_VERSION, provider);
@@ -187,7 +214,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 			Predicate<GrLiteral> predicate) {
 
 		return PatternConditions.conditional(name, position -> {
-			GrLiteral literal = PsiTreeUtil.getParentOfType(position, GrLiteral.class, false);
+			GrLiteral literal = getLiteral(position);
 			return literal != null && GradleParser.isStringLiteral(literal) && predicate.test(literal);
 		});
 	}
@@ -195,6 +222,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 	public static boolean isSupportedCompletionSite(PsiElement position) {
 
 		return INLINE_DEPENDENCY_NOTATION.accepts(position)
+				|| COMMAND_PLATFORM_STRING.accepts(position)
 				|| MAP_LITERAL_VERSION.accepts(position)
 				|| MAP_PROPERTY_VERSION.accepts(position)
 				|| VERSION_BLOCK_PREFER_LITERAL_VERSION.accepts(position)
@@ -222,32 +250,9 @@ public class GroovyCompletionContributor extends CompletionContributor {
 				&& !existingText.contains(" ");
 	}
 
-	private static String getVersionPrefix(CompletionParameters parameters, GrLiteral literal) {
-
-		String text = literal.getText();
-		int caretInLiteral = parameters.getOffset() - literal.getTextRange().getStartOffset();
-		int dummy = text.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED);
-		if (dummy == -1) {
-			dummy = text.toLowerCase(Locale.ROOT)
-					.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED.toLowerCase(Locale.ROOT));
-		}
-		int prefixEnd = dummy != -1 ? dummy : caretInLiteral;
-		if (prefixEnd < 0 || prefixEnd > text.length()) {
-			return "";
-		}
-
-		int prefixStart;
-		if (GradleParser.isDirectDependencyNotationLiteral(literal)) {
-			prefixStart = text.lastIndexOf(':', prefixEnd - 1) + 1;
-		} else {
-			prefixStart = text.startsWith("'") || text.startsWith("\"") ? 1 : 0;
-		}
-
-		if (prefixStart < 0 || prefixStart > prefixEnd) {
-			return "";
-		}
-
-		return text.substring(prefixStart, prefixEnd);
+	private static GrLiteral getLiteral(PsiElement element) {
+		return element instanceof GrLiteral literal ? literal
+				: PsiTreeUtil.getParentOfType(element, GrLiteral.class, false);
 	}
 
 }

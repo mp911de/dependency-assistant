@@ -16,9 +16,9 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.Locale;
 import java.util.function.Predicate;
 
+import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.ReleasesCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import biz.paluch.dap.util.StringUtils;
@@ -26,7 +26,8 @@ import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
-import com.intellij.codeInsight.completion.CompletionUtilCore;
+import com.intellij.codeInsight.lookup.Lookup;
+import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.patterns.ElementPattern;
 import com.intellij.patterns.PatternCondition;
@@ -61,7 +62,20 @@ public class KotlinCompletionContributor extends CompletionContributor {
 				return result;
 			}
 
-			return result.withPrefixMatcher(getVersionPrefix(parameters, literal));
+			return result.withPrefixMatcher(GradleCompletionSupport.getVersionPrefix(parameters, literal));
+		}
+
+		@Override
+		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
+				PsiElement element, ArtifactRelease option) {
+
+			KtStringTemplateExpression literal = getLiteral(element);
+			if (literal == null || !KotlinDslParser.isDirectDependencyNotationLiteral(literal)) {
+				return builder;
+			}
+
+			return builder.withInsertHandler((context, lookupElement) -> GradleCompletionSupport
+					.trimInsertedVersionSuffix(context, context.getCompletionChar() == Lookup.REPLACE_SELECT_CHAR));
 		}
 
 	};
@@ -238,36 +252,9 @@ public class KotlinCompletionContributor extends CompletionContributor {
 				&& !containsWhitespace(existingText);
 	}
 
-	private static String getVersionPrefix(CompletionParameters parameters, KtStringTemplateExpression literal) {
-
-		String text = literal.getText();
-		int caretInLiteral = parameters.getOffset() - literal.getTextRange().getStartOffset();
-		int dummy = text.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED);
-		if (dummy == -1) {
-			dummy = text.toLowerCase(Locale.ROOT)
-					.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED.toLowerCase(Locale.ROOT));
-		}
-		int prefixEnd = dummy != -1 ? dummy : caretInLiteral;
-		if (prefixEnd < 0 || prefixEnd > text.length()) {
-			return "";
-		}
-
-		int prefixStart;
-		if (KotlinDslParser.isDirectDependencyNotationLiteral(literal)) {
-			prefixStart = text.lastIndexOf(':', prefixEnd - 1) + 1;
-		} else {
-			prefixStart = getStringContentStart(text);
-		}
-
-		if (prefixStart < 0 || prefixStart > prefixEnd) {
-			return "";
-		}
-
-		return text.substring(prefixStart, prefixEnd);
-	}
-
-	private static int getStringContentStart(String text) {
-		return text.startsWith("\"\"\"") ? 3 : text.startsWith("\"") ? 1 : 0;
+	private static KtStringTemplateExpression getLiteral(PsiElement element) {
+		return element instanceof KtStringTemplateExpression literal ? literal
+				: PsiTreeUtil.getParentOfType(element, KtStringTemplateExpression.class, false);
 	}
 
 	private static boolean containsWhitespace(String text) {

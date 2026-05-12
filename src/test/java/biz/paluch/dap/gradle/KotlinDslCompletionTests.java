@@ -99,6 +99,73 @@ class KotlinDslCompletionTests {
 		assertThat(invokeAutoPopup(':')).isFalse();
 	}
 
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:[<caret>5.2.0, 6.0.0]"))
+			}
+			""")
+	void completesLowerRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[6.1.0-M1, 6.0.0]").caretBetween("M1", ", 6");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:[6.0.<caret>0, 6.0.0]"))
+			}
+			""")
+	void completesInsideLowerRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[6.0.3, 6.0.0]").caretBetween("6.0.3", ", 6");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:[5.2.0, <caret>6.0.0]"))
+			}
+			""")
+	void completesUpperRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3", "6.1.0-M1");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[5.2.0, 6.1.0-M1]").caretBetween(" 6.1.0-M1", "]");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:[6.0.0, 6.0.<caret>]"))
+			}
+			""")
+	void completesInsideUpperRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[6.0.0, 6.0.3]").caretBetween("6.0.3", "]");
+	}
 
 	// -------------------------------------------------------------------------
 	// Plugins
@@ -255,6 +322,45 @@ class KotlinDslCompletionTests {
 
 	@Test
 	@EditorFile(name = "build.gradle.kts", content = """
+			"6.0.0".also { extra["junit"] = it }
+
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:<caret>${property("junit")}"))
+			}
+			""")
+	void completesBeforeProperty(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("org.junit:junit-bom:6.1.0-M1${property(\"junit\")}")
+				.caretBetween("6.1.0-M1", "${");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
+			"6.0.0".also { extra["junit"] = it }
+
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:<caret>${property("junit")}"))
+			}
+			""")
+	void completesBeforePropertyTab(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
+		assertThat(buildFile).containsText("org.junit:junit-bom:6.1.0-M1\"").caretBetween("6.1.0-M1", "\"");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle.kts", content = """
 			"6.<caret>".also { extra["junit"] = it }
 
 			dependencies {
@@ -345,7 +451,6 @@ class KotlinDslCompletionTests {
 		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings()).doesNotContain("6.0.3");
 	}
-
 
 	@Test
 	@EditorFile(name = "build.gradle.kts", content = """

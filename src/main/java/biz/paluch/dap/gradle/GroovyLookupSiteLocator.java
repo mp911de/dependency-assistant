@@ -96,6 +96,10 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		}
 
 		if (element instanceof GrReferenceExpression referenceExpression) {
+			LookupSite commandPlatformSite = locateCommandPlatformString(referenceExpression);
+			if (commandPlatformSite.isPresent()) {
+				return commandPlatformSite;
+			}
 			return locatePropertyReference(referenceExpression);
 		}
 
@@ -170,6 +174,18 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		}
 
 		return LookupSite.from(site);
+	}
+
+	private LookupSite locateCommandPlatformString(PsiElement element) {
+
+		GrMethodCall call = GradleParser.findCommandPlatformDependencyCall(element);
+		String text = GradleParser.getCommandPlatformStringText(element);
+		if (call == null || !StringUtils.hasText(text)) {
+			return LookupSite.absent();
+		}
+
+		GradleDependency dependency = GradleDependency.parse(text, propertyResolver);
+		return dependency != null ? LookupSite.from(dependency.toDependencySite(call, element)) : LookupSite.absent();
 	}
 
 	private @Nullable DependencySite resolvePropertyDeclaration(
@@ -363,6 +379,9 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		}
 
 		GrMethodCall call = PsiTreeUtil.getParentOfType(element, GrMethodCall.class);
+		if (call == null) {
+			call = GradleParser.findCommandPlatformDependencyCall(element);
+		}
 		if (call == null) {
 			return null;
 		}

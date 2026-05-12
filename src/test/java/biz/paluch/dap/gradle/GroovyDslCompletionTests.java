@@ -25,7 +25,6 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -66,8 +65,49 @@ class GroovyDslCompletionTests {
 			    implementation platform('org.junit:junit-bom:6.0.<caret>')
 			}
 			""")
-	void invokesAutoPopupForPlatformGavVersion() {
-		assertThat(invokeAutoPopup('3')).isTrue();
+	void invokesAutoPopupForPlatformGavVersion(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("org.junit:junit-bom:6.0.3").caretBetween("6.0.3", "'");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform('org.junit:junit-bom:6.<caret>0.3')
+			}
+			""")
+	void invokesAutoPopupForPlatformGavVersionTab(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("org.junit:junit-bom:6.1.0-M1").caretBetween("6.1.0-M1", "'");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform "org.junit:junit-bom:6.0.<caret>"
+			}
+			""")
+	void invokesAutoPopupForPlatformDslGavVersionQuotes(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("org.junit:junit-bom:6.0.3").caretBetween("6.0.3", "\"");
 	}
 
 	@Test
@@ -77,7 +117,6 @@ class GroovyDslCompletionTests {
 			}
 			""")
 	void invokesAutoPopupForCompactNotationColon() {
-
 		assertThat(invokeAutoPopup(':')).isTrue();
 	}
 
@@ -86,8 +125,75 @@ class GroovyDslCompletionTests {
 			println 'org.junit:junit-bom<caret>'
 			""")
 	void doesNotInvokeAutoPopupForUnrelatedColon() {
-
 		assertThat(invokeAutoPopup(':')).isFalse();
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation(platform("org.junit:junit-bom:[<caret>5.2.0, 6.0.0]"))
+			}
+			""")
+	void completesLowerRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[6.1.0-M1, 6.0.0]").caretBetween("M1", ", 6");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform("org.junit:junit-bom:[6.0.<caret>0, 6.0.0]"))
+			}
+			""")
+	void completesInsideLowerRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[6.0.3, 6.0.0]").caretBetween("6.0.3", ", 6");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform("org.junit:junit-bom:[5.2.0, <caret>6.0.0]"))
+			}
+			""")
+	void completesUpperRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3", "6.1.0-M1");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[5.2.0, 6.1.0-M1]").caretBetween(" 6.1.0-M1", "]");
+	}
+
+	@Test
+	@EditorFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform("org.junit:junit-bom:[6.0.0, 6.0.<caret>]"))
+			}
+			""")
+	void completesInsideUpperRange(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(buildFile).containsText("[6.0.0, 6.0.3]").caretBetween("6.0.3", "]");
 	}
 
 	// -------------------------------------------------------------------------
@@ -123,7 +229,6 @@ class GroovyDslCompletionTests {
 		assertThat(invokeAutoPopup('3')).isTrue();
 	}
 
-	@Disabled("TODO")
 	@Test
 	@EditorFile(name = "build.gradle", content = """
 			dependencies {
@@ -136,10 +241,9 @@ class GroovyDslCompletionTests {
 
 		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
-		// TODO .doesNotContain("6.1.0-M1");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(buildFile).containsText("version: '6.0.<caret>'");
+		assertThat(buildFile).containsText("version: '6.0.3'");
 	}
 
 	@Test
@@ -180,7 +284,6 @@ class GroovyDslCompletionTests {
 		assertThat(invokeAutoPopup('3')).isTrue();
 	}
 
-	@Disabled("TODO")
 	@Test
 	@EditorFile(name = "build.gradle", content = """
 			dependencies {

@@ -99,8 +99,12 @@ class GradleParser extends GradleParserSupport {
 		}
 
 		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		return call != null && isDependencyOrPlatformCall(call) && isArgumentOfCall(literal, call)
-				&& call.getClosureArguments().length == 0;
+		if (call != null && isDependencyOrPlatformCall(call) && isArgumentOfCall(literal, call)
+				&& call.getClosureArguments().length == 0) {
+			return true;
+		}
+
+		return findCommandPlatformDependencyCall(literal) != null;
 	}
 
 	/**
@@ -228,6 +232,39 @@ class GradleParser extends GradleParserSupport {
 		}
 
 		return depCall;
+	}
+
+	static @Nullable GrMethodCall findCommandPlatformDependencyCall(PsiElement element) {
+
+		PsiElement stringElement = findCommandPlatformString(element);
+		if (stringElement == null) {
+			return null;
+		}
+
+		GrMethodCall call = PsiTreeUtil.findChildOfType(stringElement, GrMethodCall.class);
+		return call != null && findCommandPlatformString(call) == stringElement ? call : null;
+	}
+
+	static @Nullable PsiElement findCommandPlatformString(PsiElement element) {
+
+		if (element instanceof GrMethodCall call) {
+			return findCommandPlatformString(call);
+		}
+
+		PsiElement candidate = element instanceof GrReferenceExpression ? element
+				: PsiTreeUtil.getParentOfType(element, GrReferenceExpression.class, false);
+		if (!(candidate instanceof GrReferenceExpression referenceExpression)) {
+			return null;
+		}
+
+		GrMethodCall call = PsiTreeUtil.findChildOfType(referenceExpression, GrMethodCall.class);
+		return call != null && findCommandPlatformString(call) == candidate ? candidate : null;
+	}
+
+	static @Nullable String getCommandPlatformStringText(PsiElement element) {
+
+		PsiElement stringElement = findCommandPlatformString(element);
+		return stringElement != null ? getQuotedCommandArgument(stringElement.getText()) : null;
 	}
 
 	/**
@@ -423,6 +460,15 @@ class GradleParser extends GradleParserSupport {
 				if (dependency != null) {
 					return dependency.toDependencySite(call, literal);
 				}
+			}
+		}
+
+		PsiElement commandPlatformString = findCommandPlatformString(call);
+		if (commandPlatformString != null) {
+			GradleDependency dependency = GradleDependency.parse(
+					getQuotedCommandArgument(commandPlatformString.getText()), propertyResolver);
+			if (dependency != null) {
+				return dependency.toDependencySite(call, commandPlatformString);
 			}
 		}
 
@@ -635,6 +681,55 @@ class GradleParser extends GradleParserSupport {
 		}
 
 		return null;
+	}
+
+	private static @Nullable PsiElement findCommandPlatformString(GrMethodCall call) {
+
+		if (!GradleUtils.isDependencySection(GroovyDslUtils.getGroovyMethodName(call))
+				|| !hasPlatformCommandArgument(call)) {
+			return null;
+		}
+
+		if (call.getParent() instanceof GrReferenceExpression referenceExpression
+				&& getQuotedCommandArgument(referenceExpression.getText()) != null) {
+			return referenceExpression;
+		}
+
+		return null;
+	}
+
+	private static boolean hasPlatformCommandArgument(GrMethodCall call) {
+
+		for (GrReferenceExpression reference : SyntaxTraverser.psiTraverser(call)
+				.filter(GrReferenceExpression.class)) {
+			if (reference != call.getInvokedExpression()
+					&& GradleUtils.isPlatformSection(reference.getReferenceName())) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static @Nullable String getQuotedCommandArgument(String text) {
+		int singleQuote = text.indexOf('\'');
+		int doubleQuote = text.indexOf('"');
+		int start;
+		if (singleQuote == -1) {
+			start = doubleQuote;
+		} else if (doubleQuote == -1) {
+			start = singleQuote;
+		} else {
+			start = Math.min(singleQuote, doubleQuote);
+		}
+
+		if (start == -1) {
+			return null;
+		}
+
+		char quote = text.charAt(start);
+		int end = text.lastIndexOf(quote);
+		return end > start ? text.substring(start + 1, end) : null;
 	}
 
 	private static @Nullable GrClosableBlock getFirstClosure(GrMethodCall call) {
