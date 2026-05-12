@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <list>
+	<!-- TODO For eg. Gradle, the colors override syntax highlighting 😬-->
 	<option name="UPGRADE_AVAILABLE">
 		<value>
-			<option name="BACKGROUND" value="067C063A"/>
-			<option name="ERROR_STRIPE_COLOR" value="C0E1B4FF"/>
-			<option name="FONT_TYPE" value="0"/>
+			<option name="FOREGROUND" value="052E09FF"/>
+			<option name="BACKGROUND" value="C8FFC852"/>
+			<option name="ERROR_STRIPE_COLOR" value="CDFABFFF"/>
 		</value>
 	</option>
 
 	<option name="UPGRADE_SUGGESTION">
 		<value>
-			<option name="BACKGROUND" value="C2FFC24F"/>
-			<option name="ERROR_STRIPE_COLOR" value="ABEF92FF"/>
-			<option name="FONT_TYPE" value="0"/>
+			<option name="FOREGROUND" value="166826FF"/>
+			<option name="BACKGROUND" value="CCFFCC79"/>
+			<option name="ERROR_STRIPE_COLOR" value="5ECA5EAB"/>
 		</value>
 	</option>
 </list>

@@ -2,17 +2,17 @@
 <list>
 	<option name="UPGRADE_AVAILABLE">
 		<value>
-			<option name="BACKGROUND" value="0031003A"/>
-			<option name="ERROR_STRIPE_COLOR" value="3A0031003A"/>
-			<option name="FONT_TYPE" value="0"/>
+			<option name="FOREGROUND" value="A2CFA8FF"/>
+			<option name="BACKGROUND" value="11751154"/>
+			<option name="ERROR_STRIPE_COLOR" value="07910784"/>
 		</value>
 	</option>
 
 	<option name="UPGRADE_SUGGESTION">
 		<value>
-			<option name="BACKGROUND" value="0091003A"/>
-			<option name="ERROR_STRIPE_COLOR" value="0091003A"/>
-			<option name="FONT_TYPE" value="0"/>
+			<option name="FOREGROUND" value="A9D3A2FF"/>
+			<option name="BACKGROUND" value="00910071"/>
+			<option name="ERROR_STRIPE_COLOR" value="23AE23E2"/>
 		</value>
 	</option>
 </list>
