@@ -17,7 +17,6 @@
 package biz.paluch.dap.maven;
 
 import java.util.List;
-import java.util.Map;
 
 import javax.swing.Icon;
 
@@ -25,44 +24,44 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.maven.MavenWrapperParser.WrapperEntry;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import com.intellij.icons.AllIcons;
+import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiTreeUtil;
 import icons.MavenIcons;
-import org.jetbrains.idea.maven.project.MavenProject;
-import org.jetbrains.idea.maven.project.MavenProjectsManager;
 
 /**
- * Maven implementation of {@link DependencyAssistant}.
+ * Maven Wrapper implementation of {@link DependencyAssistant}.
  *
  * @author Mark Paluch
  */
-class MavenAssistant implements DependencyAssistant {
+class MavenWrapperAssistant implements DependencyAssistant {
 
 	@Override
 	public String getId() {
-		return "maven";
+		return "maven-wrapper";
 	}
 
 	@Override
 	public String getDisplayName() {
-		return MavenInterface.INSTANCE.getDisplayName();
+		return MavenWrapperInterface.INSTANCE.getDisplayName();
 	}
 
 	@Override
@@ -72,17 +71,17 @@ class MavenAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean supports(PsiFile file) {
-		return MavenUtils.isMavenPomFile(file);
+		return MavenUtils.isWrapperFile(file);
 	}
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateProjectState(project).getAllDependencies(indicator);
+		return new UpdateWrapperProjectState(project).getAllDependencies(indicator);
 	}
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateProjectState(project).readAndUpdateAll(indicator);
+		new UpdateWrapperProjectState(project).readAndUpdateAll(indicator);
 	}
 
 	@Override
@@ -92,73 +91,75 @@ class MavenAssistant implements DependencyAssistant {
 			throw new IllegalStateException("Maven integration does not support " + anchor);
 		}
 
-		MavenProjectContext injected = anchor.getUserData(MavenProjectContext.KEY);
-		if (injected != null) {
-			return new MavenDependencyContext(project, anchor.getVirtualFile(),
-					MavenProjectsManager.getInstance(project), injected);
-		}
-
-		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(project, anchor.getVirtualFile()));
+		return CachedValuesManager.getProjectPsiDependentCache(anchor, MavenWrapperAssistant::createWrapperContext);
 	}
 
-	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
-
-		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
-		MavenProjectContext projectContext = MavenProjectContext.of(project, manager, anchor);
-
-		if (projectContext.isAbsent()) {
-			throw new IllegalStateException("No Maven project found for " + anchor);
-		}
-
-		return new MavenDependencyContext(project, anchor, manager, projectContext);
+	/**
+	 * Determine the highlighting range for a property value.
+	 * @param propertyValue the property value to inspect.
+	 * @return the resulting highlight range.
+	 */
+	public static TextRange getHighlightRange(PropertyValueImpl propertyValue) {
+		return MavenWrapperInterface.INSTANCE.getHighlightRange(propertyValue);
 	}
 
-	private static class MavenDependencyContext implements ProjectDependencyContext {
+	private static MavenWrapperDependencyContext createWrapperContext(PsiFile anchor) {
 
-		private final MavenProjectContext projectContext;
+		Project project = anchor.getProject();
+		VirtualFile virtualFile = anchor.getVirtualFile();
+		ProjectId projectId = MavenProjectContext.createWrapperProjectId(virtualFile);
+		List<ReleaseSource> releaseSources = MavenWrapperUtil.collectReleaseSources(anchor);
+		return new MavenWrapperDependencyContext(project, virtualFile, projectId, releaseSources);
+	}
+
+
+	static class MavenWrapperDependencyContext implements ProjectDependencyContext {
 
 		private final Project project;
 
 		private final VirtualFile anchor;
 
-		private final MavenProjectsManager manager;
+		private final ProjectId projectId;
 
-		private final StateService service;
+		private final List<ReleaseSource> releaseSources;
 
-		MavenDependencyContext(Project project, VirtualFile anchor,
-				MavenProjectsManager manager, MavenProjectContext projectContext) {
+		MavenWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId,
+				List<ReleaseSource> releaseSources) {
 
 			this.project = project;
-			this.projectContext = projectContext;
 			this.anchor = anchor;
-			this.manager = manager;
-			this.service = StateService.getInstance(project);
+			this.projectId = projectId;
+			this.releaseSources = releaseSources;
 		}
 
 		@Override
 		public boolean isAvailable() {
-			return projectContext.isAvailable();
+			return true;
 		}
 
 		@Override
 		public ProjectId getProjectId() {
-			return projectContext.getProjectId();
+			return projectId;
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return projectContext.getReleaseSources();
+			return releaseSources;
 		}
 
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
-			return MavenInterface.INSTANCE;
+			return MavenWrapperInterface.INSTANCE;
 		}
 
 		@Override
 		public void invalidateState(PsiFile file) {
-			new UpdateProjectState(project).readAndUpdate(file);
+
+			if (!MavenUtils.isWrapperFile(file)) {
+				return;
+			}
+
+			new UpdateWrapperProjectState(project).update(file);
 		}
 
 		@Override
@@ -169,42 +170,32 @@ class MavenAssistant implements DependencyAssistant {
 				return new DependencyCollector();
 			}
 
-			return collect(psiFile, projectContext.getMavenProject());
+			return new MavenWrapperDependencyCollector().collect(psiFile);
 		}
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-			return MavenUtils.isVersionElement(element);
+			return MavenWrapperUtil.isVersionElement(element);
 		}
 
 		@Override
 		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
-			return VersionUpgradeLookupService.create(element);
+			return new WrapperVersionUpgradeLookupService(project, this);
 		}
 
 		@Override
-		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
-			new UpdatePomFile().applyUpdate(anchor, update);
+		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+			new UpdateMavenWrapperFile().applyUpdate(versionLiteral, update);
 		}
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdatePomFile().applyUpdates(psiFile, updates);
-		}
-
-		private DependencyCollector collect(PsiFile file, MavenProject currentProject) {
-
-			Map<String, String> allProperties = new MavenProperties(project, manager).getAllProperties(currentProject);
-			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(service.getCache(),
-					allProperties);
-			DependencyCollector collector = dependencyCollector.collect(file);
-			collector.addAllReleaseSources(getReleaseSources());
-			return collector;
+			new UpdateMavenWrapperFile().applyUpdates(psiFile, updates);
 		}
 
 		@Override
 		public String toString() {
-			return "MavenDependencyContext[%s] %s".formatted(anchor, projectContext);
+			return "MavenWrapperDependencyContext[%s] projectId=%s".formatted(anchor, projectId);
 		}
 
 	}
@@ -212,13 +203,13 @@ class MavenAssistant implements DependencyAssistant {
 	/**
 	 * Maven-specific user interface support.
 	 */
-	enum MavenInterface implements InterfaceAssistant {
+	enum MavenWrapperInterface implements InterfaceAssistant {
 
 		INSTANCE;
 
 		@Override
 		public String getDisplayName() {
-			return MessageBundle.message("assistant.maven");
+			return MessageBundle.message("assistant.maven-wrapper");
 		}
 
 		@Override
@@ -233,24 +224,36 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public Icon getNavigateIcon(ArtifactDeclaration declaration) {
-
-			if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
-				return DependencyAssistantIcons.PROPERTY_NAVIGATE;
-			}
-
 			return DependencyAssistantIcons.ICON;
 		}
 
 		@Override
 		public Icon getTableIcon(Dependency dependency) {
+			return MavenIcons.MavenProject;
+		}
 
-			for (DeclarationSource declarationSource : dependency.getDeclarationSources()) {
-				if (declarationSource instanceof DeclarationSource.Plugin) {
-					return AllIcons.Nodes.Plugin;
-				}
+		@Override
+		public TextRange getHighlightRange(PsiElement element) {
+
+			PropertyValueImpl literal = element instanceof PropertyValueImpl pv ? pv
+					: PsiTreeUtil.getParentOfType(element, PropertyValueImpl.class, false);
+			if (literal == null
+					|| !(literal.getContainingFile() instanceof PropertiesFile propsFile)
+					|| !MavenUtils.isWrapperFile(propsFile)) {
+				return element.getTextRange();
 			}
 
-			return MavenIcons.MavenProject;
+			if (!(literal.getParent() instanceof PropertyImpl property)) {
+				return literal.getTextRange();
+			}
+
+			WrapperEntry entry = MavenWrapperParser.parse(property);
+			if (entry == null) {
+				return literal.getTextRange();
+			}
+
+			return MavenWrapperUtil.findTextRange(property, literal,
+					MavenWrapperUtil.MatchFunction.indexOf(entry.rawVersion()));
 		}
 
 	}

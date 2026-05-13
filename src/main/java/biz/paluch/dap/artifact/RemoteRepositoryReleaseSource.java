@@ -192,7 +192,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			return HttpClientUtil.fetchUrl(uri, requestBuilder -> {
 				return requestBuilder.tuner(connection -> {
 					if (credentials != null
-							&& repositoryCredentialHostMatches(repositoryBaseUri, URI.create(connection.getURL()
+							&& hasSameBaseUri(repositoryBaseUri, URI.create(connection.getURL()
 									.toString()))) {
 						connection.addRequestProperty("Authorization", basicAuthHeader(credentials));
 					}
@@ -209,7 +209,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		}
 	}
 
-	private static boolean repositoryCredentialHostMatches(URI repositoryBase, URI requestTarget) {
+	public static boolean hasSameBaseUri(URI repositoryBase, URI requestTarget) {
 
 		String baseHost = repositoryBase.getHost();
 		String targetHost = requestTarget.getHost();

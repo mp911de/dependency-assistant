@@ -19,7 +19,6 @@ package biz.paluch.dap.maven;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
@@ -41,8 +40,7 @@ import org.springframework.util.Assert;
 /**
  * Maven project context. Implements {@link ProjectBuildContext} so that all
  * IDE-integration code (annotators, completion contributors, etc.) can work
- * against the build-tool-agnostic interface while Maven-specific callers still
- * have access to {@link #getMavenId()} and {@link #doWithMaven(Function)}.
+ * against the build-tool-agnostic interface.
  *
  * @author Mark Paluch
  */
@@ -75,6 +73,14 @@ interface MavenProjectContext extends ProjectBuildContext {
 	static MavenProjectContext of(Project project, @Nullable VirtualFile file) {
 
 		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(project);
+		return of(project, projectsManager, file);
+	}
+
+	/**
+	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
+	 * {@link VirtualFile}.
+	 */
+	static MavenProjectContext of(Project project, MavenProjectsManager projectsManager, @Nullable VirtualFile file) {
 
 		if (!projectsManager.isMavenizedProject() || file == null) {
 			return EmptyMavenContext.INSTANCE;
@@ -95,6 +101,10 @@ interface MavenProjectContext extends ProjectBuildContext {
 		Assert.hasText(mavenId.getGroupId(), "groupId must not be null or empty");
 		Assert.hasText(mavenId.getArtifactId(), "groupId must not be null or empty");
 		return new ProjectId(mavenId.getGroupId(), mavenId.getArtifactId(), null);
+	}
+
+	static ProjectId createWrapperProjectId(VirtualFile virtualFile) {
+		return new ProjectId("org.apache.maven", "apache-maven", virtualFile.getPath());
 	}
 
 	/**

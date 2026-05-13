@@ -123,7 +123,7 @@ class UpdateProjectState {
 		}, indicator);
 
 		if (releaseSources.isEmpty()) {
-			aggregate.addAllReleaseSources(GitHubReleaseSource.from(project));
+			aggregate.addReleaseSource(GitHubReleaseSource.from(project));
 		} else {
 			aggregate.addAllReleaseSources(releaseSources.values());
 		}

@@ -110,6 +110,19 @@ public final class Releases {
 			.add("0.10.7", "2025-07-20")
 			.add("0.9.3", "2019-01-07"));
 
+	public static final CachedArtifact APACHE_MAVEN = create("org.apache.maven", "apache-maven", releases -> releases
+			.add("3.10.0", "2026-04-01")
+			.add("3.9.9", "2024-10-04")
+			.add("3.9.6", "2024-01-21")
+			.add("3.9.5", "2023-10-19"));
+
+	public static final CachedArtifact MAVEN_WRAPPER = create("org.apache.maven.wrapper", "maven-wrapper",
+			releases -> releases
+					.add("3.3.3", "2026-03-12")
+					.add("3.4.0-rc-1", "2026-02-09")
+					.add("3.3.2", "2024-03-08")
+					.add("3.3.1", "2023-10-16"));
+
 	private Releases() {
 	}
 

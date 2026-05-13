@@ -160,7 +160,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	private LookupSite locateGradlePropertySite(PsiElement element) {
 
 		Property property = GradlePropertiesParser.getProperty(element);
-		if (property == null || StringUtils.isEmpty(property.getKey()) || projectState == null) {
+		if (property == null || StringUtils.isEmpty(property.getUnescapedKey()) || projectState == null) {
 			return LookupSite.absent();
 		}
 
@@ -169,12 +169,12 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private LookupSite locateGradlePropertySite(Property property) {
 
-		if (StringUtils.isEmpty(property.getKey()) || projectState == null) {
+		if (StringUtils.isEmpty(property.getUnescapedKey()) || projectState == null) {
 			return LookupSite.absent();
 		}
 
 		if (StringUtils.hasText(property.getName())) {
-			return LookupSite.ofProperty(property.getName(), property.getValue(), property, property);
+			return LookupSite.ofProperty(property.getName(), property.getUnescapedValue(), property, property);
 		}
 
 		return LookupSite.absent();

@@ -102,8 +102,8 @@ class GradlePropertiesParser {
 	private static void doParseProperties(PropertiesFile propsFile, Consumer<PropertyValue> action) {
 
 		for (IProperty prop : propsFile.getProperties()) {
-			String key = prop.getKey();
-			String value = prop.getValue();
+			String key = prop.getUnescapedKey();
+			String value = prop.getUnescapedValue();
 			if (key != null && value != null) {
 				PsiElement propPsi = prop.getPsiElement();
 				PsiElement valuePsi = propPsi.getLastChild();

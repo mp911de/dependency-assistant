@@ -28,8 +28,10 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -48,6 +50,12 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class MavenUtils {
+
+	static final String WRAPPER_FILENAME = "maven-wrapper.properties";
+
+	private static final String WRAPPER_DIR = "wrapper";
+
+	private static final String MVN_DIR = ".mvn";
 
 	/**
 	 * Return whether the given file is a Maven POM by filename alone.
@@ -206,4 +214,49 @@ class MavenUtils {
 				&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName()));
 	}
 
+	/**
+	 * Return whether the given file is a Maven Wrapper properties file located at
+	 * {@code .mvn/wrapper/maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFile(@Nullable VirtualFile file) {
+
+		if (file == null || !WRAPPER_FILENAME.equals(file.getName())) {
+			return false;
+		}
+
+		VirtualFile parent = file.getParent();
+		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
+			return false;
+		}
+
+		VirtualFile grandParent = parent.getParent();
+		return grandParent != null && MVN_DIR.equals(grandParent.getName());
+	}
+
+	/**
+	 * Return whether the given file is a Maven Wrapper properties file located at
+	 * {@code .mvn/wrapper/maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFile(@Nullable PsiFile file) {
+
+		if (file == null || !WRAPPER_FILENAME.equals(file.getName())) {
+			return false;
+		}
+
+		PsiDirectory parent = file.getParent();
+		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
+			return false;
+		}
+
+		PsiDirectory grandParent = parent.getParent();
+		return grandParent != null && MVN_DIR.equals(grandParent.getName());
+	}
+
+	/**
+	 * Return whether the given {@link PropertiesFile} is a Maven Wrapper properties
+	 * file located at the wrapper path.
+	 */
+	static boolean isWrapperFile(@Nullable PropertiesFile propsFile) {
+		return propsFile != null && isWrapperFile(propsFile.getContainingFile());
+	}
 }

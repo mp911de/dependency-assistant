@@ -17,6 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Predicate;
 
 /**
@@ -31,7 +32,10 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 		Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
 
 	/**
-	 * Create an update command from a selected update option.
+	 * Create an update from a selected update option.
+	 * @param option the selected update option.
+	 * @return the dependency update to apply.
+	 * @throws IllegalStateException if the option has no target version selected.
 	 */
 	public static DependencyUpdate from(DependencyUpdateOption option) {
 		return new DependencyUpdate(option.getArtifactId(), option.getRequiredUpdateTo(),
@@ -39,11 +43,39 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 	}
 
 	/**
-	 * Create an update command from a dependency and release.
+	 * Create an update for a dependency and release.
+	 * @param dependency the dependency to update.
+	 * @param release the selected release.
+	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(Dependency dependency, Release release) {
 		return new DependencyUpdate(dependency.getArtifactId(), release.getVersion(),
 				dependency.getDeclarationSources(), dependency.getVersionSources());
+	}
+
+	/**
+	 * Create an update for a direct dependency declaration with an inline version.
+	 * @param artifactId the artifact coordinate to update.
+	 * @param version the selected target version.
+	 * @return the dependency update to apply.
+	 */
+	public static DependencyUpdate create(ArtifactId artifactId, ArtifactVersion version) {
+		return create(artifactId, version, DeclarationSource.dependency(),
+				VersionSource.declared(version.toString()));
+	}
+
+	/**
+	 * Create an update with explicit declaration and version sources.
+	 * @param artifactId the artifact coordinate to update.
+	 * @param version the selected target version.
+	 * @param declarationSource the declaration source to update.
+	 * @param versionSource the version source to update.
+	 * @return the dependency update to apply.
+	 */
+	public static DependencyUpdate create(ArtifactId artifactId, ArtifactVersion version,
+			DeclarationSource declarationSource,
+			VersionSource versionSource) {
+		return new DependencyUpdate(artifactId, version, List.of(declarationSource), List.of(versionSource));
 	}
 
 	/**
@@ -59,6 +91,15 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Return the {@link #version()} as String.
+	 * @return the string representation of the target version.
+	 * @see #version()
+	 */
+	public String versionAsString() {
+		return version.toString();
 	}
 
 }

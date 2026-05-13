@@ -62,7 +62,7 @@ public class DependencyCollector {
 	 * Add a release source associated with the project's remote repositories.
 	 * @param releaseSource the source to add.
 	 */
-	public void addAllReleaseSources(ReleaseSource releaseSource) {
+	public void addReleaseSource(ReleaseSource releaseSource) {
 		this.releaseSources.add(releaseSource);
 	}
 

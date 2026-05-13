@@ -16,26 +16,17 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.Map;
-
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
-import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
-import biz.paluch.dap.state.ProjectId;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.idea.maven.model.MavenId;
 
 /**
- * Fixtures for Maven.
+ * Fixtures for Maven Wrapper.
  *
  * @author Mark Paluch
  */
-class MavenFixtures {
-
-	static final MavenId MAVEN_ID = new MavenId("com.example", "demo", "");
-
-	static final ProjectId PROJECT_ID = ProjectId.of("com.example", "demo");
+class MavenWrapperFixtures {
 
 	/**
 	 * Set up Dependency Assistant for the given project.
@@ -48,18 +39,7 @@ class MavenFixtures {
 	 * Analyze the given file and return the dependency collector.
 	 */
 	public static DependencyCollector analyze(PsiFile file) {
-		return analyze(file, Map.of());
-	}
-
-	/**
-	 * Analyze the given POM file, store the dependency state for annotators and
-	 * completion contributors, and return the dependency collector.
-	 */
-	public static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
-
-		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), MAVEN_ID, null);
-		file.putUserData(MavenProjectContext.KEY, projectContext);
-		return new UpdateProjectState(file.getProject(), properties).doUpdate(file);
+		return new UpdateWrapperProjectState(file.getProject()).update(file);
 	}
 
 }

@@ -33,8 +33,6 @@
 				implementationClass="biz.paluch.dap.gradle.KotlinCompletionContributor"/>
 		<annotator language="Groovy"
 		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
-		<annotator language="Properties"
-		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
 		<annotator language="TOML"
 		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
 		<annotator language="kotlin"

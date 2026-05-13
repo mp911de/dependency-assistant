@@ -1,6 +1,7 @@
 <idea-plugin>
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.maven.MavenAssistant"/>
+		<assistant implementation="biz.paluch.dap.maven.MavenWrapperAssistant"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
@@ -11,6 +12,12 @@
 		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="XML"
+				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>
+		<completion.contributor
+				language="Properties"
+				implementationClass="biz.paluch.dap.maven.MavenWrapperReleaseVersionCompletionContributor"/>
+		<codeInsight.lineMarkerProvider
+				language="Properties"
 				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>
 	</extensions>
 </idea-plugin>

@@ -98,6 +98,19 @@ class UpdateProjectState {
 	}
 
 	/**
+	 * Create a new {@code UpdateProjectState}.
+	 * @param project the IntelliJ project.
+	 * @param properties the Maven projects manager to inspect.
+	 */
+	public UpdateProjectState(Project project, Map<String, String> properties) {
+		this.project = project;
+		this.service = StateService.getInstance(project);
+		this.psiManager = PsiManager.getInstance(project);
+		this.manager = MavenProjectsManager.getInstance(project);
+		this.collector = new MavenDependencyCollector(service.getCache(), properties);
+	}
+
+	/**
 	 * Read and update dependency state for the given file.
 	 * @param file the file to inspect.
 	 */
@@ -182,6 +195,7 @@ class UpdateProjectState {
 
 	/**
 	 * Update dependency state for the given Maven POM file.
+	 *
 	 * @param file the Maven POM file to inspect.
 	 */
 	public void update(PsiFile file) {
@@ -190,6 +204,11 @@ class UpdateProjectState {
 			return;
 		}
 
+		doUpdate(file);
+	}
+
+	DependencyCollector doUpdate(PsiFile file) {
+
 		MavenProjectContext context = MavenProjectContext.of(project, file);
 
 		if (context.isAvailable()) {
@@ -197,7 +216,10 @@ class UpdateProjectState {
 			ProjectState projectState = this.service.getProjectState(context.getProjectId());
 			projectState.invalidateDependencies();
 			projectState.setDependencies(collector);
+			return collector;
 		}
+
+		return new DependencyCollector();
 	}
 
 }
