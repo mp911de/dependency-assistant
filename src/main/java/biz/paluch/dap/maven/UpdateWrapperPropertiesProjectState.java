@@ -38,7 +38,7 @@ import com.intellij.psi.search.ProjectScope;
  *
  * @author Mark Paluch
  */
-class UpdateWrapperProjectState {
+class UpdateWrapperPropertiesProjectState {
 
 	private final Project project;
 
@@ -49,20 +49,20 @@ class UpdateWrapperProjectState {
 	private final MavenWrapperDependencyCollector collector;
 
 	/**
-	 * Create a new {@code UpdateWrapperProjectState}.
+	 * Create a new {@code UpdateWrapperPropertiesProjectState}.
 	 * @param project the IntelliJ project.
 	 */
-	public UpdateWrapperProjectState(Project project) {
+	public UpdateWrapperPropertiesProjectState(Project project) {
 		this(project, PsiManager.getInstance(project), StateService.getInstance(project));
 	}
 
 	/**
-	 * Create a new {@code UpdateWrapperProjectState}.
+	 * Create a new {@code UpdateWrapperPropertiesProjectState}.
 	 * @param project the IntelliJ project.
 	 * @param psiManager the PSI manager to use.
 	 * @param service the dependency assistant service to update.
 	 */
-	public UpdateWrapperProjectState(Project project, PsiManager psiManager, StateService service) {
+	public UpdateWrapperPropertiesProjectState(Project project, PsiManager psiManager, StateService service) {
 		this.project = project;
 		this.service = service;
 		this.psiManager = psiManager;
@@ -111,12 +111,11 @@ class UpdateWrapperProjectState {
 				ProjectScope.getProjectScope(project));
 		for (VirtualFile file : files) {
 			indicator.checkCanceled();
-			indicator
-					.setText(MessageBundle.message("action.index-dependencies.indexing.assistant",
-							"Wrapper"));
+			indicator.setText(MessageBundle.message("action.index-dependencies.indexing.assistant",
+					"Wrapper"));
 
 			PsiFile psiFile = psiManager.findFile(file);
-			if (MavenUtils.isWrapperFile(psiFile)) {
+			if (MavenUtils.isWrapperFileExact(file) && psiFile != null) {
 				action.accept(psiFile);
 			}
 

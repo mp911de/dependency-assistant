@@ -35,12 +35,12 @@ import org.junit.jupiter.api.Test;
 import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * PSI-level tests for {@link UpdateMavenWrapperFile}.
+ * PSI-level tests for {@link UpdateMavenWrapperProperties}.
  *
  * @author Mark Paluch
  */
 @CodeInsightFixtureTests
-class UpdateMavenWrapperFileTests {
+class UpdateMavenWrapperPropertiesTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
@@ -86,7 +86,7 @@ class UpdateMavenWrapperFileTests {
 	void detectsUpdateRanges(PsiFile file) {
 
 		PropertyImpl property = PsiTreeUtil.findChildOfType(file, PropertyImpl.class);
-		List<TextRange> ranges = UpdateMavenWrapperFile.getUpdateRanges(property);
+		List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(property);
 		String text = file.getText();
 
 		assertThat(ranges).hasSize(2);
@@ -94,6 +94,44 @@ class UpdateMavenWrapperFileTests {
 		for (TextRange range : ranges) {
 			assertThat(text.substring(range.getStartOffset(), range.getEndOffset())).isEqualTo("3\\u002e9\\u002e6");
 		}
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			foo=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9./apache-maven-3.9.6-bin.zip
+			""")
+	void detectsUpdateRangesFromDifferentVersions(PsiFile file) {
+
+		PropertyImpl property = PsiTreeUtil.findChildOfType(file, PropertyImpl.class);
+		List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(property);
+		String text = file.getText();
+
+		assertThat(ranges).hasSize(2);
+
+		TextRange range1 = ranges.get(0);
+		TextRange range2 = ranges.get(1);
+
+		assertThat(text.substring(range1.getStartOffset(), range1.getEndOffset())).isEqualTo("3.9.");
+		assertThat(text.substring(range2.getStartOffset(), range2.getEndOffset())).isEqualTo("3.9.6");
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			foo=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
+			""")
+	void detectsUpdateRangesFromWrapper(PsiFile file) {
+
+		PropertyImpl property = PsiTreeUtil.findChildOfType(file, PropertyImpl.class);
+		List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(property);
+		String text = file.getText();
+
+		assertThat(ranges).hasSize(2);
+
+		TextRange range1 = ranges.get(0);
+		TextRange range2 = ranges.get(1);
+
+		assertThat(text.substring(range1.getStartOffset(), range1.getEndOffset())).isEqualTo("3.3.2");
+		assertThat(text.substring(range2.getStartOffset(), range2.getEndOffset())).isEqualTo("3.3.2");
 	}
 
 	@Test
@@ -108,14 +146,14 @@ class UpdateMavenWrapperFileTests {
 
 		applyUpdate(file, WRAPPER, "3.3.2", "3.3.3");
 
-		assertThat(file).containsText("# wrapperSha256Sum=def456");
 		assertThat(file).containsText("maven-wrapper/3.3.3/maven-wrapper-3.3.3.jar");
 		assertThat(file).containsText("# Maven Wrapper configuration");
+		assertThat(file).containsText("# wrapperSha256Sum=def456");
 	}
 
 	private void applyUpdate(PsiFile targetFile, ArtifactId artifactId, String fromVersion, String toVersion) {
 		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdateMavenWrapperFile().applyUpdates(targetFile, updates),
+				(file, updates) -> new UpdateMavenWrapperProperties().applyUpdates(file, updates),
 				targetFile.getVirtualFile()).updateBuildFile(List.of(update(artifactId, toVersion)));
 	}
 

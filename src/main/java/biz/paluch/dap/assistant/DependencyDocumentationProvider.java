@@ -40,7 +40,7 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.model.Pointer;
 import com.intellij.openapi.project.Project;
@@ -68,7 +68,7 @@ public class DependencyDocumentationProvider
 	@Override
 	public @Nullable DocumentationTarget documentationTarget(PsiElement element, @Nullable PsiElement originalElement) {
 
-		PsiElement target = PsiVisitors.unleaf(originalElement != null ? originalElement : element);
+		PsiElement target = PsiElements.unleaf(originalElement != null ? originalElement : element);
 		Project project = target.getProject();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
 				target.getContainingFile());

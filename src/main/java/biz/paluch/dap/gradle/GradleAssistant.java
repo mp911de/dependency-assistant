@@ -98,7 +98,7 @@ class GradleAssistant implements DependencyAssistant {
 				});
 	}
 
-	private static class GradleDependencyContext implements ProjectDependencyContext {
+	static class GradleDependencyContext implements ProjectDependencyContext {
 
 		private final Project project;
 

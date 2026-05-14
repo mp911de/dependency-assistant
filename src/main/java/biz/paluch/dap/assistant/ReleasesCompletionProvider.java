@@ -39,7 +39,7 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
@@ -73,7 +73,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		if (position == null) {
 			position = parameters.getPosition();
 		}
-		position = PsiVisitors.unleaf(position);
+		position = PsiElements.unleaf(position);
 
 		CompletionMetadata metadata = getCompletionMetadata(position, parameters.getOriginalFile(),
 				parameters.getOriginalFile().getVirtualFile());
@@ -263,7 +263,7 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		if (position == null) {
 			position = parameters.getPosition();
 		}
-		position = PsiVisitors.unleaf(position);
+		position = PsiElements.unleaf(position);
 
 		return getPrefix(parameters, position);
 	}

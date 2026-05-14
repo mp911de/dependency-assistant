@@ -20,16 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.openapi.extensions.ExtensionPointName;
-import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
@@ -146,13 +139,13 @@ public class DependencyAssistantDispatcher {
 	public static ProjectDependencyContext findFirstContext(Project project, @Nullable PsiFile file) {
 
 		if (file == null) {
-			return AbsentDependencyContext.ABSENT;
+			return ProjectDependencyContext.absent();
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(file, it -> {
 
 			if (it == null) {
-				return AbsentDependencyContext.ABSENT;
+				return ProjectDependencyContext.absent();
 			}
 
 			for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
@@ -166,66 +159,8 @@ public class DependencyAssistantDispatcher {
 				}
 			}
 
-			return AbsentDependencyContext.ABSENT;
+			return ProjectDependencyContext.absent();
 		});
-	}
-
-
-	enum AbsentDependencyContext implements ProjectDependencyContext {
-
-		ABSENT;
-
-
-		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			throw new IllegalStateException("No dependency context available");
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-			throw new IllegalStateException("No dependency context available");
-		}
-
-		@Override
-		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-			throw new IllegalStateException("No dependency context available");
-		}
-
-		@Override
-		public boolean isVersionElement(PsiElement element) {
-			return false;
-		}
-
-		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
-			throw new IllegalStateException("No dependency context available");
-		}
-
-		@Override
-		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-			throw new IllegalStateException("No dependency context available");
-		}
-
-		@Override
-		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			throw new IllegalStateException("No dependency context available");
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return false;
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			throw new IllegalStateException("No dependency context available");
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return List.of();
-		}
-
 	}
 
 }

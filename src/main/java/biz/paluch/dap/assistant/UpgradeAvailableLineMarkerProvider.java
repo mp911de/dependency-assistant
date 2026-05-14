@@ -61,7 +61,7 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
+		ProjectDependencyContext context = getContext(element);
 		if (context.isAbsent()) {
 			return null;
 		}
@@ -107,6 +107,10 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 				ui.getGutterIcon(declaration), e -> tooltip,
 				new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
+	}
+
+	protected ProjectDependencyContext getContext(PsiElement element) {
+		return DependencyAssistantDispatcher.findFirstContext(element);
 	}
 
 	/**

@@ -113,4 +113,11 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 */
 	void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates);
 
+	/**
+	 * Return an absent {@link ProjectDependencyContext}.
+	 */
+	static ProjectDependencyContext absent() {
+		return AbsentDependencyContext.ABSENT;
+	}
+
 }

@@ -16,10 +16,14 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.List;
+
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import com.intellij.codeInsight.lookup.Lookup;
+import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +32,7 @@ import org.junit.jupiter.api.Test;
 import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * PSI-level integration tests for Maven Wrapper version completion.
+ * PSI-level tests for {@link MavenWrapperCompletionContributor}.
  *
  * @author Mark Paluch
  */
@@ -56,6 +60,7 @@ class MavenWrapperCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(file).containsText("maven/3.9.9/apache");
 		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).caretBetween("maven/3.9.9", "/apache-maven");
 	}
 
 	@Test
@@ -67,11 +72,12 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(file).containsText("maven/3.9.9/apache");
-		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).containsText("maven/3.10.0/apache");
+		assertThat(file).containsText("maven-3.10.0-bin");
+		assertThat(file).caretBetween("maven-3.10.0", "-bin.zip");
 	}
 
 	@Test
@@ -83,11 +89,12 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(file).containsText("maven/3.9.9/apache");
-		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).containsText("maven/3.10.0/apache");
+		assertThat(file).containsText("maven-3.10.0-bin");
+		assertThat(file).caretBetween("maven/3.10.0", "/apache-maven");
 	}
 
 	@Test
@@ -99,11 +106,11 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
-		assertThat(file).containsText("maven/3.9.9/apache");
-		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).containsText("maven/3.10.0/apache");
+		assertThat(file).containsText("maven-3.10.0-bin");
 	}
 
 	@Test
@@ -115,11 +122,11 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
 
 		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
-		assertThat(file).containsText("maven/3.9.9/apache");
-		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).containsText("maven/3.10.0/apache");
+		assertThat(file).containsText("maven-3.10.0-bin");
 	}
 
 	@Test
@@ -131,11 +138,11 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
 
 		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
-		assertThat(file).containsText("maven/3.9.9/apache");
-		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).containsText("maven/3.10.0/apache");
+		assertThat(file).containsText("maven-3.10.0-bin");
 	}
 
 	@Test
@@ -147,11 +154,11 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
-		assertThat(file).containsText("maven/3.9.9/apache");
-		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).containsText("maven/3.10.0/apache");
+		assertThat(file).containsText("maven-3.10.0-bin");
 	}
 
 	@Test
@@ -163,11 +170,11 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
 
 		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
-		assertThat(file).containsText("maven/3.9.9/apache");
-		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).containsText("maven/3.10.0/apache");
+		assertThat(file).containsText("maven-3.10.0-bin");
 	}
 
 	@Test
@@ -179,11 +186,28 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture.getLookupElementStrings()).contains("3.9.9").doesNotContain("3.10.0");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(file).containsText("maven/3.9.9/apache");
 		assertThat(file).containsText("maven-3.9.9-bin");
+		assertThat(file).caretBetween("maven-3.9.9", "-bin.zip");
+	}
+
+	@Test
+	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.IntellijIdeaRulezzz-bin.zip
+			""")
+	void computesRangesCorrectly(PsiFile file) {
+
+		MavenWrapperFixtures.analyze(file);
+
+		PropertyImpl property = Properties.from(file).toList().getFirst();
+		List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(property);
+
+		assertThat(ranges).hasSize(2);
+		assertThat(ranges.get(0).substring(file.getText())).isEqualTo("3.9.6");
+		assertThat(ranges.get(1).substring(file.getText())).isEqualTo("3.9.");
 	}
 
 	@Test

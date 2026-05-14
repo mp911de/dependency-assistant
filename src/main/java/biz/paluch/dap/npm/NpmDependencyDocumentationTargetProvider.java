@@ -20,7 +20,7 @@ import java.util.Collections;
 import java.util.List;
 
 import biz.paluch.dap.assistant.DependencyDocumentationProvider;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonStringLiteral;
 import com.intellij.platform.backend.documentation.DocumentationTarget;
@@ -50,7 +50,7 @@ public class NpmDependencyDocumentationTargetProvider implements DocumentationTa
 		}
 
 
-		if (element == null || !(PsiVisitors.unleaf(element) instanceof JsonStringLiteral literal)) {
+		if (element == null || !(PsiElements.unleaf(element) instanceof JsonStringLiteral literal)) {
 			return Collections.emptyList();
 		}
 

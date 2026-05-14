@@ -215,10 +215,26 @@ class MavenUtils {
 	}
 
 	/**
+	 * Return whether the given file is a Maven Wrapper properties file named
+	 * {@code maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFile(PropertiesFile file) {
+		return WRAPPER_FILENAME.equals(file.getName());
+	}
+
+	/**
+	 * Return whether the given file is a Maven Wrapper properties file named
+	 * {@code maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFile(@Nullable PsiFile file) {
+		return file instanceof PropertiesFile propertiesFile && WRAPPER_FILENAME.equals(file.getName());
+	}
+
+	/**
 	 * Return whether the given file is a Maven Wrapper properties file located at
 	 * {@code .mvn/wrapper/maven-wrapper.properties}.
 	 */
-	static boolean isWrapperFile(@Nullable VirtualFile file) {
+	static boolean isWrapperFileExact(@Nullable VirtualFile file) {
 
 		if (file == null || !WRAPPER_FILENAME.equals(file.getName())) {
 			return false;
@@ -237,9 +253,9 @@ class MavenUtils {
 	 * Return whether the given file is a Maven Wrapper properties file located at
 	 * {@code .mvn/wrapper/maven-wrapper.properties}.
 	 */
-	static boolean isWrapperFile(@Nullable PsiFile file) {
+	static boolean isWrapperFileExact(@Nullable PsiFile file) {
 
-		if (file == null || !WRAPPER_FILENAME.equals(file.getName())) {
+		if (!isWrapperFile(file)) {
 			return false;
 		}
 
@@ -252,11 +268,5 @@ class MavenUtils {
 		return grandParent != null && MVN_DIR.equals(grandParent.getName());
 	}
 
-	/**
-	 * Return whether the given {@link PropertiesFile} is a Maven Wrapper properties
-	 * file located at the wrapper path.
-	 */
-	static boolean isWrapperFile(@Nullable PropertiesFile propsFile) {
-		return propsFile != null && isWrapperFile(propsFile.getContainingFile());
-	}
+
 }

@@ -16,12 +16,14 @@
 
 package biz.paluch.dap.gradle;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
 import biz.paluch.dap.gradle.GradleAssistant.GradleInterface;
 import biz.paluch.dap.support.MessageBundle;
+import com.intellij.psi.PsiElement;
 
 /**
  * Gutter configurable for Gradle.
@@ -38,6 +40,16 @@ public class GradleLineMarkerProvider extends UpgradeAvailableLineMarkerProvider
 	@Override
 	public Icon getIcon() {
 		return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
+	}
+
+	@Override
+	protected ProjectDependencyContext getContext(PsiElement element) {
+
+		ProjectDependencyContext context = super.getContext(element);
+		if (context instanceof GradleAssistant.GradleDependencyContext) {
+			return context;
+		}
+		return ProjectDependencyContext.absent();
 	}
 
 }

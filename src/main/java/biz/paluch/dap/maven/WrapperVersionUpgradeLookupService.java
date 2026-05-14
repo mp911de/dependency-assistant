@@ -16,11 +16,9 @@
 
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.maven.MavenWrapperParser.WrapperEntry;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.project.Project;
@@ -48,14 +46,22 @@ class WrapperVersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (!(element.getContainingFile() instanceof PropertiesFile file)
-				|| !MavenUtils.isWrapperFile(file)) {
+		PropertyImpl property;
+		PropertyValueImpl literal;
+
+		if (element instanceof PropertyValueImpl propertyValue
+				&& element.getParent() instanceof PropertyImpl propertyImpl) {
+			property = propertyImpl;
+			literal = propertyValue;
+		} else if (element instanceof PropertyImpl propertyImpl) {
+			property = propertyImpl;
+			literal = PsiTreeUtil.findChildOfType(element, PropertyValueImpl.class);
+		} else {
 			return ArtifactReference.unresolved();
 		}
 
-		PropertyImpl property = PsiTreeUtil.getParentOfType(element, PropertyImpl.class);
-
-		if (!(element instanceof PropertyValueImpl literal) || property == null) {
+		if (literal == null || !WrapperProperty.isWrapperProperty(property)
+				|| !MavenUtils.isWrapperFile(element.getContainingFile())) {
 			return ArtifactReference.unresolved();
 		}
 

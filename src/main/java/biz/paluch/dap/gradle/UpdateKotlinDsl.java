@@ -21,7 +21,7 @@ import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
@@ -54,7 +54,7 @@ class UpdateKotlinDsl {
 	 */
 	void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
 
-		file.accept(PsiVisitors.visitTreeUntil(KtCallElement.class, call -> {
+		file.accept(PsiElements.visitTreeUntil(KtCallElement.class, call -> {
 
 			DependencySite site = KotlinDslParser.parseDependencySite(call, propertyResolver);
 			if (!(site instanceof VersionedDependencySite versioned) || !site.getArtifactId()
@@ -105,7 +105,7 @@ class UpdateKotlinDsl {
 	static boolean updateValProperty(PsiFile file, String propertyKey, String newVersion) {
 
 		boolean[] updated = {false};
-		file.accept(PsiVisitors.visitTreeUntil(KtProperty.class, property -> {
+		file.accept(PsiElements.visitTreeUntil(KtProperty.class, property -> {
 			if (!propertyKey.equals(property.getName())) {
 				return false;
 			}

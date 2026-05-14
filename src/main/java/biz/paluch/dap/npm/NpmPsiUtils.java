@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.npm;
 
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonStringLiteral;
@@ -83,7 +83,7 @@ class NpmPsiUtils {
 
 	static @Nullable JsonStringLiteral findDependencyLiteral(PsiElement element) {
 
-		PsiElement unleaf = PsiVisitors.unleaf(element);
+		PsiElement unleaf = PsiElements.unleaf(element);
 
 		JsonStringLiteral literal = unleaf instanceof JsonStringLiteral self ? self
 				: PsiTreeUtil.getParentOfType(unleaf, JsonStringLiteral.class, true);

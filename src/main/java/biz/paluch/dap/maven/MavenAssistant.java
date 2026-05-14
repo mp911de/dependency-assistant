@@ -114,7 +114,7 @@ class MavenAssistant implements DependencyAssistant {
 		return new MavenDependencyContext(project, anchor, manager, projectContext);
 	}
 
-	private static class MavenDependencyContext implements ProjectDependencyContext {
+	static class MavenDependencyContext implements ProjectDependencyContext {
 
 		private final MavenProjectContext projectContext;
 

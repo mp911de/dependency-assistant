@@ -23,11 +23,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit test for {@link UpdateMavenWrapperFile}.
+ * Unit test for {@link UpdateMavenWrapperProperties}.
  * 
  * @author Mark Paluch
  */
-class UpdateMavenWrapperFileUnitTests {
+class UpdateMavenWrapperPropertiesUnitTests {
 
 	@ParameterizedTest
 	@ValueSource(strings = {"1.2.3", "1.2.3-SNAPSHOT"})
@@ -35,7 +35,7 @@ class UpdateMavenWrapperFileUnitTests {
 
 		String format = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/%1$s/apache-maven-%1$s-bin.zip";
 		String url = format.formatted("4.5.6");
-		String result = UpdateMavenWrapperFile.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
+		String result = UpdateMavenWrapperProperties.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
 
 		assertThat(result).isEqualTo(format.formatted(toVersion));
 	}
@@ -46,7 +46,7 @@ class UpdateMavenWrapperFileUnitTests {
 
 		String format = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/%1$s/apache-maven-%1$s.jar";
 		String url = format.formatted("4.5.6");
-		String result = UpdateMavenWrapperFile.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
+		String result = UpdateMavenWrapperProperties.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
 
 		assertThat(result).isEqualTo(format.formatted(toVersion));
 	}
@@ -57,7 +57,7 @@ class UpdateMavenWrapperFileUnitTests {
 
 		String format = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/%1$s/apache-maven-%1$s-bin.tar.gz";
 		String url = format.formatted("4.5.6-SNAPSHOT");
-		String result = UpdateMavenWrapperFile.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
+		String result = UpdateMavenWrapperProperties.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
 
 		assertThat(result).isEqualTo(format.formatted(toVersion));
 	}
@@ -68,7 +68,7 @@ class UpdateMavenWrapperFileUnitTests {
 
 		String format = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/%1$s/apache-maven-%1$s.jar";
 		String url = format.formatted("4.5.6-SNAPSHOT");
-		String result = UpdateMavenWrapperFile.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
+		String result = UpdateMavenWrapperProperties.getRewrittenUrl(url, ArtifactVersion.of(toVersion));
 
 		assertThat(result).isEqualTo(format.formatted(toVersion));
 	}

@@ -28,7 +28,6 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.maven.MavenWrapperParser.WrapperEntry;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
@@ -76,12 +75,12 @@ class MavenWrapperAssistant implements DependencyAssistant {
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateWrapperProjectState(project).getAllDependencies(indicator);
+		return new UpdateWrapperPropertiesProjectState(project).getAllDependencies(indicator);
 	}
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateWrapperProjectState(project).readAndUpdateAll(indicator);
+		new UpdateWrapperPropertiesProjectState(project).readAndUpdateAll(indicator);
 	}
 
 	@Override
@@ -108,7 +107,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 		Project project = anchor.getProject();
 		VirtualFile virtualFile = anchor.getVirtualFile();
 		ProjectId projectId = MavenProjectContext.createWrapperProjectId(virtualFile);
-		List<ReleaseSource> releaseSources = MavenWrapperUtil.collectReleaseSources(anchor);
+		List<ReleaseSource> releaseSources = MavenWrapperUtils.collectReleaseSources(anchor);
 		return new MavenWrapperDependencyContext(project, virtualFile, projectId, releaseSources);
 	}
 
@@ -159,7 +158,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 				return;
 			}
 
-			new UpdateWrapperProjectState(project).update(file);
+			new UpdateWrapperPropertiesProjectState(project).update(file);
 		}
 
 		@Override
@@ -175,7 +174,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-			return MavenWrapperUtil.isVersionElement(element);
+			return MavenWrapperUtils.isVersionElement(element);
 		}
 
 		@Override
@@ -185,12 +184,12 @@ class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-			new UpdateMavenWrapperFile().applyUpdate(versionLiteral, update);
+			UpdateMavenWrapperProperties.applyUpdate(versionLiteral, update);
 		}
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateMavenWrapperFile().applyUpdates(psiFile, updates);
+			UpdateMavenWrapperProperties.applyUpdates(psiFile, updates);
 		}
 
 		@Override
@@ -238,8 +237,8 @@ class MavenWrapperAssistant implements DependencyAssistant {
 			PropertyValueImpl literal = element instanceof PropertyValueImpl pv ? pv
 					: PsiTreeUtil.getParentOfType(element, PropertyValueImpl.class, false);
 			if (literal == null
-					|| !(literal.getContainingFile() instanceof PropertiesFile propsFile)
-					|| !MavenUtils.isWrapperFile(propsFile)) {
+					|| !(literal.getContainingFile() instanceof PropertiesFile propertiesFile)
+					|| !MavenUtils.isWrapperFile(propertiesFile)) {
 				return element.getTextRange();
 			}
 
@@ -248,12 +247,12 @@ class MavenWrapperAssistant implements DependencyAssistant {
 			}
 
 			WrapperEntry entry = MavenWrapperParser.parse(property);
-			if (entry == null) {
+			if (entry == null || entry.pathVersion().isEmpty()) {
 				return literal.getTextRange();
 			}
 
-			return MavenWrapperUtil.findTextRange(property, literal,
-					MavenWrapperUtil.MatchFunction.indexOf(entry.rawVersion()));
+			return MavenWrapperUtils.findTextRange(property, literal,
+					MatchFunction.indexOf(entry.pathVersion()));
 		}
 
 	}

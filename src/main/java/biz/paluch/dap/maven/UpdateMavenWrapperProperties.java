@@ -24,10 +24,8 @@ import java.util.regex.Matcher;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.maven.MavenWrapperParser.WrapperEntry;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.ASTNode;
-import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.PropertiesFileType;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
@@ -47,7 +45,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class UpdateMavenWrapperFile {
+class UpdateMavenWrapperProperties {
 
 	/**
 	 * Apply a single update at the given wrapper version literal.
@@ -55,9 +53,9 @@ class UpdateMavenWrapperFile {
 	 * must not be {@literal null}.
 	 * @param update the update to apply; must not be {@literal null}.
 	 */
-	void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
-		PropertyImpl property = PsiTreeUtil.getParentOfType(versionLiteral, PropertyImpl.class);
+		PropertyImpl property = MavenWrapperUtils.findProperty(versionLiteral);
 		if (property == null) {
 			return;
 		}
@@ -75,30 +73,28 @@ class UpdateMavenWrapperFile {
 	 * @param psiFile the wrapper PSI file; must not be {@literal null}.
 	 * @param updates the updates to apply; must not be {@literal null}.
 	 */
-	void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public static void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 
 		if (!(psiFile instanceof PropertiesFile properties)) {
 			return;
 		}
 
 		Set<String> toCommentOut = new HashSet<>();
-		for (IProperty property : properties.getProperties()) {
-			MavenWrapperParser.parse(property, it -> {
-				for (DependencyUpdate update : updates) {
-					applyUpdate((PropertyImpl) property, it, update, toCommentOut);
-				}
-			});
-		}
+		Properties.from(properties).filterMap(MavenWrapperParser::parse).forEach(it -> {
+			for (DependencyUpdate update : updates) {
+				applyUpdate(it.propertyLiteral(), it, update, toCommentOut);
+			}
+		});
 
 		postProcess(psiFile, new HashSet<>(toCommentOut));
 	}
 
-	private void applyUpdate(PropertyImpl property, WrapperEntry it, DependencyUpdate update,
+	private static void applyUpdate(PropertyImpl property, WrapperEntry it, DependencyUpdate update,
 			Collection<String> toCommentOut) {
 
 		if (it.hasArtifactId(update.coordinate())) {
 
-			List<TextRange> ranges = getUpdateRanges(property);
+			List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(property);
 			if (ranges.isEmpty()) {
 				return;
 			}
@@ -123,30 +119,7 @@ class UpdateMavenWrapperFile {
 		}
 	}
 
-	public static List<TextRange> getUpdateRanges(PropertyImpl property) {
-
-		String value = property.getUnescapedValue();
-		if (value == null) {
-			return List.of();
-		}
-
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(value);
-		if (!matcher.find()) {
-			return List.of();
-		}
-
-		return MavenWrapperUtil.findTextRanges(property, (str, index) -> {
-			if (index <= matcher.start("version1")) {
-				return MavenWrapperUtil.MatchFunction.group("version1", matcher);
-			}
-			if (index <= matcher.start("version2")) {
-				return MavenWrapperUtil.MatchFunction.group("version2", matcher);
-			}
-			return MavenWrapperUtil.MatchFunction.noMatch();
-		});
-	}
-
-	private void postProcess(PsiFile psiFile, Collection<String> toCommentOut) {
+	private static void postProcess(PsiFile psiFile, Collection<String> toCommentOut) {
 
 		if (toCommentOut.isEmpty()) {
 			return;
@@ -159,7 +132,7 @@ class UpdateMavenWrapperFile {
 		}
 	}
 
-	private void commentOut(PropertyImpl property) {
+	private static void commentOut(PropertyImpl property) {
 
 		String commentedText = commentEveryPhysicalLine(property.getText());
 		PsiFile dummyFile = PsiFileFactory.getInstance(property.getProject()).createFileFromText(
@@ -203,9 +176,11 @@ class UpdateMavenWrapperFile {
 			return null;
 		}
 
-		return matcher.replaceFirst(
-				"${groupId}/${artifactId}/%1$s/${artifactId}-%1$s${tail}"
-						.formatted(Matcher.quoteReplacement(version.toString())));
+		String start = url.substring(0, matcher.start("version1"));
+		String middle = url.substring(matcher.end("version1"), matcher.start("version2"));
+		String tail = url.substring(matcher.end("version2"));
+
+		return start + version + middle + version + tail;
 	}
 
 }

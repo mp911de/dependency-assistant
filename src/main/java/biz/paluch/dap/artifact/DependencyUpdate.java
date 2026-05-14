@@ -54,6 +54,15 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 	}
 
 	/**
+	 * Create an update from a {@link ArtifactRelease}.
+	 * @param release the artifact release.
+	 * @return the dependency update to apply.
+	 */
+	public static DependencyUpdate from(ArtifactRelease release) {
+		return create(release.artifactId(), release.getVersion());
+	}
+
+	/**
 	 * Create an update for a direct dependency declaration with an inline version.
 	 * @param artifactId the artifact coordinate to update.
 	 * @param version the selected target version.
@@ -73,8 +82,7 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate create(ArtifactId artifactId, ArtifactVersion version,
-			DeclarationSource declarationSource,
-			VersionSource versionSource) {
+			DeclarationSource declarationSource, VersionSource versionSource) {
 		return new DependencyUpdate(artifactId, version, List.of(declarationSource), List.of(versionSource));
 	}
 

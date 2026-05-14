@@ -38,7 +38,7 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
@@ -209,7 +209,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 			if (GitHubUtils.isWorkflowFile(element.getContainingFile())) {
 
-				YAMLScalar usesScalar = VersionUpgradeLookupService.getUsesScalar(PsiVisitors.unleaf(element));
+				YAMLScalar usesScalar = VersionUpgradeLookupService.getUsesScalar(PsiElements.unleaf(element));
 				return usesScalar != null;
 			}
 

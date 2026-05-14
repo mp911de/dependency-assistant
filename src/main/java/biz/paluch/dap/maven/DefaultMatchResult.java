@@ -19,6 +19,8 @@ package biz.paluch.dap.maven;
 import java.util.regex.MatchResult;
 
 /**
+ * Default {@link MatchResult} implementation.
+ * 
  * @author Mark Paluch
  */
 class DefaultMatchResult implements MatchResult {

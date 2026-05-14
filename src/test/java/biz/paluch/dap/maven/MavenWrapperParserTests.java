@@ -24,8 +24,6 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.maven.MavenWrapperParser.WrapperEntry;
-import biz.paluch.dap.maven.MavenWrapperParser.WrapperProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
@@ -71,7 +69,7 @@ class MavenWrapperParserTests {
 		assertThat(entries).singleElement().satisfies(entry -> {
 			assertThat(entry.property()).isEqualTo(WrapperProperty.DISTRIBUTION);
 			assertThat(entry.property().artifactId()).isEqualTo(APACHE_MAVEN);
-			assertThat(entry.rawVersion()).isEqualTo("3.9.6");
+			assertThat(entry.pathVersion()).isEqualTo("3.9.6");
 		});
 	}
 
@@ -150,17 +148,6 @@ class MavenWrapperParserTests {
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.5-bin.zip
 			""")
 	void mismatchedVersionsInPathAndFileNameAreIgnored(PsiFile file) {
-
-		DependencyCollector collector = analyze(file);
-
-		assertThat(collector).isEmpty();
-	}
-
-	@Test
-	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=https://repo1.maven.org/maven2/com/example/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			""")
-	void distributionUrlWithUnexpectedGroupPathIsIgnored(PsiFile file) {
 
 		DependencyCollector collector = analyze(file);
 

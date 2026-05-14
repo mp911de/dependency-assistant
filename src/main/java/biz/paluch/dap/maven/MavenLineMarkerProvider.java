@@ -16,12 +16,14 @@
 
 package biz.paluch.dap.maven;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
 import biz.paluch.dap.maven.MavenAssistant.MavenInterface;
 import biz.paluch.dap.support.MessageBundle;
+import com.intellij.psi.PsiElement;
 
 /**
  * Gutter configurable for Maven.
@@ -38,6 +40,18 @@ public class MavenLineMarkerProvider extends UpgradeAvailableLineMarkerProvider 
 	@Override
 	public Icon getIcon() {
 		return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
+	}
+
+	@Override
+	protected ProjectDependencyContext getContext(PsiElement element) {
+
+		ProjectDependencyContext context = super.getContext(element);
+		if (context instanceof MavenAssistant.MavenDependencyContext
+				|| context instanceof MavenWrapperAssistant.MavenWrapperDependencyContext) {
+			return context;
+		}
+
+		return ProjectDependencyContext.absent();
 	}
 
 }

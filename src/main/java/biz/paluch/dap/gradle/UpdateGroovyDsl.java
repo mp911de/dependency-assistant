@@ -20,7 +20,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionedDependencySite;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
@@ -45,7 +45,7 @@ class UpdateGroovyDsl {
 	 */
 	void updateExtProperty(PsiFile file, String propertyKey, String newVersion) {
 
-		file.accept(PsiVisitors.visitTreeUntil(GrLiteral.class, literal -> {
+		file.accept(PsiElements.visitTreeUntil(GrLiteral.class, literal -> {
 
 			GroovyExtAssignment assignment = GroovyExtAssignment.from(literal);
 			if (assignment == null || !propertyKey.equals(assignment.getKey())) {
@@ -72,7 +72,7 @@ class UpdateGroovyDsl {
 	 */
 	public void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
 
-		file.accept(PsiVisitors.visitTreeUntil(GrMethodCall.class, call -> {
+		file.accept(PsiElements.visitTreeUntil(GrMethodCall.class, call -> {
 
 			DependencySite site = siteLocator.locateDeclaration(call);
 

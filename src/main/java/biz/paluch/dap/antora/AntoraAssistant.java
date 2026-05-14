@@ -38,7 +38,7 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
-import biz.paluch.dap.util.PsiVisitors;
+import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
@@ -218,7 +218,7 @@ public class AntoraAssistant implements DependencyAssistant {
 				return false;
 			}
 
-			YAMLScalar scalar = VersionUpgradeLookupService.getBundleUrlScalar(PsiVisitors.unleaf(element));
+			YAMLScalar scalar = VersionUpgradeLookupService.getBundleUrlScalar(PsiElements.unleaf(element));
 			return scalar != null;
 		}
 

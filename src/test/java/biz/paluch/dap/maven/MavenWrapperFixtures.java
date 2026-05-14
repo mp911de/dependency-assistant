@@ -39,7 +39,7 @@ class MavenWrapperFixtures {
 	 * Analyze the given file and return the dependency collector.
 	 */
 	public static DependencyCollector analyze(PsiFile file) {
-		return new UpdateWrapperProjectState(file.getProject()).update(file);
+		return new UpdateWrapperPropertiesProjectState(file.getProject()).update(file);
 	}
 
 }

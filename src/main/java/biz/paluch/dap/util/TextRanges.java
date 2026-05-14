@@ -14,57 +14,18 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.util;
 
-import java.util.regex.MatchResult;
+import com.intellij.openapi.util.TextRange;
+import com.intellij.psi.PsiElement;
 
 /**
- * {@link MatchResult} when a search does not produce a match.
- *
  * @author Mark Paluch
  */
-enum AbsentMatchResult implements MatchResult {
+public class TextRanges {
 
-	ABSENT;
-
-	@Override
-	public int start() {
-		return 0;
-	}
-
-	@Override
-	public int start(int group) {
-		return 0;
-	}
-
-	@Override
-	public int end() {
-		return 0;
-	}
-
-	@Override
-	public int end(int group) {
-		return 0;
-	}
-
-	@Override
-	public String group() {
-		return "";
-	}
-
-	@Override
-	public String group(int group) {
-		return "";
-	}
-
-	@Override
-	public int groupCount() {
-		return 0;
-	}
-
-	@Override
-	public boolean hasMatch() {
-		return false;
+	public static TextRange toLocal(TextRange inFile, PsiElement localElement) {
+		return inFile.shiftLeft(localElement.getStartOffsetInParent());
 	}
 
 }

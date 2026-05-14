@@ -28,7 +28,7 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement;
  * {@link com.intellij.psi.PsiElementVisitor visitors}.
  * @author Mark Paluch
  */
-public abstract class PsiVisitors {
+public abstract class PsiElements {
 
 	/**
 	 * Ensure the element is not a {@link LeafPsiElement leaf} by returning its

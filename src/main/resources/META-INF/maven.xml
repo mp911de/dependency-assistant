@@ -15,7 +15,8 @@
 				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>
 		<completion.contributor
 				language="Properties"
-				implementationClass="biz.paluch.dap.maven.MavenWrapperReleaseVersionCompletionContributor"/>
+				order="first"
+				implementationClass="biz.paluch.dap.maven.MavenWrapperCompletionContributor"/>
 		<codeInsight.lineMarkerProvider
 				language="Properties"
 				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>
