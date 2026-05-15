@@ -17,23 +17,18 @@
 package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.RemoteRepository;
-import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.LiteralTextEscaper;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -55,6 +50,14 @@ class MavenWrapperUtils {
 	 */
 	public static final String COMPLETION_PLACEHOLDER = "IntellijIdeaRulezzz";
 
+	public static final Pattern MAVEN_ARTIFACT_PATTERN = Pattern.compile(
+			"(?<groupId>[\\w/]+)/(?<artifactId1>[\\w.-]+)/(?<version1>(\\d[\\w.-]*)?(IntellijIdeaRulezzz)?(\\d[\\w.-]*)?)/"
+					+ "(?<artifactId2>[\\w.-]+?)-"
+					+ "(?<version2>(?:\\d[\\w.-]*?)?(IntellijIdeaRulezzz)?(?:\\d[\\w.-]*?)?)"
+					+ "(?<tail>-(?!(?:SNAPSHOT|rc-\\d)[-.])[A-Za-z][\\w-]*(?:\\.[^/]*)?|\\.[A-Za-z][^/]*|(?=$))");
+
+	public static final String REPOSITORY_ID = "maven-wrapper";
+
 	/**
 	 * Return file-absolute ranges for the version segments in a wrapper URL.
 	 * @param property the wrapper property to inspect.
@@ -69,7 +72,7 @@ class MavenWrapperUtils {
 		}
 
 		StrippedValue stripped = StrippedValue.of(value, COMPLETION_PLACEHOLDER);
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(stripped.text());
+		Matcher matcher = MAVEN_ARTIFACT_PATTERN.matcher(stripped.text());
 		if (!matcher.find()) {
 			return List.of();
 		}
@@ -134,29 +137,6 @@ class MavenWrapperUtils {
 			return strippedPos + shift;
 		}
 
-	}
-
-	/**
-	 * Return whether the given element is the value of a recognized wrapper URL
-	 * property in a wrapper-rule file.
-	 * @param element the PSI element to inspect.
-	 * @return {@code true} if the element represents a supported wrapper version.
-	 */
-	static boolean isVersionElement(@Nullable PsiElement element) {
-
-		if (!(element instanceof PropertyValueImpl value)) {
-			return false;
-		}
-
-		if (!MavenUtils.isWrapperFile(value.getContainingFile())) {
-			return false;
-		}
-
-		if (!(value.getParent() instanceof IProperty property)) {
-			return false;
-		}
-
-		return WrapperProperty.isWrapperProperty(property);
 	}
 
 	/**
@@ -330,22 +310,6 @@ class MavenWrapperUtils {
 		}
 
 		return TextRange.create(hostStart, hostEnd);
-	}
-
-	/**
-	 * Return the wrapper-derived release sources for the given wrapper file,
-	 * deduplicated by repository URL.
-	 * @param wrapperFile the wrapper properties file.
-	 * @return the release sources declared by supported wrapper URL properties.
-	 */
-	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
-
-		List<WrapperEntry> entries = new MavenWrapperParser().parse(wrapperFile);
-		Set<RemoteRepository> repositories = new LinkedHashSet<>();
-		for (WrapperEntry entry : entries) {
-			repositories.add(entry.repository());
-		}
-		return MavenUtils.getReleaseSources(repositories);
 	}
 
 	private MavenWrapperUtils() {

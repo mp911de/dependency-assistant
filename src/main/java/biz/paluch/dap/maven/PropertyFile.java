@@ -39,12 +39,9 @@ import org.jetbrains.annotations.Nullable;
  */
 public class PropertyFile implements Properties<PropertyImpl> {
 
-	private final PropertiesFile file;
-
 	private final PsiFile psiFile;
 
-	PropertyFile(PropertiesFile file, PsiFile psiFile) {
-		this.file = file;
+	PropertyFile(PsiFile psiFile) {
 		this.psiFile = psiFile;
 	}
 
@@ -54,7 +51,7 @@ public class PropertyFile implements Properties<PropertyImpl> {
 	 * @return a property view over the file.
 	 */
 	public static PropertyFile from(PropertiesFile file) {
-		return new PropertyFile(file, (PsiFile) file);
+		return new PropertyFile((PsiFile) file);
 	}
 
 	/**

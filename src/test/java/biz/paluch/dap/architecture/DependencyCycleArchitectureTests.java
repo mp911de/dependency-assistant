@@ -18,9 +18,11 @@ package biz.paluch.dap.architecture;
 
 import java.util.Arrays;
 
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.maven.Properties;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
@@ -42,6 +44,7 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 class DependencyCycleArchitectureTests {
 
 	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
+			.excludingClass("biz.paluch.dap.maven.WrapperEntry", "closed hierarchy")
 			.excludingClass("biz.paluch.dap.npm.NpmGitRef",
 					"Fix todo's")
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
@@ -58,9 +61,11 @@ class DependencyCycleArchitectureTests {
 			it -> {
 				it.withStrictClosedHierarchy(ArtifactVersion.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
+						.withStrictClosedHierarchy(ProjectDependencyContext.class)
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(ReleaseSource.class)
 						.withStrictClosedHierarchy(ArtifactId.class)
+						.withClosedHierarchy(Properties.class)
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradlePluginId")
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradleArtifactId");
 			});

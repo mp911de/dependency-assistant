@@ -25,8 +25,6 @@ import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.util.Assert;
-
 /**
  * Iterable view over Java properties in a PSI file.
  *
@@ -63,11 +61,9 @@ public interface Properties<P> {
 	 * Return a PSI-backed property view for the given file.
 	 * @param file the PSI file to adapt.
 	 * @return a property view over the file.
-	 * @throws IllegalArgumentException if the file is not a {@link PropertiesFile}.
 	 */
 	public static Properties<PropertyImpl> from(PsiFile file) {
-		Assert.isInstanceOf(PropertiesFile.class, file);
-		return new PropertyFile((PropertiesFile) file, file);
+		return new PropertyFile(file);
 	}
 
 	/**

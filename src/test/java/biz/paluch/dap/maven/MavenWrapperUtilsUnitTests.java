@@ -47,7 +47,7 @@ class MavenWrapperUtilsUnitTests {
 	})
 	void parseVersions(String string) {
 
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -70,7 +70,7 @@ class MavenWrapperUtilsUnitTests {
 	})
 	void firstVersionIncomplete(String string) {
 
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -93,7 +93,7 @@ class MavenWrapperUtilsUnitTests {
 	})
 	void secondVersionIncomplete(String string) {
 
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -116,7 +116,7 @@ class MavenWrapperUtilsUnitTests {
 	})
 	void secondVersionEmpty(String string) {
 
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -132,7 +132,7 @@ class MavenWrapperUtilsUnitTests {
 	})
 	void parseQualifiedAndSnapshotVersions(String string) {
 
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -159,7 +159,7 @@ class MavenWrapperUtilsUnitTests {
 	})
 	void excludesClassifierFromVersion2(String string) {
 
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");

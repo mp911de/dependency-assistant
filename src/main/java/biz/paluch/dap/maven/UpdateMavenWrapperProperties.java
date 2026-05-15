@@ -171,7 +171,7 @@ class UpdateMavenWrapperProperties {
 			return null;
 		}
 
-		Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(url);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
 		if (!matcher.find()) {
 			return null;
 		}

@@ -16,7 +16,9 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.swing.Icon;
 
@@ -28,10 +30,12 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
@@ -52,6 +56,22 @@ import icons.MavenIcons;
  * @author Mark Paluch
  */
 class MavenWrapperAssistant implements DependencyAssistant {
+
+	/**
+	 * Return the wrapper-derived release sources for the given wrapper file,
+	 * deduplicated by repository URL.
+	 * @param wrapperFile the wrapper properties file.
+	 * @return the release sources declared by supported wrapper URL properties.
+	 */
+	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
+
+		List<WrapperEntry> entries = new MavenWrapperParser().parse(wrapperFile);
+		Set<RemoteRepository> repositories = new LinkedHashSet<>();
+		for (WrapperEntry entry : entries) {
+			repositories.add(entry.repository());
+		}
+		return MavenUtils.getReleaseSources(repositories);
+	}
 
 	@Override
 	public String getId() {
@@ -107,7 +127,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 		Project project = anchor.getProject();
 		VirtualFile virtualFile = anchor.getVirtualFile();
 		ProjectId projectId = MavenProjectContext.createWrapperProjectId(virtualFile);
-		List<ReleaseSource> releaseSources = MavenWrapperUtils.collectReleaseSources(anchor);
+		List<ReleaseSource> releaseSources = collectReleaseSources(anchor);
 		return new MavenWrapperDependencyContext(project, virtualFile, projectId, releaseSources);
 	}
 
@@ -174,7 +194,20 @@ class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-			return MavenWrapperUtils.isVersionElement(element);
+
+			if (!(element instanceof PropertyValueImpl value)) {
+				return false;
+			}
+
+			if (!MavenUtils.isWrapperFile(value.getContainingFile())) {
+				return false;
+			}
+
+			if (!(value.getParent() instanceof IProperty property)) {
+				return false;
+			}
+
+			return WrapperProperty.isWrapperProperty(property);
 		}
 
 		@Override

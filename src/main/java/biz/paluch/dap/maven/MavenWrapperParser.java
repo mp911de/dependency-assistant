@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -41,14 +40,6 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class MavenWrapperParser {
-
-	public static final Pattern MAVEN_ARTIFACT_PATTERN = Pattern.compile(
-			"(?<groupId>[\\w/]+)/(?<artifactId1>[\\w.-]+)/(?<version1>(\\d[\\w.-]*)?(IntellijIdeaRulezzz)?(\\d[\\w.-]*)?)/"
-					+ "(?<artifactId2>[\\w.-]+?)-"
-					+ "(?<version2>(?:\\d[\\w.-]*?)?(IntellijIdeaRulezzz)?(?:\\d[\\w.-]*?)?)"
-					+ "(?<tail>-(?!(?:SNAPSHOT|rc-\\d)[-.])[A-Za-z][\\w-]*(?:\\.[^/]*)?|\\.[A-Za-z][^/]*|(?=$))");
-
-	public static final String REPOSITORY_ID = "maven-wrapper";
 
 	private final DependencyCollector collector;
 
@@ -132,40 +123,6 @@ class MavenWrapperParser {
 				entryConsumer.accept(entry);
 			}
 		}
-	}
-
-	/**
-	 * Return whether the raw property text contains an unescaped trailing backslash
-	 * followed by a CR/LF the Java PropertyFile line-continuation idiom. Such
-	 * values are silently rejected by the parser (see spec "Non-Goals").
-	 * @param rawText the raw PSI text of a {@code PropertyValueImpl}.
-	 */
-	static boolean containsLineContinuation(String rawText) {
-
-		int index = 0;
-		while (index < rawText.length()) {
-
-			char c = rawText.charAt(index);
-			if (c != '\\') {
-				index++;
-				continue;
-			}
-
-			int run = 0;
-			int i = index;
-			while (i < rawText.length() && rawText.charAt(i) == '\\') {
-				run++;
-				i++;
-			}
-			if (run % 2 == 1 && i < rawText.length()) {
-				char next = rawText.charAt(i);
-				if (next == '\n' || next == '\r') {
-					return true;
-				}
-			}
-			index = i;
-		}
-		return false;
 	}
 
 }

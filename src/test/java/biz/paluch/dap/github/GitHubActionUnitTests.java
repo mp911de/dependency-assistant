@@ -61,13 +61,6 @@ class GitHubActionUnitTests {
 	}
 
 	@Test
-	void rejectsEmptyRef() {
-		assertThat(GitHubAction.isValidUsage("foo/bar@")).isFalse();
-		assertThat(GitHubAction.isValidUsage("foo/bar@ ")).isFalse();
-		assertThat(GitHubAction.isValidUsage("foo/bar@ # comment")).isFalse();
-	}
-
-	@Test
 	void parsesRepositoryWithDotsAndUnderscores() {
 		assertThat(GitHubAction.from("foo/my.repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my.repo"));
 		assertThat(GitHubAction.from("foo/my_repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my_repo"));

@@ -115,6 +115,40 @@ enum WrapperProperty {
 		};
 	}
 
+	/**
+	 * Return whether the raw property text contains an unescaped trailing backslash
+	 * followed by a CR/LF the Java PropertyFile line-continuation idiom. Such
+	 * values are silently rejected by the parser.
+	 * @param rawText the raw PSI text of a {@code PropertyValueImpl}.
+	 */
+	static boolean containsLineContinuation(String rawText) {
+
+		int index = 0;
+		while (index < rawText.length()) {
+
+			char c = rawText.charAt(index);
+			if (c != '\\') {
+				index++;
+				continue;
+			}
+
+			int run = 0;
+			int i = index;
+			while (i < rawText.length() && rawText.charAt(i) == '\\') {
+				run++;
+				i++;
+			}
+			if (run % 2 == 1 && i < rawText.length()) {
+				char next = rawText.charAt(i);
+				if (next == '\n' || next == '\r') {
+					return true;
+				}
+			}
+			index = i;
+		}
+		return false;
+	}
+
 	String key() {
 		return key;
 	}
@@ -137,7 +171,7 @@ enum WrapperProperty {
 
 		PropertyValueImpl value = MavenWrapperUtils.findPropertyValue(property);
 		if (!key().equals(property.getUnescapedKey()) || value == null
-				|| MavenWrapperParser.containsLineContinuation(value.getText())) {
+				|| containsLineContinuation(value.getText())) {
 			return null;
 		}
 
@@ -151,7 +185,7 @@ enum WrapperProperty {
 			RepositoryCredentials credentials = parseCredentials(property.getProject(), uri);
 			RemoteRepository repository = parseRemoteRepository(uri, credentials);
 
-			Matcher matcher = MavenWrapperParser.MAVEN_ARTIFACT_PATTERN.matcher(decoded);
+			Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(decoded);
 			if (!matcher.find()) {
 				return null;
 			}
@@ -171,7 +205,7 @@ enum WrapperProperty {
 			return RemoteRepository.mavenCentral();
 		}
 
-		return new RemoteRepository(MavenWrapperParser.REPOSITORY_ID, uri.toASCIIString(), credentials);
+		return new RemoteRepository(MavenWrapperUtils.REPOSITORY_ID, uri.toASCIIString(), credentials);
 	}
 
 	private @Nullable RepositoryCredentials parseCredentials(Project project, URI uri) {
@@ -186,10 +220,10 @@ enum WrapperProperty {
 			if (colon >= 0) {
 				String user = URLDecoder.decode(userInfo.substring(0, colon), StandardCharsets.UTF_8);
 				String pass = URLDecoder.decode(userInfo.substring(colon + 1), StandardCharsets.UTF_8);
-				return new RepositoryCredentials(MavenWrapperParser.REPOSITORY_ID, user, pass, List.of(uri));
+				return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, pass, List.of(uri));
 			}
 			String user = URLDecoder.decode(userInfo, StandardCharsets.UTF_8);
-			return new RepositoryCredentials(MavenWrapperParser.REPOSITORY_ID, user, "", List.of(uri));
+			return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, "", List.of(uri));
 		}
 		return null;
 	}
