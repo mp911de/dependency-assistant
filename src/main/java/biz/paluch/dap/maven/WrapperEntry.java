@@ -48,6 +48,10 @@ record WrapperEntry(WrapperProperty property,
 		return pathVersion.equals(fileVersion);
 	}
 
+	/**
+	 * Return the parsed artifact version, or {@code null} when {@link #pathVersion}
+	 * cannot be parsed as an {@link ArtifactVersion}.
+	 */
 	@Nullable
 	public ArtifactVersion version() {
 		return ArtifactVersion.from(pathVersion).orElse(null);
@@ -55,6 +59,9 @@ record WrapperEntry(WrapperProperty property,
 
 	/**
 	 * Return a {@link VersionSource} based on the declared version.
+	 * <p>{@link #pathVersion} is always set from a regex group and can be the empty
+	 * string for incomplete URLs; the {@link StringUtils#hasText} guard converts
+	 * that case to {@link VersionSource#none()}.
 	 */
 	public VersionSource versionSource() {
 		return StringUtils.hasText(pathVersion) ? VersionSource.declared(pathVersion) : VersionSource.none();

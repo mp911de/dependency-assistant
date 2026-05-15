@@ -28,9 +28,9 @@ import com.intellij.psi.PsiFile;
 class MavenWrapperDependencyCollector {
 
 	/**
-	 * Collects artifact declarations from {@code buildFile}.
+	 * Collect artifact declarations from a Maven wrapper properties file.
 	 *
-	 * @param file the POM file.
+	 * @param file the {@code maven-wrapper.properties} PSI file.
 	 * @return a populated {@link DependencyCollector}.
 	 */
 	public DependencyCollector collect(PsiFile file) {

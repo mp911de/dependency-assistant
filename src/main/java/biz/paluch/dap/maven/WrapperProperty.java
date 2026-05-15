@@ -88,10 +88,11 @@ enum WrapperProperty {
 	}
 
 	/**
-	 * Parse the property as a supported wrapper URL property.
+	 * Try to parse the property against every supported wrapper URL property and
+	 * return the first match.
 	 * @param property the property to parse.
-	 * @return the parsed wrapper entry, or {@code null} if the property is not
-	 * supported or cannot be parsed.
+	 * @return the parsed wrapper entry, or {@code null} if no supported wrapper
+	 * property matches or the value cannot be parsed.
 	 */
 	public static @Nullable WrapperEntry parse(IProperty property) {
 

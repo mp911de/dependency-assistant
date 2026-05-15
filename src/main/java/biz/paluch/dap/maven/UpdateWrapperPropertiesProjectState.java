@@ -100,7 +100,8 @@ class UpdateWrapperPropertiesProjectState {
 	}
 
 	/**
-	 * Invoke the given action for every Maven POM file.
+	 * Invoke the given action for every Maven wrapper properties file in the
+	 * project.
 	 * @param action the file callback.
 	 * @param indicator the progress indicator to report to.
 	 */
@@ -125,8 +126,8 @@ class UpdateWrapperPropertiesProjectState {
 	}
 
 	/**
-	 * Update dependency state for the given Maven POM file.
-	 * @param file the Maven POM file to inspect.
+	 * Update dependency state for the given Maven wrapper properties file.
+	 * @param file the {@code maven-wrapper.properties} file to inspect.
 	 */
 	public DependencyCollector update(PsiFile file) {
 

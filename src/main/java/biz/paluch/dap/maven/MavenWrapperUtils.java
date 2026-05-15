@@ -24,6 +24,7 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
@@ -48,8 +49,13 @@ class MavenWrapperUtils {
 	 * Completion marker inserted by IntelliJ while calculating property-value
 	 * completions.
 	 */
-	public static final String COMPLETION_PLACEHOLDER = "IntellijIdeaRulezzz";
+	public static final String COMPLETION_PLACEHOLDER = CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED;
 
+	/*
+	 * version1 is greedy because a literal "/" terminates it; version2 is reluctant
+	 * so the trailing tail (e.g. "-bin.zip") can absorb the classifier instead of
+	 * being eaten by the version.
+	 */
 	public static final Pattern MAVEN_ARTIFACT_PATTERN = Pattern.compile(
 			"(?<groupId>[\\w/]+)/(?<artifactId1>[\\w.-]+)/(?<version1>(\\d[\\w.-]*)?(IntellijIdeaRulezzz)?(\\d[\\w.-]*)?)/"
 					+ "(?<artifactId2>[\\w.-]+?)-"
@@ -71,16 +77,16 @@ class MavenWrapperUtils {
 			return List.of();
 		}
 
-		StrippedValue stripped = StrippedValue.of(value, COMPLETION_PLACEHOLDER);
-		Matcher matcher = MAVEN_ARTIFACT_PATTERN.matcher(stripped.text());
+		String stripped = value.replace(COMPLETION_PLACEHOLDER, "");
+		Matcher matcher = MAVEN_ARTIFACT_PATTERN.matcher(stripped);
 		if (!matcher.find()) {
 			return List.of();
 		}
 
-		int v1Start = stripped.toOriginal(matcher.start("version1"));
-		int v1End = stripped.toOriginal(matcher.end("version1"));
-		int v2Start = stripped.toOriginal(matcher.start("version2"));
-		int v2End = stripped.toOriginal(matcher.end("version2"));
+		int v1Start = expandStrippedPosition(matcher.start("version1"), value);
+		int v1End = expandStrippedPosition(matcher.end("version1"), value);
+		int v2Start = expandStrippedPosition(matcher.start("version2"), value);
+		int v2End = expandStrippedPosition(matcher.end("version2"), value);
 
 		return findTextRanges(property, (str, index) -> {
 			if (index < v1Start) {
@@ -94,49 +100,26 @@ class MavenWrapperUtils {
 	}
 
 	/**
-	 * Decoded property value with every {@link #COMPLETION_PLACEHOLDER} occurrence
-	 * removed. {@link #toOriginal(int)} maps a position in the stripped text back
-	 * to the corresponding position in the original (placeholder-bearing) text.
+	 * Map a position from {@link #COMPLETION_PLACEHOLDER}-stripped text back to the
+	 * corresponding position in the original (placeholder-bearing) text.
+	 *
+	 * <p>A position that coincides with a stripped occurrence is treated as being
+	 * before that occurrence in the original text.
 	 */
-	private record StrippedValue(String text, int[] strippedPositions, int placeholderLength) {
+	private static int expandStrippedPosition(int strippedPos, String original) {
 
-		static StrippedValue of(String value, String placeholder) {
-
-			int first = value.indexOf(placeholder);
-			if (first < 0) {
-				return new StrippedValue(value, new int[0], placeholder.length());
+		int placeholderLength = COMPLETION_PLACEHOLDER.length();
+		int pos = strippedPos;
+		int from = 0;
+		while (from < pos) {
+			int hit = original.indexOf(COMPLETION_PLACEHOLDER, from);
+			if (hit < 0 || hit >= pos) {
+				break;
 			}
-
-			StringBuilder stripped = new StringBuilder(value.length());
-			List<Integer> positions = new ArrayList<>();
-			int idx = 0;
-			int found = first;
-			while (found >= 0) {
-				stripped.append(value, idx, found);
-				positions.add(stripped.length());
-				idx = found + placeholder.length();
-				found = value.indexOf(placeholder, idx);
-			}
-			stripped.append(value, idx, value.length());
-
-			int[] array = new int[positions.size()];
-			for (int i = 0; i < array.length; i++) {
-				array[i] = positions.get(i);
-			}
-			return new StrippedValue(stripped.toString(), array, placeholder.length());
+			pos += placeholderLength;
+			from = hit + placeholderLength;
 		}
-
-		int toOriginal(int strippedPos) {
-
-			int shift = 0;
-			for (int position : strippedPositions) {
-				if (position < strippedPos) {
-					shift += placeholderLength;
-				}
-			}
-			return strippedPos + shift;
-		}
-
+		return pos;
 	}
 
 	/**
@@ -164,8 +147,14 @@ class MavenWrapperUtils {
 	 * a property.
 	 */
 	public static @Nullable PropertyImpl findProperty(@Nullable PsiElement element) {
-		return element instanceof PropertyImpl property ? property
-				: (element != null && element.getParent() instanceof PropertyImpl parent ? parent : null);
+
+		if (element instanceof PropertyImpl property) {
+			return property;
+		}
+		if (element != null && element.getParent() instanceof PropertyImpl parent) {
+			return parent;
+		}
+		return null;
 	}
 
 	/**
