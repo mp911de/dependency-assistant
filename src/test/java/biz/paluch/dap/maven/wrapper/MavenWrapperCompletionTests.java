@@ -21,10 +21,15 @@ import java.util.List;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.CachedRelease;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.Properties;
 import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +50,99 @@ class MavenWrapperCompletionTests {
 	@BeforeEach
 	void setUp() {
 		MavenWrapperFixtures.setup(fixture.getProject());
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=<caret>
+			""")
+	void completesEmptyDistributionUrlWithDefaultUrlFromCache(PsiFile file) {
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly(
+				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.tar.gz");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(file)
+				.containsText(
+						"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.tar.gz")
+				.caretAfter("apache-maven-3.10.0-bin.tar.gz");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			wrapperUrl=<caret>
+			""")
+	void completesEmptyWrapperUrlWithDefaultUrlFromCache(PsiFile file) {
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly(
+				"https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.3/maven-wrapper-3.3.3.jar");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(file)
+				.containsText(
+						"wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.3/maven-wrapper-3.3.3.jar")
+				.caretAfter("maven-wrapper-3.3.3.jar");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=<caret>
+			""")
+	void completesEmptyDistributionUrlWithFallbackWhenCacheEmpty() {
+
+		StateService.getInstance(fixture.getProject()).setCache(new Cache());
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly(
+				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.15/apache-maven-3.9.15-bin.tar.gz");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			wrapperUrl=<caret>
+			""")
+	void completesEmptyWrapperUrlWithFallbackWhenCacheEmpty() {
+
+		StateService.getInstance(fixture.getProject()).setCache(new Cache());
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly(
+				"https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.4/maven-wrapper-3.3.4.jar");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=<caret>
+			""")
+	void completesEmptyDistributionUrlWithFallbackWhenCacheContainsOnlyPreviews() {
+
+		CachedArtifact artifact = new CachedArtifact("org.apache.maven", "apache-maven");
+		artifact.getReleases().add(new CachedRelease("4.0.0-rc-1", "2026-03-01"));
+		Cache cache = new Cache();
+		cache.addArtifacts(List.of(artifact));
+		StateService.getInstance(fixture.getProject()).setCache(cache);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly(
+				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.15/apache-maven-3.9.15-bin.tar.gz");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=<caret>
+			""")
+	void invokesAutoPopupAfterEqualsForEmptyDistributionUrl() {
+		assertThat(invokeAutoPopup('=')).isTrue();
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			foo=<caret>
+			""")
+	void doesNotInvokeAutoPopupAfterEqualsForUnsupportedProperty() {
+		assertThat(invokeAutoPopup('=')).isFalse();
 	}
 
 	@Test
@@ -233,6 +331,14 @@ class MavenWrapperCompletionTests {
 
 		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings()).isEmpty();
+	}
+
+	private boolean invokeAutoPopup(char typeChar) {
+
+		PsiElement position = fixture.getFile().findElementAt(fixture.getCaretOffset() - 1);
+		MavenWrapperCompletionContributor c1 = new MavenWrapperCompletionContributor();
+		MavenWrapperEmptyPropertyCompletionContributor c2 = new MavenWrapperEmptyPropertyCompletionContributor();
+		return c1.invokeAutoPopup(position, typeChar) || c2.invokeAutoPopup(position, typeChar);
 	}
 
 }

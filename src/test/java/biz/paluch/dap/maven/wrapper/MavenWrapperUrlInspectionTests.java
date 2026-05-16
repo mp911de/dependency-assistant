@@ -68,7 +68,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL contains plaintext credentials">https://alice:secret@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip</warning>
+			distributionUrl=https://<warning descr="Wrapper URL contains plaintext credentials">alice:secret@</warning>repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void highlightsCredentialsInUrl(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -84,7 +84,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL path version '3.9.6' disagrees with file version '3.9.5'">https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.5-bin.zip</warning>
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/<warning descr="Wrapper URL path version '3.9.6' disagrees with file version '3.9.5'">3.9.6</warning>/apache-maven-<warning descr="Wrapper URL path version '3.9.6' disagrees with file version '3.9.5'">3.9.5</warning>-bin.zip
 			""")
 	void highlightsInconsistentVersion(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -92,7 +92,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL path artifact 'foo' disagrees with file artifact 'bar'"><warning descr="Wrapper URL artifactId 'bar' is not a canonical Maven wrapper artifact"><warning descr="Wrapper URL file name 'bar-3.9.6-bin.zip' does not follow the canonical pattern">https://repo1.maven.org/maven2/org/apache/maven/foo/3.9.6/bar-3.9.6-bin.zip</warning></warning></warning>
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/<warning descr="Wrapper URL path artifact 'foo' disagrees with file artifact 'bar'">foo</warning>/3.9.6/<warning descr="Wrapper URL file name 'bar-3.9.6-bin.zip' does not follow the canonical pattern"><warning descr="Wrapper URL path artifact 'foo' disagrees with file artifact 'bar'"><warning descr="Wrapper URL artifactId 'bar' is not a canonical Maven wrapper artifact">bar</warning></warning>-3.9.6-bin.zip</warning>
 			""")
 	void highlightsInconsistentArtifact(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -100,7 +100,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL group path 'com/example/wrong' is not the canonical Maven group">https://repo1.maven.org/maven2/com/example/wrong/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip</warning>
+			distributionUrl=https://repo1.maven.org/maven2/<warning descr="Wrapper URL group path 'com/example/wrong' is not the canonical Maven group">com/example/wrong</warning>/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void highlightsImproperGroupId(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -108,7 +108,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL artifactId 'foo' is not a canonical Maven wrapper artifact"><warning descr="Wrapper URL file name 'foo-3.9.6-bin.zip' does not follow the canonical pattern">https://repo1.maven.org/maven2/org/apache/maven/foo/3.9.6/foo-3.9.6-bin.zip</warning></warning>
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/<warning descr="Wrapper URL artifactId 'foo' is not a canonical Maven wrapper artifact">foo</warning>/3.9.6/<warning descr="Wrapper URL file name 'foo-3.9.6-bin.zip' does not follow the canonical pattern"><warning descr="Wrapper URL artifactId 'foo' is not a canonical Maven wrapper artifact">foo</warning>-3.9.6-bin.zip</warning>
 			""")
 	void highlightsUnknownArtifact(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -116,7 +116,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL file name 'apache-maven-3.9.6.zip' does not follow the canonical pattern">https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6.zip</warning>
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/<warning descr="Wrapper URL file name 'apache-maven-3.9.6.zip' does not follow the canonical pattern">apache-maven-3.9.6.zip</warning>
 			""")
 	void highlightsMalformedFileName(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -124,7 +124,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			wrapperUrl=<warning descr="Wrapper URL file name 'maven-wrapper-3.3.2.zip' does not follow the canonical pattern">https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.zip</warning>
+			wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/<warning descr="Wrapper URL file name 'maven-wrapper-3.3.2.zip' does not follow the canonical pattern">maven-wrapper-3.3.2.zip</warning>
 			""")
 	void highlightsMalformedFileNameForWrapperZip(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -132,7 +132,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL contains plaintext credentials"><warning descr="Wrapper URL artifactId 'foo' is not a canonical Maven wrapper artifact"><warning descr="Wrapper URL file name 'foo-3.9.6-bin.zip' does not follow the canonical pattern">http://alice:secret@repo1.maven.org/maven2/org/apache/maven/foo/3.9.6/foo-3.9.6-bin.zip</warning></warning></warning>
+			distributionUrl=http://<warning descr="Wrapper URL contains plaintext credentials">alice:secret@</warning>repo1.maven.org/maven2/org/apache/maven/<warning descr="Wrapper URL artifactId 'foo' is not a canonical Maven wrapper artifact">foo</warning>/3.9.6/<warning descr="Wrapper URL file name 'foo-3.9.6-bin.zip' does not follow the canonical pattern"><warning descr="Wrapper URL artifactId 'foo' is not a canonical Maven wrapper artifact">foo</warning>-3.9.6-bin.zip</warning>
 			""")
 	void highlightsMultipleProblemsCoExisting(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -148,7 +148,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=<warning descr="Wrapper URL contains plaintext credentials">https://user:${PASS}@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip</warning>
+			distributionUrl=https://<warning descr="Wrapper URL contains plaintext credentials">user:${PASS}@</warning>repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void credentialsWarningStillFiresWhenPasswordHoldsPlaceholder(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());

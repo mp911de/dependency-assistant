@@ -82,7 +82,8 @@ class MavenWrapperUrlFixesUnitTests {
 	void useDefaultUrlReturnsFixInstance() {
 
 		assertThat(MavenWrapperUrlFixes.useDefaultUrl(WrapperProperty.DISTRIBUTION, "3.9.6")).isNotNull();
-		assertThat(MessageBundle.message("inspection.maven-wrapper.default-url.fix")).isEqualTo("Use default URL");
+		assertThat(MessageBundle.message("inspection.maven-wrapper.default-url.fix", "3.9.6"))
+				.isEqualTo("Fix download URL and use version '3.9.6'");
 	}
 
 }

@@ -31,16 +31,22 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.MatchFunction;
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.project.DumbModeTask;
+import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -57,22 +63,6 @@ import icons.MavenIcons;
  * @author Mark Paluch
  */
 public class MavenWrapperAssistant implements DependencyAssistant {
-
-	/**
-	 * Return the wrapper-derived release sources for the given wrapper file,
-	 * deduplicated by repository URL.
-	 * @param wrapperFile the wrapper properties file.
-	 * @return the release sources declared by supported wrapper URL properties.
-	 */
-	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
-
-		List<WrapperEntry> entries = new MavenWrapperParser().parse(wrapperFile);
-		Set<RemoteRepository> repositories = new LinkedHashSet<>();
-		for (WrapperEntry entry : entries) {
-			repositories.add(entry.repository());
-		}
-		return ReleaseSource.getReleaseSources(repositories);
-	}
 
 	@Override
 	public String getId() {
@@ -101,7 +91,32 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateWrapperPropertiesProjectState(project).readAndUpdateAll(indicator);
+
+		Cache cache = StateService.getInstance(project).getCache();
+
+		UpdateWrapperPropertiesProjectState init = new UpdateWrapperPropertiesProjectState(project);
+		init.readAndUpdateAll(indicator);
+
+		// avoid excessive network access so this is disabled in tests.
+		if (StringUtils.isEmpty(System.getProperty("junit.jupiter.extensions.autodetection.enabled"))) {
+
+			DumbService ds = DumbService.getInstance(project);
+			ds.queueTask(new DumbModeTask() {
+
+				@Override
+				public void performInDumbMode(ProgressIndicator indicator) {
+					RefreshMavenWrapperVersions refresh = new RefreshMavenWrapperVersions(cache,
+							init.getReleaseSources());
+					refresh.refreshWrapperVersions(indicator);
+
+					ds.runWhenSmart(() -> {
+						DaemonCodeAnalyzer.getInstance(project)
+								.restart(MessageBundle.message("action.refresh-releases.task.done.title"));
+					});
+				}
+
+			});
+		}
 	}
 
 	@Override
@@ -129,7 +144,26 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		VirtualFile virtualFile = anchor.getVirtualFile();
 		ProjectId projectId = MavenWrapperUtils.createProjectId(virtualFile);
 		List<ReleaseSource> releaseSources = collectReleaseSources(anchor);
+
 		return new MavenWrapperDependencyContext(project, virtualFile, projectId, releaseSources);
+	}
+
+	/**
+	 * Return the wrapper-derived release sources for the given wrapper file,
+	 * deduplicated by repository URL.
+	 * @param wrapperFile the wrapper properties file.
+	 * @return the release sources declared by supported wrapper URL properties.
+	 */
+	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
+
+		return CachedValuesManager.getProjectPsiDependentCache(wrapperFile, it -> {
+			List<WrapperEntry> entries = new MavenWrapperParser().parse(it);
+			Set<RemoteRepository> repositories = new LinkedHashSet<>();
+			for (WrapperEntry entry : entries) {
+				repositories.add(entry.repository());
+			}
+			return ReleaseSource.getReleaseSources(repositories);
+		});
 	}
 
 	public static class MavenWrapperDependencyContext implements ProjectDependencyContext {

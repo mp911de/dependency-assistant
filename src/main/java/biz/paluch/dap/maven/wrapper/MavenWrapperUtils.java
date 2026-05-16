@@ -164,8 +164,8 @@ class MavenWrapperUtils {
 		if (element instanceof PropertyImpl property) {
 			return property;
 		}
-		if (element != null && element.getParent() instanceof PropertyImpl parent) {
-			return parent;
+		if (element != null) {
+			return PsiTreeUtil.getParentOfType(element, PropertyImpl.class, false);
 		}
 		return null;
 	}

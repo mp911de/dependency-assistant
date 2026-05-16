@@ -56,17 +56,6 @@ class MavenWrapperUrlFixes {
 	}
 
 	/**
-	 * Create a fix that upgrades the wrapper URL scheme from {@code http} to
-	 * {@code https}.
-	 * @return a fresh fix instance.
-	 */
-	static PsiUpdateModCommandAction<PropertyImpl> forceHttps() {
-		return new WrapperUrlFix(
-				MavenWrapperUrlRewriter::forceHttps,
-				"inspection.maven-wrapper.insecure-url.fix");
-	}
-
-	/**
 	 * Create a fix that rewrites both version segments of the wrapper URL to the
 	 * given version.
 	 * @param version the canonical version to apply; must not be {@literal null}.

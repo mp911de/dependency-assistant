@@ -17,9 +17,12 @@
 package biz.paluch.dap.maven.wrapper;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -48,6 +51,8 @@ class UpdateWrapperPropertiesProjectState {
 
 	private final MavenWrapperDependencyCollector collector;
 
+	private final Set<ReleaseSource> releaseSources = new LinkedHashSet<>();
+
 	/**
 	 * Create a new {@code UpdateWrapperPropertiesProjectState}.
 	 * @param project the IntelliJ project.
@@ -67,6 +72,10 @@ class UpdateWrapperPropertiesProjectState {
 		this.service = service;
 		this.psiManager = psiManager;
 		this.collector = new MavenWrapperDependencyCollector();
+	}
+
+	public Set<ReleaseSource> getReleaseSources() {
+		return releaseSources;
 	}
 
 	/**
@@ -140,6 +149,8 @@ class UpdateWrapperPropertiesProjectState {
 		ProjectState projectState = this.service.getProjectState(projectId);
 		projectState.invalidateDependencies();
 		projectState.setDependencies(collector);
+
+		this.releaseSources.addAll(collector.getReleaseSources());
 
 		return collector;
 	}
