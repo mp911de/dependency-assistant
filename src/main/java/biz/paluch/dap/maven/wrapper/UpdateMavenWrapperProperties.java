@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.util.StringUtils;
+import biz.paluch.dap.util.Properties;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.PropertiesFileType;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -38,7 +36,6 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiFileFactory;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Applies dependency updates to {@code .mvn/wrapper/maven-wrapper.properties}.
@@ -163,24 +160,6 @@ class UpdateMavenWrapperProperties {
 		}
 
 		return result.toString();
-	}
-
-	public static @Nullable String getRewrittenUrl(@Nullable String url, ArtifactVersion version) {
-
-		if (StringUtils.isEmpty(url)) {
-			return null;
-		}
-
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
-		if (!matcher.find()) {
-			return null;
-		}
-
-		String start = url.substring(0, matcher.start("version1"));
-		String middle = url.substring(matcher.end("version1"), matcher.start("version2"));
-		String tail = url.substring(matcher.end("version2"));
-
-		return start + version + middle + version + tail;
 	}
 
 }

@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -38,6 +39,20 @@ import org.jetbrains.idea.maven.indices.MavenGAVIndex;
  * @see GradlePluginPortalReleaseSource
  */
 public interface ReleaseSource {
+
+	/**
+	 * Wrap each {@link RemoteRepository} as a {@link ReleaseSource} backed by
+	 * {@link RemoteRepositoryReleaseSource}.
+	 *
+	 * @param remoteRepositories the repositories to wrap; must not be
+	 * {@literal null}.
+	 * @return a list of release sources in the same order; guaranteed to be not
+	 * {@literal null}.
+	 */
+	static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> remoteRepositories) {
+		return remoteRepositories.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it)
+				.toList();
+	}
 
 	/**
 	 * Return all known releases for the given artifact at this source.
@@ -91,5 +106,7 @@ public interface ReleaseSource {
 			Set<String> versions = index.getVersions(artifactId.groupId(), artifactId.artifactId());
 			return versions.stream().map(Release::of).toList();
 		}
+
 	}
+
 }

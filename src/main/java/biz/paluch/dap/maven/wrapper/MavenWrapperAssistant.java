@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -35,6 +35,7 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.util.MatchFunction;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
@@ -55,7 +56,7 @@ import icons.MavenIcons;
  *
  * @author Mark Paluch
  */
-class MavenWrapperAssistant implements DependencyAssistant {
+public class MavenWrapperAssistant implements DependencyAssistant {
 
 	/**
 	 * Return the wrapper-derived release sources for the given wrapper file,
@@ -70,7 +71,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 		for (WrapperEntry entry : entries) {
 			repositories.add(entry.repository());
 		}
-		return MavenUtils.getReleaseSources(repositories);
+		return ReleaseSource.getReleaseSources(repositories);
 	}
 
 	@Override
@@ -90,7 +91,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean supports(PsiFile file) {
-		return MavenUtils.isWrapperFile(file);
+		return MavenWrapperUtils.isWrapperFile(file);
 	}
 
 	@Override
@@ -126,13 +127,12 @@ class MavenWrapperAssistant implements DependencyAssistant {
 
 		Project project = anchor.getProject();
 		VirtualFile virtualFile = anchor.getVirtualFile();
-		ProjectId projectId = MavenProjectContext.createWrapperProjectId(virtualFile);
+		ProjectId projectId = MavenWrapperUtils.createProjectId(virtualFile);
 		List<ReleaseSource> releaseSources = collectReleaseSources(anchor);
 		return new MavenWrapperDependencyContext(project, virtualFile, projectId, releaseSources);
 	}
 
-
-	static class MavenWrapperDependencyContext implements ProjectDependencyContext {
+	public static class MavenWrapperDependencyContext implements ProjectDependencyContext {
 
 		private final Project project;
 
@@ -174,7 +174,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public void invalidateState(PsiFile file) {
 
-			if (!MavenUtils.isWrapperFile(file)) {
+			if (!MavenWrapperUtils.isWrapperFile(file)) {
 				return;
 			}
 
@@ -199,7 +199,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 				return false;
 			}
 
-			if (!MavenUtils.isWrapperFile(value.getContainingFile())) {
+			if (!MavenWrapperUtils.isWrapperFile(value.getContainingFile())) {
 				return false;
 			}
 
@@ -271,7 +271,7 @@ class MavenWrapperAssistant implements DependencyAssistant {
 					: PsiTreeUtil.getParentOfType(element, PropertyValueImpl.class, false);
 			if (literal == null
 					|| !(literal.getContainingFile() instanceof PropertiesFile propertiesFile)
-					|| !MavenUtils.isWrapperFile(propertiesFile)) {
+					|| !MavenWrapperUtils.isWrapperFile(propertiesFile)) {
 				return element.getTextRange();
 			}
 

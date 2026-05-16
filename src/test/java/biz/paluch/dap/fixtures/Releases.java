@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public final class Releases {
+public class Releases {
 
 	private static final List<CachedArtifact> ALL = new ArrayList<>();
 

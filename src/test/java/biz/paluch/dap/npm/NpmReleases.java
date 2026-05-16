@@ -35,7 +35,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public final class NpmReleases {
+public class NpmReleases {
 
 	private static final List<CachedArtifact> ALL = new ArrayList<>();
 

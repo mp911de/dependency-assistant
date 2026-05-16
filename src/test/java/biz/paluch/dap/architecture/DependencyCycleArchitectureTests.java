@@ -22,9 +22,9 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.maven.Properties;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.util.Properties;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -44,7 +44,7 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 class DependencyCycleArchitectureTests {
 
 	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
-			.excludingClass("biz.paluch.dap.maven.WrapperEntry", "closed hierarchy")
+			.excludingClass("biz.paluch.dap.maven.wrapper.WrapperEntry", "closed hierarchy")
 			.excludingClass("biz.paluch.dap.npm.NpmGitRef",
 					"Fix todo's")
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
@@ -109,6 +109,11 @@ class DependencyCycleArchitectureTests {
 
 	@ArchTest
 	static final ArchRule maven = packageDependencies("maven",
+			"biz.paluch.dap",
+			"artifact", "assistant", "state", "support", "util", "maven.wrapper");
+
+	@ArchTest
+	static final ArchRule mavenWrapper = packageDependencies("maven.wrapper",
 			"biz.paluch.dap",
 			"artifact", "assistant", "state", "support", "util");
 

@@ -16,7 +16,7 @@
 
 package biz.paluch.dap;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
@@ -77,7 +77,7 @@ public interface InterfaceAssistant {
 	 * range to a build-tool-specific sub-range (e.g. the version string inside a
 	 * quoted TOML literal, the committish of a Git URL, the ref segment of a GitHub
 	 * Actions {@code uses:} declaration); the default returns the element's own
-	 * range so unrecognized inputs degrade gracefully.
+	 * range so unsupported inputs degrade gracefully.
 	 * @param element the element whose version sub-range should be highlighted.
 	 * @return the highlight range; guaranteed to be not {@literal null}.
 	 */

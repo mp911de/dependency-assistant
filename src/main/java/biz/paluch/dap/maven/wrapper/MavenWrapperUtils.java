@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,12 +24,18 @@ import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.util.MatchFunction;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
+import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.LiteralTextEscaper;
+import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiLanguageInjectionHost;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -64,6 +70,12 @@ class MavenWrapperUtils {
 
 	public static final String REPOSITORY_ID = "maven-wrapper";
 
+	public static final String WRAPPER_FILENAME = "maven-wrapper.properties";
+
+	private static final String WRAPPER_DIR = "wrapper";
+
+	private static final String MVN_DIR = ".mvn";
+
 	/**
 	 * Return file-absolute ranges for the version segments in a wrapper URL.
 	 * @param property the wrapper property to inspect.
@@ -90,10 +102,11 @@ class MavenWrapperUtils {
 
 		return findTextRanges(property, (str, index) -> {
 			if (index < v1Start) {
-				return new DefaultMatchResult(value.substring(v1Start, v1End), v1Start, v1End);
+
+				return MatchFunction.match(value.substring(v1Start, v1End), v1Start, v1End);
 			}
 			if (index < v2Start) {
-				return new DefaultMatchResult(value.substring(v2Start, v2End), v2Start, v2End);
+				return MatchFunction.match(value.substring(v2Start, v2End), v2Start, v2End);
 			}
 			return MatchFunction.noMatch();
 		});
@@ -304,4 +317,61 @@ class MavenWrapperUtils {
 	private MavenWrapperUtils() {
 	}
 
+	/**
+	 * Return whether the given file is a Maven Wrapper properties file named
+	 * {@code maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFile(PropertiesFile file) {
+		return WRAPPER_FILENAME.equals(file.getName());
+	}
+
+	/**
+	 * Return whether the given file is a Maven Wrapper properties file named
+	 * {@code maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFile(@Nullable PsiFile file) {
+		return file instanceof PropertiesFile propertiesFile && WRAPPER_FILENAME.equals(file.getName());
+	}
+
+	/**
+	 * Return whether the given file is a Maven Wrapper properties file located at
+	 * {@code .mvn/wrapper/maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFileExact(@Nullable VirtualFile file) {
+
+		if (file == null || !WRAPPER_FILENAME.equals(file.getName())) {
+			return false;
+		}
+
+		VirtualFile parent = file.getParent();
+		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
+			return false;
+		}
+
+		VirtualFile grandParent = parent.getParent();
+		return grandParent != null && MVN_DIR.equals(grandParent.getName());
+	}
+
+	/**
+	 * Return whether the given file is a Maven Wrapper properties file located at
+	 * {@code .mvn/wrapper/maven-wrapper.properties}.
+	 */
+	static boolean isWrapperFileExact(@Nullable PsiFile file) {
+
+		if (!isWrapperFile(file)) {
+			return false;
+		}
+
+		PsiDirectory parent = file.getParent();
+		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
+			return false;
+		}
+
+		PsiDirectory grandParent = parent.getParent();
+		return grandParent != null && MVN_DIR.equals(grandParent.getName());
+	}
+
+	public static ProjectId createProjectId(VirtualFile virtualFile) {
+		return new ProjectId("org.apache.maven", "apache-maven", virtualFile.getPath());
+	}
 }

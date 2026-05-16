@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.List;
 import java.util.Optional;
@@ -48,7 +48,7 @@ import com.intellij.util.ProcessingContext;
  * Completion contributor for version segments in Maven wrapper URLs.
  *
  * <p>The contributor is limited to supported Maven wrapper properties and
- * offers release versions only when the caret is inside a recognized version
+ * offers release versions only when the caret is inside a supported version
  * segment of the property value.
  *
  * @author Mark Paluch

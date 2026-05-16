@@ -71,7 +71,7 @@ sealed interface NpmVersionExpression
 		NpmVersionExpression.Alias, NpmVersionExpression.Git {
 
 	/**
-	 * Pattern for NPM wildcard/prefix ranges recognized by this classifier.
+	 * Pattern for NPM wildcard/prefix ranges supported by this classifier.
 	 *
 	 * <pre class="code">
 	 * &lt;wildcard&gt;
@@ -229,7 +229,7 @@ sealed interface NpmVersionExpression
 	 * expressed as offsets into the raw value text.
 	 * <p>The range never includes the surrounding JSON quote characters. Callers
 	 * that operate on PSI text must apply the literal's own offset. A range may be
-	 * zero-length for an otherwise recognized but unpinned Git dependency; callers
+	 * zero-length for an otherwise supported but unpinned Git dependency; callers
 	 * should consult {@link #isUpdatable()} before rewriting.
 	 * @param rawDeclared the original raw value as written in the file; must not be
 	 * {@literal null}.
@@ -700,7 +700,7 @@ sealed interface NpmVersionExpression
 		 * Parse the given raw value as an NPM Git dependency reference.
 		 * @param raw the dependency value; must not be empty or {@literal null}.
 		 * @return the parsed Git variant, or {@literal null} if the input is not a
-		 * recognized Git form or does not resolve to a GitHub repository.
+		 * supported Git form or does not resolve to a GitHub repository.
 		 */
 		public static NpmVersionExpression.@Nullable Git parse(String raw) {
 

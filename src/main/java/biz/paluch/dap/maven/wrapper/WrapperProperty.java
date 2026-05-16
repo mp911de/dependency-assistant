@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -45,9 +46,11 @@ import org.jspecify.annotations.Nullable;
  */
 enum WrapperProperty {
 
-	DISTRIBUTION("distributionUrl", "distributionSha256Sum", ArtifactId.of("org.apache.maven", "apache-maven")),
+	DISTRIBUTION("distributionUrl", "distributionSha256Sum", ArtifactId.of("org.apache.maven", "apache-maven"),
+			"org/apache/maven", "apache-maven-%s-bin", "tar.gz", Set.of("tar.gz", "zip")),
 
-	WRAPPER("wrapperUrl", "wrapperSha256Sum", ArtifactId.of("org.apache.maven.wrapper", "maven-wrapper"));
+	WRAPPER("wrapperUrl", "wrapperSha256Sum", ArtifactId.of("org.apache.maven.wrapper", "maven-wrapper"),
+			"org/apache/maven/wrapper", "maven-wrapper-%s", "jar", Set.of("jar"));
 
 	private static final WrapperProperty[] VALUES = values();
 
@@ -57,10 +60,23 @@ enum WrapperProperty {
 
 	private final ArtifactId artifactId;
 
-	WrapperProperty(String key, String shaKey, ArtifactId artifactId) {
+	private final String canonicalGroupPath;
+
+	private final String baseFileName;
+
+	private final String defaultExtension;
+
+	private final Set<String> supportedExtensions;
+
+	WrapperProperty(String key, String shaKey, ArtifactId artifactId, String canonicalGroupPath,
+			String baseFileName, String defaultExtension, Set<String> supportedExtensions) {
 		this.key = key;
 		this.shaKey = shaKey;
 		this.artifactId = artifactId;
+		this.canonicalGroupPath = canonicalGroupPath;
+		this.baseFileName = baseFileName;
+		this.defaultExtension = defaultExtension;
+		this.supportedExtensions = supportedExtensions;
 	}
 
 	/**
@@ -68,23 +84,24 @@ enum WrapperProperty {
 	 * @param property the property to inspect.
 	 * @return {@code true} if the property key is supported.
 	 */
-	public static boolean isWrapperProperty(IProperty property) {
-		return isWrapperProperty(property.getUnescapedKey());
+	static boolean isWrapperProperty(IProperty property) {
+		return forKey(property.getUnescapedKey()) != null;
 	}
 
 	/**
-	 * Return whether the property key is a supported wrapper URL property.
-	 * @param key the property key to inspect.
-	 * @return {@code true} if the property key is supported.
+	 * Return the {@link WrapperProperty} that matches the given property key, or
+	 * {@literal null} when the key is unknown.
+	 * @param key the property key to inspect; can be {@literal null}.
+	 * @return the matching {@link WrapperProperty}, or {@literal null}.
 	 */
-	public static boolean isWrapperProperty(@Nullable String key) {
+	static @Nullable WrapperProperty forKey(@Nullable String key) {
 
 		for (WrapperProperty value : VALUES) {
 			if (value.key().equals(key)) {
-				return true;
+				return value;
 			}
 		}
-		return false;
+		return null;
 	}
 
 	/**
@@ -160,6 +177,57 @@ enum WrapperProperty {
 
 	ArtifactId artifactId() {
 		return artifactId;
+	}
+
+	/**
+	 * Return the canonical slash-separated Maven group path for this wrapper
+	 * property.
+	 * @return the canonical group path.
+	 */
+	String canonicalGroupPath() {
+		return canonicalGroupPath;
+	}
+
+	/**
+	 * Return the canonical artifact id for this wrapper property.
+	 * @return the canonical artifact id.
+	 */
+	String canonicalArtifactId() {
+		return artifactId.artifactId();
+	}
+
+	/**
+	 * Return the canonical file name for this wrapper property, the given version,
+	 * and an optional preserved extension.
+	 *
+	 * <p>If {@code preservedExtension} is one of the supported extensions for this
+	 * property, it is honoured; otherwise the default extension is used.
+	 * @param version the canonical version; must not be {@literal null}.
+	 * @param preservedExtension the extension to preserve, can be {@literal null}.
+	 * @return the canonical file name.
+	 */
+	String canonicalFileName(String version, @Nullable String preservedExtension) {
+		String extension = preservedExtension != null && supportedExtensions.contains(preservedExtension)
+				? preservedExtension
+				: defaultExtension;
+		return baseFileName.formatted(version) + '.' + extension;
+	}
+
+	/**
+	 * Return whether {@code fileName} is one of the canonical file names for this
+	 * wrapper property at the given version.
+	 * @param fileName the file name to check; must not be {@literal null}.
+	 * @param version the canonical version; must not be {@literal null}.
+	 * @return {@literal true} if the file name is canonical.
+	 */
+	boolean isCanonicalFileName(String fileName, String version) {
+		String base = baseFileName.formatted(version);
+		for (String extension : supportedExtensions) {
+			if (fileName.equals(base + '.' + extension)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

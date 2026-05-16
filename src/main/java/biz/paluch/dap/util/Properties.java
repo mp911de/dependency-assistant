@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.util;
 
 import java.util.List;
 import java.util.function.Consumer;

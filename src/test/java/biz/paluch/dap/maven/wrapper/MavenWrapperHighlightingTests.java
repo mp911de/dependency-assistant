@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.Collection;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.maven.MavenAssistant.MavenInterface;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
@@ -33,9 +32,8 @@ import org.junit.jupiter.api.Test;
 import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * PSI-level integration tests for
- * {@link MavenInterface#getHighlightRange(com.intellij.psi.PsiElement)}.
- *
+ * PSI-level integration tests highlighting.
+ * 
  * @author Mark Paluch
  */
 @CodeInsightFixtureTests
@@ -48,8 +46,6 @@ class MavenWrapperHighlightingTests {
 		MavenWrapperFixtures.setup(fixture.getProject());
 	}
 
-	// TODO: display if versions do not match + fixes to use either one and if the
-	// artifact ids do not match
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
@@ -111,6 +107,5 @@ class MavenWrapperHighlightingTests {
 
 		assertThat(file).hasNoGutterMarks();
 	}
-
 
 }

@@ -14,57 +14,35 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.extension;
 
-import java.util.regex.MatchResult;
+import static org.assertj.core.api.Assertions.*;
 
 /**
- * {@link MatchResult} when a search does not produce a match.
+ * Unit tests for {@link StringTestExtension}.
  *
  * @author Mark Paluch
  */
-enum AbsentMatchResult implements MatchResult {
+class StringTestExtensionTests {
 
-	ABSENT;
+	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
+	void injectsStringLiteral(String value) {
 
-	@Override
-	public int start() {
-		return 0;
+		assertThat(value)
+				.isEqualTo(
+						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
 	}
 
-	@Override
-	public int start(int group) {
-		return 0;
-	}
+	@StringTest("""
+			first line
+			second line
+			""")
+	void injectsTextBlock(String value) {
 
-	@Override
-	public int end() {
-		return 0;
-	}
-
-	@Override
-	public int end(int group) {
-		return 0;
-	}
-
-	@Override
-	public String group() {
-		return "";
-	}
-
-	@Override
-	public String group(int group) {
-		return "";
-	}
-
-	@Override
-	public int groupCount() {
-		return 0;
-	}
-
-	@Override
-	public boolean hasMatch() {
-		return false;
+		assertThat(value).isEqualTo("""
+				first line
+				second line
+				""");
 	}
 
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ProjectBuildContext;
@@ -61,7 +61,7 @@ class WrapperVersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		}
 
 		if (literal == null || !WrapperProperty.isWrapperProperty(property)
-				|| !MavenUtils.isWrapperFile(element.getContainingFile())) {
+				|| !MavenWrapperUtils.isWrapperFile(element.getContainingFile())) {
 			return ArtifactReference.unresolved();
 		}
 

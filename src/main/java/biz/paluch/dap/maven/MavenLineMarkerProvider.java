@@ -22,6 +22,7 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
 import biz.paluch.dap.maven.MavenAssistant.MavenInterface;
+import biz.paluch.dap.maven.wrapper.MavenWrapperAssistant;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.psi.PsiElement;
 

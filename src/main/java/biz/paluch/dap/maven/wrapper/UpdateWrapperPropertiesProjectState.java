@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.Collection;
 import java.util.function.Consumer;
@@ -108,7 +108,7 @@ class UpdateWrapperPropertiesProjectState {
 	public void doWithAllFiles(Consumer<PsiFile> action, ProgressIndicator indicator) {
 
 		double current = 0;
-		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(MavenUtils.WRAPPER_FILENAME,
+		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(MavenWrapperUtils.WRAPPER_FILENAME,
 				ProjectScope.getProjectScope(project));
 		for (VirtualFile file : files) {
 			indicator.checkCanceled();
@@ -116,7 +116,7 @@ class UpdateWrapperPropertiesProjectState {
 					"Wrapper"));
 
 			PsiFile psiFile = psiManager.findFile(file);
-			if (MavenUtils.isWrapperFileExact(file) && psiFile != null) {
+			if (MavenWrapperUtils.isWrapperFileExact(file) && psiFile != null) {
 				action.accept(psiFile);
 			}
 
@@ -131,11 +131,11 @@ class UpdateWrapperPropertiesProjectState {
 	 */
 	public DependencyCollector update(PsiFile file) {
 
-		if (!MavenUtils.isWrapperFile(file)) {
+		if (!MavenWrapperUtils.isWrapperFile(file)) {
 			return new DependencyCollector();
 		}
 
-		ProjectId projectId = MavenProjectContext.createWrapperProjectId(file.getVirtualFile());
+		ProjectId projectId = MavenWrapperUtils.createProjectId(file.getVirtualFile());
 		DependencyCollector collector = this.collector.collect(file);
 		ProjectState projectState = this.service.getProjectState(projectId);
 		projectState.invalidateDependencies();

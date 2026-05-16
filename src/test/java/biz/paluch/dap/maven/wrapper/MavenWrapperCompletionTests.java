@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.List;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.util.Properties;
 import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.util.TextRange;
@@ -47,7 +48,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.<caret>/apache-maven-3.9.6-bin.zip
 			""")
 	void completesInsideFirstVersion(PsiFile file) {
@@ -64,7 +65,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-<caret>3.9.6-bin.zip
 			""")
 	void completesAtVersionStart(PsiFile file) {
@@ -81,7 +82,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/<caret>/apache-maven-3.9.6-bin.zip
 			""")
 	void completesAtEmptyPathVersionStart(PsiFile file) {
@@ -98,7 +99,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/<caret>/apache-maven-3.9.6-bin.zip
 			""")
 	void completesAtEmptyPathVersionStartComplete(PsiFile file) {
@@ -114,7 +115,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/<caret>/apache-maven-3.9.6-bin.zip
 			""")
 	void completesAtEmptyPathVersionStartTab(PsiFile file) {
@@ -130,7 +131,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-<caret>-bin.zip
 			""")
 	void completesAtEmptyFileVersionStartTab(PsiFile file) {
@@ -146,7 +147,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-<caret>-bin.zip
 			""")
 	void completesAtEmptyFileVersionStartComplete(PsiFile file) {
@@ -162,7 +163,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-<caret>3.9.6-bin.zip
 			""")
 	void completesAtVersionStartTab(PsiFile file) {
@@ -178,7 +179,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.<caret>-bin.zip
 			""")
 	void completesInsideSecondVersion(PsiFile file) {
@@ -195,7 +196,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.IntellijIdeaRulezzz-bin.zip
 			""")
 	void computesRangesCorrectly(PsiFile file) {
@@ -211,7 +212,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = "gradle/wrapper/gradle-wrapper.properties", content = """
+	@EditorFile(name = "gradle-wrapper.properties", content = """
 			distributionUrl=https\\://services.gradle.org/distributions/gradle-8.5<caret>-bin.zip
 			""")
 	void doesNotOfferCompletionForGradleWrapper(PsiFile file) {
@@ -223,7 +224,7 @@ class MavenWrapperCompletionTests {
 	}
 
 	@Test
-	@EditorFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+	@EditorFile(name = "maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven<caret>/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void doesNotOfferCompletionInsideArtifactId(PsiFile file) {

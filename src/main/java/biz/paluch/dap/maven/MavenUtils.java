@@ -25,13 +25,10 @@ import java.util.function.BiConsumer;
 
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -50,12 +47,6 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class MavenUtils {
-
-	static final String WRAPPER_FILENAME = "maven-wrapper.properties";
-
-	private static final String WRAPPER_DIR = "wrapper";
-
-	private static final String MVN_DIR = ".mvn";
 
 	/**
 	 * Return whether the given file is a Maven POM by filename alone.
@@ -142,20 +133,6 @@ class MavenUtils {
 	}
 
 	/**
-	 * Wrap each {@link RemoteRepository} as a {@link ReleaseSource} backed by
-	 * {@link RemoteRepositoryReleaseSource}.
-	 *
-	 * @param remoteRepositories the repositories to wrap; must not be
-	 * {@literal null}.
-	 * @return a list of release sources in the same order; guaranteed to be not
-	 * {@literal null}.
-	 */
-	public static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> remoteRepositories) {
-		return remoteRepositories.stream().map(RemoteRepositoryReleaseSource::new).map(it -> (ReleaseSource) it)
-				.toList();
-	}
-
-	/**
 	 * Collect release sources for all Maven sub-projects in the given project.
 	 * <p>Loads credentials from {@code settings.xml}, then aggregates the remote
 	 * repositories across every project known to {@link MavenProjectsManager},
@@ -175,7 +152,7 @@ class MavenUtils {
 			remoteRepositories.addAll(MavenUtils.getRemoteRepositories(credentials, candidate));
 		}
 
-		return getReleaseSources(remoteRepositories);
+		return ReleaseSource.getReleaseSources(remoteRepositories);
 	}
 
 	private static RemoteRepository remoteRepository(String id, String url,
@@ -213,60 +190,5 @@ class MavenUtils {
 		return "version".equals(currentTag.getLocalName())
 				&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName()));
 	}
-
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file named
-	 * {@code maven-wrapper.properties}.
-	 */
-	static boolean isWrapperFile(PropertiesFile file) {
-		return WRAPPER_FILENAME.equals(file.getName());
-	}
-
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file named
-	 * {@code maven-wrapper.properties}.
-	 */
-	static boolean isWrapperFile(@Nullable PsiFile file) {
-		return file instanceof PropertiesFile propertiesFile && WRAPPER_FILENAME.equals(file.getName());
-	}
-
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file located at
-	 * {@code .mvn/wrapper/maven-wrapper.properties}.
-	 */
-	static boolean isWrapperFileExact(@Nullable VirtualFile file) {
-
-		if (file == null || !WRAPPER_FILENAME.equals(file.getName())) {
-			return false;
-		}
-
-		VirtualFile parent = file.getParent();
-		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
-			return false;
-		}
-
-		VirtualFile grandParent = parent.getParent();
-		return grandParent != null && MVN_DIR.equals(grandParent.getName());
-	}
-
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file located at
-	 * {@code .mvn/wrapper/maven-wrapper.properties}.
-	 */
-	static boolean isWrapperFileExact(@Nullable PsiFile file) {
-
-		if (!isWrapperFile(file)) {
-			return false;
-		}
-
-		PsiDirectory parent = file.getParent();
-		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
-			return false;
-		}
-
-		PsiDirectory grandParent = parent.getParent();
-		return grandParent != null && MVN_DIR.equals(grandParent.getName());
-	}
-
 
 }

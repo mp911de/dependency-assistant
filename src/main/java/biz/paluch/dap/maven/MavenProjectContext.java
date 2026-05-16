@@ -103,10 +103,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 		return new ProjectId(mavenId.getGroupId(), mavenId.getArtifactId(), null);
 	}
 
-	static ProjectId createWrapperProjectId(VirtualFile virtualFile) {
-		return new ProjectId("org.apache.maven", "apache-maven", virtualFile.getPath());
-	}
-
 	/**
 	 * Return the Maven project.
 	 */
@@ -159,7 +155,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 			Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
 			Set<RemoteRepository> remoteRepositories = MavenUtils.getRemoteRepositories(credentials, mavenProject);
-			return MavenUtils.getReleaseSources(remoteRepositories);
+			return ReleaseSource.getReleaseSources(remoteRepositories);
 		}
 
 		@Override

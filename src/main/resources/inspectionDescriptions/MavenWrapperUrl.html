@@ -1,0 +1,20 @@
+<html>
+<body>
+Reports Maven wrapper URLs that contain credentials or do not match canonical Maven
+wrapper artifact coordinates.
+<p>
+    This inspection checks <code>distributionUrl</code> and <code>wrapperUrl</code> values
+    in
+    <code>.mvn/wrapper/maven-wrapper.properties</code>. It detects invalid URL shapes,
+    mismatched path and file versions or artifact IDs, wrong Maven group paths,
+    noncanonical file names,
+    and plaintext credentials.
+</p>
+<p>
+    Quick-fixes can remove credentials, rewrite the affected coordinate segment, or
+    replace the value
+    with a canonical Maven Central URL when release metadata is available.
+</p>
+<!-- tooltip end -->
+</body>
+</html>

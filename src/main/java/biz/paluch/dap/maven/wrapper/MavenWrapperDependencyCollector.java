@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -46,7 +46,7 @@ class MavenWrapperDependencyCollector {
 	 */
 	protected void doCollect(PsiFile file, DependencyCollector collector) {
 
-		if (MavenUtils.isWrapperFile(file) && file instanceof PropertiesFile propertiesFile) {
+		if (MavenWrapperUtils.isWrapperFile(file) && file instanceof PropertiesFile propertiesFile) {
 			MavenWrapperParser parser = new MavenWrapperParser(collector);
 			parser.parse(propertiesFile);
 		}

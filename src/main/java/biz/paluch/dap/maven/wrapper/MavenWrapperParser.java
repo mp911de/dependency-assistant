@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.maven.wrapper;
 
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.util.Properties;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
@@ -52,9 +53,9 @@ class MavenWrapperParser {
 	}
 
 	/**
-	 * Parse the recognized properties from the given wrapper file.
+	 * Parse the supported properties from the given wrapper file.
 	 * @param file the {@code maven-wrapper.properties} PSI file.
-	 * @return the recognized entries, in declaration order; possibly empty.
+	 * @return the supported entries, in declaration order; possibly empty.
 	 */
 	public List<WrapperEntry> parse(PsiFile file) {
 		return file instanceof PropertiesFile propertiesFile ? getEntries(propertiesFile) : List.of();

@@ -62,7 +62,6 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 
 	private static final String FILES_KEY = "registeredFiles";
 
-
 	@Override
 	public void beforeEach(ExtensionContext context) {
 
