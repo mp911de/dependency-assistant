@@ -27,12 +27,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * GitHub repository metadata extracted from a Git remote URL.
  *
- * <p>The host is retained so release lookup can target GitHub Enterprise when a
+ * <p>
+ * The host is retained so release lookup can target GitHub Enterprise when a
  * project is not hosted on {@code github.com}. The owner and repository form
  * the framework's project identity for Git-backed dependency entries (GitHub
  * Actions {@code uses:} declarations and NPM {@code git+} URLs).
  *
- * <p>This type is the canonical, ecosystem-agnostic shape for parsed Git
+ * <p>
+ * This type is the canonical, ecosystem-agnostic shape for parsed Git
  * coordinates, used both by the GitHub package (resolver and release source)
  * and by the NPM package (Git URL classifier).
  *
@@ -48,9 +50,10 @@ public record GitRepositoryMetadata(String host, String owner, String repository
 
 	/**
 	 * Parse a Git remote URL into GitHub repository metadata.
-	 * <p>Both public GitHub and GitHub Enterprise remotes are supported as long as
+	 * <p>
+	 * Both public GitHub and GitHub Enterprise remotes are supported as long as
 	 * the IntelliJ GitHub URL utilities can extract an owner and repository. A
-	 * {@code null} result indicates that the URL is blank, malformed, or not a
+	 * {@literal null} result indicates that the URL is blank, malformed, or not a
 	 * supported GitHub remote.
 	 * @param url the remote URL to parse; can be {@literal null}.
 	 * @return the parsed metadata, or {@literal null} if the URL is not supported.

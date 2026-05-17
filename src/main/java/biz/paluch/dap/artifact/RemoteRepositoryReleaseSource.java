@@ -176,7 +176,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 						result.put(version,
 								LocalDateTime.from(DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER.parse(dateStr)));
 					} catch (Exception e) {
-						LOG.debug("Could not parse directory listing date for version " + version, e);
+						LOG.debug("Could not parse directory listing date for version %s".formatted(version), e);
 					}
 				}
 			}
@@ -185,6 +185,8 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		return result;
 	}
 
+
+	// TODO: do not log URI credentials.
 	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
 			@Nullable RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri) {
 

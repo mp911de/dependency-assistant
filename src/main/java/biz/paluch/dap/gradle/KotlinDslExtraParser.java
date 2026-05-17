@@ -147,7 +147,7 @@ class KotlinDslExtraParser {
 	}
 
 	/**
-	 * Returns {@literal true} when {@code expression} is an
+	 * Return {@literal true} when {@code expression} is an
 	 * {@code extra["key"] = value} assignment.
 	 */
 	public static boolean isExtra(@Nullable KtBinaryExpression expression) {

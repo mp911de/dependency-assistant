@@ -60,7 +60,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 	/**
 	 * Locate the semantic {@link LookupSite} owning the given Groovy PSI element.
-	 * <p>Supports direct dependency literals, property-backed declarations, and
+	 * <p>
+	 * Supports direct dependency literals, property-backed declarations, and
 	 * version catalog references such as: <pre class="code">
 	 * implementation 'org.springframework:spring-core:6.2.0'
 	 * implementation "org.springframework:spring-core:$springVersion"
@@ -108,7 +109,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 	/**
 	 * Locate a {@link DependencySite} from a Groovy dependency or plugin call.
-	 * <p>Supports direct string notation, named-argument declarations, version
+	 * <p>
+	 * Supports direct string notation, named-argument declarations, version
 	 * blocks, and plugin declarations such as: <pre class="code">
 	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
@@ -117,7 +119,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 * </pre>
 	 *
 	 * @param call the method call to inspect.
-	 * @return the dependency site, or {@code null} if the call does not represent a
+	 * @return the dependency site, or {@literal null} if the call does not represent a
 	 * supported declaration.
 	 */
 	@Nullable
@@ -276,7 +278,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 	/**
 	 * Resolve a version-block literal inside a Groovy dependency declaration.
-	 * <p>Matches literals used in declarations such as: <pre class="code">
+	 * <p>
+	 * Matches literals used in declarations such as: <pre class="code">
 	 * implementation('org.junit.jupiter:junit-jupiter') {
 	 *     version {
 	 *         prefer '5.11.0'
@@ -286,7 +289,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 *
 	 * @param literal the literal to inspect.
 	 * @param propertyResolver property resolver used for dependency metadata.
-	 * @return the resolved dependency site, or {@code null} if the literal does not
+	 * @return the resolved dependency site, or {@literal null} if the literal does not
 	 * belong to a supported version block.
 	 */
 	private static @Nullable DependencySite resolveVersionBlockLiteral(GrLiteral literal,
@@ -355,7 +358,8 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 	/**
 	 * Locate a {@link DependencySite} for a Groovy version literal.
-	 * <p>Supports direct string notation, named-argument versions, version-block
+	 * <p>
+	 * Supports direct string notation, named-argument versions, version-block
 	 * constraints, and plugin versions such as: <pre class="code">
 	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
@@ -365,7 +369,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 *
 	 * @param element the literal to inspect.
 	 * @param scriptProperties property resolver used for property-backed versions.
-	 * @return the dependency site, or {@code null} if the literal is not part of a
+	 * @return the dependency site, or {@literal null} if the literal is not part of a
 	 * supported declaration.
 	 */
 	public static @Nullable DependencySite findDependencySite(GrLiteral element,
@@ -429,13 +433,14 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 *     id 'org.springframework.boot' version '3.3.2'
 	 * }
 	 * </pre>
-	 * <p>The plugin ID is used as both {@link ArtifactId#groupId()} and
+	 * <p>
+	 * The plugin ID is used as both {@link ArtifactId#groupId()} and
 	 * {@link ArtifactId#artifactId()}, matching the convention used throughout the
 	 * Gradle plugin support.
 	 *
 	 * @param call the outer {@code version} call.
 	 * @param scriptProperties property resolver used for plugin ID parsing.
-	 * @return the dependency site, or {@code null} if the call does not match the
+	 * @return the dependency site, or {@literal null} if the call does not match the
 	 * supported plugin declaration shape.
 	 */
 	public static @Nullable DependencySite resolvePluginVersionLiteral(GrMethodCall call,

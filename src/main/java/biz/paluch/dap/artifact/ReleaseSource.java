@@ -26,11 +26,13 @@ import org.jetbrains.idea.maven.indices.MavenGAVIndex;
 /**
  * Strategy interface for obtaining known releases of a Maven artifact.
  *
- * <p>Implementations typically adapt one registry, such as a remote Maven
+ * <p>
+ * Implementations typically adapt one registry, such as a remote Maven
  * repository, the Gradle Plugin Portal, or the IDE-local Maven index. They may
  * be called concurrently by {@link ReleaseResolver}.
  *
- * <p>Throw {@link ArtifactNotFoundException} only for a definitive absence at
+ * <p>
+ * Throw {@link ArtifactNotFoundException} only for a definitive absence at
  * this source. Return an empty list when release data is simply unavailable.
  *
  * @author Mark Paluch
@@ -56,7 +58,8 @@ public interface ReleaseSource {
 
 	/**
 	 * Return all known releases for the given artifact at this source.
-	 * <p>The returned list may be unsorted and may contain release, preview, and
+	 * <p>
+	 * The returned list may be unsorted and may contain release, preview, and
 	 * snapshot versions. Implementations should periodically call
 	 * {@link ProgressIndicator#checkCanceled()} during long-running fetches to
 	 * honor user cancellation.
@@ -77,7 +80,8 @@ public interface ReleaseSource {
 
 	/**
 	 * Return the built-in {@link ReleaseSource} backed by the Gradle Plugin Portal.
-	 * <p>This source is intended for Gradle plugin marker coordinates.
+	 * <p>
+	 * This source is intended for Gradle plugin marker coordinates.
 	 */
 	static ReleaseSource gradlePluginPortal() {
 		return GradlePluginPortalReleaseSource.INSTANCE;

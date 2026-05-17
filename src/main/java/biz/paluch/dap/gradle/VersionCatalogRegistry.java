@@ -54,8 +54,8 @@ class VersionCatalogRegistry {
 	}
 
 	/**
-	 * Returns a resolver anchored at {@code file} project root, or an empty
-	 * resolver when {@code file} is {@code null}. File-backed instances are cached
+	 * Return a resolver anchored at {@code file} project root, or an empty
+	 * resolver when {@code file} is {@literal null}. File-backed instances are cached
 	 * on {@code file} (shared for the same PSI file).
 	 */
 	public static VersionCatalogRegistry from(PsiFile file) {
@@ -94,7 +94,7 @@ class VersionCatalogRegistry {
 	}
 
 	/**
-	 * Returns the default registry containing only the standard {@code libs}
+	 * Return the default registry containing only the standard {@code libs}
 	 * catalog.
 	 */
 	public static VersionCatalogRegistry defaults() {
@@ -151,7 +151,7 @@ class VersionCatalogRegistry {
 	}
 
 	/**
-	 * Returns the TOML file path for the given alias, or {@literal null} if the
+	 * Return the TOML file path for the given alias, or {@literal null} if the
 	 * alias is not registered.
 	 */
 	@Nullable
@@ -160,7 +160,7 @@ class VersionCatalogRegistry {
 	}
 
 	/**
-	 * Returns {@literal true} if the given alias is registered in this registry.
+	 * Return {@literal true} if the given alias is registered in this registry.
 	 */
 	boolean containsAlias(String alias) {
 		return catalogPaths.containsKey(alias);
@@ -188,7 +188,7 @@ class VersionCatalogRegistry {
 		if (obj == null || obj.getClass() != this.getClass()) {
 			return false;
 		}
-		var that = (VersionCatalogRegistry) obj;
+		VersionCatalogRegistry that = (VersionCatalogRegistry) obj;
 		return Objects.equals(this.catalogPaths, that.catalogPaths) &&
 				Objects.equals(this.defaultAlias, that.defaultAlias);
 	}

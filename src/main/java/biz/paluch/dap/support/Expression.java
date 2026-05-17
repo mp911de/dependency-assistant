@@ -29,7 +29,8 @@ import org.springframework.util.Assert;
 /**
  * Value object representing either a property expression such as
  * {@code ${name}} or a literal value.
- * <p>Use {@link #from(String)} to create an instance and inspect its actual
+ * <p>
+ * Use {@link #from(String)} to create an instance and inspect its actual
  * type through {@link #isProperty()} or subtype checks.
  *
  * @author Mark Paluch

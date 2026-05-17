@@ -34,12 +34,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * File-scoped operational handle for a build-tool integration.
  *
- * <p>A context is created after a {@link DependencyAssistant} has claimed an
+ * <p>
+ * A context is created after a {@link DependencyAssistant} has claimed an
  * anchor file. It exposes the build-tool specific work needed by shared editor
  * features: state invalidation, dependency scanning, PSI lookup, and update
  * application.
  *
- * <p>Contexts are lightweight and created on demand. Mutable project state
+ * <p>
+ * Contexts are lightweight and created on demand. Mutable project state
  * belongs in the project cache, not in the context itself.
  *
  * @author Mark Paluch
@@ -55,14 +57,15 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 
 	/**
 	 * Invalidate and re-collect the state affected by the changed file.
-	 * @param file the PSI file that was saved.
+	 * @param file the PSI file that was saved; must not be {@literal null}.
 	 */
 	void invalidateState(PsiFile file);
 
 	/**
 	 * Scan the build files reachable from the anchor file and return the aggregated
 	 * dependency data.
-	 * @param indicator the progress indicator to report to.
+	 * @param indicator the progress indicator to report to; must not be
+	 * {@literal null}.
 	 * @return the collected dependency data.
 	 */
 	DependencyCollector scanDependencies(ProgressIndicator indicator);
@@ -70,8 +73,9 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	/**
 	 * Resolve the given declared dependency to a concrete dependency by providing
 	 * the current list of releases.
-	 * @param declaredDependency the declared dependency to resolve.
-	 * @param releases current list of releases.
+	 * @param declaredDependency the declared dependency to resolve; must not be
+	 * {@literal null}.
+	 * @param releases current list of releases; must not be {@literal null}.
 	 * @return the resolved dependency or {@literal null} if the dependency could
 	 * not be resolved.
 	 */
@@ -81,22 +85,24 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 
 	/**
 	 * Return whether the given element represents an editable dependency version.
-	 * @param element the PSI element to inspect.
+	 * @param element the PSI element to inspect; must not be {@literal null}.
 	 */
 	boolean isVersionElement(PsiElement element);
 
 	/**
 	 * Return the version-upgrade lookup for the given PSI element.
 	 *
-	 * @param element the PSI element at the cursor position.
-	 * @param file the containing file.
+	 * @param element the PSI element at the cursor position; must not be
+	 * {@literal null}.
+	 * @param file the containing file; must not be {@literal null}.
 	 * @return the lookup for the element.
 	 */
 	VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file);
 
 	/**
 	 * Apply a single dependency update at the given PSI element.
-	 * <p>The method rewrites only that literal in place and never re-traverses the
+	 * <p>
+	 * The method rewrites only that literal in place and never re-traverses the
 	 * containing file.
 	 * @param versionLiteral the version PSI element that triggered the update; must
 	 * not be {@literal null}.
@@ -108,8 +114,9 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 
 	/**
 	 * Apply the given dependency updates to the appropriate build files.
-	 * @param psiFile the anchor PSI file used for the write action.
-	 * @param updates the updates to apply.
+	 * @param psiFile the anchor PSI file used for the write action; must not be
+	 * {@literal null}.
+	 * @param updates the updates to apply; must not be {@literal null}.
 	 */
 	void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates);
 

@@ -22,7 +22,8 @@ import org.jspecify.annotations.Nullable;
  * {@link PropertyResolver} implementation that delegates to a primary resolver
  * and then to a fallback resolver.
  *
- * <p>The primary resolver wins for both value lookups and declaration metadata.
+ * <p>
+ * The primary resolver wins for both value lookups and declaration metadata.
  * The fallback resolver is consulted only if the primary resolver does not
  * resolve a property value or {@link PropertyValue} element. This is typically
  * used to layer local script properties over broader project or global

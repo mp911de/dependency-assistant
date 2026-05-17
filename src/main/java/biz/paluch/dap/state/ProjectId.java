@@ -21,13 +21,15 @@ import org.jspecify.annotations.Nullable;
 /**
  * Build-tool-agnostic identity for dependency state owned by a project context.
  *
- * <p>The {@code groupId} and {@code artifactId} components are logical
+ * <p>
+ * The {@code groupId} and {@code artifactId} components are logical
  * namespace/name slots, not necessarily Maven coordinates. Maven can map them
  * directly from its model, Gradle derives them from imported project metadata,
  * NPM uses an ecosystem namespace with the {@code package.json} name, and
  * GitHub-oriented contexts use repository coordinates when available.
  *
- * <p>The optional {@code buildFile} component scopes the identity to a concrete
+ * <p>
+ * The optional {@code buildFile} component scopes the identity to a concrete
  * descriptor when one logical IDE project can contain multiple independently
  * tracked dependency contexts. Gradle build files, {@code package.json} files,
  * and GitHub Actions workflow files use this component to keep dependency state

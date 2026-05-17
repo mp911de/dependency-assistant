@@ -27,12 +27,14 @@ import org.jspecify.annotations.Nullable;
  * Repository-backed GitHub Actions dependency declared by a workflow
  * {@code uses:} value.
  *
- * <p>This record is the boundary between YAML syntax and dependency metadata.
+ * <p>
+ * This record is the boundary between YAML syntax and dependency metadata.
  * It retains the repository coordinates that identify the action release source
  * and the raw ref that determines how updates should be rendered back into the
  * source file.
  *
- * <p>Any path segment after the repository name is intentionally not part of
+ * <p>
+ * Any path segment after the repository name is intentionally not part of
  * this contract. GitHub action releases are resolved at repository level, so
  * {@code owner/repository/path/to/action@ref} and {@code owner/repository@ref}
  * share the same dependency identity. The ref is kept as written, without
@@ -43,7 +45,7 @@ import org.jspecify.annotations.Nullable;
  * @param owner the GitHub repository owner, used as the dependency group.
  * @param repository the GitHub repository name, used as the dependency
  * artifact.
- * @param version the version ref portion of the declaration, or {@code null} if
+ * @param version the version ref portion of the declaration, or {@literal null} if
  * the declaration has no usable version reference.
  * 
  * @author Mark Paluch
@@ -58,7 +60,8 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 
 	/**
 	 * Return the dependency identity represented by this workflow action.
-	 * <p>The identity is repository-scoped so that release lookup, caching, and
+	 * <p>
+	 * The identity is repository-scoped so that release lookup, caching, and
 	 * update matching are independent of the workflow-local action path.
 	 */
 	public ArtifactId toArtifactId() {
@@ -67,7 +70,8 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 
 	/**
 	 * Return the declared version source for dependency analysis.
-	 * <p>An action without a usable ref has repository identity but no declared
+	 * <p>
+	 * An action without a usable ref has repository identity but no declared
 	 * version. This distinction lets callers collect the action as a dependency
 	 * without manufacturing version metadata that was not present in the workflow.
 	 */
@@ -77,7 +81,8 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 
 	/**
 	 * Return the replacement text that preserves the workflow's ref style.
-	 * <p>Version-style declarations are updated with the release version.
+	 * <p>
+	 * Version-style declarations are updated with the release version.
 	 * SHA-pinned declarations are updated with the release commit SHA when that
 	 * metadata is available and carry the resolved version as explanatory text. If
 	 * no SHA is available, the release version is returned as the safest available
@@ -98,7 +103,8 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 
 	/**
 	 * Return the rendering style implied by the declared ref.
-	 * <p>Callers use the style to preserve the user's pinning model when offering
+	 * <p>
+	 * Callers use the style to preserve the user's pinning model when offering
 	 * completions or applying updates.
 	 */
 	public RefStyle getStyle() {
@@ -107,7 +113,8 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 
 	/**
 	 * Version text prepared for insertion into a workflow scalar.
-	 * <p>The optional comment is managed metadata for SHA-pinned declarations and
+	 * <p>
+	 * The optional comment is managed metadata for SHA-pinned declarations and
 	 * is intentionally kept separate from the scalar replacement text.
 	 */
 	record VersionText(String text, String comment) {

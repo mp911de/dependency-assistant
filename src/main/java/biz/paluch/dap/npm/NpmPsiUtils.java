@@ -29,7 +29,8 @@ import org.jspecify.annotations.Nullable;
  * Shared helpers that translate an NPM dependency PSI element into the text
  * range covered by its underlying {@link NpmVersionExpression} variant.
  *
- * <p>The IDE annotator and line marker compute their highlight using the
+ * <p>
+ * The IDE annotator and line marker compute their highlight using the
  * variant's own {@link NpmVersionExpression#replaceableRange(String)} so that
  * {@code Exact}, {@code Range}, {@code SimpleRange}, {@code Alias},
  * {@code Prefix}, and {@code Git} entries each expose the same sub-range that

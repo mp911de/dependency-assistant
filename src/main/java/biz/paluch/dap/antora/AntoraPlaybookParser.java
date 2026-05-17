@@ -30,7 +30,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * YAML PSI parser for Antora playbook {@code ui.bundle.url} declarations.
  *
- * <p>Scans an Antora playbook file for {@code url} key-value pairs nested
+ * <p>
+ * Scans an Antora playbook file for {@code url} key-value pairs nested
  * directly under {@code ui.bundle} and parses each scalar value into an
  * {@link AntoraBundleUrl}. Unrelated {@code url} keys at any other path are
  * ignored, as are malformed URLs.

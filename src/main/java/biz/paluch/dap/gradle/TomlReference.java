@@ -31,7 +31,8 @@ import org.springframework.util.StringUtils;
  *
  * Value class representing a TOML entry reference within a Gradle build file.
  *
- * <p>Gradle treats '-', '_' and '.' as identifier separators when generating
+ * <p>
+ * Gradle treats '-', '_' and '.' as identifier separators when generating
  * type-safe accessors. For example:
  *
  * <pre>

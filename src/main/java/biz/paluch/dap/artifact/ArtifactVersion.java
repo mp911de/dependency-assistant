@@ -23,7 +23,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Common contract for semantic and release-train artifact versions.
- * <p>{@link Object#toString()} returns the version string.
+ * <p>
+ * {@link Object#toString()} returns the version string.
  *
  * @author Mark Paluch
  */

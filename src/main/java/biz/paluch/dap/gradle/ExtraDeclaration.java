@@ -23,7 +23,8 @@ import com.intellij.psi.PsiElement;
  * Gradle script-local property declaration backed by {@code ext} or
  * {@code extra} syntax.
  *
- * <p>The declaration element identifies the source construct that declares the
+ * <p>
+ * The declaration element identifies the source construct that declares the
  * property. The value literal is the element to highlight or update when the
  * value changes, and is not necessarily a child of the declaration element.
  *

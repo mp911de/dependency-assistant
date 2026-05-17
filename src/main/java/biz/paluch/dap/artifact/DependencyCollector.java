@@ -28,12 +28,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * Mutable result object populated during a dependency scan.
  *
- * <p>The collector keeps active dependency usages separate from managed
+ * <p>
+ * The collector keeps active dependency usages separate from managed
  * declarations such as Maven dependency management entries or Gradle platform
  * imports. It also records version properties and release sources discovered
  * while parsing build files.
  *
- * <p>{@link #isEmpty()} reflects dependency usages only; managed declarations
+ * <p>
+ * {@link #isEmpty()} reflects dependency usages only; managed declarations
  * may still be present.
  *
  * @author Mark Paluch
@@ -135,7 +137,7 @@ public class DependencyCollector {
 	}
 
 	/**
-	 * Return the registered usage for the given artifact, or {@code null} if no
+	 * Return the registered usage for the given artifact, or {@literal null} if no
 	 * usage has been registered.
 	 * @param artifactId the artifact coordinates to look up.
 	 */
@@ -145,7 +147,7 @@ public class DependencyCollector {
 
 	/**
 	 * Return the registered usage for the given group ID and artifact ID, or
-	 * {@code null} if no usage has been registered.
+	 * {@literal null} if no usage has been registered.
 	 * @param groupId the Maven group ID.
 	 * @param artifactId the Maven artifact ID.
 	 */

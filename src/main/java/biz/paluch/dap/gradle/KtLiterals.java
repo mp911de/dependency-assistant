@@ -40,7 +40,8 @@ import org.springframework.util.Assert;
 /**
  * Canonical representation of Kotlin DSL literal fragments.
  *
- * <p>Supported inputs include plain string literals, interpolated fragments,
+ * <p>
+ * Supported inputs include plain string literals, interpolated fragments,
  * direct property references, {@code property(...)} lookups, and
  * {@code extra["..."]} access. Unsupported PSI shapes are represented as an
  * empty instance.
@@ -191,7 +192,8 @@ class KtLiterals {
 
 	/**
 	 * Extract text from supported Kotlin DSL literal forms.
-	 * <p>Used for property keys, dependency coordinates, and simple synthesized
+	 * <p>
+	 * Used for property keys, dependency coordinates, and simple synthesized
 	 * string values.
 	 * @throws IllegalArgumentException if the element type is not supported.
 	 */
@@ -256,7 +258,8 @@ class KtLiterals {
 
 	/**
 	 * Return whether this instance contains any renderable content.
-	 * <p>VersionProperty references count as content because they participate in
+	 * <p>
+	 * VersionProperty references count as content because they participate in
 	 * the rendered form returned by {@link #toString()}.
 	 *
 	 * @return {@literal true} if at least one fragment contributes text or a
@@ -279,7 +282,8 @@ class KtLiterals {
 
 	/**
 	 * Return the first property reference represented by this instance.
-	 * <p>If multiple property fragments are present, the first fragment in
+	 * <p>
+	 * If multiple property fragments are present, the first fragment in
 	 * encounter order is returned.
 	 *
 	 * @return the referenced property name without decoration.
@@ -324,7 +328,8 @@ class KtLiterals {
 
 	/**
 	 * Render the collected fragments in encounter order.
-	 * <p>Plain literals are concatenated as-is. VersionProperty fragments are
+	 * <p>
+	 * Plain literals are concatenated as-is. VersionProperty fragments are
 	 * rendered as {@code ${property}}.
 	 *
 	 * @return the rendered literal content, or the empty string if no fragments are
@@ -364,7 +369,8 @@ class KtLiterals {
 
 	/**
 	 * Single normalized literal fragment.
-	 * <p>A fragment represents either concrete text or a property placeholder
+	 * <p>
+	 * A fragment represents either concrete text or a property placeholder
 	 * together with its source PSI element.
 	 */
 	private record KtLiteral(@Nullable String value, @Nullable String property, KtElement expression) {

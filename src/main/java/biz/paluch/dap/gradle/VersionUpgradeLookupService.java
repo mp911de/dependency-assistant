@@ -34,7 +34,8 @@ import org.toml.lang.psi.TomlLiteral;
 /**
  * Gradle implementation of {@link VersionUpgradeLookupSupport}.
  *
- * <p>Supports version lookups in Groovy and Kotlin build scripts,
+ * <p>
+ * Supports version lookups in Groovy and Kotlin build scripts,
  * {@code gradle.properties}, and {@code libs.versions.toml}. Version catalog
  * accessors are resolved back to the catalog entry that owns the version.
  *

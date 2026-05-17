@@ -73,7 +73,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	/**
 	 * Return the cached artifact identifier of the owning project, if known.
 	 *
-	 * @return the project artifact identifier, or {@code null}.
+	 * @return the project artifact identifier, or {@literal null}.
 	 */
 	public @Nullable String getArtifactId() {
 		return artifactId;
@@ -82,7 +82,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	/**
 	 * Return the cached artifact identifier or an empty string if absent.
 	 *
-	 * @return a non-{@code null} artifact identifier representation.
+	 * @return a non-{@literal null} artifact identifier representation.
 	 */
 	@Transient
 	public String getSafeArtifactId() {
@@ -101,7 +101,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	/**
 	 * Return the cached group identifier of the owning project, if known.
 	 *
-	 * @return the project group identifier, or {@code null}.
+	 * @return the project group identifier, or {@literal null}.
 	 */
 	public @Nullable String getGroupId() {
 		return groupId;
@@ -110,7 +110,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	/**
 	 * Return the cached group identifier or an empty string if absent.
 	 *
-	 * @return a non-{@code null} group identifier representation.
+	 * @return a non-{@literal null} group identifier representation.
 	 */
 	@Transient
 	public String getSafeGroupId() {
@@ -130,7 +130,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	 * Return the descriptor used to distinguish the owning project entry, typically
 	 * the build file path.
 	 *
-	 * @return the descriptor, or {@code null}.
+	 * @return the descriptor, or {@literal null}.
 	 */
 	public @Nullable String getDescriptor() {
 		return descriptor;
@@ -139,7 +139,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	/**
 	 * Return the descriptor or an empty string if absent.
 	 *
-	 * @return a non-{@code null} descriptor representation.
+	 * @return a non-{@literal null} descriptor representation.
 	 */
 	@Transient
 	public String getSafeDescriptor() {
@@ -156,7 +156,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	}
 
 	/**
-	 * Returns all known property-to-artifact mappings. Each {@link VersionProperty}
+	 * Return all known property-to-artifact mappings. Each {@link VersionProperty}
 	 * carries the property name and the artifact(s) whose version it controls.
 	 */
 	public List<VersionProperty> getProperties() {
@@ -165,7 +165,8 @@ public class ProjectCache implements Comparator<ProjectCache> {
 
 	/**
 	 * Set this project's property correlations from the given dependency collector.
-	 * <p>The resulting property set contains both:
+	 * <p>
+	 * The resulting property set contains both:
 	 * <ul>
 	 * <li>properties that are used as version sources for one or more declarations,
 	 * and</li>
@@ -210,11 +211,12 @@ public class ProjectCache implements Comparator<ProjectCache> {
 
 	/**
 	 * Return the cached property with the given name.
-	 * <p>If this instance was deserialized and the transient lookup map is not yet
+	 * <p>
+	 * If this instance was deserialized and the transient lookup map is not yet
 	 * in sync with the persisted list, the lookup map is rebuilt first.
 	 *
 	 * @param propertyName the property name.
-	 * @return the matching property, or {@code null} if none is known.
+	 * @return the matching property, or {@literal null} if none is known.
 	 */
 	@Transient
 	public synchronized @Nullable VersionProperty getProperty(String propertyName) {
@@ -265,7 +267,8 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	/**
 	 * Return a deep snapshot of this cache entry safe to hand off to the platform
 	 * serializer while concurrent mutations may still be in progress.
-	 * <p>{@link VersionProperty} entries are mutable; each is copied so that the
+	 * <p>
+	 * {@link VersionProperty} entries are mutable; each is copied so that the
 	 * snapshot does not share state with the live cache.
 	 *
 	 * @return a snapshot suitable for serialization.

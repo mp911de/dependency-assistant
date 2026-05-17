@@ -36,15 +36,17 @@ import org.springframework.util.Assert;
  * Contract for the NPM dependency version expressions that Dependency Assistant
  * can reason about.
  *
- * <p>This type intentionally models a smaller set than the full npm semver
+ * <p>
+ * This type intentionally models a smaller set than the full npm semver
  * grammar. A {@code package.json} value is represented only when the framework
  * can derive a single version-bearing segment for lookup, highlighting, and
  * safe replacement. Unsupported shapes such as {@code latest}, {@code *},
  * disjunctions using {@code ||}, malformed aliases, or unsupported URL schemes
- * return {@code null} from {@link #parse(String)}; there is no sentinel
+ * return {@literal null} from {@link #parse(String)}; there is no sentinel
  * expression for skipped inputs.
  *
- * <p>Each variant owns three related contracts:
+ * <p>
+ * Each variant owns three related contracts:
  * <ul>
  * <li>{@link #text()} exposes the version-bearing text used for version
  * resolution and {@link VersionSource} creation.</li>
@@ -56,7 +58,8 @@ import org.springframework.util.Assert;
  * such as modifiers, aliases, range separators, or Git URL prefixes.</li>
  * </ul>
  *
- * <p>Ranges and aliases expose the version-bearing part of their nested or
+ * <p>
+ * Ranges and aliases expose the version-bearing part of their nested or
  * upper-bound expression. Git dependencies resolve their repository through
  * {@link GitRepositoryMetadata} and model the committish as another
  * {@code NpmVersionExpression}, allowing semantic Git refs, SHA refs, branches,
@@ -80,7 +83,8 @@ sealed interface NpmVersionExpression
 	 * Examples: x, 2.x, 3.4.x, 1.*, 1.2.*
 	 * </pre>
 	 *
-	 * <p>The parser still excludes bare {@code *}, since it provides no baseline
+	 * <p>
+	 * The parser still excludes bare {@code *}, since it provides no baseline
 	 * version for lookup.
 	 */
 	Pattern PREFIX_RANGE = Pattern
@@ -161,7 +165,8 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Classify the raw value of a {@code package.json} dependency entry.
-	 * <p>The input must be the JSON string value without surrounding quote
+	 * <p>
+	 * The input must be the JSON string value without surrounding quote
 	 * characters. Returning {@literal null} means the value is intentionally out of
 	 * scope for this dependency model, not necessarily invalid npm syntax.
 	 * @param value the dependency value text without surrounding quotes; can be
@@ -227,7 +232,8 @@ sealed interface NpmVersionExpression
 	/**
 	 * Return the substring of the raw declared value that updaters may rewrite,
 	 * expressed as offsets into the raw value text.
-	 * <p>The range never includes the surrounding JSON quote characters. Callers
+	 * <p>
+	 * The range never includes the surrounding JSON quote characters. Callers
 	 * that operate on PSI text must apply the literal's own offset. A range may be
 	 * zero-length for an otherwise supported but unpinned Git dependency; callers
 	 * should consult {@link #isUpdatable()} before rewriting.
@@ -239,7 +245,8 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Return whether this expression carries a rewritable version-bearing segment.
-	 * <p>{@link Prefix} expressions are used for lookup and highlighting but are
+	 * <p>
+	 * {@link Prefix} expressions are used for lookup and highlighting but are
 	 * not rewritten. {@link Git} expressions without a committish are likewise not
 	 * rewritten because there is no user-selected ref to preserve.
 	 * @return {@literal true} if this expression accepts a target version;
@@ -250,16 +257,18 @@ sealed interface NpmVersionExpression
 	/**
 	 * Return the verbatim version text declared in the file, used as the
 	 * {@link VersionSource} payload.
-	 * <p>For composite expressions, this method returns the single text segment
-	 * used for version lookup: the upper bound for ranges, the inner expression for
-	 * aliases, and the committish for Git dependencies.
+	 * <p>
+	 * For composite expressions, the result is the single text segment used for
+	 * version lookup: the upper bound for ranges, the inner expression for aliases,
+	 * and the committish for Git dependencies.
 	 * @return the declared version text; guaranteed to be not {@literal null}.
 	 */
 	String text();
 
 	/**
 	 * Render this expression with the given target version.
-	 * <p>The returned value represents the complete expression text for this
+	 * <p>
+	 * The returned value represents the complete expression text for this
 	 * variant, preserving syntax owned by the variant. Updaters that replace only
 	 * {@link #replaceableRange(String)} may use variant-specific tails instead of
 	 * this complete rendering.
@@ -327,7 +336,8 @@ sealed interface NpmVersionExpression
 	/**
 	 * Exact version or single comparator expression.
 	 *
-	 * <p>Examples: {@code 1.6.8} (no modifier), {@code ^3.1.2}, {@code ~1.2.3},
+	 * <p>
+	 * Examples: {@code 1.6.8} (no modifier), {@code ^3.1.2}, {@code ~1.2.3},
 	 * {@code =1.0.0}, {@code <2.0.0}, {@code <=2.0.0}, {@code v2.0.0-beta.1}. The
 	 * {@code modifier} captures the literal operator (one of {@code ""},
 	 * {@code "^"}, {@code "~"}, {@code "="}, {@code "<"}, {@code "<="},
@@ -371,7 +381,8 @@ sealed interface NpmVersionExpression
 	/**
 	 * Comparator-pair range whose right-hand side is modeled as its own expression.
 	 *
-	 * <p>The lower expression establishes the left boundary and is preserved when
+	 * <p>
+	 * The lower expression establishes the left boundary and is preserved when
 	 * rendering an update. The upper expression is the version-bearing segment used
 	 * for lookup, replacement, and {@link VersionSource} creation. This model keeps
 	 * comparator ranges in the update flow while avoiding attempts to reason about
@@ -428,7 +439,8 @@ sealed interface NpmVersionExpression
 	/**
 	 * Hyphen range such as {@code "1.0.0 - 2.9999.9999"}.
 	 *
-	 * <p>The {@code separator} stores the verbatim whitespace and hyphen between
+	 * <p>
+	 * The {@code separator} stores the verbatim whitespace and hyphen between
 	 * the lower and upper bounds so rendering preserves the original spacing. The
 	 * upper bound is the version-bearing segment used for lookup and replacement.
 	 *
@@ -469,7 +481,8 @@ sealed interface NpmVersionExpression
 	 * Prefix range such as {@code 2.x}, {@code 3.4.x}, {@code 1.*}, or
 	 * {@code 1.2.*}.
 	 *
-	 * <p>Prefix ranges provide enough information to infer a baseline version and
+	 * <p>
+	 * Prefix ranges provide enough information to infer a baseline version and
 	 * show suggestions, but they do not identify a concrete version segment that
 	 * can be safely rewritten. Consequently {@link #isUpdatable()} returns
 	 * {@literal false}.
@@ -523,7 +536,8 @@ sealed interface NpmVersionExpression
 	/**
 	 * Aliased dependency declared as {@code npm:<packageName>@<inner>}.
 	 *
-	 * <p>The {@code inner} expression must parse as one of the non-alias variants;
+	 * <p>
+	 * The {@code inner} expression must parse as one of the non-alias variants;
 	 * nested aliases are rejected by the compact constructor. Alias expressions
 	 * preserve the target package name while delegating lookup, replacement, and
 	 * update rendering to the inner expression.
@@ -575,14 +589,16 @@ sealed interface NpmVersionExpression
 	 * Git dependency whose URL resolves through
 	 * {@link GitRepositoryMetadata#parseGitUrl(String)} to a GitHub repository.
 	 *
-	 * <p>The repository metadata determines the release source used for update
+	 * <p>
+	 * The repository metadata determines the release source used for update
 	 * lookup. The committish after {@code #} is modeled as another
 	 * {@code NpmVersionExpression}: semantic tags keep their npm modifier shape,
 	 * {@code #semver:} refs keep the {@code semver:} prefix in the surrounding
 	 * {@link NpmGitRef}, and non-semver refs such as SHAs or branch names fall back
 	 * to a raw {@link Exact} expression.
 	 *
-	 * <p>The replaceable range always covers only the committish text that should
+	 * <p>
+	 * The replaceable range always covers only the committish text that should
 	 * be rewritten. For {@code #semver:} refs, the range starts after the
 	 * {@code semver:} marker so the marker itself is preserved.
 	 *

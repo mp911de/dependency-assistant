@@ -35,7 +35,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Value object for version information in a Kotlin DSL dependency declaration.
  *
- * <p>Supports direct version expressions and constraints declared in a nested
+ * <p>
+ * Supports direct version expressions and constraints declared in a nested
  * {@code version { ... }} block. It extracts only the PSI needed for navigation
  * and upgrade logic.
  *
@@ -85,7 +86,7 @@ class KtVersion {
 	/**
 	 * Create a {@link KtVersion} from a Kotlin DSL {@code version(...)} call.
 	 * @param versionCall the call to inspect.
-	 * @return a {@link KtVersion} describing the call, or {@code null}.
+	 * @return a {@link KtVersion} describing the call, or {@literal null}.
 	 */
 	public static @Nullable KtVersion fromVersion(KtCallElement versionCall) {
 
@@ -135,7 +136,8 @@ class KtVersion {
 
 	/**
 	 * Return whether this declaration resolves to a property reference.
-	 * <p>A direct version/property expression declared on the dependency takes
+	 * <p>
+	 * A direct version/property expression declared on the dependency takes
 	 * precedence. Otherwise, constraints are consulted in declaration order.
 	 *
 	 * @return {@literal true} if a property-backed version is available.
@@ -160,7 +162,8 @@ class KtVersion {
 
 	/**
 	 * Return the referenced property name.
-	 * <p>A direct version/property expression declared on the dependency takes
+	 * <p>
+	 * A direct version/property expression declared on the dependency takes
 	 * precedence. Otherwise, constraints are consulted in declaration order.
 	 *
 	 * @return the property name without decoration.
@@ -187,12 +190,13 @@ class KtVersion {
 
 	/**
 	 * Return the concrete version text, if available.
-	 * <p>A direct version/property expression declared on the dependency takes
+	 * <p>
+	 * A direct version/property expression declared on the dependency takes
 	 * precedence. If no direct version is present, constraints are inspected in
 	 * declaration order. Range constraints are intentionally ignored because
-	 * callers use this method for a single upgradeable version value.
+	 * callers need a single upgradeable version value.
 	 *
-	 * @return the version text, or {@code null} if no concrete non-range version
+	 * @return the version text, or {@literal null} if no concrete non-range version
 	 * can be obtained.
 	 */
 	public @Nullable String getVersion() {
@@ -218,11 +222,12 @@ class KtVersion {
 
 	/**
 	 * Return the PSI element that contributes the effective version value.
-	 * <p>A directly declared version/property expression takes precedence.
+	 * <p>
+	 * A directly declared version/property expression takes precedence.
 	 * Otherwise, the first non-range constraint value is returned in declaration
 	 * order.
 	 *
-	 * @return the contributing version element, or {@code null} if no effective
+	 * @return the contributing version element, or {@literal null} if no effective
 	 * version is available.
 	 */
 	public @Nullable KtExpression getVersionElement() {
@@ -245,7 +250,8 @@ class KtVersion {
 
 	/**
 	 * Return whether the declaration contains any usable version information.
-	 * <p>This includes a direct version/property expression or a constraint-backed
+	 * <p>
+	 * This includes a direct version/property expression or a constraint-backed
 	 * version/property.
 	 *
 	 * @return {@literal true} if callers can resolve either a property or a
@@ -272,7 +278,8 @@ class KtVersion {
 	/**
 	 * Representation of a named version constraint declared inside a Kotlin DSL
 	 * {@code version { ... }} block.
-	 * <p>The contract is intentionally narrow: the record exposes the constraint
+	 * <p>
+	 * The contract is intentionally narrow: the record exposes the constraint
 	 * name, the underlying PSI elements, and the literal rendering used by
 	 * {@link GradleVersionConstraint}.
 	 */

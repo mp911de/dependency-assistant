@@ -64,8 +64,8 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Returns a resolver anchored at {@code file}, or an empty resolver when
-	 * {@code file} is {@code null}. File-backed instances are cached on
+	 * Return a resolver anchored at {@code file}, or an empty resolver when
+	 * {@code file} is {@literal null}. File-backed instances are cached on
 	 * {@code file} (shared for the same PSI file).
 	 */
 	public static GradlePropertyResolver create(PsiFile file) {
@@ -76,7 +76,7 @@ class GradlePropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Returns a resolver containing only properties from the given file.
+	 * Return a resolver containing only properties from the given file.
 	 */
 	public static GradlePropertyResolver forFile(PsiFile file) {
 

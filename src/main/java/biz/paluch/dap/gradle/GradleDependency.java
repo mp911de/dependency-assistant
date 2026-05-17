@@ -32,19 +32,22 @@ import org.jspecify.annotations.Nullable;
  * Gradle-facing dependency descriptor used between parser extraction and the
  * common dependency-site model.
  *
- * <p>This contract intentionally models less than Gradle's runtime dependency
+ * <p>
+ * This contract intentionally models less than Gradle's runtime dependency
  * API. It captures the artifact identity and the origin of the version value so
  * Groovy DSL, Kotlin DSL, version catalogs, dependency constraints, and plugin
  * declarations can feed the same upgrade lookup infrastructure.
  *
- * <p>The artifact identity is already normalized when exposed through
+ * <p>
+ * The artifact identity is already normalized when exposed through
  * {@link #getId()}: module dependencies use their group/name coordinates, while
  * plugin declarations can use {@link GradlePluginId}. Version information is
  * kept as a {@link VersionSource} so downstream code can distinguish inline
  * literals, properties, version-catalog entries, and declarations without
  * re-parsing PSI.
  *
- * <p>Implementations represent the way the version is owned by the Gradle
+ * <p>
+ * Implementations represent the way the version is owned by the Gradle
  * declaration: a dependency may have no local version, a literal version at the
  * dependency site, or a property-backed version whose editable source lives
  * elsewhere.
@@ -58,21 +61,24 @@ interface GradleDependency {
 	/**
 	 * Return the dependency identity used by release lookup, caching, and UI
 	 * grouping.
-	 * <p>Version information is deliberately excluded from this identity and is
+	 * <p>
+	 * Version information is deliberately excluded from this identity and is
 	 * represented through {@link #getVersionSource()}.
 	 */
 	ArtifactId getId();
 
 	/**
 	 * Return the source that owns the version value for this declaration.
-	 * <p>The source determines both how the current version is resolved and where
+	 * <p>
+	 * The source determines both how the current version is resolved and where
 	 * an update should be applied.
 	 */
 	VersionSource getVersionSource();
 
 	/**
 	 * Parse compact Gradle module notation into a dependency descriptor.
-	 * <p>This convenience variant is suitable for parser paths that have no
+	 * <p>
+	 * This convenience variant is suitable for parser paths that have no
 	 * property context available. Property expressions in the version position are
 	 * still preserved as property-backed version sources.
 	 *
@@ -87,7 +93,8 @@ interface GradleDependency {
 	/**
 	 * Parse compact Gradle module notation into a dependency descriptor using the
 	 * given property context.
-	 * <p>Coordinate expressions are resolved before the dependency crosses into the
+	 * <p>
+	 * Coordinate expressions are resolved before the dependency crosses into the
 	 * common artifact model. Property-backed versions remain represented as a
 	 * {@link VersionSource} rather than being collapsed into an inline declaration
 	 * so the update path can still target the property owner.
@@ -109,7 +116,8 @@ interface GradleDependency {
 
 	/**
 	 * Adapt Gradle module coordinates into the dependency descriptor model.
-	 * <p>The coordinate's version segment determines which descriptor variant is
+	 * <p>
+	 * The coordinate's version segment determines which descriptor variant is
 	 * created: no version keeps the dependency as a reference, a property
 	 * expression keeps the version externally owned, and a literal version stays
 	 * with the declaration.
@@ -138,7 +146,8 @@ interface GradleDependency {
 	/**
 	 * Create a dependency descriptor when artifact identity and version expression
 	 * were parsed separately.
-	 * <p>This factory is used by declaration forms such as plugin DSL entries,
+	 * <p>
+	 * This factory is used by declaration forms such as plugin DSL entries,
 	 * named dependency declarations, and version catalogs where the version does
 	 * not originate from compact {@code group:name:version} notation.
 	 *
@@ -159,7 +168,8 @@ interface GradleDependency {
 	/**
 	 * Return a dependency descriptor for the same artifact with a version obtained
 	 * from a separately parsed declaration component.
-	 * <p>Use this when a parser first discovers the module identity and later
+	 * <p>
+	 * Use this when a parser first discovers the module identity and later
 	 * associates a version block, catalog entry, or named version argument with
 	 * that identity.
 	 *
@@ -183,7 +193,8 @@ interface GradleDependency {
 	/**
 	 * Adapt this descriptor to a PSI-backed dependency site with a distinct version
 	 * anchor.
-	 * <p>Parser implementations should prefer this variant when the editable
+	 * <p>
+	 * Parser implementations should prefer this variant when the editable
 	 * version literal is not the same PSI element as the dependency declaration.
 	 * @param declaration PSI element representing the dependency declaration.
 	 * @param version PSI element representing the editable version location.
@@ -213,7 +224,8 @@ interface GradleDependency {
 
 	/**
 	 * Dependency declaration with version text owned by the declaration site.
-	 * <p>The version is parsed opportunistically into an {@link ArtifactVersion}
+	 * <p>
+	 * The version is parsed opportunistically into an {@link ArtifactVersion}
 	 * when the descriptor is converted to a {@link DependencySite}; rich Gradle
 	 * version syntax that cannot be represented as a concrete artifact version is
 	 * still retained through the {@link VersionSource}.
@@ -255,7 +267,8 @@ interface GradleDependency {
 	/**
 	 * Dependency declaration whose editable version value is owned by a named
 	 * property-like source.
-	 * <p>The dependency keeps both the artifact identity and the property name so
+	 * <p>
+	 * The dependency keeps both the artifact identity and the property name so
 	 * lookup code can resolve the current value and anchor updates at the property
 	 * declaration instead of the dependency usage.
 	 */

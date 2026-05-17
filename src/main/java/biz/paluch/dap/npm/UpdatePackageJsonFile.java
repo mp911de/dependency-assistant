@@ -37,7 +37,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * PSI updater for NPM {@code package.json} dependency entries.
  *
- * <p>The updater dispatches on the {@link NpmVersionExpression} variant of the
+ * <p>
+ * The updater dispatches on the {@link NpmVersionExpression} variant of the
  * original declaration and replaces only the variant's
  * {@link NpmVersionExpression#replaceableRange(String) replaceable range} via
  * the JSON PSI factory. JSON quoting style, whitespace, and trailing commas are

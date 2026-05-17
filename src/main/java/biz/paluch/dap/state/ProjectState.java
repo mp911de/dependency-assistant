@@ -25,9 +25,10 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Runtime view of dependency and property state for a single analyzed project.
- * <p>Implementations combine transient dependency analysis results with
+ * <p>
+ * Implementations combine transient dependency analysis results with
  * persistent property correlations from the plugin cache. Unless stated
- * otherwise, lookup methods return {@code null} when no matching state is
+ * otherwise, lookup methods return {@literal null} when no matching state is
  * currently available.
  *
  * @author Mark Paluch
@@ -38,7 +39,7 @@ public interface ProjectState {
 	 * Find a dependency by its artifact coordinates.
 	 *
 	 * @param artifactId the dependency coordinates to locate.
-	 * @return the matching dependency, or {@code null} if the current runtime state
+	 * @return the matching dependency, or {@literal null} if the current runtime state
 	 * does not contain it.
 	 */
 	@Nullable
@@ -67,7 +68,7 @@ public interface ProjectState {
 	 * Find a property by name that is associated with at least one artifact.
 	 *
 	 * @param propertyName the property name to locate.
-	 * @return the matching property, or {@code null} if none is known or no
+	 * @return the matching property, or {@literal null} if none is known or no
 	 * artifact correlation exists.
 	 */
 	@Nullable
@@ -80,7 +81,7 @@ public interface ProjectState {
 	 *
 	 * @param propertyName the property name to locate.
 	 * @param filter the conditional that must accept the matching property.
-	 * @return the matching property, or {@code null}.
+	 * @return the matching property, or {@literal null}.
 	 */
 	@Nullable
 	VersionProperty findProperty(String propertyName, Predicate<VersionProperty> filter);
@@ -90,7 +91,7 @@ public interface ProjectState {
 	 * artifact.
 	 *
 	 * @param propertyName the property name to locate.
-	 * @return the matching project property, or {@code null} if none is known or no
+	 * @return the matching project property, or {@literal null} if none is known or no
 	 * artifact correlation exists.
 	 */
 
@@ -103,7 +104,7 @@ public interface ProjectState {
 	 *
 	 * @param propertyName the property name to locate.
 	 * @param filter the conditional that must accept the matching property.
-	 * @return the matching project property, or {@code null}.
+	 * @return the matching project property, or {@literal null}.
 	 */
 	@Nullable
 	ProjectProperty findProjectProperty(String propertyName, Predicate<VersionProperty> filter);

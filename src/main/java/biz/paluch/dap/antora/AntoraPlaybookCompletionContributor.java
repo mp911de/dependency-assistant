@@ -40,7 +40,8 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  * Completion contributor for Antora playbook {@code ui.bundle.url} version
  * segments.
  *
- * <p>Suggests cached release versions when the caret is positioned inside the
+ * <p>
+ * Suggests cached release versions when the caret is positioned inside the
  * version slice of the URL between {@code /releases/download/} and the next
  * path separator. Host, owner, repository, and asset segments are left
  * untouched.

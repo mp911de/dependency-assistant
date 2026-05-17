@@ -23,7 +23,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Structural location where a dependency or plugin is declared.
  *
- * <p>Marker interfaces classify the artifact kind, whether the declaration is
+ * <p>
+ * Marker interfaces classify the artifact kind, whether the declaration is
  * managed, and whether it belongs to a Maven profile.
  *
  * @author Mark Paluch

@@ -37,7 +37,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Interface representing Kotlin DSL {@code extra} property declarations.
- * <p>Captures the supported declaration shapes behind one factory:
+ * <p>
+ * Captures the supported declaration shapes behind one factory:
  * <ul>
  * <li>{@code extra["key"] = "value"} / {@code extra["key"] = """value"""} -
  * {@link StringLiteralAssignment plain string assignment}</li>
@@ -236,7 +237,8 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 	/**
 	 * {@code extra["key"] = "value"} or {@code extra["key"] = """value"""}
 	 * declaration.
-	 * <p>Example: <pre class="code">
+	 * <p>
+	 * Example: <pre class="code">
 	 * extra["springVersion"] = "6.2.0"
 	 * </pre>
 	 */
@@ -259,7 +261,8 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 
 	/**
 	 * {@code "value".also { extra["key"] = it }} declaration.
-	 * <p>Example: <pre class="code">
+	 * <p>
+	 * Example: <pre class="code">
 	 * "6.2.0".also { extra["springVersion"] = it }
 	 * </pre>
 	 */
@@ -289,7 +292,8 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 
 	/**
 	 * {@code extra["key"] = buildString { append("value") }} declaration.
-	 * <p>Example: <pre class="code">
+	 * <p>
+	 * Example: <pre class="code">
 	 * extra["springVersion"] = buildString {
 	 *     append("6.2.0")
 	 * }

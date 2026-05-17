@@ -28,13 +28,15 @@ import org.jspecify.annotations.Nullable;
 /**
  * Parsed Antora playbook {@code ui.bundle.url} declaration.
  *
- * <p>An Antora UI bundle URL points to a Git-hosted release asset of the form
+ * <p>
+ * An Antora UI bundle URL points to a Git-hosted release asset of the form
  * {@code https://{host}/{owner}/{repository}/releases/download/{version}/{asset}}.
  * This record exposes those segments so callers can route lookups to a
  * Git-backed release source and treat the version segment as the declared
  * dependency version.
  *
- * <p>The owner and repository segments are validated against an allowlist to
+ * <p>
+ * The owner and repository segments are validated against an allowlist to
  * prevent path traversal or query injection when the URL is interpolated into
  * downstream REST calls.
  *

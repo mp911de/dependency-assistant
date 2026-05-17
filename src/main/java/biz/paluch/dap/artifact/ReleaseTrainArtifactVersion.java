@@ -41,12 +41,12 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Try to parse a release-train version without throwing. Returns {@code null}
+	 * Try to parse a release-train version without throwing. Returns {@literal null}
 	 * if the string does not match the train-name-suffix pattern.
 	 *
 	 * @param source the version string (e.g. {@code Aluminium-M1},
 	 * {@code Bismuth-SR1}).
-	 * @return a new {@link ArtifactVersion} or {@code null} if not a release-train
+	 * @return a new {@link ArtifactVersion} or {@literal null} if not a release-train
 	 * version.
 	 */
 	@Nullable

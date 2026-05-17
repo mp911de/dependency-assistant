@@ -58,13 +58,15 @@ import org.jspecify.annotations.Nullable;
 /**
  * Antora playbook implementation of {@link DependencyAssistant}.
  *
- * <p>Supports YAML files named {@code antora-playbook.yml} whose
+ * <p>
+ * Supports YAML files named {@code antora-playbook.yml} whose
  * {@code ui.bundle.url} declaration references a Git-hosted release asset. The
  * assistant is only active when the YAML plugin is available, which is checked
- * via class-availability guards so that the always-loaded portion of this class
- * never triggers loading of the optional plugin types eagerly.
+ * through class-availability guards. Always-loaded code keeps optional plugin
+ * types out of eager class loading.
  *
- * <p>Each supported file forms its own lightweight project context keyed by the
+ * <p>
+ * Each supported file forms its own lightweight project context keyed by the
  * file path.
  *
  * @author Mark Paluch

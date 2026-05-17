@@ -24,7 +24,8 @@ import com.intellij.psi.PsiElement;
 /**
  * Extension of {@link DependencySite} for dependency sites with a resolved
  * version.
- * <p>In addition to the artifact coordinates, version source, and declaration
+ * <p>
+ * In addition to the artifact coordinates, version source, and declaration
  * element exposed through {@link DependencySite}, implementations provide the
  * concrete {@link #getVersion() dependency version} together with the
  * {@link PsiElement PSI} element that points to the version value within the
@@ -46,7 +47,8 @@ public interface VersionedDependencySite extends DependencySite {
 	/**
 	 * Return the PSI element that points to the {@link #getVersion() version
 	 * value}.
-	 * <p>The returned element typically represents the version literal or property
+	 * <p>
+	 * The returned element typically represents the version literal or property
 	 * usage from which the dependency version was obtained.
 	 *
 	 * @return the PSI element representing the dependency version.

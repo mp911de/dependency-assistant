@@ -28,7 +28,8 @@ import com.intellij.psi.PsiFile;
  * Scans a single Antora playbook file and registers its {@code ui.bundle.url}
  * references with a {@link DependencyCollector}.
  *
- * <p>This collector is intentionally syntax-only. It records the repository
+ * <p>
+ * This collector is intentionally syntax-only. It records the repository
  * identity and declared version as found in the playbook and leaves cache-based
  * version resolution to the project context and lookup services.
  *

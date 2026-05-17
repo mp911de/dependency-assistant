@@ -64,7 +64,8 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 	/**
 	 * Find the dependency call that owns the given PSI element.
-	 * <p>Used by lookup-site resolution to map version literals, named arguments,
+	 * <p>
+	 * Used by lookup-site resolution to map version literals, named arguments,
 	 * and version-constraint entries back to their declaration call.
 	 */
 	public static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
@@ -183,7 +184,8 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 	/**
 	 * Find the Kotlin property declaration that owns the given PSI element.
-	 * <p>Used for literal entries nested within property initializers.
+	 * <p>
+	 * Used for literal entries nested within property initializers.
 	 */
 	public static @Nullable KtProperty findProperty(KtElement element) {
 		return element instanceof KtLiteralStringTemplateEntry entry
@@ -193,7 +195,8 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 	/**
 	 * Find the {@code extra["key"] = ...} assignment that owns the given value PSI.
-	 * <p>Also supports the {@code "value".also { extra["key"] = it }} form.
+	 * <p>
+	 * Also supports the {@code "value".also { extra["key"] = it }} form.
 	 */
 	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
 
@@ -227,7 +230,8 @@ class KotlinLookupSiteLocator implements LookupSiteLocator<KtElement> {
 
 	/**
 	 * Locate the semantic {@link LookupSite} owning the given Kotlin PSI element.
-	 * <p>Supports direct dependency literals, property-backed declarations,
+	 * <p>
+	 * Supports direct dependency literals, property-backed declarations,
 	 * {@code extra} assignments, and version catalog references such as:
 	 * <pre class="code">
 	 * implementation("org.springframework:spring-core:6.2.0")

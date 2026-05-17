@@ -24,10 +24,12 @@ import org.jspecify.annotations.Nullable;
 /**
  * Determines which release to select as the upgrade target from a list of
  * available releases.
- * <p>Each constant represents a boundary within the version space.
+ * <p>
+ * Each constant represents a boundary within the version space.
  * {@link #select} filters the provided releases according to that boundary and
  * returns the best match, or {@literal null} if no suitable release exists.
- * <p>Note: The {@code options} list passed to {@link #select} must be sorted
+ * <p>
+ * Note: The {@code options} list passed to {@link #select} must be sorted
  * newest-first (as produced by {@link ReleaseResolver}).
  *
  * @author Mark Paluch
@@ -39,7 +41,8 @@ public enum UpgradeStrategy {
 	/**
 	 * Select the newest non-preview release within the same major and minor version
 	 * as {@code current}, limited to release and bug-fix versions.
-	 * <p>Returns {@literal null} when the current version is already the latest
+	 * <p>
+	 * Return {@literal null} when the current version is already the latest
 	 * within its major.minor line, or no qualifying release exists.
 	 */
 	PATCH {
@@ -60,7 +63,8 @@ public enum UpgradeStrategy {
 	/**
 	 * Select the newest non-preview release with the same major version but a
 	 * higher minor version than {@code current}.
-	 * <p>Returns {@literal null} when no qualifying minor upgrade exists.
+	 * <p>
+	 * Return {@literal null} when no qualifying minor upgrade exists.
 	 */
 	MINOR {
 
@@ -79,7 +83,8 @@ public enum UpgradeStrategy {
 	/**
 	 * Select the newest non-preview release with a higher major version than
 	 * {@code current}.
-	 * <p>Returns {@literal null} when no qualifying major upgrade exists.
+	 * <p>
+	 * Return {@literal null} when no qualifying major upgrade exists.
 	 */
 	MAJOR {
 
@@ -96,7 +101,8 @@ public enum UpgradeStrategy {
 
 	/**
 	 * Select the newest non-preview release regardless of version boundaries.
-	 * <p>This strategy does not compare against {@code current}; it simply returns
+	 * <p>
+	 * This strategy does not compare against {@code current}; it simply returns
 	 * the first non-preview entry from the sorted list, which may be the same as or
 	 * older than {@code current} if no newer stable release is available.
 	 */
@@ -115,7 +121,8 @@ public enum UpgradeStrategy {
 	/**
 	 * Select the newest preview release (RC, milestone) that is newer than
 	 * {@code current}.
-	 * <p>Returns {@literal null} when no qualifying preview release exists.
+	 * <p>
+	 * Return {@literal null} when no qualifying preview release exists.
 	 */
 	PREVIEW {
 
@@ -133,7 +140,8 @@ public enum UpgradeStrategy {
 	/**
 	 * Select the newest non-preview release that is newer than {@code current}
 	 * considering major and minor version components.
-	 * <p>Returns {@literal null} when no qualifying release exists.
+	 * <p>
+	 * Return {@literal null} when no qualifying release exists.
 	 */
 	RELEASE {
 
@@ -151,7 +159,8 @@ public enum UpgradeStrategy {
 	/**
 	 * Select the best upgrade candidate from {@code options} according to this
 	 * strategy.
-	 * <p>The caller is responsible for providing {@code options} sorted
+	 * <p>
+	 * The caller is responsible for providing {@code options} sorted
 	 * newest-first. Each strategy applies its own filter and returns the first
 	 * matching element.
 	 *

@@ -426,8 +426,9 @@ class TomlParser extends GradleParserSupport {
 
 		/**
 		 * Resolve a {@link GradleDependency} from this declaration.
-		 * <p>As declarations can be incomplete (e.g. missing version information), make
-		 * sure to check {@link #isComplete()} before calling this method.
+		 * <p>
+		 * As declarations can be incomplete (e.g. missing version information), make
+		 * sure to check {@link #isComplete()} before calling it.
 		 *
 		 * @return the resolved dependency.
 		 */
@@ -447,8 +448,9 @@ class TomlParser extends GradleParserSupport {
 
 		/**
 		 * Resolve a {@link DependencySite} from this declaration.
-		 * <p>As declarations can be incomplete (e.g. missing version information), make
-		 * sure to check {@link #isComplete()} before calling this method.
+		 * <p>
+		 * As declarations can be incomplete (e.g. missing version information), make
+		 * sure to check {@link #isComplete()} before calling it.
 		 *
 		 * @return the resolved dependency site.
 		 */

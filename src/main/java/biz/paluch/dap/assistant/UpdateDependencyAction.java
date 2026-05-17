@@ -34,8 +34,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ScalableIcon;
 import com.intellij.psi.PsiElement;
 import com.intellij.ui.LayeredIcon;
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
 
 /**
  * Dependency upgrade action to upgrade the associated {@link PsiElement}

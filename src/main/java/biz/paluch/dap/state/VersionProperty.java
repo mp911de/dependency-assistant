@@ -27,7 +27,8 @@ import com.intellij.util.xmlb.annotations.XCollection;
 
 /**
  * Persistent descriptor of a project property and the artifacts it governs.
- * <p>A property can be merely declared, actually used as a version source, or
+ * <p>
+ * A property can be merely declared, actually used as a version source, or
  * both. Artifact associations are stored without duplicates.
  *
  * @author Mark Paluch
@@ -137,7 +138,8 @@ public class VersionProperty {
 
 	/**
 	 * Return the backing artifact associations.
-	 * <p>This is the live storage list used for persistence and in-place mutation.
+	 * <p>
+	 * This is the live storage list used for persistence and in-place mutation.
 	 *
 	 * @return the mutable backing artifact associations.
 	 */

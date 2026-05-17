@@ -39,7 +39,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Parser for Kotlin DSL Gradle build files ({@code build.gradle.kts} and
  * {@code settings.gradle.kts}).
- * <p>Extracted declarations are accumulated into a {@link DependencyCollector}
+ * <p>
+ * Extracted declarations are accumulated into a {@link DependencyCollector}
  * using the common Gradle dependency model so that version lookup and update
  * code can operate on Kotlin DSL semantics instead of raw PSI traversal.
  *
@@ -97,7 +98,8 @@ class KotlinDslParser extends GradleParser {
 
 	/**
 	 * Parse a Kotlin DSL declaration from the given call.
-	 * <p>Supports declarations such as: <pre class="code">
+	 * <p>
+	 * Supports declarations such as: <pre class="code">
 	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
 	 * implementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.11.0")
 	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
@@ -106,7 +108,7 @@ class KotlinDslParser extends GradleParser {
 	 *
 	 * @param call the call to parse.
 	 * @param propertyResolver property resolver used for property-backed versions.
-	 * @return the dependency site, or {@code null} if the call is not a supported
+	 * @return the dependency site, or {@literal null} if the call is not a supported
 	 * declaration.
 	 */
 	public static @Nullable DependencySite parseDependencySite(KtCallElement call, PropertyResolver propertyResolver) {
@@ -472,7 +474,8 @@ class KotlinDslParser extends GradleParser {
 
 	/**
 	 * Parse a supported Kotlin DSL dependency or plugin declaration.
-	 * <p>Supports declarations such as: <pre class="code">
+	 * <p>
+	 * Supports declarations such as: <pre class="code">
 	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
 	 * implementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.11.0")
 	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
@@ -481,7 +484,7 @@ class KotlinDslParser extends GradleParser {
 	 *
 	 * @param call the call to parse.
 	 * @param scriptProperties property resolver used for property-backed versions.
-	 * @return the dependency site, or {@code null} if the call is not a supported
+	 * @return the dependency site, or {@literal null} if the call is not a supported
 	 * declaration.
 	 */
 	private static @Nullable DependencySite findDependencySite(KtCallElement call,
@@ -532,7 +535,8 @@ class KotlinDslParser extends GradleParser {
 
 	/**
 	 * Create a {@link DependencySite} from parsed Kotlin DSL dependency data.
-	 * <p>The supplied {@code declaration} and {@code versionElement} elements are
+	 * <p>
+	 * The supplied {@code declaration} and {@code versionElement} elements are
 	 * reused as the PSI anchors for the resulting site.
 	 */
 	public static @Nullable DependencySite getDependencySite(String gav, KtCallElement declaration,
@@ -577,10 +581,12 @@ class KotlinDslParser extends GradleParser {
 	 *     }
 	 * }
 	 * </pre>
-	 * <p>When {@code propertyResolver} is provided, bare name references such as
+	 * <p>
+	 * When {@code propertyResolver} is provided, bare name references such as
 	 * {@code prefer(junit)} are resolved through it.
-	 * <p>Returns a {@link NamedDependencyDeclaration} when a usable version can be
-	 * extracted, or {@code null} otherwise.
+	 * <p>
+	 * Return a {@link NamedDependencyDeclaration} when a usable version can be
+	 * extracted, or {@literal null} otherwise.
 	 */
 	@Nullable
 	private static NamedDependencyDeclaration parseVersionBlockDeclaration(KtCallElement call,

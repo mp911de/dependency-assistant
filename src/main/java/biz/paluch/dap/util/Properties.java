@@ -28,9 +28,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Iterable view over Java properties in a PSI file.
  *
- * <p>This abstraction keeps callers independent from the concrete
+ * <p>
+ * This abstraction keeps callers independent from the concrete
  * {@link PropertiesFile} traversal while retaining declaration order. Mapping
- * functions may return {@code null} to filter out unsupported properties.
+ * functions may return {@literal null} to filter out unsupported properties.
  *
  * @param <P> the property item type exposed by this view.
  * @author Mark Paluch
@@ -44,7 +45,7 @@ public interface Properties<P> {
 	void forEach(Consumer<P> consumer);
 
 	/**
-	 * Return a mapped view that omits {@code null} mapping results.
+	 * Return a mapped view that omits {@literal null} mapping results.
 	 * @param function the mapping function to apply.
 	 * @return a property view containing only non-null mapped values.
 	 * @param <T> the mapped item type.

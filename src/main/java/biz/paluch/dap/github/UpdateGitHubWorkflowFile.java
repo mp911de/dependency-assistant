@@ -39,12 +39,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * PSI updater for GitHub Actions workflow {@code uses:} declarations.
  *
- * <p>This updater applies dependency updates without changing the workflow's
+ * <p>
+ * This updater applies dependency updates without changing the workflow's
  * dependency model. Only repository-backed GitHub Action references are in
  * scope; local actions, Docker image references, malformed values, and updates
  * that do not resolve to {@link GitVersion} are left untouched.
  *
- * <p>The existing pinning style is part of the contract. Version refs are
+ * <p>
+ * The existing pinning style is part of the contract. Version refs are
  * rendered as version refs. SHA-pinned refs are rendered as SHAs when the
  * selected release has SHA metadata, with a managed explanatory version
  * comment. This keeps workflows reproducible while still exposing semantic
@@ -67,7 +69,8 @@ class UpdateGitHubWorkflowFile {
 
 	/**
 	 * Apply matching GitHub Action updates to the given GitHub Actions YAML file.
-	 * <p>Only the {@code uses:} value and its managed version comment are changed.
+	 * <p>
+	 * Only the {@code uses:} value and its managed version comment are changed.
 	 * Declarations without a matching update are left as-is.
 	 * @param psiFile the GitHub Actions YAML PSI file
 	 * @param updates the dependency updates to apply
@@ -120,7 +123,8 @@ class UpdateGitHubWorkflowFile {
 
 	/**
 	 * Return the editor offset immediately after the scalar value.
-	 * <p>For quoted scalars, the returned offset is before the closing quote so
+	 * <p>
+	 * For quoted scalars, the returned offset is before the closing quote so
 	 * completion handlers can leave the caret at the end of the inserted ref.
 	 * @param scalar the GitHub Actions scalar
 	 * @return the absolute editor offset at the end of the scalar value
@@ -138,13 +142,14 @@ class UpdateGitHubWorkflowFile {
 
 	/**
 	 * Update a workflow {@code uses:} scalar with the given rendered version text.
-	 * <p>The method returns the replacement scalar so callers can continue PSI
+	 * <p>
+	 * The method returns the replacement scalar so callers can continue PSI
 	 * operations, for example to position the editor caret after completion
-	 * insertion. A {@code null} result indicates that the scalar is not in a
+	 * insertion. A {@literal null} result indicates that the scalar is not in a
 	 * writable {@code uses:} key-value context.
 	 * @param scalar the scalar containing a repository-backed {@code uses:} value
 	 * @param versionText the ref text and optional managed comment to render
-	 * @return the updated scalar, or {@code null} if no safe update could be made
+	 * @return the updated scalar, or {@literal null} if no safe update could be made
 	 */
 	public @Nullable YAMLScalar updateVersionAndComment(YAMLScalar scalar, VersionText versionText) {
 

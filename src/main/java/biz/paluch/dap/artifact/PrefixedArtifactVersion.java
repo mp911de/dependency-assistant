@@ -22,7 +22,8 @@ import java.util.Objects;
  * {@link ArtifactVersion} that wraps an inner version with a string prefix such
  * as {@code v}.
  *
- * <p>The prefix is preserved in {@link #toString()} so that the original
+ * <p>
+ * The prefix is preserved in {@link #toString()} so that the original
  * version string round-trips correctly (e.g. {@code v1.2.3}).
  *
  * @author Mark Paluch

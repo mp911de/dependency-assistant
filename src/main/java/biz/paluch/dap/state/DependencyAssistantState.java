@@ -21,7 +21,8 @@ import com.intellij.util.xmlb.annotations.Tag;
 
 /**
  * Persistent root state for the Dependency Assistant plugin.
- * <p>The type currently persists a single {@link Cache} instance and
+ * <p>
+ * The type currently persists a single {@link Cache} instance and
  * intentionally keeps the model minimal so that service-level runtime state
  * remains outside the serialized contract.
  *

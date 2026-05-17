@@ -23,7 +23,8 @@ import org.springframework.util.Assert;
 /**
  * Source from which a dependency version is obtained in a build file.
  *
- * <p>A version may be declared inline, resolved from a property, provided by a
+ * <p>
+ * A version may be declared inline, resolved from a property, provided by a
  * managed declaration, or absent.
  *
  * @author Mark Paluch
@@ -40,7 +41,8 @@ public abstract class VersionSource {
 
 	/**
 	 * Return whether a version is defined.
-	 * <p>Returns {@code false} only for the {@link #none()} singleton.
+	 * <p>
+	 * Return {@literal false} only for the {@link #none()} singleton.
 	 */
 	public boolean isDefined() {
 		return this != NONE;
@@ -132,7 +134,8 @@ public abstract class VersionSource {
 
 	/**
 	 * Version source representing an absent version.
-	 * <p>{@link #isDefined()} returns {@code false} for this type.
+	 * <p>
+	 * {@link #isDefined()} returns {@code false} for this type.
 	 */
 	public static class NoVersionSource extends VersionSource {
 

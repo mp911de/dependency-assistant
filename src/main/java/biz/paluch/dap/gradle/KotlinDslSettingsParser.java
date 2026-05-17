@@ -37,7 +37,8 @@ import org.jspecify.annotations.Nullable;
  * Parses {@code settings.gradle.kts} to discover version-catalog declarations
  * in a {@code dependencyResolutionManagement { versionCatalogs { … } }} block.
  *
- * <p>Only {@code from(files("path/to/catalog.toml"))} forms are handled; other
+ * <p>
+ * Only {@code from(files("path/to/catalog.toml"))} forms are handled; other
  * {@code from} forms (e.g. {@code from(uri(…))}) are silently skipped.
  *
  * @author Mark Paluch

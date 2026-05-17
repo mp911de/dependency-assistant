@@ -36,7 +36,8 @@ import com.intellij.psi.PsiFile;
  * repository-backed {@code uses:} references with a
  * {@link DependencyCollector}.
  *
- * <p>This collector is intentionally syntax-only. It records the repository
+ * <p>
+ * This collector is intentionally syntax-only. It records the repository
  * identity and declared ref as found in the workflow and leaves cache-based
  * version resolution to the project context and lookup services. This keeps
  * workflow scanning independent of release metadata availability.

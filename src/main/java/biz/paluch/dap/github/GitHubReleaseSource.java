@@ -54,7 +54,8 @@ import org.jspecify.annotations.Nullable;
  * GitHub REST API via the bundled GitHub plugin's
  * {@link GithubApiRequestExecutor}.
  *
- * <p>The result is the union of two sources:
+ * <p>
+ * The result is the union of two sources:
  * <ul>
  * <li>All GitHub Releases provide the publication date used for ordering and
  * display, and</li>
@@ -63,13 +64,15 @@ import org.jspecify.annotations.Nullable;
  * repositories that do not publish GitHub Releases.</li>
  * </ul>
  *
- * <p>Many projects do not publish GitHub Releases; the tag fallback ensures
+ * <p>
+ * Many projects do not publish GitHub Releases; the tag fallback ensures
  * those still expose update candidates. Tag entries without a release
- * contribute a version with {@code null} date and currently no cached SHA.
+ * contribute a version with {@literal null} date and currently no cached SHA.
  * Release entries without a matching fetched tag contribute a version with
- * {@code null} SHA.
+ * {@literal null} SHA.
  *
- * <p>Results are cached into the shared {@link biz.paluch.dap.state.Cache} as
+ * <p>
+ * Results are cached into the shared {@link biz.paluch.dap.state.Cache} as
  * {@link CachedRelease} entries with the SHA stored in the optional {@code sha}
  * field.
  *

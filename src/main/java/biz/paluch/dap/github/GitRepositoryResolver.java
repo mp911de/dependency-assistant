@@ -33,13 +33,15 @@ import org.jspecify.annotations.Nullable;
  * Resolver for the GitHub repository metadata associated with GitHub Actions
  * files in an IntelliJ project.
  *
- * <p>GitHub Actions support needs repository coordinates for two separate
+ * <p>
+ * GitHub Actions support needs repository coordinates for two separate
  * purposes: a stable {@link ProjectId} for persisted dependency state and the
  * GitHub host from which action releases should be resolved. This resolver
  * derives both from configured Git remotes instead of from the YAML source
  * itself, because action files do not identify the repository that owns them.
  *
- * <p>Resolution is intentionally best-effort. If the anchor can be associated
+ * <p>
+ * Resolution is intentionally best-effort. If the anchor can be associated
  * with a Git root, that root's preferred remote provides the metadata.
  * Otherwise any configured GitHub remote may be used as a project-level
  * fallback so that GitHub Actions assistance remains available in partially
@@ -60,8 +62,9 @@ class GitRepositoryResolver {
 
 	/**
 	 * Resolve repository metadata for the given anchor.
-	 * <p>The anchor may be a GitHub Actions file or directory in the project VFS. A
-	 * {@code null} result means no configured Git remote could be interpreted as a
+	 * <p>
+	 * The anchor may be a GitHub Actions file or directory in the project VFS. A
+	 * {@literal null} result means no configured Git remote could be interpreted as a
 	 * GitHub or GitHub Enterprise repository; callers should then fall back to
 	 * host-agnostic GitHub support.
 	 */

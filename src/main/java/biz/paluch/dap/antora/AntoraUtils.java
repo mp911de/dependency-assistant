@@ -25,7 +25,8 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 /**
  * Utilities for identifying Antora playbook files.
  *
- * <p>This type is exposed as {@code public} because
+ * <p>
+ * This type is exposed as {@code public} because
  * {@code GitHubWorkflowCompletionContributor} in the sibling
  * {@code biz.paluch.dap.github} package must consult it to suppress GitHub
  * workflow completions inside Antora playbook files.
@@ -70,7 +71,8 @@ public class AntoraUtils {
 	 * Compute the {@link TextRange} that covers only the version segment of the
 	 * {@code ui.bundle.url} scalar that owns the given element.
 	 *
-	 * <p>Used by the annotator and the line marker provider so they highlight only
+	 * <p>
+	 * Used by the annotator and the line marker provider so they highlight only
 	 * the version slice between {@code /releases/download/} and the next path
 	 * separator.
 	 *

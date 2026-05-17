@@ -19,7 +19,8 @@ package biz.paluch.dap.artifact;
 /**
  * Contract for domain objects that expose an {@link ArtifactVersion}.
  *
- * <p>Use this interface when version comparison or presentation code can work
+ * <p>
+ * Use this interface when version comparison or presentation code can work
  * with releases and release candidates without depending on their concrete
  * container type.
  *
@@ -40,10 +41,12 @@ public interface VersionAware {
 	/**
 	 * Return the normalized artifact version exposed by the given object.
 	 *
-	 * <p>The returned version follows {@link ArtifactVersion#getVersion()} through
+	 * <p>
+	 * The returned version follows {@link ArtifactVersion#getVersion()} through
 	 * the wrapper layers used by this package, such as {@link GitVersion} or
-	 * prefixed versions. Use this method when comparing or grouping the underlying
-	 * version and wrapper metadata such as prefixes or SHAs should be ignored.
+	 * prefixed versions. Use the normalized value when comparing or grouping the
+	 * underlying version and wrapper metadata such as prefixes or SHAs should be
+	 * ignored.
 	 *
 	 * @param hasVersion the object that carries the version; must not be
 	 * {@literal null}.

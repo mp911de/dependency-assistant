@@ -26,12 +26,13 @@ import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.util.containers.JBIterable;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * PSI-backed {@link Properties} view for Java {@code .properties} files.
  *
- * <p>The view traverses the PSI tree to include nested property elements in the
+ * <p>
+ * The view traverses the PSI tree to include nested property elements in the
  * order reported by IntelliJ's syntax traverser. It is useful for parsers that
  * want filtering and mapping without exposing traversal details.
  *
@@ -65,7 +66,7 @@ public class PropertyFile implements Properties<PropertyImpl> {
 	}
 
 	/**
-	 * Return a mapped view that omits {@code null} mapping results.
+	 * Return a mapped view that omits {@literal null} mapping results.
 	 * @param function the mapping function to apply.
 	 * @return a property view containing only non-null mapped values.
 	 * @param <T> the mapped item type.

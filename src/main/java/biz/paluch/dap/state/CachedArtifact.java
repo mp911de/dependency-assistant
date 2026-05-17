@@ -28,7 +28,8 @@ import com.intellij.util.xmlb.annotations.XCollection;
 
 /**
  * Persistent cache entry for a single artifact and its known releases.
- * <p>The entry is keyed by group and artifact identifiers and stores releases
+ * <p>
+ * The entry is keyed by group and artifact identifiers and stores releases
  * in a serializer-friendly representation.
  *
  * @author Mark Paluch
@@ -88,7 +89,8 @@ public class CachedArtifact {
 
 	/**
 	 * Return the backing release entries.
-	 * <p>This is the live storage list used for persistence.
+	 * <p>
+	 * This is the live storage list used for persistence.
 	 *
 	 * @return the mutable backing release entries.
 	 */

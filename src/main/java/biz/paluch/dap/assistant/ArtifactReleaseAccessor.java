@@ -20,7 +20,7 @@ import biz.paluch.dap.artifact.ArtifactRelease;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.UserDataHolder;
 import com.intellij.psi.PsiElement;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * @author Mark Paluch

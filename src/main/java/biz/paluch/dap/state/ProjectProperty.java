@@ -19,7 +19,8 @@ package biz.paluch.dap.state;
 /**
  * Value object pairing a {@link VersionProperty} with the {@link ProjectId}
  * that owns it.
- * <p>This contract is used when a property lookup must preserve project
+ * <p>
+ * This contract is used when a property lookup must preserve project
  * identity in addition to the property metadata itself.
  *
  * @author Mark Paluch

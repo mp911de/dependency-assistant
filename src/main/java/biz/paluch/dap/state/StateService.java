@@ -33,7 +33,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Project-level service exposing persistent cache state and runtime dependency
  * state.
- * <p>The service has two distinct responsibilities:
+ * <p>
+ * The service has two distinct responsibilities:
  * <ul>
  * <li>persisting the durable {@link Cache} through IntelliJ's
  * {@link PersistentStateComponent} contract, and</li>
@@ -64,7 +65,8 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 
 	/**
 	 * Return the state object managed by IntelliJ persistence.
-	 * <p>The returned state is a snapshot that decouples platform serialization
+	 * <p>
+	 * The returned state is a snapshot that decouples platform serialization
 	 * from concurrent cache mutations performed by background tasks.
 	 *
 	 * @return the persistent service state.
@@ -107,7 +109,8 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 
 	/**
 	 * Return a project-state facade for the given project identity.
-	 * <p>The returned facade is backed by the current service instance and reflects
+	 * <p>
+	 * The returned facade is backed by the current service instance and reflects
 	 * subsequent cache or dependency updates.
 	 *
 	 * @param identity the project identity to expose.

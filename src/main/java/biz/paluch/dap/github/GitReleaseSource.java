@@ -32,20 +32,23 @@ import org.jetbrains.plugins.github.api.GithubServerPath;
  * {@link ReleaseSource} facade for dependencies whose versions are discovered
  * from Git repositories.
  *
- * <p>This type sits one level above {@link GitHubReleaseSource}. It accepts the
+ * <p>
+ * This type sits one level above {@link GitHubReleaseSource}. It accepts the
  * common {@link ArtifactId} contract used by dependency collectors and routes
  * Git-backed artifacts to a host-specific GitHub release source. The actual API
  * access, authentication, and release/tag aggregation remain the responsibility
  * of {@link GitHubReleaseSource}.
  *
- * <p>{@link GitArtifactId} carries the split between the dependency identity
+ * <p>
+ * {@link GitArtifactId} carries the split between the dependency identity
  * declared in a build file and the repository coordinates used for release
  * lookup. This release source honors that split by querying
  * {@link GitArtifactId#releaseSource()} on {@link GitArtifactId#host()} while
  * leaving the declared artifact identity available to the rest of the
  * application for caching, display, and update grouping.
  *
- * <p>The {@link #GitReleaseSource(Project, boolean) strict mode} controls how
+ * <p>
+ * The {@link #GitReleaseSource(Project, boolean) strict mode} controls how
  * broad this source participates in release resolution. Strict mode is intended
  * for ecosystems that mix registry and Git-backed dependencies, where only
  * explicit {@link GitArtifactId} instances should be resolved through GitHub.
@@ -67,7 +70,8 @@ public class GitReleaseSource implements ReleaseSource {
 
 	/**
 	 * Create a routing release source for Git-backed dependency lookups.
-	 * <p>The supplied project is used by host-specific delegates to resolve GitHub
+	 * <p>
+	 * The supplied project is used by host-specific delegates to resolve GitHub
 	 * accounts and authentication. Delegates are created lazily and cached per
 	 * host.
 	 * @param project IntelliJ project used for GitHub account resolution.
@@ -82,7 +86,8 @@ public class GitReleaseSource implements ReleaseSource {
 
 	/**
 	 * Resolve releases for the repository represented by the given artifact.
-	 * <p>When the artifact is a {@link GitArtifactId}, repository lookup uses its
+	 * <p>
+	 * When the artifact is a {@link GitArtifactId}, repository lookup uses its
 	 * Git host and release-source coordinates. In non-strict mode, plain
 	 * {@link ArtifactId} values are treated as owner/repository coordinates on the
 	 * default GitHub host. In strict mode they are outside this source's domain and

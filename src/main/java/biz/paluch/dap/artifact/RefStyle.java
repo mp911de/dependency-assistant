@@ -24,7 +24,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Classification of a Git ref string by rendering style.
  *
- * <p>The ref text after {@code @} in a {@code uses:} declaration, or after
+ * <p>
+ * The ref text after {@code @} in a {@code uses:} declaration, or after
  * {@code #} in an NPM Git URL, is classified by the rendering model rather than
  * by Git semantics. Hex SHA prefixes are treated as SHA-pinned refs. All other
  * non-empty refs, including tags, branches, and semantic versions with or
@@ -49,7 +50,8 @@ public enum RefStyle {
 
 	/**
 	 * Determine a {@link RefStyle} from the given ref string.
-	 * <p>An empty or {@literal null} ref defaults to {@link #SHA}, matching the
+	 * <p>
+	 * An empty or {@literal null} ref defaults to {@link #SHA}, matching the
 	 * conservative behavior for declarations that cannot reveal their original
 	 * style. Whitespace-only input also classifies as {@link #SHA} because
 	 * {@link StringUtils#isEmpty(String)} treats blank input as empty.

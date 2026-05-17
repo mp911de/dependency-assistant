@@ -41,16 +41,19 @@ import org.jspecify.annotations.Nullable;
  * Project-level service that resolves the configured {@link GithubAccount} (and
  * its bearer token) for GitHub API access.
  *
- * <p>Project-scoped resolution prefers an authenticated account whose server
+ * <p>
+ * Project-scoped resolution prefers an authenticated account whose server
  * host matches a Git remote configured in the project, then the project default
  * account, then the first configured account. If no usable token is available,
  * resolution falls back to anonymous access.
  *
- * <p>Host-scoped resolution first attempts an exact host match and then falls
+ * <p>
+ * Host-scoped resolution first attempts an exact host match and then falls
  * back to the project default account. It does not use an arbitrary first
  * account for a different host.
  *
- * <p>The service uses direct compile-time references to the IntelliJ GitHub
+ * <p>
+ * The service uses direct compile-time references to the IntelliJ GitHub
  * plugin and Git4Idea APIs. Both plugins are declared as optional dependencies
  * so the always-loaded {@link biz.paluch.dap.github} package only reaches this
  * class after {@link GitHubAssistant} has confirmed that GitHub integration is
@@ -74,7 +77,8 @@ class GitHubAccountResolver {
 	/**
 	 * Resolve the most appropriate GitHub account for the project.
 	 *
-	 * <p>Resolution order:
+	 * <p>
+	 * Resolution order:
 	 * <ol>
 	 * <li>account whose server host matches a Git remote configured in the
 	 * project;</li>
@@ -119,7 +123,8 @@ class GitHubAccountResolver {
 	/**
 	 * Resolve the most appropriate GitHub account for the given
 	 * {@code remoteOriginHost}.
-	 * <p>The host-specific variant does not fall back to an unrelated first
+	 * <p>
+	 * The host-specific variant does not fall back to an unrelated first
 	 * account. If no authenticated exact host match is available, the project
 	 * default account is used when present; otherwise resolution is anonymous.
 	 *

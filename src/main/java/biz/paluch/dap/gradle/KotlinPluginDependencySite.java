@@ -31,7 +31,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Factory for {@link DependencySite} instances parsed from Kotlin DSL plugin
  * declarations.
- * <p>Supports the conventional infix shape:
+ * <p>
+ * Supports the conventional infix shape:
  *
  * <pre class="code">
  * id("org.springframework.boot") version "3.3.2"
@@ -56,7 +57,7 @@ class KotlinPluginDependencySite {
 	 * keyword and version literal.
 	 * @param scriptProperties property resolver used to resolve interpolated id
 	 * placeholders.
-	 * @return the parsed plugin declaration, or {@code null}.
+	 * @return the parsed plugin declaration, or {@literal null}.
 	 */
 	static @Nullable DependencySite fromBinary(KtCallElement call, @Nullable KtBinaryExpression be,
 			PropertyResolver scriptProperties) {

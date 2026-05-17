@@ -32,7 +32,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Interface representing Groovy DSL {@code ext} property declarations.
- * <p>Captures the four supported declaration shapes behind one factory:
+ * <p>
+ * Captures the four supported declaration shapes behind one factory:
  * <ul>
  * <li>{@code ext { set('key', 'value') }} {@link SetCall set-call form}</li>
  * <li>{@code ext { key = 'value' }} {@link ExtAssignment plain assignment
@@ -48,10 +49,11 @@ import org.jspecify.annotations.Nullable;
 sealed interface GroovyExtAssignment extends ExtraDeclaration {
 
 	/**
-	 * Returns a {@link PropertyValue} when {@code element} is the <em>value</em>
-	 * literal of a Groovy {@code ext} property declaration, or {@code null}
+	 * Return a {@link PropertyValue} when {@code element} is the <em>value</em>
+	 * literal of a Groovy {@code ext} property declaration, or {@literal null}
 	 * otherwise.
-	 * <p>The supported declaration forms are detected via
+	 * <p>
+	 * The supported declaration forms are detected via
 	 * {@link GroovyExtAssignment#from(PsiElement)}.
 	 */
 	static @Nullable Property findGroovyExtPropertyVersionElement(PsiElement element) {
@@ -162,7 +164,7 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 		 * @param lhs the assignment left-hand side.
 		 * @param valueContext the right-hand side literal, used as anchor for the
 		 * {@code ext} closure check.
-		 * @return the resolved key, or {@code null}.
+		 * @return the resolved key, or {@literal null}.
 		 */
 		static @Nullable String extractKey(@Nullable GrExpression lhs, @Nullable PsiElement valueContext) {
 

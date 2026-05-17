@@ -34,7 +34,8 @@ import org.jspecify.annotations.Nullable;
  * Internal Kotlin DSL PSI helpers used by parsers, lookup-site locators, and
  * update routines.
  *
- * <p>This class centralizes Kotlin build-script traversal rules shared across
+ * <p>
+ * This class centralizes Kotlin build-script traversal rules shared across
  * parser infrastructure. It is not intended as a general-purpose Kotlin PSI
  * abstraction.
  *

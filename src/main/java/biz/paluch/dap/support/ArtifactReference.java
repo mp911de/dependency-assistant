@@ -70,14 +70,14 @@ public class ArtifactReference {
 	}
 
 	/**
-	 * Returns whether the artifact reference is present and resolved.
+	 * Return whether the artifact reference is present and resolved.
 	 */
 	public boolean isResolved() {
 		return declaration != null;
 	}
 
 	/**
-	 * Returns the {@link ArtifactDeclaration} or throws an exception if none is
+	 * Return the {@link ArtifactDeclaration} or throws an exception if none is
 	 * present.
 	 */
 	public ArtifactDeclaration getDeclaration() {

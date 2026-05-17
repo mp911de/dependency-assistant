@@ -33,7 +33,8 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 /**
  * PSI updater for Antora playbook {@code ui.bundle.url} declarations.
  *
- * <p>Applies dependency updates by rewriting only the version segment between
+ * <p>
+ * Applies dependency updates by rewriting only the version segment between
  * {@code /releases/download/} and the next path separator. Host, owner,
  * repository, asset path, YAML quoting style, and unrelated content are left
  * untouched.
@@ -56,7 +57,8 @@ class UpdateAntoraPlaybookFile {
 
 	/**
 	 * Apply matching dependency updates to the given Antora playbook file.
-	 * <p>Only the {@code ui.bundle.url} value's version segment is changed.
+	 * <p>
+	 * Only the {@code ui.bundle.url} value's version segment is changed.
 	 * Declarations without a matching update are left as-is.
 	 * @param psiFile the Antora playbook PSI file.
 	 * @param updates the dependency updates to apply.

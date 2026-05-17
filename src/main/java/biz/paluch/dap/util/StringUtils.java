@@ -19,7 +19,6 @@ package biz.paluch.dap.util;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
-
 /**
  * Miscellaneous {@link String} utility methods.
  *
@@ -33,7 +32,7 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given {@code CharSequence} is empty.
-	 * @param str the candidate string.
+	 * @param str the candidate string; can be {@literal null}.
 	 */
 	@Contract("null -> true")
 	public static boolean isEmpty(@Nullable CharSequence str) {
@@ -42,7 +41,7 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given {@code String} is empty.
-	 * @param str the candidate string.
+	 * @param str the candidate string; can be {@literal null}.
 	 */
 	@Contract("null -> true")
 	public static boolean isEmpty(@Nullable String str) {
@@ -51,18 +50,20 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given {@code CharSequence} contains actual <em>text</em>.
-	 * <p>More specifically, this method returns {@code true} if the value is not
-	 * {@code null}, its length is greater than 0, and it contains at least one
+	 * <p>
+	 * Return {@literal true} if the value is not
+	 * {@literal null}, its length is greater than 0, and it contains at least one
 	 * non-whitespace character.
-	 * <p><pre class="code">
+	 * <p>
+	 * <pre class="code">
 	 * StringUtils.hasText(null) = false
 	 * StringUtils.hasText("") = false
 	 * StringUtils.hasText(" ") = false
 	 * StringUtils.hasText("12345") = true
 	 * StringUtils.hasText(" 12345 ") = true
 	 * </pre>
-	 * @param str the {@code CharSequence} to check.
-	 * @return {@code true} if the {@code CharSequence} contains text.
+	 * @param str the {@code CharSequence} to check; can be {@literal null}.
+	 * @return {@literal true} if the {@code CharSequence} contains text.
 	 * @see Character#isWhitespace
 	 */
 	@Contract("null -> false")
@@ -86,8 +87,8 @@ public abstract class StringUtils {
 
 	/**
 	 * Check whether the given {@code String} contains actual <em>text</em>.
-	 * @param str the {@code String} to check.
-	 * @return {@code true} if the {@code String} contains text.
+	 * @param str the {@code String} to check; can be {@literal null}.
+	 * @return {@literal true} if the {@code String} contains text.
 	 * @see #hasText(CharSequence)
 	 * @see Character#isWhitespace
 	 */
@@ -99,7 +100,7 @@ public abstract class StringUtils {
 	/**
 	 * Remove quotes from a String if it is quoted with either single or double
 	 * quotes.
-	 * @param str the String to unquote.
+	 * @param str the String to unquote; must not be {@literal null}.
 	 * @return the unquoted String.
 	 */
 	public static String unquote(String str) {

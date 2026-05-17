@@ -87,10 +87,12 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 	/**
 	 * {@inheritDoc}
 	 *
-	 * <p>For another {@code GitVersion}, the comparison delegates to the wrapped
+	 * <p>
+	 * For another {@code GitVersion}, the comparison delegates to the wrapped
 	 * {@link ArtifactVersion} so that GitHub-only release lists sort consistently.
 	 *
-	 * <p>For non-{@code GitVersion} arguments this method throws
+	 * <p>
+	 * For non-{@code GitVersion} arguments, comparison throws
 	 * {@link ClassCastException}. Returning {@code 0} for incomparable types would
 	 * silently mis-merge sorted lists; throwing makes the incompatibility loud and
 	 * matches the {@link Comparable} contract that orderings be total within a

@@ -23,14 +23,16 @@ import com.intellij.icons.AllIcons;
 /**
  * Coarse presentation category for a candidate artifact version.
  *
- * <p>{@code VersionAge} is the shared visual language for dependency update
+ * <p>
+ * {@code VersionAge} is the shared visual language for dependency update
  * candidates in completion lists, dialogs, and generated documentation. It
  * intentionally sits after version parsing and upgrade selection: callers use
  * {@link ArtifactVersion} to compare concrete versions and
  * {@link UpgradeStrategy} to select an update target, then use this type to
  * present the candidate with consistent impact semantics.
  *
- * <p>The categories are not an ordering contract. They describe the
+ * <p>
+ * The categories are not an ordering contract. They describe the
  * relationship that is useful to a user reviewing an update: older, neutral,
  * patch, minor, major, preview, or a stable release target.
  *
@@ -80,7 +82,8 @@ public enum VersionAge {
 
 	/**
 	 * Return the presentation category for the given upgrade strategy.
-	 * <p>This method bridges a user-selected strategy to the same categories used
+	 * <p>
+	 * The mapping bridges a user-selected strategy to the same categories used
 	 * for concrete versions. It does not inspect available releases; it only
 	 * expresses the expected impact of the selected strategy.
 	 * @param target the selected upgrade strategy
@@ -99,10 +102,11 @@ public enum VersionAge {
 
 	/**
 	 * Return how the candidate version relates to the current version.
-	 * <p>The result is meant for presentation and should not be used to select an
-	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; this method
-	 * classifies an already-known candidate according to the comparison and version
-	 * boundary contract of {@link ArtifactVersion}.
+	 * <p>
+	 * The result is meant for presentation and should not be used to select an
+	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the
+	 * returned category classifies an already-known candidate according to the
+	 * comparison and version boundary contract of {@link ArtifactVersion}.
 	 * @param start the start version (or currently used version).
 	 * @param end the end version (or upgrade candidate version)
 	 * @return the end candidate version age category.
@@ -114,10 +118,11 @@ public enum VersionAge {
 
 	/**
 	 * Return how the candidate version relates to the current version.
-	 * <p>The result is meant for presentation and should not be used to select an
-	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; this method
-	 * classifies an already-known candidate according to the comparison and version
-	 * boundary contract of {@link ArtifactVersion}.
+	 * <p>
+	 * The result is meant for presentation and should not be used to select an
+	 * upgrade candidate. Selection belongs to {@link UpgradeStrategy}; the
+	 * returned category classifies an already-known candidate according to the
+	 * comparison and version boundary contract of {@link ArtifactVersion}.
 	 * @param start the start version (or currently used version).
 	 * @param end the end version (or upgrade candidate version)
 	 * @return the end candidate version age category.

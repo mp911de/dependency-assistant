@@ -33,7 +33,8 @@ import org.jspecify.annotations.Nullable;
  * JSON PSI walker that classifies NPM dependency entries declared in
  * {@code dependencies} and {@code devDependencies}.
  *
- * <p>The package name is normalized to {@link ArtifactId} as documented on
+ * <p>
+ * The package name is normalized to {@link ArtifactId} as documented on
  * {@link NpmDependency}. Entries that fail the NPM-name allowlist
  * ({@code @?[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)?}) are silently skipped
  * at this layer so no out-of-policy name reaches the registry source or any
@@ -116,7 +117,8 @@ class NpmPackageParser {
 	/**
 	 * Return the canonical {@link ArtifactId} for the given NPM package name.
 	 *
-	 * <p>Unscoped names produce {@code groupId == artifactId == name}. Scoped names
+	 * <p>
+	 * Unscoped names produce {@code groupId == artifactId == name}. Scoped names
 	 * {@code @scope/name} split into {@code groupId = "@scope"} and
 	 * {@code artifactId = "name"}.
 	 * @param name an NPM package name that has passed the {@link #NAME_ALLOWLIST

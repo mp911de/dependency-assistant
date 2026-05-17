@@ -39,12 +39,12 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 	}
 
 	/**
-	 * Returns the group id.
+	 * Return the group id.
 	 */
 	String groupId();
 
 	/**
-	 * Returns the artifact id.
+	 * Return the artifact id.
 	 */
 	String artifactId();
 

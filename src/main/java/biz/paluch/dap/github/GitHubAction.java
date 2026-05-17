@@ -30,12 +30,14 @@ import org.springframework.util.StringUtils;
  * GitHub repository action referenced from a workflow {@code uses:}
  * declaration.
  *
- * <p>The dependency identity of a GitHub action is the repository that
+ * <p>
+ * The dependency identity of a GitHub action is the repository that
  * publishes it: {@code owner/repository}. Any workflow-local action path is
  * deliberately ignored for identity and release lookup, since tags and SHAs
  * belong to the Git repository rather than to a subdirectory inside it.
  *
- * <p>The {@linkplain #version() version} is the raw ref after {@code @}. It is
+ * <p>
+ * The {@linkplain #version() version} is the raw ref after {@code @}. It is
  * retained as workflow metadata so callers can resolve, compare, and rewrite
  * the declaration without conflating repository identity with the selected ref.
  *
@@ -46,7 +48,8 @@ interface GitHubAction extends ArtifactId {
 
 	/**
 	 * Pattern for repository-backed GitHub Action {@code uses:} values.
-	 * <p>Local actions and Docker image references are intentionally excluded from
+	 * <p>
+	 * Local actions and Docker image references are intentionally excluded from
 	 * this contract because they are not resolved through GitHub repository release
 	 * metadata.
 	 */
@@ -58,7 +61,8 @@ interface GitHubAction extends ArtifactId {
 
 	/**
 	 * Return the raw workflow ref for this action.
-	 * <p>The ref may represent a tag, branch, semantic version, or commit SHA and
+	 * <p>
+	 * The ref may represent a tag, branch, semantic version, or commit SHA and
 	 * is not normalized by this abstraction.
 	 */
 	String version();
@@ -66,7 +70,8 @@ interface GitHubAction extends ArtifactId {
 	/**
 	 * Determine whether the given value is a repository-backed GitHub Action
 	 * {@code uses:} declaration.
-	 * <p>A {@code false} result does not mean the workflow entry is invalid YAML;
+	 * <p>
+	 * A {@code false} result does not mean the workflow entry is invalid YAML;
 	 * it means the entry is outside the dependency model handled here.
 	 * @param uses the workflow value to inspect
 	 * @return {@code true} if the value can be represented as a
@@ -88,7 +93,8 @@ interface GitHubAction extends ArtifactId {
 
 	/**
 	 * Parse a repository-backed GitHub Action from a workflow {@code uses:} value.
-	 * <p>The returned action keeps the repository owner, repository name, and raw
+	 * <p>
+	 * The returned action keeps the repository owner, repository name, and raw
 	 * ref. Path segments after the repository name and trailing workflow comments
 	 * are accepted by the parser but are not part of the dependency identity.
 	 *

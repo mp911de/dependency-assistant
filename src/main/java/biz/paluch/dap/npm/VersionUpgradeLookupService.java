@@ -35,7 +35,8 @@ import com.intellij.psi.PsiElement;
  * {@link VersionUpgradeLookupSupport} implementation for NPM
  * {@code package.json} dependency entries.
  *
- * <p>Resolves the {@link JsonStringLiteral} value beneath
+ * <p>
+ * Resolves the {@link JsonStringLiteral} value beneath
  * {@code dependencies}/{@code devDependencies} into an
  * {@link ArtifactReference} by classifying the value through
  * {@link NpmPackageParser}. {@code Prefix} entries report a defined version so

@@ -1,7 +1,8 @@
 /**
  * Persistent and runtime state abstractions for the Dependency Assistant
  * plugin.
- * <p>The package separates two related concerns:
+ * <p>
+ * The package separates two related concerns:
  * <ul>
  * <li>persisted cache data such as known releases and property-to-artifact
  * correlations, and</li>

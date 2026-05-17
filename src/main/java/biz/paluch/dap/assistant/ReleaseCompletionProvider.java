@@ -57,12 +57,14 @@ import org.jspecify.annotations.Nullable;
  * {@link CompletionProvider} that turns resolved artifact metadata into release
  * lookup elements.
  *
- * <p>The provider resolves the artifact at the completion position through the
+ * <p>
+ * The provider resolves the artifact at the completion position through the
  * active {@link ProjectDependencyContext}, reads cached releases from
  * {@link StateService}, and renders them as prioritized {@link ArtifactRelease}
  * lookup elements.
  *
- * <p>Subclasses usually customize one of the protected hooks instead of
+ * <p>
+ * Subclasses usually customize one of the protected hooks instead of
  * replacing the provider:
  * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)} for
  * format-specific prefix handling,
@@ -71,7 +73,8 @@ import org.jspecify.annotations.Nullable;
  * tag-vs-SHA insertion, and {@link #getReleases(ArtifactId, Cache)} for
  * filtering or ordering the release list.
  *
- * <p>This provider does not decide completion locations, refresh release
+ * <p>
+ * This provider does not decide completion locations, refresh release
  * metadata, or contact remote repositories. Register it from a
  * {@code CompletionContributor} at PSI positions that can be resolved by the
  * current dependency context. The default implementation is stateless and can
@@ -87,7 +90,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Add release completions for the artifact resolved at the current completion
 	 * position.
 	 *
-	 * <p>Subclasses that override this method to gate completion should usually
+	 * <p>
+	 * Subclasses that gate completion should usually
 	 * call {@code super.addCompletions(...)} once their format-specific
 	 * preconditions are satisfied.
 	 * @param parameters the IntelliJ completion parameters; must not be
@@ -197,7 +201,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Return whether the given Git-backed version can be used for SHA insertion at
 	 * the current completion position.
 	 *
-	 * <p>The default accepts every {@link GitVersion}. Override this method when a
+	 * <p>
+	 * The default accepts every {@link GitVersion}. Override when a
 	 * contributor can resolve Git-backed releases but a particular PSI location
 	 * must still insert the version text instead of the release SHA.
 	 * @param element the PSI element used to resolve completion metadata.
@@ -212,7 +217,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return the reference style to use when choosing the inserted lookup string.
 	 *
-	 * <p>The default inserts version text. Contributors for formats that preserve
+	 * <p>
+	 * The default inserts version text. Contributors for formats that preserve
 	 * SHA references can return {@link RefStyle#SHA}; in that case Git-backed
 	 * releases with SHA metadata insert the SHA while keeping version lookup
 	 * strings available for matching.
@@ -244,8 +250,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Customize the lookup element for a release option.
 	 *
-	 * <p>The builder already has the release renderer, lookup strings, and default
-	 * replacement handler applied. Override this method to add format-specific
+	 * <p>
+	 * The builder already has the release renderer, lookup strings, and default
+	 * replacement handler applied. Override to add format-specific
 	 * insert handling or lookup metadata while preserving the supplied builder's
 	 * existing behavior. The default returns {@code builder} unchanged.
 	 * @param parameters the IntelliJ completion parameters.
@@ -263,7 +270,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Return the result set with the prefix matcher used for release lookup
 	 * elements.
 	 *
-	 * <p>The default matcher uses an empty prefix after explicit repeated
+	 * <p>
+	 * The default matcher uses an empty prefix after explicit repeated
 	 * completion invocation and otherwise uses
 	 * {@link #getPrefix(CompletionParameters)}. Contributors with larger
 	 * surrounding syntaxes, such as URLs or dependency notations, can override this
@@ -291,7 +299,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return the version-token prefix at the current completion position.
 	 *
-	 * <p>The original position is preferred when IntelliJ has inserted completion
+	 * <p>
+	 * The original position is preferred when IntelliJ has inserted completion
 	 * placeholder PSI. If no original position is available, the live completion
 	 * position is used.
 	 * @param parameters the IntelliJ completion parameters.
@@ -311,7 +320,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return the version-token prefix inside the given literal.
 	 *
-	 * <p>Version tokens may contain letters, digits, dots, hyphens, underscores,
+	 * <p>
+	 * Version tokens may contain letters, digits, dots, hyphens, underscores,
 	 * and plus signs. The returned prefix is the contiguous token fragment between
 	 * the token start and the caret offset.
 	 * @param parameters the IntelliJ completion parameters.
@@ -400,7 +410,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		/**
 		 * Create metadata without a default replacement literal.
 		 *
-		 * <p>Use this constructor when a subclass supplies its own insert handler or
+		 * <p>
+		 * Use this constructor when a subclass supplies its own insert handler or
 		 * when completion should only contribute lookup elements.
 		 * @param artifactId the resolved artifact whose releases should be suggested.
 		 * @param currentVersion the currently declared version, or {@literal null} if

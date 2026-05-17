@@ -38,7 +38,8 @@ import org.jspecify.annotations.Nullable;
  * {@link VersionUpgradeLookupSupport} implementation for Antora playbook
  * {@code ui.bundle.url} declarations.
  *
- * <p>Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
+ * <p>
+ * Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
  * an {@link ArtifactReference}. The declared version is resolved against the
  * shared cache through {@link GitVersionResolver}; if the cache does not
  * contain the version, the parsed version is exposed as a plain

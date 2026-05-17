@@ -31,7 +31,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Dispatcher for registered {@link DependencyAssistant} integrations.
  *
- * <p>Integrations are discovered through the {@code biz.paluch.dap.assistant}
+ * <p>
+ * Integrations are discovered through the {@code biz.paluch.dap.assistant}
  * extension point and consulted in registration order. Fan-out methods visit
  * every matching integration; first-match methods stop once a file has an
  * owner.
@@ -50,10 +51,11 @@ public class DependencyAssistantDispatcher {
 
 	/**
 	 * Return whether any registered integration applies to the given project.
-	 * <p>Returns {@code true} immediately if the project-scoped
+	 * <p>
+	 * Return {@literal true} immediately if the project-scoped
 	 * {@link StateService} already holds dependency or release data, avoiding
 	 * repeated project applicability checks during UI updates.
-	 * @param project the project to inspect.
+	 * @param project the project to inspect; must not be {@literal null}.
 	 */
 	public static boolean supports(Project project) {
 
@@ -112,7 +114,7 @@ public class DependencyAssistantDispatcher {
 	 * Return the {@link ProjectDependencyContext} from the first integration that
 	 * owns the given PSI element.
 	 * @param element the PSI element to resolve.
-	 * @return the context from the first matching integration, or {@code null}.
+	 * @return the context from the first matching integration, or {@literal null}.
 	 */
 	public static ProjectDependencyContext findFirstContext(PsiElement element) {
 		return findFirstContext(element instanceof PsiFile file ? file : element.getContainingFile());
@@ -122,7 +124,7 @@ public class DependencyAssistantDispatcher {
 	 * Return the {@link ProjectDependencyContext} from the first integration that
 	 * owns the given PSI file.
 	 * @param file the PSI file to resolve.
-	 * @return the context from the first matching integration, or {@code null}.
+	 * @return the context from the first matching integration, or {@literal null}.
 	 */
 	public static ProjectDependencyContext findFirstContext(PsiFile file) {
 		return findFirstContext(file.getProject(), file);

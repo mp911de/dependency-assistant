@@ -24,7 +24,8 @@ import com.intellij.psi.PsiElement;
 /**
  * Dependency usage or declaration site in a build file.
  *
- * <p>A site exposes artifact coordinates, the source from which the version is
+ * <p>
+ * A site exposes artifact coordinates, the source from which the version is
  * obtained, and the PSI element that owns the declaration.
  *
  * @author Mark Paluch

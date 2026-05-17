@@ -43,7 +43,8 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 /**
  * Completion contributor for GitHub Actions {@code uses:} refs.
  *
- * <p>Suggests cached release options with SHA-awareness: when the current ref
+ * <p>
+ * Suggests cached release options with SHA-awareness: when the current ref
  * uses SHA style and the release has SHA metadata, the inserted text is the
  * release commit SHA, shortened to the current SHA prefix length if the
  * workflow already uses an abbreviated SHA. Otherwise, the release version

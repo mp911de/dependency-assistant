@@ -49,7 +49,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Parser that extracts Gradle dependency declarations from Groovy DSL
  * ({@code build.gradle}) files.
- * <p>Results are accumulated into a {@link DependencyCollector} using the same
+ * <p>
+ * Results are accumulated into a {@link DependencyCollector} using the same
  * coordinate model as the Maven parser, making the version-resolution and UI
  * layers build-tool-agnostic.
  *
@@ -207,7 +208,7 @@ class GradleParser extends GradleParserSupport {
 	/**
 	 * Walks up from a {@code prefer} or {@code strictly} call to the enclosing
 	 * dependency method call, returning the outer {@link GrMethodCall} when the
-	 * full version-block structure is present, or {@code null} otherwise.
+	 * full version-block structure is present, or {@literal null} otherwise.
 	 */
 	static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
 
@@ -433,7 +434,7 @@ class GradleParser extends GradleParserSupport {
 	 * </pre>
 	 * @param call the method call to inspect.
 	 * @param propertyResolver property resolver used for property-backed versions.
-	 * @return the parsed dependency, or {@code null} if the call does not contain a
+	 * @return the parsed dependency, or {@literal null} if the call does not contain a
 	 * supported direct declaration.
 	 */
 	public static @Nullable DependencySite parseDependency(GrMethodCall call, PropertyResolver propertyResolver) {
@@ -489,7 +490,8 @@ class GradleParser extends GradleParserSupport {
 	/**
 	 * Parse Groovy dependency declarations that use version-block or map-style
 	 * notation.
-	 * <p>Supports declarations such as: <pre class="code">
+	 * <p>
+	 * Supports declarations such as: <pre class="code">
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
 	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
 	 * </pre>
@@ -505,7 +507,8 @@ class GradleParser extends GradleParserSupport {
 
 	/**
 	 * Parse a Groovy version-block dependency declaration.
-	 * <p><pre class="code">
+	 * <p>
+	 * <pre class="code">
 	 * implementation('group:artifact') {
 	 *     version {
 	 *         strictly '[1.7, 1.8['
@@ -513,7 +516,8 @@ class GradleParser extends GradleParserSupport {
 	 *     }
 	 * }
 	 * </pre>
-	 * <p>When {@code propertyResolver} is provided, bare variable references such
+	 * <p>
+	 * When {@code propertyResolver} is provided, bare variable references such
 	 * as {@code prefer varName} are resolved through it.
 	 *
 	 * @param call the method call to parse.

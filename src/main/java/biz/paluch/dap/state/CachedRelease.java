@@ -30,7 +30,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Persistent representation of a cached artifact release.
- * <p>The serialized form stores only the release version and an optional
+ * <p>
+ * The serialized form stores only the release version and an optional
  * ISO-8601 date string. Conversion back to the domain {@link Release} type is
  * performed lazily and memoized for repeated access within the same JVM
  * instance.
@@ -74,7 +75,7 @@ public class CachedRelease {
 	 *
 	 * @param version the release version.
 	 * @param date the optional release date in ISO-8601 local-date form.
-	 * @param sha the full 40-character SHA-1 commit hash, or {@code null}.
+	 * @param sha the full 40-character SHA-1 commit hash, or {@literal null}.
 	 */
 	public CachedRelease(String version, @Nullable String date, @Nullable String sha) {
 		this.version = version;
@@ -127,7 +128,8 @@ public class CachedRelease {
 
 	/**
 	 * Return this entry as a domain {@link Release}.
-	 * <p>The returned instance is memoized after the first conversion.
+	 * <p>
+	 * The returned instance is memoized after the first conversion.
 	 *
 	 * @return the corresponding release.
 	 */
@@ -169,9 +171,9 @@ public class CachedRelease {
 	}
 
 	/**
-	 * Return the full SHA-1 commit hash, or {@code null} if not stored.
+	 * Return the full SHA-1 commit hash, or {@literal null} if not stored.
 	 *
-	 * @return the commit SHA-1, or {@code null}.
+	 * @return the commit SHA-1, or {@literal null}.
 	 */
 	@Attribute
 	public @Nullable String sha() {

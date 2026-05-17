@@ -144,7 +144,7 @@ public class DependencyUpdateOption implements HasArtifactId {
 	}
 
 	/**
-	 * Return the selected target version, or {@code null} if none is selected.
+	 * Return the selected target version, or {@literal null} if none is selected.
 	 */
 	public @Nullable ArtifactVersion getUpdateTo() {
 		return updateTo;
@@ -165,7 +165,7 @@ public class DependencyUpdateOption implements HasArtifactId {
 
 	/**
 	 * Set the selected target version.
-	 * @param updateTo the selected target version, or {@code null}.
+	 * @param updateTo the selected target version, or {@literal null}.
 	 */
 	public void setUpdateTo(@Nullable ArtifactVersion updateTo) {
 		this.updateTo = updateTo;

@@ -30,7 +30,8 @@ import com.intellij.psi.PsiFile;
 /**
  * {@link ProjectBuildContext} for a single {@code package.json} file.
  *
- * <p>Each {@code package.json} file produces its own context so that dependent
+ * <p>
+ * Each {@code package.json} file produces its own context so that dependent
  * declarations in different monorepo modules maintain independent dependency
  * state.
  * @author Mark Paluch

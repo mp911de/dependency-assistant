@@ -34,7 +34,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Shared helpers for IDE-aware HTTP access.
- * <p>HTTP transport itself uses {@link com.intellij.util.io.HttpRequests},
+ * <p>
+ * HTTP transport itself uses {@link com.intellij.util.io.HttpRequests},
  * which natively integrates with the IDE proxy selector, proxy authentication,
  * and progress-indicator cancellation. This class only centralizes the
  * {@code User-Agent} computation that release sources apply to their requests.
@@ -84,7 +85,8 @@ public class HttpClientUtil {
 
 	/**
 	 * Return the {@code User-Agent} for metadata requests.
-	 * <p>The value is derived from IntelliJ product information when the
+	 * <p>
+	 * The value is derived from IntelliJ product information when the
 	 * application is available and falls back to a generic IDE identifier in
 	 * non-application contexts.
 	 *
@@ -103,7 +105,8 @@ public class HttpClientUtil {
 
 	/**
 	 * Read the response body as a UTF-8 string, streaming with a hard size cap.
-	 * <p>The body is read in 8&nbsp;KB chunks and the cumulative size is checked
+	 * <p>
+	 * The body is read in 8&nbsp;KB chunks and the cumulative size is checked
 	 * after each read. Reads exceeding {@link #MAX_RESPONSE_BODY_BYTES} fail with
 	 * an {@link IOException} before the full body is materialised, preventing a
 	 * hostile or oversized response from being fully allocated in memory.

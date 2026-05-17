@@ -37,7 +37,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Persistent cache for release metadata and per-project property correlations.
- * <p>This type serves as the durable backing store of the plugin state. It
+ * <p>
+ * This type serves as the durable backing store of the plugin state. It
  * keeps:
  * <ul>
  * <li>cached releases keyed by artifact coordinates, and</li>
@@ -108,8 +109,9 @@ public class Cache {
 
 	/**
 	 * Return cached releases for the given artifact.
-	 * <p>If {@code ensureRecent} is {@literal true}, stale cache content is treated
-	 * as absent and this method returns an empty list once the cache age exceeds
+	 * <p>
+	 * If {@code ensureRecent} is {@literal true}, stale cache content is treated
+	 * as absent and the result is an empty list once the cache age exceeds
 	 * the configured expiration window. The method does not trigger a refresh.
 	 *
 	 * @param artifactId the artifact to look up.
@@ -142,7 +144,8 @@ public class Cache {
 
 	/**
 	 * Append cached artifact entries to this cache.
-	 * <p>This method does not attempt to de-duplicate existing entries.
+	 * <p>
+	 * Existing entries are not de-duplicated.
 	 *
 	 * @param artifacts the artifact entries to append.
 	 */
@@ -155,7 +158,8 @@ public class Cache {
 
 	/**
 	 * Replace the cached releases for the given artifact.
-	 * <p>If no cache entry exists yet, one is created first.
+	 * <p>
+	 * If no cache entry exists yet, one is created first.
 	 *
 	 * @param artifactId the artifact whose releases should be stored.
 	 * @param releases the releases to cache.
@@ -192,8 +196,8 @@ public class Cache {
 
 	/**
 	 * Return the cache entry for the given project identity.
-	 * <p>If no entry exists yet, this method creates, stores, and returns a new
-	 * one.
+	 * <p>
+	 * If no entry exists yet, a new one is created, stored, and returned.
 	 *
 	 * @param identity the project identity.
 	 * @return the existing or newly created project cache entry.
@@ -224,7 +228,7 @@ public class Cache {
 	 *
 	 * @param propertyName the property name to locate.
 	 * @param filter the conditional that must accept the matching property.
-	 * @return the first matching project property, or {@code null} if none matches.
+	 * @return the first matching project property, or {@literal null} if none matches.
 	 */
 	public @Nullable ProjectProperty findProperty(String propertyName, Predicate<VersionProperty> filter) {
 
@@ -248,7 +252,8 @@ public class Cache {
 
 	/**
 	 * Invoke the given consumer for each property known to this cache.
-	 * <p>Iteration is based on a snapshot of the current project entries.
+	 * <p>
+	 * Iteration is based on a snapshot of the current project entries.
 	 *
 	 * @param propertyConsumer the consumer to invoke.
 	 */
@@ -258,7 +263,8 @@ public class Cache {
 
 	/**
 	 * Return the raw {@link CachedRelease} entries for the given artifact.
-	 * <p>Unlike {@link #getReleases(ArtifactId, boolean)}, this method returns the
+	 * <p>
+	 * Unlike {@link #getReleases(ArtifactId, boolean)}, this variant returns the
 	 * serialized form including optional extended attributes such as the commit SHA
 	 * stored by the GitHub integration.
 	 *

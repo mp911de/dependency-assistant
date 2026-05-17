@@ -56,7 +56,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * NPM implementation of {@link DependencyAssistant}.
  *
- * <p>Supports {@code package.json} files whose JSON root carries a
+ * <p>
+ * Supports {@code package.json} files whose JSON root carries a
  * {@code dependencies} or {@code devDependencies} object. The assistant relies
  * on the bundled IntelliJ JSON support, declared via
  * {@code com.intellij.modules.json} in the plugin XML.

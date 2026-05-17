@@ -18,7 +18,8 @@ package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.Icon;
 
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.DependencyUpdateOption;
@@ -147,7 +148,7 @@ class DependencyUpdateModel {
 		}
 
 		/**
-		 * Return the upgrade strategy represented by this selection, or {@code null}
+		 * Return the upgrade strategy represented by this selection, or {@literal null}
 		 * for manual selection.
 		 */
 		public @Nullable UpgradeStrategy getStrategy() {

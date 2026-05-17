@@ -25,12 +25,14 @@ import biz.paluch.dap.artifact.VersionSource;
 /**
  * NPM dependency declared in {@code dependencies} or {@code devDependencies}.
  *
- * <p>The {@link ArtifactId} uses the canonical NPM coordinate normalization
+ * <p>
+ * The {@link ArtifactId} uses the canonical NPM coordinate normalization
  * documented on {@link NpmPackageParser}: an unscoped package name produces
  * {@code groupId == artifactId == name}; a scoped name {@code @scope/name}
  * splits into {@code groupId = "@scope"} and {@code artifactId = "name"}.
  *
- * <p>The Git case is not a sibling type; it is the
+ * <p>
+ * The Git case is not a sibling type; it is the
  * {@link NpmVersionExpression.Git} variant of {@link #version()}. Anything
  * Git-specific (host, owner, repository, committish, replaceable range) lives
  * on the variant rather than on this record.

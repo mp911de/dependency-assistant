@@ -23,7 +23,8 @@ import com.intellij.openapi.progress.ProgressIndicator;
 /**
  * {@link ReleaseSource} for Gradle Plugin Portal marker artifacts.
  *
- * <p>Plugin declarations are represented as {@code groupId == artifactId}. Such
+ * <p>
+ * Plugin declarations are represented as {@code groupId == artifactId}. Such
  * lookups are translated to the Portal marker artifact
  * {@code <pluginId>:<pluginId>.gradle.plugin}. Regular library coordinates
  * return an empty list.

@@ -25,7 +25,8 @@ import org.springframework.util.Assert;
 /**
  * Strategy interface for resolving build-time property values.
  *
- * <p>A resolver may expose both the resolved string value and the
+ * <p>
+ * A resolver may expose both the resolved string value and the
  * {@link PropertyValue} metadata that identifies its PSI declaration. Metadata
  * support is optional.
  *
@@ -43,7 +44,7 @@ public interface PropertyResolver {
 	}
 
 	/**
-	 * Resolve the property value associated with the given key, or {@code null} if
+	 * Resolve the property value associated with the given key, or {@literal null} if
 	 * the key cannot be resolved.
 	 * @param key the property name to resolve.
 	 * @see #containsProperty(String)
@@ -54,7 +55,7 @@ public interface PropertyResolver {
 	/**
 	 * Return declaration metadata for the given property key, if available.
 	 * @param key the property name.
-	 * @return the declaration metadata, or {@code null}.
+	 * @return the declaration metadata, or {@literal null}.
 	 */
 	default @Nullable PropertyValue getPropertyValue(String key) {
 		return null;
@@ -65,7 +66,7 @@ public interface PropertyResolver {
 	 * corresponding property values.
 	 * @param text the String to resolve.
 	 * @return the resolved String.
-	 * @throws IllegalArgumentException if given text is {@code null}.
+	 * @throws IllegalArgumentException if given text is {@literal null}.
 	 */
 	default String resolvePlaceholders(String text) {
 		Assert.notNull(text, "Text must not be null");
@@ -74,7 +75,8 @@ public interface PropertyResolver {
 
 	/**
 	 * Compose this resolver with the given fallback resolver.
-	 * <p>This resolver is consulted first for both {@link #getProperty(String)} and
+	 * <p>
+	 * This resolver is consulted first for both {@link #getProperty(String)} and
 	 * {@link #getPropertyValue(String)} lookups.
 	 * @param fallback the resolver to consult if this resolver has no match.
 	 * @return a composite resolver with this resolver as primary and

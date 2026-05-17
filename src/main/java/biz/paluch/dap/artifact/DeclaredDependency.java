@@ -25,7 +25,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Dependency declaration found while scanning build files.
  *
- * <p>The same artifact can appear in several structural locations. Each
+ * <p>
+ * The same artifact can appear in several structural locations. Each
  * declaration location is captured as a {@link DeclarationSource}, and each
  * version origin is captured as a {@link VersionSource}.
  *
@@ -98,7 +99,7 @@ public class DeclaredDependency implements HasArtifactId {
 	}
 
 	/**
-	 * Return the first property-based version source, or {@code null} if none is
+	 * Return the first property-based version source, or {@literal null} if none is
 	 * registered.
 	 */
 	public VersionSource.@Nullable VersionProperty findPropertyVersion() {

@@ -31,7 +31,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Cache-only resolver that resolves a {@link GitVersion} from a commit ref.
  * 
- * <p>It inspects the cached {@link CachedRelease} entries for the given
+ * <p>
+ * It inspects the cached {@link CachedRelease} entries for the given
  * artifact and matches the ref against:
  * <ul>
  * <li>the stored SHA, accepting an unambiguous prefix; or</li>
@@ -73,11 +74,12 @@ public class GitVersionResolver {
 
 	/**
 	 * Resolve a ref against the given release list.
-	 * <p>Exact version matches win. Otherwise, a unique version or SHA prefix match
+	 * <p>
+	 * Exact version matches win. Otherwise, a unique version or SHA prefix match
 	 * is accepted; ambiguous prefixes are unresolved.
 	 * @param versionRef the raw workflow ref
 	 * @param releases the releases to inspect
-	 * @return the matching version, or {@code null} if no unique match exists
+	 * @return the matching version, or {@literal null} if no unique match exists
 	 */
 	public static @Nullable GitVersion resolveVersion(String versionRef, List<Release> releases) {
 

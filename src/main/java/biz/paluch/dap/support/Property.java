@@ -21,7 +21,8 @@ import com.intellij.psi.PsiElement;
 /**
  * Descriptor for a resolved build property declaration.
  *
- * <p>A property exposes the lookup key, the logical string value, and the PSI
+ * <p>
+ * A property exposes the lookup key, the logical string value, and the PSI
  * element that owns the value text. Placeholder expansion and fallback lookup
  * are handled by {@link PropertyResolver}.
  *

@@ -29,7 +29,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 /**
  * {@link ProjectBuildContext} for a single Antora playbook file.
  *
- * <p>Each {@code antora-playbook.yml} file produces its own context so that
+ * <p>
+ * Each {@code antora-playbook.yml} file produces its own context so that
  * dependency state for independent playbooks remains isolated. Release lookup
  * uses a strict {@link GitReleaseSource} keyed on the host parsed from the
  * declared {@code ui.bundle.url}.

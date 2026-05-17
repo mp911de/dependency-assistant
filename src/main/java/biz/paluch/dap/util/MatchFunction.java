@@ -25,7 +25,8 @@ import org.springframework.util.Assert;
  * Callback strategy interface for locating successive ranges in decoded
  * property text.
  *
- * <p>A {@code MatchFunction} is called repeatedly with the same decoded text
+ * <p>
+ * A {@code MatchFunction} is called repeatedly with the same decoded text
  * and the index at which the next search should begin. Implementations return
  * {@link #noMatch()} to signal completion. Match coordinates are offsets in the
  * decoded text so callers can map the result back to the original host text.
@@ -38,7 +39,8 @@ public interface MatchFunction {
 	/**
 	 * Find the next match at or after the supplied decoded-text index.
 	 *
-	 * <p>The returned {@link MatchResult#start()} and {@link MatchResult#end()}
+	 * <p>
+	 * The returned {@link MatchResult#start()} and {@link MatchResult#end()}
 	 * values must be offsets into {@code text}. A caller advances subsequent
 	 * searches to {@code end()}, so implementations that expose zero-length matches
 	 * must ensure repeated invocations do not return the same match indefinitely.
@@ -54,7 +56,8 @@ public interface MatchFunction {
 	 * Return a match result covering a named group from a matcher that already
 	 * matched.
 	 *
-	 * <p>The named group must have participated in the current match. Use the
+	 * <p>
+	 * The named group must have participated in the current match. Use the
 	 * original matcher when access to additional groups is needed.
 	 *
 	 * @param group the name of the capturing group to expose; must not be
@@ -73,7 +76,8 @@ public interface MatchFunction {
 	/**
 	 * Return a match function that treats the supplied string as a literal token.
 	 *
-	 * <p>The returned function delegates to {@link String#indexOf(String, int)};
+	 * <p>
+	 * The returned function delegates to {@link String#indexOf(String, int)};
 	 * pattern syntax and case folding are not applied.
 	 *
 	 * @param str the literal text to locate; must contain at least one

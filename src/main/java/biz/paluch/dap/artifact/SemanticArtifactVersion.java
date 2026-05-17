@@ -239,7 +239,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns whether the version is a release version.
+	 * Return whether the version is a release version.
 	 *
 	 * @return {@code true} if this version is a release version.
 	 */
@@ -249,7 +249,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns whether the version is a preview version.
+	 * Return whether the version is a preview version.
 	 *
 	 * @return {@code true} if this version is a preview version.
 	 */
@@ -259,7 +259,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns whether the version is a milestone version.
+	 * Return whether the version is a milestone version.
 	 *
 	 * @return {@code true} if this version is a milestone version.
 	 */
@@ -275,7 +275,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns whether the version is a RC version.
+	 * Return whether the version is a RC version.
 	 *
 	 * @return {@code true} if this version is a release candidate version.
 	 */
@@ -309,7 +309,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns the next development version to be used for the current release
+	 * Return the next development version to be used for the current release
 	 * version, which means next minor for GA versions and next bug fix for service
 	 * releases. Will return the current version as snapshot otherwise.
 	 *
@@ -329,7 +329,7 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	}
 
 	/**
-	 * Returns the next bug fix version for the current version if it's a release
+	 * Return the next bug fix version for the current version if it's a release
 	 * version or the snapshot version of the current one otherwise.
 	 *
 	 * @return the next bugfix version.

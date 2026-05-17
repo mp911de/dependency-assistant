@@ -32,7 +32,8 @@ import org.jspecify.annotations.Nullable;
  * Collects dependency coordinates from a Gradle file using the appropriate
  * parser for Groovy DSL, Kotlin DSL, {@code gradle.properties}, or
  * {@code *.versions.toml} version catalogs.
- * <p>When the anchor file is a Gradle build or settings script, the collector
+ * <p>
+ * When the anchor file is a Gradle build or settings script, the collector
  * additionally parses sibling {@code gradle.properties} and
  * {@code gradle/libs.versions.toml} files located at the project root (if
  * present) so accessor expressions referencing properties or catalog aliases
@@ -66,7 +67,8 @@ class GradleDependencyCollector {
 
 	/**
 	 * Collect artifact declarations from {@code buildFile}.
-	 * <p>When {@code buildFile} is a Gradle build or settings script, the collector
+	 * <p>
+	 * When {@code buildFile} is a Gradle build or settings script, the collector
 	 * also parses, in order, the project-root {@code gradle.properties} and
 	 * {@code gradle/libs.versions.toml} files before the anchor itself. A sibling
 	 * that is identical to the anchor is skipped to avoid double-parsing. Missing

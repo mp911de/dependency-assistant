@@ -27,7 +27,8 @@ import org.springframework.util.Assert;
 /**
  * Value object representing an artifact declaration and its associated
  * metadata.
- * <p>Captures the artifact identifier, the origin of the version, whether the
+ * <p>
+ * Captures the artifact identifier, the origin of the version, whether the
  * version is defined in the same file, and optional PSI elements for the
  * declaration and version.
  *
@@ -116,7 +117,7 @@ public class ArtifactDeclaration implements DependencySite {
 	/**
 	 * Return the PSI element representing the declaration, if available.
 	 *
-	 * @return the declaration element, or {@code null} if not available.
+	 * @return the declaration element, or {@literal null} if not available.
 	 */
 	public PsiElement getDeclarationElement() {
 		return declarationElement;
@@ -125,7 +126,7 @@ public class ArtifactDeclaration implements DependencySite {
 	/**
 	 * Return the PSI element representing the version, if available.
 	 *
-	 * @return the version element, or {@code null} if not available.
+	 * @return the version element, or {@literal null} if not available.
 	 */
 	public @Nullable PsiElement getVersionLiteral() {
 		return versionLiteral;
@@ -247,12 +248,13 @@ public class ArtifactDeclaration implements DependencySite {
 
 		/**
 		 * Build a new {@link ArtifactDeclaration}.
-		 * <p>Requires both {@link ArtifactId} and {@link VersionSource} to be
+		 * <p>
+		 * Requires both {@link ArtifactId} and {@link VersionSource} to be
 		 * configured.
 		 *
 		 * @return a new {@link ArtifactDeclaration}.
 		 * @throws IllegalArgumentException if {@code id} or {@code versionSource} is
-		 * {@code null}.
+		 * {@literal null}.
 		 */
 		public ArtifactDeclaration build() {
 

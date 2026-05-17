@@ -143,7 +143,7 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Returns the plain string content of a Groovy literal.
+	 * Return the plain string content of a Groovy literal.
 	 * @param literal the literal to extract the text from.
 	 * @return the string value.
 	 */

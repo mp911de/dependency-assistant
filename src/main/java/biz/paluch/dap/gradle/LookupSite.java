@@ -30,7 +30,8 @@ import org.springframework.util.Assert;
 /**
  * Descriptor for a semantic dependency lookup site in a Gradle build.
  *
- * <p>Locator implementations create these descriptors from PSI. The
+ * <p>
+ * Locator implementations create these descriptors from PSI. The
  * {@link GradleLookupSiteResolver} then resolves them to artifact metadata. The
  * {@link #declarationElement()} identifies the owning declaration or reference
  * site.
@@ -111,10 +112,11 @@ interface LookupSite {
 
 	/**
 	 * Adapt the given {@link DependencySite} to a {@link LookupSite}.
-	 * <p>A {@code null} input results in {@link LookupSite#absent()}.
+	 * <p>
+	 * A {@literal null} input results in {@link LookupSite#absent()}.
 	 * @param dependencySite the dependency site to adapt.
 	 * @return the adapted lookup site, or {@link LookupSite#absent()} if
-	 * {@code dependencySite} is {@code null}.
+	 * {@code dependencySite} is {@literal null}.
 	 */
 	static LookupSite from(@Nullable DependencySite dependencySite) {
 
@@ -145,7 +147,8 @@ interface LookupSite {
 	/**
 	 * Lookup site backed by a version property declaration or usage.
 	 *
-	 * <p>Exposes the property name together with the current raw version text so
+	 * <p>
+	 * Exposes the property name together with the current raw version text so
 	 * that property-based version resolution can continue without re-reading the
 	 * originating PSI node.
 	 */
@@ -162,7 +165,8 @@ interface LookupSite {
 	/**
 	 * Lookup site backed by artifact coordinates and a {@link VersionSource}.
 	 *
-	 * <p>Used for parser-derived dependency descriptors that may not yet carry a
+	 * <p>
+	 * Used for parser-derived dependency descriptors that may not yet carry a
 	 * resolved version value or a dedicated version PSI element.
 	 */
 	record ArtifactIdLookupSite(ArtifactId artifactId, VersionSource versionSource,
@@ -179,7 +183,8 @@ interface LookupSite {
 	/**
 	 * Lookup site backed by an already resolved {@link VersionedDependencySite}.
 	 *
-	 * <p>Preserves the fully resolved version and PSI metadata from parser
+	 * <p>
+	 * Preserves the fully resolved version and PSI metadata from parser
 	 * infrastructure while exposing it through the {@link LookupSite} contract.
 	 */
 	record ResolvedSite(VersionedDependencySite site)

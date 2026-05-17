@@ -24,13 +24,15 @@ import org.jspecify.annotations.Nullable;
  * Artifact identity for a dependency whose versions are resolved from a Git
  * repository.
  *
- * <p>The declared coordinates remain the public {@link ArtifactId} contract:
+ * <p>
+ * The declared coordinates remain the public {@link ArtifactId} contract:
  * {@link #groupId()} and {@link #artifactId()} return the dependency identity
  * as it appears in the build file. The {@linkplain #releaseSource() release
  * source} identifies the Git repository queried for tags and releases, and
  * {@link #host()} selects the Git hosting endpoint.
  *
- * <p>This split is needed for ecosystems such as NPM, where a package can be
+ * <p>
+ * This split is needed for ecosystems such as NPM, where a package can be
  * declared under one name while its version candidates come from a {@code git+}
  * URL that points to a different owner/repository. Caches, declarations, and UI
  * grouping should generally use the declared coordinates; Git release sources

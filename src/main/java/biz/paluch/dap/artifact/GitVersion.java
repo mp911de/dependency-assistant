@@ -35,7 +35,7 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 
 	/**
 	 * Create a new {@code GitVersion}.
-	 * @param sha the full 40-character SHA-1, or {@code null} when unavailable.
+	 * @param sha the full 40-character SHA-1, or {@literal null} when unavailable.
 	 * @param version the version used for comparison and display.
 	 */
 	private GitVersion(@Nullable String sha, ArtifactVersion version) {
@@ -64,7 +64,7 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Return the resolved SHA-1 commit hash, or {@code null} if unavailable.
+	 * Return the resolved SHA-1 commit hash, or {@literal null} if unavailable.
 	 */
 	@Nullable
 	public String getSha() {
@@ -72,7 +72,7 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Return the resolved SHA-1 commit hash, or {@code null} if unavailable.
+	 * Return the resolved SHA-1 commit hash, or {@literal null} if unavailable.
 	 */
 	@Nullable
 	public String getShortSha() {
@@ -84,7 +84,8 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 
 	/**
 	 * Render this version as a ref string suitable for the given style.
-	 * <p>For {@link RefStyle#VERSION} or when no SHA metadata is available, the
+	 * <p>
+	 * For {@link RefStyle#VERSION} or when no SHA metadata is available, the
 	 * version's tag form is returned. For {@link RefStyle#SHA} with SHA metadata,
 	 * the stored SHA is returned, truncated to the original committish length when
 	 * the original committish is shorter than the SHA. A {@literal null} or empty

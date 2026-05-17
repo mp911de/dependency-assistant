@@ -39,13 +39,15 @@ import org.jspecify.annotations.Nullable;
  * {@link VersionUpgradeLookupSupport} implementation for GitHub Actions
  * {@code uses:} declarations.
  *
- * <p>Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
+ * <p>
+ * Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
  * parsing the scalar text and resolving the ref against the shared cache via
  * {@link GitVersionResolver}. If the cache cannot resolve a tag-style ref, the
  * raw ref may still be exposed as a plain {@link ArtifactVersion}. Remote API
  * access is never triggered.
  *
- * <p>Only elements inside the scalar value of a {@code uses:}
+ * <p>
+ * Only elements inside the scalar value of a {@code uses:}
  * {@link YAMLKeyValue} are considered. All other elements resolve to
  * {@link ArtifactReference#unresolved()}.
  *
@@ -108,7 +110,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	 * Walk up the PSI tree from the given element to find the nearest
 	 * {@link YAMLScalar} that is the value of a {@code uses:} key.
 	 * @param element the element at the cursor position.
-	 * @return the scalar, or {@code null} if none found.
+	 * @return the scalar, or {@literal null} if none found.
 	 */
 	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
 
@@ -123,7 +125,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	/**
 	 * Return the {@link YAMLScalar} that is the value of a {@code uses:} key.
 	 * @param element the element at the cursor position.
-	 * @return the scalar, or {@code null} if none found.
+	 * @return the scalar, or {@literal null} if none found.
 	 */
 	public static @Nullable YAMLScalar getUsesScalar(PsiElement element) {
 

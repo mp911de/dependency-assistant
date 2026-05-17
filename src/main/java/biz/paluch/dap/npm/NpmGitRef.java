@@ -23,7 +23,8 @@ import biz.paluch.dap.artifact.GitRepositoryMetadata;
  * Git-backed NPM dependency reference resolved through
  * {@link GitRepositoryMetadata#parseGitUrl(String)}.
  *
- * <p>The {@code prefix} is the original Git URL or shorthand text up to the
+ * <p>
+ * The {@code prefix} is the original Git URL or shorthand text up to the
  * committish replacement point, including {@code #} and, for semver refs, the
  * {@code semver:} marker. The {@code committish} is modeled as an
  * {@link NpmVersionExpression} so tag-like refs, comparator refs, prefix refs,

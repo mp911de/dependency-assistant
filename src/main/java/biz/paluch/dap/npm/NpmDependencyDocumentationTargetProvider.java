@@ -27,7 +27,6 @@ import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.documentation.DocumentationTargetProvider;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * @author Mark Paluch
@@ -37,8 +36,7 @@ public class NpmDependencyDocumentationTargetProvider implements DocumentationTa
 	DependencyDocumentationProvider delegate = new DependencyDocumentationProvider();
 
 	@Override
-	public @NotNull List<? extends @NotNull DocumentationTarget> documentationTargets(@NotNull PsiFile file,
-			int offset) {
+	public List<? extends DocumentationTarget> documentationTargets(PsiFile file, int offset) {
 
 		if (!(file instanceof JsonFile)) {
 			return Collections.emptyList();

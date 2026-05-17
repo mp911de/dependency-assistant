@@ -103,7 +103,7 @@ interface Suffix extends Comparable<Suffix> {
 	 */
 	String SEMVER_QUALIFIER_PATTERN = "([0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)";
 
-	String VALID_SUFFIX = String.format("%s|%s|%s|%s|-%s|-%s|-%s", RELEASE_SUFFIX, MILESTONE_SUFFIX, RC_SUFFIX,
+	String VALID_SUFFIX = "%s|%s|%s|%s|-%s|-%s|-%s".formatted(RELEASE_SUFFIX, MILESTONE_SUFFIX, RC_SUFFIX,
 			Suffix.BUILD_SNAPSHOT_SUFFIX, RELEASE_SUFFIX, MILESTONE_SUFFIX, SNAPSHOT_MODIFIER);
 
 
@@ -117,7 +117,7 @@ interface Suffix extends Comparable<Suffix> {
 	/**
 	 * Parse the suffix into a {@link Suffix} instance.
 	 *
-	 * @param suffix the raw suffix text to parse, or {@code null} for a release
+	 * @param suffix the raw suffix text to parse, or {@literal null} for a release
 	 * suffix.
 	 * @return the parsed suffix.
 	 */

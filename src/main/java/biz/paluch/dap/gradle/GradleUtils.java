@@ -195,7 +195,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file is a Gradle build or settings script
+	 * Return {@literal true} if the file is a Gradle build or settings script
 	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
 	 * {@code settings.gradle.kts}).
 	 */
@@ -204,7 +204,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file is a Gradle build or settings script
+	 * Return {@literal true} if the file is a Gradle build or settings script
 	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
 	 * {@code settings.gradle.kts}).
 	 */
@@ -213,21 +213,21 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file is a {@code gradle.properties} file.
+	 * Return {@literal true} if the file is a {@code gradle.properties} file.
 	 */
 	public static boolean isGradlePropertiesFile(@Nullable VirtualFile file) {
 		return file != null && GRADLE_PROPERTIES.equals(file.getName());
 	}
 
 	/**
-	 * Returns {@literal true} if the file is a {@code gradle.properties} file.
+	 * Return {@literal true} if the file is a {@code gradle.properties} file.
 	 */
 	public static boolean isGradlePropertiesFile(@Nullable PsiFile file) {
 		return file != null && GRADLE_PROPERTIES.equals(file.getName());
 	}
 
 	/**
-	 * Returns {@literal true} if the file is a {@code *.versions.toml} version
+	 * Return {@literal true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable VirtualFile file) {
@@ -235,7 +235,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file is a {@code *.versions.toml} version
+	 * Return {@literal true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable PsiFile file) {
@@ -243,7 +243,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file uses the Kotlin DSL ({@code .kts}
+	 * Return {@literal true} if the file uses the Kotlin DSL ({@code .kts}
 	 * extension).
 	 */
 	public static boolean isKotlinDsl(@Nullable VirtualFile file) {
@@ -251,7 +251,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file uses the Kotlin DSL ({@code .kts}
+	 * Return {@literal true} if the file uses the Kotlin DSL ({@code .kts}
 	 * extension).
 	 */
 	public static boolean isKotlinDsl(@Nullable PsiFile file) {
@@ -259,7 +259,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file uses the Groovy DSL ({@code .gradle}
+	 * Return {@literal true} if the file uses the Groovy DSL ({@code .gradle}
 	 * without a {@code .kts} suffix).
 	 */
 	public static boolean isGroovyDsl(@Nullable PsiFile file) {
@@ -267,7 +267,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if the file uses the Groovy DSL ({@code .gradle}
+	 * Return {@literal true} if the file uses the Groovy DSL ({@code .gradle}
 	 * without a {@code .kts} suffix).
 	 */
 	public static boolean isGroovyDsl(@Nullable VirtualFile file) {
@@ -278,7 +278,8 @@ class GradleUtils {
 	 * Locates the Gradle project root for the given file by walking up to the first
 	 * ancestor that contains a settings file or returns the parent directory if
 	 * none is found.
-	 * <p>When a linked Gradle project root can be resolved for the file, any
+	 * <p>
+	 * When a linked Gradle project root can be resolved for the file, any
 	 * {@code settings.gradle} found above that boundary is ignored so a stray
 	 * settings file cannot widen resolution scope.
 	 */
@@ -290,7 +291,8 @@ class GradleUtils {
 	 * Locates the Gradle project root for the given file by walking up to the first
 	 * ancestor that contains a settings file or returns the parent directory if
 	 * none is found.
-	 * <p>When a linked Gradle project root can be resolved for the file, any
+	 * <p>
+	 * When a linked Gradle project root can be resolved for the file, any
 	 * {@code settings.gradle} found above that boundary is ignored so a stray
 	 * settings file cannot widen resolution scope.
 	 */
@@ -358,28 +360,28 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns the element call refers to a plugin configuration.
+	 * Return whether the call name refers to a plugin configuration.
 	 */
 	public static boolean isPlugin(@Nullable String name) {
 		return ID.equals(name);
 	}
 
 	/**
-	 * Returns the element call refers to a plugin section configuration.
+	 * Return whether the call name refers to a plugin section configuration.
 	 */
 	public static boolean isPluginSection(@Nullable String name) {
 		return StringUtils.hasText(name) && PLUGINS.equals(name);
 	}
 
 	/**
-	 * Returns the element call refers to a dependency configuration.
+	 * Return whether the call name refers to a dependency configuration.
 	 */
 	public static boolean isDependencySection(@Nullable String name) {
 		return StringUtils.hasText(name) && DEPENDENCY_CONFIGS.contains(name);
 	}
 
 	/**
-	 * Returns the element call refers to a managed (platform) configuration.
+	 * Return whether the call name refers to a managed (platform) configuration.
 	 */
 	public static boolean isPlatformSection(@Nullable String name) {
 		return StringUtils.hasText(name) && PLATFORM_FUNCTIONS.contains(name);
@@ -503,7 +505,7 @@ class GradleUtils {
 	}
 
 	/**
-	 * Returns {@literal true} if {@code version} contains range syntax characters.
+	 * Return {@literal true} if {@code version} contains range syntax characters.
 	 */
 	public static boolean isVersionRange(@Nullable String version) {
 		if (version == null) {

@@ -23,12 +23,14 @@ import org.jspecify.annotations.Nullable;
  * Contract for a Gradle version constraint such as {@code prefer} or
  * {@code strictly}.
  *
- * <p>Gradle allows dependency declarations to express version intent through
+ * <p>
+ * Gradle allows dependency declarations to express version intent through
  * named constraint operators within a {@code version { ... }} block. This
  * interface models the extracted constraint value and exposes common helpers
  * used by parsers and lookup-site infrastructure.
  *
- * <p>Implementations are expected to provide the raw version text while the
+ * <p>
+ * Implementations are expected to provide the raw version text while the
  * default methods expose higher-level predicates for text presence and range
  * detection.
  *
