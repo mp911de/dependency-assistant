@@ -49,7 +49,7 @@ class MavenWrapperUrlAnalyzer {
 
 	/**
 	 * Classify the given decoded wrapper URL value.
-	 * @param kind the wrapper property kind providing canonical coordinates; must
+	 * @param property the wrapper property providing canonical coordinates; must
 	 * not be {@literal null}.
 	 * @param decodedValue the Java-properties-unescaped property value; must not be
 	 * {@literal null}.
@@ -58,7 +58,7 @@ class MavenWrapperUrlAnalyzer {
 	 * @return an immutable list of detected problems; empty when the value
 	 * classifies cleanly or is skipped.
 	 */
-	static List<MavenWrapperUrlProblem> analyze(WrapperProperty kind, String decodedValue, String rawText) {
+	static List<MavenWrapperUrlProblem> analyze(WrapperProperty property, String decodedValue, String rawText) {
 
 		List<MavenWrapperUrlProblem> problems = new ArrayList<>();
 
@@ -70,11 +70,11 @@ class MavenWrapperUrlAnalyzer {
 			return List.copyOf(problems);
 		}
 
-		classifyCoordinates(kind, decodedValue, problems);
+		classifyCoordinates(property, decodedValue, problems);
 		return List.copyOf(problems);
 	}
 
-	private static void classifyCoordinates(WrapperProperty kind, String decodedValue,
+	private static void classifyCoordinates(WrapperProperty property, String decodedValue,
 			List<MavenWrapperUrlProblem> problems) {
 
 		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(decodedValue);
@@ -89,8 +89,8 @@ class MavenWrapperUrlAnalyzer {
 		String fileArtifact = matcher.group("artifactId2");
 		String fileVersion = matcher.group("version2");
 
-		String canonicalGroupPath = kind.canonicalGroupPath();
-		String canonicalArtifactId = kind.canonicalArtifactId();
+		String canonicalGroupPath = property.canonicalGroupPath();
+		String canonicalArtifactId = property.canonicalArtifactId();
 
 		boolean versionInconsistent = !pathVersion.isEmpty() && !fileVersion.isEmpty()
 				&& !pathVersion.equals(fileVersion);
@@ -116,7 +116,7 @@ class MavenWrapperUrlAnalyzer {
 		if (!versionInconsistent) {
 			String sharedVersion = pathVersion.isEmpty() ? fileVersion : pathVersion;
 			String actualFileName = lastUrlSegment(decodedValue);
-			if (!sharedVersion.isEmpty() && !kind.isCanonicalFileName(actualFileName, sharedVersion)) {
+			if (!sharedVersion.isEmpty() && !property.isCanonicalFileName(actualFileName, sharedVersion)) {
 				problems.add(new MalformedFileName(actualFileName, sharedVersion));
 			}
 		}

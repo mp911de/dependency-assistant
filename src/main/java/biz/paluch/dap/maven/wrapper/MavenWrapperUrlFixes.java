@@ -70,13 +70,13 @@ class MavenWrapperUrlFixes {
 
 	/**
 	 * Create a fix that rewrites both artifact-id segments of the wrapper URL to
-	 * the canonical artifact for the given kind.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * the canonical artifact for the given property.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> replaceArtifact(WrapperProperty kind) {
+	static PsiUpdateModCommandAction<PropertyImpl> replaceArtifact(WrapperProperty property) {
 
-		String canonicalArtifactId = kind.canonicalArtifactId();
+		String canonicalArtifactId = property.canonicalArtifactId();
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.replaceArtifact(url, canonicalArtifactId),
 				"inspection.maven-wrapper.inconsistent-artifact.fix",
@@ -85,14 +85,14 @@ class MavenWrapperUrlFixes {
 
 	/**
 	 * Create a fix that rewrites the trailing segments of the captured group path
-	 * to the canonical group-path tail for the given kind, preserving any mirror
-	 * prefix.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * to the canonical group-path tail for the given property, preserving any
+	 * mirror prefix.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> replaceGroupPath(WrapperProperty kind) {
+	static PsiUpdateModCommandAction<PropertyImpl> replaceGroupPath(WrapperProperty property) {
 
-		String canonicalGroupPath = kind.canonicalGroupPath();
+		String canonicalGroupPath = property.canonicalGroupPath();
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.replaceGroupPath(url, canonicalGroupPath),
 				"inspection.maven-wrapper.improper-group-id.fix",
@@ -101,28 +101,28 @@ class MavenWrapperUrlFixes {
 
 	/**
 	 * Create a fix that rewrites the file-name segment of the wrapper URL to the
-	 * canonical name for the given kind and version.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * canonical name for the given property and version.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @param version the canonical version; must not be {@literal null}.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> replaceFileName(WrapperProperty kind, String version) {
+	static PsiUpdateModCommandAction<PropertyImpl> replaceFileName(WrapperProperty property, String version) {
 		return new WrapperUrlFix(
-				url -> MavenWrapperUrlRewriter.replaceFileName(url, kind, version),
+				url -> MavenWrapperUrlRewriter.replaceFileName(url, property, version),
 				"inspection.maven-wrapper.malformed-file-name.fix",
-				url -> new Object[] {MavenWrapperUrlRewriter.replaceFileNameSuggestion(url, kind, version)});
+				url -> new Object[] {MavenWrapperUrlRewriter.replaceFileNameSuggestion(url, property, version)});
 	}
 
 	/**
 	 * Create a fix that replaces the wrapper URL with the canonical Maven Central
-	 * URL for the given kind and version.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * URL for the given property and version.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @param version the canonical version; must not be {@literal null}.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> useDefaultUrl(WrapperProperty kind, String version) {
+	static PsiUpdateModCommandAction<PropertyImpl> useDefaultUrl(WrapperProperty property, String version) {
 		return new WrapperUrlFix(
-				url -> MavenWrapperUrlRewriter.canonicalUrl(kind, version),
+				url -> MavenWrapperUrlRewriter.canonicalUrl(property, version),
 				"inspection.maven-wrapper.default-url.fix", value -> new Object[] {version});
 	}
 

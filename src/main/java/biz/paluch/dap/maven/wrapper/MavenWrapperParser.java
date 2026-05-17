@@ -70,23 +70,23 @@ class MavenWrapperParser {
 		Set<RemoteRepository> repositories = new HashSet<>();
 
 		Properties.from(propertiesFile).filterMap(MavenWrapperParser::parse)
-				.forEach(it -> {
+				.forEach(entry -> {
 
-					if (!it.hasConsistentVersions()) {
+					if (!entry.hasConsistentVersions()) {
 						return;
 					}
 
-					ArtifactVersion version = it.version();
-					VersionSource versionSource = it.versionSource();
-					collector.registerDeclaration(it.property().artifactId(), DeclarationSource.dependency(),
+					ArtifactVersion version = entry.version();
+					VersionSource versionSource = entry.versionSource();
+					collector.registerDeclaration(entry.property().artifactId(), DeclarationSource.dependency(),
 							versionSource);
 
 					if (version != null) {
-						collector.registerUsage(it.property().artifactId(), version, DeclarationSource.dependency(),
+						collector.registerUsage(entry.property().artifactId(), version, DeclarationSource.dependency(),
 								versionSource);
 					}
 
-					repositories.add(it.repository());
+					repositories.add(entry.repository());
 				});
 
 		repositories.forEach(it -> collector.addReleaseSource(new RemoteRepositoryReleaseSource(it)));

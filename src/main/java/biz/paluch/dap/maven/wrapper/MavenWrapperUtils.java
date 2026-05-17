@@ -138,7 +138,7 @@ class MavenWrapperUtils {
 	/**
 	 * Return the property value element for the given property or value element.
 	 * @param element the property or value element to inspect.
-	 * @return the property value element, or {@code null} if none can be found.
+	 * @return the property value element, or {@literal null} if none can be found.
 	 */
 	public static @Nullable PropertyValueImpl findPropertyValue(PsiElement element) {
 
@@ -156,8 +156,8 @@ class MavenWrapperUtils {
 	/**
 	 * Return the property represented by the given element.
 	 * @param element the property element or one of its direct children.
-	 * @return the enclosing property, or {@code null} if the element is not part of
-	 * a property.
+	 * @return the enclosing property, or {@literal null} if the element is not part
+	 * of a property.
 	 */
 	public static @Nullable PropertyImpl findProperty(@Nullable PsiElement element) {
 

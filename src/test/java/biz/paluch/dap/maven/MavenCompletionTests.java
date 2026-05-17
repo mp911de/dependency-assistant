@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -67,6 +69,30 @@ class MavenCompletionTests {
 
 		fixture.completeBasic();
 		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit</groupId>
+						<artifactId>junit-bom</artifactId>
+						<version><caret>6.0.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void ordersReleaseCompletionsNewestFirst(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		List<String> releases = List.of("6.1.0-M1", "6.0.3", "6.0.2", "5.14.3", "5.14.2", "5.14.1",
+				"5.14.0");
+		List<String> actual = fixture.getLookupElementStrings().stream().filter(releases::contains).toList();
+
+		assertThat(actual).containsExactlyElementsOf(releases);
 	}
 
 	@Test

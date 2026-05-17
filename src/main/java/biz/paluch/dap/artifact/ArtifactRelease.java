@@ -32,7 +32,9 @@ public record ArtifactRelease(ArtifactId artifactId,
 
 	@Override
 	public int compareTo(ArtifactRelease o) {
-		return release.compareTo(o.release());
+
+		// newest version first.
+		return o.release().compareTo(release);
 	}
 
 	/**

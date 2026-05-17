@@ -37,6 +37,7 @@ import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
  * Refresh Maven wrapper versions.
+ * 
  * @author Mark Paluch
  */
 class RefreshMavenWrapperVersions {
@@ -52,6 +53,11 @@ class RefreshMavenWrapperVersions {
 		this.releaseSources = releaseSources.isEmpty() ? Set.of(ReleaseSource.mavenCentral()) : releaseSources;
 	}
 
+	/**
+	 * Refreshes the wrapper versions if required.
+	 * 
+	 * @param indicator the current progress indicator.
+	 */
 	public void refreshWrapperVersions(ProgressIndicator indicator) {
 
 		ExecutorService executor = AppExecutorUtil.getAppExecutorService();

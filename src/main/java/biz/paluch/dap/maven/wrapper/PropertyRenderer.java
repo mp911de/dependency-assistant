@@ -27,14 +27,17 @@ import com.intellij.util.PlatformIcons;
 
 /**
  * {@link LookupElementRenderer} to render {@link WrapperProperty} suggestions.
+ * 
  * @author Mark Paluch
  */
 class PropertyRenderer extends LookupElementRenderer<LookupElement> {
 
+	public static final PropertyRenderer INSTANCE = new PropertyRenderer();
+
 	@Override
 	public void renderElement(LookupElement element, LookupElementPresentation presentation) {
 
-		if (!(element.getPsiElement() instanceof PropertyImpl property)) {
+		if (!(element.getObject() instanceof PropertyImpl property)) {
 			return;
 		}
 
@@ -44,7 +47,7 @@ class PropertyRenderer extends LookupElementRenderer<LookupElement> {
 		TextAttributes attrs = EditorColorsManager.getInstance().getGlobalScheme()
 				.getAttributes(PropertiesHighlighter.PropertiesComponent.PROPERTY_VALUE.getTextAttributesKey());
 
-		presentation.setTailText("=" + property.getValue(), attrs.getForegroundColor());
+		presentation.setTailText(property.getValue(), attrs.getForegroundColor());
 	}
 
 }

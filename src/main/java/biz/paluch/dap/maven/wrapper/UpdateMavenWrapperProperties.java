@@ -77,7 +77,7 @@ class UpdateMavenWrapperProperties {
 		}
 
 		Set<String> toCommentOut = new HashSet<>();
-		Properties.from(properties).filterMap(MavenWrapperParser::parse).forEach(it -> {
+		Properties.from(properties).filterMap(MavenWrapperParser::parse).toList().forEach(it -> {
 			for (DependencyUpdate update : updates) {
 				applyUpdate(it.propertyLiteral(), it, update, toCommentOut);
 			}

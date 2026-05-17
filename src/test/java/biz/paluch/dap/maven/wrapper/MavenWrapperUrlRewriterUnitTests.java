@@ -237,7 +237,7 @@ class MavenWrapperUrlRewriterUnitTests {
 
 		assertThat(MavenWrapperUrlRewriter.replaceFileName(url, WrapperProperty.DISTRIBUTION, "3.9.6"))
 				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz");
+						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
 	}
 
 	@Test
@@ -266,7 +266,7 @@ class MavenWrapperUrlRewriterUnitTests {
 
 		assertThat(MavenWrapperUrlRewriter.canonicalUrl(WrapperProperty.DISTRIBUTION, "3.9.6"))
 				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz");
+						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
 	}
 
 	@Test

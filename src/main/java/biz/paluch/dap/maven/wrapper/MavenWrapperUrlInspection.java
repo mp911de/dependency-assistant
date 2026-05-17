@@ -293,10 +293,11 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		return absolute.stream().map(it -> it.shiftLeft(propertyStart)).toList();
 	}
 
-	private static @Nullable String resolveLatestNonPreviewVersion(StateService stateService, WrapperProperty kind) {
+	private static @Nullable String resolveLatestNonPreviewVersion(StateService stateService,
+			WrapperProperty property) {
 
-		Release release = stateService.getCache().getReleases(kind.artifactId()).stream()
-				.filter(Predicate.not(Release::isPreview)).sorted(Comparator.reverseOrder()).findFirst().orElse(null);
+		Release release = stateService.getCache().getReleases(property.artifactId()).stream()
+				.filter(Predicate.not(Release::isPreview)).max(Comparator.naturalOrder()).orElse(null);
 		return release != null ? release.getVersion().toString() : null;
 	}
 

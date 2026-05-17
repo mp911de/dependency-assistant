@@ -49,8 +49,8 @@ record WrapperEntry(WrapperProperty property,
 	}
 
 	/**
-	 * Return the parsed artifact version, or {@code null} when {@link #pathVersion}
-	 * cannot be parsed as an {@link ArtifactVersion}.
+	 * Return the parsed artifact version, or {@literal null} when
+	 * {@link #pathVersion} cannot be parsed as an {@link ArtifactVersion}.
 	 */
 	@Nullable
 	public ArtifactVersion version() {

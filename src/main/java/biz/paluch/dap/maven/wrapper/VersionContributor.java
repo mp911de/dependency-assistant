@@ -24,10 +24,8 @@ import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
-import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.InsertHandler;
 import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.LookupElement;
@@ -47,57 +45,50 @@ import com.intellij.util.ProcessingContext;
 /**
  * Completion contributor for version segments in Maven wrapper URLs.
  *
- * <p>The contributor is limited to supported Maven wrapper properties and
- * offers release versions only when the caret is inside a supported version
- * segment of the property value.
- *
  * @author Mark Paluch
  */
-class MavenWrapperVersionCompletionContributor extends CompletionContributor {
+class VersionContributor extends ReleaseCompletionProvider {
 
-	private static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PlatformPatterns.psiElement()
+	/**
+	 * Matches a caret position inside a property value. <pre class="code">
+	 * distributionUrl=https://...maven/3.&lt;caret&gt;.9.0/.../wrapper/maven-wrapper-3.9.0.jar
+	 * </pre>
+	 */
+	static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PlatformPatterns.psiElement()
 			.inside(PlatformPatterns.psiElement(PropertyValueImpl.class))
 			.inside(PlatformPatterns.psiElement(PropertyImpl.class).withName(WrapperProperty.propertyNames()));
 
-	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
+	@Override
+	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
+			CompletionResultSet result) {
 
-		@Override
-		protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
-				CompletionResultSet result) {
+		if (CompletionPrefix.from(parameters).isPresent()) {
+			super.addCompletions(parameters, context, result);
+		}
+	}
 
-			if (CompletionPrefix.from(parameters).isPresent()) {
-				super.addCompletions(parameters, context, result);
-			}
+	@Override
+	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
+
+		if (parameters.getInvocationCount() > 1) {
+			return result.withPrefixMatcher("");
 		}
 
-		@Override
-		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
+		CompletionPrefix prefix = CompletionPrefix.from(parameters);
+		return result.withPrefixMatcher(prefix.toString());
+	}
 
-			if (parameters.getInvocationCount() > 1) {
-				return result.withPrefixMatcher("");
-			}
+	@Override
+	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
+			PsiElement element, ArtifactRelease option) {
 
-			CompletionPrefix prefix = CompletionPrefix.from(parameters);
-			return result.withPrefixMatcher(prefix.toString());
-		}
+		CompletionPrefix prefix = CompletionPrefix.from(parameters);
+		return MavenWrapperUtils.doWithProperty(element, it -> {
 
-		@Override
-		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
-				PsiElement element, ArtifactRelease option) {
+			return WrapperInsertHandler.from(prefix, it).apply(option, parameters).map(builder::withInsertHandler)
+					.orElse(builder);
 
-			CompletionPrefix prefix = CompletionPrefix.from(parameters);
-			return MavenWrapperUtils.doWithProperty(element, it -> {
-
-				return WrapperInsertHandler.from(prefix, it).apply(option, parameters).map(builder::withInsertHandler)
-						.orElse(builder);
-
-			}, () -> builder);
-		}
-
-	};
-
-	MavenWrapperVersionCompletionContributor() {
-		extend(CompletionType.BASIC, WRAPPER_VERSION, PROVIDER);
+		}, () -> builder);
 	}
 
 	/**
@@ -107,7 +98,6 @@ class MavenWrapperVersionCompletionContributor extends CompletionContributor {
 	 * @param typeChar the typed character.
 	 * @return {@code true} if completion should open automatically.
 	 */
-	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && WRAPPER_VERSION.accepts(position);
 	}
@@ -164,13 +154,13 @@ class MavenWrapperVersionCompletionContributor extends CompletionContributor {
 			List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(property);
 			String originalText = text.replace(MavenWrapperUtils.COMPLETION_PLACEHOLDER, "");
 
-
-			// TODO reuse utility?
 			for (TextRange updateRange : ranges) {
 				if (updateRange.containsOffset(caretOffset)) {
-					int end = caretOffset - updateRange.getStartOffset();
-					TextRange range = updateRange.shiftLeft(value.getTextRange().getStartOffset());
-					String prefix = originalText.substring(range.getStartOffset(), range.getStartOffset() + end);
+
+					int relativeCaretOffset = caretOffset - updateRange.getStartOffset();
+					TextRange rangeInValue = updateRange.shiftLeft(value.getTextRange().getStartOffset());
+					TextRange prefixRange = TextRange.from(rangeInValue.getStartOffset(), relativeCaretOffset);
+					String prefix = prefixRange.substring(originalText);
 					return new CompletionPrefix(prefix, caretOffset, originalText, ranges);
 				}
 			}

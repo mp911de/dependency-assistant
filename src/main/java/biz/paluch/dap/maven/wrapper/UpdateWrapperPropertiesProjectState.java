@@ -83,15 +83,17 @@ class UpdateWrapperPropertiesProjectState {
 	 * @param indicator the progress indicator to report to.
 	 */
 	public void readAndUpdateAll(ProgressIndicator indicator) {
-		ApplicationManager.getApplication().runReadAction(() -> updateAll(indicator));
+
+		Collection<VirtualFile> files = findWrapperFiles();
+		ApplicationManager.getApplication().runReadAction(() -> updateAll(files, indicator));
 	}
 
 	/**
 	 * Update dependency state for all Maven projects.
 	 * @param indicator the progress indicator to report to.
 	 */
-	public void updateAll(ProgressIndicator indicator) {
-		doWithAllFiles(this::update, indicator);
+	public void updateAll(Collection<VirtualFile> files, ProgressIndicator indicator) {
+		doWithAllFiles(files, this::update, indicator);
 	}
 
 	/**
@@ -100,8 +102,10 @@ class UpdateWrapperPropertiesProjectState {
 	 */
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
+		Collection<VirtualFile> files = findWrapperFiles();
+
 		DependencyCollector collector = new DependencyCollector();
-		doWithAllFiles(it -> {
+		doWithAllFiles(files, it -> {
 			this.collector.doCollect(it, collector);
 		}, indicator);
 
@@ -114,11 +118,9 @@ class UpdateWrapperPropertiesProjectState {
 	 * @param action the file callback.
 	 * @param indicator the progress indicator to report to.
 	 */
-	public void doWithAllFiles(Consumer<PsiFile> action, ProgressIndicator indicator) {
+	public void doWithAllFiles(Collection<VirtualFile> files, Consumer<PsiFile> action, ProgressIndicator indicator) {
 
 		double current = 0;
-		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(MavenWrapperUtils.WRAPPER_FILENAME,
-				ProjectScope.getProjectScope(project));
 		for (VirtualFile file : files) {
 			indicator.checkCanceled();
 			indicator.setText(MessageBundle.message("action.index-dependencies.indexing.assistant",
@@ -153,6 +155,11 @@ class UpdateWrapperPropertiesProjectState {
 		this.releaseSources.addAll(collector.getReleaseSources());
 
 		return collector;
+	}
+
+	private Collection<VirtualFile> findWrapperFiles() {
+		return FilenameIndex.getVirtualFilesByName(MavenWrapperUtils.WRAPPER_FILENAME,
+				ProjectScope.getProjectScope(project));
 	}
 
 }

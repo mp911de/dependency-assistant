@@ -244,7 +244,7 @@ class MavenWrapperUrlInspectionTests {
 		invokeQuickFix("Use default URL");
 
 		assertThat(file).containsText(
-				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.tar.gz");
+				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.zip");
 	}
 
 	@Test
@@ -263,7 +263,7 @@ class MavenWrapperUrlInspectionTests {
 		invokeQuickFix("Use default URL");
 
 		assertThat(file)
-				.containsText("/apache-maven/3.9.9/apache-maven-3.9.9-bin.tar.gz")
+				.containsText("/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip")
 				.doesNotContainText("4.0.0-rc-1");
 	}
 

@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven.wrapper;
 
-import java.util.Locale;
 import java.util.regex.Matcher;
 
 import biz.paluch.dap.artifact.VersionAware;
@@ -158,18 +157,18 @@ class MavenWrapperUrlRewriter {
 
 	/**
 	 * Replace the file-name segment of the URL with the canonical file name for the
-	 * given wrapper property kind and version.
+	 * given wrapper property and version.
 	 *
 	 * <p>For {@link WrapperProperty#DISTRIBUTION} the existing {@code .zip} or
 	 * {@code .tar.gz} extension is preserved; any other extension falls back to
 	 * {@code .tar.gz}. For {@link WrapperProperty#WRAPPER} the file name always
 	 * ends in {@code .jar}.
 	 * @param url the URL to rewrite; must not be {@literal null}.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @param version the canonical version; must not be {@literal null}.
 	 * @return the rewritten URL.
 	 */
-	static String replaceFileName(String url, WrapperProperty kind, String version) {
+	static String replaceFileName(String url, WrapperProperty property, String version) {
 
 		int lastSlash = url.lastIndexOf('/');
 		if (lastSlash < 0) {
@@ -177,9 +176,8 @@ class MavenWrapperUrlRewriter {
 		}
 
 		String existingFile = url.substring(lastSlash + 1);
-		String preservedExtension = detectExtension(existingFile);
-
-		return url.substring(0, lastSlash + 1) + kind.canonicalFileName(version, preservedExtension);
+		return url.substring(0, lastSlash + 1)
+				+ property.canonicalFileName(version, property.getSupportedExtension(existingFile));
 	}
 
 	/**
@@ -188,52 +186,51 @@ class MavenWrapperUrlRewriter {
 	 * given URL, without touching the URL.
 	 * @param url the URL whose extension informs the suggestion; must not be
 	 * {@literal null}.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @param version the canonical version; must not be {@literal null}.
 	 * @return the suggested file name.
 	 */
-	static String replaceFileNameSuggestion(String url, WrapperProperty kind, String version) {
+	static String replaceFileNameSuggestion(String url, WrapperProperty property, String version) {
 
 		int lastSlash = url.lastIndexOf('/');
-		String preservedExtension = lastSlash < 0 ? null : detectExtension(url.substring(lastSlash + 1));
-		return kind.canonicalFileName(version, preservedExtension);
-	}
-
-	private static @Nullable String detectExtension(String fileName) {
-
-		String lower = fileName.toLowerCase(Locale.ROOT);
-		if (lower.endsWith(".tar.gz")) {
-			return "tar.gz";
-		}
-		if (lower.endsWith(".zip")) {
-			return "zip";
-		}
-		if (lower.endsWith(".jar")) {
-			return "jar";
-		}
-		return null;
+		String preservedExtension = lastSlash < 0 ? null : property.getSupportedExtension(url.substring(lastSlash + 1));
+		return property.canonicalFileName(version, preservedExtension);
 	}
 
 	/**
-	 * Build the canonical URL for the given wrapper property kind and version.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * Build the canonical URL for the given wrapper property and version.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @param version the canonical version; must not be {@literal null}.
+	 * {@literal null}.
 	 * @return the canonical URL.
 	 */
-	static String canonicalUrl(WrapperProperty kind, VersionAware version) {
-		return canonicalUrl(kind, version.getVersion().toString());
+	static String canonicalUrl(WrapperProperty property, VersionAware version) {
+		return canonicalUrl(property, version.getVersion()
+				.toString(), property.defaultExtension());
 	}
 
 	/**
-	 * Build the canonical URL for the given wrapper property kind and version.
-	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * Build the canonical URL for the given wrapper property and version.
+	 * @param property the wrapper property; must not be {@literal null}.
 	 * @param version the canonical version; must not be {@literal null}.
 	 * @return the canonical URL.
 	 */
-	static String canonicalUrl(WrapperProperty kind, String version) {
+	static String canonicalUrl(WrapperProperty property, String version) {
+		return canonicalUrl(property, version, null);
+	}
 
-		return MAVEN_CENTRAL_BASE + kind.canonicalGroupPath() + "/" + kind.canonicalArtifactId()
-				+ "/" + version + "/" + kind.canonicalFileName(version, null);
+	/**
+	 * Build the canonical URL for the given wrapper property and version.
+	 * @param property the wrapper property; must not be {@literal null}.
+	 * @param version the canonical version; must not be {@literal null}.
+	 * @param preservedExtension the distribution archive extension to use, can be
+	 * {@literal null}.
+	 * @return the canonical URL.
+	 */
+	static String canonicalUrl(WrapperProperty property, String version, @Nullable String preservedExtension) {
+
+		return MAVEN_CENTRAL_BASE + property.canonicalGroupPath() + "/" + property.canonicalArtifactId()
+				+ "/" + version + "/" + property.canonicalFileName(version, preservedExtension);
 	}
 
 }

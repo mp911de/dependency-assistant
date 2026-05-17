@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import javax.swing.Icon;
 
 import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
@@ -37,6 +38,7 @@ import com.intellij.icons.AllIcons;
 import org.jspecify.annotations.Nullable;
 
 /**
+ * Renderer for lookup elements that provide a {@link ArtifactRelease} object.
  * @author Mark Paluch
  */
 public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
@@ -60,51 +62,49 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 	@Override
 	public void renderElement(LookupElement element, LookupElementPresentation presentation) {
 
-		ArtifactRelease release = ArtifactReleaseAccessor.getRelease(element);
-		if (release == null) {
+		if (!(element.getObject() instanceof ArtifactRelease release)) {
 			return;
 		}
 
 		ArtifactVersion version = VersionAware.getVersion(release);
-		presentation.setItemText(version.toString());
+		presentation.setItemText(release.getVersion().toString());
 
 		String typeText = "";
-
 		LocalDateTime releaseDate = release.getReleaseDate();
-		if (releaseDate != null) {
 
+		if (releaseDate != null) {
 			Duration age = Duration.between(releaseDate, LocalDateTime.now());
 			if (age.toDays() < 5) {
 				presentation.setItemTextUnderlined(true);
 			}
-
 			typeText = formatReleaseDate(release);
 		}
 
 		if (release.getVersion() instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())) {
-
 			typeText = gitVersion.getShortSha() + " " + typeText;
 			presentation.setTypeText(typeText.trim(), AllIcons.Vcs.CommitNode);
 		} else {
 			presentation.setTypeText(typeText.trim());
 		}
 
-		Icon icon = null;
 		if (currentVersion != null) {
-
 			if (release.isOlder(currentVersion)) {
 				presentation.setItemTextItalic(true);
 			}
+		}
 
-			VersionAge versionAge = VersionAge.between(currentVersion, version);
-			icon = versionAge.getIcon();
-		} else {
-			icon = assistant.getTableIcon(new Dependency(release.artifactId(), currentVersion));
-		}
+		presentation.setIcon(getIcon(release.artifactId(), version));
+	}
+
+	private Icon getIcon(ArtifactId artifactId, ArtifactVersion version) {
 		if (version.isPreview()) {
-			icon = VersionAge.PREVIEW.getIcon();
+			return VersionAge.PREVIEW.getIcon();
 		}
-		presentation.setIcon(icon);
+		if (currentVersion != null) {
+			VersionAge versionAge = VersionAge.between(currentVersion, version);
+			return versionAge.getIcon();
+		}
+		return assistant.getTableIcon(new Dependency(artifactId, currentVersion));
 	}
 
 }

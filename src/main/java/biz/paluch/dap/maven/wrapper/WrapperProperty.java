@@ -21,6 +21,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -38,8 +39,8 @@ import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
-import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
+import org.springframework.util.Assert;
 
 /**
  * Supported Maven wrapper URL property.
@@ -78,6 +79,9 @@ enum WrapperProperty {
 
 	WrapperProperty(String key, String shaKey, ArtifactId artifactId, String canonicalGroupPath,
 			String baseFileName, String defaultExtension, Set<String> supportedExtensions, String defaultVersion) {
+
+		Assert.isTrue(supportedExtensions.contains(defaultExtension),
+				"%s's supportedExtensions does not contain the default extension %s".formatted(key, defaultExtension));
 		this.key = key;
 		this.shaKey = shaKey;
 		this.artifactId = artifactId;
@@ -117,7 +121,7 @@ enum WrapperProperty {
 	 * Try to parse the property against every supported wrapper URL property and
 	 * return the first match.
 	 * @param property the property to parse.
-	 * @return the parsed wrapper entry, or {@code null} if no supported wrapper
+	 * @return the parsed wrapper entry, or {@literal null} if no supported wrapper
 	 * property matches or the value cannot be parsed.
 	 */
 	public static @Nullable WrapperEntry parse(IProperty property) {
@@ -188,21 +192,16 @@ enum WrapperProperty {
 		return artifactId;
 	}
 
-	/**
-	 * Return the canonical slash-separated Maven group path for this wrapper
-	 * property.
-	 * @return the canonical group path.
-	 */
 	String canonicalGroupPath() {
 		return canonicalGroupPath;
 	}
 
-	/**
-	 * Return the canonical artifact id for this wrapper property.
-	 * @return the canonical artifact id.
-	 */
 	String canonicalArtifactId() {
 		return artifactId.artifactId();
+	}
+
+	String defaultExtension() {
+		return defaultExtension;
 	}
 
 	/**
@@ -210,12 +209,12 @@ enum WrapperProperty {
 	 * and an optional preserved extension.
 	 *
 	 * <p>If {@code preservedExtension} is one of the supported extensions for this
-	 * property, it is honoured; otherwise the default extension is used.
+	 * property, it is honored; otherwise the default extension is used.
 	 * @param version the canonical version; must not be {@literal null}.
 	 * @param preservedExtension the extension to preserve, can be {@literal null}.
 	 * @return the canonical file name.
 	 */
-	String canonicalFileName(String version, @Nullable String preservedExtension) {
+	public String canonicalFileName(String version, @Nullable String preservedExtension) {
 		String extension = preservedExtension != null && supportedExtensions.contains(preservedExtension)
 				? preservedExtension
 				: defaultExtension;
@@ -229,7 +228,7 @@ enum WrapperProperty {
 	 * @param version the canonical version; must not be {@literal null}.
 	 * @return {@literal true} if the file name is canonical.
 	 */
-	boolean isCanonicalFileName(String fileName, String version) {
+	public boolean isCanonicalFileName(String fileName, String version) {
 		String base = baseFileName.formatted(version);
 		for (String extension : supportedExtensions) {
 			if (fileName.equals(base + '.' + extension)) {
@@ -240,9 +239,28 @@ enum WrapperProperty {
 	}
 
 	/**
+	 * Return the supported extension if the {@code fileName} ends with a supported
+	 * extension, or {@literal null} otherwise.
+	 * @param fileName the file name to inspect.
+	 * @return the supported extension if the {@code fileName} ends with a supported
+	 * extension, or {@literal null} otherwise.
+	 */
+	public @Nullable String getSupportedExtension(String fileName) {
+
+		String lower = fileName.toLowerCase(Locale.ROOT);
+		for (String supportedExtension : supportedExtensions) {
+			if (lower.endsWith("." + supportedExtension)) {
+				return supportedExtension;
+			}
+		}
+
+		return null;
+	}
+
+	/**
 	 * Parse the property as this wrapper property.
 	 * @param property the property to parse.
-	 * @return the parsed wrapper entry, or {@code null} if the property does not
+	 * @return the parsed wrapper entry, or {@literal null} if the property does not
 	 * match this wrapper property.
 	 */
 	public @Nullable WrapperEntry parseProperty(PropertyImpl property) {
@@ -260,8 +278,13 @@ enum WrapperProperty {
 
 		try {
 			URI uri = URI.create(decoded);
-			RepositoryCredentials credentials = parseCredentials(property.getProject(), uri);
-			RemoteRepository repository = parseRemoteRepository(uri, credentials);
+			RemoteRepository repository;
+			if (TrustedProjects.isProjectTrusted(property.getProject())) {
+				RepositoryCredentials credentials = parseCredentials(uri);
+				repository = parseRemoteRepository(uri, credentials);
+			} else {
+				repository = RemoteRepository.mavenCentral();
+			}
 
 			Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(decoded);
 			if (!matcher.find()) {
@@ -276,36 +299,40 @@ enum WrapperProperty {
 		}
 	}
 
+	/**
+	 * Return the latest {@link ArtifactRelease}. Returns a default release if
+	 * {@link Cache} does not contain any release for the artifact.
+	 * @param cache the state cache to query for releases; must not be
+	 * {@literal null}.
+	 * @return the latest release.
+	 */
 	public ArtifactRelease getLatestArtifactRelease(Cache cache) {
 		return new ArtifactRelease(artifactId(), getLatestRelease(cache));
 	}
 
+	/**
+	 * Return the latest {@link Release}. Returns a default release if {@link Cache}
+	 * does not contain any release for the artifact.
+	 * @param cache the state cache to query for releases; must not be
+	 * {@literal null}.
+	 * @return the latest release.
+	 */
 	public Release getLatestRelease(Cache cache) {
-
 		return cache.getReleases(artifactId())
 				.stream()
-				.filter(Predicate.not(Release::isPreview))
-				.sorted(Comparator.reverseOrder())
-				.findFirst()
+				.filter(Predicate.not(Release::isPreview)).max(Comparator.naturalOrder())
 				.orElseGet(() -> Release.from(defaultVersion, null));
 	}
 
-
 	private RemoteRepository parseRemoteRepository(URI uri, @Nullable RepositoryCredentials credentials) {
-
 		URI defaultMaven = URI.create(RemoteRepository.mavenCentral().url());
 		if (credentials == null && RemoteRepositoryReleaseSource.hasSameBaseUri(uri, defaultMaven)) {
 			return RemoteRepository.mavenCentral();
 		}
-
 		return new RemoteRepository(MavenWrapperUtils.REPOSITORY_ID, uri.toASCIIString(), credentials);
 	}
 
-	private @Nullable RepositoryCredentials parseCredentials(Project project, URI uri) {
-
-		if (!TrustedProjects.isProjectTrusted(project)) {
-			return null;
-		}
+	private @Nullable RepositoryCredentials parseCredentials(URI uri) {
 
 		String userInfo = uri.getUserInfo();
 		if (StringUtils.hasText(userInfo)) {

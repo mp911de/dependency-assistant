@@ -182,7 +182,7 @@ class MavenParser {
 	 * Parse artifact coordinates from the given XML tag.
 	 * @param tag the dependency or plugin tag.
 	 * @param propertyResolver resolver for Maven placeholders.
-	 * @return the artifact id, or {@code null} if no artifact id is present.
+	 * @return the artifact id, or {@literal null} if no artifact id is present.
 	 */
 	public static @Nullable ArtifactId parseArtifactId(XmlTag tag, PropertyResolver propertyResolver) {
 		return parseArtifactId(tag.getSubTagText("groupId"), tag.getSubTagText("artifactId"), propertyResolver);
