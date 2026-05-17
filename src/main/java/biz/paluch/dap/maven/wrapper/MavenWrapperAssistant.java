@@ -129,19 +129,14 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		return CachedValuesManager.getProjectPsiDependentCache(anchor, MavenWrapperAssistant::createWrapperContext);
 	}
 
-	/**
-	 * Determine the highlighting range for a property value.
-	 * @param propertyValue the property value to inspect.
-	 * @return the resulting highlight range.
-	 */
-	public static TextRange getHighlightRange(PropertyValueImpl propertyValue) {
-		return MavenWrapperInterface.INSTANCE.getHighlightRange(propertyValue);
-	}
+	private static ProjectDependencyContext createWrapperContext(PsiFile anchor) {
 
-	private static MavenWrapperDependencyContext createWrapperContext(PsiFile anchor) {
+		VirtualFile virtualFile = anchor.getVirtualFile();
+		if (virtualFile == null) {
+			return ProjectDependencyContext.absent();
+		}
 
 		Project project = anchor.getProject();
-		VirtualFile virtualFile = anchor.getVirtualFile();
 		ProjectId projectId = MavenWrapperUtils.createProjectId(virtualFile);
 		List<ReleaseSource> releaseSources = collectReleaseSources(anchor);
 
@@ -157,9 +152,11 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
 
 		return CachedValuesManager.getProjectPsiDependentCache(wrapperFile, it -> {
-			List<WrapperEntry> entries = new MavenWrapperParser().parse(it);
+			if (!(it instanceof PropertiesFile propertiesFile)) {
+				return List.of();
+			}
 			Set<RemoteRepository> repositories = new LinkedHashSet<>();
-			for (WrapperEntry entry : entries) {
+			for (WrapperEntry entry : MavenWrapperParser.parse(propertiesFile)) {
 				repositories.add(entry.repository());
 			}
 			return ReleaseSource.getReleaseSources(repositories);
@@ -218,12 +215,12 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
+			DependencyCollector collector = new DependencyCollector();
 			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
-			if (psiFile == null) {
-				return new DependencyCollector();
+			if (psiFile instanceof PropertiesFile propertiesFile && MavenWrapperUtils.isWrapperFile(psiFile)) {
+				new MavenWrapperParser(collector).collect(propertiesFile);
 			}
-
-			return new MavenWrapperDependencyCollector().collect(psiFile);
+			return collector;
 		}
 
 		@Override

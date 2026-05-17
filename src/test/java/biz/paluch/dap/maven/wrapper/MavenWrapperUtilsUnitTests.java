@@ -16,8 +16,10 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import java.time.Duration;
 import java.util.regex.Matcher;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -31,11 +33,7 @@ class MavenWrapperUtilsUnitTests {
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip",
-			"/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip",
-
 			"/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-3.9.6.jar",
-			"/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-3.9.6.jar",
-
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.9.6-bin.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.9.6-source.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.9.6-script.zip",
@@ -58,11 +56,7 @@ class MavenWrapperUtilsUnitTests {
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"/org/apache/maven/apache-maven/3./apache-maven-3.9.6-bin.zip",
-			"/org/apache/maven/apache-maven/3./apache-maven-3.9.6-bin.zip",
-
 			"/org/apache/maven/wrapper/maven-wrapper/3./maven-wrapper-3.9.6.jar",
-			"/org/apache/maven/wrapper/maven-wrapper/3./maven-wrapper-3.9.6.jar",
-
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3./maven-wrapper-distribution-3.9.6-bin.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3./maven-wrapper-distribution-3.9.6-source.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3./maven-wrapper-distribution-3.9.6-script.zip",
@@ -81,11 +75,7 @@ class MavenWrapperUtilsUnitTests {
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"/org/apache/maven/apache-maven/3.9.6/apache-maven-3.-bin.zip",
-			"/org/apache/maven/apache-maven/3.9.6/apache-maven-3.-bin.zip",
-
 			"/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-3..jar",
-			"/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-3..jar",
-
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.-bin.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.-source.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.-script.zip",
@@ -104,11 +94,7 @@ class MavenWrapperUtilsUnitTests {
 	@ParameterizedTest
 	@ValueSource(strings = {
 			"/org/apache/maven/apache-maven/3.9.6/apache-maven--bin.zip",
-			"/org/apache/maven/apache-maven/3.9.6/apache-maven--bin.zip",
-
 			"/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-.jar",
-			"/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-.jar",
-
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution--bin.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution--source.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution--script.zip",
@@ -165,6 +151,22 @@ class MavenWrapperUtilsUnitTests {
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
 		assertThat(matcher.group("version1")).isEqualTo("3.9.6");
 		assertThat(matcher.group("version2")).isEqualTo("3.9.6");
+	}
+
+	@Test
+	void completesQuicklyOnPathologicalInput() {
+
+		String hostile = "/a/b/" + "1.".repeat(200) + "-trailing/c-1.0";
+
+		assertThatCode(() -> MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(hostile).find())
+				.doesNotThrowAnyException();
+		assertThat(timeMatch(hostile)).isLessThan(Duration.ofSeconds(1));
+	}
+
+	private static Duration timeMatch(String input) {
+		long start = System.nanoTime();
+		MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(input).find();
+		return Duration.ofNanos(System.nanoTime() - start);
 	}
 
 }

@@ -58,27 +58,19 @@ class MavenWrapperUrlAnalyzerUnitTests {
 	}
 
 	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-renamed-3.9.6-bin.zip")
-	void emitsInconsistentArtifactWithUnknownArtifactCoEmission(String url) {
+	void inconsistentArtifactSuppressesUnknownArtifact(String url) {
 
 		assertThat(analyzeDistribution(url)).containsExactlyInAnyOrder(
 				new InconsistentArtifact("apache-maven", "apache-maven-renamed"),
-				new UnknownArtifact("apache-maven-renamed"),
 				new MalformedFileName("apache-maven-renamed-3.9.6-bin.zip", "3.9.6"));
 	}
 
-	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-renamed-3.9.6-bin.zip")
-	void emitsUnknownArtifactOnNonCanonicalTokenWhenPathIsCanonical(String url) {
+	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/foo/3.9.6/apache-maven-3.9.6-bin.zip")
+	void inconsistentArtifactWhenFileIsCanonicalSuppressesUnknownArtifact(String url) {
 
 		assertThat(analyzeDistribution(url))
-				.contains(new UnknownArtifact("apache-maven-renamed"))
-				.doesNotContain(new UnknownArtifact("apache-maven"));
-	}
-
-	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/foo/3.9.6/apache-maven-3.9.6-bin.zip")
-	void emitsUnknownArtifactOnNonCanonicalTokenWhenFileIsCanonical(String url) {
-
-		assertThat(analyzeDistribution(url)).contains(new UnknownArtifact("foo"))
 				.contains(new InconsistentArtifact("foo", "apache-maven"))
+				.doesNotContain(new UnknownArtifact("foo"))
 				.doesNotContain(new UnknownArtifact("apache-maven"));
 	}
 
@@ -116,8 +108,7 @@ class MavenWrapperUrlAnalyzerUnitTests {
 
 		assertThat(analyzeDistribution(url)).containsExactlyInAnyOrder(
 				new InconsistentVersion("3.9.6", "3.9.7"),
-				new InconsistentArtifact("apache-maven", "apache-maven-renamed"),
-				new UnknownArtifact("apache-maven-renamed"));
+				new InconsistentArtifact("apache-maven", "apache-maven-renamed"));
 	}
 
 	@StringTest("https://repo1.maven.org/maven2/com/example/maven/foo/3.9.6/foo-3.9.6-bin.zip")
@@ -141,8 +132,8 @@ class MavenWrapperUrlAnalyzerUnitTests {
 				.containsExactlyInAnyOrder(new CredentialsInUrl(), new InvalidUrl());
 	}
 
-	@StringTest("https://user:p@ss@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
-	void emitsCredentialsInUrlForUnencodedAtInPassword(String url) {
+	@StringTest("//user:pass@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
+	void emitsCredentialsInUrlForSchemeRelativeAuthority(String url) {
 		assertThat(analyzeDistribution(url)).contains(new CredentialsInUrl());
 	}
 
@@ -164,12 +155,22 @@ class MavenWrapperUrlAnalyzerUnitTests {
 	}
 
 	@StringTest("https://user:${PASS}@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
-	void emitsCredentialsInUrlWhenPlaceholderIsInsidePassword(String url) {
-		assertThat(analyzeDistribution(url)).contains(new CredentialsInUrl());
+	void skipsCredentialsCheckWhenPlaceholderMakesUrlUnparseable(String url) {
+		assertThat(analyzeDistribution(url)).isEmpty();
 	}
 
 	@StringTest("https://repo1.maven.org/maven2/${prefix}/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
 	void skipsWholeValueClassificationWhenPlaceholderInPath(String url) {
+		assertThat(analyzeDistribution(url)).isEmpty();
+	}
+
+	@StringTest("${prefix}/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
+	void skipsWholeValueClassificationWhenPlaceholderInSchemelessInput(String url) {
+		assertThat(analyzeDistribution(url)).isEmpty();
+	}
+
+	@StringTest("https://user:${PASS}@repo1.maven.org/maven2/${prefix}/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
+	void skipsWholeValueClassificationForMixedAuthorityAndPathInterpolation(String url) {
 		assertThat(analyzeDistribution(url)).isEmpty();
 	}
 

@@ -58,6 +58,10 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @CodeInsightFixtureTests
 class MavenWrapperUrlInspectionTests {
 
+	private static final String FIX_REMOVE_CREDENTIALS = "Remove credentials";
+
+	private static final String FIX_USE_DEFAULT_URL = "Use default URL";
+
 	private @TestFixture CodeInsightTestFixture fixture;
 
 	@BeforeEach
@@ -92,7 +96,7 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/<warning descr="Wrapper URL path artifact 'foo' disagrees with file artifact 'bar'">foo</warning>/3.9.6/<warning descr="Wrapper URL file name 'bar-3.9.6-bin.zip' does not follow the canonical pattern"><warning descr="Wrapper URL path artifact 'foo' disagrees with file artifact 'bar'"><warning descr="Wrapper URL artifactId 'bar' is not a canonical Maven wrapper artifact">bar</warning></warning>-3.9.6-bin.zip</warning>
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/<warning descr="Wrapper URL path artifact 'foo' disagrees with file artifact 'bar'">foo</warning>/3.9.6/<warning descr="Wrapper URL file name 'bar-3.9.6-bin.zip' does not follow the canonical pattern"><warning descr="Wrapper URL path artifact 'foo' disagrees with file artifact 'bar'">bar</warning>-3.9.6-bin.zip</warning>
 			""")
 	void highlightsInconsistentArtifact(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
@@ -148,9 +152,9 @@ class MavenWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
-			distributionUrl=https://<warning descr="Wrapper URL contains plaintext credentials">user:${PASS}@</warning>repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			distributionUrl=https://user:${PASS}@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
-	void credentialsWarningStillFiresWhenPasswordHoldsPlaceholder(PsiFile file) {
+	void skipsCredentialsCheckWhenPlaceholderMakesUrlUnparseable(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
 	}
 
@@ -160,7 +164,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void stripCredentialsFixRemovesUserInfo(PsiFile file) {
 
-		invokeQuickFix("Remove credentials");
+		invokeQuickFix(FIX_REMOVE_CREDENTIALS);
 
 		assertThat(file).containsText(
 				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
@@ -241,7 +245,7 @@ class MavenWrapperUrlInspectionTests {
 
 		DependencyAssistantFixtures.setup(fixture.getProject());
 
-		invokeQuickFix("Use default URL");
+		invokeQuickFix(FIX_USE_DEFAULT_URL);
 
 		assertThat(file).containsText(
 				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.zip");
@@ -260,7 +264,7 @@ class MavenWrapperUrlInspectionTests {
 		cache.addArtifacts(List.of(artifact));
 		StateService.getInstance(fixture.getProject()).setCache(cache);
 
-		invokeQuickFix("Use default URL");
+		invokeQuickFix(FIX_USE_DEFAULT_URL);
 
 		assertThat(file)
 				.containsText("/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip")
@@ -272,7 +276,7 @@ class MavenWrapperUrlInspectionTests {
 			distributionUrl=not a url at all<caret>
 			""")
 	void useDefaultUrlFixAbsentWhenCacheEmpty() {
-		assertThat(quickFixLabels()).doesNotContain("Use default URL");
+		assertThat(quickFixLabels()).doesNotContain(FIX_USE_DEFAULT_URL);
 	}
 
 

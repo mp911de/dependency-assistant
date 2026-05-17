@@ -107,7 +107,8 @@ class PropertyContributor extends CompletionProvider<CompletionParameters> {
 		Cache cache = StateService.getInstance(project).getCache();
 		PsiFileFactory factory = PsiFileFactory.getInstance(project);
 
-		int length = parameters.getOffset() - propertyPosition.getTextOffset();
+		int rawLength = parameters.getOffset() - propertyPosition.getTextOffset();
+		int length = Math.max(0, Math.min(propertyPosition.getTextLength(), rawLength));
 		TextRange range = TextRange.create(0, length);
 		String prefix = range.substring(propertyPosition.getText());
 		result = parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")

@@ -40,10 +40,6 @@ class MavenWrapperParserTests {
 
 	private static final ArtifactId APACHE_MAVEN = ArtifactId.of("org.apache.maven", "apache-maven");
 
-	// -------------------------------------------------------------------------
-	// Distribution URL
-	// -------------------------------------------------------------------------
-
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
@@ -64,18 +60,13 @@ class MavenWrapperParserTests {
 			""")
 	void distributionUrlWithTarGzSuffixIsDiscovered(PsiFile file) {
 
-		List<WrapperEntry> entries = new MavenWrapperParser().parse(file);
+		DependencyCollector collector = analyze(file);
 
-		assertThat(entries).singleElement().satisfies(entry -> {
-			assertThat(entry.property()).isEqualTo(WrapperProperty.DISTRIBUTION);
-			assertThat(entry.property().artifactId()).isEqualTo(APACHE_MAVEN);
-			assertThat(entry.pathVersion()).isEqualTo("3.9.6");
-		});
+		assertThat(collector)
+				.hasDependencyUsage(APACHE_MAVEN.groupId(), APACHE_MAVEN.artifactId())
+				.hasVersion("3.9.6")
+				.hasDeclaration(DeclarationSource.dependency());
 	}
-
-	// -------------------------------------------------------------------------
-	// Wrapper URL
-	// -------------------------------------------------------------------------
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
@@ -91,10 +82,6 @@ class MavenWrapperParserTests {
 				.hasDeclaration(DeclarationSource.dependency());
 	}
 
-	// -------------------------------------------------------------------------
-	// Combined declarations
-	// -------------------------------------------------------------------------
-
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
@@ -109,17 +96,13 @@ class MavenWrapperParserTests {
 		assertThat(collector).hasDependencyUsage("maven-wrapper").hasVersion("3.3.2");
 	}
 
-	// -------------------------------------------------------------------------
-	// Repository
-	// -------------------------------------------------------------------------
-
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
 			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void mavenCentralUrlResolvesToMavenCentralRepository(PsiFile file) {
 
-		List<WrapperEntry> entries = new MavenWrapperParser().parse(file);
+		List<WrapperEntry> entries = MavenWrapperParser.parse((PropertiesFile) file);
 
 		assertThat(entries).singleElement()
 				.satisfies(entry -> assertThat(entry.repository()).isEqualTo(RemoteRepository.mavenCentral()));
@@ -131,17 +114,13 @@ class MavenWrapperParserTests {
 			""")
 	void customHostProducesDedicatedRepository(PsiFile file) {
 
-		List<WrapperEntry> entries = new MavenWrapperParser().parse(file);
+		List<WrapperEntry> entries = MavenWrapperParser.parse((PropertiesFile) file);
 
 		assertThat(entries).singleElement().satisfies(entry -> {
 			assertThat(entry.repository()).isNotEqualTo(RemoteRepository.mavenCentral());
 			assertThat(entry.repository().url()).startsWith("https://nexus.example.com/");
 		});
 	}
-
-	// -------------------------------------------------------------------------
-	// Rejected inputs
-	// -------------------------------------------------------------------------
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
@@ -161,7 +140,7 @@ class MavenWrapperParserTests {
 			""")
 	void silentlyIgnoresLineContinuationInDistributionUrl(PsiFile file) {
 
-		List<WrapperEntry> entries = new MavenWrapperParser().parse(file);
+		List<WrapperEntry> entries = MavenWrapperParser.parse((PropertiesFile) file);
 
 		assertThat(entries).isEmpty();
 	}
@@ -169,7 +148,7 @@ class MavenWrapperParserTests {
 	private static DependencyCollector analyze(PsiFile file) {
 
 		DependencyCollector collector = new DependencyCollector();
-		new MavenWrapperParser(collector).parse((PropertiesFile) file);
+		new MavenWrapperParser(collector).collect((PropertiesFile) file);
 		return collector;
 	}
 

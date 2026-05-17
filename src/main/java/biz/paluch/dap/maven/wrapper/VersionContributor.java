@@ -82,13 +82,15 @@ class VersionContributor extends ReleaseCompletionProvider {
 	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
 			PsiElement element, ArtifactRelease option) {
 
+		PropertyImpl property = MavenWrapperUtils.findProperty(element);
+		if (property == null) {
+			return builder;
+		}
+
 		CompletionPrefix prefix = CompletionPrefix.from(parameters);
-		return MavenWrapperUtils.doWithProperty(element, it -> {
-
-			return WrapperInsertHandler.from(prefix, it).apply(option, parameters).map(builder::withInsertHandler)
-					.orElse(builder);
-
-		}, () -> builder);
+		return WrapperInsertHandler.from(prefix, property).apply(option, parameters)
+				.map(builder::withInsertHandler)
+				.orElse(builder);
 	}
 
 	/**
@@ -275,7 +277,7 @@ class VersionContributor extends ReleaseCompletionProvider {
 				return;
 			}
 
-			int newCaretOffset = getCaretOffset();
+			int caretRangeIndex = caretRangeIndex();
 			context.commitDocument();
 			property.setValue(prefix.getOriginalText(), PropertyKeyValueFormat.FILE);
 
@@ -287,26 +289,42 @@ class VersionContributor extends ReleaseCompletionProvider {
 			UpdateMavenWrapperProperties.applyUpdate(freshProperty,
 					DependencyUpdate.create(release.artifactId(), release.getVersion()));
 
+			int newCaretOffset = caretOffsetAfterUpdate(freshProperty, caretRangeIndex);
 			context.getEditor().getCaretModel().moveToOffset(newCaretOffset);
 			context.setTailOffset(newCaretOffset);
 		}
 
 		/**
-		 * Return the caret offset after both wrapper URL version segments have been
-		 * updated.
+		 * Return the index of the pre-update version range that contained the caret at
+		 * completion start, or {@code -1} if the caret was outside every range.
 		 */
-		private int getCaretOffset() {
+		private int caretRangeIndex() {
 
-			int versionLengthDifference = 0;
-			int newVersionLength = release.getVersion().toString().length();
-			for (TextRange range : prefix.getRanges()) {
-				versionLengthDifference += (newVersionLength - range.getLength());
-				if (range.containsOffset(prefix.getStartOffset())) {
-					return range.getEndOffset() + versionLengthDifference;
+			List<TextRange> ranges = prefix.getRanges();
+			for (int i = 0; i < ranges.size(); i++) {
+				if (ranges.get(i).containsOffset(prefix.getStartOffset())) {
+					return i;
 				}
 			}
+			return -1;
+		}
 
-			return prefix.getStartOffset();
+		/**
+		 * Return the caret offset at the end of the corresponding version range after
+		 * {@code freshProperty} has been rewritten with the selected release.
+		 */
+		private int caretOffsetAfterUpdate(PropertyImpl freshProperty, int caretRangeIndex) {
+
+			if (caretRangeIndex < 0) {
+				return prefix.getStartOffset();
+			}
+
+			List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(freshProperty);
+			if (caretRangeIndex >= ranges.size()) {
+				return prefix.getStartOffset();
+			}
+
+			return ranges.get(caretRangeIndex).getEndOffset();
 		}
 
 	}

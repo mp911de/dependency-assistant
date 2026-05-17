@@ -146,10 +146,18 @@ class MavenWrapperUrlRewriter {
 
 		int canonicalSegments = canonicalGroupPathTail.split("/").length;
 		int capturedSegments = captured.split("/").length;
-		int replaceFrom = groupStart;
 		int segmentsToSkip = capturedSegments - canonicalSegments;
+		if (segmentsToSkip < 0) {
+			return url;
+		}
+
+		int replaceFrom = groupStart;
 		for (int i = 0; i < segmentsToSkip; i++) {
-			replaceFrom = url.indexOf('/', replaceFrom) + 1;
+			int nextSlash = url.indexOf('/', replaceFrom);
+			if (nextSlash < 0) {
+				return url;
+			}
+			replaceFrom = nextSlash + 1;
 		}
 
 		return url.substring(0, replaceFrom) + canonicalGroupPathTail + url.substring(groupEnd);

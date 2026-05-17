@@ -40,8 +40,6 @@ import com.intellij.modcommand.PsiUpdateModCommandAction;
  */
 class MavenWrapperUrlFixes {
 
-	private static final Function<String, Object[]> NO_ARGS = value -> new Object[0];
-
 	private MavenWrapperUrlFixes() {
 	}
 
@@ -123,7 +121,7 @@ class MavenWrapperUrlFixes {
 	static PsiUpdateModCommandAction<PropertyImpl> useDefaultUrl(WrapperProperty property, String version) {
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.canonicalUrl(property, version),
-				"inspection.maven-wrapper.default-url.fix", value -> new Object[] {version});
+				"inspection.maven-wrapper.default-url.fix", version);
 	}
 
 	static class WrapperUrlFix extends PsiUpdateModCommandAction<PropertyImpl> {
@@ -134,12 +132,11 @@ class MavenWrapperUrlFixes {
 
 		private final Function<String, Object[]> messageArgs;
 
-		WrapperUrlFix(UnaryOperator<String> rewrite, String messageKey) {
-			this(rewrite, messageKey, NO_ARGS);
-		}
-
-		WrapperUrlFix(UnaryOperator<String> rewrite, String messageKey, Object staticArg) {
-			this(rewrite, messageKey, value -> new Object[] {staticArg});
+		WrapperUrlFix(UnaryOperator<String> rewrite, String messageKey, Object... staticArgs) {
+			super(PropertyImpl.class);
+			this.rewrite = rewrite;
+			this.messageKey = messageKey;
+			this.messageArgs = value -> staticArgs;
 		}
 
 		WrapperUrlFix(UnaryOperator<String> rewrite, String messageKey, Function<String, Object[]> messageArgs) {

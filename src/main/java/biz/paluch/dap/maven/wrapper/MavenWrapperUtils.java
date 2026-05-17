@@ -18,8 +18,6 @@ package biz.paluch.dap.maven.wrapper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,7 +31,6 @@ import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.LiteralTextEscaper;
-import com.intellij.psi.PsiDirectory;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiLanguageInjectionHost;
@@ -60,13 +57,22 @@ class MavenWrapperUtils {
 	/*
 	 * version1 is greedy because a literal "/" terminates it; version2 is reluctant
 	 * so the trailing tail (e.g. "-bin.zip") can absorb the classifier instead of
-	 * being eaten by the version.
+	 * being eaten by the version. Possessive quantifiers on the optional version
+	 * fragments prevent super-linear backtracking on hostile input that mixes many
+	 * "." and "-" characters between slashes.
 	 */
 	public static final Pattern MAVEN_ARTIFACT_PATTERN = Pattern.compile(
-			"(?<groupId>[\\w/]+)/(?<artifactId1>[\\w.-]+)/(?<version1>(\\d[\\w.-]*)?(IntellijIdeaRulezzz)?(\\d[\\w.-]*)?)/"
+			"(?<groupId>[\\w/]+)/(?<artifactId1>[\\w.-]+)/(?<version1>(\\d[\\w.-]*+)?("
+					+ Pattern.quote(COMPLETION_PLACEHOLDER) + ")?(\\d[\\w.-]*+)?)/"
 					+ "(?<artifactId2>[\\w.-]+?)-"
-					+ "(?<version2>(?:\\d[\\w.-]*?)?(IntellijIdeaRulezzz)?(?:\\d[\\w.-]*?)?)"
+					+ "(?<version2>(?:\\d[\\w.-]*?)?(" + Pattern.quote(COMPLETION_PLACEHOLDER) + ")?(?:\\d[\\w.-]*?)?)"
 					+ "(?<tail>-(?!(?:SNAPSHOT|rc-\\d)[-.])[A-Za-z][\\w-]*(?:\\.[^/]*)?|\\.[A-Za-z][^/]*|(?=$))");
+
+	/**
+	 * Maximum decoded value length accepted by {@link #MAVEN_ARTIFACT_PATTERN}.
+	 * Longer values are treated as no match to bound regex evaluation cost.
+	 */
+	private static final int MAX_MATCH_LENGTH = 2048;
 
 	public static final String REPOSITORY_ID = "maven-wrapper";
 
@@ -85,7 +91,7 @@ class MavenWrapperUtils {
 	public static List<TextRange> getVersionRanges(PropertyImpl property) {
 
 		String value = property.getUnescapedValue();
-		if (value == null) {
+		if (value == null || value.length() > MAX_MATCH_LENGTH) {
 			return List.of();
 		}
 
@@ -171,22 +177,6 @@ class MavenWrapperUtils {
 	}
 
 	/**
-	 * Apply the mapper when the given element belongs to a property.
-	 * @param element the element used to locate the property.
-	 * @param mapper the function to invoke with the property.
-	 * @param defaultValue the supplier used when no property is available.
-	 * @return the mapper result, or the supplied default value.
-	 */
-	public static <T> T doWithProperty(@Nullable PsiElement element,
-			Function<PropertyImpl, ? extends T> mapper, Supplier<? extends T> defaultValue) {
-		PropertyImpl property = findProperty(element);
-		if (property != null) {
-			return mapper.apply(property);
-		}
-		return defaultValue.get();
-	}
-
-	/**
 	 * Locate a range in {@code property}'s value, falling back to the given element
 	 * when no decoded match maps cleanly.
 	 * @param property the wrapper property to inspect.
@@ -249,14 +239,16 @@ class MavenWrapperUtils {
 			return List.of();
 		}
 
+		String decodedText = decoded.toString();
 		int index = 0;
-		MatchResult matchResult = matchFunction.find(decoded.toString(), index);
+		MatchResult matchResult = matchFunction.find(decodedText, index);
 		List<TextRange> ranges = new ArrayList<>();
 
 		while (matchResult.hasMatch()) {
 			int decodedStart = matchResult.start();
 			int decodedEnd = matchResult.end();
 			index = matchResult.end();
+			matchResult = matchFunction.find(decodedText, index);
 
 			TextRange rangeInHost = decodedRangeToHostRange(escaper, valueRangeInHost, decodedStart,
 					decodedEnd);
@@ -266,7 +258,6 @@ class MavenWrapperUtils {
 			}
 
 			ranges.add(rangeInHost.shiftRight(startOffset));
-			matchResult = matchFunction.find(decoded.toString(), index);
 		}
 
 		return ranges;
@@ -349,25 +340,6 @@ class MavenWrapperUtils {
 		}
 
 		VirtualFile grandParent = parent.getParent();
-		return grandParent != null && MVN_DIR.equals(grandParent.getName());
-	}
-
-	/**
-	 * Return whether the given file is a Maven Wrapper properties file located at
-	 * {@code .mvn/wrapper/maven-wrapper.properties}.
-	 */
-	static boolean isWrapperFileExact(@Nullable PsiFile file) {
-
-		if (!isWrapperFile(file)) {
-			return false;
-		}
-
-		PsiDirectory parent = file.getParent();
-		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
-			return false;
-		}
-
-		PsiDirectory grandParent = parent.getParent();
 		return grandParent != null && MVN_DIR.equals(grandParent.getName());
 	}
 

@@ -16,15 +16,10 @@
 
 package biz.paluch.dap.maven.wrapper;
 
-import java.util.Collection;
-
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,13 +49,9 @@ class MavenWrapperHighlightingTests {
 
 		MavenWrapperFixtures.analyze(file);
 
-		assertThat(file).hasSingleGutterContaining("Patch", "3.9.9");
-
-		Collection<PropertyValueImpl> children = PsiTreeUtil.findChildrenOfType(file, PropertyValueImpl.class);
-		TextRange highlightRange = MavenWrapperAssistant.getHighlightRange(children.iterator().next());
-
-		String slice = highlightRange.substring(file.getText());
-		assertThat(slice).isEqualTo("3.9.6");
+		assertThat(file).hasSingleGutter()
+				.tooltipContains("Patch", "3.9.9")
+				.highlights("3.9.6");
 	}
 
 	@Test
@@ -71,13 +62,9 @@ class MavenWrapperHighlightingTests {
 
 		MavenWrapperFixtures.analyze(file);
 
-		assertThat(file).hasSingleGutterContaining("Patch", "3.9.9");
-
-		Collection<PropertyValueImpl> children = PsiTreeUtil.findChildrenOfType(file, PropertyValueImpl.class);
-		TextRange highlightRange = MavenWrapperAssistant.getHighlightRange(children.iterator().next());
-
-		String slice = highlightRange.substring(file.getText());
-		assertThat(slice).isEqualTo("3\\u002e9\\u002e6");
+		assertThat(file).hasSingleGutter()
+				.tooltipContains("Patch", "3.9.9")
+				.highlights("3\\u002e9\\u002e6");
 	}
 
 	@Test
@@ -88,13 +75,9 @@ class MavenWrapperHighlightingTests {
 
 		MavenWrapperFixtures.analyze(file);
 
-		assertThat(file).hasSingleGutterContaining("Patch", "3.3.3");
-
-		Collection<PropertyValueImpl> children = PsiTreeUtil.findChildrenOfType(file, PropertyValueImpl.class);
-		TextRange highlightRange = MavenWrapperAssistant.getHighlightRange(children.iterator().next());
-
-		String slice = highlightRange.substring(file.getText());
-		assertThat(slice).isEqualTo("3.3.2");
+		assertThat(file).hasSingleGutter()
+				.tooltipContains("Patch", "3.3.3")
+				.highlights("3.3.2");
 	}
 
 	@Test

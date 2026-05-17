@@ -63,26 +63,25 @@ class RefreshMavenWrapperVersions {
 		ExecutorService executor = AppExecutorUtil.getAppExecutorService();
 		ReleaseResolver releaseResolver = new ReleaseResolver(releaseSources, executor);
 
-		Map<ArtifactId, Future<UpdatedReleases>> updateFutures = new HashMap<>();
+		Map<ArtifactId, Future<List<Release>>> updateFutures = new HashMap<>();
 		for (WrapperProperty property : WrapperProperty.values()) {
 
 			indicator.checkCanceled();
 			List<Release> releases = cache.getReleases(property.artifactId());
 			if (releases.isEmpty()) {
-				updateFutures.put(property.artifactId(), executor.submit(() -> {
-					return new UpdatedReleases(property.artifactId(),
-							releaseResolver.getReleases(property.artifactId(), indicator));
-				}));
+				ArtifactId artifactId = property.artifactId();
+				updateFutures.put(artifactId,
+						executor.submit(() -> releaseResolver.getReleases(artifactId, indicator)));
 			}
 		}
 
-		for (Map.Entry<ArtifactId, Future<UpdatedReleases>> entry : updateFutures.entrySet()) {
+		for (Map.Entry<ArtifactId, Future<List<Release>>> entry : updateFutures.entrySet()) {
 
 			indicator.checkCanceled();
 
 			try {
-				UpdatedReleases updatedReleases = entry.getValue().get(10, TimeUnit.SECONDS);
-				cache.putVersionOptions(updatedReleases.artifactId(), updatedReleases.releases());
+				List<Release> releases = entry.getValue().get(10, TimeUnit.SECONDS);
+				cache.putVersionOptions(entry.getKey(), releases);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				return;
@@ -92,10 +91,6 @@ class RefreshMavenWrapperVersions {
 				LOG.warn("Release retrieval for '%s' timed out".formatted(entry.getKey()), e);
 			}
 		}
-	}
-
-	record UpdatedReleases(ArtifactId artifactId, List<Release> releases) {
-
 	}
 
 }

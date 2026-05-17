@@ -16,8 +16,10 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import biz.paluch.dap.artifact.Release;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.*;
@@ -29,88 +31,38 @@ import static org.assertj.core.api.Assertions.*;
  */
 class MavenWrapperUrlRewriterUnitTests {
 
-	@Test
-	void stripCredentialsRemovesUserAndPassword() {
+	private static final String CANONICAL_DISTRIBUTION = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
 
-		String url = "https://alice:secret@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.stripCredentials(url))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			# user:password
+			https://alice:secret@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip       , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# user only
+			https://alice@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip              , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# preserves port
+			https://alice:secret@repo1.maven.org:8443/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip  , https://repo1.maven.org:8443/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# unchanged when no credentials
+			https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip                    , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			""")
+	void stripCredentialsRemovesUserInfoWhenPresent(String input, String expected) {
+		assertThat(MavenWrapperUrlRewriter.stripCredentials(input)).isEqualTo(expected);
 	}
 
-	@Test
-	void stripCredentialsRemovesUserOnly() {
-
-		String url = "https://alice@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.stripCredentials(url))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
-	}
-
-	@Test
-	void stripCredentialsPreservesPort() {
-
-		String url = "https://alice:secret@repo1.maven.org:8443/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.stripCredentials(url))
-				.isEqualTo(
-						"https://repo1.maven.org:8443/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
-	}
-
-	@Test
-	void stripCredentialsLeavesUrlUnchangedWhenNoCredentials() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.stripCredentials(url)).isEqualTo(url);
-	}
-
-	@Test
-	void forceHttpsUpgradesPlainHttp() {
-
-		String url = "http://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.forceHttps(url))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
-	}
-
-	@Test
-	void forceHttpsLeavesHttpsUnchanged() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.forceHttps(url)).isEqualTo(url);
-	}
-
-	@Test
-	void forceHttpsLeavesSchemelessUnchanged() {
-
-		String url = "repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.forceHttps(url)).isEqualTo(url);
-	}
-
-	@Test
-	void forceHttpsUpgradesUppercaseScheme() {
-
-		String url = "HTTP://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.forceHttps(url)).startsWith("https://")
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
-	}
-
-	@Test
-	void forceHttpsUpgradesMixedCaseScheme() {
-
-		String url = "Http://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.forceHttps(url)).startsWith("https://")
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			# plain http upgraded
+			http://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# uppercase scheme upgraded
+			HTTP://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# mixed-case scheme upgraded
+			Http://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# https left unchanged
+			https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip  , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# scheme-less left unchanged
+			repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip          , repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			""")
+	void forceHttpsUpgradesPlainOrUppercaseHttpOnly(String input, String expected) {
+		assertThat(MavenWrapperUrlRewriter.forceHttps(input)).isEqualTo(expected);
 	}
 
 	@ParameterizedTest
@@ -150,94 +102,46 @@ class MavenWrapperUrlRewriterUnitTests {
 		assertThat(MavenWrapperUrlRewriter.replaceVersion(url, "1.0.0")).isEqualTo(url);
 	}
 
-	@Test
-	void replaceArtifactRewritesBothPathAndFileArtifact() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/wrong-name/3.9.6/wrong-name-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.replaceArtifact(url, "apache-maven"))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			# distribution: rewrites both path and file artifact
+			apache-maven , https://repo1.maven.org/maven2/org/apache/maven/wrong-name/3.9.6/wrong-name-3.9.6-bin.zip       , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# wrapper jar
+			maven-wrapper, https://repo1.maven.org/maven2/org/apache/maven/wrapper/wrong/3.2.0/wrong-3.2.0.jar             , https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar
+			""")
+	void replaceArtifactRewritesBothPathAndFileArtifact(String canonicalArtifact, String input, String expected) {
+		assertThat(MavenWrapperUrlRewriter.replaceArtifact(input, canonicalArtifact)).isEqualTo(expected);
 	}
 
-	@Test
-	void replaceArtifactForWrapperJar() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/wrapper/wrong/3.2.0/wrong-3.2.0.jar";
-
-		assertThat(MavenWrapperUrlRewriter.replaceArtifact(url, "maven-wrapper"))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar");
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			# replaces last three segments for distribution
+			org/apache/maven        , https://repo1.maven.org/maven2/wrong/group/foo/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip                       , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# preserves mirror prefix
+			org/apache/maven        , https://my-mirror.example.com/maven2/wrong/group/foo/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip                 , https://my-mirror.example.com/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# only replaces trailing segments when group-like tokens appear earlier (no-op canonical)
+			org/apache/maven        , https://nexus.example/repo/org/apache/maven/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz      , https://nexus.example/repo/org/apache/maven/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz
+			# replaces last four segments for wrapper
+			org/apache/maven/wrapper, https://my-mirror.example.com/maven2/a/b/c/d/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar                           , https://my-mirror.example.com/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar
+			""")
+	void replaceGroupPathRewritesTrailingSegments(String canonicalGroup, String input, String expected) {
+		assertThat(MavenWrapperUrlRewriter.replaceGroupPath(input, canonicalGroup)).isEqualTo(expected);
 	}
 
-	@Test
-	void replaceGroupPathReplacesLastThreeSegmentsForDistribution() {
-
-		String url = "https://repo1.maven.org/maven2/wrong/group/foo/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.replaceGroupPath(url, "org/apache/maven"))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
-	}
-
-	@Test
-	void replaceGroupPathPreservesMirrorPrefix() {
-
-		String url = "https://my-mirror.example.com/maven2/wrong/group/foo/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-		assertThat(MavenWrapperUrlRewriter.replaceGroupPath(url, "org/apache/maven"))
-				.isEqualTo(
-						"https://my-mirror.example.com/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
-	}
-
-	@Test
-	void replaceGroupPathOnlyReplacesTrailingSegmentsWhenGroupLikeTokensAppearEarlier() {
-
-		String url = "https://nexus.example/repo/org/apache/maven/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz";
-
-		assertThat(MavenWrapperUrlRewriter.replaceGroupPath(url, "org/apache/maven"))
-				.isEqualTo(
-						"https://nexus.example/repo/org/apache/maven/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz");
-	}
-
-	@Test
-	void replaceGroupPathReplacesLastFourSegmentsForWrapper() {
-
-		String url = "https://my-mirror.example.com/maven2/a/b/c/d/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar";
-
-		assertThat(MavenWrapperUrlRewriter.replaceGroupPath(url, "org/apache/maven/wrapper"))
-				.isEqualTo(
-						"https://my-mirror.example.com/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar");
-	}
-
-	@Test
-	void replaceFileNameForDistributionPreservesZipExtension() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong-name.zip";
-
-		assertThat(MavenWrapperUrlRewriter.replaceFileName(url, WrapperProperty.DISTRIBUTION, "3.9.6"))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
-	}
-
-	@Test
-	void replaceFileNameForDistributionPreservesTarGzExtension() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong-name.tar.gz";
-
-		assertThat(MavenWrapperUrlRewriter.replaceFileName(url, WrapperProperty.DISTRIBUTION, "3.9.6"))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz");
-	}
-
-	@Test
-	void replaceFileNameForDistributionFallsBackToTarGzOnUnknownExtension() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong-name.tgz";
-
-		assertThat(MavenWrapperUrlRewriter.replaceFileName(url, WrapperProperty.DISTRIBUTION, "3.9.6"))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
+	@ParameterizedTest
+	@CsvSource(textBlock = """
+			# distribution: preserves .zip extension
+			DISTRIBUTION , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong-name.zip      , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# distribution: preserves .tar.gz extension
+			DISTRIBUTION , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong-name.tar.gz   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.tar.gz
+			# distribution: unknown extension falls back to canonical .zip
+			DISTRIBUTION , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/wrong-name.tgz      , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			# wrapper always rewrites file name to a .jar
+			WRAPPER      , https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/whatever.zip, https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar
+			""")
+	void replaceFileNameProducesCanonicalFileName(WrapperProperty property, String input, String expected) {
+		String version = property == WrapperProperty.WRAPPER ? "3.2.0" : "3.9.6";
+		assertThat(MavenWrapperUrlRewriter.replaceFileName(input, property, version)).isEqualTo(expected);
 	}
 
 	@Test
@@ -252,13 +156,9 @@ class MavenWrapperUrlRewriterUnitTests {
 	}
 
 	@Test
-	void replaceFileNameForWrapperAlwaysWritesJar() {
-
-		String url = "https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/whatever.zip";
-
-		assertThat(MavenWrapperUrlRewriter.replaceFileName(url, WrapperProperty.WRAPPER, "3.2.0"))
-				.isEqualTo(
-						"https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar");
+	void replaceFileNameReturnsInputWhenNoSlashPresent() {
+		assertThat(MavenWrapperUrlRewriter.replaceFileName("nofilepart", WrapperProperty.DISTRIBUTION, "3.9.6"))
+				.isEqualTo("nofilepart");
 	}
 
 	@Test
@@ -273,6 +173,18 @@ class MavenWrapperUrlRewriterUnitTests {
 	void canonicalUrlForWrapper() {
 
 		assertThat(MavenWrapperUrlRewriter.canonicalUrl(WrapperProperty.WRAPPER, "3.2.0"))
+				.isEqualTo(
+						"https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar");
+	}
+
+	@Test
+	void canonicalUrlForVersionAwareUsesNormalizedVersionAndDefaultExtension() {
+
+		Release release = Release.of("3.9.6");
+
+		assertThat(MavenWrapperUrlRewriter.canonicalUrl(WrapperProperty.DISTRIBUTION, release))
+				.isEqualTo(CANONICAL_DISTRIBUTION);
+		assertThat(MavenWrapperUrlRewriter.canonicalUrl(WrapperProperty.WRAPPER, Release.of("3.2.0")))
 				.isEqualTo(
 						"https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.2.0/maven-wrapper-3.2.0.jar");
 	}

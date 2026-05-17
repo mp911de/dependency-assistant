@@ -58,9 +58,10 @@ class UpdateMavenWrapperProperties {
 		}
 
 		Set<String> toCommentOut = new HashSet<>();
-		MavenWrapperParser.parse(property, it -> {
-			applyUpdate(property, it, update, toCommentOut);
-		});
+		WrapperEntry entry = MavenWrapperParser.parse(property);
+		if (entry != null) {
+			applyUpdate(property, entry, update, toCommentOut);
+		}
 
 		postProcess(property.getContainingFile(), toCommentOut);
 	}

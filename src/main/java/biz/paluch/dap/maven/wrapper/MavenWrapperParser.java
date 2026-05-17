@@ -19,7 +19,6 @@ package biz.paluch.dap.maven.wrapper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -28,10 +27,8 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.Properties;
-import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -53,77 +50,60 @@ class MavenWrapperParser {
 	}
 
 	/**
-	 * Parse the supported properties from the given wrapper file.
-	 * @param file the {@code maven-wrapper.properties} PSI file.
-	 * @return the supported entries, in declaration order; possibly empty.
-	 */
-	public List<WrapperEntry> parse(PsiFile file) {
-		return file instanceof PropertiesFile propertiesFile ? getEntries(propertiesFile) : List.of();
-	}
-
-	/**
-	 * Parse supported properties from the given wrapper {@link PropertiesFile} and
-	 * register it in the {@link DependencyCollector}.
-	 */
-	public void parse(PropertiesFile propertiesFile) {
-
-		Set<RemoteRepository> repositories = new HashSet<>();
-
-		Properties.from(propertiesFile).filterMap(MavenWrapperParser::parse)
-				.forEach(entry -> {
-
-					if (!entry.hasConsistentVersions()) {
-						return;
-					}
-
-					ArtifactVersion version = entry.version();
-					VersionSource versionSource = entry.versionSource();
-					collector.registerDeclaration(entry.property().artifactId(), DeclarationSource.dependency(),
-							versionSource);
-
-					if (version != null) {
-						collector.registerUsage(entry.property().artifactId(), version, DeclarationSource.dependency(),
-								versionSource);
-					}
-
-					repositories.add(entry.repository());
-				});
-
-		repositories.forEach(it -> collector.addReleaseSource(new RemoteRepositoryReleaseSource(it)));
-	}
-
-	/**
-	 * Parse supported properties from the given wrapper {@link PropertiesFile}.
+	 * Parse the supported properties from the given wrapper {@link PropertiesFile}.
 	 * @param propertiesFile the wrapper properties file.
 	 * @return the supported entries, in declaration order; possibly empty.
 	 */
-	public List<WrapperEntry> getEntries(PropertiesFile propertiesFile) {
+	public static List<WrapperEntry> parse(PropertiesFile propertiesFile) {
 		return Properties.from(propertiesFile).filterMap(MavenWrapperParser::parse).toList();
 	}
 
 	/**
-	 * Attempt to parse a {@link IProperty} into an {@link WrapperEntry}.
+	 * Attempt to parse a {@link PropertyImpl} into a {@link WrapperEntry} by
+	 * matching it against every supported wrapper URL property.
+	 * @param property the property to parse.
+	 * @return the parsed wrapper entry, or {@literal null} if no supported wrapper
+	 * property matches or the value cannot be parsed.
 	 */
-	public static @Nullable WrapperEntry parse(IProperty property) {
-		return WrapperProperty.parse(property);
+	public static @Nullable WrapperEntry parse(PropertyImpl property) {
+
+		if (!property.isValid()) {
+			return null;
+		}
+
+		WrapperProperty wp = WrapperProperty.forKey(property.getUnescapedKey());
+		return wp != null ? wp.parseProperty(property) : null;
 	}
 
 	/**
-	 * Attempt to parse a {@link IProperty} into an {@link WrapperEntry} and invoke
-	 * {@code entryConsumer} if successful.
+	 * Parse supported properties from the given wrapper {@link PropertiesFile} and
+	 * register them with the {@link DependencyCollector} passed at construction.
+	 * @param propertiesFile the wrapper properties file.
 	 */
-	public static void parse(PropertyImpl property, Consumer<WrapperEntry> entryConsumer) {
+	public void collect(PropertiesFile propertiesFile) {
 
-		if (!property.getPsiElement().isValid()) {
-			return;
-		}
+		Set<RemoteRepository> repositories = new HashSet<>();
 
-		for (WrapperProperty wp : WrapperProperty.values()) {
-			WrapperEntry entry = wp.parseProperty(property);
-			if (entry != null) {
-				entryConsumer.accept(entry);
+		for (WrapperEntry entry : parse(propertiesFile)) {
+
+			if (!entry.hasConsistentVersions()) {
+				continue;
 			}
+
+			ArtifactVersion version = entry.version();
+			VersionSource versionSource = entry.versionSource();
+			collector.registerDeclaration(entry.property().artifactId(), DeclarationSource.dependency(),
+					versionSource);
+
+			if (version != null) {
+				collector.registerUsage(entry.property().artifactId(), version, DeclarationSource.dependency(),
+						versionSource);
+			}
+
+			repositories.add(entry.repository());
 		}
+
+		repositories.forEach(it -> collector.addReleaseSource(new RemoteRepositoryReleaseSource(it)));
 	}
 
 }

@@ -17,6 +17,7 @@
 package biz.paluch.dap.maven.wrapper;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -27,6 +28,7 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
+import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -49,9 +51,7 @@ class UpdateWrapperPropertiesProjectState {
 
 	private final PsiManager psiManager;
 
-	private final MavenWrapperDependencyCollector collector;
-
-	private final Set<ReleaseSource> releaseSources = new LinkedHashSet<>();
+	private final Set<ReleaseSource> releaseSources = Collections.synchronizedSet(new LinkedHashSet<>());
 
 	/**
 	 * Create a new {@code UpdateWrapperPropertiesProjectState}.
@@ -71,7 +71,6 @@ class UpdateWrapperPropertiesProjectState {
 		this.project = project;
 		this.service = service;
 		this.psiManager = psiManager;
-		this.collector = new MavenWrapperDependencyCollector();
 	}
 
 	public Set<ReleaseSource> getReleaseSources() {
@@ -83,17 +82,15 @@ class UpdateWrapperPropertiesProjectState {
 	 * @param indicator the progress indicator to report to.
 	 */
 	public void readAndUpdateAll(ProgressIndicator indicator) {
-
-		Collection<VirtualFile> files = findWrapperFiles();
-		ApplicationManager.getApplication().runReadAction(() -> updateAll(files, indicator));
+		ApplicationManager.getApplication().runReadAction(() -> updateAll(indicator));
 	}
 
 	/**
 	 * Update dependency state for all Maven projects.
 	 * @param indicator the progress indicator to report to.
 	 */
-	public void updateAll(Collection<VirtualFile> files, ProgressIndicator indicator) {
-		doWithAllFiles(files, this::update, indicator);
+	public void updateAll(ProgressIndicator indicator) {
+		doWithAllFiles(this::update, indicator);
 	}
 
 	/**
@@ -102,11 +99,12 @@ class UpdateWrapperPropertiesProjectState {
 	 */
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
-		Collection<VirtualFile> files = findWrapperFiles();
-
 		DependencyCollector collector = new DependencyCollector();
-		doWithAllFiles(files, it -> {
-			this.collector.doCollect(it, collector);
+		MavenWrapperParser parser = new MavenWrapperParser(collector);
+		doWithAllFiles(it -> {
+			if (it instanceof PropertiesFile propertiesFile) {
+				parser.collect(propertiesFile);
+			}
 		}, indicator);
 
 		return collector;
@@ -118,9 +116,11 @@ class UpdateWrapperPropertiesProjectState {
 	 * @param action the file callback.
 	 * @param indicator the progress indicator to report to.
 	 */
-	public void doWithAllFiles(Collection<VirtualFile> files, Consumer<PsiFile> action, ProgressIndicator indicator) {
+	public void doWithAllFiles(Consumer<PsiFile> action, ProgressIndicator indicator) {
 
 		double current = 0;
+		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(MavenWrapperUtils.WRAPPER_FILENAME,
+				ProjectScope.getProjectScope(project));
 		for (VirtualFile file : files) {
 			indicator.checkCanceled();
 			indicator.setText(MessageBundle.message("action.index-dependencies.indexing.assistant",
@@ -142,12 +142,13 @@ class UpdateWrapperPropertiesProjectState {
 	 */
 	public DependencyCollector update(PsiFile file) {
 
-		if (!MavenWrapperUtils.isWrapperFile(file)) {
+		if (!MavenWrapperUtils.isWrapperFile(file) || !(file instanceof PropertiesFile propertiesFile)) {
 			return new DependencyCollector();
 		}
 
 		ProjectId projectId = MavenWrapperUtils.createProjectId(file.getVirtualFile());
-		DependencyCollector collector = this.collector.collect(file);
+		DependencyCollector collector = new DependencyCollector();
+		new MavenWrapperParser(collector).collect(propertiesFile);
 		ProjectState projectState = this.service.getProjectState(projectId);
 		projectState.invalidateDependencies();
 		projectState.setDependencies(collector);
@@ -155,11 +156,6 @@ class UpdateWrapperPropertiesProjectState {
 		this.releaseSources.addAll(collector.getReleaseSources());
 
 		return collector;
-	}
-
-	private Collection<VirtualFile> findWrapperFiles() {
-		return FilenameIndex.getVirtualFilesByName(MavenWrapperUtils.WRAPPER_FILENAME,
-				ProjectScope.getProjectScope(project));
 	}
 
 }

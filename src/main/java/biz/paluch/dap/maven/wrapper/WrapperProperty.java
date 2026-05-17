@@ -118,25 +118,6 @@ enum WrapperProperty {
 	}
 
 	/**
-	 * Try to parse the property against every supported wrapper URL property and
-	 * return the first match.
-	 * @param property the property to parse.
-	 * @return the parsed wrapper entry, or {@literal null} if no supported wrapper
-	 * property matches or the value cannot be parsed.
-	 */
-	public static @Nullable WrapperEntry parse(IProperty property) {
-
-		for (WrapperProperty wp : WrapperProperty.values()) {
-			WrapperEntry entry = wp.parseProperty((PropertyImpl) property);
-			if (entry != null) {
-				return entry;
-			}
-		}
-
-		return null;
-	}
-
-	/**
 	 * Return supported property names.
 	 * @return the supported property keys.
 	 */
@@ -276,27 +257,29 @@ enum WrapperProperty {
 			return null;
 		}
 
+		URI uri;
 		try {
-			URI uri = URI.create(decoded);
-			RemoteRepository repository;
-			if (TrustedProjects.isProjectTrusted(property.getProject())) {
-				RepositoryCredentials credentials = parseCredentials(uri);
-				repository = parseRemoteRepository(uri, credentials);
-			} else {
-				repository = RemoteRepository.mavenCentral();
-			}
-
-			Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(decoded);
-			if (!matcher.find()) {
-				return null;
-			}
-
-			String pathVersion = matcher.group("version1");
-			String fileVersion = matcher.group("version2");
-			return new WrapperEntry(this, property, value, repository, pathVersion, fileVersion);
-		} catch (RuntimeException ignored) {
+			uri = URI.create(decoded);
+		} catch (IllegalArgumentException malformed) {
 			return null;
 		}
+
+		RemoteRepository repository;
+		if (TrustedProjects.isProjectTrusted(property.getProject())) {
+			RepositoryCredentials credentials = parseCredentials(uri);
+			repository = parseRemoteRepository(uri, credentials);
+		} else {
+			repository = RemoteRepository.mavenCentral();
+		}
+
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(decoded);
+		if (!matcher.find()) {
+			return null;
+		}
+
+		String pathVersion = matcher.group("version1");
+		String fileVersion = matcher.group("version2");
+		return new WrapperEntry(this, property, value, repository, pathVersion, fileVersion);
 	}
 
 	/**

@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -32,8 +33,9 @@ import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.UnknownArtifact;
 /**
  * Pure (PSI-free) classifier that maps a wrapper property value to a list of
  * {@link MavenWrapperUrlProblem} variants.
- * <p>The analyzer is text-only: it performs credential and scheme detection by
- * substring scanning (no {@code URI.create}) and coordinate classification via
+ * <p>The analyzer is text-only: credential detection runs through
+ * {@link URI#getUserInfo()} (the same parser used by
+ * {@link WrapperProperty#parseProperty}) and coordinate classification uses
  * {@link MavenWrapperUtils#MAVEN_ARTIFACT_PATTERN}. Whole-value classification
  * is skipped when the IntelliJ completion placeholder or a {@code ${}}
  * interpolation token is present outside the URL authority; credentials and
@@ -103,8 +105,9 @@ class MavenWrapperUrlAnalyzer {
 		if (!pathArtifactCanonical || !fileArtifactCanonical) {
 			if (!pathArtifact.equals(fileArtifact)) {
 				problems.add(new InconsistentArtifact(pathArtifact, fileArtifact));
+			} else {
+				problems.add(new UnknownArtifact(pathArtifact));
 			}
-			problems.add(new UnknownArtifact(fileArtifactCanonical ? pathArtifact : fileArtifact));
 		}
 
 		String[] canonicalSegments = canonicalGroupPath.split("/");
@@ -123,21 +126,22 @@ class MavenWrapperUrlAnalyzer {
 	}
 
 	/**
-	 * Return whether the URL's authority substring contains a literal {@code @}
-	 * character indicating embedded credentials.
+	 * Return whether the URL embeds {@code user[:password]@} credentials.
+	 * <p>Credential detection delegates to {@link URI#getUserInfo()} so the
+	 * analyzer flags the same set of inputs that
+	 * {@link WrapperProperty#parseProperty} would parse as credentials, including
+	 * opaque and scheme-less URIs.
 	 * @param decodedValue the decoded property value; must not be {@literal null}.
 	 * @return {@literal true} if credentials are detected; {@literal false}
 	 * otherwise.
 	 */
 	static boolean containsCredentials(String decodedValue) {
 
-		int authorityStart = authorityStart(decodedValue);
-		if (authorityStart < 0) {
+		try {
+			return URI.create(decodedValue).getUserInfo() != null;
+		} catch (IllegalArgumentException ex) {
 			return false;
 		}
-		int authorityEnd = authorityEnd(decodedValue, authorityStart);
-		int at = decodedValue.indexOf('@', authorityStart);
-		return at >= 0 && at < authorityEnd;
 	}
 
 	/**

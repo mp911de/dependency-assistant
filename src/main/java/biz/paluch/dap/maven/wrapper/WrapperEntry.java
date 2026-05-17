@@ -30,9 +30,8 @@ import org.jspecify.annotations.Nullable;
  * 
  * @author Mark Paluch
  */
-record WrapperEntry(WrapperProperty property,
-		PropertyImpl propertyLiteral, PropertyValueImpl versionLiteral, RemoteRepository repository,
-		String pathVersion, String fileVersion) {
+record WrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral, PropertyValueImpl versionLiteral,
+		RemoteRepository repository, String pathVersion, String fileVersion) {
 
 	public boolean hasArtifactId(ArtifactId coordinate) {
 		return property.artifactId().equals(coordinate);
@@ -41,8 +40,10 @@ record WrapperEntry(WrapperProperty property,
 	/**
 	 * Return whether the path and file version segments carry the same text.
 	 * <p>A well-formed wrapper URL holds the same version twice; mismatched
-	 * versions indicate a malformed or mid-typed URL that downstream consumers
-	 * (such as dependency collection) typically reject.
+	 * versions indicate a malformed URL, or a mid-typed URL where the completion
+	 * placeholder has been inserted into only one segment. Dependency collection
+	 * rejects such entries; completion and resolution accept them so the user can
+	 * still get version suggestions while typing.
 	 */
 	public boolean hasConsistentVersions() {
 		return pathVersion.equals(fileVersion);
