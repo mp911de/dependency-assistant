@@ -16,6 +16,10 @@
 
 package biz.paluch.dap.artifact;
 
+import java.time.LocalDateTime;
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * An artifact release consisting of an {@link ArtifactId} and a
  * {@link Release}.
@@ -24,7 +28,7 @@ package biz.paluch.dap.artifact;
  * @param release the release metadata.
  */
 public record ArtifactRelease(ArtifactId artifactId,
-		Release release) implements Comparable<ArtifactRelease>, HasVersion {
+		Release release) implements Comparable<ArtifactRelease>, VersionAware {
 
 	@Override
 	public int compareTo(ArtifactRelease o) {
@@ -48,6 +52,10 @@ public record ArtifactRelease(ArtifactId artifactId,
 	@Override
 	public ArtifactVersion getVersion() {
 		return release.version();
+	}
+
+	public @Nullable LocalDateTime getReleaseDate() {
+		return release.releaseDate();
 	}
 
 }

@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.artifact;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import com.intellij.icons.AllIcons;
 
@@ -106,9 +106,9 @@ public enum VersionAge {
 	 * @param start the start version (or currently used version).
 	 * @param end the end version (or upgrade candidate version)
 	 * @return the end candidate version age category.
-	 * @see HasVersion
+	 * @see VersionAware
 	 */
-	public static VersionAge between(HasVersion start, HasVersion end) {
+	public static VersionAge between(VersionAware start, VersionAware end) {
 		return between(start.getVersion(), end.getVersion());
 	}
 

@@ -19,7 +19,7 @@ package biz.paluch.dap.antora;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
@@ -49,7 +49,7 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  */
 public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider PROVIDER = new ReleasesCompletionProvider() {
+	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
 
 		@Override
 		protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
@@ -114,7 +114,7 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
+		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
 	}
 
 	private static boolean isSupportedCompletionSite(PsiElement position) {

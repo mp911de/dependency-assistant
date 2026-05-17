@@ -19,14 +19,20 @@ package biz.paluch.dap.maven.wrapper;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactRelease;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.IProperty;
@@ -47,10 +53,10 @@ import org.jspecify.annotations.Nullable;
 enum WrapperProperty {
 
 	DISTRIBUTION("distributionUrl", "distributionSha256Sum", ArtifactId.of("org.apache.maven", "apache-maven"),
-			"org/apache/maven", "apache-maven-%s-bin", "tar.gz", Set.of("tar.gz", "zip")),
+			"org/apache/maven", "apache-maven-%s-bin", "zip", Set.of("tar.gz", "zip"), "3.9.15"),
 
 	WRAPPER("wrapperUrl", "wrapperSha256Sum", ArtifactId.of("org.apache.maven.wrapper", "maven-wrapper"),
-			"org/apache/maven/wrapper", "maven-wrapper-%s", "jar", Set.of("jar"));
+			"org/apache/maven/wrapper", "maven-wrapper-%s", "jar", Set.of("jar"), "3.3.4");
 
 	private static final WrapperProperty[] VALUES = values();
 
@@ -68,8 +74,10 @@ enum WrapperProperty {
 
 	private final Set<String> supportedExtensions;
 
+	private final ArtifactVersion defaultVersion;
+
 	WrapperProperty(String key, String shaKey, ArtifactId artifactId, String canonicalGroupPath,
-			String baseFileName, String defaultExtension, Set<String> supportedExtensions) {
+			String baseFileName, String defaultExtension, Set<String> supportedExtensions, String defaultVersion) {
 		this.key = key;
 		this.shaKey = shaKey;
 		this.artifactId = artifactId;
@@ -77,6 +85,7 @@ enum WrapperProperty {
 		this.baseFileName = baseFileName;
 		this.defaultExtension = defaultExtension;
 		this.supportedExtensions = supportedExtensions;
+		this.defaultVersion = ArtifactVersion.of(defaultVersion);
 	}
 
 	/**
@@ -266,6 +275,21 @@ enum WrapperProperty {
 			return null;
 		}
 	}
+
+	public ArtifactRelease getLatestArtifactRelease(Cache cache) {
+		return new ArtifactRelease(artifactId(), getLatestRelease(cache));
+	}
+
+	public Release getLatestRelease(Cache cache) {
+
+		return cache.getReleases(artifactId())
+				.stream()
+				.filter(Predicate.not(Release::isPreview))
+				.sorted(Comparator.reverseOrder())
+				.findFirst()
+				.orElseGet(() -> Release.from(defaultVersion, null));
+	}
+
 
 	private RemoteRepository parseRemoteRepository(URI uri, @Nullable RepositoryCredentials credentials) {
 

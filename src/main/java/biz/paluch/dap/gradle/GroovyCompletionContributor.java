@@ -19,7 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
@@ -46,7 +46,7 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
  */
 public class GroovyCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
+	private static final ReleaseCompletionProvider provider = new ReleaseCompletionProvider() {
 
 		@Override
 		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters,
@@ -191,7 +191,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 			return INLINE_DEPENDENCY_NOTATION.accepts(position) && isCompactNotationBeforeVersion(position);
 		}
 
-		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
+		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
 	}
 
 	private static PsiElementPattern.Capture<PsiElement> insideGradleGroovyFile(

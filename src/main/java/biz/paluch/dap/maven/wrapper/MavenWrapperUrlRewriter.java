@@ -19,6 +19,7 @@ package biz.paluch.dap.maven.wrapper;
 import java.util.Locale;
 import java.util.regex.Matcher;
 
+import biz.paluch.dap.artifact.VersionAware;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -211,6 +212,16 @@ class MavenWrapperUrlRewriter {
 			return "jar";
 		}
 		return null;
+	}
+
+	/**
+	 * Build the canonical URL for the given wrapper property kind and version.
+	 * @param kind the wrapper property kind; must not be {@literal null}.
+	 * @param version the canonical version; must not be {@literal null}.
+	 * @return the canonical URL.
+	 */
+	static String canonicalUrl(WrapperProperty kind, VersionAware version) {
+		return canonicalUrl(kind, version.getVersion().toString());
 	}
 
 	/**

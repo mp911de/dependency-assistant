@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
@@ -31,7 +31,7 @@ import com.intellij.psi.PsiElement;
  */
 public class GradlePropertiesCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
+	private static final ReleaseCompletionProvider provider = new ReleaseCompletionProvider();
 
 	private static final PsiElementPattern.Capture<PsiElement> GRADLE_PROPERTY_VALUE = PlatformPatterns.psiElement()
 			.inside(PlatformPatterns.psiElement(PropertyValueImpl.class))
@@ -43,7 +43,7 @@ public class GradlePropertiesCompletionContributor extends CompletionContributor
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && GRADLE_PROPERTY_VALUE.accepts(position);
+		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && GRADLE_PROPERTY_VALUE.accepts(position);
 	}
 
 	public static boolean isSupportedCompletionSite(PsiElement position) {

@@ -18,7 +18,7 @@ package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionType;
@@ -41,7 +41,7 @@ import com.intellij.psi.PsiElement;
  */
 public class NpmVersionCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider() {
+	private static final ReleaseCompletionProvider provider = new ReleaseCompletionProvider() {
 
 		@Override
 		protected LookupElementBuilder postProcess(CompletionParameters parameters,
@@ -94,7 +94,7 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return (ReleasesCompletionProvider.isVersionCharacter(typeChar) || typeChar == '#' || typeChar == '@')
+		return (ReleaseCompletionProvider.isVersionCharacter(typeChar) || typeChar == '#' || typeChar == '@')
 				&& LOCATION.accepts(position);
 	}
 

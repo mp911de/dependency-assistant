@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
@@ -37,7 +37,7 @@ import org.toml.lang.psi.TomlTable;
  */
 public class TomlCompletionContributor extends CompletionContributor {
 
-	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
+	private static final ReleaseCompletionProvider provider = new ReleaseCompletionProvider();
 
 	private static final PatternCondition<PsiFile> IS_VERSION_CATALOG = PatternConditions.conditional(
 			"isVersionCatalog", GradleUtils::isVersionCatalog);
@@ -81,7 +81,7 @@ public class TomlCompletionContributor extends CompletionContributor {
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return ReleasesCompletionProvider.isVersionCharacter(typeChar)
+		return ReleaseCompletionProvider.isVersionCharacter(typeChar)
 				&& (VERSION_KEY.accepts(position) || VERSION_PROPERTY.accepts(position));
 	}
 

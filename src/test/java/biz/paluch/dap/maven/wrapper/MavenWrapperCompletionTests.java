@@ -38,7 +38,8 @@ import org.junit.jupiter.api.Test;
 import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * PSI-level tests for {@link MavenWrapperCompletionContributor}.
+ * PSI-level tests for {@link MavenWrapperVersionCompletionContributor} and
+ * {@link MavenWrapperPropertyCompletionContributor}.
  *
  * @author Mark Paluch
  */
@@ -333,11 +334,156 @@ class MavenWrapperCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).isEmpty();
 	}
 
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			d<caret>
+			""")
+	void completesDistributionLine(PsiFile file) {
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly("distributionUrl=");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(file)
+				.containsText(
+						"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.tar.gz")
+				.caretAfter("apache-maven-3.10.0-bin.tar.gz");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			w<caret>
+			""")
+	void completesWrapperLine(PsiFile file) {
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly("wrapperUrl=");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(file)
+				.containsText(
+						"wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.3/maven-wrapper-3.3.3.jar")
+				.caretAfter("maven-wrapper-3.3.3.jar");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			d<caret>
+			""")
+	void invokesAutoPopupForDistributionKeyPrefix() {
+		assertThat(invokeAutoPopup('d')).isTrue();
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			w<caret>
+			""")
+	void invokesAutoPopupForWrapperKeyPrefix() {
+		assertThat(invokeAutoPopup('w')).isTrue();
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			x<caret>
+			""")
+	void doesNotInvokeAutoPopupForUnrelatedKeyPrefix() {
+		assertThat(invokeAutoPopup('x')).isFalse();
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			D<caret>
+			""")
+	void doesNotInvokeAutoPopupForUppercaseKeyPrefix() {
+		assertThat(invokeAutoPopup('D')).isFalse();
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			dist<caret>
+			""")
+	void completesMidKey(PsiFile file) {
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).containsExactly("distributionUrl=");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(file)
+				.containsText(
+						"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.tar.gz");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			d<caret>=foo
+			""")
+	void replacesPropertyWhenLineHasExistingValue(PsiFile file) {
+
+		fixture.completeBasic();
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+
+		assertThat(file)
+				.containsText(
+						"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.tar.gz")
+				.doesNotContainText("=foo");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			d<caret>
+			""")
+	void completesLineWithFallbackWhenCacheEmpty(PsiFile file) {
+
+		StateService.getInstance(fixture.getProject()).setCache(new Cache());
+
+		fixture.completeBasic();
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+
+		assertThat(file).containsText(
+				"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.15/apache-maven-3.9.15-bin.tar.gz");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=d<caret>
+			""")
+	void doesNotOfferLineCompletionInsideValue() {
+
+		fixture.completeBasic();
+		assertThat(lookupElementsOrEmpty()).doesNotContain("distributionUrl", "wrapperUrl");
+	}
+
+	@Test
+	@EditorFile(name = "gradle-wrapper.properties", content = """
+			d<caret>
+			""")
+	void doesNotOfferLineCompletionInGradleWrapper() {
+
+		fixture.completeBasic();
+		assertThat(lookupElementsOrEmpty()).doesNotContain("distributionUrl", "wrapperUrl");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			d<caret>
+			""")
+	void offersLineCompletionEvenWhenDistributionUrlAlreadyExists() {
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("distributionUrl");
+	}
+
+	private List<String> lookupElementsOrEmpty() {
+		List<String> elements = fixture.getLookupElementStrings();
+		return elements == null ? List.of() : elements;
+	}
+
 	private boolean invokeAutoPopup(char typeChar) {
 
 		PsiElement position = fixture.getFile().findElementAt(fixture.getCaretOffset() - 1);
-		MavenWrapperCompletionContributor c1 = new MavenWrapperCompletionContributor();
-		MavenWrapperEmptyPropertyCompletionContributor c2 = new MavenWrapperEmptyPropertyCompletionContributor();
+		MavenWrapperVersionCompletionContributor c1 = new MavenWrapperVersionCompletionContributor();
+		MavenWrapperPropertyCompletionContributor c2 = new MavenWrapperPropertyCompletionContributor();
 		return c1.invokeAutoPopup(position, typeChar) || c2.invokeAutoPopup(position, typeChar);
 	}
 

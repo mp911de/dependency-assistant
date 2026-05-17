@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
@@ -47,7 +47,7 @@ public class MavenReleaseVersionCompletionContributor extends CompletionContribu
 			.inside(XmlPatterns.xmlTag().withAncestor(2, XmlPatterns.xmlTag().withName("properties"))
 					.inside(XmlPatterns.xmlFile().with(IS_MAVEN_FILE)));
 
-	private static final ReleasesCompletionProvider provider = new ReleasesCompletionProvider();
+	private static final ReleaseCompletionProvider provider = new ReleaseCompletionProvider();
 
 	public MavenReleaseVersionCompletionContributor() {
 		extend(CompletionType.BASIC, DEPENDENCY_VERSION, provider);
@@ -56,7 +56,7 @@ public class MavenReleaseVersionCompletionContributor extends CompletionContribu
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return ReleasesCompletionProvider.isVersionCharacter(typeChar)
+		return ReleaseCompletionProvider.isVersionCharacter(typeChar)
 				&& (PROPERTIES.accepts(position) || DEPENDENCY_VERSION.accepts(position));
 	}
 

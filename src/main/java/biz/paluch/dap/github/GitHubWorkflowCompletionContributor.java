@@ -19,7 +19,7 @@ package biz.paluch.dap.github;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
@@ -55,7 +55,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 	private static final String ANTORA_PLAYBOOK_FILE_NAME = "antora-playbook.yml";
 
-	private static final ReleasesCompletionProvider PROVIDER = new ReleasesCompletionProvider() {
+	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
 
 		@Override
 		protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
@@ -131,7 +131,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 			return VersionUpgradeLookupService.findUsesScalar(position) != null;
 		}
 
-		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
+		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
 	}
 
 	private static boolean isSupportedCompletionSite(PsiElement position) {

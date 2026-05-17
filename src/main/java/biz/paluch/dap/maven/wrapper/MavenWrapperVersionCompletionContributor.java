@@ -22,7 +22,7 @@ import java.util.function.BiFunction;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.assistant.ReleasesCompletionProvider;
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
@@ -53,13 +53,13 @@ import com.intellij.util.ProcessingContext;
  *
  * @author Mark Paluch
  */
-class MavenWrapperCompletionContributor extends CompletionContributor {
+class MavenWrapperVersionCompletionContributor extends CompletionContributor {
 
 	private static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PlatformPatterns.psiElement()
 			.inside(PlatformPatterns.psiElement(PropertyValueImpl.class))
 			.inside(PlatformPatterns.psiElement(PropertyImpl.class).withName(WrapperProperty.propertyNames()));
 
-	private static final ReleasesCompletionProvider PROVIDER = new ReleasesCompletionProvider() {
+	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
 
 		@Override
 		protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
@@ -96,7 +96,7 @@ class MavenWrapperCompletionContributor extends CompletionContributor {
 
 	};
 
-	MavenWrapperCompletionContributor() {
+	MavenWrapperVersionCompletionContributor() {
 		extend(CompletionType.BASIC, WRAPPER_VERSION, PROVIDER);
 	}
 
@@ -109,7 +109,7 @@ class MavenWrapperCompletionContributor extends CompletionContributor {
 	 */
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
-		return ReleasesCompletionProvider.isVersionCharacter(typeChar) && WRAPPER_VERSION.accepts(position);
+		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && WRAPPER_VERSION.accepts(position);
 	}
 
 	/**

@@ -16,11 +16,11 @@
 		<completion.contributor
 				language="Properties"
 				order="first"
-				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperCompletionContributor"/>
+				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperVersionCompletionContributor"/>
 		<completion.contributor
 				language="Properties"
 				order="first"
-				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperEmptyPropertyCompletionContributor"/>
+				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperPropertyCompletionContributor"/>
 		<codeInsight.lineMarkerProvider
 				language="Properties"
 				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>

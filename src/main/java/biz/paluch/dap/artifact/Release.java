@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  * A release that consists of a version and an optional release date.
  */
 public record Release(ArtifactVersion version,
-		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, HasVersion {
+		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, VersionAware {
 
 
 	/**
@@ -59,12 +59,25 @@ public record Release(ArtifactVersion version,
 	}
 
 	/**
-	 * Create a {@code Release} from a version string and optional ISO date.
+	 * Create a {@code Release} from a {@link ArtifactVersion}.
+	 */
+	public static Release from(ArtifactVersion version) {
+		return new Release(version, null);
+	}
+
+	/**
+	 * Create a {@code Release} from a {@link ArtifactVersion} and optional ISO
+	 * date.
 	 */
 	public static Release from(ArtifactVersion version, @Nullable String date) {
 		return new Release(version, getReleaseDate(date));
 	}
 
+	/**
+	 * Parse the release date from an ISO string.
+	 *
+	 * @see LocalDateTime#parse
+	 */
 	public static @Nullable LocalDateTime getReleaseDate(@Nullable String date) {
 		return StringUtils.hasText(date) ? LocalDateTime.of(LocalDate.parse(date), LocalTime.MIDNIGHT) : null;
 	}

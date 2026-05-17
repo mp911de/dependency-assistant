@@ -63,7 +63,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class ReleasesCompletionProvider extends CompletionProvider<CompletionParameters> {
+public class ReleaseCompletionProvider extends CompletionProvider<CompletionParameters> {
 
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
@@ -96,6 +96,8 @@ public class ReleasesCompletionProvider extends CompletionProvider<CompletionPar
 		// duplicates.
 		Set<String> alreadyContributed = getAlreadyContributed(parameters, result);
 
+
+		// TODO: Renderer
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
 		List<ArtifactRelease> unique = releases.stream()
 				.filter(opt -> !alreadyContributed.contains(opt.release().version().toString())).toList();
