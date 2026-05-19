@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
+import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiComment;
@@ -153,33 +154,23 @@ class UpdateGitHubWorkflowFile {
 	 */
 	public @Nullable YAMLScalar updateVersionAndComment(YAMLScalar scalar, VersionText versionText) {
 
-		String value = scalar.getTextValue();
+		YamlVersionSite site = YamlVersionSite.locate(scalar, kv -> "uses".equals(kv.getKeyText()));
+		if (site == null) {
+			return null;
+		}
+
+		String value = site.rawValue();
 		int refSeparator = value.indexOf('@');
 		if (refSeparator < 0) {
 			return null;
 		}
 
-		if (!(scalar.getParent() instanceof YAMLKeyValue keyValue)) {
+		if (!(site.keyValue().getParent() instanceof YAMLBlockMappingImpl mapping)) {
 			return null;
 		}
 
-		if (!(keyValue.getParent() instanceof YAMLBlockMappingImpl mapping)) {
-			return null;
-		}
-
-		String replacement = value.substring(0, refSeparator + 1) + versionText.text();
-		YAMLKeyValue ykv;
-		if (scalar instanceof YAMLQuotedText q) {
-			if (q.isSingleQuote()) {
-				ykv = factory.createYamlKeyValue(keyValue.getKeyText(), "'" + replacement + "'");
-			} else {
-				ykv = factory.createYamlKeyValue(keyValue.getKeyText(), "\"" + replacement + "\"");
-			}
-		} else {
-			ykv = factory.createYamlKeyValue(keyValue.getKeyText(), replacement);
-		}
-
-		YAMLKeyValue replaced = (YAMLKeyValue) keyValue.replace(ykv);
+		String replacementValue = value.substring(0, refSeparator + 1) + versionText.text();
+		YAMLKeyValue replaced = site.replaceRawValue(replacementValue, factory);
 
 		if (versionText.hasComment()) {
 

@@ -18,10 +18,18 @@ package biz.paluch.dap.gradle;
 
 import java.util.function.Supplier;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.VersionProperty;
+import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
+import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
+import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.MapPropertyVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.PluginVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferLiteral;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferProperty;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyLiteral;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyProperty;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
@@ -30,7 +38,6 @@ import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
@@ -42,9 +49,9 @@ import org.jspecify.annotations.Nullable;
 class ArtifactReferenceUtils {
 
 	/**
-	 * Resolve a version-catalog property lookup through the project state.
+	 * Resolve a backing-property site through the project state.
 	 */
-	public static ArtifactReference resolve(LookupSite.PropertyLookupSite site, @Nullable ProjectState projectState) {
+	public static ArtifactReference resolve(BackingProperty site, @Nullable ProjectState projectState) {
 
 		if (projectState == null) {
 			return ArtifactReference.unresolved();
@@ -65,47 +72,13 @@ class ArtifactReferenceUtils {
 	}
 
 	/**
-	 * Resolve the given artifact and version source to an
-	 * {@link ArtifactReference}.
+	 * Resolve a {@link DependencySite} to an {@link ArtifactReference}.
 	 *
-	 * @param declaration the declaration (usage) element.
-	 * @param version the version literal element.
-	 * @param propertyResolver property resolver to resolve property-managed
-	 * dependencies.
-	 * @return the resolved artifact reference.
+	 * <p>
+	 * When the supplied site is a {@link GradleVersionSite} variant the
+	 * version-literal PSI carried by the variant is preserved; otherwise the
+	 * fallback path mirrors the legacy {@link VersionedDependencySite} resolution.
 	 */
-	public static ArtifactReference resolve(ArtifactId artifactId, VersionSource versionSource, PsiElement declaration,
-			@Nullable PsiElement version, PropertyResolver propertyResolver) {
-
-		if (versionSource instanceof VersionProperty property) {
-
-			PropertyValue propertyValue = propertyResolver.getPropertyValue(property.getProperty());
-
-			if (propertyValue == null) {
-				return ArtifactReference.unresolved();
-			}
-
-			return ArtifactReference.from(it -> {
-				it.artifact(artifactId).declarationElement(declaration)
-						.versionSource(versionSource);
-				if (StringUtils.hasText(propertyValue.getValue())) {
-					ArtifactVersion.from(propertyValue.getValue()).ifPresent(it::version);
-				}
-				it.versionLiteral(propertyValue.getValueLiteral());
-			});
-		}
-
-		return ArtifactReference.from(it -> {
-			it.artifact(artifactId).declarationElement(declaration).versionSource(versionSource);
-			if (versionSource.isDefined()) {
-				ArtifactVersion.from(versionSource.toString()).ifPresent(it::version);
-			}
-			if (version != null) {
-				it.versionLiteral(version);
-			}
-		});
-	}
-
 	public static ArtifactReference resolve(DependencySite dependencySite,
 			Supplier<PropertyResolver> propertyResolverSupplier) {
 
@@ -113,15 +86,20 @@ class ArtifactReferenceUtils {
 			return ArtifactReference.from(versioned);
 		}
 
-		if (dependencySite.getVersionSource() instanceof VersionProperty property) {
+		PsiElement versionLiteral = versionLiteralOf(dependencySite);
+		ArtifactVersion resolvedVersion = dependencySite instanceof GradleVersionSite.VersionAware aware
+				? aware.version()
+				: null;
+		VersionSource versionSource = dependencySite.getVersionSource();
 
-			PropertyValue element = propertyResolverSupplier.get()
-					.getPropertyValue(property.getProperty());
+		if (versionSource instanceof VersionProperty property) {
+
+			PropertyValue element = propertyResolverSupplier.get().getPropertyValue(property.getProperty());
 
 			if (element != null) {
 				return ArtifactReference.from(it -> {
 					it.artifact(dependencySite.getArtifactId())
-							.versionSource(dependencySite.getVersionSource())
+							.versionSource(versionSource)
 							.declarationElement(dependencySite.getDeclarationElement())
 							.versionLiteral(element.getValueLiteral());
 					ArtifactVersion.from(element.getValue()).ifPresent(it::version);
@@ -131,9 +109,31 @@ class ArtifactReferenceUtils {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(dependencySite.getArtifactId())
-					.versionSource(dependencySite.getVersionSource())
+					.versionSource(versionSource)
 					.declarationElement(dependencySite.getDeclarationElement());
+			if (resolvedVersion != null) {
+				it.version(resolvedVersion);
+			} else if (versionSource.isDefined()) {
+				ArtifactVersion.from(versionSource.toString()).ifPresent(it::version);
+			}
+			if (versionLiteral != null) {
+				it.versionLiteral(versionLiteral);
+			}
 		});
+	}
+
+	private static @Nullable PsiElement versionLiteralOf(DependencySite site) {
+		return switch (site) {
+		case DirectCoordinate direct -> direct.versionLiteral();
+		case MapLiteralVersion map -> map.versionLiteral();
+		case MapPropertyVersion mapProperty -> mapProperty.versionReferenceElement();
+		case VersionBlockPreferLiteral prefer -> prefer.versionLiteral();
+		case VersionBlockPreferProperty prefer -> prefer.versionReferenceElement();
+		case VersionBlockStrictlyLiteral strictly -> strictly.versionLiteral();
+		case VersionBlockStrictlyProperty strictly -> strictly.versionReferenceElement();
+		case PluginVersion plugin -> plugin.versionLiteral();
+		default -> null;
+		};
 	}
 
 	private static @Nullable CachedArtifact getFirstArtifact(@Nullable ProjectProperty property) {

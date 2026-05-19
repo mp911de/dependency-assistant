@@ -21,6 +21,7 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -30,13 +31,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitArtifactId;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.util.HttpClientUtil;
-import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.util.LRUMap;
@@ -152,38 +150,26 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 
 			Map.Entry<String, JsonNode> entry = entries.next();
 			String versionString = entry.getKey();
-			if (StringUtils.isEmpty(versionString)) {
-				continue;
-			}
-
 			JsonNode version = entry.getValue();
 			JsonNode gitHead = version.get("gitHead");
+			String sha = gitHead != null ? gitHead.asText(null) : null;
+			LocalDateTime releaseDate = parseReleaseDate(time.path(versionString).asText(null));
 
-			ArtifactVersion.from(versionString).ifPresent(it -> {
-
-				ArtifactVersion artifactVersion = it;
-				if (gitHead != null) {
-
-					String sha = gitHead.asText(null);
-					if (StringUtils.hasText(sha)) {
-						artifactVersion = GitVersion.of(sha, artifactVersion);
-					}
-				}
-
-				String publishedAt = time.path(versionString).asText(null);
-				if (publishedAt != null && !publishedAt.isEmpty()) {
-					try {
-						OffsetDateTime instant = OffsetDateTime.parse(publishedAt);
-						result.add(Release.of(artifactVersion, instant.toLocalDateTime()));
-						return;
-					} catch (RuntimeException ignored) {
-						// fall through to date-less release
-					}
-				}
-				result.add(Release.of(artifactVersion));
-			});
+			Release.tryFrom(versionString, releaseDate, sha).ifPresent(result::add);
 		}
 		return result;
+	}
+
+	private static @Nullable LocalDateTime parseReleaseDate(@Nullable String publishedAt) {
+
+		if (publishedAt == null || publishedAt.isEmpty()) {
+			return null;
+		}
+		try {
+			return OffsetDateTime.parse(publishedAt).toLocalDateTime();
+		} catch (RuntimeException ignored) {
+			return null;
+		}
 	}
 
 	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri) throws IOException {

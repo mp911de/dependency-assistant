@@ -22,12 +22,12 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
+import biz.paluch.dap.support.yaml.YamlVersionSite;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import org.jetbrains.yaml.YAMLElementGenerator;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
-import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 
 /**
@@ -120,7 +120,8 @@ class UpdateAntoraPlaybookFile {
 			return;
 		}
 
-		if (!(scalar.getParent() instanceof YAMLKeyValue keyValue)) {
+		YamlVersionSite site = YamlVersionSite.locate(scalar, AntoraPlaybookParser::isBundleUrlKeyValue);
+		if (site == null) {
 			return;
 		}
 
@@ -129,15 +130,7 @@ class UpdateAntoraPlaybookFile {
 		int versionEnd = value.indexOf('/', versionStart);
 		String replacement = value.substring(0, versionStart) + renderedVersion + value.substring(versionEnd);
 
-		YAMLKeyValue ykv;
-		if (scalar instanceof YAMLQuotedText quoted) {
-			String quote = quoted.isSingleQuote() ? "'" : "\"";
-			ykv = factory.createYamlKeyValue(keyValue.getKeyText(), quote + replacement + quote);
-		} else {
-			ykv = factory.createYamlKeyValue(keyValue.getKeyText(), replacement);
-		}
-
-		keyValue.replace(ykv);
+		site.replaceRawValue(replacement, factory);
 	}
 
 	private void applyUpdates(List<DependencyUpdate> updates, YAMLScalar scalar) {

@@ -169,7 +169,7 @@ class GradleAssistant implements DependencyAssistant {
 			}
 
 			if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file)) {
-				return KotlinLookupSiteLocator.isVersionElement(element);
+				return KotlinVersionSiteLocator.isVersionElement(element);
 			}
 
 			return true;

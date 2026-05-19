@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
@@ -38,13 +39,11 @@ import org.springframework.util.Assert;
 /**
  * Base class for build-tool specific version-upgrade lookups.
  *
- * <p>
- * Subclasses translate build-file PSI into an {@link ArtifactReference}.
+ * <p>Subclasses translate build-file PSI into an {@link ArtifactReference}.
  * This base class handles project-state access, cached release lookup, and
  * conversion of releases into upgrade suggestions.
  *
- * <p>
- * Lookup methods are cache-only and should not trigger remote repository
+ * <p>Lookup methods are cache-only and should not trigger remote repository
  * access. Unsupported or incomplete PSI should resolve to
  * {@link ArtifactReference#unresolved()} or {@link AvailableUpgrades#none()}.
  *
@@ -63,6 +62,8 @@ public abstract class VersionUpgradeLookupSupport {
 
 	private final Cache cache;
 
+	private final GitVersionResolver versionResolver;
+
 	/**
 	 * Create a new {@code VersionUpgradeLookupSupport} instance.
 	 * @param project the IntelliJ project that owns the lookup.
@@ -75,10 +76,11 @@ public abstract class VersionUpgradeLookupSupport {
 		this.cache = service.getCache();
 		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.buildContext = buildContext;
+		this.versionResolver = new GitVersionResolver(this.cache, this.projectState);
 	}
 
 	public Project getProject() {
-		return project;
+		return this.project;
 	}
 
 	/**
@@ -88,10 +90,13 @@ public abstract class VersionUpgradeLookupSupport {
 		return this.cache;
 	}
 
+	public GitVersionResolver getVersionResolver() {
+		return this.versionResolver;
+	}
+
 	/**
 	 * Return the cached project state associated with this lookup.
-	 * <p>
-	 * Call {@link #hasCachedState()} first when the lookup may have been created
+	 * <p>Call {@link #hasCachedState()} first when the lookup may have been created
 	 * for a file outside a supported build context.
 	 * @throws IllegalStateException if the build context did not provide project
 	 * state.
@@ -114,8 +119,8 @@ public abstract class VersionUpgradeLookupSupport {
 	 * Return the current version of the first artifact associated with the given
 	 * property.
 	 * @param property the property whose artifact association should be inspected.
-	 * @return the current artifact version, or {@literal null} if the property has no
-	 * artifact association or project state does not contain the dependency.
+	 * @return the current artifact version, or {@literal null} if the property has
+	 * no artifact association or project state does not contain the dependency.
 	 */
 	public @Nullable ArtifactVersion getCurrentVersion(VersionProperty property) {
 
@@ -168,8 +173,7 @@ public abstract class VersionUpgradeLookupSupport {
 
 	/**
 	 * Resolve available upgrades for the given PSI element.
-	 * <p>
-	 * The default implementation resolves an {@link ArtifactReference} through
+	 * <p>The default implementation resolves an {@link ArtifactReference} through
 	 * {@link #resolveArtifactReference(PsiElement)} and evaluates that reference
 	 * against the shared cache.
 	 * @param element the PSI element under inspection.
@@ -181,8 +185,7 @@ public abstract class VersionUpgradeLookupSupport {
 
 	/**
 	 * Resolve the given PSI element into artifact declaration metadata.
-	 * <p>
-	 * Implementations should treat every element as optional input: unsupported
+	 * <p>Implementations should treat every element as optional input: unsupported
 	 * locations, incomplete PSI, unavailable project state, and unresolved property
 	 * or catalog indirection should result in
 	 * {@link ArtifactReference#unresolved()} rather than an exception.
@@ -194,8 +197,7 @@ public abstract class VersionUpgradeLookupSupport {
 
 	/**
 	 * Resolve available upgrades for a pre-resolved {@link ArtifactReference}.
-	 * <p>
-	 * Resolution is intentionally cache-only and never schedules a refresh.
+	 * <p>Resolution is intentionally cache-only and never schedules a refresh.
 	 * @param cache the cache to read releases from.
 	 * @param artifactReference the reference to evaluate.
 	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
@@ -221,8 +223,7 @@ public abstract class VersionUpgradeLookupSupport {
 
 	/**
 	 * Determine the preferred broad upgrade suggestion for the given version.
-	 * <p>
-	 * Prefers major over minor over patch when multiple tiers are available.
+	 * <p>Prefers major over minor over patch when multiple tiers are available.
 	 * @param artifactReference the resolved artifact reference.
 	 * @param current the current artifact version.
 	 * @param options the candidate release options.
@@ -262,8 +263,7 @@ public abstract class VersionUpgradeLookupSupport {
 
 	/**
 	 * Determine all available upgrade suggestions for the given version.
-	 * <p>
-	 * The returned {@link AvailableUpgrades#getUpgrades() upgrade map} contains
+	 * <p>The returned {@link AvailableUpgrades#getUpgrades() upgrade map} contains
 	 * entries for every matched major, minor, and patch tier, in that order.
 	 * @param artifactReference the resolved artifact reference.
 	 * @param current the current artifact version.

@@ -16,22 +16,19 @@
 
 package biz.paluch.dap.github;
 
-import java.util.Optional;
+import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
-import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
-import org.jetbrains.yaml.psi.YAMLMapping;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
@@ -41,9 +38,10 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>
  * Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
- * parsing the scalar text and resolving the ref against the shared cache via
- * {@link GitVersionResolver}. If the cache cannot resolve a tag-style ref, the
- * raw ref may still be exposed as a plain {@link ArtifactVersion}. Remote API
+ * parsing the scalar text and resolving the ref through
+ * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}. The
+ * canonical chain consults project state, the shared release cache, and a
+ * raw {@link ArtifactVersion#from(String)} parse, in that order. Remote API
  * access is never triggered.
  *
  * <p>
@@ -54,6 +52,8 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
+
+	private static final Predicate<YAMLKeyValue> IS_USES_KEY = kv -> "uses".equals(kv.getKeyText());
 
 	private final GitHubProjectContext buildContext;
 
@@ -91,18 +91,11 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					.declarationElement(scalar)
 					.versionLiteral(scalar);
 
-			Dependency dependency = getProjectState().findDependency(artifactId);
-			if (dependency != null) {
-				builder.version(dependency.getCurrentVersion());
-			} else if (StringUtils.hasText(ref.version())) {
-				GitVersionResolver resolver = new GitVersionResolver(getCache());
-				Optional<GitVersion> version = resolver.resolve(artifactId, ref.version());
-				if (version.isEmpty()) {
-					ArtifactVersion.from(ref.version()).ifPresent(builder::version);
-				} else {
-					version.ifPresent(builder::version);
-				}
+			if (!StringUtils.hasText(ref.version())) {
+				return;
 			}
+
+			getVersionResolver().resolveCurrent(artifactId, ref.version()).ifPresent(builder::version);
 		});
 	}
 
@@ -114,29 +107,22 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	 */
 	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
 
-		if (element instanceof YAMLScalar scalar) {
-			return getUsesScalar(scalar);
-		}
-
-		YAMLScalar scalar = PsiTreeUtil.getParentOfType(element, YAMLScalar.class, false, YAMLMapping.class);
-		return scalar != null ? getUsesScalar(scalar) : null;
+		YamlVersionSite site = YamlVersionSite.locate(element, IS_USES_KEY);
+		return site != null ? site.scalar() : null;
 	}
 
 	/**
 	 * Return the {@link YAMLScalar} that is the value of a {@code uses:} key.
 	 * @param element the element at the cursor position.
-	 * @return the scalar, or {@literal null} if none found.
+	 * @return the scalar, or {@literal null} if it is not the value of such a key.
 	 */
 	public static @Nullable YAMLScalar getUsesScalar(PsiElement element) {
 
-		YAMLScalar scalar = element instanceof YAMLScalar s ? s
-				: null;
-		if (scalar != null && scalar.getParent() instanceof YAMLKeyValue keyValue) {
-			if ("uses".equals(keyValue.getKeyText())) {
-				return scalar;
-			}
+		if (!(element instanceof YAMLScalar scalar)) {
+			return null;
 		}
-		return null;
+		YamlVersionSite site = YamlVersionSite.locate(scalar, IS_USES_KEY);
+		return site != null ? site.scalar() : null;
 	}
 
 	public static @Nullable UsesRepositoryAction findUsesRepository(PsiElement element) {

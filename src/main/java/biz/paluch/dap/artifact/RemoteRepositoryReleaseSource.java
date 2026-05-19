@@ -85,8 +85,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		String path = artifactId.groupId().replace(".", "/") + "/" + artifactId.artifactId() + "/";
 		String metadataPath = path + "maven-metadata.xml";
 
-		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
-
 		String baseUrl = repository.url();
 		String base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
 		URI repositoryBaseUri = URI.create(base).normalize();
@@ -103,17 +101,15 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		}
 
 		Map<String, LocalDateTime> releaseDates = parseDirectoryListingDates(directoryListing);
-		versions.addAll(parseAllVersionsFromMetadata(xml));
-
-		List<Release> result = new ArrayList<>();
-		for (ArtifactVersion av : versions) {
-			result.add(new Release(av, releaseDates.get(av.toString())));
+		Set<Release> releases = new TreeSet<>(Comparator.reverseOrder());
+		for (String rawVersion : parseReleaseVersions(xml)) {
+			Release.tryFrom(rawVersion, releaseDates.get(rawVersion), null).ifPresent(releases::add);
 		}
 
-		return result;
+		return new ArrayList<>(releases);
 	}
 
-	private List<ArtifactVersion> parseAllVersionsFromMetadata(String xml) {
+	private List<String> parseReleaseVersions(String xml) {
 
 		MavenMetadataProjection projection = XmlBeamProjectorFactory.INSTANCE.projectXMLString(xml,
 				MavenMetadataProjection.class);
@@ -123,16 +119,15 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			return List.of();
 		}
 
-		List<ArtifactVersion> result = new ArrayList<>();
+		List<String> result = new ArrayList<>();
 		for (String v : versions) {
 			String trimmed = StringUtils.hasText(v) ? v.trim() : "";
 			if (trimmed.endsWith("-SNAPSHOT") || trimmed.isEmpty()) {
 				continue;
 			}
-			if (SemanticArtifactVersion.isVersion(trimmed)) {
-				result.add(SemanticArtifactVersion.of(trimmed));
-			} else if (ReleaseTrainArtifactVersion.isReleaseTrainVersion(trimmed)) {
-				result.add(ReleaseTrainArtifactVersion.of(trimmed));
+			if (SemanticArtifactVersion.isVersion(trimmed)
+					|| ReleaseTrainArtifactVersion.isReleaseTrainVersion(trimmed)) {
+				result.add(trimmed);
 			}
 		}
 

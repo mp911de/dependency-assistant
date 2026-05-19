@@ -21,6 +21,16 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
+import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
+import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.MapPropertyVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.PluginVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.TomlCatalogAlias;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferLiteral;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferProperty;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyLiteral;
+import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyProperty;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
@@ -38,28 +48,28 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Groovy DSL PSI locator for semantic {@link LookupSite lookup sites} and
+ * Groovy DSL PSI locator for {@link GradleVersionSite version sites} and
  * declaration-aware dependency lookups.
  *
  * @author Mark Paluch
  */
-class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
+class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 
 	private final PropertyResolver propertyResolver;
 
 	private final @Nullable VersionCatalogRegistry registry;
 
-	GroovyLookupSiteLocator(PropertyResolver propertyResolver) {
+	GroovyVersionSiteLocator(PropertyResolver propertyResolver) {
 		this(propertyResolver, null);
 	}
 
-	GroovyLookupSiteLocator(PropertyResolver propertyResolver, @Nullable VersionCatalogRegistry registry) {
+	GroovyVersionSiteLocator(PropertyResolver propertyResolver, @Nullable VersionCatalogRegistry registry) {
 		this.propertyResolver = propertyResolver;
 		this.registry = registry;
 	}
 
 	/**
-	 * Locate the semantic {@link LookupSite} owning the given Groovy PSI element.
+	 * Locate the {@link GradleVersionSite} owning the given Groovy PSI element.
 	 * <p>
 	 * Supports direct dependency literals, property-backed declarations, and
 	 * version catalog references such as: <pre class="code">
@@ -70,41 +80,41 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 * </pre>
 	 *
 	 * @param element the PSI element to inspect.
-	 * @return the resolved lookup site, or {@link LookupSite#absent()} if no
-	 * supported declaration can be derived.
+	 * @return the resolved version site, or {@link GradleVersionSite#absent()} if
+	 * no supported declaration can be derived.
 	 */
 	@Override
-	public LookupSite locate(GroovyPsiElement element) {
+	public GradleVersionSite locate(GroovyPsiElement element) {
 
-		LookupSite catalogReference = locateCatalogReference(element);
+		GradleVersionSite catalogReference = locateCatalogReference(element);
 		if (catalogReference.isPresent()) {
 			return catalogReference;
 		}
 
 		if (element instanceof GrLiteral literal) {
 
-			LookupSite versionBlockSite = locateVersionBlockLiteral(literal);
+			GradleVersionSite versionBlockSite = locateVersionBlockLiteral(literal);
 			if (versionBlockSite.isPresent()) {
 				return versionBlockSite;
 			}
 
-			LookupSite propertySite = locatePropertyLiteral(literal);
+			GradleVersionSite propertySite = locatePropertyLiteral(literal);
 			if (propertySite.isPresent()) {
 				return propertySite;
 			}
 
-			return LookupSite.from(findDependencySite(literal, propertyResolver));
+			return classifyLiteralSite(findDependencySite(literal, propertyResolver), literal);
 		}
 
 		if (element instanceof GrReferenceExpression referenceExpression) {
-			LookupSite commandPlatformSite = locateCommandPlatformString(referenceExpression);
+			GradleVersionSite commandPlatformSite = locateCommandPlatformString(referenceExpression);
 			if (commandPlatformSite.isPresent()) {
 				return commandPlatformSite;
 			}
 			return locatePropertyReference(referenceExpression);
 		}
 
-		return LookupSite.absent();
+		return GradleVersionSite.absent();
 	}
 
 	/**
@@ -145,53 +155,59 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		return GradleParser.parseDependency(call, propertyResolver);
 	}
 
-	private LookupSite locatePropertyLiteral(GrLiteral literal) {
+	private GradleVersionSite locatePropertyLiteral(GrLiteral literal) {
 
 		Property property = GroovyExtAssignment.findGroovyExtPropertyVersionElement(literal);
 		if (property == null && propertyResolver instanceof GradlePropertyResolver resolver) {
 			property = resolver.findBindingForValueLiteral(literal);
 		}
 		if (property == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
-		return LookupSite.ofProperty(property, literal);
+		return new BackingProperty(property.getKey(), property.getValue(), literal, property.getValueLiteral());
 	}
 
-	private LookupSite locatePropertyReference(GrReferenceExpression refExpr) {
+	private GradleVersionSite locatePropertyReference(GrReferenceExpression refExpr) {
 
 		String refName = refExpr.getReferenceName();
 		if (!StringUtils.hasText(refName)) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		PropertyValue resolved = propertyResolver.getPropertyValue(refName);
 		if (resolved == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		DependencySite site = resolvePropertyDeclaration(refExpr);
 		if (site == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
-		return LookupSite.from(site);
+		return classifyPropertyReferenceSite(site, refExpr);
 	}
 
-	private LookupSite locateCommandPlatformString(PsiElement element) {
+	private GradleVersionSite locateCommandPlatformString(PsiElement element) {
 
 		GrMethodCall call = GradleParser.findCommandPlatformDependencyCall(element);
 		String text = GradleParser.getCommandPlatformStringText(element);
 		if (call == null || !StringUtils.hasText(text)) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		GradleDependency dependency = GradleDependency.parse(text, propertyResolver);
-		return dependency != null ? LookupSite.from(dependency.toDependencySite(call, element)) : LookupSite.absent();
+		if (dependency == null) {
+			return GradleVersionSite.absent();
+		}
+
+		PsiElement stringElement = GradleParser.findCommandPlatformString(element);
+		PsiElement versionElement = stringElement != null ? stringElement : element;
+		return new DirectCoordinate(dependency.toDependencySite(call, versionElement).getArtifactId(),
+				dependency.getVersionSource(), call, versionElement);
 	}
 
-	private @Nullable DependencySite resolvePropertyDeclaration(
-			GrReferenceExpression refExpr) {
+	private @Nullable DependencySite resolvePropertyDeclaration(GrReferenceExpression refExpr) {
 
 		if (GradleParser.isVersionNamedArgumentReference(refExpr)) {
 			if (PsiTreeUtil.getParentOfType(refExpr, GrStringInjection.class) != null) {
@@ -202,8 +218,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 			if (declarationCall != null) {
 
 				if (GradleParser.isMapStyleDeclarationCandidate(declarationCall)) {
-					DependencySite site = GradleParser.parseMapDeclaration(declarationCall,
-							propertyResolver);
+					DependencySite site = GradleParser.parseMapDeclaration(declarationCall, propertyResolver);
 					if (site != null) {
 						return site;
 					}
@@ -222,8 +237,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 
 			GrMethodCall dependencyCall = GradleParser.findVersionBlockDependencyCall(enclosingCall);
 			if (dependencyCall != null) {
-				DependencySite site = GradleParser.parseMapDeclaration(dependencyCall,
-						propertyResolver);
+				DependencySite site = GradleParser.parseMapDeclaration(dependencyCall, propertyResolver);
 
 				if (site != null) {
 					return site;
@@ -236,44 +250,50 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		return null;
 	}
 
-	private LookupSite locateCatalogReference(PsiElement element) {
+	private GradleVersionSite locateCatalogReference(PsiElement element) {
 
 		if (registry == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		GrMethodCall catalogCall = GroovyDslUtils.findEnclosingGroovyCatalogAccessorCall(element);
 		if (catalogCall == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		PsiElement argument = GroovyDslUtils.getFirstGroovyCatalogArgumentExpression(catalogCall);
 		if (!(argument instanceof GrExpression expression)) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		List<String> segments = GroovyDslUtils.getVersionCatalogSegments(expression);
 		if (segments.isEmpty() || !registry.containsAlias(segments.getFirst())) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		TomlReference reference = TomlReference.from(segments, registry.catalogPaths().keySet());
-		return reference != null ? LookupSite.ofTomlReference(reference, catalogCall) : LookupSite.absent();
+		return reference != null ? new TomlCatalogAlias(reference, catalogCall) : GradleVersionSite.absent();
 	}
 
-	private LookupSite locateVersionBlockLiteral(GrLiteral literal) {
+	private GradleVersionSite locateVersionBlockLiteral(GrLiteral literal) {
+
+		GrMethodCall enclosingCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
+		String constraintName = enclosingCall != null ? GroovyDslUtils.getGroovyMethodName(enclosingCall) : null;
 
 		DependencySite site = resolveVersionBlockLiteral(literal, propertyResolver);
 		if (site == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
-		if (site instanceof VersionedDependencySite) {
-			return LookupSite.from(site);
-		}
+		ArtifactId id = site.getArtifactId();
+		VersionSource source = site.getVersionSource();
+		PsiElement declaration = site.getDeclarationElement();
+		ArtifactVersion version = GradleVersionSite.versionOf(site);
+		boolean strictly = GradleVersionConstraint.STRICTLY.equals(constraintName);
 
-		return new LookupSite.ArtifactIdLookupSite(site.getArtifactId(), site.getVersionSource(),
-				site.getDeclarationElement(), literal);
+		return strictly
+				? new VersionBlockStrictlyLiteral(id, source, declaration, literal, version)
+				: new VersionBlockPreferLiteral(id, source, declaration, literal, version);
 	}
 
 	/**
@@ -375,8 +395,6 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	public static @Nullable DependencySite findDependencySite(GrLiteral element,
 			PropertyResolver scriptProperties) {
 
-		// Check if this literal is inside a prefer/strictly call inside a version {}
-		// closure
 		DependencySite site = resolveVersionBlockLiteral(element, scriptProperties);
 		if (site != null) {
 			return site;
@@ -391,8 +409,6 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		}
 		String callName = GroovyDslUtils.getGroovyMethodName(call);
 		if (!GradleUtils.isDependencySection(callName) && !GradleUtils.isPlatformSection(callName)) {
-			// Not a standard dependency/platform call; check the plugin version pattern:
-			// id 'pluginId' version 'x.y.z'
 			return resolvePluginVersionLiteral(call, scriptProperties);
 		}
 
@@ -433,10 +449,6 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 *     id 'org.springframework.boot' version '3.3.2'
 	 * }
 	 * </pre>
-	 * <p>
-	 * The plugin ID is used as both {@link ArtifactId#groupId()} and
-	 * {@link ArtifactId#artifactId()}, matching the convention used throughout the
-	 * Gradle plugin support.
 	 *
 	 * @param call the outer {@code version} call.
 	 * @param scriptProperties property resolver used for plugin ID parsing.
@@ -445,10 +457,7 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 	 */
 	public static @Nullable DependencySite resolvePluginVersionLiteral(GrMethodCall call,
 			PropertyResolver scriptProperties) {
-		// The 'x.y.z' literal is an argument of the outer `version` method call.
-		// call.invokedExpression must be a `version` GrReferenceExpression whose
-		// qualifier
-		// is the inner `id 'pluginId'` method call.
+
 		GrMethodCall idCall = GradleParser.findPluginIdCallForVersionCall(call);
 		if (idCall == null) {
 			return null;
@@ -457,5 +466,56 @@ class GroovyLookupSiteLocator implements LookupSiteLocator<GroovyPsiElement> {
 		return GroovyPluginDependencySite.fromMethodCall(idCall, scriptProperties);
 	}
 
+	private GradleVersionSite classifyLiteralSite(@Nullable DependencySite site, GrLiteral literal) {
+
+		if (site == null) {
+			return GradleVersionSite.absent();
+		}
+
+		ArtifactId id = site.getArtifactId();
+		VersionSource source = site.getVersionSource();
+		PsiElement declaration = site.getDeclarationElement();
+		ArtifactVersion version = GradleVersionSite.versionOf(site);
+
+		if (isPluginContext(literal)) {
+			return new PluginVersion(id, source, declaration, literal, version);
+		}
+
+		if (isMapStyleVersionContext(literal)) {
+			return new MapLiteralVersion(id, source, declaration, literal, version);
+		}
+
+		return new DirectCoordinate(id, source, declaration, literal, version);
+	}
+
+	private GradleVersionSite classifyPropertyReferenceSite(DependencySite site, GrReferenceExpression refExpr) {
+
+		ArtifactId id = site.getArtifactId();
+		VersionSource source = site.getVersionSource();
+		PsiElement declaration = site.getDeclarationElement();
+		ArtifactVersion version = GradleVersionSite.versionOf(site);
+		String propertyName = refExpr.getReferenceName() != null ? refExpr.getReferenceName() : "";
+
+		GrMethodCall enclosingCall = PsiTreeUtil.getParentOfType(refExpr, GrMethodCall.class);
+		String enclosingName = enclosingCall != null ? GroovyDslUtils.getGroovyMethodName(enclosingCall) : null;
+
+		if (GradleVersionConstraint.PREFER.equals(enclosingName)) {
+			return new VersionBlockPreferProperty(id, propertyName, source, declaration, refExpr, version);
+		}
+
+		if (GradleVersionConstraint.STRICTLY.equals(enclosingName)) {
+			return new VersionBlockStrictlyProperty(id, propertyName, source, declaration, refExpr, version);
+		}
+
+		return new MapPropertyVersion(id, propertyName, source, declaration, refExpr, version);
+	}
+
+	private static boolean isPluginContext(GrLiteral literal) {
+		return GradleParser.isPluginVersionLiteral(literal);
+	}
+
+	private static boolean isMapStyleVersionContext(GrLiteral literal) {
+		return GradleParser.isVersionNamedArgumentLiteral(literal);
+	}
 
 }

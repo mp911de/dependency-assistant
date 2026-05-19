@@ -59,13 +59,13 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final VersionCatalogRegistry registry;
 
-	private final GroovyLookupSiteLocator groovySiteLocator;
+	private final GroovyVersionSiteLocator groovySiteLocator;
 
-	private final KotlinLookupSiteLocator kotlinSiteLocator;
+	private final KotlinVersionSiteLocator kotlinSiteLocator;
 
-	private final TomlLookupSiteLocator tomlSiteLocator;
+	private final TomlVersionSiteLocator tomlSiteLocator;
 
-	private final GradleLookupSiteResolver lookupSiteResolver;
+	private final GradleVersionSiteResolver lookupSiteResolver;
 
 	/**
 	 * Create a new {@code VersionUpgradeLookupService}.
@@ -108,10 +108,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
 		this.tomlResolver = new TomlArtifactResolver(project, file, this.registry);
-		this.groovySiteLocator = new GroovyLookupSiteLocator(this.propertyResolver, this.registry);
-		this.kotlinSiteLocator = new KotlinLookupSiteLocator(this.propertyResolver, this.registry);
-		this.tomlSiteLocator = new TomlLookupSiteLocator();
-		this.lookupSiteResolver = new GradleLookupSiteResolver(this.propertyResolver, this.projectState,
+		this.groovySiteLocator = new GroovyVersionSiteLocator(this.propertyResolver, this.registry);
+		this.kotlinSiteLocator = new KotlinVersionSiteLocator(this.propertyResolver, this.registry);
+		this.tomlSiteLocator = new TomlVersionSiteLocator();
+		this.lookupSiteResolver = new GradleVersionSiteResolver(this.propertyResolver, this.projectState,
 				this.tomlResolver);
 	}
 
@@ -122,15 +122,15 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		LookupSite lookupSite = findLookupSite(element);
-		return lookupSite.isPresent() ? lookupSiteResolver.resolve(lookupSite) : ArtifactReference.unresolved();
+		GradleVersionSite versionSite = findVersionSite(element);
+		return versionSite.isPresent() ? lookupSiteResolver.resolve(versionSite) : ArtifactReference.unresolved();
 	}
 
 	/**
-	 * Find the Gradle lookup site represented by the given element.
+	 * Find the Gradle version site represented by the given element.
 	 * @param element the PSI element under inspection.
 	 */
-	public LookupSite findLookupSite(PsiElement element) {
+	public GradleVersionSite findVersionSite(PsiElement element) {
 
 		PsiFile file = element.getContainingFile();
 		if (GradleUtils.isVersionCatalog(file) && element instanceof TomlLiteral literal) {
@@ -144,7 +144,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			if (element instanceof Property property) {
 				return locateGradlePropertySite(property);
 			}
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		if (GradleUtils.isGroovyDsl(file) && element instanceof GroovyPsiElement groovyElement) {
@@ -155,30 +155,31 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return kotlinSiteLocator.locate(ktElement);
 		}
 
-		return LookupSite.absent();
+		return GradleVersionSite.absent();
 	}
 
-	private LookupSite locateGradlePropertySite(PsiElement element) {
+	private GradleVersionSite locateGradlePropertySite(PsiElement element) {
 
 		Property property = GradlePropertiesParser.getProperty(element);
 		if (property == null || StringUtils.isEmpty(property.getUnescapedKey()) || projectState == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		return locateGradlePropertySite(property);
 	}
 
-	private LookupSite locateGradlePropertySite(Property property) {
+	private GradleVersionSite locateGradlePropertySite(Property property) {
 
 		if (StringUtils.isEmpty(property.getUnescapedKey()) || projectState == null) {
-			return LookupSite.absent();
+			return GradleVersionSite.absent();
 		}
 
 		if (StringUtils.hasText(property.getName())) {
-			return LookupSite.ofProperty(property.getName(), property.getUnescapedValue(), property, property);
+			return new GradleVersionSite.BackingProperty(property.getName(), property.getUnescapedValue(), property,
+					property);
 		}
 
-		return LookupSite.absent();
+		return GradleVersionSite.absent();
 	}
 
 }

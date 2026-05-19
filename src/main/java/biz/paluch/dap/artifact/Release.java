@@ -19,6 +19,7 @@ package biz.paluch.dap.artifact;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Optional;
 
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -28,7 +29,6 @@ import org.jspecify.annotations.Nullable;
  */
 public record Release(ArtifactVersion version,
 		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, VersionAware {
-
 
 	/**
 	 * Create a {@code Release} from a version string.
@@ -71,6 +71,31 @@ public record Release(ArtifactVersion version,
 	 */
 	public static Release from(ArtifactVersion version, @Nullable String date) {
 		return new Release(version, getReleaseDate(date));
+	}
+
+	/**
+	 * Attempt to build a {@code Release} from a raw registry row.
+	 *
+	 * <p>Centralises the parse-or-skip path used by release-source adapters: a
+	 * blank or unparseable {@code rawVersion} yields an empty result, a
+	 * non-blank {@code sha} wraps the parsed version in a {@link GitVersion},
+	 * and a non-null {@code date} is attached to the resulting release.
+	 *
+	 * @param rawVersion the raw version string as reported by the source; can
+	 * be {@literal null} or blank.
+	 * @param date the release date to attach; can be {@literal null}.
+	 * @param sha the commit SHA backing the version; can be {@literal null} or
+	 * blank, in which case the version is left unwrapped.
+	 * @return the parsed release, or {@link Optional#empty()} when
+	 * {@code rawVersion} is blank or cannot be parsed.
+	 */
+	public static Optional<Release> tryFrom(@Nullable String rawVersion, @Nullable LocalDateTime date,
+			@Nullable String sha) {
+
+		return ArtifactVersion.from(rawVersion).map(parsed -> {
+			ArtifactVersion version = StringUtils.hasText(sha) ? GitVersion.of(sha, parsed) : parsed;
+			return new Release(version, date);
+		});
 	}
 
 	/**

@@ -18,19 +18,17 @@ package biz.paluch.dap.github;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.CachedRelease;
@@ -162,37 +160,17 @@ public class GitHubReleaseSource implements ReleaseSource {
 
 		for (GitHubReleaseDto gitHubRelease : releases) {
 
-			seenTags.add(gitHubRelease.tagName());
+			String tagName = gitHubRelease.tagName();
+			seenTags.add(tagName);
 			if (gitHubRelease.draft()) {
 				continue;
 			}
 
-			String tagName = gitHubRelease.tagName();
-			if (StringUtils.isEmpty(tagName) || StringUtils.isEmpty(tagName)) {
-				continue;
-			}
-
-			Optional<ArtifactVersion> parsed = ArtifactVersion.from(tagName);
-			if (parsed.isEmpty()) {
-				continue;
-			}
-
-			ArtifactVersion version = parsed.get();
-
-			String sha = shaByTag.get(tagName);
-			if (StringUtils.hasText(sha)) {
-				version = GitVersion.of(sha, version);
-			}
-
 			String publishedAt = gitHubRelease.publishedAt();
-			Release release;
-			if (StringUtils.hasText(publishedAt)) {
-				OffsetDateTime releaseDate = OffsetDateTime.parse(publishedAt);
-				release = Release.of(version, releaseDate.toLocalDateTime());
-			} else {
-				release = Release.of(version);
-			}
-			result.add(release);
+			LocalDateTime releaseDate = StringUtils.hasText(publishedAt)
+					? OffsetDateTime.parse(publishedAt).toLocalDateTime() : null;
+
+			Release.tryFrom(tagName, releaseDate, shaByTag.get(tagName)).ifPresent(result::add);
 		}
 
 		shaByTag.forEach((tag, sha) -> {
@@ -201,9 +179,7 @@ public class GitHubReleaseSource implements ReleaseSource {
 				return;
 			}
 
-			ArtifactVersion.from(tag).ifPresent(version -> {
-				result.add(Release.of(version));
-			});
+			Release.tryFrom(tag, null, null).ifPresent(result::add);
 		});
 
 		return result;

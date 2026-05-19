@@ -19,21 +19,21 @@ package biz.paluch.dap.gradle;
 import com.intellij.psi.PsiElement;
 
 /**
- * Strategy interface for locating {@link LookupSite lookup sites} from
+ * Strategy interface for locating {@link GradleVersionSite version sites} from
  * language-specific Gradle PSI.
  *
  * @param <T> the supported PSI element type.
  * @author Mark Paluch
- * @see LookupSite
+ * @see GradleVersionSite
  */
-interface LookupSiteLocator<T extends PsiElement> {
+interface VersionSiteLocator<T extends PsiElement> {
 
 	/**
-	 * Locate the semantic {@link LookupSite} for the given PSI element.
+	 * Locate the semantic {@link GradleVersionSite} for the given PSI element.
 	 * @param element the PSI element to inspect.
-	 * @return the resolved lookup site, or {@link LookupSite#absent()} if the
-	 * element does not belong to a supported declaration.
+	 * @return the resolved version site, or {@link GradleVersionSite#absent()} if
+	 * the element does not belong to a supported declaration.
 	 */
-	LookupSite locate(T element);
+	GradleVersionSite locate(T element);
 
 }

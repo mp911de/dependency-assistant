@@ -32,14 +32,12 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.PsiElements;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.fileTypes.FileTypeManager;
@@ -196,17 +194,7 @@ public class AntoraAssistant implements DependencyAssistant {
 
 		@Override
 		public @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
-
-			if (declaredDependency.getVersionSources().isEmpty()) {
-				return null;
-			}
-
-			VersionSource source = declaredDependency.getVersionSources().iterator().next();
-			if (StringUtils.hasText(source.toString())) {
-				GitVersion gitVersion = GitVersionResolver.resolveVersion(source.toString(), releases);
-				return gitVersion != null ? Dependency.from(declaredDependency, gitVersion) : null;
-			}
-			return null;
+			return GitVersionResolver.resolveDependency(declaredDependency, releases);
 		}
 
 		@Override

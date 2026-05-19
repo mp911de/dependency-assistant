@@ -32,10 +32,10 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
  */
 class UpdateGroovyDsl {
 
-	private final GroovyLookupSiteLocator siteLocator;
+	private final GroovyVersionSiteLocator siteLocator;
 
 	UpdateGroovyDsl(PropertyResolver propertyResolver) {
-		this.siteLocator = new GroovyLookupSiteLocator(propertyResolver);
+		this.siteLocator = new GroovyVersionSiteLocator(propertyResolver);
 	}
 
 	/**

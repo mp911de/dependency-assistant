@@ -62,6 +62,7 @@ class DependencyCycleArchitectureTests {
 				it.withStrictClosedHierarchy(ArtifactVersion.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
+						.withClosedHierarchy("biz.paluch.dap.gradle.GradleVersionSite")
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(ReleaseSource.class)
 						.withStrictClosedHierarchy(ArtifactId.class)
@@ -97,11 +98,11 @@ class DependencyCycleArchitectureTests {
 
 	@ArchTest
 	static final ArchRule antora = packageDependencies("antora",
-			"biz.paluch.dap", "artifact", "assistant", "state", "support", "util", "github");
+			"biz.paluch.dap", "artifact", "assistant", "state", "support", "support.yaml", "util", "github");
 
 	@ArchTest
 	static final ArchRule github = packageDependencies("github",
-			"biz.paluch.dap", "artifact", "assistant", "state", "support", "util");
+			"biz.paluch.dap", "artifact", "assistant", "state", "support", "support.yaml", "util");
 
 	@ArchTest
 	static final ArchRule gradle = packageDependencies("gradle",

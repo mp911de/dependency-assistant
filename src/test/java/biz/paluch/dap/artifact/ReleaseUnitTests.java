@@ -17,6 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,8 @@ import static org.assertj.core.api.Assertions.*;
  */
 class ReleaseUnitTests {
 
+	private static final LocalDateTime DATE = LocalDateTime.parse("2024-05-01T12:00:00");
+
 	@Test
 	void shouldCompareVersions() {
 
@@ -39,6 +42,74 @@ class ReleaseUnitTests {
 
 		assertThat(train).isLessThan(v1);
 		assertThat(v1).isGreaterThan(train).isLessThan(v2);
+	}
+
+	@Test
+	void tryFromValidVersionWithDateAndSha() {
+
+		Optional<Release> release = Release.tryFrom("1.2.3", DATE, "abc123");
+
+		assertThat(release).isPresent();
+		assertThat(release.get().releaseDate()).isEqualTo(DATE);
+		assertThat(release.get().version()).isInstanceOfSatisfying(GitVersion.class,
+				git -> assertThat(git.getSha()).isEqualTo("abc123"));
+	}
+
+	@Test
+	void tryFromValidVersionWithShaWrapsInGitVersion() {
+
+		Optional<Release> release = Release.tryFrom("1.2.3", null, "abc123");
+
+		assertThat(release).isPresent();
+		assertThat(release.get().releaseDate()).isNull();
+		assertThat(release.get().version()).isInstanceOfSatisfying(GitVersion.class,
+				git -> assertThat(git.getSha()).isEqualTo("abc123"));
+	}
+
+	@Test
+	void tryFromValidVersionWithDateOnly() {
+
+		Optional<Release> release = Release.tryFrom("1.2.3", DATE, null);
+
+		assertThat(release).isPresent();
+		assertThat(release.get().releaseDate()).isEqualTo(DATE);
+		assertThat(release.get().version()).isEqualTo(ArtifactVersion.of("1.2.3"));
+		assertThat(release.get().version()).isNotInstanceOf(GitVersion.class);
+	}
+
+	@Test
+	void tryFromValidBareVersion() {
+
+		Optional<Release> release = Release.tryFrom("1.2.3", null, null);
+
+		assertThat(release).isPresent();
+		assertThat(release.get().releaseDate()).isNull();
+		assertThat(release.get().version()).isEqualTo(ArtifactVersion.of("1.2.3"));
+		assertThat(release.get().version()).isNotInstanceOf(GitVersion.class);
+	}
+
+	@Test
+	void tryFromBlankVersionReturnsEmpty() {
+		assertThat(Release.tryFrom("", DATE, "abc123")).isEmpty();
+	}
+
+	@Test
+	void tryFromWhitespaceVersionReturnsEmpty() {
+		assertThat(Release.tryFrom("   ", DATE, "abc123")).isEmpty();
+	}
+
+	@Test
+	void tryFromUnparseableVersionReturnsEmpty() {
+		assertThat(Release.tryFrom("not a version", null, null)).isEmpty();
+	}
+
+	@Test
+	void tryFromBlankShaTreatedAsAbsent() {
+
+		Optional<Release> release = Release.tryFrom("1.2.3", null, "   ");
+
+		assertThat(release).isPresent();
+		assertThat(release.get().version()).isNotInstanceOf(GitVersion.class);
 	}
 
 }

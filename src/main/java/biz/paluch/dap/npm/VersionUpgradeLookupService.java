@@ -21,9 +21,7 @@ import java.util.Optional;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import com.intellij.json.psi.JsonProperty;
@@ -48,12 +46,9 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final NpmProjectContext buildContext;
 
-	private final GitVersionResolver gitVersionResolver;
-
 	VersionUpgradeLookupService(Project project, NpmProjectContext buildContext) {
 		super(project, buildContext);
 		this.buildContext = buildContext;
-		this.gitVersionResolver = new GitVersionResolver(getCache());
 	}
 
 	@Override
@@ -87,7 +82,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					.versionLiteral(literal);
 
 			if (expression instanceof NpmVersionExpression.Git(NpmGitRef ref)) {
-				Optional<GitVersion> version = gitVersionResolver.resolve(artifactId, ref.committish().text());
+				Optional<ArtifactVersion> version = getVersionResolver().resolveCurrent(artifactId, ref.committish().text());
 				if (version.isPresent()) {
 					version.ifPresent(builder::version);
 					return;

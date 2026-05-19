@@ -16,21 +16,15 @@
 
 package biz.paluch.dap.antora;
 
-import java.util.Optional;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.yaml.YamlVersionSite;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
-import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.yaml.psi.YAMLKeyValue;
-import org.jetbrains.yaml.psi.YAMLMapping;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
@@ -38,12 +32,12 @@ import org.jspecify.annotations.Nullable;
  * {@link VersionUpgradeLookupSupport} implementation for Antora playbook
  * {@code ui.bundle.url} declarations.
  *
- * <p>
- * Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
- * an {@link ArtifactReference}. The declared version is resolved against the
- * shared cache through {@link GitVersionResolver}; if the cache does not
- * contain the version, the parsed version is exposed as a plain
- * {@link ArtifactVersion}. Remote API access is never triggered.
+ * <p>Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
+ * an {@link ArtifactReference}. The declared version is resolved through the
+ * canonical chain of
+ * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}: project
+ * state, shared release cache, and raw {@link ArtifactVersion#from(String)}
+ * parse. Remote API access is never triggered.
  *
  * @author Mark Paluch
  */
@@ -85,25 +79,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					.declarationElement(scalar)
 					.versionLiteral(scalar);
 
-			Optional<ArtifactVersion> version = ArtifactVersion.from(bundleUrl.version());
-			if (version.isPresent()) {
-				version.ifPresent(builder::version);
-				return;
-			}
-
-			Dependency dependency = getProjectState().findDependency(artifactId);
-			if (dependency != null) {
-				builder.version(dependency.getCurrentVersion());
-				return;
-			}
-
-			GitVersionResolver resolver = new GitVersionResolver(getCache());
-			Optional<GitVersion> resolved = resolver.resolve(artifactId, bundleUrl.version());
-			if (resolved.isPresent()) {
-				resolved.ifPresent(builder::version);
-				return;
-			}
-
+			getVersionResolver().resolveCurrent(artifactId, bundleUrl.version()).ifPresent(builder::version);
 		});
 	}
 
@@ -115,12 +91,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	 */
 	static @Nullable YAMLScalar findBundleUrlScalar(PsiElement element) {
 
-		if (element instanceof YAMLScalar scalar) {
-			return getBundleUrlScalar(scalar);
-		}
-
-		YAMLScalar scalar = PsiTreeUtil.getParentOfType(element, YAMLScalar.class, false, YAMLMapping.class);
-		return scalar != null ? getBundleUrlScalar(scalar) : null;
+		YamlVersionSite site = YamlVersionSite.locate(element, AntoraPlaybookParser::isBundleUrlKeyValue);
+		return site != null ? site.scalar() : null;
 	}
 
 	/**
@@ -134,10 +106,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		if (!(element instanceof YAMLScalar scalar)) {
 			return null;
 		}
-		if (!(scalar.getParent() instanceof YAMLKeyValue keyValue)) {
-			return null;
-		}
-		return AntoraPlaybookParser.isBundleUrlKeyValue(keyValue) ? scalar : null;
+		YamlVersionSite site = YamlVersionSite.locate(scalar, AntoraPlaybookParser::isBundleUrlKeyValue);
+		return site != null ? site.scalar() : null;
 	}
 
 	/**
