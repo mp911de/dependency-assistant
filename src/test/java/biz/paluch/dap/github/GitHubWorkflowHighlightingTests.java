@@ -16,14 +16,13 @@
 
 package biz.paluch.dap.github;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,18 +35,16 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class GitHubWorkflowHighlightingTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@BeforeEach
-	void setUp() {
-		GitHubFixtures.setup(fixture.getProject());
+	void setUp(Project project) {
+		GitHubFixtures.setup(project);
 	}
 
 	@Test
-	@EditorFile(name = ".github/workflows/ci.yml", content = """
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
 			    steps:
@@ -61,7 +58,7 @@ class GitHubWorkflowHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = ".github/workflows/ci.yml", content = """
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
 			    steps:
@@ -75,7 +72,7 @@ class GitHubWorkflowHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = ".github/workflows/ci.yml", content = """
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
 			    steps:
@@ -89,7 +86,7 @@ class GitHubWorkflowHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = ".github/workflows/ci.yml", content = """
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
 			    steps:
@@ -104,7 +101,7 @@ class GitHubWorkflowHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = ".github/workflows/ci.yml", content = """
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
 			    steps:
@@ -129,7 +126,7 @@ class GitHubWorkflowHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = ".github/workflows/ci.yml", content = """
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
 			    steps:
@@ -144,7 +141,7 @@ class GitHubWorkflowHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = ".github/workflows/ci.yml", content = """
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
 			    steps:

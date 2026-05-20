@@ -21,12 +21,10 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.extension.TestFixture;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,14 +37,12 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class GradleParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@BeforeEach
-	void setUp() {
-		GradleFixtures.setup(fixture.getProject());
+	void setUp(Project project) {
+		GradleFixtures.setup(project);
 	}
 
 	// -------------------------------------------------------------------------
@@ -54,7 +50,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id 'org.springframework.boot' version '4.0.3'
 			}
@@ -71,7 +67,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${myPlugin}" version "1.0"
 			}
@@ -86,7 +82,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext { myPlugin = 'org.foo' }
 
 			plugins {
@@ -101,7 +97,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "$myPlugin" version "1.0"
 			}
@@ -114,7 +110,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "com.example.${suffix}" version "1.0"
 			}
@@ -128,7 +124,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${a}" version "1.0"
 			}
@@ -142,7 +138,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${a}" version "1.0"
 			}
@@ -157,7 +153,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${a}" version "1.0"
 			}
@@ -171,7 +167,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${p1}" version "1.0"
 			}
@@ -190,7 +186,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${missing}" version "1.0"
 			}
@@ -201,7 +197,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${myPlugin}" version "1.0"
 			}
@@ -212,7 +208,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${myPlugin}" version "1.0"
 			}
@@ -222,7 +218,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id 'org.foo' version '1.0'
 			}
@@ -238,7 +234,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id 'org.foo' version '${fooVersion}'
 			}
@@ -254,7 +250,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id "${pluginId}" version "${pluginVer}"
 			}
@@ -275,7 +271,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "settings.gradle", content = """
+	@ProjectFile(name = "settings.gradle", content = """
 			pluginManagement {
 			    plugins {
 			        id "${myPlugin}" version "1.0"
@@ -295,7 +291,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:6.0.0'
 			}
@@ -308,7 +304,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation group: 'org.junit', name: 'junit-bom', version: '6.0.0'
 			}
@@ -321,7 +317,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.apache.groovy:groovy'
 			    implementation 'org.springframework.modulith:spring-modulith-starter-core'
@@ -337,7 +333,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:6.0.0!!'
 			}
@@ -350,7 +346,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:[5.2.0, 6.0.0]'
 			}
@@ -363,7 +359,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:[5.2.0,6.0.0]'
 			}
@@ -376,7 +372,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:[5.0, 7.0[!!6.0.0'
 			}
@@ -389,7 +385,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:[6.0.0,)'
 			}
@@ -402,7 +398,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:(5.2,6.0.0]'
 			}
@@ -415,7 +411,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:0.10.+'
 			}
@@ -428,7 +424,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:latest.release'
 			}
@@ -445,7 +441,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation('org.junit:junit-bom') {
 			        version {
@@ -463,7 +459,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation('org.junit:junit-bom') {
 			        version {
@@ -481,7 +477,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation('org.slf4j:slf4j-api') {
 			        version {
@@ -498,7 +494,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation('org.slf4j:slf4j-api') {
 			        version {
@@ -513,7 +509,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation('org.junit:junit-bom') {
 			        version {
@@ -534,7 +530,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    set('junit', "6.0.0")
 			}
@@ -556,7 +552,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencyManagement {
 			    imports {
 			        mavenBom "org.junit:junit-bom:${junit}"
@@ -575,7 +571,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    junit='6.0.0'
 			}
@@ -596,7 +592,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext.junit = '6.0.0'
 
 			dependencyManagement {
@@ -616,7 +612,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    commonsVersion = '3.19.0'
 			}
@@ -636,7 +632,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    guavaVersion = '33.0.0-jre'
 			}
@@ -656,7 +652,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext.junit = '6.0.0'
 			dependencies {
 			    implementation group: 'org.junit', name: 'junit-bom', version: "${junit}"
@@ -673,7 +669,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    junit = '6.0.0'
 			}
@@ -696,7 +692,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext.junit = '6.0.0'
 			dependencies {
 			    implementation('org.junit:junit-bom') {
@@ -716,7 +712,7 @@ class GradleParserTests {
 
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    junit = '6.0.0'
 			}
@@ -736,7 +732,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext.junit = '6.0.0'
 			dependencies {
 			    implementation('org.junit:junit-bom') {
@@ -756,7 +752,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    junit = '6.0.0'
 			}
@@ -781,7 +777,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation group: 'org.apache.groovy', name: 'groovy'
 			}
@@ -792,7 +788,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation name: 'guava', group: 'com.google.guava', version: '33.0.0-jre'
 			}
@@ -805,7 +801,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation group: 'com.google.guava', name: 'guava', version: '33.0.0-jre', classifier: 'android'
 			}
@@ -818,7 +814,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation name: 'guava', version: '33.0.0-jre'
 			}
@@ -828,7 +824,7 @@ class GradleParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation group: 'com.google.guava', version: '33.0.0-jre'
 			}
@@ -842,7 +838,7 @@ class GradleParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id 'groovy'
 			    id 'org.springframework.boot' version '4.0.3'
@@ -892,7 +888,7 @@ class GradleParserTests {
 			[libraries]
 			guava = "com.google.guava:guava:32.1.3-jre"
 			""")
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:6.0.0")
 			}
@@ -910,7 +906,7 @@ class GradleParserTests {
 			[libraries]
 			guava = "com.google.guava:guava:32.1.3-jre"
 			""")
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.junit:junit-bom:6.0.0'
 			}
@@ -927,7 +923,7 @@ class GradleParserTests {
 	@ProjectFile(name = "gradle.properties", content = """
 			junitVersion=6.0.0
 			""")
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:${property("junitVersion")}")
 			}

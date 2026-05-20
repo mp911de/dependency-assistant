@@ -18,8 +18,8 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -30,11 +30,11 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class TomlParserTests {
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[versions]
 			spring-boot = "3.5.0"
 			commons-lang = "3.17.0"
@@ -58,7 +58,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[libraries]
 			log4j-core = { module = "org.apache.logging.log4j:log4j-core", version = "2.24.3" }
 			""")
@@ -73,7 +73,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[libraries]
 			commons-lang3 = "org.apache.commons:commons-lang3:3.17.0"
 			""")
@@ -87,7 +87,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[libraries]
 			bad-entry = "org.example:artifact"
 			""")
@@ -99,7 +99,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[libraries]
 			guava = { group = "com.google.guava", name = "guava", version = "33.4.0-jre" }
 			""")
@@ -113,7 +113,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[versions]
 			guava = "33.4.0-jre"
 
@@ -130,7 +130,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[versions]
 			spring-dependency-management = "1.1.5"
 			lettuce = "7.0.0.RELEASE"
@@ -152,7 +152,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[plugins]
 			spring-boot = "org.springframework.boot:4.0.0"
 			""")
@@ -166,7 +166,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[plugins]
 			spring-boot = "org.springframework.boot"
 			""")
@@ -178,7 +178,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[plugins]
 			long-notation = { id = "some.plugin.id", version = "1.4" }
 			""")
@@ -191,7 +191,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[versions]
 			common = "2.0.0"
 
@@ -207,7 +207,7 @@ class TomlParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "gradle/libs.versions.toml", content = """
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
 			[libraries]
 			guava = "com.google.guava:guava:32.1.3-jre"
 			""")

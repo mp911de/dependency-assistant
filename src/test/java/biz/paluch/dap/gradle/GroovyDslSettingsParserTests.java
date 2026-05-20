@@ -16,8 +16,8 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -28,11 +28,11 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class GroovyDslSettingsParserTests {
 
 	@Test
-	@EditorFile(name = "settings.gradle", content = """
+	@ProjectFile(name = "settings.gradle", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			        libs { from(files("gradle/libs.versions.toml")) }
@@ -48,7 +48,7 @@ class GroovyDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle", content = """
+	@ProjectFile(name = "settings.gradle", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			        libs { from(files("gradle/libs.versions.toml")) }
@@ -67,7 +67,7 @@ class GroovyDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle", content = """
+	@ProjectFile(name = "settings.gradle", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			        create("libs") { from(files("gradle/libs.versions.toml")) }
@@ -86,7 +86,7 @@ class GroovyDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle", content = """
+	@ProjectFile(name = "settings.gradle", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			        projectLibs { from(files("gradle/libs.versions.toml")) }
@@ -103,7 +103,7 @@ class GroovyDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle", content = """
+	@ProjectFile(name = "settings.gradle", content = """
 			rootProject.name = 'my-project'
 			""")
 	void noBlockFallsBackToDefaults(PsiFile buildFile) {
@@ -114,7 +114,7 @@ class GroovyDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle", content = """
+	@ProjectFile(name = "settings.gradle", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			    }

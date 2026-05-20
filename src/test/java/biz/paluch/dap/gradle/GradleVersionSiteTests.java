@@ -18,9 +18,8 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
 import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
@@ -32,10 +31,10 @@ import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyLiteral;
 import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyProperty;
 import biz.paluch.dap.support.DependencySite;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
@@ -51,18 +50,16 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class GradleVersionSiteTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@BeforeEach
-	void setUp() {
-		GradleFixtures.setup(fixture.getProject());
+	void setUp(Project project) {
+		GradleFixtures.setup(project);
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = "ext.springVersion = '6.2.0'")
+	@ProjectFile(name = "build.gradle", content = "ext.springVersion = '6.2.0'")
 	void backingPropertyDoesNotImplementDependencySite(PsiFile file) {
 
 		PsiElement stub = file;
@@ -72,7 +69,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = "ext.springVersion = '6.2.0'")
+	@ProjectFile(name = "build.gradle", content = "ext.springVersion = '6.2.0'")
 	void tomlCatalogAliasDoesNotImplementDependencySite(PsiFile file) {
 
 		TomlCatalogAlias site = new TomlCatalogAlias(TomlReference.libs("spring.core"), file);
@@ -81,7 +78,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = "ext.springVersion = '6.2.0'")
+	@ProjectFile(name = "build.gradle", content = "ext.springVersion = '6.2.0'")
 	void resolvedVariantsImplementDependencySite(PsiFile file) {
 
 		ArtifactId id = ArtifactId.of("org.springframework", "spring-core");
@@ -109,7 +106,7 @@ class GradleVersionSiteTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation 'org.springframework:spring-core:6.2.0'
 			}
@@ -122,7 +119,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation group: 'org.springframework', name: 'spring-core', version: '6.2.0'
 			}
@@ -135,7 +132,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext.springVersion = '6.2.0'
 			""")
 	void groovyExtPropertyProducesBackingProperty(PsiFile file) {
@@ -146,7 +143,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			plugins {
 			    id 'org.springframework.boot' version '3.3.2'
 			}
@@ -159,7 +156,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.springframework:spring-core:6.2.0")
 			}
@@ -172,7 +169,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val springVersion = "6.2.0"
 			""")
 	void kotlinValPropertyProducesBackingProperty(PsiFile file) {
@@ -183,7 +180,7 @@ class GradleVersionSiteTests {
 	}
 
 	@Test
-	@EditorFile(name = "libs.versions.toml", content = """
+	@ProjectFile(name = "libs.versions.toml", content = """
 			[versions]
 			spring = "6.2.0"
 			""")

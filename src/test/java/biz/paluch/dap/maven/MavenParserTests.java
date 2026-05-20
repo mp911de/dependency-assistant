@@ -21,15 +21,13 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
-import com.intellij.psi.PsiFile;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,14 +38,14 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class MavenParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
+	private @TestFixture Project project;
 
 	@BeforeEach
 	void setUp() {
-		MavenFixtures.setup(fixture.getProject());
+		MavenFixtures.setup(project);
 	}
 
 	// -------------------------------------------------------------------------
@@ -55,7 +53,7 @@ class MavenParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
@@ -74,7 +72,7 @@ class MavenParserTests {
 				</dependencies>
 			</project>
 			""")
-	void directDependenciesWithInlineVersionsAreDiscovered(PsiFile file) {
+	void directDependenciesWithInlineVersionsAreDiscovered(XmlFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
@@ -86,7 +84,7 @@ class MavenParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
@@ -104,7 +102,7 @@ class MavenParserTests {
 				</dependencyManagement>
 			</project>
 			""")
-	void managedDependencyWithInlineVersionIsDiscovered(PsiFile file) {
+	void managedDependencyWithInlineVersionIsDiscovered(XmlFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
@@ -115,7 +113,7 @@ class MavenParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
@@ -134,7 +132,7 @@ class MavenParserTests {
 				</profiles>
 			</project>
 			""")
-	void parsesProfileDependency(PsiFile file) {
+	void parsesProfileDependency(XmlFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
@@ -194,7 +192,7 @@ class MavenParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<?xml version="1.0" encoding="UTF-8"?>
 			<project>
 				<groupId>com.example</groupId>
@@ -210,7 +208,7 @@ class MavenParserTests {
 				</build>
 			</project>
 			""")
-	void pluginWithInlineVersionIsDiscovered(PsiFile file) {
+	void pluginWithInlineVersionIsDiscovered(XmlFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
@@ -225,7 +223,7 @@ class MavenParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
@@ -242,7 +240,7 @@ class MavenParserTests {
 				</dependencies>
 			</project>
 			""")
-	void dependencyVersionResolvedViaProperty(PsiFile file) {
+	void dependencyVersionResolvedViaProperty(XmlFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
@@ -253,7 +251,7 @@ class MavenParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<?xml version="1.0" encoding="UTF-8"?>
 			<project>
 				<groupId>com.example</groupId>
@@ -272,13 +270,12 @@ class MavenParserTests {
 				</profiles>
 			</project>
 			""")
-	void parsePropertiesCollectsProjectAndProfileProperties(PsiFile file) {
+	void parsePropertiesCollectsProjectAndProfileProperties(XmlFile file) {
 
-		Map<String, String> props = MavenParser.getProperties((XmlFile) file);
+		Map<String, String> props = MavenParser.getProperties(file);
 
 		assertThat(props).containsEntry("root.prop", "root-value").containsEntry("profile.prop", "profile-value");
 	}
-
 
 	@Test
 	@ProjectFile(name = "pom.xml", content = """
@@ -292,21 +289,21 @@ class MavenParserTests {
 			</project>
 			""")
 	@ProjectFile(name = "module/pom.xml", content = """
-				<project>
-					<parent>
-						<groupId>com.example</groupId>
-						<artifactId>parent</artifactId>
-						<version>1.0.0</version>
-					</parent>
-					<artifactId>module</artifactId>
-					<dependencies>
-						<dependency>
-							<groupId>org.junit.jupiter</groupId>
-							<artifactId>junit-jupiter</artifactId>
-							<version>${junit.version}</version>
-						</dependency>
-					</dependencies>
-				</project>
+			<project>
+				<parent>
+					<groupId>com.example</groupId>
+					<artifactId>parent</artifactId>
+					<version>1.0.0</version>
+				</parent>
+				<artifactId>module</artifactId>
+				<dependencies>
+					<dependency>
+						<groupId>org.junit.jupiter</groupId>
+						<artifactId>junit-jupiter</artifactId>
+						<version>${junit.version}</version>
+					</dependency>
+				</dependencies>
+			</project>
 			""")
 	void multiModuleParentThenChildResolvesVersionFromParentProperty(XmlFile parent, XmlFile child) {
 
@@ -331,7 +328,7 @@ class MavenParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
@@ -344,7 +341,7 @@ class MavenParserTests {
 				</dependencies>
 			</project>
 			""")
-	void dependenciesWithoutVersionAreNotUpdateCandidates(PsiFile file) {
+	void dependenciesWithoutVersionAreNotUpdateCandidates(XmlFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
@@ -353,7 +350,7 @@ class MavenParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "pom.xml", content = """
+	@ProjectFile(name = "pom.xml", content = """
 			<?xml version="1.0" encoding="UTF-8"?>
 			<project>
 				<groupId>com.example</groupId>
@@ -391,7 +388,7 @@ class MavenParserTests {
 				</build>
 			</project>
 			""")
-	void singlePomFullDiscovery(PsiFile file) {
+	void singlePomFullDiscovery(XmlFile file) {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 

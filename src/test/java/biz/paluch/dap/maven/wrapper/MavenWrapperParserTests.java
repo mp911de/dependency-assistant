@@ -22,7 +22,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiFile;
@@ -35,7 +35,7 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class MavenWrapperParserTests {
 
 	private static final ArtifactId APACHE_MAVEN = ArtifactId.of("org.apache.maven", "apache-maven");

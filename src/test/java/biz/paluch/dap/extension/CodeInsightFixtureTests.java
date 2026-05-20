@@ -23,24 +23,22 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.intellij.testFramework.junit5.RunInEdt;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
  * Composed annotation for IntelliJ Code Insight tests based on JUnit Jupiter.
- * <p>Applying this annotation activates the extension infrastructure required
- * for fixture-driven PSI tests: IntelliJ test bootstrap, EDT execution with
- * write-intent, and automatic fixture lifecycle management.
+ * <p>Applying this annotation to a class activates the extension infrastructure
+ * required for fixture-driven PSI tests for all test methods. Applying it to a
+ * method activates the same infrastructure for that method only.
  *
  * @author Mark Paluch
  * @see CodeInsightFixtureExtension
  * @see ProjectFileExtension
  */
-@Target(ElementType.TYPE)
+@Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
-@RunInEdt(writeIntent = true)
 @ExtendWith({CodeInsightFixtureExtension.class, ProjectFileExtension.class})
 public @interface CodeInsightFixtureTests {
 

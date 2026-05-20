@@ -19,11 +19,9 @@ package biz.paluch.dap.npm;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -33,10 +31,8 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class NpmPackageParserTests {
-
-	private @TestFixture CodeInsightTestFixture fixture;
 
 	private final NpmPackageParser parser = new NpmPackageParser();
 

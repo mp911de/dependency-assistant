@@ -18,16 +18,16 @@ package biz.paluch.dap.extension;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Marker annotation for fields that should be injected with the active
- * {@code CodeInsightTestFixture}.
+ * Marker annotation for fields that should be injected with the active test
+ * fixture.
  * <p>This annotation is intended for test classes annotated with
- * {@link CodeInsightFixtureTests}, allowing direct fixture field injection.
+ * {@link CodeInsightFixtureTests} or {@link IdeaProjectTests}, allowing direct
+ * fixture field injection.
  * <p>Example usage: <pre class="code">
  * &#064;CodeInsightFixtureTests
  * class MyTests {
@@ -38,11 +38,11 @@ import java.lang.annotation.Target;
  *
  * @author Mark Paluch
  * @see CodeInsightFixtureTests
+ * @see IdeaProjectTests
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Inherited
 public @interface TestFixture {
 
 }

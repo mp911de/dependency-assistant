@@ -27,11 +27,10 @@ import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.BuildActionDelegate;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.extension.TestFixture;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -42,14 +41,12 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class UpdateAntoraPlaybookFileTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@BeforeEach
-	void setUp() {
-		AntoraFixtures.setup(fixture.getProject());
+	void setUp(Project project) {
+		AntoraFixtures.setup(project);
 	}
 
 	@Test

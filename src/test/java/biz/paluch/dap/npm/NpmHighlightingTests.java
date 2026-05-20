@@ -16,33 +16,31 @@
 
 package biz.paluch.dap.npm;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
+
 
 /**
  * PSI-level integration tests for highlighting NPM {@code package.json}.
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class NpmHighlightingTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@BeforeEach
-	void setUp() {
-		NpmFixtures.setup(fixture.getProject());
+	void setUp(Project project) {
+		NpmFixtures.setup(project);
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "1.0.0-alpha.4"
@@ -53,11 +51,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5");
+		assertThat(packageJson).hasSingleGutterContaining("1.0.0-alpha.5");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "^1.0.0-alpha.4"
@@ -68,11 +66,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5");
+		assertThat(packageJson).hasSingleGutterContaining("1.0.0-alpha.5");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "1.0.0-alpha.1 - 1.0.0-alpha.4"
@@ -83,11 +81,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5");
+		assertThat(packageJson).hasSingleGutterContaining("1.0.0-alpha.5");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "1.0.0-alpha.1 - 1.0.0-alpha.5"
@@ -98,11 +96,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasNoGutterMarks();
+		assertThat(packageJson).hasNoGutterMarks();
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": ">=1.0.0-alpha.1 <1.0.0-alpha.4"
@@ -113,11 +111,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5");
+		assertThat(packageJson).hasSingleGutterContaining("1.0.0-alpha.5");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "axios": "5.0.x"
@@ -128,11 +126,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("5.4.0").highlights("5.0.x");
+		assertThat(packageJson).hasSingleGutterContaining("5.4.0").highlights("5.0.x");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "axios": "5.0.x"
@@ -143,11 +141,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutter().highlights("5.0.x");
+		assertThat(packageJson).hasSingleGutter().highlights("5.0.x");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "npm:@springio/antora-xref-extension@^1.0.0-alpha.4"
@@ -158,11 +156,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5").highlights("1.0.0-alpha.4");
+		assertThat(packageJson).hasSingleGutterContaining("1.0.0-alpha.5").highlights("1.0.0-alpha.4");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "git+https://github.com/spring-io/antora-xref-extension.git#1.0.0-alpha.4"
@@ -173,11 +171,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5").highlights("1.0.0-alpha.4");
+		assertThat(packageJson).hasSingleGutterContaining("1.0.0-alpha.5").highlights("1.0.0-alpha.4");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "git+ssh://git@github.com:spring-io/antora-xref-extension.git#d1185ce59f"
@@ -188,11 +186,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutterContaining("1.0.0-alpha.5");
+		assertThat(packageJson).hasSingleGutterContaining("1.0.0-alpha.5");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "axios": "axios/axios#d1185ce59f"
@@ -203,11 +201,11 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasSingleGutter().highlights("d1185ce59f");
+		assertThat(packageJson).hasSingleGutter().highlights("d1185ce59f");
 	}
 
 	@Test
-	@EditorFile(name = "package.json", content = """
+	@ProjectFile(name = "package.json", content = """
 			{
 			  "dependencies": {
 			    "@springio/antora-xref-extension": "1.0.0-alpha.5"
@@ -218,7 +216,7 @@ class NpmHighlightingTests {
 
 		NpmFixtures.analyze(packageJson);
 
-		assertThat(fixture).hasNoGutterMarks();
+		assertThat(packageJson).hasNoGutterMarks();
 	}
 
 }

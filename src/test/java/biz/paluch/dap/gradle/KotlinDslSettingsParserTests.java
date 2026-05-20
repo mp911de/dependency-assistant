@@ -16,8 +16,8 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -28,11 +28,11 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class KotlinDslSettingsParserTests {
 
 	@Test
-	@EditorFile(name = "settings.gradle.kts", content = """
+	@ProjectFile(name = "settings.gradle.kts", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			        create("libs") { from(files("gradle/libs.versions.toml")) }
@@ -48,7 +48,7 @@ class KotlinDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle.kts", content = """
+	@ProjectFile(name = "settings.gradle.kts", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			        create("libs") { from(files("gradle/libs.versions.toml")) }
@@ -67,7 +67,7 @@ class KotlinDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle.kts", content = """
+	@ProjectFile(name = "settings.gradle.kts", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			        create("projectLibs") { from(files("gradle/libs.versions.toml")) }
@@ -84,7 +84,7 @@ class KotlinDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle.kts", content = """
+	@ProjectFile(name = "settings.gradle.kts", content = """
 			rootProject.name = "my-project"
 			""")
 	void noBlockFallsBackToDefaults(PsiFile buildFile) {
@@ -95,7 +95,7 @@ class KotlinDslSettingsParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "settings.gradle.kts", content = """
+	@ProjectFile(name = "settings.gradle.kts", content = """
 			dependencyResolutionManagement {
 			    versionCatalogs {
 			    }

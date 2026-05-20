@@ -20,11 +20,10 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,14 +36,12 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class KotlinDslParserTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@BeforeEach
-	void setUp() {
-		GradleFixtures.setup(fixture.getProject());
+	void setUp(Project project) {
+		GradleFixtures.setup(project);
 	}
 
 	// -------------------------------------------------------------------------
@@ -52,7 +49,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    kotlin("jvm")
 			    id("org.springframework.boot") version "4.0.3"
@@ -71,7 +68,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:6.0.0")
 			}
@@ -84,7 +81,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation(platform("org.junit:junit-bom:6.0.0"))
 			}
@@ -100,7 +97,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation(group = "org.junit", name = "junit-bom", version = "6.0.0")
 			}
@@ -113,7 +110,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.apache.groovy:groovy")
 			    implementation("org.springframework.modulith:spring-modulith-starter-core")
@@ -128,7 +125,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:6.0.0!!")
 			}
@@ -141,7 +138,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:[5.2.0, 6.0.0]")
 			}
@@ -154,7 +151,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:[5.2.0,6.0.0]")
 			}
@@ -167,7 +164,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:[5.0, 7.0[!!6.0.0")
 			}
@@ -180,7 +177,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:[6.0.0,)")
 			}
@@ -193,7 +190,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:(5.2,6.0.0]")
 			}
@@ -206,7 +203,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:0.10.+")
 			}
@@ -219,7 +216,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom:latest.release")
 			}
@@ -236,7 +233,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom") {
 			        version {
@@ -254,7 +251,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    constraints {
 			        implementation("org.junit:junit-bom:6.0.0")
@@ -269,7 +266,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.slf4j:slf4j-api") {
 			        version {
@@ -287,7 +284,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.slf4j:slf4j-api") {
 			        version {
@@ -301,7 +298,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.junit:junit-bom") {
 			        version {
@@ -322,7 +319,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			"2.0.4".also { extra["springModulithVersion"] = it }
 
 			dependencies {
@@ -341,7 +338,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit by extra("6.0.0")
 			dependencyManagement {
 			    imports {
@@ -358,7 +355,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencyManagement {
 			    imports {
 			        mavenBom("org.junit:junit-bom:${property("junit")}")
@@ -377,7 +374,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencyManagement {
 			    imports {
 			        mavenBom("org.junit:junit-bom:${project.property("junit")}")
@@ -395,7 +392,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit: String by project
 			dependencyManagement {
 			    imports {
@@ -414,7 +411,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["junit"] = "6.0.0"
 			val junit: String by extra
 			dependencyManagement {
@@ -434,7 +431,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["junit"] = "6.0.0"
 			dependencyManagement {
 			    imports {
@@ -453,7 +450,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["junit"] = "6.0.0"
 			dependencies {
 			    implementation(group = "org.junit", name = "junit-bom", version = "${extra["junit"]}")
@@ -470,7 +467,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["commonsVersion"] = "3.19.0"
 
 			dependencies {
@@ -488,7 +485,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit = "6.0.0"
 			dependencies {
 			    implementation(group = "org.junit", name = "junit-bom", version = junit)
@@ -509,7 +506,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["junit"] = "6.0.0"
 			dependencies {
 			    implementation("org.junit:junit-bom") {
@@ -530,7 +527,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit = "6.0.0"
 			dependencies {
 			    implementation("org.junit:junit-bom") {
@@ -551,7 +548,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["junit"] = "6.0.0"
 			dependencies {
 			    implementation("org.junit:junit-bom") {
@@ -573,7 +570,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit = "6.0.0"
 			dependencies {
 			    implementation("org.junit:junit-bom") {
@@ -595,7 +592,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit = "6.0.0"
 			dependencies {
 			    implementation("org.junit:junit-bom:$junit")
@@ -612,7 +609,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit = "6.0.0"
 			dependencies {
 			    implementation("org.junit:junit-bom:${junit}")
@@ -633,7 +630,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["myPlugin"] = "org.foo"
 
 			plugins {
@@ -648,7 +645,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    id("${property("myPlugin")}") version "1.0"
 			}
@@ -663,7 +660,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    id("${property("myPlugin")}") version "1.0"
 			}
@@ -678,7 +675,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    id("com.example.${property("suffix")}") version "1.0"
 			}
@@ -693,7 +690,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["suffix"] = "bar"
 
 			plugins {
@@ -709,7 +706,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["myPlugin"] = "org.foo"
 
 			plugins {
@@ -725,7 +722,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    id("${property("missing")}") version "1.0"
 			}
@@ -735,7 +732,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    id("${missing}") version "1.0"
 			}
@@ -745,7 +742,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    id("${property("myPlugin")}") version "1.0"
 			}
@@ -755,7 +752,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    id("${property("pluginId")}") version "${property("pluginVer")}"
 			}
@@ -776,7 +773,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "settings.gradle.kts", content = """
+	@ProjectFile(name = "settings.gradle.kts", content = """
 			pluginManagement {
 			    plugins {
 			        id("${property("myPlugin")}") version "1.0"
@@ -798,7 +795,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation(name = "guava", group = "com.google.guava", version = "33.0.0-jre")
 			}
@@ -811,7 +808,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation(name = "guava", version = "33.0.0-jre")
 			}
@@ -821,7 +818,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation(group = "com.google.guava", name = "guava")
 			}
@@ -831,7 +828,7 @@ class KotlinDslParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation(group = "com.google.guava", version = "33.0.0-jre")
 			}
@@ -845,7 +842,7 @@ class KotlinDslParserTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			plugins {
 			    kotlin("jvm")
 			    id("org.springframework.boot") version "4.0.3"

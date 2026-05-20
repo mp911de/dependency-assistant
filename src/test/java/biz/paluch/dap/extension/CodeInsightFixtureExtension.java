@@ -18,9 +18,12 @@ package biz.paluch.dap.extension;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.intellij.testFramework.EdtTestUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -29,14 +32,7 @@ import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
 import com.intellij.util.Function;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
-import org.junit.jupiter.api.extension.ExtensionConfigurationException;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.api.extension.ParameterContext;
-import org.junit.jupiter.api.extension.ParameterResolutionException;
-import org.junit.jupiter.api.extension.ParameterResolver;
-import org.junit.jupiter.api.extension.TestInstancePostProcessor;
+import org.junit.jupiter.api.extension.*;
 import org.junit.platform.commons.util.ReflectionUtils;
 
 /**
@@ -53,19 +49,21 @@ import org.junit.platform.commons.util.ReflectionUtils;
  * @author Mark Paluch
  */
 class CodeInsightFixtureExtension
-		implements TestInstancePostProcessor, BeforeEachCallback, AfterEachCallback, ParameterResolver {
+		implements TestInstancePostProcessor, BeforeEachCallback, AfterEachCallback, AfterAllCallback,
+		ParameterResolver,
+		InvocationInterceptor {
 
 	private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace
 			.create(CodeInsightFixtureExtension.class);
 
-	private static final String STORE_KEY = "codeInsightFixtureResource";
+	private static final String STORE_KEY = "codeInsightFixtureContext";
 
 	/**
 	 * Package-private accessor for use by collaborating extensions that require the
 	 * fixture after it has been set up by this extension's {@code beforeEach}.
 	 */
 	static CodeInsightTestFixture getFixture(ExtensionContext context) {
-		FixtureResource resource = context.getStore(NAMESPACE).get(STORE_KEY, FixtureResource.class);
+		FixtureResource resource = getClassFixtureContext(context).getResource(context);
 		if (resource == null) {
 			throw new ExtensionConfigurationException(
 					"No CodeInsightTestFixture available in current extension context. "
@@ -78,8 +76,7 @@ class CodeInsightFixtureExtension
 	@Override
 	public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
 
-		if (context.getTestClass().isEmpty()
-				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+		if (!hasConfiguration(context)) {
 			return;
 		}
 
@@ -91,8 +88,7 @@ class CodeInsightFixtureExtension
 	@Override
 	public void beforeEach(ExtensionContext context) {
 
-		if (context.getTestClass().isEmpty()
-				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+		if (!isActive(context)) {
 			return;
 		}
 
@@ -103,19 +99,15 @@ class CodeInsightFixtureExtension
 	@Override
 	public void afterEach(ExtensionContext context) throws Exception {
 
-		if (context.getTestClass().isEmpty()
-				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+		if (!isActive(context)) {
 			return;
 		}
 
 		Exception failure = null;
 
 		try {
-			FixtureResource resource = removeResource(context);
-			if (resource != null) {
-				resource.close();
-			}
-		} catch (RuntimeException ex) {
+			getClassFixtureContext(context).closeResource(context);
+		} catch (Exception ex) {
 			failure = ex;
 		}
 
@@ -137,8 +129,7 @@ class CodeInsightFixtureExtension
 	@Override
 	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
 
-		if (extensionContext.getTestClass().isEmpty()
-				|| !extensionContext.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+		if (!isActive(extensionContext)) {
 			return false;
 		}
 
@@ -149,10 +140,19 @@ class CodeInsightFixtureExtension
 	}
 
 	@Override
+	public void afterAll(ExtensionContext context) throws Exception {
+
+		if (!hasConfiguration(context)) {
+			return;
+		}
+
+		getClassFixtureContext(context).closeAll();
+	}
+
+	@Override
 	public @Nullable Object resolveParameter(ParameterContext parameterContext, ExtensionContext context) {
 
-		if (context.getTestClass().isEmpty()
-				|| !context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+		if (!isActive(context)) {
 			return null;
 		}
 
@@ -166,22 +166,114 @@ class CodeInsightFixtureExtension
 		}
 	}
 
+	@Override
+	public <T> T interceptTestClassConstructor(Invocation<T> invocation,
+			ReflectiveInvocationContext<Constructor<T>> invocationContext, ExtensionContext extensionContext)
+			throws Throwable {
+
+		return interceptIfActive(invocation, extensionContext);
+	}
+
+	@Override
+	public void interceptBeforeAllMethod(Invocation<Void> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext)
+			throws Throwable {
+
+		interceptIfActive(invocation, extensionContext);
+	}
+
+	@Override
+	public void interceptBeforeEachMethod(Invocation<Void> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext)
+			throws Throwable {
+
+		interceptIfActive(invocation, extensionContext);
+	}
+
+	@Override
+	public void interceptTestMethod(Invocation<Void> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext)
+			throws Throwable {
+
+		interceptIfActive(invocation, extensionContext);
+	}
+
+	@Override
+	public void interceptTestTemplateMethod(Invocation<Void> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext)
+			throws Throwable {
+
+		interceptIfActive(invocation, extensionContext);
+	}
+
+	@Override
+	public void interceptAfterEachMethod(Invocation<Void> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext)
+			throws Throwable {
+
+		interceptIfActive(invocation, extensionContext);
+	}
+
+	@Override
+	public void interceptAfterAllMethod(Invocation<Void> invocation,
+			ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext)
+			throws Throwable {
+
+		interceptIfActive(invocation, extensionContext);
+	}
+
+	private static <T> T interceptIfActive(Invocation<T> invocation, ExtensionContext context) throws Throwable {
+		if (!isActive(context)) {
+			return invocation.proceed();
+		}
+		return EdtTestUtil.runInEdtAndGet(invocation::proceed, true);
+	}
+
 	private FixtureResource getOrCreateResource(ExtensionContext context) {
-		ExtensionContext.Store store = context.getStore(NAMESPACE);
-		return store.computeIfAbsent(STORE_KEY, c -> createResource(context),
-				FixtureResource.class);
+		return getClassFixtureContext(context).getOrCreateResource(context);
 	}
 
-	private @Nullable FixtureResource removeResource(ExtensionContext context) {
-		return context.getStore(NAMESPACE).remove(STORE_KEY, FixtureResource.class);
+	static boolean isActive(ExtensionContext context) {
+		return findConfiguration(context) != null;
 	}
 
-	private FixtureResource createResource(ExtensionContext context) {
+	private static boolean hasConfiguration(ExtensionContext context) {
 
-		CodeInsightFixtureTests configuration = findConfiguration(context);
+		if (context.getTestClass().isEmpty()) {
+			return false;
+		}
+		if (context.getRequiredTestClass().isAnnotationPresent(CodeInsightFixtureTests.class)) {
+			return true;
+		}
+		for (Method method : context.getRequiredTestClass().getDeclaredMethods()) {
+			if (method.isAnnotationPresent(CodeInsightFixtureTests.class)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static ClassFixtureContext getClassFixtureContext(ExtensionContext context) {
+		ExtensionContext classContext = getClassContext(context);
+		return classContext.getStore(NAMESPACE).computeIfAbsent(STORE_KEY,
+				key -> new ClassFixtureContext(), ClassFixtureContext.class);
+	}
+
+	private static ExtensionContext getClassContext(ExtensionContext context) {
+
+		ExtensionContext current = context;
+		while (current.getTestMethod().isPresent() && current.getParent().isPresent()) {
+			current = current.getParent().get();
+		}
+		return current;
+	}
+
+	private static FixtureResource createResource(ExtensionContext context) {
+
+		CodeInsightFixtureTests configuration = getRequiredConfiguration(context);
 
 		String fixtureName = configuration.fixtureName().isBlank()
-				? context.getRequiredTestClass().getSimpleName() + "#" + context.getRequiredTestMethod().getName()
+				? defaultFixtureName(context)
 				: configuration.fixtureName();
 
 		IdeaTestFixtureFactory factory = IdeaTestFixtureFactory.getFixtureFactory();
@@ -191,7 +283,7 @@ class CodeInsightFixtureExtension
 
 		try {
 			EdtTestUtil.runInEdtAndWait(codeInsightFixture::setUp);
-			return new FixtureResource(codeInsightFixture);
+			return new FixtureResource(ideaProjectFixture, codeInsightFixture);
 		} catch (Exception ex) {
 			try {
 				EdtTestUtil.runInEdtAndWait(codeInsightFixture::tearDown);
@@ -200,6 +292,14 @@ class CodeInsightFixtureExtension
 			}
 			throw new ExtensionConfigurationException("Failed to create CodeInsightTestFixture", ex);
 		}
+	}
+
+	private static String defaultFixtureName(ExtensionContext context) {
+
+		String className = context.getRequiredTestClass().getSimpleName();
+		return context.getTestMethod()
+				.map(method -> className + "#" + method.getName())
+				.orElse(className);
 	}
 
 	private void injectFields(Object testInstance, FixtureResource resource) {
@@ -223,19 +323,38 @@ class CodeInsightFixtureExtension
 	}
 
 	private Object resolveValue(Class<?> requestedType, FixtureResource resource) {
-		if (requestedType.isInstance(resource.codeInsightFixture)) {
-			return resource.codeInsightFixture;
+		if (requestedType.isInstance(resource.codeInsightFixture())) {
+			return resource.codeInsightFixture();
+		}
+		if (requestedType.isInstance(resource.projectFixture())) {
+			return resource.projectFixture();
 		}
 		throw new ExtensionConfigurationException(
 				"Unsupported injection target type: " + requestedType.getName());
 	}
 
-	private CodeInsightFixtureTests findConfiguration(ExtensionContext context) {
-		CodeInsightFixtureTests annotation = context.getRequiredTestClass()
-				.getAnnotation(CodeInsightFixtureTests.class);
+	private static @Nullable CodeInsightFixtureTests findConfiguration(ExtensionContext context) {
+
+		if (context.getTestClass().isEmpty()) {
+			return null;
+		}
+
+		CodeInsightFixtureTests annotation = context.getTestMethod()
+				.map(method -> method.getAnnotation(CodeInsightFixtureTests.class))
+				.orElse(null);
+		if (annotation != null) {
+			return annotation;
+		}
+
+		return context.getRequiredTestClass().getAnnotation(CodeInsightFixtureTests.class);
+	}
+
+	private static CodeInsightFixtureTests getRequiredConfiguration(ExtensionContext context) {
+		CodeInsightFixtureTests annotation = findConfiguration(context);
 		if (annotation == null) {
 			throw new ExtensionConfigurationException(
-					"@" + CodeInsightFixtureTests.class.getSimpleName() + " must be present on the test class");
+					"@" + CodeInsightFixtureTests.class.getSimpleName()
+							+ " must be present on the test class or test method");
 		}
 		return annotation;
 	}
@@ -272,7 +391,50 @@ class CodeInsightFixtureExtension
 		}
 	}
 
+	private static class ClassFixtureContext {
+
+		private final Map<String, FixtureResource> resources = new LinkedHashMap<>();
+
+		private FixtureResource getOrCreateResource(ExtensionContext context) {
+			return resources.computeIfAbsent(context.getUniqueId(),
+					key -> createResource(context));
+		}
+
+		private @Nullable FixtureResource getResource(ExtensionContext context) {
+			return resources.get(context.getUniqueId());
+		}
+
+		private void closeResource(ExtensionContext context) throws Exception {
+			FixtureResource resource = resources.remove(context.getUniqueId());
+			if (resource != null) {
+				resource.close();
+			}
+		}
+
+		private void closeAll() throws Exception {
+
+			Exception failure = null;
+			for (FixtureResource resource : new ArrayList<>(resources.values())) {
+				try {
+					resource.close();
+				} catch (Exception ex) {
+					if (failure == null) {
+						failure = ex;
+					} else {
+						failure.addSuppressed(ex);
+					}
+				}
+			}
+			resources.clear();
+			if (failure != null) {
+				throw failure;
+			}
+		}
+
+	}
+
 	private record FixtureResource(
+			IdeaProjectTestFixture projectFixture,
 			CodeInsightTestFixture codeInsightFixture) {
 
 		private void close() throws Exception {

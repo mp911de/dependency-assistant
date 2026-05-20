@@ -18,8 +18,8 @@ package biz.paluch.dap.antora;
 
 import java.util.List;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -30,11 +30,11 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class AntoraPlaybookParserTests {
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			site:
 			  title: Spring
 			ui:
@@ -54,7 +54,7 @@ class AntoraPlaybookParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			url: https://example.com/o/r/releases/download/v1/u.zip
 			""")
 	void ignoresTopLevelUrlKey(PsiFile playbookFile) {
@@ -62,7 +62,7 @@ class AntoraPlaybookParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			ui:
 			  url: https://example.com/o/r/releases/download/v1/u.zip
 			""")
@@ -71,7 +71,7 @@ class AntoraPlaybookParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			ui:
 			  bundle:
 			    url: not-a-valid-url
@@ -81,7 +81,7 @@ class AntoraPlaybookParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			content:
 			  sources:
 			    - url: https://example.com/sources.git

@@ -16,11 +16,10 @@
 
 package biz.paluch.dap.antora;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,18 +30,16 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class AntoraPlaybookHighlightingTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@BeforeEach
-	void setUp() {
-		AntoraFixtures.setup(fixture.getProject());
+	void setUp(Project project) {
+		AntoraFixtures.setup(project);
 	}
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			ui:
 			  bundle:
 			    url: https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.25/ui-bundle.zip
@@ -55,7 +52,7 @@ class AntoraPlaybookHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			ui:
 			  bundle:
 			    url: https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip
@@ -68,7 +65,7 @@ class AntoraPlaybookHighlightingTests {
 	}
 
 	@Test
-	@EditorFile(name = "antora-playbook.yml", content = """
+	@ProjectFile(name = "antora-playbook.yml", content = """
 			ui:
 			  bundle:
 			    url: https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.25/ui-bundle.zip

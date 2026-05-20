@@ -25,11 +25,9 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.BuildActionDelegate;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -39,10 +37,8 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class UpdatePackageJsonFileTests {
-
-	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
 	@ProjectFile(name = "package.json", content = """

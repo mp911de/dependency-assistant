@@ -18,8 +18,8 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.support.PropertyValue;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
@@ -30,11 +30,11 @@ import static org.assertj.core.api.Assertions.*;
  * Tests for {@link GroovyDslExtParser}.
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class GroovyDslExtParserTests {
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    set('springModulithVersion', "2.0.4")
 			}
@@ -47,7 +47,7 @@ class GroovyDslExtParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext {
 			    springVersion = '6.1.0'
 			    lombokVersion = '1.18.36'
@@ -61,7 +61,7 @@ class GroovyDslExtParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			ext.springBootVersion = '3.5.0'
 			""")
 	void extDotAssignmentPropertyIsCollected(PsiFile buildFile) {
@@ -72,7 +72,7 @@ class GroovyDslExtParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle", content = """
+	@ProjectFile(name = "build.gradle", content = """
 			val junit = "6.0.0"
 			""")
 	void considersLocalVariable(PsiFile buildFile) {

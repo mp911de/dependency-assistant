@@ -18,8 +18,8 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.EditorFile;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -30,11 +30,11 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class KotlinDslExtraParserTests {
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			"2.0.3".also { extra["springModulithVersion"] = it }
 
 			extra["buildStringKey"] = buildString {
@@ -52,7 +52,7 @@ class KotlinDslExtraParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["springModulithVersion"] = "2.0.4"
 			extra["lombokVersion"] = "1.18.36"
 			""")
@@ -64,7 +64,7 @@ class KotlinDslExtraParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			"2.0.3".also { extra["springModulithVersion"] = it }
 			""")
 	void extraPropertyViaAlsoWithItIsCollected(PsiFile file) {
@@ -75,7 +75,7 @@ class KotlinDslExtraParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["springModulithVersion"] = buildString {
 			        append("2.0.3")
 			    }
@@ -88,7 +88,7 @@ class KotlinDslExtraParserTests {
 	}
 
 	@Test
-	@EditorFile(name = "build.gradle.kts", content = """
+	@ProjectFile(name = "build.gradle.kts", content = """
 			extra["springModulithVersion"] = \"""2.0.3\"""
 			""")
 	void extraPropertyViaTripleQuotedStringIsCollected(PsiFile file) {

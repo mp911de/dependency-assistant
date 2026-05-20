@@ -17,8 +17,6 @@
 package biz.paluch.dap.extension;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.util.Optional;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -40,24 +38,19 @@ class StringTestExtension implements ParameterResolver {
 			return false;
 		}
 		return parameterContext.getParameter().getType() == String.class
-				&& findStringTest(extensionContext).isPresent();
+				&& extensionContext.getTestMethod()
+						.flatMap(method -> AnnotationSupport.findAnnotation(method, StringTest.class))
+						.isPresent();
 	}
 
 	@Override
 	public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
 
-		return findStringTest(extensionContext)
+		return extensionContext.getTestMethod()
+				.flatMap(method -> AnnotationSupport.findAnnotation(method, StringTest.class))
 				.map(StringTest::value)
 				.orElseThrow(() -> new ParameterResolutionException(
 						"No @StringTest annotation found for " + parameterContext.getDeclaringExecutable()));
-	}
-
-	private static Optional<StringTest> findStringTest(ExtensionContext context) {
-		return context.getTestMethod().flatMap(StringTestExtension::findStringTest);
-	}
-
-	private static Optional<StringTest> findStringTest(Method method) {
-		return AnnotationSupport.findAnnotation(method, StringTest.class);
 	}
 
 }

@@ -18,10 +18,9 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
-import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -31,18 +30,16 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class TomlArtifactResolverRegistryTests {
 
-	private @TestFixture CodeInsightTestFixture fixture;
-
 	@Test
-	void knownAliasResolvesPathFromRegistry() {
+	@ProjectFile(name = "build.gradle.kts")
+	void knownAliasResolvesPathFromRegistry(PsiFile file) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", "");
 		VersionCatalogRegistry registry = new VersionCatalogRegistry(
 				Map.of("tools", "gradle/tools.versions.toml"), "tools");
-		TomlArtifactResolver resolver = new TomlArtifactResolver(fixture.getProject(), file, registry);
+		TomlArtifactResolver resolver = new TomlArtifactResolver(file.getProject(), file, registry);
 
 		TomlReference reference = TomlReference.of("tools", null, "some-lib");
 
@@ -50,12 +47,12 @@ class TomlArtifactResolverRegistryTests {
 	}
 
 	@Test
-	void unknownAliasReturnsNull() {
+	@ProjectFile(name = "build.gradle.kts")
+	void unknownAliasReturnsNull(PsiFile file) {
 
-		PsiFile file = fixture.configureByText("build.gradle.kts", "");
 		VersionCatalogRegistry registry = new VersionCatalogRegistry(
 				Map.of("tools", "gradle/tools.versions.toml"), "tools");
-		TomlArtifactResolver resolver = new TomlArtifactResolver(fixture.getProject(), file, registry);
+		TomlArtifactResolver resolver = new TomlArtifactResolver(file.getProject(), file, registry);
 
 		TomlReference reference = TomlReference.of("unknown", null, "some-lib");
 
