@@ -79,6 +79,10 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		this.repository = repository;
 	}
 
+	public RemoteRepository getRepository() {
+		return repository;
+	}
+
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 

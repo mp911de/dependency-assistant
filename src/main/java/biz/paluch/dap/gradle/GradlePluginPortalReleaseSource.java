@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.artifact;
+package biz.paluch.dap.gradle;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**

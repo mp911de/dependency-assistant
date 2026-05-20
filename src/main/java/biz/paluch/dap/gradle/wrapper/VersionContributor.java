@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven.wrapper;
+package biz.paluch.dap.gradle.wrapper;
 
 import java.util.List;
 
@@ -27,16 +27,16 @@ import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
 
 /**
- * Completion contributor for version segments in Maven wrapper URLs.
+ * Completion contributor for the version segment in Gradle wrapper URLs.
  *
  * @author Mark Paluch
  */
 class VersionContributor extends VersionContributorSupport {
 
 	/**
-	 * Matches a caret position inside a Maven wrapper version segment.
+	 * Matches a caret position inside a Gradle wrapper version segment.
 	 * <pre class="code">
-	 * distributionUrl=https://...maven/3.&lt;caret&gt;.9.0/.../wrapper/maven-wrapper-3.9.0.jar
+	 * distributionUrl=https\://services.gradle.org/distributions/gradle-8.&lt;caret&gt;14.3-bin.zip
 	 * </pre>
 	 */
 	static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PROPERTY_VALUE
@@ -49,12 +49,12 @@ class VersionContributor extends VersionContributorSupport {
 
 	@Override
 	protected List<TextRange> getVersionRanges(PropertyImpl property) {
-		return MavenWrapperUtils.getVersionRanges(property);
+		return GradleWrapperUtils.getVersionRanges(property);
 	}
 
 	@Override
 	protected void applyVersionUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-		UpdateMavenWrapperProperties.applyUpdate(versionLiteral, update);
+		UpdateGradleWrapperProperties.applyUpdate(versionLiteral, update);
 	}
 
 }

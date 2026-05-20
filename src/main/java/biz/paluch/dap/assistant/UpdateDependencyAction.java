@@ -56,6 +56,7 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 
 	@Override
 	protected void invoke(ActionContext context, PsiElement element, ModPsiUpdater updater) {
+		// TODO: move caret behind the updated version
 		dependencyContext.applyUpdate(element, suggestion.toDependencyUpdate());
 	}
 

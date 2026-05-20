@@ -34,6 +34,7 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.IProperty;
@@ -127,40 +128,6 @@ enum WrapperProperty {
 		};
 	}
 
-	/**
-	 * Return whether the raw property text contains an unescaped trailing backslash
-	 * followed by a CR/LF the Java PropertyFile line-continuation idiom. Such
-	 * values are silently rejected by the parser.
-	 * @param rawText the raw PSI text of a {@code PropertyValueImpl}.
-	 */
-	static boolean containsLineContinuation(String rawText) {
-
-		int index = 0;
-		while (index < rawText.length()) {
-
-			char c = rawText.charAt(index);
-			if (c != '\\') {
-				index++;
-				continue;
-			}
-
-			int run = 0;
-			int i = index;
-			while (i < rawText.length() && rawText.charAt(i) == '\\') {
-				run++;
-				i++;
-			}
-			if (run % 2 == 1 && i < rawText.length()) {
-				char next = rawText.charAt(i);
-				if (next == '\n' || next == '\r') {
-					return true;
-				}
-			}
-			index = i;
-		}
-		return false;
-	}
-
 	String key() {
 		return key;
 	}
@@ -246,9 +213,9 @@ enum WrapperProperty {
 	 */
 	public @Nullable WrapperEntry parseProperty(PropertyImpl property) {
 
-		PropertyValueImpl value = MavenWrapperUtils.findPropertyValue(property);
+		PropertyValueImpl value = PropertyUtils.findPropertyValue(property);
 		if (!key().equals(property.getUnescapedKey()) || value == null
-				|| containsLineContinuation(value.getText())) {
+				|| PropertyUtils.containsLineContinuation(value.getText())) {
 			return null;
 		}
 
@@ -307,7 +274,7 @@ enum WrapperProperty {
 				.orElseGet(() -> Release.from(defaultVersion, null));
 	}
 
-	private RemoteRepository parseRemoteRepository(URI uri, @Nullable RepositoryCredentials credentials) {
+	RemoteRepository parseRemoteRepository(URI uri, @Nullable RepositoryCredentials credentials) {
 		URI defaultMaven = URI.create(RemoteRepository.mavenCentral().url());
 		if (credentials == null && RemoteRepositoryReleaseSource.hasSameBaseUri(uri, defaultMaven)) {
 			return RemoteRepository.mavenCentral();

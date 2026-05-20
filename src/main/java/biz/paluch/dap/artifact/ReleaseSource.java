@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import biz.paluch.dap.gradle.GradlePluginPortalReleaseSource;
 import com.intellij.openapi.progress.ProgressIndicator;
 import org.jetbrains.idea.maven.indices.MavenGAVIndex;
 
@@ -76,15 +77,6 @@ public interface ReleaseSource {
 	 */
 	static ReleaseSource mavenCentral() {
 		return RemoteRepositoryReleaseSource.MAVEN_CENTRAL;
-	}
-
-	/**
-	 * Return the built-in {@link ReleaseSource} backed by the Gradle Plugin Portal.
-	 * <p>
-	 * This source is intended for Gradle plugin marker coordinates.
-	 */
-	static ReleaseSource gradlePluginPortal() {
-		return GradlePluginPortalReleaseSource.INSTANCE;
 	}
 
 	/**

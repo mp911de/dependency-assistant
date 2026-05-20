@@ -112,7 +112,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 	static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> repositories) {
 
 		List<ReleaseSource> sources = new ArrayList<>();
-		sources.add(ReleaseSource.gradlePluginPortal());
+		sources.add(GradlePluginPortalReleaseSource.INSTANCE);
 
 		if (repositories.isEmpty()) {
 			sources.add(ReleaseSource.mavenCentral());

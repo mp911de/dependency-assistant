@@ -123,6 +123,13 @@ public class Releases {
 					.add("3.3.2", "2024-03-08")
 					.add("3.3.1", "2023-10-16"));
 
+	public static final CachedArtifact GRADLE = create("org.gradle", "gradle",
+			releases -> releases
+					.add("9.5.1", "2026-05-12", "sha-9.5.1")
+					.add("9.6.0-rc-1", "2026-05-10")
+					.add("9.4.1", "2026-03-19", "sha-9.4.1")
+					.add("8.14.4", "2026-01-23", "sha-8.14.4"));
+
 	private Releases() {
 	}
 
@@ -159,6 +166,11 @@ public class Releases {
 
 		ReleaseBuilder add(String version, @Nullable String date) {
 			releases.add(new CachedRelease(version, date));
+			return this;
+		}
+
+		ReleaseBuilder add(String version, @Nullable String date, @Nullable String sha) {
+			releases.add(new CachedRelease(version, date, sha));
 			return this;
 		}
 

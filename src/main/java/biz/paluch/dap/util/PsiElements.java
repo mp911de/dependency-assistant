@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.util;
 
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import com.intellij.psi.PsiElement;
@@ -43,19 +42,6 @@ public abstract class PsiElements {
 
 	/**
 	 * Create a {@link PsiRecursiveElementVisitor} to visit the entire PSI tree
-	 * recursively and invoke {@code action} only for elements that are subtypes of
-	 * {@code psiElementType}.
-	 * @param action the action to invoke.
-	 * @return a new {@link PsiRecursiveElementVisitor}.
-	 */
-	public static <T> PsiRecursiveElementVisitor visitTree(Class<T> psiElementType,
-			Consumer<T> action) {
-		return new ConditionalPsiRecursiveElementVisitor(psiElementType::isInstance,
-				it -> action.accept(psiElementType.cast(it)));
-	}
-
-	/**
-	 * Create a {@link PsiRecursiveElementVisitor} to visit the entire PSI tree
 	 * recursively and invoke {@code actionAndExitCondition} (until returning
 	 * {@literal true}) only for elements that are subtypes of
 	 * {@code psiElementType}.
@@ -71,6 +57,5 @@ public abstract class PsiElements {
 		return new ExitConditionVisitor(psiElementType::isInstance,
 				it -> actionAndExitCondition.test(psiElementType.cast(it)));
 	}
-
 
 }

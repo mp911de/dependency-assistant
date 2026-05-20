@@ -81,8 +81,8 @@ class MavenWrapperHighlightingTests {
 	}
 
 	@Test
-	@ProjectFile(name = "gradle/wrapper/gradle-wrapper.properties", content = """
-			distributionUrl=https\\://services.gradle.org/distributions/gradle-8.5-bin.zip
+	@ProjectFile(name = "application.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
 			""")
 	void getHighlightRangeFallsBackToElementRangeForNonWrapperProperty(PsiFile file) {
 

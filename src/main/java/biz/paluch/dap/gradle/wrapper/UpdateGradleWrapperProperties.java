@@ -14,39 +14,35 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven.wrapper;
+package biz.paluch.dap.gradle.wrapper;
 
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.state.CachedRelease;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Applies dependency updates to {@code .mvn/wrapper/maven-wrapper.properties}.
+ * Applies dependency updates to
+ * {@code gradle/wrapper/gradle-wrapper.properties}.
  *
  * @author Mark Paluch
  */
-class UpdateMavenWrapperProperties {
+class UpdateGradleWrapperProperties {
 
-	/**
-	 * Apply a single update at the given wrapper version literal.
-	 * @param versionLiteral the {@link PropertyValueImpl} that owns the URL value;
-	 * must not be {@literal null}.
-	 * @param update the update to apply; must not be {@literal null}.
-	 */
 	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
 		PropertyImpl property = PropertyUtils.findProperty(versionLiteral);
@@ -54,44 +50,39 @@ class UpdateMavenWrapperProperties {
 			return;
 		}
 
-		Set<String> toCommentOut = new HashSet<>();
-		WrapperEntry entry = MavenWrapperParser.parse(property);
+		GradleWrapperEntry entry = GradleWrapperParser.parse(property);
 		if (entry != null) {
-			applyUpdate(property, entry, update, toCommentOut);
+			applyUpdate(property, entry, update);
 		}
-
-		postProcess(property.getContainingFile(), toCommentOut);
 	}
 
-	/**
-	 * Apply updates to the given wrapper PSI file.
-	 * @param psiFile the wrapper PSI file; must not be {@literal null}.
-	 * @param updates the updates to apply; must not be {@literal null}.
-	 */
 	public static void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 
 		if (!(psiFile instanceof PropertiesFile properties)) {
 			return;
 		}
 
-		Set<String> toCommentOut = new HashSet<>();
-		Properties.from(properties).filterMap(MavenWrapperParser::parse).toList().forEach(it -> {
+		List<GradleWrapperEntry> entries = Properties.from(properties).filterMap(GradleWrapperParser::parse)
+				.toList();
+		for (GradleWrapperEntry entry : entries) {
 			for (DependencyUpdate update : updates) {
-				applyUpdate(it.propertyLiteral(), it, update, toCommentOut);
+				applyUpdate(entry.propertyLiteral(), entry, update);
 			}
-		});
-
-		postProcess(psiFile, new HashSet<>(toCommentOut));
+		}
 	}
 
-	private static void applyUpdate(PropertyImpl property, WrapperEntry entry, DependencyUpdate update,
-			Collection<String> toCommentOut) {
+	private static void applyUpdate(PropertyImpl property, GradleWrapperEntry entry, DependencyUpdate update) {
 
 		if (!entry.hasArtifactId(update.coordinate())) {
 			return;
 		}
 
-		List<TextRange> ranges = MavenWrapperUtils.getVersionRanges(property);
+		String currentValue = property.getUnescapedValue();
+		if (!StringUtils.hasText(currentValue)) {
+			return;
+		}
+
+		List<TextRange> ranges = GradleWrapperUtils.getVersionRanges(property);
 		if (ranges.isEmpty()) {
 			return;
 		}
@@ -100,8 +91,6 @@ class UpdateMavenWrapperProperties {
 		if (valueNode == null) {
 			return;
 		}
-
-		toCommentOut.add(entry.property().shaKey());
 
 		int propertyStart = property.getTextRange().getStartOffset();
 		int valueStart = valueNode.getTextRange().getStartOffset() - propertyStart;
@@ -113,19 +102,37 @@ class UpdateMavenWrapperProperties {
 		}
 
 		property.setValue(updatedText.substring(valueStart), PropertyKeyValueFormat.FILE);
+
+		String sha = resolveSha(property, update);
+		postProcessSha(property.getContainingFile(), entry, sha);
 	}
 
-	private static void postProcess(PsiFile psiFile, Collection<String> toCommentOut) {
+	private static void postProcessSha(PsiFile file, GradleWrapperEntry entry, @Nullable String sha) {
 
-		if (toCommentOut.isEmpty()) {
-			return;
-		}
-
-		for (PropertyImpl property : PsiTreeUtil.findChildrenOfType(psiFile, PropertyImpl.class)) {
-			if (toCommentOut.contains(property.getUnescapedKey())) {
-				PropertyUtils.commentOut(property);
+		for (PropertyImpl property : PsiTreeUtil.findChildrenOfType(file, PropertyImpl.class)) {
+			if (entry.property().shaKey().equals(property.getUnescapedKey())) {
+				if (StringUtils.hasText(sha)) {
+					property.setValue(sha, PropertyKeyValueFormat.FILE);
+				} else {
+					PropertyUtils.commentOut(property);
+				}
 			}
 		}
+	}
+
+	private static @Nullable String resolveSha(PropertyImpl property, DependencyUpdate update) {
+
+		if (update.version() instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())) {
+			return gitVersion.getSha();
+		}
+
+		for (CachedRelease release : StateService.getInstance(property.getProject()).getCache()
+				.getCachedReleases(update.coordinate())) {
+			if (update.versionAsString().equals(release.version())) {
+				return release.sha();
+			}
+		}
+		return null;
 	}
 
 }

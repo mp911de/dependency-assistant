@@ -16,26 +16,19 @@
 
 package biz.paluch.dap.maven.wrapper;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.util.MatchFunction;
+import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.LiteralTextEscaper;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiLanguageInjectionHost;
-import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -106,7 +99,7 @@ class MavenWrapperUtils {
 		int v2Start = expandStrippedPosition(matcher.start("version2"), value);
 		int v2End = expandStrippedPosition(matcher.end("version2"), value);
 
-		return findTextRanges(property, (str, index) -> {
+		return PropertyUtils.findTextRanges(property, (str, index) -> {
 			if (index < v1Start) {
 
 				return MatchFunction.match(value.substring(v1Start, v1End), v1Start, v1End);
@@ -139,170 +132,6 @@ class MavenWrapperUtils {
 			from = hit + placeholderLength;
 		}
 		return pos;
-	}
-
-	/**
-	 * Return the property value element for the given property or value element.
-	 * @param element the property or value element to inspect.
-	 * @return the property value element, or {@literal null} if none can be found.
-	 */
-	public static @Nullable PropertyValueImpl findPropertyValue(PsiElement element) {
-
-		if (element instanceof PropertyValueImpl pv) {
-			return pv;
-		}
-
-		if (element instanceof PropertyImpl property) {
-			return PsiTreeUtil.findChildOfType(property, PropertyValueImpl.class);
-		}
-
-		return null;
-	}
-
-	/**
-	 * Return the property represented by the given element.
-	 * @param element the property element or one of its direct children.
-	 * @return the enclosing property, or {@literal null} if the element is not part
-	 * of a property.
-	 */
-	public static @Nullable PropertyImpl findProperty(@Nullable PsiElement element) {
-
-		if (element instanceof PropertyImpl property) {
-			return property;
-		}
-		if (element != null) {
-			return PsiTreeUtil.getParentOfType(element, PropertyImpl.class, false);
-		}
-		return null;
-	}
-
-	/**
-	 * Locate a range in {@code property}'s value, falling back to the given element
-	 * when no decoded match maps cleanly.
-	 * @param property the wrapper property to inspect.
-	 * @param fallbackElement the element whose range is used as fallback.
-	 * @param matchFunction the match function evaluated against the decoded value.
-	 * @return the first matching range, or the fallback element range.
-	 */
-	public static TextRange findTextRange(PropertyImpl property, PsiElement fallbackElement,
-			MatchFunction matchFunction) {
-		return findTextRanges(property, fallbackElement, matchFunction).getFirst();
-	}
-
-	/**
-	 * Locate ranges in {@code property}'s value that correspond to matches produced
-	 * by {@code matchFunction} against the decoded value text.
-	 *
-	 * <p>Decoding is restricted to the {@link PropertyImpl#getValueNode() value
-	 * node}: the default {@link LiteralTextEscaper#getRelevantTextRange()} would
-	 * cover the entire property (key, separator, and value) and would shift every
-	 * decoded position by the key length.
-	 * @param property the wrapper property to inspect.
-	 * @param fallbackElement the element whose range is returned when decoding or
-	 * mapping fails.
-	 * @param matchFunction the match function evaluated against the decoded value.
-	 * @return file-absolute ranges of each match, never empty, falling back to
-	 * {@code fallbackElement}'s range when no match maps cleanly.
-	 */
-	public static List<TextRange> findTextRanges(
-			PropertyImpl property, PsiElement fallbackElement,
-			MatchFunction matchFunction) {
-
-		List<TextRange> ranges = findTextRanges(property, matchFunction);
-
-		return ranges.isEmpty() ? List.of(fallbackElement.getTextRange()) : ranges;
-	}
-
-	/**
-	 * Locate ranges in {@code property}'s value that correspond to matches produced
-	 * by {@code matchFunction} against the decoded value text.
-	 *
-	 * @param property the wrapper property to inspect.
-	 * @param matchFunction the match function evaluated against the decoded value.
-	 * @return file-absolute ranges of each match.
-	 */
-	public static List<TextRange> findTextRanges(PropertyImpl property,
-			MatchFunction matchFunction) {
-
-		LiteralTextEscaper<? extends PsiLanguageInjectionHost> escaper = property.createLiteralTextEscaper();
-		PropertyValueImpl first = SyntaxTraverser.psiTraverser(property)
-				.filter(PropertyValueImpl.class).first();
-
-		if (first == null) {
-			return List.of();
-		}
-
-		int startOffset = property.getTextRange().getStartOffset();
-		TextRange valueRangeInHost = first.getTextRange().shiftLeft(startOffset);
-		StringBuilder decoded = new StringBuilder();
-		if (!escaper.decode(valueRangeInHost, decoded)) {
-			return List.of();
-		}
-
-		String decodedText = decoded.toString();
-		int index = 0;
-		MatchResult matchResult = matchFunction.find(decodedText, index);
-		List<TextRange> ranges = new ArrayList<>();
-
-		while (matchResult.hasMatch()) {
-			int decodedStart = matchResult.start();
-			int decodedEnd = matchResult.end();
-			index = matchResult.end();
-			matchResult = matchFunction.find(decodedText, index);
-
-			TextRange rangeInHost = decodedRangeToHostRange(escaper, valueRangeInHost, decodedStart,
-					decodedEnd);
-
-			if (rangeInHost == null) {
-				continue;
-			}
-
-			ranges.add(rangeInHost.shiftRight(startOffset));
-		}
-
-		return ranges;
-	}
-
-	private static @Nullable TextRange decodedRangeToHostRange(LiteralTextEscaper<?> escaper,
-			TextRange hostRange, int decodedStart, int decodedEnd) {
-
-		if (decodedStart < 0 || decodedEnd < decodedStart) {
-			return null;
-		}
-
-		if (decodedStart == decodedEnd) {
-			int hostOffset = escaper.getOffsetInHost(decodedStart, hostRange);
-			if (hostOffset < 0) {
-				return null;
-			}
-			return TextRange.create(hostOffset, hostOffset);
-		}
-
-		int hostStart = escaper.getOffsetInHost(decodedStart, hostRange);
-		int hostEnd = escaper.getOffsetInHost(decodedEnd, hostRange);
-
-		if (hostStart < 0) {
-			return null;
-		}
-
-		if (hostEnd < 0) {
-			/*
-			 * Some escapers do not map the exclusive end offset directly. Fall back to
-			 * mapping the last decoded character and advancing by one. This is not perfect
-			 * for every escape sequence, but is a reasonable fallback.
-			 */
-			int lastHostOffset = escaper.getOffsetInHost(decodedEnd - 1, hostRange);
-			if (lastHostOffset < 0) {
-				return null;
-			}
-			hostEnd = lastHostOffset + 1;
-		}
-
-		if (hostEnd < hostStart) {
-			return null;
-		}
-
-		return TextRange.create(hostStart, hostEnd);
 	}
 
 	private MavenWrapperUtils() {

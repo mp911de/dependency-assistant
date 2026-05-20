@@ -14,30 +14,26 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.artifact;
+package biz.paluch.dap.gradle.wrapper;
 
-import java.util.List;
-
-import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
-import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.*;
+import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
+import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiFile;
 
 /**
- * Unit tests for {@link GradlePluginPortalReleaseSource}.
+ * Fixtures for Gradle Wrapper.
  *
  * @author Mark Paluch
  */
-class GradlePluginPortalReleaseSourceUnitTests {
+class GradleWrapperFixtures {
 
-	@Test
-	void returnsEmptyListForRegularLibraryArtifact() {
+	static void setup(Project project) {
+		DependencyAssistantFixtures.setup(project);
+	}
 
-		ArtifactId library = ArtifactId.of("org.springframework", "spring-core");
-		List<Release> releases = GradlePluginPortalReleaseSource.INSTANCE.getReleases(library,
-				new AbstractProgressIndicatorBase());
-
-		assertThat(releases).isEmpty();
+	static DependencyCollector analyze(PsiFile file) {
+		return new UpdateGradleWrapperPropertiesProjectState(file.getProject()).update(file);
 	}
 
 }

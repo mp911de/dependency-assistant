@@ -112,19 +112,6 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 		return text;
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof GitVersion that)) {
-			return false;
-		}
-		return Objects.equals(sha, that.sha) && Objects.equals(version, that.version);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(sha, version);
-	}
-
 	/**
 	 * Return a string suitable for documentation containing the version and
 	 * {@link #getShortSha() short SHA} if present.
@@ -136,6 +123,19 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 		}
 
 		return toString();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof GitVersion that)) {
+			return false;
+		}
+		return Objects.equals(sha, that.sha) && Objects.equals(version, that.version);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(sha, version);
 	}
 
 }

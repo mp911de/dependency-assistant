@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven.wrapper;
+package biz.paluch.dap.gradle.wrapper;
 
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
@@ -25,14 +25,14 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
- * IntelliJ completion contributor for Maven wrapper property files.
+ * IntelliJ completion contributor for Gradle wrapper property files.
  *
  * @author Mark Paluch
  */
-class MavenWrapperCompletionContributor extends CompletionContributor {
+class GradleWrapperCompletionContributor extends CompletionContributor {
 
 	private static final PsiFilePattern.Capture<PsiFile> WRAPPER_PROPERTIES = PlatformPatterns.psiFile()
-			.withName(MavenWrapperUtils.WRAPPER_FILENAME);
+			.withName(GradleWrapperUtils.WRAPPER_FILENAME);
 
 	private static final PsiElementPattern.Capture<PsiElement> VALUE_PATTERNS = PropertyContributor.PATTERNS
 			.inFile(WRAPPER_PROPERTIES);
@@ -44,7 +44,7 @@ class MavenWrapperCompletionContributor extends CompletionContributor {
 	private static final PsiElementPattern.Capture<PsiElement> VERSION_PATTERNS = VersionContributor.WRAPPER_VERSION
 			.inFile(WRAPPER_PROPERTIES);
 
-	MavenWrapperCompletionContributor() {
+	GradleWrapperCompletionContributor() {
 		extend(CompletionType.BASIC, VALUE_PATTERNS, VALUE_CONTRIBUTOR);
 		extend(CompletionType.BASIC, VERSION_PATTERNS, VERSION_CONTRIBUTOR);
 	}

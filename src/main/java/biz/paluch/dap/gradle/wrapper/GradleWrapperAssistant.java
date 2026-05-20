@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven.wrapper;
+package biz.paluch.dap.gradle.wrapper;
 
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.swing.Icon;
 
@@ -30,7 +28,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.gradle.GradleDistributionReleaseSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
@@ -56,23 +54,23 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
-import icons.MavenIcons;
+import icons.GradleIcons;
 
 /**
- * Maven Wrapper implementation of {@link DependencyAssistant}.
+ * Gradle Wrapper implementation of {@link DependencyAssistant}.
  *
  * @author Mark Paluch
  */
-public class MavenWrapperAssistant implements DependencyAssistant {
+public class GradleWrapperAssistant implements DependencyAssistant {
 
 	@Override
 	public String getId() {
-		return "maven-wrapper";
+		return "gradle-wrapper";
 	}
 
 	@Override
 	public String getDisplayName() {
-		return MavenWrapperInterface.INSTANCE.getDisplayName();
+		return GradleWrapperInterface.INSTANCE.getDisplayName();
 	}
 
 	@Override
@@ -82,12 +80,12 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean supports(PsiFile file) {
-		return MavenWrapperUtils.isWrapperFile(file);
+		return GradleWrapperUtils.isWrapperFile(file);
 	}
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateWrapperPropertiesProjectState(project).getAllDependencies(indicator);
+		return new UpdateGradleWrapperPropertiesProjectState(project).getAllDependencies(indicator);
 	}
 
 	@Override
@@ -95,10 +93,9 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		Cache cache = StateService.getInstance(project).getCache();
 
-		UpdateWrapperPropertiesProjectState init = new UpdateWrapperPropertiesProjectState(project);
+		UpdateGradleWrapperPropertiesProjectState init = new UpdateGradleWrapperPropertiesProjectState(project);
 		init.readAndUpdateAll(indicator);
 
-		// avoid excessive network access so this is disabled in tests.
 		if (StringUtils.isEmpty(System.getProperty("junit.jupiter.extensions.autodetection.enabled"))) {
 
 			DumbService ds = DumbService.getInstance(project);
@@ -106,14 +103,12 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 				@Override
 				public void performInDumbMode(ProgressIndicator indicator) {
-					RefreshMavenWrapperVersions refresh = new RefreshMavenWrapperVersions(cache,
+					RefreshGradleWrapperVersions refresh = new RefreshGradleWrapperVersions(cache,
 							init.getReleaseSources());
 					refresh.refreshWrapperVersions(indicator);
 
-					ds.runWhenSmart(() -> {
-						DaemonCodeAnalyzer.getInstance(project)
-								.restart(MessageBundle.message("action.refresh-releases.task.done.title"));
-					});
+					ds.runWhenSmart(() -> DaemonCodeAnalyzer.getInstance(project)
+							.restart(MessageBundle.message("action.refresh-releases.task.done.title")));
 				}
 
 			});
@@ -124,10 +119,10 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	public ProjectDependencyContext createContext(Project project, PsiFile anchor) {
 
 		if (!supports(anchor)) {
-			throw new IllegalStateException("Maven integration does not support " + anchor);
+			throw new IllegalStateException("Gradle wrapper integration does not support " + anchor);
 		}
 
-		return CachedValuesManager.getProjectPsiDependentCache(anchor, MavenWrapperAssistant::createWrapperContext);
+		return CachedValuesManager.getProjectPsiDependentCache(anchor, GradleWrapperAssistant::createWrapperContext);
 	}
 
 	private static ProjectDependencyContext createWrapperContext(PsiFile anchor) {
@@ -138,33 +133,12 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		}
 
 		Project project = anchor.getProject();
-		ProjectId projectId = MavenWrapperUtils.createProjectId(virtualFile);
-		List<ReleaseSource> releaseSources = collectReleaseSources(anchor);
-
-		return new MavenWrapperDependencyContext(project, virtualFile, projectId, releaseSources);
+		ProjectId projectId = GradleWrapperUtils.createProjectId(virtualFile);
+		return new GradleWrapperDependencyContext(project, virtualFile, projectId,
+				List.of(GradleDistributionReleaseSource.INSTANCE));
 	}
 
-	/**
-	 * Return the wrapper-derived release sources for the given wrapper file,
-	 * deduplicated by repository URL.
-	 * @param wrapperFile the wrapper properties file.
-	 * @return the release sources declared by supported wrapper URL properties.
-	 */
-	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
-
-		return CachedValuesManager.getProjectPsiDependentCache(wrapperFile, it -> {
-			if (!(it instanceof PropertiesFile propertiesFile)) {
-				return List.of();
-			}
-			Set<RemoteRepository> repositories = new LinkedHashSet<>();
-			for (WrapperEntry entry : MavenWrapperParser.parse(propertiesFile)) {
-				repositories.add(entry.repository());
-			}
-			return ReleaseSource.getReleaseSources(repositories);
-		});
-	}
-
-	public static class MavenWrapperDependencyContext implements ProjectDependencyContext {
+	public static class GradleWrapperDependencyContext implements ProjectDependencyContext {
 
 		private final Project project;
 
@@ -174,9 +148,8 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		private final List<ReleaseSource> releaseSources;
 
-		MavenWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId,
+		GradleWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId,
 				List<ReleaseSource> releaseSources) {
-
 			this.project = project;
 			this.anchor = anchor;
 			this.projectId = projectId;
@@ -200,17 +173,15 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
-			return MavenWrapperInterface.INSTANCE;
+			return GradleWrapperInterface.INSTANCE;
 		}
 
 		@Override
 		public void invalidateState(PsiFile file) {
 
-			if (!MavenWrapperUtils.isWrapperFile(file)) {
-				return;
+			if (GradleWrapperUtils.isWrapperFile(file)) {
+				new UpdateGradleWrapperPropertiesProjectState(project).update(file);
 			}
-
-			new UpdateWrapperPropertiesProjectState(project).update(file);
 		}
 
 		@Override
@@ -218,8 +189,8 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 			DependencyCollector collector = new DependencyCollector();
 			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
-			if (psiFile instanceof PropertiesFile propertiesFile && MavenWrapperUtils.isWrapperFile(psiFile)) {
-				new MavenWrapperParser(collector).collect(propertiesFile);
+			if (psiFile instanceof PropertiesFile propertiesFile && GradleWrapperUtils.isWrapperFile(psiFile)) {
+				new GradleWrapperParser(collector).collect(propertiesFile);
 			}
 			return collector;
 		}
@@ -230,15 +201,12 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 			if (!(element instanceof PropertyValueImpl value)) {
 				return false;
 			}
-
-			if (!MavenWrapperUtils.isWrapperFile(value.getContainingFile())) {
+			if (!GradleWrapperUtils.isWrapperFile(value.getContainingFile())) {
 				return false;
 			}
-
 			if (!(value.getParent() instanceof IProperty property)) {
 				return false;
 			}
-
 			return WrapperProperty.isWrapperProperty(property);
 		}
 
@@ -249,31 +217,28 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-			UpdateMavenWrapperProperties.applyUpdate(versionLiteral, update);
+			UpdateGradleWrapperProperties.applyUpdate(versionLiteral, update);
 		}
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			UpdateMavenWrapperProperties.applyUpdates(psiFile, updates);
+			UpdateGradleWrapperProperties.applyUpdates(psiFile, updates);
 		}
 
 		@Override
 		public String toString() {
-			return "MavenWrapperDependencyContext[%s] projectId=%s".formatted(anchor, projectId);
+			return "GradleWrapperDependencyContext[%s] projectId=%s".formatted(anchor, projectId);
 		}
 
 	}
 
-	/**
-	 * Maven-specific user interface support.
-	 */
-	enum MavenWrapperInterface implements InterfaceAssistant {
+	enum GradleWrapperInterface implements InterfaceAssistant {
 
 		INSTANCE;
 
 		@Override
 		public String getDisplayName() {
-			return MessageBundle.message("assistant.maven-wrapper");
+			return MessageBundle.message("assistant.gradle-wrapper");
 		}
 
 		@Override
@@ -283,7 +248,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public Icon getGutterIcon(ArtifactDeclaration declaration) {
-			return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
+			return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
 		}
 
 		@Override
@@ -293,7 +258,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public Icon getTableIcon(Dependency dependency) {
-			return MavenIcons.MavenProject;
+			return GradleIcons.Gradle;
 		}
 
 		@Override
@@ -303,7 +268,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 					: PsiTreeUtil.getParentOfType(element, PropertyValueImpl.class, false);
 			if (literal == null
 					|| !(literal.getContainingFile() instanceof PropertiesFile propertiesFile)
-					|| !MavenWrapperUtils.isWrapperFile(propertiesFile)) {
+					|| !GradleWrapperUtils.isWrapperFile(propertiesFile)) {
 				return element.getTextRange();
 			}
 
@@ -311,13 +276,13 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 				return literal.getTextRange();
 			}
 
-			WrapperEntry entry = MavenWrapperParser.parse(property);
-			if (entry == null || entry.pathVersion().isEmpty()) {
+			GradleWrapperEntry entry = GradleWrapperParser.parse(property);
+			if (entry == null || entry.versionText().isEmpty()) {
 				return literal.getTextRange();
 			}
 
 			return PropertyUtils.findTextRange(property, literal,
-					MatchFunction.indexOf(entry.pathVersion()));
+					MatchFunction.indexOf(entry.versionText()));
 		}
 
 	}

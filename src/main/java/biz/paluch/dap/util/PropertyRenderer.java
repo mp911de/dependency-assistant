@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven.wrapper;
+package biz.paluch.dap.util;
 
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementPresentation;
@@ -26,11 +26,11 @@ import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.util.PlatformIcons;
 
 /**
- * {@link LookupElementRenderer} to render {@link WrapperProperty} suggestions.
- * 
+ * {@link LookupElementRenderer} for wrapper property suggestions.
+ *
  * @author Mark Paluch
  */
-class PropertyRenderer extends LookupElementRenderer<LookupElement> {
+public class PropertyRenderer extends LookupElementRenderer<LookupElement> {
 
 	public static final PropertyRenderer INSTANCE = new PropertyRenderer();
 

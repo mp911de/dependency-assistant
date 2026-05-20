@@ -32,12 +32,11 @@ import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.MalformedFileName;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.UnknownArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.util.MatchFunction;
+import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.ProblemsHolder.ProblemBuilder;
-import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 import com.intellij.openapi.project.DumbAware;
@@ -75,7 +74,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 
 				WrapperProperty kind = WrapperProperty.forKey(property.getUnescapedKey());
 				String decodedValue = property.getUnescapedValue();
-				TextRange rangeInElement = valueRangeInElement(property);
+				TextRange rangeInElement = PropertyUtils.valueRangeInElement(property);
 				if (kind == null || StringUtils.isEmpty(decodedValue) || rangeInElement == null) {
 					return;
 				}
@@ -102,12 +101,10 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		for (TextRange range : rangesFor(property, rangeInElement, problem)) {
 			ProblemBuilder builder = holder.problem(property, messageFor(problem)).range(range);
 
-			for (PsiUpdateModCommandAction<PropertyImpl> fix : fixesFor(kind, problem)) {
-				builder = builder.fix(fix);
-			}
+			fixesFor(kind, problem).forEach(builder::fix);
 
 			if (latestVersion != null) {
-				builder = builder.fix(MavenWrapperUrlFixes.useDefaultUrl(kind, latestVersion));
+				builder.fix(MavenWrapperUrlFixes.useDefaultUrl(kind, latestVersion));
 			}
 
 			builder.register();
@@ -148,16 +145,6 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		};
 	}
 
-	private static @Nullable TextRange valueRangeInElement(PropertyImpl property) {
-
-		ASTNode valueNode = property.getValueNode();
-		if (valueNode == null) {
-			return null;
-		}
-		int propertyStart = property.getTextRange().getStartOffset();
-		return valueNode.getTextRange().shiftLeft(propertyStart);
-	}
-
 	private static List<TextRange> rangesFor(PropertyImpl property, TextRange fallback,
 			MavenWrapperUrlProblem problem) {
 
@@ -192,7 +179,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 			return List.of();
 		}
 
-		return mapDecodedRanges(property, List.of(TextRange.create(authorityStart, at + 1)));
+		return PropertyUtils.mapDecodedRanges(property, List.of(TextRange.create(authorityStart, at + 1)));
 	}
 
 	private static List<TextRange> coordinateRanges(PropertyImpl property, String... groupNames) {
@@ -208,7 +195,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 				decodedRanges.add(TextRange.create(matcher.start(groupName), matcher.end(groupName)));
 			}
 		}
-		return mapDecodedRanges(property, decodedRanges);
+		return PropertyUtils.mapDecodedRanges(property, decodedRanges);
 	}
 
 	private static List<TextRange> improperGroupRange(PropertyImpl property, String actualGroupPath) {
@@ -225,7 +212,8 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		}
 
 		int start = matcher.start("groupId") + relativeStart;
-		return mapDecodedRanges(property, List.of(TextRange.create(start, start + actualGroupPath.length())));
+		return PropertyUtils.mapDecodedRanges(property,
+				List.of(TextRange.create(start, start + actualGroupPath.length())));
 	}
 
 	private static List<TextRange> unknownArtifactRanges(PropertyImpl property, String actualArtifactId) {
@@ -238,7 +226,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		List<TextRange> decodedRanges = new ArrayList<>();
 		addGroupRangeIfMatches(matcher, decodedRanges, "artifactId1", actualArtifactId);
 		addGroupRangeIfMatches(matcher, decodedRanges, "artifactId2", actualArtifactId);
-		return mapDecodedRanges(property, decodedRanges);
+		return PropertyUtils.mapDecodedRanges(property, decodedRanges);
 	}
 
 	private static void addGroupRangeIfMatches(Matcher matcher, List<TextRange> ranges, String groupName,
@@ -261,7 +249,8 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 			return List.of();
 		}
 
-		return mapDecodedRanges(property, List.of(TextRange.create(start, start + actualFileName.length())));
+		return PropertyUtils.mapDecodedRanges(property,
+				List.of(TextRange.create(start, start + actualFileName.length())));
 	}
 
 	private static @Nullable Matcher matcher(PropertyImpl property) {
@@ -273,24 +262,6 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 
 		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(decoded);
 		return matcher.find() ? matcher : null;
-	}
-
-	private static List<TextRange> mapDecodedRanges(PropertyImpl property, List<TextRange> decodedRanges) {
-
-		if (decodedRanges.isEmpty()) {
-			return List.of();
-		}
-
-		List<TextRange> absolute = MavenWrapperUtils.findTextRanges(property, (text, startIndex) -> {
-			for (TextRange range : decodedRanges) {
-				if (range.getStartOffset() >= startIndex && range.getEndOffset() <= text.length()) {
-					return MatchFunction.match(range.substring(text), range.getStartOffset(), range.getEndOffset());
-				}
-			}
-			return MatchFunction.noMatch();
-		});
-		int propertyStart = property.getTextRange().getStartOffset();
-		return absolute.stream().map(it -> it.shiftLeft(propertyStart)).toList();
 	}
 
 	private static @Nullable String resolveLatestNonPreviewVersion(StateService stateService,

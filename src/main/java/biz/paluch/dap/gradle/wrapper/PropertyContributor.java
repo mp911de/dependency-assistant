@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven.wrapper;
+package biz.paluch.dap.gradle.wrapper;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.PropertyContributorSupport;
@@ -25,7 +25,7 @@ import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.psi.PsiFileFactory;
 
 /**
- * {@link CompletionContributor} for Maven {@link WrapperProperty wrapper
+ * {@link CompletionContributor} for Gradle {@link WrapperProperty wrapper
  * properties}.
  *
  * @author Mark Paluch
@@ -38,7 +38,7 @@ class PropertyContributor extends PropertyContributorSupport {
 
 		for (WrapperProperty kind : WrapperProperty.values()) {
 			ArtifactRelease release = kind.getLatestArtifactRelease(cache);
-			String url = MavenWrapperUrlRewriter.canonicalUrl(kind, release);
+			String url = GradleWrapperUrlRewriter.canonicalUrl(release);
 			addPropertyLineCompletion(result, factory, propertyPosition, kind.key(), release, url);
 		}
 	}

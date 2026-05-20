@@ -89,9 +89,9 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware {
 			return;
 		}
 
-		presentation.setVisible(DependencyAssistantDispatcher.supports(project));
-		presentation.setEnabled(DependencyAssistantDispatcher.findFirstContext(project,
-				event.getData(CommonDataKeys.PSI_FILE)).isAvailable());
+		boolean supports = DependencyAssistantDispatcher.supports(project);
+		presentation.setVisible(supports);
+		presentation.setEnabled(supports);
 	}
 
 }
