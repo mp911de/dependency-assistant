@@ -126,6 +126,7 @@ class GradleWrapperCompletionTests {
 		GradleWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(file)
 				.containsText("gradle-8.14.4-bin.zip")

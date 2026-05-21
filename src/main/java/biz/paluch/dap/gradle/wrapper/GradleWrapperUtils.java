@@ -20,7 +20,12 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
@@ -49,6 +54,23 @@ class GradleWrapperUtils {
 	public static final String WRAPPER_FILENAME = "gradle-wrapper.properties";
 
 	private GradleWrapperUtils() {
+	}
+
+	static @Nullable String findSha(ArtifactId artifactId, ArtifactVersion version, StateService stateService) {
+
+		List<Release> releases = stateService.getCache()
+				.getReleases(artifactId);
+
+		for (Release release : releases) {
+			if (release.getVersion().getVersion()
+					.equals(version.getVersion().getVersion())) {
+				if (release.getVersion() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
+					return gitVersion.getRequiredSha();
+				}
+			}
+		}
+
+		return null;
 	}
 
 	/**

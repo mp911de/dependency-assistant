@@ -359,8 +359,10 @@ public class PropertyUtils {
 		}
 
 		PsiElement parent = property.getParent();
-		parent.addRangeBefore(list.getFirst(), list.getLast(), property);
-		property.delete();
+		PsiElement replaced = property.replace(list.getFirst());
+		if (list.size() > 1) {
+			parent.addRangeBefore(list.get(1), list.getLast(), replaced);
+		}
 	}
 
 	/**

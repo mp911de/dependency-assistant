@@ -62,6 +62,9 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 
 	@Override
 	public void applyFix(Project project, ProblemDescriptor descriptor) {
+
+		// todo: for properties, apply the update to the property. consider same/other
+		// file.
 		dependencyContext.applyUpdate(descriptor.getPsiElement(), suggestion.toDependencyUpdate());
 	}
 

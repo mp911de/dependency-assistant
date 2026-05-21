@@ -29,9 +29,12 @@ import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
 import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.codeInspection.InspectionManager;
+import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
+import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.QuickFix;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.ActionContext;
 import com.intellij.modcommand.ModCommandAction;
@@ -132,6 +135,73 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void highlightsMalformedFileNameForWrapperZip(PsiFile file) {
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			""")
+	void registersMissingDistributionChecksumProblem(PsiFile file) {
+
+		List<ProblemDescriptor> problems = inspectWrapperFile(file);
+
+		assertThat(problems).singleElement().satisfies(problem -> {
+			assertThat(problem.getDescriptionTemplate()).isEqualTo("distributionUrl has no SHA-256 checksum");
+			assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.WEAK_WARNING);
+			assertThat(problem.getFixes()).extracting(QuickFix::getName).contains("Compute SHA-256 checksum");
+		});
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			distributionSha256Sum=
+			""")
+	void doesNotRegisterMissingChecksumWhenShaPropertyExists(PsiFile file) {
+		assertThat(inspectWrapperFile(file)).isEmpty();
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			""")
+	void doesNotRegisterMissingChecksumWhenProjectIsUntrusted(PsiFile file) {
+
+		Project project = fixture.getProject();
+		TrustedProjects.setProjectTrusted(project, false);
+		try {
+			assertThat(inspectWrapperFile(file)).isEmpty();
+		} finally {
+			TrustedProjects.setProjectTrusted(project, true);
+		}
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.5-bin.zip
+			""")
+	void doesNotRegisterMissingChecksumWhenUrlHasAnotherProblem(PsiFile file) {
+
+		assertThat(inspectWrapperFile(file))
+				.extracting(ProblemDescriptor::getDescriptionTemplate)
+				.containsOnly("Wrapper URL path version '3.9.6' disagrees with file version '3.9.5'")
+				.doesNotContain("distributionUrl has no SHA-256 checksum");
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.___IntellijIdeaRulezzz___/apache-maven-3.___IntellijIdeaRulezzz___-bin.zip
+			""")
+	void doesNotRegisterMissingChecksumDuringCompletion(PsiFile file) {
+		assertThat(inspectWrapperFile(file)).isEmpty();
+	}
+
+	@Test
+	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/${prefix}/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			""")
+	void doesNotRegisterMissingChecksumWhenUrlContainsInterpolation(PsiFile file) {
+		assertThat(inspectWrapperFile(file)).isEmpty();
 	}
 
 	@Test
@@ -279,6 +349,35 @@ class MavenWrapperUrlInspectionTests {
 		assertThat(quickFixLabels()).doesNotContain(FIX_USE_DEFAULT_URL);
 	}
 
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			validateDistributionUrl=true
+			""")
+	void computeShaFixAddsDistributionShaAfterDistributionUrl(PsiFile file) {
+
+		PropertyImpl property = ReadAction.compute(() -> SyntaxTraverser.psiTraverser(file)
+				.filter(PropertyImpl.class)
+				.filter(it -> WrapperProperty.DISTRIBUTION.key().equals(it.getUnescapedKey()))
+				.first());
+		ProblemDescriptor descriptor = ReadAction.compute(() -> InspectionManager.getInstance(fixture.getProject())
+				.createProblemDescriptor(property, "distributionUrl has no SHA-256 checksum", true,
+						LocalQuickFix.EMPTY_ARRAY, ProblemHighlightType.WEAK_WARNING));
+
+		new MavenWrapperChecksumQuickFix(WrapperProperty.DISTRIBUTION,
+				(project, url) -> "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9")
+						.applyFix(fixture.getProject(), descriptor);
+
+		assertThat(file).containsText(
+				"""
+						wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
+						distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+						distributionSha256Sum=82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9
+						validateDistributionUrl=true
+						""");
+	}
+
 
 	@SuppressWarnings("rawtypes")
 	private void invokeQuickFix(String label) {
@@ -289,17 +388,7 @@ class MavenWrapperUrlInspectionTests {
 	@SuppressWarnings("rawtypes")
 	private void invokeQuickFix(String label, int position) {
 
-		MavenWrapperUrlInspection inspection = new MavenWrapperUrlInspection();
-
-		Project project = fixture.getProject();
-		PsiFile file = fixture.getFile();
-		List<ProblemDescriptor> problems = ReadAction.compute(() -> {
-			InspectionManager manager = InspectionManager.getInstance(project);
-			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
-			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
-			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
-			return holder.getResults();
-		});
+		List<ProblemDescriptor> problems = inspectWrapperFile();
 
 		assertThat(problems).isNotEmpty();
 
@@ -318,6 +407,24 @@ class MavenWrapperUrlInspectionTests {
 		}
 
 		fixture.launchAction(fixture.findSingleIntention(label));
+	}
+
+	private List<ProblemDescriptor> inspectWrapperFile() {
+		return inspectWrapperFile(fixture.getFile());
+	}
+
+	private List<ProblemDescriptor> inspectWrapperFile(PsiFile file) {
+
+		MavenWrapperUrlInspection inspection = new MavenWrapperUrlInspection();
+
+		Project project = fixture.getProject();
+		return ReadAction.compute(() -> {
+			InspectionManager manager = InspectionManager.getInstance(project);
+			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
+			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
+			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
+			return holder.getResults();
+		});
 	}
 
 	private void invoke(QuickFix fix, ProblemDescriptor problem) {

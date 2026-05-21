@@ -28,5 +28,16 @@
 				level="WARNING"
 				enabledByDefault="true"
 				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperUrlInspection"/>
+		<intentionAction>
+			<language>Properties</language>
+			<category>Dependency Assistant</category>
+			<className>biz.paluch.dap.maven.wrapper.ChecksumIntention$Distribution
+			</className>
+		</intentionAction>
+		<intentionAction>
+			<language>Properties</language>
+			<category>Dependency Assistant</category>
+			<className>biz.paluch.dap.maven.wrapper.ChecksumIntention$Wrapper</className>
+		</intentionAction>
 	</extensions>
 </idea-plugin>

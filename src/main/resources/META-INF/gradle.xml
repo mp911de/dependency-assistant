@@ -65,5 +65,11 @@
 				level="WARNING"
 				enabledByDefault="true"
 				implementationClass="biz.paluch.dap.gradle.wrapper.GradleWrapperUrlInspection"/>
+		<intentionAction>
+			<language>Properties</language>
+			<category>Dependency Assistant</category>
+			<className>biz.paluch.dap.gradle.wrapper.ChecksumIntention$Distribution
+			</className>
+		</intentionAction>
 	</extensions>
 </idea-plugin>

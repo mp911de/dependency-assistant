@@ -19,7 +19,6 @@ package biz.paluch.dap.maven.wrapper;
 import java.net.URI;
 
 import biz.paluch.dap.artifact.RemoteRepository;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -29,10 +28,8 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-@Disabled
 class WrapperPropertyUnitTests {
 
-	// TODO: Correctly parse Maven repo urls.
 	@Test
 	void parsesRepositoryCorrectly() {
 

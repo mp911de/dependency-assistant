@@ -16,6 +16,12 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import java.util.List;
+
+import biz.paluch.dap.support.MessageBundle;
+import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.modcommand.PsiUpdateModCommandAction;
+
 /**
  * A specific way a {@code WrapperProperty} URL is malformed or unsafe.
  * <p>Each variant captures only the user-visible deviation payload required to
@@ -27,9 +33,32 @@ package biz.paluch.dap.maven.wrapper;
 sealed interface MavenWrapperUrlProblem {
 
 	/**
+	 * @return the localized inspection message for this problem.
+	 */
+	String getMessage();
+
+	/**
+	 * @param kind the wrapper URL property kind being inspected.
+	 * @return the specific quick-fixes offered for this problem, excluding the
+	 * generic "use default URL" fallback added by the inspection.
+	 */
+	List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind);
+
+	/**
 	 * Plaintext credentials are embedded in the URL authority.
 	 */
 	record CredentialsInUrl() implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("inspection.maven-wrapper.credentials-in-url.problem");
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of(MavenWrapperUrlFixes.stripCredentials());
+		}
+
 	}
 
 	/**
@@ -37,6 +66,17 @@ sealed interface MavenWrapperUrlProblem {
 	 * classified further.
 	 */
 	record InvalidUrl() implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("inspection.maven-wrapper.invalid-url.problem");
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of();
+		}
+
 	}
 
 	/**
@@ -45,6 +85,20 @@ sealed interface MavenWrapperUrlProblem {
 	 * @param fileVersion the version embedded inside the file name.
 	 */
 	record InconsistentVersion(String pathVersion, String fileVersion) implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("inspection.maven-wrapper.inconsistent-version.problem", pathVersion,
+					fileVersion);
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of(
+					MavenWrapperUrlFixes.replaceVersion(pathVersion),
+					MavenWrapperUrlFixes.replaceVersion(fileVersion));
+		}
+
 	}
 
 	/**
@@ -53,6 +107,18 @@ sealed interface MavenWrapperUrlProblem {
 	 * @param fileArtifact the artifactId embedded inside the file name.
 	 */
 	record InconsistentArtifact(String pathArtifact, String fileArtifact) implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("inspection.maven-wrapper.inconsistent-artifact.problem", pathArtifact,
+					fileArtifact);
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of(MavenWrapperUrlFixes.replaceArtifact(kind));
+		}
+
 	}
 
 	/**
@@ -61,6 +127,17 @@ sealed interface MavenWrapperUrlProblem {
 	 * @param actualGroupPath the last-N segments joined by {@code /}.
 	 */
 	record ImproperGroupId(String actualGroupPath) implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("inspection.maven-wrapper.improper-group-id.problem", actualGroupPath);
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of(MavenWrapperUrlFixes.replaceGroupPath(kind));
+		}
+
 	}
 
 	/**
@@ -68,6 +145,17 @@ sealed interface MavenWrapperUrlProblem {
 	 * @param actualArtifactId the artifactId observed in the URL.
 	 */
 	record UnknownArtifact(String actualArtifactId) implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("inspection.maven-wrapper.unknown-artifact.problem", actualArtifactId);
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of(MavenWrapperUrlFixes.replaceArtifact(kind));
+		}
+
 	}
 
 	/**
@@ -78,6 +166,35 @@ sealed interface MavenWrapperUrlProblem {
 	 * file-name fix; never {@literal null} and never empty.
 	 */
 	record MalformedFileName(String actualFileName, String sharedVersion) implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("inspection.maven-wrapper.malformed-file-name.problem", actualFileName);
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of(MavenWrapperUrlFixes.replaceFileName(kind, sharedVersion));
+		}
+
+	}
+
+	/**
+	 * The URL is valid but the sibling SHA-256 checksum property is absent.
+	 * @param property the URL property whose checksum is missing.
+	 */
+	record MissingChecksum(WrapperProperty property) implements MavenWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("wrapper.checksum.missing.problem", property.key());
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+			return List.of();
+		}
+
 	}
 
 }

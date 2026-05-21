@@ -29,16 +29,18 @@ import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.InconsistentArtifact;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.InconsistentVersion;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.InvalidUrl;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.MalformedFileName;
+import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.MissingChecksum;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.UnknownArtifact;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInspection.LocalInspectionTool;
+import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.ProblemsHolder.ProblemBuilder;
+import com.intellij.ide.trustedProjects.TrustedProjects;
+import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.modcommand.PsiUpdateModCommandAction;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
@@ -82,6 +84,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 				List<MavenWrapperUrlProblem> problems = MavenWrapperUrlAnalyzer.analyze(kind, decodedValue,
 						property.getText());
 				if (problems.isEmpty()) {
+					registerMissingChecksum(holder, property, rangeInElement, kind, decodedValue);
 					return;
 				}
 
@@ -95,13 +98,30 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		};
 	}
 
+	private static void registerMissingChecksum(ProblemsHolder holder, PropertyImpl property, TextRange rangeInElement,
+			WrapperProperty kind, String decodedValue) {
+
+		if (!TrustedProjects.isProjectTrusted(holder.getProject())
+				|| !MavenWrapperUrlAnalyzer.isChecksumCandidate(decodedValue, property.getText())
+				|| !(property.getContainingFile() instanceof PropertiesFile properties)
+				|| properties.findPropertyByKey(kind.shaKey()) != null) {
+			return;
+		}
+
+		registerProblem(holder, property, rangeInElement, kind, new MissingChecksum(kind), null);
+	}
+
 	private static void registerProblem(ProblemsHolder holder, PropertyImpl property, TextRange rangeInElement,
 			WrapperProperty kind, MavenWrapperUrlProblem problem, @Nullable String latestVersion) {
 
 		for (TextRange range : rangesFor(property, rangeInElement, problem)) {
-			ProblemBuilder builder = holder.problem(property, messageFor(problem)).range(range);
+			ProblemBuilder builder = holder.problem(property, problem.getMessage()).range(range);
 
-			fixesFor(kind, problem).forEach(builder::fix);
+			if (problem instanceof MissingChecksum) {
+				builder.highlight(ProblemHighlightType.WEAK_WARNING).fix(new MavenWrapperChecksumQuickFix(kind));
+			} else {
+				problem.getFixes(kind).forEach(builder::fix);
+			}
 
 			if (latestVersion != null) {
 				builder.fix(MavenWrapperUrlFixes.useDefaultUrl(kind, latestVersion));
@@ -109,40 +129,6 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 
 			builder.register();
 		}
-	}
-
-	private static String messageFor(MavenWrapperUrlProblem problem) {
-		return switch (problem) {
-		case CredentialsInUrl ignored -> MessageBundle.message("inspection.maven-wrapper.credentials-in-url.problem");
-		case InvalidUrl ignored -> MessageBundle.message("inspection.maven-wrapper.invalid-url.problem");
-		case InconsistentVersion(String p, String f) -> MessageBundle
-				.message("inspection.maven-wrapper.inconsistent-version.problem", p, f);
-		case InconsistentArtifact(String p, String f) -> MessageBundle
-				.message("inspection.maven-wrapper.inconsistent-artifact.problem", p, f);
-		case ImproperGroupId(String actual) -> MessageBundle
-				.message("inspection.maven-wrapper.improper-group-id.problem", actual);
-		case UnknownArtifact(String actual) -> MessageBundle
-				.message("inspection.maven-wrapper.unknown-artifact.problem", actual);
-		case MalformedFileName(String actual, String ignored) -> MessageBundle
-				.message("inspection.maven-wrapper.malformed-file-name.problem", actual);
-		};
-	}
-
-	private static List<PsiUpdateModCommandAction<PropertyImpl>> fixesFor(WrapperProperty kind,
-			MavenWrapperUrlProblem problem) {
-
-		return switch (problem) {
-		case CredentialsInUrl ignored -> List.of(MavenWrapperUrlFixes.stripCredentials());
-		case InvalidUrl ignored -> List.of();
-		case InconsistentVersion(String p, String f) -> List.of(
-				MavenWrapperUrlFixes.replaceVersion(p),
-				MavenWrapperUrlFixes.replaceVersion(f));
-		case InconsistentArtifact ignored -> List.of(MavenWrapperUrlFixes.replaceArtifact(kind));
-		case ImproperGroupId ignored -> List.of(MavenWrapperUrlFixes.replaceGroupPath(kind));
-		case UnknownArtifact ignored -> List.of(MavenWrapperUrlFixes.replaceArtifact(kind));
-		case MalformedFileName(String ignored, String sharedVersion) -> List
-				.of(MavenWrapperUrlFixes.replaceFileName(kind, sharedVersion));
-		};
 	}
 
 	private static List<TextRange> rangesFor(PropertyImpl property, TextRange fallback,
@@ -156,6 +142,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		case ImproperGroupId(String actualGroupPath) -> improperGroupRange(property, actualGroupPath);
 		case UnknownArtifact(String actualArtifactId) -> unknownArtifactRanges(property, actualArtifactId);
 		case MalformedFileName(String actualFileName, String ignored) -> fileNameRange(property, actualFileName);
+		case MissingChecksum ignored -> List.of(fallback);
 		};
 
 		return ranges.isEmpty() ? List.of(fallback) : ranges;
@@ -168,12 +155,12 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 			return List.of();
 		}
 
-		int authorityStart = MavenWrapperUrlAnalyzer.authorityStart(decoded);
+		int authorityStart = MavenWrapperUrlRewriter.authorityStart(decoded);
 		if (authorityStart < 0) {
 			return List.of();
 		}
 
-		int authorityEnd = MavenWrapperUrlAnalyzer.authorityEnd(decoded, authorityStart);
+		int authorityEnd = MavenWrapperUrlRewriter.authorityEnd(decoded, authorityStart);
 		int at = decoded.indexOf('@', authorityStart);
 		if (at < 0 || at >= authorityEnd) {
 			return List.of();

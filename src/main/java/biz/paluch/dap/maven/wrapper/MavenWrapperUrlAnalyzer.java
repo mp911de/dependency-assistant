@@ -18,7 +18,6 @@ package biz.paluch.dap.maven.wrapper;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 
@@ -45,10 +44,6 @@ import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.UnknownArtifact;
  */
 class MavenWrapperUrlAnalyzer {
 
-	private static final String SCHEME_SEPARATOR = "://";
-
-	private static final String INTERPOLATION_TOKEN = "${";
-
 	/**
 	 * Classify the given decoded wrapper URL value.
 	 * @param property the wrapper property providing canonical coordinates; must
@@ -74,6 +69,20 @@ class MavenWrapperUrlAnalyzer {
 
 		classifyCoordinates(property, decodedValue, problems);
 		return List.copyOf(problems);
+	}
+
+	static boolean isChecksumCandidate(String decodedValue, String rawText) {
+
+		if (shouldSkipWholeValueClassification(decodedValue, rawText)) {
+			return false;
+		}
+
+		try {
+			String scheme = URI.create(decodedValue).getScheme();
+			return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+		} catch (IllegalArgumentException ex) {
+			return false;
+		}
 	}
 
 	private static void classifyCoordinates(WrapperProperty property, String decodedValue,
@@ -111,14 +120,14 @@ class MavenWrapperUrlAnalyzer {
 		}
 
 		String[] canonicalSegments = canonicalGroupPath.split("/");
-		String actualGroupTail = lastSegments(groupId, canonicalSegments.length);
+		String actualGroupTail = MavenWrapperUrlRewriter.lastSegments(groupId, canonicalSegments.length);
 		if (!actualGroupTail.equals(canonicalGroupPath)) {
 			problems.add(new ImproperGroupId(actualGroupTail));
 		}
 
 		if (!versionInconsistent) {
 			String sharedVersion = pathVersion.isEmpty() ? fileVersion : pathVersion;
-			String actualFileName = lastUrlSegment(decodedValue);
+			String actualFileName = MavenWrapperUrlRewriter.lastUrlSegment(decodedValue);
 			if (!sharedVersion.isEmpty() && !property.isCanonicalFileName(actualFileName, sharedVersion)) {
 				problems.add(new MalformedFileName(actualFileName, sharedVersion));
 			}
@@ -144,37 +153,6 @@ class MavenWrapperUrlAnalyzer {
 		}
 	}
 
-	/**
-	 * Return the start offset of the authority segment (the index just after
-	 * {@code ://}), or {@literal -1} when the input does not contain a scheme
-	 * separator.
-	 * @param url the URL to inspect; must not be {@literal null}.
-	 * @return the authority start offset, or {@literal -1}.
-	 */
-	static int authorityStart(String url) {
-
-		int schemeEnd = url.indexOf(SCHEME_SEPARATOR);
-		if (schemeEnd < 0) {
-			return -1;
-		}
-		return schemeEnd + SCHEME_SEPARATOR.length();
-	}
-
-	/**
-	 * Return the end offset of the authority segment (the index of the first
-	 * {@code /} at or after {@code authorityStart}, or the string length when no
-	 * path separator follows).
-	 * @param url the URL to inspect; must not be {@literal null}.
-	 * @param authorityStart the offset returned by {@link #authorityStart(String)};
-	 * must be non-negative.
-	 * @return the authority end offset.
-	 */
-	static int authorityEnd(String url, int authorityStart) {
-
-		int end = url.indexOf('/', authorityStart);
-		return end < 0 ? url.length() : end;
-	}
-
 	private static boolean shouldSkipWholeValueClassification(String decodedValue, String rawText) {
 
 		if (decodedValue.contains(MavenWrapperUtils.COMPLETION_PLACEHOLDER)
@@ -186,40 +164,26 @@ class MavenWrapperUrlAnalyzer {
 
 	private static boolean hasInterpolationOutsideAuthority(String decodedValue) {
 
-		int firstToken = decodedValue.indexOf(INTERPOLATION_TOKEN);
+		int firstToken = decodedValue.indexOf(MavenWrapperUrlRewriter.INTERPOLATION_TOKEN);
 		if (firstToken < 0) {
 			return false;
 		}
 
-		int authorityStart = authorityStart(decodedValue);
+		int authorityStart = MavenWrapperUrlRewriter.authorityStart(decodedValue);
 		if (authorityStart < 0) {
 			return true;
 		}
 
-		int authorityEnd = authorityEnd(decodedValue, authorityStart);
+		int authorityEnd = MavenWrapperUrlRewriter.authorityEnd(decodedValue, authorityStart);
 
-		for (int token = firstToken; token >= 0; token = decodedValue.indexOf(INTERPOLATION_TOKEN,
-				token + INTERPOLATION_TOKEN.length())) {
+		for (int token = firstToken; token >= 0; token = decodedValue.indexOf(
+				MavenWrapperUrlRewriter.INTERPOLATION_TOKEN,
+				token + MavenWrapperUrlRewriter.INTERPOLATION_TOKEN.length())) {
 			if (token < authorityStart || token >= authorityEnd) {
 				return true;
 			}
 		}
 		return false;
-	}
-
-	private static String lastSegments(String groupPath, int count) {
-
-		String[] segments = groupPath.split("/");
-		if (segments.length <= count) {
-			return groupPath;
-		}
-		return String.join("/", Arrays.asList(segments).subList(segments.length - count, segments.length));
-	}
-
-	private static String lastUrlSegment(String url) {
-
-		int lastSlash = url.lastIndexOf('/');
-		return lastSlash < 0 ? url : url.substring(lastSlash + 1);
 	}
 
 	private MavenWrapperUrlAnalyzer() {

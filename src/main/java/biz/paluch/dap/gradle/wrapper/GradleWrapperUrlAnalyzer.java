@@ -38,9 +38,8 @@ class GradleWrapperUrlAnalyzer {
 
 	static List<GradleWrapperUrlProblem> analyze(String decodedValue, String rawText) {
 
-		if (decodedValue.contains(GradleWrapperUtils.COMPLETION_PLACEHOLDER)
-				|| rawText.contains(GradleWrapperUtils.COMPLETION_PLACEHOLDER)) {
-			return List.of();
+		if (containsCompletionPlaceholder(decodedValue, rawText)) {
+			return new ArrayList<>();
 		}
 
 		List<GradleWrapperUrlProblem> problems = new ArrayList<>();
@@ -54,28 +53,47 @@ class GradleWrapperUrlAnalyzer {
 			uri = URI.create(decodedValue);
 		} catch (IllegalArgumentException ex) {
 			problems.add(new InvalidUrl());
-			return List.copyOf(problems);
+			return problems;
 		}
 
 		if (uri.getScheme() == null || uri.getHost() == null) {
 			problems.add(new InvalidUrl());
-			return List.copyOf(problems);
+			return problems;
 		}
 
 		String fileName = GradleWrapperUrlRewriter.lastUrlSegment(decodedValue);
 		Matcher matcher = GradleWrapperUtils.GRADLE_DISTRIBUTION_PATTERN.matcher(decodedValue);
 		if (matcher.find()) {
-			return List.copyOf(problems);
+			return problems;
 		}
 
 		Matcher archiveMatcher = GradleWrapperUrlRewriter.ARCHIVE_PATTERN.matcher(fileName);
 		if (archiveMatcher.matches() && !"gradle".equals(archiveMatcher.group("artifact"))) {
 			problems.add(new UnknownArtifact(archiveMatcher.group("artifact")));
-			return List.copyOf(problems);
+			return problems;
 		}
 
 		problems.add(new MalformedFileName(fileName));
-		return List.copyOf(problems);
+		return problems;
+	}
+
+	static boolean isChecksumCandidate(String decodedValue, String rawText) {
+
+		if (containsCompletionPlaceholder(decodedValue, rawText)) {
+			return false;
+		}
+
+		try {
+			String scheme = URI.create(decodedValue).getScheme();
+			return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+		} catch (IllegalArgumentException ex) {
+			return false;
+		}
+	}
+
+	private static boolean containsCompletionPlaceholder(String decodedValue, String rawText) {
+		return decodedValue.contains(GradleWrapperUtils.COMPLETION_PLACEHOLDER)
+				|| rawText.contains(GradleWrapperUtils.COMPLETION_PLACEHOLDER);
 	}
 
 }

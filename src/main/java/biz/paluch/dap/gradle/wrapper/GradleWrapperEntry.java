@@ -19,9 +19,11 @@ package biz.paluch.dap.gradle.wrapper;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -30,7 +32,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 record GradleWrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral,
-		PropertyValueImpl versionLiteral, String versionText, String flavor) {
+		PropertyValueImpl versionLiteral, String versionText, String flavor) implements VersionedDependencySite {
 
 	boolean hasArtifactId(ArtifactId coordinate) {
 		return property.artifactId().equals(coordinate);
@@ -43,6 +45,31 @@ record GradleWrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral
 
 	VersionSource versionSource() {
 		return StringUtils.hasText(versionText) ? VersionSource.declared(versionText) : VersionSource.none();
+	}
+
+	@Override
+	public ArtifactVersion getVersion() {
+		return version();
+	}
+
+	@Override
+	public PsiElement getVersionElement() {
+		return versionLiteral;
+	}
+
+	@Override
+	public ArtifactId getArtifactId() {
+		return property.artifactId();
+	}
+
+	@Override
+	public VersionSource getVersionSource() {
+		return versionSource();
+	}
+
+	@Override
+	public PsiElement getDeclarationElement() {
+		return versionLiteral;
 	}
 
 }

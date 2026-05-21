@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import java.util.Arrays;
 import java.util.regex.Matcher;
 
 import biz.paluch.dap.artifact.VersionAware;
@@ -36,6 +37,10 @@ class MavenWrapperUrlRewriter {
 
 	private static final String MAVEN_CENTRAL_BASE = "https://repo1.maven.org/maven2/";
 
+	private static final String SCHEME_SEPARATOR = "://";
+
+	static final String INTERPOLATION_TOKEN = "${";
+
 	private MavenWrapperUrlRewriter() {
 	}
 
@@ -48,12 +53,12 @@ class MavenWrapperUrlRewriter {
 	 */
 	static String stripCredentials(String url) {
 
-		int authorityStart = MavenWrapperUrlAnalyzer.authorityStart(url);
+		int authorityStart = authorityStart(url);
 		if (authorityStart < 0) {
 			return url;
 		}
 
-		int authorityEnd = MavenWrapperUrlAnalyzer.authorityEnd(url, authorityStart);
+		int authorityEnd = authorityEnd(url, authorityStart);
 
 		String authority = url.substring(authorityStart, authorityEnd);
 		int at = authority.indexOf('@');
@@ -241,4 +246,49 @@ class MavenWrapperUrlRewriter {
 				+ "/" + version + "/" + property.canonicalFileName(version, preservedExtension);
 	}
 
+	/**
+	 * Return the start offset of the authority segment (the index just after
+	 * {@code ://}), or {@literal -1} when the input does not contain a scheme
+	 * separator.
+	 * @param url the URL to inspect; must not be {@literal null}.
+	 * @return the authority start offset, or {@literal -1}.
+	 */
+	static int authorityStart(String url) {
+
+		int schemeEnd = url.indexOf(SCHEME_SEPARATOR);
+		if (schemeEnd < 0) {
+			return -1;
+		}
+		return schemeEnd + SCHEME_SEPARATOR.length();
+	}
+
+	/**
+	 * Return the end offset of the authority segment (the index of the first
+	 * {@code /} at or after {@code authorityStart}, or the string length when no
+	 * path separator follows).
+	 * @param url the URL to inspect; must not be {@literal null}.
+	 * @param authorityStart the offset returned by {@link #authorityStart(String)};
+	 * must be non-negative.
+	 * @return the authority end offset.
+	 */
+	static int authorityEnd(String url, int authorityStart) {
+
+		int end = url.indexOf('/', authorityStart);
+		return end < 0 ? url.length() : end;
+	}
+
+	static String lastSegments(String groupPath, int count) {
+
+		String[] segments = groupPath.split("/");
+		if (segments.length <= count) {
+			return groupPath;
+		}
+		return String.join("/", Arrays.asList(segments).subList(segments.length - count, segments.length));
+	}
+
+	static String lastUrlSegment(String url) {
+
+		int lastSlash = url.lastIndexOf('/');
+		return lastSlash < 0 ? url : url.substring(lastSlash + 1);
+	}
 }

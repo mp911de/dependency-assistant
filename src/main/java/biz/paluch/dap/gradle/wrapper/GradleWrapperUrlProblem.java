@@ -98,4 +98,18 @@ sealed interface GradleWrapperUrlProblem {
 
 	}
 
+	record MissingChecksum(WrapperProperty property) implements GradleWrapperUrlProblem {
+
+		@Override
+		public String getMessage() {
+			return MessageBundle.message("wrapper.checksum.missing.problem", property.key());
+		}
+
+		@Override
+		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(String version) {
+			return List.of();
+		}
+
+	}
+
 }

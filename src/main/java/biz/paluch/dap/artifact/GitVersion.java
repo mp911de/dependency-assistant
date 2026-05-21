@@ -72,6 +72,19 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
+	 * Return the required SHA or throw {@link IllegalStateException} if no SHA is
+	 * associated with this version.
+	 * @return the required SHA.
+	 * @throws IllegalStateException if no SHA is associated with this version.
+	 */
+	public String getRequiredSha() {
+		if (StringUtils.isEmpty(sha)) {
+			throw new IllegalStateException("No sha associated with this version");
+		}
+		return sha;
+	}
+
+	/**
 	 * Return the resolved SHA-1 commit hash, or {@literal null} if unavailable.
 	 */
 	@Nullable
@@ -80,6 +93,10 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 			return sha.substring(0, 8);
 		}
 		return sha;
+	}
+
+	public boolean hasSha() {
+		return StringUtils.hasText(sha);
 	}
 
 	/**

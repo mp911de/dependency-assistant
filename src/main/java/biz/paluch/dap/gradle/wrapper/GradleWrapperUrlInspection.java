@@ -20,16 +20,23 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.CredentialsInUrl;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.InvalidUrl;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.MalformedFileName;
+import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.MissingChecksum;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.UnknownArtifact;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInspection.LocalInspectionTool;
+import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.ProblemsHolder.ProblemBuilder;
+import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.util.TextRange;
@@ -52,7 +59,6 @@ public class GradleWrapperUrlInspection extends LocalInspectionTool implements D
 		if (!GradleWrapperUtils.isWrapperFile(holder.getFile())) {
 			return PsiElementVisitor.EMPTY_VISITOR;
 		}
-
 		StateService stateService = StateService.getInstance(holder.getProject());
 
 		return new PsiElementVisitor() {
@@ -71,17 +77,25 @@ public class GradleWrapperUrlInspection extends LocalInspectionTool implements D
 					return;
 				}
 
+				String latestVersion = latestNonPreviewVersion(stateService);
+				ArtifactReference artifactReference = resolveVersion(property);
 				List<GradleWrapperUrlProblem> problems = GradleWrapperUrlAnalyzer.analyze(decodedValue,
 						property.getText());
-				if (problems.isEmpty()) {
-					return;
+
+				ArtifactDeclaration declaration = artifactReference.getDeclaration();
+				String sha = declaration.hasVersionSource()
+						? GradleWrapperUtils.findSha(declaration.getArtifactId(), declaration.getVersion(),
+								stateService)
+						: null;
+
+				if (GradleWrapperUrlAnalyzer.isChecksumCandidate(decodedValue, property.getText())
+						&& property.getContainingFile() instanceof PropertiesFile properties
+						&& properties.findPropertyByKey(kind.shaKey()) == null) {
+					problems.add(new MissingChecksum(kind));
 				}
 
-				String latestVersion = latestNonPreviewVersion(stateService);
-				String version = resolveVersion(property, latestVersion);
-
 				for (GradleWrapperUrlProblem problem : problems) {
-					registerProblem(holder, property, rangeInElement, problem, version, latestVersion);
+					registerProblem(holder, property, rangeInElement, problem, artifactReference, latestVersion, sha);
 				}
 			}
 
@@ -89,13 +103,23 @@ public class GradleWrapperUrlInspection extends LocalInspectionTool implements D
 	}
 
 	private static void registerProblem(ProblemsHolder holder, PropertyImpl property, TextRange rangeInElement,
-			GradleWrapperUrlProblem problem, String version, String latestVersion) {
+			GradleWrapperUrlProblem problem, ArtifactReference artifactReference, String latestVersion, String sha) {
 
 		for (TextRange range : rangesFor(property, rangeInElement, problem)) {
 
 			ProblemBuilder builder = holder.problem(property, problem.getMessage()).range(range);
-			problem.getFixes(version).forEach(builder::fix);
-			builder.fix(GradleWrapperUrlFixes.useDefaultUrl(latestVersion));
+			if (problem instanceof MissingChecksum missingChecksum) {
+
+				if (StringUtils.hasText(sha)) {
+					builder.highlight(ProblemHighlightType.WEAK_WARNING)
+							.fix(new GradleWrapperChecksumQuickFix(missingChecksum.property(), sha));
+				}
+			} else {
+				ArtifactDeclaration declaration = artifactReference.getDeclaration();
+				String version = declaration.hasVersionSource() ? declaration.getVersion().toString() : null;
+				problem.getFixes(version).forEach(builder::fix);
+				builder.fix(GradleWrapperUrlFixes.useDefaultUrl(latestVersion));
+			}
 			builder.register();
 		}
 	}
@@ -108,6 +132,7 @@ public class GradleWrapperUrlInspection extends LocalInspectionTool implements D
 		case InvalidUrl ignored -> List.of();
 		case UnknownArtifact(String actualArtifactId) -> artifactRange(property, actualArtifactId);
 		case MalformedFileName(String actualFileName) -> fileNameRange(property, actualFileName);
+		case MissingChecksum ignored -> List.of(fallback);
 		};
 
 		return ranges.isEmpty() ? List.of(fallback) : ranges;
@@ -173,20 +198,34 @@ public class GradleWrapperUrlInspection extends LocalInspectionTool implements D
 		return WrapperProperty.DISTRIBUTION.getLatestRelease(stateService.getCache()).getVersion().toString();
 	}
 
-	private static String resolveVersion(PropertyImpl property, String latestVersion) {
+	private static ArtifactReference resolveVersion(PropertyImpl property) {
 
 		GradleWrapperEntry entry = GradleWrapperParser.parse(property);
-		if (entry != null && StringUtils.hasText(entry.versionText())) {
-			return entry.versionText();
+		if (entry != null && entry.version() != null) {
+			return ArtifactReference.from(entry);
 		}
-		String decoded = property.getUnescapedValue();
-		if (decoded != null) {
+
+		return ArtifactReference.from(it -> {
+
+			it.artifact(WrapperProperty.GRADLE_DISTRIBUTION)
+					.declarationElement(property)
+					.versionSource(VersionSource.none())
+					.versionLiteral(property);
+
+			String decoded = property.getUnescapedValue();
+			if (StringUtils.isEmpty(decoded)) {
+				return;
+			}
+
 			Matcher matcher = VERSION_IN_FILE_NAME.matcher(GradleWrapperUrlRewriter.lastUrlSegment(decoded));
 			if (matcher.find()) {
-				return matcher.group("version");
+				String versionString = matcher.group("version");
+				ArtifactVersion.from(versionString).ifPresent(version -> {
+					it.version(version);
+					it.versionSource(VersionSource.declared(versionString));
+				});
 			}
-		}
-		return latestVersion;
+		});
 	}
 
 }

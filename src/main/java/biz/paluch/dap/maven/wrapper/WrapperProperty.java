@@ -17,6 +17,7 @@
 package biz.paluch.dap.maven.wrapper;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
@@ -31,7 +32,6 @@ import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.util.PropertyUtils;
@@ -275,11 +275,45 @@ enum WrapperProperty {
 	}
 
 	RemoteRepository parseRemoteRepository(URI uri, @Nullable RepositoryCredentials credentials) {
-		URI defaultMaven = URI.create(RemoteRepository.mavenCentral().url());
-		if (credentials == null && RemoteRepositoryReleaseSource.hasSameBaseUri(uri, defaultMaven)) {
+		URI repositoryBase = repositoryBaseUri(uri);
+		if (repositoryBase == null) {
 			return RemoteRepository.mavenCentral();
 		}
-		return new RemoteRepository(MavenWrapperUtils.REPOSITORY_ID, uri.toASCIIString(), credentials);
+		URI defaultMaven = URI.create(RemoteRepository.mavenCentral().url());
+		if (credentials == null && repositoryBase.normalize().equals(defaultMaven.normalize())) {
+			return RemoteRepository.mavenCentral();
+		}
+		return new RemoteRepository(MavenWrapperUtils.REPOSITORY_ID, repositoryBase.toASCIIString(), credentials);
+	}
+
+	private @Nullable URI repositoryBaseUri(URI uri) {
+
+		String rawPath = uri.getRawPath();
+		if (StringUtils.isEmpty(rawPath) || uri.getScheme() == null || uri.getRawAuthority() == null) {
+			return null;
+		}
+
+		String groupPath = "/" + canonicalGroupPath();
+		int from = 0;
+		while (from < rawPath.length()) {
+			int start = rawPath.indexOf(groupPath, from);
+			if (start < 0) {
+				return null;
+			}
+
+			int end = start + groupPath.length();
+			if (end == rawPath.length() || rawPath.charAt(end) == '/') {
+				try {
+					return new URI(uri.getScheme(), uri.getRawAuthority(), rawPath.substring(0, start + 1), null,
+							null);
+				} catch (URISyntaxException ex) {
+					return null;
+				}
+			}
+			from = end;
+		}
+
+		return null;
 	}
 
 	private @Nullable RepositoryCredentials parseCredentials(URI uri) {

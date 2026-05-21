@@ -16,16 +16,17 @@
 
 package biz.paluch.dap.gradle.wrapper;
 
+import java.util.Arrays;
 import java.util.List;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.StateService;
 import com.intellij.codeInspection.InspectionManager;
+import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
+import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.QuickFix;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
@@ -59,7 +60,7 @@ class GradleWrapperUrlInspectionTests {
 	@BeforeEach
 	void setUp() {
 		fixture.enableInspections(GradleWrapperUrlInspection.class);
-		StateService.getInstance(fixture.getProject()).setCache(new Cache());
+		GradleWrapperFixtures.setup(fixture.getProject());
 	}
 
 	@Test
@@ -88,10 +89,35 @@ class GradleWrapperUrlInspectionTests {
 
 	@Test
 	@ProjectFile(name = "gradle/wrapper/gradle-wrapper.properties", content = """
-			distributionUrl=https://services.gradle.org/distributions/<warning descr="Wrapper URL file name 'gradle-8.14.3.zip' does not follow the canonical pattern">gradle-8.14.3.zip</warning>
+			distributionUrl=<weak_warning descr="distributionUrl has no SHA-256 checksum">https://services.gradle.org/distributions/<warning descr="Wrapper URL file name 'gradle-8.14.3.zip' does not follow the canonical pattern">gradle-8.14.3.zip</warning></weak_warning>
 			""")
 	void highlightsMalformedFileName(PsiFile file) {
-		fixture.testHighlighting(true, false, false, file.getVirtualFile());
+		fixture.testHighlighting(true, false, true, file.getVirtualFile());
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/wrapper/gradle-wrapper.properties", content = """
+			distributionUrl=<weak_warning descr="distributionUrl has no SHA-256 checksum">https://services.gradle.org/distributions/gradle-8.14.3-bin.zip</weak_warning>
+			""")
+	void highlightsMissingDistributionSha(PsiFile file) {
+		fixture.testHighlighting(true, false, true, file.getVirtualFile());
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/wrapper/gradle-wrapper.properties", content = """
+			distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+			distributionSha256Sum=
+			""")
+	void skipsMissingDistributionShaWhenShaPropertyExists(PsiFile file) {
+		fixture.testHighlighting(true, false, true, file.getVirtualFile());
+	}
+
+	@Test
+	@EditorFile(name = "gradle-wrapper.properties", content = """
+			distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3<caret>-bin.zip
+			""")
+	void missingDistributionShaOffersComputeFix() {
+		assertThat(problemQuickFixLabels()).contains("Add SHA-256 checksum");
 	}
 
 	@Test
@@ -99,7 +125,15 @@ class GradleWrapperUrlInspectionTests {
 			distributionUrl=https://services.gradle.org/distributions/gradle-8.___IntellijIdeaRulezzz___-bin.zip
 			""")
 	void skipsCompletionPlaceholder(PsiFile file) {
-		fixture.testHighlighting(true, false, false, file.getVirtualFile());
+		fixture.testHighlighting(true, false, true, file.getVirtualFile());
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/wrapper/gradle-wrapper.properties", content = """
+			distributionUrl=ftp://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+			""")
+	void skipsMissingDistributionShaForUnsupportedSchemes(PsiFile file) {
+		fixture.testHighlighting(true, false, true, file.getVirtualFile());
 	}
 
 	@Test
@@ -156,23 +190,55 @@ class GradleWrapperUrlInspectionTests {
 		assertThat(file).containsText("https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
 	}
 
+	@Test
+	@EditorFile(name = "gradle-wrapper.properties", content = """
+			networkTimeout=10000
+			distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+			validateDistributionUrl=true
+			""")
+	void computeShaFixAddsDistributionShaAfterDistributionUrl(PsiFile file) {
+
+		PropertyImpl property = ReadAction.compute(() -> SyntaxTraverser.psiTraverser(file)
+				.filter(PropertyImpl.class)
+				.filter(it -> WrapperProperty.DISTRIBUTION.key().equals(it.getUnescapedKey()))
+				.first());
+		ProblemDescriptor descriptor = ReadAction.compute(() -> InspectionManager.getInstance(fixture.getProject())
+				.createProblemDescriptor(property, "distributionUrl has no SHA-256 checksum", true,
+						LocalQuickFix.EMPTY_ARRAY, ProblemHighlightType.WEAK_WARNING));
+
+		new GradleWrapperChecksumQuickFix(WrapperProperty.DISTRIBUTION,
+				"82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9")
+						.applyFix(fixture.getProject(), descriptor);
+
+		assertThat(file).containsText("""
+				networkTimeout=10000
+				distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+				distributionSha256Sum=82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9
+				validateDistributionUrl=true
+				""");
+	}
+
 	private void invokeQuickFix(int problemIndex, int fixIndex) {
+
+		List<ProblemDescriptor> problems = inspectionProblems();
+		assertThat(problems).hasSizeGreaterThan(problemIndex);
+		QuickFix[] fixes = problems.get(problemIndex).getFixes();
+		assertThat(fixes).hasSizeGreaterThan(fixIndex);
+		invoke(fixes[fixIndex], problems.get(problemIndex));
+	}
+
+	private List<ProblemDescriptor> inspectionProblems() {
 
 		GradleWrapperUrlInspection inspection = new GradleWrapperUrlInspection();
 		Project project = fixture.getProject();
 		PsiFile file = fixture.getFile();
-		List<ProblemDescriptor> problems = ReadAction.compute(() -> {
+		return ReadAction.compute(() -> {
 			InspectionManager manager = InspectionManager.getInstance(project);
 			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
 			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
 			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
 			return holder.getResults();
 		});
-
-		assertThat(problems).hasSizeGreaterThan(problemIndex);
-		QuickFix[] fixes = problems.get(problemIndex).getFixes();
-		assertThat(fixes).hasSizeGreaterThan(fixIndex);
-		invoke(fixes[fixIndex], problems.get(problemIndex));
 	}
 
 	@SuppressWarnings("rawtypes")
@@ -187,6 +253,14 @@ class GradleWrapperUrlInspectionTests {
 				fix.applyFix(fixture.getProject(), problem);
 			}
 		});
+	}
+
+	private List<String> problemQuickFixLabels() {
+
+		return inspectionProblems().stream()
+				.flatMap(problem -> Arrays.stream(problem.getFixes()))
+				.map(QuickFix::getName)
+				.toList();
 	}
 
 }
