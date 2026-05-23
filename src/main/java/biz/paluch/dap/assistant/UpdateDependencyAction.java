@@ -23,6 +23,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
+import biz.paluch.dap.util.PsiElements;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.util.IntentionFamilyName;
@@ -32,6 +33,7 @@ import com.intellij.modcommand.Presentation;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ScalableIcon;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 import com.intellij.ui.LayeredIcon;
 
@@ -47,7 +49,8 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 
 	private final UpgradeSuggestion suggestion;
 
-	protected UpdateDependencyAction(PsiElement element, ProjectDependencyContext dependencyContext,
+	protected UpdateDependencyAction(PsiElement element,
+			ProjectDependencyContext dependencyContext,
 			UpgradeSuggestion suggestion) {
 		super(element);
 		this.dependencyContext = dependencyContext;
@@ -56,16 +59,27 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 
 	@Override
 	protected void invoke(ActionContext context, PsiElement element, ModPsiUpdater updater) {
-		// TODO: move caret behind the updated version
+
+		int caretOffset = context.offset();
+		String previousText = null;
+		PsiElement container = null;
+		if (element.getTextRange().containsOffset(caretOffset)) {
+			container = PsiElements.unleaf(element);
+			previousText = container.getText();
+		}
 		dependencyContext.applyUpdate(element, suggestion.toDependencyUpdate());
+
+		if (container != null) {
+			String currentText = container.getText();
+			int cpl = StringUtil.commonSuffixLength(previousText, currentText);
+			int newOffset = container.getTextRange().getEndOffset() - cpl;
+			updater.moveCaretTo(newOffset);
+		}
 	}
 
 	@Override
 	public void applyFix(Project project, ProblemDescriptor descriptor) {
-
-		// todo: for properties, apply the update to the property. consider same/other
-		// file.
-		dependencyContext.applyUpdate(descriptor.getPsiElement(), suggestion.toDependencyUpdate());
+		super.perform(ActionContext.from(descriptor));
 	}
 
 	@Override

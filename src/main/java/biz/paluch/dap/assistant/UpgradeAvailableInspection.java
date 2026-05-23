@@ -113,7 +113,8 @@ public class UpgradeAvailableInspection extends LocalInspectionTool {
 						continue;
 					}
 					builder = builder
-							.maybeFix((ModCommandAction) new UpdateDependencyAction(element, context, suggestion));
+							.maybeFix((ModCommandAction) new UpdateDependencyAction(element, context,
+									suggestion));
 				}
 
 				builder.register();

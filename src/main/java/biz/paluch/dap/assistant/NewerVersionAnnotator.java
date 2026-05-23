@@ -24,12 +24,12 @@ import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeAvailable;
 import biz.paluch.dap.support.UpgradeSuggestion;
-import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 
 /**
  * Annotator that marks outdated dependency versions in supported build files.
@@ -51,22 +51,26 @@ public class NewerVersionAnnotator implements Annotator {
 			return;
 		}
 
-		IntentionAction action = UpgradeDependenciesIntention.INSTANCE;
 		UpgradeSuggestion bestOption = upgrades.getUpgradeSuggestion();
 		String message = bestOption.getMessage();
 		ArtifactDeclaration declaration = upgrades.getArtifactDeclaration();
+		PsiElement versionLiteral = declaration.getVersionLiteral();
+		boolean sameFileDeclaration = true;
 
-		if (!declaration.isVersionDefinedInSameFile()) {
-			PsiElement versionLiteral = declaration.getVersionLiteral();
-			if (versionLiteral != null && versionLiteral.getContainingFile() != null) {
-				VirtualFile virtualFile = versionLiteral.getContainingFile().getVirtualFile();
-				if (virtualFile != null) {
+		if (versionLiteral == null) {
+			return;
+		}
 
-					message = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
-							+ System.lineSeparator()
-							+ message;
-					action = null;
-				}
+		PsiFile versionLiteralFile = versionLiteral.getContainingFile();
+		if (!element.getContainingFile().equals(versionLiteralFile)) {
+
+			sameFileDeclaration = false;
+			VirtualFile virtualFile = versionLiteralFile.getVirtualFile();
+			if (virtualFile != null) {
+
+				message = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
+						+ System.lineSeparator()
+						+ message;
 			}
 		}
 
@@ -77,15 +81,17 @@ public class NewerVersionAnnotator implements Annotator {
 				.range(context.getInterfaceAssistant().getHighlightRange(element))
 				.textAttributes(DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY);
 
-		if (action != null) {
+		if (sameFileDeclaration) {
 
-			builder = builder.newFix(new UpdateDependencyAction(element, context, bestOption)).registerFix();
+			builder = builder.newFix(new UpdateDependencyAction(versionLiteral, context, bestOption))
+					.registerFix();
 
 			for (UpgradeSuggestion suggestion : upgrades.getUpgrades().values()) {
 				if (suggestion == bestOption) {
 					continue;
 				}
-				builder = builder.newFix(new UpdateDependencyAction(element, context, suggestion)).registerFix();
+				builder = builder.newFix(new UpdateDependencyAction(versionLiteral, context, suggestion))
+						.registerFix();
 			}
 		}
 
