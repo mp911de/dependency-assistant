@@ -44,7 +44,7 @@ class GradleWrapperChecksumQuickFix implements LocalQuickFix {
 
 	@Override
 	public @NotNull String getFamilyName() {
-		return MessageBundle.message("intention.family.name");
+		return MessageBundle.message("gradle.wrapper.checksum.intention-family");
 	}
 
 	@Override

@@ -79,7 +79,7 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware {
 		Project project = event.getProject();
 		Presentation presentation = event.getPresentation();
 
-		presentation.setText(MessageBundle.message("biz.paluch.dap.UpgradeDependencies.text"));
+		presentation.setText(MessageBundle.message("intention.UpgradeDependencies.text"));
 		presentation.setDescription(MessageBundle.message("action.description"));
 		presentation.setIcon(DependencyAssistantIcons.ICON);
 

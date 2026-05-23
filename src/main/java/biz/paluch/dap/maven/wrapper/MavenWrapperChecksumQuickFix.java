@@ -55,7 +55,7 @@ class MavenWrapperChecksumQuickFix implements LocalQuickFix {
 
 	@Override
 	public String getFamilyName() {
-		return MessageBundle.message("intention.family.name");
+		return MessageBundle.message("maven.wrapper.checksum.intention-family");
 	}
 
 	@Override

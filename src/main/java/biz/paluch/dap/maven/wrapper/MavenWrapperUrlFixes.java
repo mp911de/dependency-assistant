@@ -159,7 +159,7 @@ class MavenWrapperUrlFixes {
 
 		@Override
 		public @IntentionFamilyName String getFamilyName() {
-			return MessageBundle.message("intention.family.name");
+			return MessageBundle.message("inspection.maven-wrapper.display-name");
 		}
 
 	}

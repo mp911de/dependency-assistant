@@ -20,9 +20,9 @@
   <li>Supports Maven Central, custom Maven repositories, npmjs, and GitHub as release metadata sources</li>
 </ul>
 
-		<h3>Maven</h3>
+		<h3>First Steps</h3>
 		<ul>
-			<li>Open a build in the editor.</li>
+			<li>Open a build file in the editor.</li>
 			<li>Use the intention action (light bulb) on a dependency or plugin version to check for updates.</li>
 			<li>Or use the menu action <strong>Tools | Dependency Assistant | Update Dependencies…</strong>.</li>
 		</ul>
@@ -80,8 +80,11 @@
 				implementation="biz.paluch.dap.assistant.DependencyDocumentationProvider"/>
 		<annotator language="Properties"
 		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
-		<intentionAction>
-			<category>Dependency Assistant</category>
+		<intentionAction id="dap.upgrade.dependencies">
+			<language/>
+			<skipBeforeAfter>true</skipBeforeAfter>
+			<categoryKey>intention.dap.category</categoryKey>
+			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.assistant.UpgradeDependenciesIntention</className>
 		</intentionAction>
 	</extensions>

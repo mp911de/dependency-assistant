@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.gradle.wrapper;
+package biz.paluch.dap.maven.wrapper;
 
-import biz.paluch.dap.state.StateService;
+import java.io.IOException;
+
+import biz.paluch.dap.assistant.Notifications;
+import biz.paluch.dap.maven.wrapper.MavenWrapperChecksumQuickFix.ChecksumComputer;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.PropertiesFileType;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -36,60 +40,52 @@ import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Intention that computes and inserts a missing Gradle wrapper checksum.
+ * Intention that computes and inserts a missing Maven wrapper checksum.
  *
  * @author Mark Paluch
  */
-public class ChecksumIntention extends BaseIntentionAction implements DumbAware {
+public class MavenWrapperChecksumIntention extends BaseIntentionAction implements DumbAware {
+
+	private static final String PREVIEW_VALUE = "<computing...>";
 
 	private final WrapperProperty property;
 
-	public ChecksumIntention(WrapperProperty property) {
+	private final ChecksumComputer checksumComputer;
+
+	MavenWrapperChecksumIntention(WrapperProperty property) {
+		this(property, WrapperChecksumDownloader::downloadAndComputeSha);
+	}
+
+	MavenWrapperChecksumIntention(WrapperProperty property, ChecksumComputer checksumComputer) {
 		this.property = property;
+		this.checksumComputer = checksumComputer;
 	}
 
 	@Override
 	public String getFamilyName() {
-		return MessageBundle.message("intention.family.name");
+		return MessageBundle.message("maven.wrapper.checksum.intention-family");
 	}
 
 	@Override
 	public String getText() {
-		return MessageBundle.message("wrapper.checksum.intention.add.text", property.key());
+		return MessageBundle.message("wrapper.checksum.intention.text", property.key());
 	}
 
 	@Override
 	public boolean isAvailable(Project project, Editor editor, PsiFile file) {
-
-		PropertyImpl urlProperty = findUrlProperty(project, file, property);
-		if (urlProperty == null) {
-			return false;
-		}
-
-		return StringUtils.hasText(findSha(urlProperty));
+		return findUrlProperty(project, file, property) != null;
 	}
 
 	@Override
 	public IntentionPreviewInfo generatePreview(Project project, Editor editor, PsiFile file) {
 
-		PropertyImpl urlProperty = findUrlProperty(project, file, property);
-		if (urlProperty == null) {
-			return IntentionPreviewInfo.EMPTY;
-		}
-
-		GradleWrapperEntry entry = GradleWrapperParser.parse(urlProperty);
-		if (entry == null || entry.version() == null) {
-			return IntentionPreviewInfo.EMPTY;
-		}
-		StateService stateService = StateService.getInstance(project);
-		String sha = GradleWrapperUtils.findSha(property.artifactId(), entry.getVersion(), stateService);
-		if (sha == null) {
+		if (findUrlProperty(project, file, property) == null) {
 			return IntentionPreviewInfo.EMPTY;
 		}
 
 		Document document = editor.getDocument();
 		String modified = insertedText(document, editor.getCaretModel().getOffset(),
-				property.shaKey() + "=" + sha);
+				property.shaKey() + "=" + PREVIEW_VALUE);
 		return new IntentionPreviewInfo.CustomDiff(PropertiesFileType.INSTANCE, file.getName(), document.getText(),
 				modified);
 	}
@@ -101,7 +97,16 @@ public class ChecksumIntention extends BaseIntentionAction implements DumbAware 
 		if (urlProperty == null) {
 			return;
 		}
-		String sha = findSha(urlProperty);
+
+		String url = urlProperty.getUnescapedValue();
+		String sha;
+		try {
+			sha = checksumComputer.compute(project, url);
+		} catch (IOException ex) {
+			Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
+					MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(ex)));
+			return;
+		}
 
 		if (!StringUtils.hasText(sha)) {
 			return;
@@ -115,20 +120,9 @@ public class ChecksumIntention extends BaseIntentionAction implements DumbAware 
 				});
 	}
 
-	private @Nullable String findSha(PropertyImpl property) {
-
-		GradleWrapperEntry entry = GradleWrapperParser.parse(property);
-		if (entry == null || entry.version() == null) {
-			return null;
-		}
-
-		StateService stateService = StateService.getInstance(property.getProject());
-		return GradleWrapperUtils.findSha(this.property.artifactId(), entry.getVersion(), stateService);
-	}
-
 	private static @Nullable PropertyImpl findUrlProperty(Project project, PsiFile file, WrapperProperty property) {
 
-		if (!GradleWrapperUtils.isWrapperFile(file)
+		if (!TrustedProjects.isProjectTrusted(project) || !MavenWrapperUtils.isWrapperFile(file)
 				|| !(file instanceof PropertiesFile properties)
 				|| properties.findPropertyByKey(property.shaKey()) != null) {
 			return null;
@@ -141,7 +135,8 @@ public class ChecksumIntention extends BaseIntentionAction implements DumbAware 
 
 		String decodedValue = urlProperty.getUnescapedValue();
 		if (StringUtils.isEmpty(decodedValue)
-				|| !GradleWrapperUrlAnalyzer.analyze(decodedValue, urlProperty.getText()).isEmpty()) {
+				|| !MavenWrapperUrlAnalyzer.isChecksumCandidate(decodedValue, urlProperty.getText())
+				|| !MavenWrapperUrlAnalyzer.analyze(property, decodedValue, urlProperty.getText()).isEmpty()) {
 			return null;
 		}
 		return urlProperty;
@@ -181,10 +176,26 @@ public class ChecksumIntention extends BaseIntentionAction implements DumbAware 
 		}
 	}
 
-	public static final class Distribution extends ChecksumIntention {
+	public static final class Distribution extends MavenWrapperChecksumIntention {
 
 		public Distribution() {
 			super(WrapperProperty.DISTRIBUTION);
+		}
+
+		Distribution(ChecksumComputer checksumComputer) {
+			super(WrapperProperty.DISTRIBUTION, checksumComputer);
+		}
+
+	}
+
+	public static final class Wrapper extends MavenWrapperChecksumIntention {
+
+		public Wrapper() {
+			super(WrapperProperty.WRAPPER);
+		}
+
+		Wrapper(ChecksumComputer checksumComputer) {
+			super(WrapperProperty.WRAPPER, checksumComputer);
 		}
 
 	}

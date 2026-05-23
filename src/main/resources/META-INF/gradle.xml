@@ -17,22 +17,27 @@
 		<completion.confidence language="kotlin" order="first"
 		                       implementationClass="biz.paluch.dap.gradle.KotlinCompletionConfidence"/>
 		<completion.contributor
+				id="dap.gradle.groovy.release-version-contributor"
 				language="Groovy"
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.GroovyCompletionContributor"/>
 		<completion.contributor
+				id="dap.gradle.toml.release-version-contributor"
 				language="TOML"
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.TomlCompletionContributor"/>
 		<completion.contributor
+				id="dap.gradle.properties.release-version-contributor"
 				language="Properties"
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.GradlePropertiesCompletionContributor"/>
 		<completion.contributor
+				id="dap.gradle.wrapper.properties.release-version-contributor"
 				language="Properties"
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.wrapper.GradleWrapperCompletionContributor"/>
 		<completion.contributor
+				id="dap.gradle.kotlin.release-version-contributor"
 				language="kotlin"
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.KotlinCompletionContributor"/>
@@ -57,7 +62,7 @@
 		<codeInsight.lineMarkerProvider
 				language="kotlin"
 				implementationClass="biz.paluch.dap.gradle.GradleLineMarkerProvider"/>
-		<localInspection
+		<localInspection id="dap.gradle.wrapper.url-inspection"
 				language="Properties"
 				bundle="messages.MessageBundle"
 				groupKey="inspection.gradle-wrapper.group"
@@ -65,10 +70,11 @@
 				level="WARNING"
 				enabledByDefault="true"
 				implementationClass="biz.paluch.dap.gradle.wrapper.GradleWrapperUrlInspection"/>
-		<intentionAction>
+		<intentionAction id="dap.gradle.checksum.distribution">
 			<language>Properties</language>
-			<category>Dependency Assistant</category>
-			<className>biz.paluch.dap.gradle.wrapper.ChecksumIntention$Distribution
+			<categoryKey>intention.dap.category</categoryKey>
+			<bundleName>messages.MessageBundle</bundleName>
+			<className>biz.paluch.dap.gradle.wrapper.GradleWrapperChecksumIntention
 			</className>
 		</intentionAction>
 	</extensions>

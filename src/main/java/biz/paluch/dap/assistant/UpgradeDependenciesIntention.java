@@ -47,12 +47,12 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 
 	@Override
 	public String getFamilyName() {
-		return MessageBundle.message("intention.family.name");
+		return MessageBundle.message("intention.UpgradeDependencies.family");
 	}
 
 	@Override
 	public String getText() {
-		return MessageBundle.message("biz.paluch.dap.UpgradeDependenciesIntention.text");
+		return MessageBundle.message("intention.UpgradeDependenciesIntention.text");
 	}
 
 	@Override

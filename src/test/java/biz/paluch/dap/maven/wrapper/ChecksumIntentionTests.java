@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * PSI-level tests for {@link ChecksumIntention}.
+ * PSI-level tests for {@link MavenWrapperChecksumIntention}.
  *
  * @author Mark Paluch
  */
@@ -46,7 +46,7 @@ class ChecksumIntentionTests {
 			""")
 	void distributionIntentionIsAvailableFileWide(PsiFile file) {
 
-		ChecksumIntention action = new ChecksumIntention.Distribution(checksum());
+		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
 
 		assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isTrue();
 		assertThat(action.getText()).isEqualTo("Compute 'distributionUrl' SHA-256 checksum");
@@ -59,7 +59,7 @@ class ChecksumIntentionTests {
 			""")
 	void distributionIntentionIsNotAvailableWhenShaPropertyExists(PsiFile file) {
 
-		ChecksumIntention action = new ChecksumIntention.Distribution(checksum());
+		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
 
 		assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isFalse();
 	}
@@ -71,7 +71,7 @@ class ChecksumIntentionTests {
 	void distributionIntentionIsNotAvailableWhenProjectIsUntrusted(PsiFile file) {
 
 		Project project = fixture.getProject();
-		ChecksumIntention action = new ChecksumIntention.Distribution(checksum());
+		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
 
 		TrustedProjects.setProjectTrusted(project, false);
 		try {
@@ -87,7 +87,7 @@ class ChecksumIntentionTests {
 			""")
 	void distributionIntentionIsNotAvailableWhenUrlContainsInterpolation(PsiFile file) {
 
-		ChecksumIntention action = new ChecksumIntention.Distribution(checksum());
+		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution(checksum());
 
 		assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isFalse();
 	}
@@ -100,7 +100,7 @@ class ChecksumIntentionTests {
 			""")
 	void blankCaretLineIsReplaced(PsiFile file) {
 
-		invoke(new ChecksumIntention.Distribution(checksum()), file);
+		invoke(new MavenWrapperChecksumIntention.Distribution(checksum()), file);
 
 		assertThat(file).containsText(
 				"""
@@ -117,7 +117,7 @@ class ChecksumIntentionTests {
 			""")
 	void nonBlankCaretLineInsertsBelow(PsiFile file) {
 
-		invoke(new ChecksumIntention.Distribution(checksum()), file);
+		invoke(new MavenWrapperChecksumIntention.Distribution(checksum()), file);
 
 		assertThat(file).containsText(
 				"""
@@ -127,7 +127,7 @@ class ChecksumIntentionTests {
 						""");
 	}
 
-	private void invoke(ChecksumIntention action, PsiFile file) {
+	private void invoke(MavenWrapperChecksumIntention action, PsiFile file) {
 		action.invoke(fixture.getProject(), fixture.getEditor(), file);
 	}
 

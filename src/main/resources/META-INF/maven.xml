@@ -6,6 +6,7 @@
 
 	<extensions defaultExtensionNs="com.intellij">
 		<completion.contributor
+				id="dap.maven.release-version-contributor"
 				language="XML"
 				implementationClass="biz.paluch.dap.maven.MavenReleaseVersionCompletionContributor"/>
 		<annotator language="XML"
@@ -14,13 +15,14 @@
 				language="XML"
 				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>
 		<completion.contributor
+				id="dap.maven.wrapper.properties.release-version-contributor"
 				language="Properties"
 				order="first"
 				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperCompletionContributor"/>
 		<codeInsight.lineMarkerProvider
 				language="Properties"
 				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>
-		<localInspection
+		<localInspection id="dap.maven.wrapper.url-inspection"
 				language="Properties"
 				bundle="messages.MessageBundle"
 				groupKey="inspection.maven-wrapper.group"
@@ -28,16 +30,21 @@
 				level="WARNING"
 				enabledByDefault="true"
 				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperUrlInspection"/>
-		<intentionAction>
+		<intentionAction id="dap.maven.checksum.distribution">
 			<language>Properties</language>
-			<category>Dependency Assistant</category>
-			<className>biz.paluch.dap.maven.wrapper.ChecksumIntention$Distribution
+			<categoryKey>intention.dap.category</categoryKey>
+			<bundleName>messages.MessageBundle</bundleName>
+			<className>
+				biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Distribution
 			</className>
 		</intentionAction>
-		<intentionAction>
+		<intentionAction id="dap.maven.checksum.wrapper">
 			<language>Properties</language>
-			<category>Dependency Assistant</category>
-			<className>biz.paluch.dap.maven.wrapper.ChecksumIntention$Wrapper</className>
+			<categoryKey>intention.dap.category</categoryKey>
+			<bundleName>messages.MessageBundle</bundleName>
+			<className>
+				biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Wrapper
+			</className>
 		</intentionAction>
 	</extensions>
 </idea-plugin>
