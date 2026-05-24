@@ -35,8 +35,9 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
@@ -51,6 +52,8 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * GitHub Actions implementation of {@link DependencyAssistant}.
@@ -199,7 +202,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 			if (GitHubUtils.isWorkflowFile(element.getContainingFile())) {
 
-				YAMLScalar usesScalar = VersionUpgradeLookupService.getUsesScalar(PsiElements.unleaf(element));
+				YAMLScalar usesScalar = GitHubArtifactReferenceResolver.findUsesScalar(PsiElements.unleaf(element));
 				return usesScalar != null;
 			}
 
@@ -207,8 +210,10 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
-			return new VersionUpgradeLookupService(project, projectContext);
+		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
+			Assert.state(isAvailable(), "Project context is not available");
+			LookupContext context = LookupContext.create(project, projectContext);
+			return new VersionUpgradeLookup(context, new GitHubArtifactReferenceResolver(context, projectContext));
 		}
 
 		@Override

@@ -33,7 +33,9 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -45,6 +47,8 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import icons.GradleIcons;
 import org.toml.lang.psi.TomlElement;
+
+import org.springframework.util.Assert;
 
 /**
  * Gradle implementation of {@link DependencyAssistant}.
@@ -176,8 +180,12 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupService getLookup(PsiElement element, VirtualFile file) {
-			return new VersionUpgradeLookupService(project, element.getContainingFile(), file);
+		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
+			Assert.state(isAvailable(), "Project context is not available");
+			PsiFile psiFile = element.getContainingFile();
+			GradleProjectContext buildContext = GradleProjectContext.of(project, file);
+			LookupContext context = LookupContext.create(project, buildContext);
+			return new VersionUpgradeLookup(context, new GradleArtifactReferenceResolver(context, psiFile));
 		}
 
 		@Override

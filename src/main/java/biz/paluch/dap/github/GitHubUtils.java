@@ -94,7 +94,7 @@ class GitHubUtils {
 	 */
 	public static TextRange getVersionRange(PsiElement element) {
 
-		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
+		YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(element);
 		if (scalar == null) {
 			return element.getTextRange();
 		}

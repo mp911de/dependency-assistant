@@ -22,7 +22,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
@@ -56,7 +56,7 @@ enum AbsentDependencyContext implements ProjectDependencyContext {
 	}
 
 	@Override
-	public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
+	public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 		throw new IllegalStateException("No dependency context available");
 	}
 

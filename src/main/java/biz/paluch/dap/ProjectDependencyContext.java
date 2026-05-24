@@ -24,7 +24,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.support.ProjectBuildContext;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
@@ -97,7 +97,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * @param file the containing file; must not be {@literal null}.
 	 * @return the lookup for the element.
 	 */
-	VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file);
+	VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file);
 
 	/**
 	 * Apply a single dependency update at the given PSI element.

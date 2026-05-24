@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for {@link AvailableUpgrades} and the LATEST extension to
- * {@link VersionUpgradeLookupSupport#determineUpgrades}.
+ * {@link VersionUpgradeLookup#determineUpgrades}.
  *
  * @author Mark Paluch
  */
@@ -42,7 +42,7 @@ class AvailableUpgradesUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> options = releasesNewestFirst("3.0.0", "1.5.0", "1.0.5", "1.0.0");
 
-		AvailableUpgrades upgrades = VersionUpgradeLookupSupport.determineUpgrades(REF, current, options);
+		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, options);
 
 		assertThat(upgrades.getUpgrades().sequencedKeySet()).containsExactly(
 				UpgradeStrategy.MAJOR, UpgradeStrategy.MINOR, UpgradeStrategy.PATCH);
@@ -54,7 +54,7 @@ class AvailableUpgradesUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> options = releasesNewestFirst("3.0.0", "1.0.0");
 
-		AvailableUpgrades upgrades = VersionUpgradeLookupSupport.determineUpgrades(REF, current, options);
+		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, options);
 
 		assertThat(upgrades.getLatest()).isNotNull();
 		assertThat(upgrades.getLatest().version()).isEqualTo(ArtifactVersion.of("3.0.0"));
@@ -66,7 +66,7 @@ class AvailableUpgradesUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("3.0.0");
 		List<Release> options = releasesNewestFirst("3.0.0", "1.0.0");
 
-		AvailableUpgrades upgrades = VersionUpgradeLookupSupport.determineUpgrades(REF, current, options);
+		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, options);
 
 		assertThat(upgrades.isPresent()).isFalse();
 	}

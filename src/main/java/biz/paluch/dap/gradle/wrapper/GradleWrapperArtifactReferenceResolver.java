@@ -17,25 +17,21 @@
 package biz.paluch.dap.gradle.wrapper;
 
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.ProjectBuildContext;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.ArtifactReferenceResolver;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
- * {@link VersionUpgradeLookupSupport} for Gradle wrapper
- * {@code distributionUrl}.
+ * {@link ArtifactReferenceResolver} for Gradle wrapper {@code distributionUrl}.
+ *
+ * <p>The wrapper version is parsed directly from the property value, so this
+ * resolver is stateless and reads no project state.
  *
  * @author Mark Paluch
  */
-class WrapperVersionUpgradeLookupService extends VersionUpgradeLookupSupport {
-
-	WrapperVersionUpgradeLookupService(Project project, ProjectBuildContext buildContext) {
-		super(project, buildContext);
-	}
+class GradleWrapperArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {

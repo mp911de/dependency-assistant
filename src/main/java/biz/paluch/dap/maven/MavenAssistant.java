@@ -34,8 +34,9 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -47,6 +48,8 @@ import com.intellij.psi.util.CachedValuesManager;
 import icons.MavenIcons;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
+
+import org.springframework.util.Assert;
 
 /**
  * Maven implementation of {@link DependencyAssistant}.
@@ -100,6 +103,14 @@ class MavenAssistant implements DependencyAssistant {
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
 				it -> createContext(project, anchor.getVirtualFile()));
+	}
+
+	private static VersionUpgradeLookup createLookup(PsiFile pom) {
+
+		Project project = pom.getProject();
+		MavenProjectContext buildContext = MavenProjectContext.of(project, pom);
+		LookupContext context = LookupContext.create(project, buildContext);
+		return new VersionUpgradeLookup(context, new MavenArtifactReferenceResolver(context, pom, buildContext));
 	}
 
 	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
@@ -178,8 +189,10 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
-			return VersionUpgradeLookupService.create(element);
+		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
+			Assert.state(isAvailable(), "Project context is not available");
+			return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
+					MavenAssistant::createLookup);
 		}
 
 		@Override

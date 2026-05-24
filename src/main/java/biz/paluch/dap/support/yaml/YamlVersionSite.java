@@ -45,8 +45,8 @@ import org.jspecify.annotations.Nullable;
 public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteStyle quoteStyle, String rawValue) {
 
 	/**
-	 * Walk up from the given element to the nearest version site whose key
-	 * matches the predicate.
+	 * Walk up from the given element to the nearest version site whose key matches
+	 * the predicate.
 	 * @param element the PSI element at the cursor or completion position; may be
 	 * {@literal null}.
 	 * @param keyMatcher predicate applied to the enclosing {@link YAMLKeyValue};
@@ -61,15 +61,8 @@ public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteSty
 
 		YAMLScalar scalar = element instanceof YAMLScalar s ? s
 				: PsiTreeUtil.getParentOfType(element, YAMLScalar.class, false, YAMLMapping.class);
-		if (scalar == null) {
-			return null;
-		}
 
-		if (!(scalar.getParent() instanceof YAMLKeyValue keyValue)) {
-			return null;
-		}
-
-		if (!keyMatcher.test(keyValue)) {
+		if (scalar == null || !(scalar.getParent() instanceof YAMLKeyValue keyValue) || !keyMatcher.test(keyValue)) {
 			return null;
 		}
 
@@ -79,7 +72,8 @@ public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteSty
 	/**
 	 * Replace the scalar value with the given raw text while preserving the
 	 * detected {@link QuoteStyle}. Must be invoked from a write command.
-	 * @param newRawValue the unwrapped replacement value; must not be {@literal null}.
+	 * @param newRawValue the unwrapped replacement value; must not be
+	 * {@literal null}.
 	 * @param generator the YAML element generator used to build the replacement
 	 * key/value pair; must not be {@literal null}.
 	 * @return the replacement {@link YAMLKeyValue}.

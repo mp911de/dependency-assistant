@@ -34,17 +34,13 @@
 			<language>Properties</language>
 			<categoryKey>intention.dap.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
-			<className>
-				biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Distribution
-			</className>
+			<className>biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Distribution</className>
 		</intentionAction>
 		<intentionAction id="dap.maven.checksum.wrapper">
 			<language>Properties</language>
 			<categoryKey>intention.dap.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
-			<className>
-				biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Wrapper
-			</className>
+			<className>biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Wrapper</className>
 		</intentionAction>
 	</extensions>
 </idea-plugin>

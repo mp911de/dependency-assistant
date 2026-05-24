@@ -31,7 +31,9 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.PsiElementPattern;
+import com.intellij.patterns.PsiFilePattern;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import org.jetbrains.yaml.psi.YAMLScalar;
@@ -40,8 +42,7 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  * Completion contributor for Antora playbook {@code ui.bundle.url} version
  * segments.
  *
- * <p>
- * Suggests cached release versions when the caret is positioned inside the
+ * <p>Suggests cached release versions when the caret is positioned inside the
  * version slice of the URL between {@code /releases/download/} and the next
  * path separator. Host, owner, repository, and asset segments are left
  * untouched.
@@ -70,7 +71,7 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
 				PsiElement element, ArtifactRelease option) {
 
-			YAMLScalar scalar = VersionUpgradeLookupService.findBundleUrlScalar(element);
+			YAMLScalar scalar = AntoraArtifactReferenceResolver.findBundleUrlScalar(element);
 			if (scalar == null) {
 				// No bundle URL scalar resolved: suppress the destructive default
 				// insert handler so completion does not rewrite the surrounding text.
@@ -95,22 +96,19 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 
 	};
 
+	private static final PsiFilePattern.Capture<PsiFile> ANTORA_PLAYBOOK = PlatformPatterns.psiFile()
+			.withName(AntoraUtils.PLAYBOOK_FILE_NAME);
+
 	private static final PatternCondition<PsiElement> INSIDE_ANTORA_BUNDLE_URL_VERSION = PatternConditions
 			.conditional("insideAntoraBundleUrlVersion",
 					AntoraPlaybookCompletionContributor::isInsideBundleUrlVersion);
 
 	private static final PsiElementPattern.Capture<PsiElement> ANTORA_BUNDLE_URL_VERSION_IN_SCALAR = PlatformPatterns
-			.psiElement(PsiElement.class)
-			.inside(PlatformPatterns.psiElement(YAMLScalar.class))
-			.with(INSIDE_ANTORA_BUNDLE_URL_VERSION);
-
-	private static final PsiElementPattern.Capture<PsiElement> ANTORA_BUNDLE_URL_VERSION = PlatformPatterns
-			.psiElement()
-			.with(INSIDE_ANTORA_BUNDLE_URL_VERSION);
+			.psiElement().inside(ANTORA_PLAYBOOK)
+			.inside(PlatformPatterns.psiElement(YAMLScalar.class)).with(INSIDE_ANTORA_BUNDLE_URL_VERSION);
 
 	public AntoraPlaybookCompletionContributor() {
 		extend(CompletionType.BASIC, ANTORA_BUNDLE_URL_VERSION_IN_SCALAR, PROVIDER);
-		extend(CompletionType.BASIC, ANTORA_BUNDLE_URL_VERSION, PROVIDER);
 	}
 
 	@Override
@@ -119,12 +117,12 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 	}
 
 	private static boolean isSupportedCompletionSite(PsiElement position) {
-		return ANTORA_BUNDLE_URL_VERSION_IN_SCALAR.accepts(position) || ANTORA_BUNDLE_URL_VERSION.accepts(position);
+		return ANTORA_BUNDLE_URL_VERSION_IN_SCALAR.accepts(position);
 	}
 
 	private static boolean isCaretInsideVersion(CompletionParameters parameters) {
 
-		YAMLScalar scalar = VersionUpgradeLookupService.findBundleUrlScalar(parameters.getPosition());
+		YAMLScalar scalar = AntoraArtifactReferenceResolver.findBundleUrlScalar(parameters.getPosition());
 		if (scalar == null) {
 			return false;
 		}
@@ -135,7 +133,7 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 
 	private static boolean isInsideBundleUrlVersion(PsiElement element) {
 
-		YAMLScalar scalar = VersionUpgradeLookupService.findBundleUrlScalar(element);
+		YAMLScalar scalar = AntoraArtifactReferenceResolver.findBundleUrlScalar(element);
 		if (scalar == null || !scalar.isValid()) {
 			return false;
 		}

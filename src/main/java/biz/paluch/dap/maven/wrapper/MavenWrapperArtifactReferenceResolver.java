@@ -17,31 +17,22 @@
 package biz.paluch.dap.maven.wrapper;
 
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.ProjectBuildContext;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.ArtifactReferenceResolver;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 
 /**
- * {@link VersionUpgradeLookupSupport} implementation for Maven Wrapper
+ * {@link ArtifactReferenceResolver} implementation for Maven Wrapper
  * {@code distributionUrl} and {@code wrapperUrl} declarations.
+ *
+ * <p>The wrapper version is parsed directly from the property value, so this
+ * resolver is stateless and reads no project state.
  *
  * @author Mark Paluch
  */
-class WrapperVersionUpgradeLookupService extends VersionUpgradeLookupSupport {
-
-	/**
-	 * Create a lookup service for the given project and build context.
-	 * @param project the IntelliJ project; must not be {@literal null}.
-	 * @param buildContext the wrapper-derived build context; must not be
-	 * {@literal null}.
-	 */
-	WrapperVersionUpgradeLookupService(Project project, ProjectBuildContext buildContext) {
-		super(project, buildContext);
-	}
+class MavenWrapperArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {

@@ -22,10 +22,10 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.ArtifactReferenceResolver;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
@@ -33,37 +33,37 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link VersionUpgradeLookupSupport} implementation for GitHub Actions
+ * {@link ArtifactReferenceResolver} implementation for GitHub Actions
  * {@code uses:} declarations.
  *
- * <p>
- * Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
+ * <p>Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
  * parsing the scalar text and resolving the ref through
- * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}. The
- * canonical chain consults project state, the shared release cache, and a
- * raw {@link ArtifactVersion#from(String)} parse, in that order. Remote API
- * access is never triggered.
+ * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}. The canonical
+ * chain consults project state, the shared release cache, and a raw
+ * {@link ArtifactVersion#from(String)} parse, in that order. Remote API access
+ * is never triggered.
  *
- * <p>
- * Only elements inside the scalar value of a {@code uses:}
+ * <p>Only elements inside the scalar value of a {@code uses:}
  * {@link YAMLKeyValue} are considered. All other elements resolve to
  * {@link ArtifactReference#unresolved()}.
  *
  * @author Mark Paluch
  */
-class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
+class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private static final Predicate<YAMLKeyValue> IS_USES_KEY = kv -> "uses".equals(kv.getKeyText());
+
+	private final LookupContext context;
 
 	private final GitHubProjectContext buildContext;
 
 	/**
-	 * Create a lookup service for the given project and build context.
-	 * @param project the IntelliJ project.
+	 * Create a resolver for the given context and build context.
+	 * @param context the shared per-file resolution environment.
 	 * @param buildContext the GitHub Actions file context.
 	 */
-	VersionUpgradeLookupService(Project project, GitHubProjectContext buildContext) {
-		super(project, buildContext);
+	GitHubArtifactReferenceResolver(LookupContext context, GitHubProjectContext buildContext) {
+		this.context = context;
 		this.buildContext = buildContext;
 	}
 
@@ -95,20 +95,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				return;
 			}
 
-			getVersionResolver().resolveCurrent(artifactId, ref.version()).ifPresent(builder::version);
+			context.versionResolver().resolveCurrent(artifactId, ref.version()).ifPresent(builder::version);
 		});
-	}
-
-	/**
-	 * Walk up the PSI tree from the given element to find the nearest
-	 * {@link YAMLScalar} that is the value of a {@code uses:} key.
-	 * @param element the element at the cursor position.
-	 * @return the scalar, or {@literal null} if none found.
-	 */
-	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
-
-		YamlVersionSite site = YamlVersionSite.locate(element, IS_USES_KEY);
-		return site != null ? site.scalar() : null;
 	}
 
 	/**
@@ -116,12 +104,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	 * @param element the element at the cursor position.
 	 * @return the scalar, or {@literal null} if it is not the value of such a key.
 	 */
-	public static @Nullable YAMLScalar getUsesScalar(PsiElement element) {
-
-		if (!(element instanceof YAMLScalar scalar)) {
-			return null;
-		}
-		YamlVersionSite site = YamlVersionSite.locate(scalar, IS_USES_KEY);
+	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
+		YamlVersionSite site = YamlVersionSite.locate(element, IS_USES_KEY);
 		return site != null ? site.scalar() : null;
 	}
 

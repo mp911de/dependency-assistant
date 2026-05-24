@@ -16,42 +16,30 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.ArtifactReferenceResolver;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
-import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlLiteral;
 
 /**
- * Gradle implementation of {@link VersionUpgradeLookupSupport}.
+ * Gradle implementation of {@link ArtifactReferenceResolver}.
  *
- * <p>
- * Supports version lookups in Groovy and Kotlin build scripts,
+ * <p>Supports version lookups in Groovy and Kotlin build scripts,
  * {@code gradle.properties}, and {@code libs.versions.toml}. Version catalog
  * accessors are resolved back to the catalog entry that owns the version.
  *
  * @author Mark Paluch
  */
-class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
-
-	private final GradleProjectContext buildContext;
+class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final boolean candidate;
-
-	private final @Nullable ProjectState projectState;
-
-	private final VirtualFile virtualFile;
-
-	private final PsiFile file;
 
 	private final TomlArtifactResolver tomlResolver;
 
@@ -68,57 +56,30 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	private final GradleVersionSiteResolver lookupSiteResolver;
 
 	/**
-	 * Create a new {@code VersionUpgradeLookupService}.
+	 * Create a resolver for the given context and build context.
+	 *
+	 * @param context the shared per-file resolution environment.
 	 * @param file the Gradle-related file to inspect.
 	 */
-	public VersionUpgradeLookupService(PsiFile file) {
-		this(file.getProject(), file);
-	}
+	GradleArtifactReferenceResolver(LookupContext context, PsiFile file) {
 
-	/**
-	 * Create a new {@code VersionUpgradeLookupService}.
-	 * @param project the IntelliJ project.
-	 * @param file the Gradle-related file to inspect.
-	 */
-	public VersionUpgradeLookupService(Project project, PsiFile file) {
-		this(project, file, file.getVirtualFile(), GradleProjectContext.of(project, file));
-	}
+		Project project = context.project();
 
-	/**
-	 * Create a new {@code VersionUpgradeLookupService}.
-	 * @param project the IntelliJ project.
-	 * @param psiFile the Gradle-related file to inspect.
-	 */
-	public VersionUpgradeLookupService(Project project, PsiFile psiFile, VirtualFile virtualFile) {
-		this(project, psiFile, virtualFile, GradleProjectContext.of(project, virtualFile));
-	}
-
-	private VersionUpgradeLookupService(Project project, PsiFile file, VirtualFile virtualFile,
-			GradleProjectContext context) {
-
-		super(project, context);
-
-		this.file = file;
-		this.virtualFile = virtualFile;
-		this.buildContext = context;
 		this.candidate = GradleUtils.isGradleFile(file);
-
-		StateService service = StateService.getInstance(project);
-		this.projectState = buildContext.isAvailable() ? service.getProjectState(buildContext.getProjectId()) : null;
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
 		this.tomlResolver = new TomlArtifactResolver(project, file, this.registry);
 		this.groovySiteLocator = new GroovyVersionSiteLocator(this.propertyResolver, this.registry);
 		this.kotlinSiteLocator = new KotlinVersionSiteLocator(this.propertyResolver, this.registry);
 		this.tomlSiteLocator = new TomlVersionSiteLocator();
-		this.lookupSiteResolver = new GradleVersionSiteResolver(this.propertyResolver, this.projectState,
+		this.lookupSiteResolver = new GradleVersionSiteResolver(this.propertyResolver, context.projectState(),
 				this.tomlResolver);
 	}
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (!candidate || buildContext.isAbsent()) {
+		if (!candidate) {
 			return ArtifactReference.unresolved();
 		}
 
@@ -161,7 +122,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 	private GradleVersionSite locateGradlePropertySite(PsiElement element) {
 
 		Property property = GradlePropertiesParser.getProperty(element);
-		if (property == null || StringUtils.isEmpty(property.getUnescapedKey()) || projectState == null) {
+		if (property == null || StringUtils.isEmpty(property.getUnescapedKey())) {
 			return GradleVersionSite.absent();
 		}
 
@@ -170,7 +131,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private GradleVersionSite locateGradlePropertySite(Property property) {
 
-		if (StringUtils.isEmpty(property.getUnescapedKey()) || projectState == null) {
+		if (StringUtils.isEmpty(property.getUnescapedKey())) {
 			return GradleVersionSite.absent();
 		}
 

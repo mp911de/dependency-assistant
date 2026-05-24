@@ -36,8 +36,9 @@ import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.fileTypes.FileTypeManager;
@@ -50,6 +51,8 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * NPM implementation of {@link DependencyAssistant}.
@@ -203,8 +206,10 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
-			return new VersionUpgradeLookupService(project, projectContext);
+		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
+			Assert.state(isAvailable(), "Project context is not available");
+			LookupContext context = LookupContext.create(project, projectContext);
+			return new VersionUpgradeLookup(context, new NpmArtifactReferenceResolver(context, projectContext));
 		}
 
 		@Override

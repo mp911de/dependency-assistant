@@ -28,7 +28,7 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.LocalQuickFixOnPsiElement;
@@ -72,7 +72,7 @@ public class UpgradeAvailableInspection extends LocalInspectionTool {
 					return;
 				}
 
-				VersionUpgradeLookupSupport lookup = context.getLookup(element,
+				VersionUpgradeLookup lookup = context.getLookup(element,
 						element.getContainingFile().getVirtualFile());
 				AvailableUpgrades upgrades = lookup.suggestUpgrades(element);
 				if (!upgrades.isPresent()) {

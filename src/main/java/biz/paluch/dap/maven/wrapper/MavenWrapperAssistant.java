@@ -35,8 +35,9 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
@@ -57,6 +58,8 @@ import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import icons.MavenIcons;
+
+import org.springframework.util.Assert;
 
 /**
  * Maven Wrapper implementation of {@link DependencyAssistant}.
@@ -243,8 +246,10 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public VersionUpgradeLookupSupport getLookup(PsiElement element, VirtualFile file) {
-			return new WrapperVersionUpgradeLookupService(project, this);
+		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
+			Assert.state(isAvailable(), "Project context is not available");
+			LookupContext context = LookupContext.create(project, this);
+			return new VersionUpgradeLookup(context, new MavenWrapperArtifactReferenceResolver());
 		}
 
 		@Override

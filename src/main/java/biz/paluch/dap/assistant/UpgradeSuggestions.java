@@ -19,7 +19,7 @@ package biz.paluch.dap.assistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.AvailableUpgrades;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.psi.PsiElement;
 
 /**
@@ -53,8 +53,8 @@ class UpgradeSuggestions {
 			return AvailableUpgrades.none();
 		}
 
-		VersionUpgradeLookupSupport service = context.getLookup(element, element.getContainingFile().getVirtualFile());
-		return service.suggestUpgrades(element);
+		VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
+		return lookup.suggestUpgrades(element);
 	}
 
 }

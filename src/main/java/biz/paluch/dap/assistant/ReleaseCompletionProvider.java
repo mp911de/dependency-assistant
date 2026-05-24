@@ -33,7 +33,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionParameters;
@@ -57,14 +57,12 @@ import org.jspecify.annotations.Nullable;
  * {@link CompletionProvider} that turns resolved artifact metadata into release
  * lookup elements.
  *
- * <p>
- * The provider resolves the artifact at the completion position through the
+ * <p>The provider resolves the artifact at the completion position through the
  * active {@link ProjectDependencyContext}, reads cached releases from
  * {@link StateService}, and renders them as prioritized {@link ArtifactRelease}
  * lookup elements.
  *
- * <p>
- * Subclasses usually customize one of the protected hooks instead of
+ * <p>Subclasses usually customize one of the protected hooks instead of
  * replacing the provider:
  * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)} for
  * format-specific prefix handling,
@@ -73,8 +71,7 @@ import org.jspecify.annotations.Nullable;
  * tag-vs-SHA insertion, and {@link #getReleases(ArtifactId, Cache)} for
  * filtering or ordering the release list.
  *
- * <p>
- * This provider does not decide completion locations, refresh release
+ * <p>This provider does not decide completion locations, refresh release
  * metadata, or contact remote repositories. Register it from a
  * {@code CompletionContributor} at PSI positions that can be resolved by the
  * current dependency context. The default implementation is stateless and can
@@ -82,7 +79,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  * @see ArtifactReleaseRenderer
- * @see VersionUpgradeLookupSupport
+ * @see VersionUpgradeLookup
  */
 public class ReleaseCompletionProvider extends CompletionProvider<CompletionParameters> {
 
@@ -182,7 +179,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			return null;
 		}
 
-		VersionUpgradeLookupSupport lookup = context.getLookup(element, containingFile);
+		VersionUpgradeLookup lookup = context.getLookup(element, containingFile);
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
 		if (!artifactReference.isResolved()) {
 			return null;

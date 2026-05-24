@@ -16,38 +16,40 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.Properties;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectCache;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.AvailableUpgrades;
+import biz.paluch.dap.support.ArtifactReferenceResolver;
 import biz.paluch.dap.support.Expression;
+import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.CachedValuesManager;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.psi.xml.XmlTokenType;
+import com.intellij.psi.xml.XmlText;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Maven implementation of version-upgrade reference resolution.
+ * Maven implementation of {@link ArtifactReferenceResolver}.
+ *
+ * <p>Resolves version and property tags in {@code pom.xml} files into an
+ * {@link ArtifactReference}. Property-expression versions are resolved through
+ * the PSI {@link PropertyResolver} and, as a fallback, the resolved Maven
+ * project model so versions defined outside the inspected file are reported.
+ *
+ * @author Mark Paluch
  */
-class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
+class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
+
+	private final LookupContext context;
 
 	private final MavenProjectContext buildContext;
 
@@ -55,72 +57,31 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 	private final boolean candidate;
 
-	private final Cache cache;
-
 	private final MavenProperties properties;
 
 	private final PropertyResolver propertyResolver;
 
-	private VersionUpgradeLookupService(PsiFile file) {
-		this(file.getProject(), file);
-	}
+	/**
+	 * Create a resolver for the given context and build context.
+	 * @param context the shared per-file resolution environment.
+	 * @param pomFile the {@code pom.xml} file to inspect.
+	 * @param buildContext the Maven project context.
+	 */
+	MavenArtifactReferenceResolver(LookupContext context, PsiFile pomFile, MavenProjectContext buildContext) {
 
-	private VersionUpgradeLookupService(Project project, PsiFile pom) {
-		this(project, pom, MavenProjectContext.of(project, pom));
-	}
-
-	private VersionUpgradeLookupService(Project project, PsiFile pom, MavenProjectContext context) {
-
-		super(project, context);
-
-		this.properties = new MavenProperties(project);
-		this.buildContext = context;
-		this.pom = pom instanceof XmlFile xmlFile ? xmlFile : null;
-		this.candidate = MavenUtils.isMavenPomFile(pom);
-
-		StateService service = StateService.getInstance(project);
-		this.cache = service.getCache();
-
-		this.propertyResolver = this.properties.getPropertyResolver(context.getMavenProject(), this.pom);
-	}
-
-	static VersionUpgradeLookupService create(PsiElement element) {
-		return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
-				VersionUpgradeLookupService::new);
-	}
-
-	@Override
-	public AvailableUpgrades suggestUpgrades(PsiElement element) {
-
-		if (!canResolve() || element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS) {
-			return AvailableUpgrades.none();
-		}
-
-		ProjectCache cache = this.cache.getProject(buildContext.getProjectId());
-
-		XmlTag versionTag = PomUtil.findVersionTag(element);
-		if (MavenUtils.isVersionElement(versionTag)) {
-			return suggestUpgrades(this.cache, resolveArtifactDeclaration(versionTag));
-		}
-
-		XmlTag propertyTag = PomUtil.findPropertyTag(element);
-		if (MavenUtils.isVersionElement(propertyTag)) {
-			return suggestUpgrades(this.cache, resolveArtifactDeclaration(cache, propertyTag));
-		}
-
-		return AvailableUpgrades.none();
+		this.context = context;
+		this.buildContext = buildContext;
+		this.pom = pomFile instanceof XmlFile xmlFile ? xmlFile : null;
+		this.candidate = MavenUtils.isMavenPomFile(pomFile);
+		this.properties = new MavenProperties(context.project());
+		this.propertyResolver = this.properties.getPropertyResolver(buildContext.getMavenProject(), this.pom);
 	}
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (!isCompletionLookupElement(element) || !canResolve()) {
+		if (!isResolvableElement(element) || !canResolve()) {
 			return ArtifactReference.unresolved();
-		}
-
-		if (element.getNode() != null
-				&& element.getNode().getElementType() == XmlTokenType.XML_DATA_CHARACTERS) {
-			element = PsiTreeUtil.getParentOfType(element, XmlTag.class);
 		}
 
 		if (PomUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
@@ -129,7 +90,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 
 		if (PomUtil.findPropertyTag(element) instanceof XmlTag propertyTag
 				&& MavenUtils.isVersionElement(propertyTag)) {
-			return resolveArtifactDeclaration(cache.getProject(buildContext.getProjectId()), propertyTag);
+			return resolveArtifactDeclaration(context.cache().getProject(buildContext.getProjectId()), propertyTag);
 		}
 
 		return ArtifactReference.unresolved();
@@ -140,40 +101,15 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				&& buildContext.isAvailable();
 	}
 
-	private boolean isCompletionLookupElement(PsiElement element) {
-		/*
-		 *
-		 * && (element instanceof XmlText || (element.getNode() != null &&
-		 * element.getNode().getElementType() != XmlTokenType.XML_DATA_CHARACTERS))
-		 */
-
-		return element.isValid();
-	}
-
-	@Override
-	public @Nullable ArtifactVersion getCurrentVersion(ArtifactReference reference) {
-
-		ArtifactVersion currentVersion = super.getCurrentVersion(reference);
-
-		if (currentVersion == null && reference.isResolved()
-				&& reference.getDeclaration().getVersionSource() instanceof VersionSource.VersionProperty property) {
-			PropertyValue value = propertyResolver.getPropertyValue(property.getProperty());
-			if (value != null) {
-				ArtifactVersion version = ArtifactVersion.from(value.getValue())
-						.orElse(null);
-				if (version != null) {
-					return version;
-				}
-			}
-
-			Properties properties = buildContext.getMavenProject().getProperties();
-			String propertyValue = properties.getProperty(property.getProperty());
-			if (StringUtils.hasText(propertyValue)) {
-				return ArtifactVersion.from(propertyValue).orElse(null);
-			}
-		}
-
-		return currentVersion;
+	/**
+	 * Resolution is anchored to the {@link XmlText} value of a version or property
+	 * tag. Line markers and highlighting fire on every element of a tag (the angle
+	 * brackets, the tag name, the value text, and the surrounding text node);
+	 * pinning to the single text node keeps the gutter from duplicating across
+	 * them. Completion and documentation pre-unleaf to this same text node.
+	 */
+	private boolean isResolvableElement(PsiElement element) {
+		return element.isValid() && element instanceof XmlText;
 	}
 
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
@@ -197,6 +133,13 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 				if (property != null) {
 					ArtifactVersion.from(property.value()).ifPresent(it::version);
 					it.versionLiteral(property.propertyValue().getValueLiteral());
+					return;
+				}
+
+				String projectProperty = buildContext.getMavenProject().getProperties()
+						.getProperty(expression.getPropertyName());
+				if (StringUtils.hasText(projectProperty)) {
+					ArtifactVersion.from(projectProperty).ifPresent(it::version);
 				}
 			});
 		}
@@ -239,10 +182,7 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return ArtifactReference.unresolved();
 		}
 
-		ArtifactVersion currentVersion = getCurrentVersion(cache, propertyTag);
-		if (!property.hasArtifacts()) {
-			return ArtifactReference.unresolved();
-		}
+		ArtifactVersion currentVersion = getCurrentVersion(property, propertyTag);
 
 		String tagName = propertyTag.getLocalName();
 		ResolvedProperty resolvedProperty = resolveProperty(Expression.property(tagName));
@@ -274,18 +214,6 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 		return property;
 	}
 
-	@Nullable
-	ArtifactVersion getCurrentVersion(ProjectCache cache, XmlTag propertyTag) {
-
-		String propertyName = propertyTag.getLocalName();
-		VersionProperty property = cache.getProperty(propertyName);
-		if (property == null || property.artifacts().isEmpty()) {
-			return null;
-		}
-
-		return getCurrentVersion(property, propertyTag);
-	}
-
 	private @Nullable ArtifactVersion getCurrentVersion(VersionProperty property, XmlTag propertyTag) {
 
 		Expression expression = Expression.from(propertyTag.getValue().getText().trim());
@@ -293,11 +221,21 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 			return null;
 		}
 
-		if (expression.toString().contains(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED) && hasCachedState()) {
+		if (expression.toString().contains(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED)) {
 			return getCurrentVersion(property);
 		}
 
 		return ArtifactVersion.from(expression.toString()).orElse(null);
+	}
+
+	private @Nullable ArtifactVersion getCurrentVersion(VersionProperty property) {
+
+		if (property.artifacts().isEmpty()) {
+			return null;
+		}
+
+		ArtifactId artifactId = property.artifacts().getFirst().toArtifactId();
+		return context.findCurrentVersion(artifactId);
 	}
 
 	private record ResolvedProperty(String value, PropertyValue propertyValue) {

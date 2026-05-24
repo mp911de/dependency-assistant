@@ -34,7 +34,6 @@ import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
@@ -43,8 +42,7 @@ import org.jetbrains.yaml.psi.YAMLScalar;
 /**
  * Completion contributor for GitHub Actions {@code uses:} refs.
  *
- * <p>
- * Suggests cached release options with SHA-awareness: when the current ref
+ * <p>Suggests cached release options with SHA-awareness: when the current ref
  * uses SHA style and the release has SHA metadata, the inserted text is the
  * release commit SHA, shortened to the current SHA prefix length if the
  * workflow already uses an abbreviated SHA. Otherwise, the release version
@@ -54,14 +52,12 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  */
 public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
-	private static final String ANTORA_PLAYBOOK_FILE_NAME = "antora-playbook.yml";
-
 	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
 
 		@Override
 		protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
 
-			UsesRepositoryAction action = VersionUpgradeLookupService.findUsesRepository(element);
+			UsesRepositoryAction action = GitHubArtifactReferenceResolver.findUsesRepository(element);
 			return action != null ? action.getStyle() : super.getRefStyle(element, metadata);
 		}
 
@@ -78,8 +74,8 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
 				PsiElement element, ArtifactRelease option) {
 
-			YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
-			UsesRepositoryAction action = VersionUpgradeLookupService.findUsesRepository(element);
+			YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(element);
+			UsesRepositoryAction action = GitHubArtifactReferenceResolver.findUsesRepository(element);
 			if (scalar == null || action == null || !(option.getVersion() instanceof GitVersion version)) {
 				return builder;
 			}
@@ -93,6 +89,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				new UpdateGitHubWorkflowFile(project).updateVersionAndComment(toUpdate, text);
 			});
 		}
+
 	};
 
 	// Version/ref completion after the `@` separator in `owner/repository@ref`.
@@ -111,37 +108,28 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 			.inside(PlatformPatterns.psiElement(YAMLScalar.class).withParent(GITHUB_WORKFLOW_USES_KEY_VALUE))
 			.with(AFTER_GITHUB_WORKFLOW_USES_REF_SEPARATOR);
 
-	private static final PsiElementPattern.Capture<PsiElement> GITHUB_WORKFLOW_USES_REF = PlatformPatterns
-			.psiElement()
-			.with(AFTER_GITHUB_WORKFLOW_USES_REF_SEPARATOR);
-
 
 	public GitHubWorkflowCompletionContributor() {
 		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF_IN_SCALAR, PROVIDER);
-		extend(CompletionType.BASIC, GITHUB_WORKFLOW_USES_REF, PROVIDER);
 	}
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 
-		if (isAntoraPlaybook(position)) {
-			return false;
-		}
-
 		if (typeChar == '@') {
-			return VersionUpgradeLookupService.findUsesScalar(position) != null;
+			return GitHubArtifactReferenceResolver.findUsesScalar(position) != null;
 		}
 
 		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
 	}
 
 	private static boolean isSupportedCompletionSite(PsiElement position) {
-		return GITHUB_WORKFLOW_USES_REF_IN_SCALAR.accepts(position) || GITHUB_WORKFLOW_USES_REF.accepts(position);
+		return GITHUB_WORKFLOW_USES_REF_IN_SCALAR.accepts(position);
 	}
 
 	private static boolean isCaretInsideRef(CompletionParameters parameters) {
 
-		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(parameters.getPosition());
+		YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(parameters.getPosition());
 		if (scalar == null) {
 			return false;
 		}
@@ -151,21 +139,13 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	}
 
 	private static boolean isUsesKeyValue(YAMLKeyValue keyValue) {
-
-		if (isAntoraPlaybook(keyValue)) {
-			return false;
-		}
 		return "uses".equals(keyValue.getKeyText());
 	}
 
 	private static boolean isAfterRefSeparatorInUsesScalar(PsiElement element) {
 
-		YAMLScalar scalar = VersionUpgradeLookupService.findUsesScalar(element);
+		YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(element);
 		if (scalar == null || !scalar.isValid()) {
-			return false;
-		}
-
-		if (isAntoraPlaybook(scalar)) {
 			return false;
 		}
 
@@ -184,12 +164,6 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 		int offset = element.getTextRange().getStartOffset() - scalar.getTextRange().getStartOffset();
 		return Math.max(0, Math.min(offset, text.length()));
-	}
-
-	private static boolean isAntoraPlaybook(PsiElement element) {
-
-		PsiFile containingFile = element.getContainingFile();
-		return containingFile != null && ANTORA_PLAYBOOK_FILE_NAME.equals(containingFile.getName());
 	}
 
 }

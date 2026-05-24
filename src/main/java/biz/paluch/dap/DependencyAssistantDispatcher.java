@@ -31,8 +31,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Dispatcher for registered {@link DependencyAssistant} integrations.
  *
- * <p>
- * Integrations are discovered through the {@code biz.paluch.dap.assistant}
+ * <p>Integrations are discovered through the {@code biz.paluch.dap.assistant}
  * extension point and consulted in registration order. Fan-out methods visit
  * every matching integration; first-match methods stop once a file has an
  * owner.
@@ -51,8 +50,7 @@ public class DependencyAssistantDispatcher {
 
 	/**
 	 * Return whether any registered integration applies to the given project.
-	 * <p>
-	 * Return {@literal true} immediately if the project-scoped
+	 * <p>Return {@literal true} immediately if the project-scoped
 	 * {@link StateService} already holds dependency or release data, avoiding
 	 * repeated project applicability checks during UI updates.
 	 * @param project the project to inspect; must not be {@literal null}.
@@ -151,7 +149,7 @@ public class DependencyAssistantDispatcher {
 			}
 
 			for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
-				if (!integration.supports(file)) {
+				if (!integration.supports(it)) {
 					continue;
 				}
 

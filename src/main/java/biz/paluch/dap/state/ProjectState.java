@@ -71,8 +71,7 @@ public interface ProjectState {
 	 * @return the matching property, or {@literal null} if none is known or no
 	 * artifact correlation exists.
 	 */
-	@Nullable
-	default VersionProperty findProperty(String propertyName) {
+	default @Nullable VersionProperty findProperty(String propertyName) {
 		return findProperty(propertyName, VersionProperty::hasArtifacts);
 	}
 

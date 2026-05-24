@@ -35,7 +35,7 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  */
 public class AntoraUtils {
 
-	private static final String PLAYBOOK_FILE_NAME = "antora-playbook.yml";
+	public static final String PLAYBOOK_FILE_NAME = "antora-playbook.yml";
 
 	private static final String RELEASE_DOWNLOAD_FRAGMENT = "/releases/download/";
 
@@ -83,7 +83,7 @@ public class AntoraUtils {
 	 */
 	public static TextRange getVersionRange(PsiElement element) {
 
-		YAMLScalar scalar = VersionUpgradeLookupService.findBundleUrlScalar(element);
+		YAMLScalar scalar = AntoraArtifactReferenceResolver.findBundleUrlScalar(element);
 		if (scalar == null) {
 			return element.getTextRange();
 		}

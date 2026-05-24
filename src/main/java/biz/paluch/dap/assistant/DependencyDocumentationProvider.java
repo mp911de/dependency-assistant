@@ -33,13 +33,12 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ReleaseDateFormatter;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.model.Pointer;
@@ -76,7 +75,7 @@ public class DependencyDocumentationProvider
 			return null;
 		}
 
-		VersionUpgradeLookupSupport lookup = context.getLookup(target, target.getContainingFile().getVirtualFile());
+		VersionUpgradeLookup lookup = context.getLookup(target, target.getContainingFile().getVirtualFile());
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(target);
 		if (!artifactReference.isResolved()) {
 			return null;
@@ -85,12 +84,10 @@ public class DependencyDocumentationProvider
 		Cache cache = lookup.getCache();
 		ArtifactDeclaration declaration = artifactReference.getDeclaration();
 		ArtifactVersion currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
-		if (lookup.hasCachedState()
-				&& declaration
-						.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
+		if (declaration
+				.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
 
-			ProjectState projectState = lookup.getProjectState();
-			VersionProperty property = projectState.findProperty(propertySource.getProperty());
+			VersionProperty property = lookup.findProperty(propertySource.getProperty());
 			if (property == null || property.artifacts().isEmpty()) {
 				return null;
 			}

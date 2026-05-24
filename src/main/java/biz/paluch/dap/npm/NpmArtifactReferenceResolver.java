@@ -20,21 +20,19 @@ import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.VersionUpgradeLookupSupport;
+import biz.paluch.dap.support.ArtifactReferenceResolver;
+import biz.paluch.dap.support.LookupContext;
 import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonStringLiteral;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 
 /**
- * {@link VersionUpgradeLookupSupport} implementation for NPM
- * {@code package.json} dependency entries.
+ * {@link ArtifactReferenceResolver} implementation for NPM {@code package.json}
+ * dependency entries.
  *
- * <p>
- * Resolves the {@link JsonStringLiteral} value beneath
+ * <p>Resolves the {@link JsonStringLiteral} value beneath
  * {@code dependencies}/{@code devDependencies} into an
  * {@link ArtifactReference} by classifying the value through
  * {@link NpmPackageParser}. {@code Prefix} entries report a defined version so
@@ -42,12 +40,14 @@ import com.intellij.psi.PsiElement;
  *
  * @author Mark Paluch
  */
-class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
+class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
+
+	private final LookupContext context;
 
 	private final NpmProjectContext buildContext;
 
-	VersionUpgradeLookupService(Project project, NpmProjectContext buildContext) {
-		super(project, buildContext);
+	NpmArtifactReferenceResolver(LookupContext context, NpmProjectContext buildContext) {
+		this.context = context;
 		this.buildContext = buildContext;
 	}
 
@@ -82,7 +82,8 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					.versionLiteral(literal);
 
 			if (expression instanceof NpmVersionExpression.Git(NpmGitRef ref)) {
-				Optional<ArtifactVersion> version = getVersionResolver().resolveCurrent(artifactId, ref.committish().text());
+				Optional<ArtifactVersion> version = context.versionResolver().resolveCurrent(artifactId,
+						ref.committish().text());
 				if (version.isPresent()) {
 					version.ifPresent(builder::version);
 					return;
@@ -104,9 +105,10 @@ class VersionUpgradeLookupService extends VersionUpgradeLookupSupport {
 					return;
 				}
 			}
-			Dependency dependency = hasCachedState() ? getProjectState().findDependency(artifactId) : null;
-			if (dependency != null && dependency.getCurrentVersion() != null) {
-				builder.version(dependency.getCurrentVersion());
+
+			ArtifactVersion version = context.findCurrentVersion(artifactId);
+			if (version != null) {
+				builder.version(version);
 			}
 		});
 	}
