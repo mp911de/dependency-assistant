@@ -52,7 +52,7 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 
 	@Override
 	public String getText() {
-		return MessageBundle.message("intention.UpgradeDependenciesIntention.text");
+		return MessageBundle.message("intention.UpgradeDependencies.text");
 	}
 
 	@Override
