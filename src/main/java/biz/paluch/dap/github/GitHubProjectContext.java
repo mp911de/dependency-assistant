@@ -29,8 +29,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 /**
  * {@link ProjectBuildContext} for a single supported GitHub Actions YAML file.
  *
- * <p>
- * The project identity uses the owning repository coordinates and the
+ * <p>The project identity uses the owning repository coordinates and the
  * absolute file path. There is one context per file so independent declarations
  * in the same repository can maintain independent dependency state.
  *
@@ -86,7 +85,7 @@ class GitHubProjectContext implements ProjectBuildContext {
 
 		ProjectId projectId = gitRepository != null
 				? ProjectId.of(gitRepository.owner(), gitRepository.repository(), anchor.getPath())
-				: ProjectId.of("", "", anchor.getPath());
+				: ProjectId.of(anchor);
 		return new GitHubProjectContext(projectId, releaseSource);
 	}
 
