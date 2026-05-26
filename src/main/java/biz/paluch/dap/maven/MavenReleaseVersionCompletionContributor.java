@@ -37,11 +37,20 @@ public class MavenReleaseVersionCompletionContributor extends CompletionContribu
 	private static final PatternCondition<XmlFile> IS_MAVEN_FILE = PatternConditions.conditional("isMavenFile",
 			MavenUtils::isMavenPomFile);
 
+	private static final PatternCondition<XmlFile> IS_EXTENSIONS_FILE = PatternConditions.conditional(
+			"isMavenExtensionsFile",
+			MavenUtils::isMavenExtensionsFile);
+
 	private static final PsiElementPattern.Capture<PsiElement> DEPENDENCY_VERSION = PlatformPatterns.psiElement() //
 			.inside(XmlPatterns.xmlTag().withLocalName("version")
 					.inside(PlatformPatterns.or(XmlPatterns.xmlTag().withLocalName("dependency"),
 							XmlPatterns.xmlTag().withLocalName("plugin")))
 					.inside(XmlPatterns.xmlFile().with(IS_MAVEN_FILE)));
+
+	private static final PsiElementPattern.Capture<PsiElement> EXTENSION_VERSION = PlatformPatterns.psiElement() //
+			.inside(XmlPatterns.xmlTag().withLocalName("version")
+					.inside(XmlPatterns.xmlTag().withLocalName("extension"))
+					.inside(XmlPatterns.xmlFile().with(IS_EXTENSIONS_FILE)));
 
 	private static final PsiElementPattern.Capture<PsiElement> PROPERTIES = PlatformPatterns.psiElement() //
 			.inside(XmlPatterns.xmlTag().withAncestor(2, XmlPatterns.xmlTag().withName("properties"))
@@ -51,13 +60,15 @@ public class MavenReleaseVersionCompletionContributor extends CompletionContribu
 
 	public MavenReleaseVersionCompletionContributor() {
 		extend(CompletionType.BASIC, DEPENDENCY_VERSION, provider);
+		extend(CompletionType.BASIC, EXTENSION_VERSION, provider);
 		extend(CompletionType.BASIC, PROPERTIES, provider);
 	}
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 		return ReleaseCompletionProvider.isVersionCharacter(typeChar)
-				&& (PROPERTIES.accepts(position) || DEPENDENCY_VERSION.accepts(position));
+				&& (PROPERTIES.accepts(position) || DEPENDENCY_VERSION.accepts(position)
+						|| EXTENSION_VERSION.accepts(position));
 	}
 
 }

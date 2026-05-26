@@ -28,11 +28,11 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class PomUtil {
+public class XmlUtil {
 
 	/**
-	 * Return the property tag for the given context element if the element is a property within the {@code properties}
-	 * tag.
+	 * Return the property tag for the given context element if the element is a
+	 * property within the {@code properties} tag.
 	 */
 	public static @Nullable XmlTag findPropertyTag(PsiElement contextElement) {
 
@@ -55,9 +55,28 @@ public class PomUtil {
 	}
 
 	/**
-	 * Return the version tag for the given context element if the element is a version tag within a dependency or plugin.
+	 * Return the version tag for the given context element if the element is a
+	 * version tag within a dependency or plugin.
 	 */
 	public static @Nullable XmlTag findVersionTag(PsiElement contextElement) {
+
+		PsiFile file = contextElement.getContainingFile();
+		if (MavenUtils.isMavenPomFile(file)) {
+			return findPomVersionTag(contextElement);
+		}
+
+		if (MavenUtils.isMavenExtensionsFile(file)) {
+			return findExtensionVersionTag(contextElement);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return the version tag for the given context element if the element is a
+	 * version tag within a dependency or plugin.
+	 */
+	public static @Nullable XmlTag findPomVersionTag(PsiElement contextElement) {
 
 		PsiFile file = contextElement.getContainingFile();
 		if (!MavenUtils.isMavenPomFile(file)) {
@@ -75,6 +94,34 @@ public class PomUtil {
 		}
 
 		if ("dependency".equals(owner.getLocalName()) || "plugin".equals(owner.getLocalName())) {
+			return versionTag;
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return the version tag for the given context element if the element is a
+	 * version tag within a extension.
+	 */
+	public static @Nullable XmlTag findExtensionVersionTag(PsiElement contextElement) {
+
+		PsiFile file = contextElement.getContainingFile();
+		if (!MavenUtils.isMavenExtensionsFile(file)) {
+			return null;
+		}
+
+		XmlTag versionTag = PsiTreeUtil.getParentOfType(contextElement, XmlTag.class, false);
+		if (versionTag == null || !"version".equals(versionTag.getLocalName())) {
+			return null;
+		}
+
+		XmlTag owner = versionTag.getParentTag();
+		if (owner == null) {
+			return null;
+		}
+
+		if ("extension".equals(owner.getLocalName())) {
 			return versionTag;
 		}
 

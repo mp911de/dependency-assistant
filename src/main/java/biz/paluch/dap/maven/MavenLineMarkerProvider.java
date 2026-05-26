@@ -48,7 +48,8 @@ public class MavenLineMarkerProvider extends UpgradeAvailableLineMarkerProvider 
 
 		ProjectDependencyContext context = super.getContext(element);
 		if (context instanceof MavenAssistant.MavenDependencyContext
-				|| context instanceof MavenWrapperAssistant.MavenWrapperDependencyContext) {
+				|| context instanceof MavenWrapperAssistant.MavenWrapperDependencyContext
+				|| context instanceof MavenExtensionsAssistant.MavenExtensionContext) {
 			return context;
 		}
 

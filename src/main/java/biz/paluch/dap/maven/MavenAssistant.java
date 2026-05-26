@@ -95,14 +95,14 @@ class MavenAssistant implements DependencyAssistant {
 			throw new IllegalStateException("Maven integration does not support " + anchor);
 		}
 
-		MavenProjectContext injected = anchor.getUserData(MavenProjectContext.KEY);
-		if (injected != null) {
-			return new MavenDependencyContext(project, anchor.getVirtualFile(),
-					MavenProjectsManager.getInstance(project), injected);
+		MavenProjectContext context = anchor.getUserData(MavenProjectContext.KEY);
+		if (context == null) {
+			context = CachedValuesManager.getProjectPsiDependentCache(anchor,
+					it -> MavenProjectContext.of(project, anchor.getVirtualFile()));
 		}
 
-		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(project, anchor.getVirtualFile()));
+		return new MavenDependencyContext(project, anchor.getVirtualFile(),
+				MavenProjectsManager.getInstance(project), context);
 	}
 
 	private static VersionUpgradeLookup createLookup(PsiFile pom) {
@@ -111,18 +111,6 @@ class MavenAssistant implements DependencyAssistant {
 		MavenProjectContext buildContext = MavenProjectContext.of(project, pom);
 		LookupContext context = LookupContext.create(project, buildContext);
 		return new VersionUpgradeLookup(context, new MavenArtifactReferenceResolver(context, pom, buildContext));
-	}
-
-	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
-
-		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
-		MavenProjectContext projectContext = MavenProjectContext.of(project, manager, anchor);
-
-		if (projectContext.isAbsent()) {
-			throw new IllegalStateException("No Maven project found for " + anchor);
-		}
-
-		return new MavenDependencyContext(project, anchor, manager, projectContext);
 	}
 
 	static class MavenDependencyContext implements ProjectDependencyContext {

@@ -75,6 +75,32 @@ class MavenUtils {
 	}
 
 	/**
+	 * Return whether the given file is a Maven extensions.xml by filename and type.
+	 * <p>This is a lightweight check suitable for action-visibility guards. It does
+	 * not inspect file content or PSI structure.
+	 *
+	 * @param file the file to test; can be {@literal null}.
+	 * @return {@literal true} if the file is an XML file named
+	 * {@code extensions.xml}; {@literal false} otherwise.
+	 */
+	public static boolean isMavenExtensionsFile(@Nullable VirtualFile file) {
+		return file != null && "extensions.xml".equals(file.getName());
+	}
+
+	/**
+	 * Return whether the given file is a Maven extensions.xml by filename and type.
+	 * <p>This is a lightweight check suitable for action-visibility guards. It does
+	 * not inspect file content or PSI structure.
+	 *
+	 * @param file the file to test; can be {@literal null}.
+	 * @return {@literal true} if the file is an XML file named
+	 * {@code extensions.xml}; {@literal false} otherwise.
+	 */
+	public static boolean isMavenExtensionsFile(@Nullable PsiFile file) {
+		return file instanceof XmlFile && "extensions.xml".equals(file.getName());
+	}
+
+	/**
 	 * Return whether the given XML file is a Maven POM by root element structure.
 	 *
 	 * @param xmlFile the XML file to inspect; must not be {@literal null}.
@@ -182,13 +208,15 @@ class MavenUtils {
 		}
 
 		if (currentTag.getLocalName().equals("properties") || parentTag.getLocalName().equals("properties")
-				|| currentTag.getLocalName().equals("dependency") || currentTag.getLocalName().equals("plugin")
+				|| currentTag.getLocalName().equals("extension") || parentTag.getLocalName().equals("extension")
+				|| currentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")
 				|| parentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")) {
 			return true;
 		}
 
 		return "version".equals(currentTag.getLocalName())
-				&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName()));
+				&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName())
+						|| "extension".equals(parentTag.getLocalName()));
 	}
 
 }

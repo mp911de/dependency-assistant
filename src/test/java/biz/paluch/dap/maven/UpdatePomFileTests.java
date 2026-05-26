@@ -19,11 +19,9 @@ package biz.paluch.dap.maven;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
-import biz.paluch.dap.extension.CodeInsightFixtureTests;
+import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.extension.TestFixture;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -34,10 +32,8 @@ import static biz.paluch.dap.maven.UpdateTestSupport.*;
  *
  * @author Mark Paluch
  */
-@CodeInsightFixtureTests
+@IdeaProjectTests
 class UpdatePomFileTests {
-
-	private @TestFixture CodeInsightTestFixture fixture;
 
 	@Test
 	@ProjectFile(name = "pom.xml", content = """

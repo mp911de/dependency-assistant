@@ -57,6 +57,10 @@ class MavenFixtures {
 	 */
 	public static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
 
+		if (MavenUtils.isMavenExtensionsFile(file)) {
+			return new UpdateExtensionsProjectState(file.getProject()).doUpdate(file);
+		}
+
 		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), MAVEN_ID, null);
 		file.putUserData(MavenProjectContext.KEY, projectContext);
 		return new UpdateProjectState(file.getProject(), properties).doUpdate(file);

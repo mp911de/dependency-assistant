@@ -84,11 +84,11 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		if (PomUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
+		if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
 			return resolveArtifactDeclaration(versionTag);
 		}
 
-		if (PomUtil.findPropertyTag(element) instanceof XmlTag propertyTag
+		if (XmlUtil.findPropertyTag(element) instanceof XmlTag propertyTag
 				&& MavenUtils.isVersionElement(propertyTag)) {
 			return resolveArtifactDeclaration(context.cache().getProject(buildContext.getProjectId()), propertyTag);
 		}

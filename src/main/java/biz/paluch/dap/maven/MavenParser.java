@@ -125,6 +125,15 @@ class MavenParser {
 	}
 
 	/**
+	 * Parse dependencies from the given extensions file.
+	 * @param cache the project cache used for property-to-artifact associations.
+	 * @param extensionsFile the extensions file to parse.
+	 */
+	public void parseExtensionsFile(Cache cache, XmlFile extensionsFile) {
+		doParseExtensionsFile(extensionsFile);
+	}
+
+	/**
 	 * Parse dependencies, plugins, and properties from the given POM file.
 	 * @param cache the project cache used for property-to-artifact associations.
 	 * @param pomFile the POM file to parse.
@@ -178,14 +187,38 @@ class MavenParser {
 		});
 	}
 
+	private void doParseExtensionsFile(XmlFile pomFile) {
+
+		XmlTag root = pomFile.getDocument().getRootTag();
+		if (root == null || !"extensions".equals(root.getLocalName())) {
+			return;
+		}
+
+		XmlTag[] extensions = root.findSubTags("extension");
+
+		for (XmlTag extension : extensions) {
+			doWithDependency(PropertyResolver.empty(), extension, DeclarationSource.dependency(),
+					(artifactId, usage) -> {
+						if (usage.version() instanceof VersionSource.DeclaredVersion declared) {
+							ArtifactVersion.from(declared.getVersion()).ifPresent(it -> {
+								collector.registerUsage(artifactId, it, usage.declaration(), usage.version());
+							});
+							collector.registerDeclaration(artifactId, usage.declaration(), declared);
+						}
+					});
+		}
+	}
+
 	/**
 	 * Parse artifact coordinates from the given XML tag.
 	 * @param tag the dependency or plugin tag.
 	 * @param propertyResolver resolver for Maven placeholders.
 	 * @return the artifact id, or {@literal null} if no artifact id is present.
 	 */
-	public static @Nullable ArtifactId parseArtifactId(XmlTag tag, PropertyResolver propertyResolver) {
-		return parseArtifactId(tag.getSubTagText("groupId"), tag.getSubTagText("artifactId"), propertyResolver);
+	public static @Nullable ArtifactId parseArtifactId(@Nullable XmlTag tag, PropertyResolver propertyResolver) {
+		return tag != null
+				? parseArtifactId(tag.getSubTagText("groupId"), tag.getSubTagText("artifactId"), propertyResolver)
+				: null;
 	}
 
 	public static @Nullable ArtifactId parseArtifactId(@Nullable String groupId, @Nullable String artifactId,

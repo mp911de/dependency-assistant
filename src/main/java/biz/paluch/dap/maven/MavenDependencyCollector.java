@@ -32,6 +32,7 @@ import com.intellij.psi.xml.XmlFile;
 class MavenDependencyCollector {
 
 	private final Cache cache;
+
 	private final Map<String, String> properties;
 
 	/**
@@ -64,6 +65,11 @@ class MavenDependencyCollector {
 			MavenParser parser = new MavenParser(collector, properties);
 			parser.parsePomFile(cache, xmlFile);
 		}
+
+		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
+			MavenParser parser = new MavenParser(collector, properties);
+			parser.parseExtensionsFile(cache, xmlFile);
+		}
 	}
 
 	/**
@@ -74,6 +80,11 @@ class MavenDependencyCollector {
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
 			MavenParser parser = new MavenParser(collector, properties);
 			parser.parsePomFile(cache, xmlFile, propertyResolver);
+		}
+
+		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
+			MavenParser parser = new MavenParser(collector, properties);
+			parser.parsePomFile(cache, xmlFile);
 		}
 	}
 
