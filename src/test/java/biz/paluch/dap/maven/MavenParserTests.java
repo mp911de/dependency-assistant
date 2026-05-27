@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -179,7 +178,7 @@ class MavenParserTests {
 	void multiModuleChildAddsDependenciesAlongsideParent(XmlFile parent, XmlFile child) {
 
 		DependencyCollector collector = new DependencyCollector();
-		MavenParser parser = new MavenParser(collector, new HashMap<>());
+		MavenParser parser = new MavenParser(collector);
 		parser.parsePomFile(new Cache(), parent);
 		parser.parsePomFile(new Cache(), child);
 
@@ -309,12 +308,12 @@ class MavenParserTests {
 
 		Cache cache = new Cache();
 		DependencyCollector propertyCollector = new DependencyCollector();
-		MavenParser parser = new MavenParser(propertyCollector, new HashMap<>());
+		MavenParser parser = new MavenParser(propertyCollector);
 		parser.parsePomFile(cache, child);
 		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector);
 
 		DependencyCollector collector = new DependencyCollector();
-		parser = new MavenParser(collector, new HashMap<>());
+		parser = new MavenParser(collector);
 		parser.parsePomFile(cache, parent);
 
 		assertThat(collector)

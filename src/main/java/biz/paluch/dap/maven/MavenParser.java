@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -47,16 +46,25 @@ class MavenParser {
 
 	private final DependencyCollector collector;
 
-	private final Map<String, String> properties;
+	private final PropertyResolver propertyResolver;
 
 	/**
 	 * Create a new {@code MavenParser}.
 	 * @param collector the dependency collector to populate.
-	 * @param properties known Maven properties.
 	 */
-	public MavenParser(DependencyCollector collector, Map<String, String> properties) {
+	public MavenParser(DependencyCollector collector) {
+		this(collector, PropertyResolver.empty());
+	}
+
+
+	/**
+	 * Create a new {@code MavenParser}.
+	 * @param collector the dependency collector to populate.
+	 * @param propertyResolver Maven property resolver.
+	 */
+	public MavenParser(DependencyCollector collector, PropertyResolver propertyResolver) {
 		this.collector = collector;
-		this.properties = new HashMap<>(properties);
+		this.propertyResolver = propertyResolver;
 	}
 
 	/**
@@ -119,17 +127,17 @@ class MavenParser {
 
 		PropertyResolver resolver = new MavenProjectMetadataPropertyResolver(pomFile)
 				.withFallback(PropertyResolver.fromMap(properties))
-				.withFallback(this.properties::get);
+				.withFallback(this.propertyResolver);
 
 		doParsePomFile(cache, pomFile, properties, resolver);
 	}
 
 	/**
 	 * Parse dependencies from the given extensions file.
-	 * @param cache the project cache used for property-to-artifact associations.
+	 *
 	 * @param extensionsFile the extensions file to parse.
 	 */
-	public void parseExtensionsFile(Cache cache, XmlFile extensionsFile) {
+	public void parseExtensionsFile(XmlFile extensionsFile) {
 		doParseExtensionsFile(extensionsFile);
 	}
 
@@ -154,7 +162,7 @@ class MavenParser {
 			if (usage.version() instanceof VersionSource.VersionProperty versionProperty) {
 
 				String value = propertyResolver.getProperty(versionProperty.getProperty());
-				if (StringUtils.hasText(value)) {
+				if (StringUtils.hasText(value) && properties.containsKey(versionProperty.getProperty())) {
 					ArtifactVersion.from(value).ifPresent(it -> {
 						collector.registerUsage(coordinate, it, usage.declaration(), usage.version());
 					});

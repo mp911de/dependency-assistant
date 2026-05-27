@@ -17,7 +17,6 @@
 package biz.paluch.dap.maven;
 
 import java.util.List;
-import java.util.Map;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.InterfaceAssistant;
@@ -28,6 +27,7 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.LookupContext;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -165,8 +165,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		private DependencyCollector collect(PsiFile file) {
 
-			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(service.getCache(), Map.of());
-			DependencyCollector collector = dependencyCollector.collect(file);
+			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(service.getCache());
+			DependencyCollector collector = dependencyCollector.collect(file, PropertyResolver.empty());
 			collector.addAllReleaseSources(getReleaseSources());
 			return collector;
 		}

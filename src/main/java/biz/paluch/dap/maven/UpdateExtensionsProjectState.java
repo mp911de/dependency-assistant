@@ -19,7 +19,6 @@ package biz.paluch.dap.maven;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -70,7 +69,7 @@ class UpdateExtensionsProjectState {
 		this.project = project;
 		this.service = service;
 		this.psiManager = psiManager;
-		this.collector = new MavenDependencyCollector(service.getCache(), Map.of());
+		this.collector = new MavenDependencyCollector(service.getCache());
 	}
 
 	/**
@@ -107,7 +106,7 @@ class UpdateExtensionsProjectState {
 
 		DependencyCollector collector = new DependencyCollector();
 		doWithAllFiles(it -> {
-			this.collector.doCollect(it, collector, PropertyResolver.empty());
+			this.collector.doCollect(it, PropertyResolver.empty(), collector);
 		}, indicator);
 
 		collector.addAllReleaseSources(MavenUtils.getReleaseSources(project));
@@ -131,7 +130,7 @@ class UpdateExtensionsProjectState {
 
 	DependencyCollector doUpdate(PsiFile file) {
 
-		DependencyCollector collector = this.collector.collect(file);
+		DependencyCollector collector = this.collector.collect(file, PropertyResolver.empty());
 		ProjectState projectState = this.service.getProjectState(ProjectId.of(file.getVirtualFile()));
 		projectState.invalidateDependencies();
 		projectState.setDependencies(collector);

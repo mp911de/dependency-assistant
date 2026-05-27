@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.Map;
-
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.PropertyResolver;
@@ -33,58 +31,36 @@ class MavenDependencyCollector {
 
 	private final Cache cache;
 
-	private final Map<String, String> properties;
-
 	/**
 	 * Create a collector using the given cache and project properties.
 	 */
-	public MavenDependencyCollector(Cache cache, Map<String, String> properties) {
+	public MavenDependencyCollector(Cache cache) {
 		this.cache = cache;
-		this.properties = properties;
 	}
 
 	/**
 	 * Collects artifact declarations from {@code buildFile}.
-	 *
-	 * @param buildFile the POM file.
-	 * @return a populated {@link DependencyCollector}.
 	 */
-	public DependencyCollector collect(PsiFile buildFile) {
+	public DependencyCollector collect(PsiFile buildFile, PropertyResolver propertyResolver) {
 
 		DependencyCollector collector = new DependencyCollector();
-		doCollect(buildFile, collector);
+		doCollect(buildFile, propertyResolver, collector);
 		return collector;
 	}
 
 	/**
 	 * Collect declarations from the given Maven PSI file into {@code collector}.
 	 */
-	protected void doCollect(PsiFile psiFile, DependencyCollector collector) {
+	protected void doCollect(PsiFile psiFile, PropertyResolver propertyResolver, DependencyCollector collector) {
 
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenParser parser = new MavenParser(collector, properties);
+			MavenParser parser = new MavenParser(collector, propertyResolver);
 			parser.parsePomFile(cache, xmlFile);
 		}
 
 		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenParser parser = new MavenParser(collector, properties);
-			parser.parseExtensionsFile(cache, xmlFile);
-		}
-	}
-
-	/**
-	 * Collect declarations from the given Maven PSI file into {@code collector}.
-	 */
-	protected void doCollect(PsiFile psiFile, DependencyCollector collector, PropertyResolver propertyResolver) {
-
-		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenParser parser = new MavenParser(collector, properties);
-			parser.parsePomFile(cache, xmlFile, propertyResolver);
-		}
-
-		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenParser parser = new MavenParser(collector, properties);
-			parser.parsePomFile(cache, xmlFile);
+			MavenParser parser = new MavenParser(collector, propertyResolver);
+			parser.parseExtensionsFile(xmlFile);
 		}
 	}
 

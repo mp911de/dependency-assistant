@@ -30,6 +30,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -90,7 +91,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return EmptyMavenContext.INSTANCE;
 		}
 
-		return new MavenContextImpl(project, mavenProject);
+		return new MavenContextImpl(project, projectsManager, PsiManager.getInstance(project), mavenProject);
 	}
 
 	static boolean isValid(MavenId mavenId) {
@@ -108,12 +109,21 @@ interface MavenProjectContext extends ProjectBuildContext {
 	 */
 	MavenProject getMavenProject();
 
+	MavenProjectsManager getProjectsManager();
+
+	@Nullable
+	PsiFile findFile(VirtualFile virtualFile);
+
 	/**
 	 * Maven project context.
 	 */
 	class MavenContextImpl implements MavenProjectContext {
 
 		private final Project project;
+
+		private final MavenProjectsManager projectsManager;
+
+		private final PsiManager psiManager;
 
 		private final MavenProject mavenProject;
 
@@ -122,27 +132,18 @@ interface MavenProjectContext extends ProjectBuildContext {
 		/**
 		 * Create a context for the given Maven project.
 		 */
-		public MavenContextImpl(Project project, MavenProject mavenProject) {
-			this(project, mavenProject.getMavenId(), mavenProject);
-		}
-
-		/**
-		 * Create a context for the given Maven project.
-		 */
-		public MavenContextImpl(Project project, MavenId id, MavenProject mavenProject) {
+		public MavenContextImpl(Project project, MavenProjectsManager projectsManager, PsiManager psiManager,
+				MavenProject mavenProject) {
 			this.project = project;
+			this.projectsManager = projectsManager;
+			this.psiManager = psiManager;
 			this.mavenProject = mavenProject;
-			this.projectId = createProjectId(id);
+			this.projectId = createProjectId(mavenProject.getMavenId());
 		}
 
 		@Override
 		public boolean isAvailable() {
 			return true;
-		}
-
-		@Override
-		public MavenProject getMavenProject() {
-			return mavenProject;
 		}
 
 		@Override
@@ -159,8 +160,18 @@ interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public boolean isAbsent() {
-			return MavenProjectContext.super.isAbsent();
+		public MavenProject getMavenProject() {
+			return mavenProject;
+		}
+
+		@Override
+		public MavenProjectsManager getProjectsManager() {
+			return this.projectsManager;
+		}
+
+		@Override
+		public @Nullable PsiFile findFile(VirtualFile virtualFile) {
+			return psiManager.findFile(virtualFile);
 		}
 
 		@Override
@@ -183,17 +194,27 @@ interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public MavenProject getMavenProject() {
-			throw new IllegalStateException("Maven Context not available");
-		}
-
-		@Override
 		public ProjectId getProjectId() {
 			throw new IllegalStateException("Maven Context not available");
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
+			throw new IllegalStateException("Maven Context not available");
+		}
+
+		@Override
+		public MavenProject getMavenProject() {
+			throw new IllegalStateException("Maven Context not available");
+		}
+
+		@Override
+		public MavenProjectsManager getProjectsManager() {
+			throw new IllegalStateException("Maven Context not available");
+		}
+
+		@Override
+		public @Nullable PsiFile findFile(VirtualFile virtualFile) {
 			throw new IllegalStateException("Maven Context not available");
 		}
 

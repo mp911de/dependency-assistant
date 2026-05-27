@@ -41,16 +41,14 @@ import com.intellij.psi.xml.XmlFile;
 class UpdateTestSupport {
 
 	public static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
-			String fromVersion,
-			String toVersion) {
+			String fromVersion, String toVersion) {
 
 		return applyUpdate(targetFile, groupId, artifactId, fromVersion, DeclarationSource.dependency(),
 				VersionSource.declared(fromVersion), toVersion);
 	}
 
 	public static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
-			String fromVersion,
-			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
+			String fromVersion, DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		ArtifactVersion current = ArtifactVersion.of(fromVersion);
@@ -64,7 +62,7 @@ class UpdateTestSupport {
 				dep.getVersionSources());
 
 		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdatePomFile().applyUpdates(targetFile, updates),
+				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates),
 				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
 		return UpdateTestSupport.of(targetFile);
 	}

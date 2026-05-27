@@ -20,7 +20,6 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.ProjectCache;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ArtifactReferenceResolver;
@@ -57,40 +56,38 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final boolean candidate;
 
-	private final MavenProperties properties;
-
 	private final PropertyResolver propertyResolver;
 
 	/**
 	 * Create a resolver for the given context and build context.
 	 * @param context the shared per-file resolution environment.
 	 * @param pomFile the {@code pom.xml} file to inspect.
-	 * @param buildContext the Maven project context.
+	 * @param projectContext the Maven project context.
 	 */
-	MavenArtifactReferenceResolver(LookupContext context, PsiFile pomFile, MavenProjectContext buildContext) {
+	MavenArtifactReferenceResolver(LookupContext context, PsiFile pomFile, MavenProjectContext projectContext) {
 
 		this.context = context;
-		this.buildContext = buildContext;
+		this.buildContext = projectContext;
 		this.pom = pomFile instanceof XmlFile xmlFile ? xmlFile : null;
 		this.candidate = MavenUtils.isMavenPomFile(pomFile);
-		this.properties = new MavenProperties(context.project());
-		this.propertyResolver = this.properties.getPropertyResolver(buildContext.getMavenProject(), this.pom);
+		this.propertyResolver = this.pom != null ? MavenPropertyResolver.create(projectContext, this.pom)
+				: PropertyResolver.empty();
 	}
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (!isResolvableElement(element) || !canResolve()) {
-			return ArtifactReference.unresolved();
-		}
+		if (isResolvableElement(element) && canResolve()) {
 
-		if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
-			return resolveArtifactDeclaration(versionTag);
-		}
+			if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag
+					&& MavenUtils.isVersionElement(versionTag)) {
+				return resolveDirect(versionTag);
+			}
 
-		if (XmlUtil.findPropertyTag(element) instanceof XmlTag propertyTag
-				&& MavenUtils.isVersionElement(propertyTag)) {
-			return resolveArtifactDeclaration(context.cache().getProject(buildContext.getProjectId()), propertyTag);
+			if (XmlUtil.findPropertyTag(element) instanceof XmlTag propertyTag
+					&& MavenUtils.isVersionElement(propertyTag)) {
+				return resolveProperty(propertyTag);
+			}
 		}
 
 		return ArtifactReference.unresolved();
@@ -112,7 +109,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return element.isValid() && element instanceof XmlText;
 	}
 
-	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
+	private ArtifactReference resolveDirect(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
 
@@ -175,9 +172,9 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return new ResolvedProperty(propertyValue.getValue(), propertyValue);
 	}
 
-	private ArtifactReference resolveArtifactDeclaration(ProjectCache cache, XmlTag propertyTag) {
+	private ArtifactReference resolveProperty(XmlTag propertyTag) {
 
-		VersionProperty property = findProperty(cache, propertyTag);
+		VersionProperty property = this.context.findProperty(propertyTag.getLocalName());
 		if (property == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -202,16 +199,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 				it.versionLiteral(propertyTag);
 			}
 		});
-	}
-
-	private @Nullable VersionProperty findProperty(ProjectCache cache, XmlTag propertyTag) {
-
-		String propertyName = propertyTag.getLocalName();
-		VersionProperty property = cache.getProperty(propertyName);
-		if (property == null || property.artifacts().isEmpty()) {
-			return null;
-		}
-		return property;
 	}
 
 	private @Nullable ArtifactVersion getCurrentVersion(VersionProperty property, XmlTag propertyTag) {

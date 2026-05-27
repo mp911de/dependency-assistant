@@ -22,9 +22,13 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import org.jetbrains.idea.maven.model.MavenId;
+import org.jetbrains.idea.maven.project.MavenProject;
+import org.jetbrains.idea.maven.project.MavenProjectsManager;
 
 /**
  * Fixtures for Maven.
@@ -61,9 +65,16 @@ class MavenFixtures {
 			return new UpdateExtensionsProjectState(file.getProject()).doUpdate(file);
 		}
 
-		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), MAVEN_ID, null);
+		MavenProject mavenProject = new MavenProject(file.getVirtualFile());
+		mavenProject.updateMavenId(MAVEN_ID);
+
+		PropertyResolver simple = properties::get;
+		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(file.getProject());
+		PsiManager psiManager = PsiManager.getInstance(file.getProject());
+		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), projectsManager, psiManager,
+				mavenProject);
 		file.putUserData(MavenProjectContext.KEY, projectContext);
-		return new UpdateProjectState(file.getProject(), properties).doUpdate(file);
+		return new UpdateProjectState(file.getProject()).doUpdate(file, projectContext, simple);
 	}
 
 }

@@ -18,7 +18,6 @@ package biz.paluch.dap.maven;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -33,7 +32,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
-import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 
@@ -94,20 +92,7 @@ class UpdateProjectState {
 		this.service = service;
 		this.psiManager = psiManager;
 		this.manager = projectsManager;
-		this.collector = new MavenDependencyCollector(service.getCache(), Map.of());
-	}
-
-	/**
-	 * Create a new {@code UpdateProjectState}.
-	 * @param project the IntelliJ project.
-	 * @param properties the Maven projects manager to inspect.
-	 */
-	public UpdateProjectState(Project project, Map<String, String> properties) {
-		this.project = project;
-		this.service = StateService.getInstance(project);
-		this.psiManager = PsiManager.getInstance(project);
-		this.manager = MavenProjectsManager.getInstance(project);
-		this.collector = new MavenDependencyCollector(service.getCache(), properties);
+		this.collector = new MavenDependencyCollector(service.getCache());
 	}
 
 	/**
@@ -117,6 +102,16 @@ class UpdateProjectState {
 	public void readAndUpdate(PsiFile file) {
 		if (MavenUtils.isMavenPomFile(file)) {
 			ApplicationManager.getApplication().runReadAction(() -> update(file));
+		}
+	}
+
+	/**
+	 * Read and update dependency state for the given file.
+	 * @param file the file to inspect.
+	 */
+	public void readAndUpdate(PsiFile file, PropertyResolver propertyResolver) {
+		if (MavenUtils.isMavenPomFile(file)) {
+			ApplicationManager.getApplication().runReadAction(() -> update(file, propertyResolver));
 		}
 	}
 
@@ -142,14 +137,14 @@ class UpdateProjectState {
 	 */
 	public DependencyCollector getAllDependencies(ProgressIndicator indicator) {
 
-		MavenProperties properties = new MavenProperties(project);
+
 		DependencyCollector collector = new DependencyCollector();
 		doWithAllFiles(it -> {
 
 			MavenProjectContext context = MavenProjectContext.of(project, it);
-			PropertyResolver propertyResolver = properties.getPropertyResolver(context.getMavenProject(), (XmlFile) it);
+			MavenPropertyResolver propertyResolver = MavenPropertyResolver.create(context, it);
 
-			this.collector.doCollect(it, collector, propertyResolver);
+			this.collector.doCollect(it, propertyResolver, collector);
 		}, indicator);
 
 		collector.addAllReleaseSources(MavenUtils.getReleaseSources(project));
@@ -204,22 +199,34 @@ class UpdateProjectState {
 			return;
 		}
 
-		doUpdate(file);
+		MavenProjectContext context = MavenProjectContext.of(project, file);
+		doUpdate(file, context, MavenPropertyResolver.create(context, file));
 	}
 
-	DependencyCollector doUpdate(PsiFile file) {
+	/**
+	 * Update dependency state for the given Maven POM file.
+	 */
+	public void update(PsiFile file, PropertyResolver propertyResolver) {
 
-		MavenProjectContext context = MavenProjectContext.of(project, file);
-
-		if (context.isAvailable()) {
-			DependencyCollector collector = this.collector.collect(file);
-			ProjectState projectState = this.service.getProjectState(context.getProjectId());
-			projectState.invalidateDependencies();
-			projectState.setDependencies(collector);
-			return collector;
+		if (!MavenUtils.isMavenPomFile(file)) {
+			return;
 		}
 
-		return new DependencyCollector();
+		MavenProjectContext context = MavenProjectContext.of(project, file);
+		doUpdate(file, context, propertyResolver);
+	}
+
+	DependencyCollector doUpdate(PsiFile file, MavenProjectContext context, PropertyResolver propertyResolver) {
+
+		DependencyCollector dependencyCollector = new DependencyCollector();
+		if (context.isAvailable()) {
+			this.collector.doCollect(file, propertyResolver, dependencyCollector);
+			ProjectState projectState = this.service.getProjectState(context.getProjectId());
+			projectState.invalidateDependencies();
+			projectState.setDependencies(dependencyCollector);
+		}
+
+		return dependencyCollector;
 	}
 
 }

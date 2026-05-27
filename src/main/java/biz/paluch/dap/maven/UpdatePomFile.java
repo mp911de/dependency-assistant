@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
@@ -40,6 +41,12 @@ import org.jspecify.annotations.Nullable;
 class UpdatePomFile {
 
 	private static final Logger LOG = Logger.getInstance(UpdatePomFile.class);
+
+	private final PropertyResolver propertyResolver;
+
+	public UpdatePomFile(PropertyResolver propertyResolver) {
+		this.propertyResolver = propertyResolver;
+	}
 
 	/**
 	 * Apply updates to the POM.
@@ -135,8 +142,6 @@ class UpdatePomFile {
 
 	private List<XmlTag> findDependencyOrPluginTag(XmlTag projectTag, ArtifactId coordinate, DeclarationSource source) {
 
-		String groupId = coordinate.groupId();
-		String artifactId = coordinate.artifactId();
 		List<XmlTag> tags = new ArrayList<>();
 		XmlTag searchRoot = source instanceof DeclarationSource.Profile inProfile
 				? findProfile(projectTag, inProfile.getProfileId())
@@ -147,26 +152,26 @@ class UpdatePomFile {
 		}
 
 		if (source instanceof DeclarationSource.Dependency && !(source instanceof DeclarationSource.Managed)) {
-			findAndCollect(searchRoot.findFirstSubTag("dependencies"), groupId, artifactId, tags::add);
+			findAndCollect(searchRoot.findFirstSubTag("dependencies"), coordinate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Dependency && source instanceof DeclarationSource.Managed) {
 			XmlTag dm = searchRoot.findFirstSubTag("dependencyManagement");
 			XmlTag deps = dm != null ? dm.findFirstSubTag("dependencies") : null;
-			findAndCollect(deps, groupId, artifactId, tags::add);
+			findAndCollect(deps, coordinate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Plugin && !(source instanceof DeclarationSource.Managed)) {
 			XmlTag build = searchRoot.findFirstSubTag("build");
 			XmlTag plugins = build != null ? build.findFirstSubTag("plugins") : null;
-			findAndCollect(plugins, groupId, artifactId, tags::add);
+			findAndCollect(plugins, coordinate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Plugin && source instanceof DeclarationSource.Managed) {
 			XmlTag build = searchRoot.findFirstSubTag("build");
 			XmlTag pm = build != null ? build.findFirstSubTag("pluginManagement") : null;
 			XmlTag plugins = pm != null ? pm.findFirstSubTag("plugins") : null;
-			findAndCollect(plugins, groupId, artifactId, tags::add);
+			findAndCollect(plugins, coordinate, tags::add);
 		}
 
 		return tags;
@@ -197,7 +202,7 @@ class UpdatePomFile {
 		return null;
 	}
 
-	private void findAndCollect(@Nullable XmlTag container, String groupId, String artifactId,
+	private void findAndCollect(@Nullable XmlTag container, ArtifactId artifactId,
 			Consumer<XmlTag> action) {
 
 		if (container == null) {
@@ -205,10 +210,20 @@ class UpdatePomFile {
 		}
 
 		for (XmlTag dep : container.getSubTags()) {
+
 			String g = getSubTagText(dep, "groupId");
 			String a = getSubTagText(dep, "artifactId");
 			String v = getSubTagText(dep, "version");
-			if (artifactId.equals(a) && (groupId == null || groupId.equals(g)) && StringUtils.hasText(v)) {
+
+			if (StringUtils.isEmpty(a) || StringUtils.isEmpty(g)) {
+				continue;
+			}
+
+			String resolvedGroupId = propertyResolver.resolvePlaceholders(g);
+			String resolvedArtifactId = propertyResolver.resolvePlaceholders(a);
+
+			if (artifactId.artifactId().equals(resolvedArtifactId) && artifactId.groupId().equals(resolvedGroupId)
+					&& StringUtils.hasText(v)) {
 				action.accept(dep);
 			}
 		}
