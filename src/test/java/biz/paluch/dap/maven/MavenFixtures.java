@@ -18,11 +18,14 @@ package biz.paluch.dap.maven;
 
 import java.util.Map;
 
+import biz.paluch.dap.DependencyScanEntry;
+import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
@@ -68,13 +71,25 @@ class MavenFixtures {
 		MavenProject mavenProject = new MavenProject(file.getVirtualFile());
 		mavenProject.updateMavenId(MAVEN_ID);
 
-		PropertyResolver simple = properties::get;
 		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(file.getProject());
 		PsiManager psiManager = PsiManager.getInstance(file.getProject());
 		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), projectsManager, psiManager,
 				mavenProject);
 		file.putUserData(MavenProjectContext.KEY, projectContext);
-		return new UpdateProjectState(file.getProject()).doUpdate(file, projectContext, simple);
+
+		MavenAssistant assistant = new MavenAssistant();
+		DependencyScanEntry entry = DependencyScanEntry.of(file, projectContext);
+		DependencyCollector collector = new DependencyCollector();
+		collector.addPropertyValues(properties);
+		IntrospectedDependencies introspected = assistant.introspect(file.getProject());
+		assistant.collect(entry, collector, introspected);
+		introspected.complete(collector);
+
+		StateService service = StateService.getInstance(file.getProject());
+		ProjectState projectState = service.getProjectState(projectContext.getProjectId());
+		projectState.invalidateDependencies();
+		projectState.setDependencies(collector);
+		return collector;
 	}
 
 }

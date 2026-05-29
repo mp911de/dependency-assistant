@@ -16,24 +16,35 @@
 
 package biz.paluch.dap.github;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.DependencyScanEntry;
+import biz.paluch.dap.DependencySource;
+import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.ProjectStateUpdater;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
@@ -49,7 +60,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.search.FileTypeIndex;
+import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.CachedValuesManager;
+import org.jetbrains.yaml.YAMLFileType;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
 
@@ -72,7 +86,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class GitHubAssistant implements DependencyAssistant {
+public class GitHubAssistant implements DependencyAssistant, DependencySource {
 
 	private static final PluginId YAML = PluginId.getId("org.jetbrains.plugins.yaml");
 
@@ -100,12 +114,91 @@ public class GitHubAssistant implements DependencyAssistant {
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateProjectState(project).readAndUpdateAll(it -> createContext(project, it), indicator);
+		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
 	}
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateProjectState(project).getAllDependencies(indicator);
+
+		DependencyCollector aggregate = new DependencyCollector();
+		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(project);
+		Map<GitRepositoryMetadata, GitHubReleaseSource> releaseSources = new HashMap<>();
+
+		List<DependencyScanEntry> entries = enumerate(project);
+		int processed = 0;
+
+		for (DependencyScanEntry entry : entries) {
+
+			indicator.checkCanceled();
+			if (entry.context().isAvailable()) {
+				collect(entry, aggregate);
+				GitRepositoryMetadata coordinates = repositoryResolver
+						.resolveOwnerAndRepository(entry.anchor().getVirtualFile());
+				if (coordinates != null) {
+					releaseSources.computeIfAbsent(coordinates,
+							it -> GitHubReleaseSource.from(project, it.host()));
+				}
+			}
+			processed += 1;
+			indicator.setFraction((double) processed / entries.size());
+		}
+
+		if (releaseSources.isEmpty()) {
+			aggregate.addReleaseSource(GitHubReleaseSource.from(project));
+		} else {
+			aggregate.addAllReleaseSources(releaseSources.values());
+		}
+
+		introspect(project).complete(aggregate);
+		return aggregate;
+	}
+
+	@Override
+	public List<DependencyScanEntry> enumerate(Project project) {
+
+		if (!AVAILABLE) {
+			return List.of();
+		}
+
+		List<DependencyScanEntry> entries = new ArrayList<>();
+		PsiManager psiManager = PsiManager.getInstance(project);
+		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML,
+				GlobalSearchScope.projectScope(project));
+
+		for (VirtualFile yaml : yamlFiles) {
+
+			if (!GitHubUtils.isWorkflowFile(yaml)) {
+				continue;
+			}
+
+			PsiFile psiFile = psiManager.findFile(yaml);
+			if (psiFile != null) {
+				entries.add(DependencyScanEntry.of(psiFile, GitHubProjectContext.of(project, yaml)));
+			}
+		}
+
+		return entries;
+	}
+
+	@Override
+	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
+
+		if (!supports(file)) {
+			return null;
+		}
+
+		return DependencyScanEntry.of(file, GitHubProjectContext.of(project, file.getVirtualFile()));
+	}
+
+	@Override
+	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
+		PsiFile anchor = entry.anchor();
+		new GitHubDependencyCollector(anchor.getProject()).doCollect(anchor, collector);
+	}
+
+	@Override
+	public IntrospectedDependencies introspect(Project project) {
+		return new GitRefIntrospectedDependencies(StateService.getInstance(project).getCache());
 	}
 
 	@Override
@@ -117,15 +210,16 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		GitHubProjectContext injected = anchor.getUserData(GitHubProjectContext.KEY);
 		if (injected != null) {
-			return new GitHubDependencyContext(project, anchor.getVirtualFile(), injected);
+			return new GitHubDependencyContext(this, project, anchor.getVirtualFile(), injected);
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(project, it.getVirtualFile()));
+				it -> createContext(this, project, it.getVirtualFile()));
 	}
 
-	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
-		return new GitHubDependencyContext(project, anchor, GitHubProjectContext.of(project, anchor));
+	private static ProjectDependencyContext createContext(GitHubAssistant assistant, Project project,
+			VirtualFile anchor) {
+		return new GitHubDependencyContext(assistant, project, anchor, GitHubProjectContext.of(project, anchor));
 	}
 
 	private static boolean isYamlAvailable() {
@@ -135,13 +229,17 @@ public class GitHubAssistant implements DependencyAssistant {
 
 	private static class GitHubDependencyContext implements ProjectDependencyContext {
 
+		private final GitHubAssistant assistant;
+
 		private final Project project;
 
 		private final VirtualFile anchor;
 
 		private final GitHubProjectContext projectContext;
 
-		GitHubDependencyContext(Project project, VirtualFile anchor, GitHubProjectContext projectContext) {
+		GitHubDependencyContext(GitHubAssistant assistant, Project project, VirtualFile anchor,
+				GitHubProjectContext projectContext) {
+			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
@@ -174,7 +272,7 @@ public class GitHubAssistant implements DependencyAssistant {
 				return;
 			}
 
-			new UpdateProjectState(project).update(file, it -> this);
+			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override

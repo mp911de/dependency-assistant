@@ -18,12 +18,15 @@ package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -69,16 +72,21 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 		ReadAction.nonBlocking(() -> {
 
 			PsiManager psiManager = PsiManager.getInstance(project);
-
+			List<PsiFile> psiFiles = new ArrayList<>(files.size());
 			for (VirtualFile file : files) {
-
 				PsiFile psiFile = psiManager.findFile(file);
-				if (psiFile == null) {
-					continue;
+				if (psiFile != null) {
+					psiFiles.add(psiFile);
 				}
-
-				DependencyAssistantDispatcher.doWithContext(psiFile, context -> context.invalidateState(psiFile));
 			}
+
+			List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
+			Map<DependencyAssistant, List<PsiFile>> grouped = SaveStateRefresh.groupByOwner(assistants, psiFiles);
+			if (grouped.isEmpty()) {
+				return null;
+			}
+
+			new SaveStateRefresh(project).refresh(grouped, new EmptyProgressIndicator());
 			return null;
 		}).inSmartMode(project).expireWith(project).submit(AppExecutorUtil.getAppExecutorService());
 	}

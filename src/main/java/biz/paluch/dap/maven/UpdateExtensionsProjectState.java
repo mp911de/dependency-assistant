@@ -52,7 +52,7 @@ class UpdateExtensionsProjectState {
 	private final MavenDependencyCollector collector;
 
 	/**
-	 * Create a new {@code UpdateProjectState}.
+	 * Create a new {@code UpdateExtensionsProjectState}.
 	 * @param project the IntelliJ project.
 	 */
 	public UpdateExtensionsProjectState(Project project) {
@@ -60,7 +60,7 @@ class UpdateExtensionsProjectState {
 	}
 
 	/**
-	 * Create a new {@code UpdateProjectState}.
+	 * Create a new {@code UpdateExtensionsProjectState}.
 	 * @param project the IntelliJ project.
 	 * @param psiManager the PSI manager to use.
 	 * @param service the dependency assistant service to update.

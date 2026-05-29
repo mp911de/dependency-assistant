@@ -81,6 +81,23 @@ class GradleDependencyCollector {
 	public DependencyCollector collect(PsiFile buildFile) {
 
 		DependencyCollector collector = new DependencyCollector();
+		collect(buildFile, collector);
+		return collector;
+	}
+
+	/**
+	 * Collect artifact declarations from {@code buildFile} into the provided
+	 * {@code collector}.
+	 * <p>
+	 * Sibling-file handling matches {@link #collect(PsiFile)}: script anchors
+	 * additionally parse the project-root {@code gradle.properties} and
+	 * {@code gradle/libs.versions.toml} files.
+	 *
+	 * @param buildFile the Gradle file, must not be {@literal null}.
+	 * @param collector the collector to populate in place, must not be
+	 * {@literal null}.
+	 */
+	public void collect(PsiFile buildFile, DependencyCollector collector) {
 
 		if (GradleUtils.isGradleScript(buildFile)) {
 			VirtualFile root = GradleUtils.findProjectRoot(buildFile);
@@ -91,7 +108,6 @@ class GradleDependencyCollector {
 		}
 
 		doCollect(buildFile, collector);
-		return collector;
 	}
 
 	private void collectSibling(@Nullable VirtualFile root, String relativePath, @Nullable VirtualFile anchor,

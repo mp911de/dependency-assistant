@@ -17,11 +17,13 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.function.Function;
 
 import org.jspecify.annotations.Nullable;
 
@@ -52,12 +54,37 @@ public class DependencyCollector {
 
 	private final Set<String> properties = new TreeSet<>();
 
+	private final Map<String, String> propertyValues = new LinkedHashMap<>();
+
 	/**
 	 * Add property names observed in the scanned build files.
 	 * @param propertyNames the property names to register.
 	 */
 	public void addProperties(Collection<String> propertyNames) {
 		this.properties.addAll(propertyNames);
+	}
+
+	/**
+	 * Register effective property values observed for the scanned build file.
+	 * <p>
+	 * Used by integrations that perform scan-wide property promotion during
+	 * {@link biz.paluch.dap.IntrospectedDependencies#complete(DependencyCollector)
+	 * completion}. Each value should be the effective value visible from this
+	 * collector's anchor file, including inherited values from parent build
+	 * descriptors.
+	 * @param values the property values keyed by property name; must not be
+	 * {@literal null}.
+	 */
+	public void addPropertyValues(Map<String, String> values) {
+		this.propertyValues.putAll(values);
+	}
+
+	/**
+	 * Return the effective property values registered with this collector keyed by
+	 * property name.
+	 */
+	public Map<String, String> getPropertyValues() {
+		return propertyValues;
 	}
 
 	/**
@@ -106,6 +133,36 @@ public class DependencyCollector {
 			DeclarationSource declarationSource, VersionSource versionSource) {
 		declarations.computeIfAbsent(artifactId, DeclaredDependency::new)
 				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
+	}
+
+	/**
+	 * Promote each unresolved declaration to a usage when the given resolver
+	 * yields a {@link Dependency}.
+	 * <p>
+	 * Declarations whose artifact already has a registered usage are left
+	 * untouched. For each remaining declaration the resolver is invoked, and a
+	 * non-{@literal null} result is registered as a usage using the resolved
+	 * dependency's first declaration source and first version source.
+	 * @param resolver function that resolves a declaration to a usage, or returns
+	 * {@literal null} when no resolution is available.
+	 */
+	public void promoteResolvedDeclarations(Function<DeclaredDependency, @Nullable Dependency> resolver) {
+
+		for (DeclaredDependency declaration : declarations.values()) {
+
+			if (usages.containsKey(declaration.getArtifactId())) {
+				continue;
+			}
+
+			Dependency resolved = resolver.apply(declaration);
+			if (resolved == null) {
+				continue;
+			}
+
+			DeclarationSource declarationSource = resolved.getDeclarationSources().iterator().next();
+			VersionSource versionSource = resolved.getVersionSources().iterator().next();
+			registerUsage(resolved.getArtifactId(), resolved.getCurrentVersion(), declarationSource, versionSource);
+		}
 	}
 
 	/**

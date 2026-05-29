@@ -16,14 +16,19 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.DependencyScanEntry;
+import biz.paluch.dap.DependencySource;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.ProjectStateUpdater;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -36,16 +41,21 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import icons.GradleIcons;
+import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
+import org.jetbrains.plugins.gradle.settings.GradleSettings;
+import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlElement;
 
 import org.springframework.util.Assert;
@@ -55,7 +65,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-class GradleAssistant implements DependencyAssistant {
+class GradleAssistant implements DependencyAssistant, DependencySource {
 
 	@Override
 	public String getId() {
@@ -79,13 +89,92 @@ class GradleAssistant implements DependencyAssistant {
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateProjectState(project).getAllDependencies(indicator);
+		return new ProjectStateUpdater(project).aggregate(this, indicator);
 	}
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
 		new GradleInitService().execute(project, null);
-		new UpdateProjectState(project).readAndUpdateAll(indicator);
+		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
+	}
+
+	@Override
+	public List<DependencyScanEntry> enumerate(Project project) {
+
+		if (!GradleProjectContext.isGradleProject(project)) {
+			return List.of();
+		}
+
+		Collection<GradleProjectSettings> settings = GradleSettings.getInstance(project).getLinkedProjectsSettings();
+		PsiManager psiManager = PsiManager.getInstance(project);
+		LocalFileSystem lfs = LocalFileSystem.getInstance();
+
+		List<VirtualFile> linkedDirectories = new ArrayList<>(settings.size());
+		for (GradleProjectSettings setting : settings) {
+			VirtualFile directory = resolveLinkedDirectory(setting, lfs);
+			if (directory != null) {
+				linkedDirectories.add(directory);
+			}
+		}
+
+		List<DependencyScanEntry> entries = new ArrayList<>();
+
+		for (VirtualFile directory : linkedDirectories) {
+			for (String name : GradleUtils.GRADLE_SCRIPT_NAMES) {
+				addEntry(project, psiManager, directory, name, entries);
+			}
+			addEntry(project, psiManager, directory, GradleUtils.LIBS_VERSIONS_TOML, entries);
+		}
+
+		for (VirtualFile directory : linkedDirectories) {
+			addEntry(project, psiManager, directory, GradleUtils.GRADLE_PROPERTIES, entries);
+		}
+
+		return entries;
+	}
+
+	@Override
+	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
+
+		if (!supports(file)) {
+			return null;
+		}
+
+		return DependencyScanEntry.of(file, GradleProjectContext.of(project, file));
+	}
+
+	@Override
+	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
+		PsiFile anchor = entry.anchor();
+		new GradleDependencyCollector(anchor.getProject()).collect(anchor, collector);
+	}
+
+	private static @Nullable VirtualFile resolveLinkedDirectory(GradleProjectSettings setting, LocalFileSystem lfs) {
+
+		String path = setting.getExternalProjectPath();
+		if (StringUtils.isEmpty(path)) {
+			return null;
+		}
+
+		VirtualFile directory = lfs.findFileByPath(path);
+		if (directory == null || !directory.isDirectory()) {
+			return null;
+		}
+		return directory;
+	}
+
+	private static void addEntry(Project project, PsiManager psiManager, VirtualFile directory, String relativePath,
+			List<DependencyScanEntry> entries) {
+
+		VirtualFile child = directory.findFileByRelativePath(relativePath);
+		if (child == null || child.isDirectory()) {
+			return;
+		}
+
+		PsiFile file = psiManager.findFile(child);
+		if (file != null) {
+			entries.add(DependencyScanEntry.of(file, GradleProjectContext.of(project, file)));
+		}
 	}
 
 	@Override
@@ -98,11 +187,13 @@ class GradleAssistant implements DependencyAssistant {
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
 				it -> {
 					GradleProjectContext context = GradleProjectContext.of(project, anchor);
-					return new GradleDependencyContext(project, anchor.getVirtualFile(), context);
+					return new GradleDependencyContext(this, project, anchor.getVirtualFile(), context);
 				});
 	}
 
 	static class GradleDependencyContext implements ProjectDependencyContext {
+
+		private final GradleAssistant assistant;
 
 		private final Project project;
 
@@ -112,8 +203,10 @@ class GradleAssistant implements DependencyAssistant {
 
 		private final StateService service;
 
-		GradleDependencyContext(Project project, VirtualFile anchor, GradleProjectContext projectContext) {
+		GradleDependencyContext(GradleAssistant assistant, Project project, VirtualFile anchor,
+				GradleProjectContext projectContext) {
 
+			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
@@ -142,7 +235,12 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public void invalidateState(PsiFile file) {
-			new UpdateProjectState(project).update(file);
+
+			if (!GradleUtils.isGradleFile(file)) {
+				return;
+			}
+
+			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override

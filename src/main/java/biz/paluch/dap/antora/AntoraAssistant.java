@@ -16,14 +16,21 @@
 
 package biz.paluch.dap.antora;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.DependencyScanEntry;
+import biz.paluch.dap.DependencySource;
+import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.ProjectStateUpdater;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -34,6 +41,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
@@ -49,7 +57,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.search.FileTypeIndex;
+import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.util.CachedValuesManager;
+import org.jetbrains.yaml.YAMLFileType;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
@@ -72,7 +83,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class AntoraAssistant implements DependencyAssistant {
+public class AntoraAssistant implements DependencyAssistant, DependencySource {
 
 	private static final PluginId YAML = PluginId.getId("org.jetbrains.plugins.yaml");
 
@@ -102,12 +113,61 @@ public class AntoraAssistant implements DependencyAssistant {
 
 	@Override
 	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateProjectState(project).readAndUpdateAll(it -> createContext(project, it), indicator);
+		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
 	}
 
 	@Override
 	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateProjectState(project).getAllDependencies(indicator);
+		DependencyCollector aggregate = new ProjectStateUpdater(project).aggregate(this, indicator);
+		aggregate.addAllReleaseSources(AntoraProjectContext.getReleaseSources(project));
+		return aggregate;
+	}
+
+	@Override
+	public List<DependencyScanEntry> enumerate(Project project) {
+
+		if (!AVAILABLE) {
+			return List.of();
+		}
+
+		List<DependencyScanEntry> entries = new ArrayList<>();
+		PsiManager psiManager = PsiManager.getInstance(project);
+		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML,
+				GlobalSearchScope.projectScope(project));
+
+		for (VirtualFile yaml : yamlFiles) {
+
+			if (!AntoraUtils.isPlaybookFile(yaml)) {
+				continue;
+			}
+
+			PsiFile psiFile = psiManager.findFile(yaml);
+			if (psiFile != null) {
+				entries.add(DependencyScanEntry.of(psiFile, AntoraProjectContext.of(project, yaml)));
+			}
+		}
+
+		return entries;
+	}
+
+	@Override
+	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
+
+		if (!supports(file)) {
+			return null;
+		}
+
+		return DependencyScanEntry.of(file, AntoraProjectContext.of(project, file.getVirtualFile()));
+	}
+
+	@Override
+	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
+		new AntoraDependencyCollector().doCollect(entry.anchor(), collector);
+	}
+
+	@Override
+	public IntrospectedDependencies introspect(Project project) {
+		return new GitRefIntrospectedDependencies(StateService.getInstance(project).getCache());
 	}
 
 	@Override
@@ -119,14 +179,16 @@ public class AntoraAssistant implements DependencyAssistant {
 
 		AntoraProjectContext injected = anchor.getUserData(AntoraProjectContext.KEY);
 		if (injected != null) {
-			return new AntoraDependencyContext(project, anchor.getVirtualFile(), injected);
+			return new AntoraDependencyContext(this, project, anchor.getVirtualFile(), injected);
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> {
-					AntoraProjectContext context = AntoraProjectContext.of(project, it.getVirtualFile());
-					return new AntoraDependencyContext(project, it.getVirtualFile(), context);
-				});
+				it -> createContext(this, project, it.getVirtualFile()));
+	}
+
+	private static ProjectDependencyContext createContext(AntoraAssistant assistant, Project project,
+			VirtualFile anchor) {
+		return new AntoraDependencyContext(assistant, project, anchor, AntoraProjectContext.of(project, anchor));
 	}
 
 	private static boolean isYamlAvailable() {
@@ -140,13 +202,17 @@ public class AntoraAssistant implements DependencyAssistant {
 
 	private static class AntoraDependencyContext implements ProjectDependencyContext {
 
+		private final AntoraAssistant assistant;
+
 		private final Project project;
 
 		private final VirtualFile anchor;
 
 		private final AntoraProjectContext projectContext;
 
-		AntoraDependencyContext(Project project, VirtualFile anchor, AntoraProjectContext projectContext) {
+		AntoraDependencyContext(AntoraAssistant assistant, Project project, VirtualFile anchor,
+				AntoraProjectContext projectContext) {
+			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
@@ -179,7 +245,7 @@ public class AntoraAssistant implements DependencyAssistant {
 				return;
 			}
 
-			new UpdateProjectState(project).update(file, it -> this);
+			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override
