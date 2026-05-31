@@ -37,7 +37,6 @@ import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
@@ -53,8 +52,7 @@ import org.jspecify.annotations.Nullable;
  * GitHub REST API via the bundled GitHub plugin's
  * {@link GithubApiRequestExecutor}.
  *
- * <p>
- * The result is the union of two sources:
+ * <p>The result is the union of two sources:
  * <ul>
  * <li>All GitHub Releases provide the publication date used for ordering and
  * display, and</li>
@@ -63,15 +61,13 @@ import org.jspecify.annotations.Nullable;
  * repositories that do not publish GitHub Releases.</li>
  * </ul>
  *
- * <p>
- * Many projects do not publish GitHub Releases; the tag fallback ensures
+ * <p>Many projects do not publish GitHub Releases; the tag fallback ensures
  * those still expose update candidates. Tag entries without a release
  * contribute a version with {@literal null} date and currently no cached SHA.
  * Release entries without a matching fetched tag contribute a version with
  * {@literal null} SHA.
  *
- * <p>
- * Results are cached into the shared {@link biz.paluch.dap.state.Cache} as
+ * <p>Results are cached into the shared {@link biz.paluch.dap.state.Cache} as
  * {@link CachedRelease} entries with the SHA stored in the optional {@code sha}
  * field.
  *
@@ -158,13 +154,9 @@ public class GitHubReleaseSource implements ReleaseSource {
 	 */
 	public List<Release> fetchAllReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
-		try {
-			Map<String, String> shaByTag = fetchTagShas(artifactId, indicator);
-			List<GitHubReleaseDto> releases = fetchReleases(artifactId, indicator);
-			return createReleases(releases, shaByTag);
-		} catch (ProcessCanceledException ex) {
-			throw ex;
-		}
+		Map<String, String> shaByTag = fetchTagShas(artifactId, indicator);
+		List<GitHubReleaseDto> releases = fetchReleases(artifactId, indicator);
+		return createReleases(releases, shaByTag);
 	}
 
 	private List<Release> createReleases(List<GitHubReleaseDto> releases, Map<String, String> shaByTag) {
@@ -182,7 +174,8 @@ public class GitHubReleaseSource implements ReleaseSource {
 
 			String publishedAt = gitHubRelease.publishedAt();
 			LocalDateTime releaseDate = StringUtils.hasText(publishedAt)
-					? OffsetDateTime.parse(publishedAt).toLocalDateTime() : null;
+					? OffsetDateTime.parse(publishedAt).toLocalDateTime()
+					: null;
 
 			Release.tryFrom(tagName, releaseDate, shaByTag.get(tagName)).ifPresent(result::add);
 		}

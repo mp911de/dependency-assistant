@@ -51,12 +51,9 @@ import org.jspecify.annotations.Nullable;
  */
 class GitRepositoryResolver {
 
-	private final Project project;
-
 	private final GitRepositoryManager repositoryManager;
 
 	GitRepositoryResolver(Project project) {
-		this.project = project;
 		this.repositoryManager = GitRepositoryManager.getInstance(project);
 	}
 

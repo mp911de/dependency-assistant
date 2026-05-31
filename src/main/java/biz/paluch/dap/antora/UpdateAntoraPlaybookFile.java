@@ -129,7 +129,6 @@ class UpdateAntoraPlaybookFile {
 		int versionStart = value.indexOf(RELEASE_DOWNLOAD_FRAGMENT) + RELEASE_DOWNLOAD_FRAGMENT.length();
 		int versionEnd = value.indexOf('/', versionStart);
 		String replacement = value.substring(0, versionStart) + renderedVersion + value.substring(versionEnd);
-
 		site.replaceRawValue(replacement, factory);
 	}
 
