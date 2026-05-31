@@ -41,11 +41,6 @@ enum AbsentDependencyContext implements ProjectDependencyContext {
 	}
 
 	@Override
-	public void invalidateState(PsiFile file) {
-		throw new IllegalStateException("No dependency context available");
-	}
-
-	@Override
 	public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 		throw new IllegalStateException("No dependency context available");
 	}

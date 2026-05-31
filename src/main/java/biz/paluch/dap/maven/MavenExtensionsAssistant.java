@@ -16,11 +16,14 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
@@ -29,12 +32,17 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.search.DelegatingGlobalSearchScope;
+import com.intellij.psi.search.FileTypeIndex;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 
 import org.springframework.util.Assert;
@@ -67,13 +75,42 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	}
 
 	@Override
-	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateExtensionsProjectState(project).getAllDependencies(indicator);
+	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
+		return indexer.aggregate(this);
 	}
 
 	@Override
-	public void initializeState(Project project, ProgressIndicator indicator) {
-		new UpdateExtensionsProjectState(project).readAndUpdateAll(indicator);
+	public List<PsiFile> enumerate(Project project) {
+
+		PsiManager psiManager = PsiManager.getInstance(project);
+		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
+
+			@Override
+			public boolean contains(VirtualFile file) {
+				return super.contains(file) && MavenUtils.isMavenExtensionsFile(file);
+			}
+
+		};
+
+		Collection<VirtualFile> xmlFiles = FileTypeIndex.getFiles(XmlFileType.INSTANCE, scope);
+		List<PsiFile> anchors = new ArrayList<>();
+
+		for (VirtualFile xmlFile : xmlFiles) {
+			PsiFile psiFile = psiManager.findFile(xmlFile);
+			if (psiFile != null) {
+				anchors.add(psiFile);
+			}
+		}
+
+		return anchors;
+	}
+
+	@Override
+	public void collect(PsiFile anchor, DependencyCollector collector) {
+
+		MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(
+				StateService.getInstance(anchor.getProject()).getCache());
+		dependencyCollector.doCollect(anchor, PropertyResolver.empty(), collector);
 	}
 
 	@Override
@@ -81,6 +118,10 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		if (!supports(anchor)) {
 			throw new IllegalStateException("Maven integration does not support " + anchor);
+		}
+
+		if (anchor.getVirtualFile() == null) {
+			return ProjectDependencyContext.absent();
 		}
 
 		return new MavenExtensionContext(project, anchor.getVirtualFile());
@@ -117,17 +158,12 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return List.of(ReleaseSource.mavenCentral());
+			return MavenUtils.getReleaseSources(project);
 		}
 
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return MavenAssistant.MavenInterface.INSTANCE;
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-			new UpdateExtensionsProjectState(project).readAndUpdate(file);
 		}
 
 		@Override

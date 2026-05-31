@@ -22,6 +22,7 @@ import java.util.List;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
@@ -47,6 +48,7 @@ public class PostStartup implements ProjectActivity {
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
 
 		DumbService.getInstance(project).runWhenSmart(() -> {
+
 			ProgressManager.getInstance()
 					.run(new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), false) {
 
@@ -65,15 +67,16 @@ public class PostStartup implements ProjectActivity {
 
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, assistants.size());
+		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
 		for (DependencyAssistant assistant : assistants) {
 
 			steps.setText(MessageBundle.message("post-startup.indexing", assistant.getDisplayName()));
-			assistant.initializeState(project, indicator);
+			assistant.initializeState(indexer);
 			steps.setFraction(1);
 			steps.nextStep();
 		}
 
-		StateService service = StateService.getInstance(project);
+		StateService service = indexer.getService();
 		if (!service.hasBeenUsed()) {
 			return;
 		}

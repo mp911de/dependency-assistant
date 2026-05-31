@@ -56,12 +56,6 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	InterfaceAssistant getInterfaceAssistant();
 
 	/**
-	 * Invalidate and re-collect the state affected by the changed file.
-	 * @param file the PSI file that was saved; must not be {@literal null}.
-	 */
-	void invalidateState(PsiFile file);
-
-	/**
 	 * Scan the build files reachable from the anchor file and return the aggregated
 	 * dependency data.
 	 * @param indicator the progress indicator to report to; must not be

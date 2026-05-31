@@ -55,7 +55,9 @@ class MavenExtensionsParserTests {
 			""")
 	void directDependenciesWithInlineVersionsAreDiscovered(XmlFile file) {
 
-		DependencyCollector collector = new UpdateExtensionsProjectState(file.getProject()).doUpdate(file);
+		MavenExtensionsAssistant assistant = new MavenExtensionsAssistant();
+		DependencyCollector collector = new DependencyCollector();
+		assistant.collect(file, collector);
 
 		assertThat(collector)
 				.hasDependencyUsage("commons-lang3")

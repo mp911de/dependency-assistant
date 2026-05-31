@@ -71,10 +71,6 @@ class MavenWrapperUtils {
 
 	public static final String WRAPPER_FILENAME = "maven-wrapper.properties";
 
-	private static final String WRAPPER_DIR = "wrapper";
-
-	private static final String MVN_DIR = ".mvn";
-
 	/**
 	 * Return file-absolute ranges for the version segments in a wrapper URL.
 	 * @param property the wrapper property to inspect.
@@ -149,30 +145,20 @@ class MavenWrapperUtils {
 	 * Return whether the given file is a Maven Wrapper properties file named
 	 * {@code maven-wrapper.properties}.
 	 */
-	static boolean isWrapperFile(@Nullable PsiFile file) {
-		return file instanceof PropertiesFile propertiesFile && WRAPPER_FILENAME.equals(file.getName());
+	static boolean isWrapperFile(@Nullable VirtualFile file) {
+		return file != null && WRAPPER_FILENAME.equals(file.getName());
 	}
 
 	/**
-	 * Return whether the given file is a Maven Wrapper properties file located at
-	 * {@code .mvn/wrapper/maven-wrapper.properties}.
+	 * Return whether the given file is a Maven Wrapper properties file named
+	 * {@code maven-wrapper.properties}.
 	 */
-	static boolean isWrapperFileExact(@Nullable VirtualFile file) {
-
-		if (file == null || !WRAPPER_FILENAME.equals(file.getName())) {
-			return false;
-		}
-
-		VirtualFile parent = file.getParent();
-		if (parent == null || !WRAPPER_DIR.equals(parent.getName())) {
-			return false;
-		}
-
-		VirtualFile grandParent = parent.getParent();
-		return grandParent != null && MVN_DIR.equals(grandParent.getName());
+	static boolean isWrapperFile(@Nullable PsiFile file) {
+		return file instanceof PropertiesFile && WRAPPER_FILENAME.equals(file.getName());
 	}
 
 	public static ProjectId createProjectId(VirtualFile virtualFile) {
 		return new ProjectId("org.apache.maven", "apache-maven", virtualFile.getPath());
 	}
+
 }

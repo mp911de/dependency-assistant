@@ -17,11 +17,13 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.ProjectStateIndexer;
 import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
@@ -59,8 +61,6 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 			files.add(virtualFile);
 		}
 		invalidateState(project, files);
-
-		super.processDocuments(project, documents);
 	}
 
 	private void invalidateState(Project project, List<VirtualFile> files) {
@@ -80,15 +80,42 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 				}
 			}
 
-			List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
-			Map<DependencyAssistant, List<PsiFile>> grouped = SaveStateRefresh.groupByOwner(assistants, psiFiles);
+			Map<DependencyAssistant, List<PsiFile>> grouped = groupByOwner(project, psiFiles);
 			if (grouped.isEmpty()) {
-				return null;
+				return;
 			}
 
-			new SaveStateRefresh(project).refresh(grouped, new EmptyProgressIndicator());
-			return null;
-		}).inSmartMode(project).expireWith(project).submit(AppExecutorUtil.getAppExecutorService());
+			ProjectStateIndexer indexer = new ProjectStateIndexer(project, new EmptyProgressIndicator());
+			grouped.forEach((assistant, buildFiles) -> {
+
+				if (buildFiles.size() > 10) {
+					indexer.readAndUpdateAll(assistant);
+				} else {
+					for (PsiFile buildFile : buildFiles) {
+						indexer.invalidateFile(assistant, buildFile);
+					}
+				}
+			});
+
+		}).inSmartMode(project).submit(AppExecutorUtil.getAppExecutorService());
+	}
+
+	/**
+	 * Group the given files under the assistants that claim them.
+	 */
+	public static Map<DependencyAssistant, List<PsiFile>> groupByOwner(Project project,
+			List<PsiFile> files) {
+
+		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
+		Map<DependencyAssistant, List<PsiFile>> grouped = new LinkedHashMap<>();
+		for (PsiFile file : files) {
+			for (DependencyAssistant assistant : assistants) {
+				if (assistant.supports(file)) {
+					grouped.computeIfAbsent(assistant, k -> new ArrayList<>()).add(file);
+				}
+			}
+		}
+		return grouped;
 	}
 
 }

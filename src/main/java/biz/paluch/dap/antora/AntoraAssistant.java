@@ -24,13 +24,11 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyScanEntry;
-import biz.paluch.dap.DependencySource;
 import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateUpdater;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -57,8 +55,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.yaml.YAMLFileType;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
@@ -70,20 +70,18 @@ import org.springframework.util.Assert;
 /**
  * Antora playbook implementation of {@link DependencyAssistant}.
  *
- * <p>
- * Supports YAML files named {@code antora-playbook.yml} whose
+ * <p>Supports YAML files named {@code antora-playbook.yml} whose
  * {@code ui.bundle.url} declaration references a Git-hosted release asset. The
  * assistant is only active when the YAML plugin is available, which is checked
  * through class-availability guards. Always-loaded code keeps optional plugin
  * types out of eager class loading.
  *
- * <p>
- * Each supported file forms its own lightweight project context keyed by the
+ * <p>Each supported file forms its own lightweight project context keyed by the
  * file path.
  *
  * @author Mark Paluch
  */
-public class AntoraAssistant implements DependencyAssistant, DependencySource {
+public class AntoraAssistant implements DependencyAssistant {
 
 	private static final PluginId YAML = PluginId.getId("org.jetbrains.plugins.yaml");
 
@@ -112,28 +110,32 @@ public class AntoraAssistant implements DependencyAssistant, DependencySource {
 	}
 
 	@Override
-	public void initializeState(Project project, ProgressIndicator indicator) {
-		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		DependencyCollector aggregate = new ProjectStateUpdater(project).aggregate(this, indicator);
-		aggregate.addAllReleaseSources(AntoraProjectContext.getReleaseSources(project));
+	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
+		DependencyCollector aggregate = indexer.aggregate(this);
+		aggregate.addAllReleaseSources(AntoraProjectContext.getReleaseSources(indexer.getProject()));
 		return aggregate;
 	}
 
 	@Override
-	public List<DependencyScanEntry> enumerate(Project project) {
+	public List<PsiFile> enumerate(Project project) {
 
 		if (!AVAILABLE) {
 			return List.of();
 		}
 
-		List<DependencyScanEntry> entries = new ArrayList<>();
 		PsiManager psiManager = PsiManager.getInstance(project);
+		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
+
+			@Override
+			public boolean contains(VirtualFile file) {
+				return super.contains(file) && AntoraUtils.isPlaybookFile(file);
+			}
+
+		};
+
+		List<PsiFile> anchors = new ArrayList<>();
 		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML,
-				GlobalSearchScope.projectScope(project));
+				scope);
 
 		for (VirtualFile yaml : yamlFiles) {
 
@@ -143,26 +145,16 @@ public class AntoraAssistant implements DependencyAssistant, DependencySource {
 
 			PsiFile psiFile = psiManager.findFile(yaml);
 			if (psiFile != null) {
-				entries.add(DependencyScanEntry.of(psiFile, AntoraProjectContext.of(project, yaml)));
+				anchors.add(psiFile);
 			}
 		}
 
-		return entries;
+		return anchors;
 	}
 
 	@Override
-	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
-
-		if (!supports(file)) {
-			return null;
-		}
-
-		return DependencyScanEntry.of(file, AntoraProjectContext.of(project, file.getVirtualFile()));
-	}
-
-	@Override
-	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
-		new AntoraDependencyCollector().doCollect(entry.anchor(), collector);
+	public void collect(PsiFile anchor, DependencyCollector collector) {
+		new AntoraDependencyCollector().doCollect(anchor, collector);
 	}
 
 	@Override
@@ -236,16 +228,6 @@ public class AntoraAssistant implements DependencyAssistant, DependencySource {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return AntoraInterface.INSTANCE;
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-
-			if (!AntoraUtils.isPlaybookFile(file)) {
-				return;
-			}
-
-			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override

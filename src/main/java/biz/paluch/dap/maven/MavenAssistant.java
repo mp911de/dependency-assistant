@@ -17,7 +17,6 @@
 package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,12 +25,10 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyScanEntry;
-import biz.paluch.dap.DependencySource;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateUpdater;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -57,7 +54,6 @@ import com.intellij.psi.xml.XmlFile;
 import icons.MavenIcons;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
-import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -66,7 +62,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-class MavenAssistant implements DependencyAssistant, DependencySource {
+class MavenAssistant implements DependencyAssistant {
 
 	@Override
 	public String getId() {
@@ -89,20 +85,15 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 	}
 
 	@Override
-	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
+	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
 
-		DependencyCollector aggregate = new ProjectStateUpdater(project).aggregate(this, indicator);
-		aggregate.addAllReleaseSources(MavenUtils.getReleaseSources(project));
+		DependencyCollector aggregate = indexer.aggregate(this);
+		aggregate.addAllReleaseSources(MavenUtils.getReleaseSources(indexer.getProject()));
 		return aggregate;
 	}
 
 	@Override
-	public void initializeState(Project project, ProgressIndicator indicator) {
-		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
-	}
-
-	@Override
-	public List<DependencyScanEntry> enumerate(Project project) {
+	public List<PsiFile> enumerate(Project project) {
 
 		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
 		if (!manager.isMavenizedProject()) {
@@ -110,7 +101,7 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 		}
 
 		PsiManager psiManager = PsiManager.getInstance(project);
-		List<DependencyScanEntry> entries = new ArrayList<>();
+		List<PsiFile> anchors = new ArrayList<>();
 
 		for (MavenProject mavenProject : manager.getProjects()) {
 
@@ -119,28 +110,17 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 			if (psiFile == null) {
 				continue;
 			}
-			entries.add(DependencyScanEntry.of(psiFile, MavenProjectContext.of(project, file)));
+			anchors.add(psiFile);
 		}
 
-		return entries;
+		return anchors;
 	}
 
 	@Override
-	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
+	public void collect(PsiFile anchor, DependencyCollector collector) {
 
-		if (!supports(file)) {
-			return null;
-		}
-
-		return DependencyScanEntry.of(file, MavenProjectContext.of(project, file));
-	}
-
-	@Override
-	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
-
-		PsiFile anchor = entry.anchor();
 		Project project = anchor.getProject();
-		MavenProjectContext context = mavenContext(entry);
+		MavenProjectContext context = MavenProjectContext.of(project, anchor);
 		PropertyResolver propertyResolver = MavenPropertyResolver.create(context, anchor);
 
 		new MavenDependencyCollector(StateService.getInstance(project).getCache())
@@ -149,10 +129,10 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 	}
 
 	@Override
-	public void collect(DependencyScanEntry entry, DependencyCollector collector,
+	public void collect(PsiFile anchor, DependencyCollector collector,
 			IntrospectedDependencies introspected) {
 
-		collect(entry, collector);
+		collect(anchor, collector);
 
 		if (introspected instanceof MavenIntrospectedDependencies maven) {
 			maven.register(collector);
@@ -177,15 +157,7 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 					it -> MavenProjectContext.of(project, anchor.getVirtualFile()));
 		}
 
-		return new MavenDependencyContext(this, project, anchor, anchor.getVirtualFile(), context);
-	}
-
-	private static MavenProjectContext mavenContext(DependencyScanEntry entry) {
-
-		if (entry.context() instanceof MavenProjectContext maven) {
-			return maven;
-		}
-		return MavenProjectContext.of(entry.anchor().getProject(), entry.anchor());
+		return new MavenDependencyContext(project, anchor, anchor.getVirtualFile(), context);
 	}
 
 	private static Map<String, String> localPropertyValues(PsiFile anchor, PropertyResolver propertyResolver) {
@@ -215,11 +187,7 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 
 	static class MavenDependencyContext implements ProjectDependencyContext {
 
-		private final MavenAssistant assistant;
-
 		private final MavenProjectContext projectContext;
-
-		private final Project project;
 
 		private final MavenPropertyResolver propertyResolver;
 
@@ -227,11 +195,9 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 
 		private final StateService service;
 
-		MavenDependencyContext(MavenAssistant assistant, Project project, PsiFile pomFile, VirtualFile anchor,
+		MavenDependencyContext(Project project, PsiFile pomFile, VirtualFile anchor,
 				MavenProjectContext projectContext) {
 
-			this.assistant = assistant;
-			this.project = project;
 			this.propertyResolver = MavenPropertyResolver.create(projectContext, pomFile);
 			this.projectContext = projectContext;
 			this.anchor = anchor;
@@ -256,16 +222,6 @@ class MavenAssistant implements DependencyAssistant, DependencySource {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return MavenInterface.INSTANCE;
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-
-			if (!MavenUtils.isMavenPomFile(file)) {
-				return;
-			}
-
-			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override

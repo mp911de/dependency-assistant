@@ -18,7 +18,6 @@ package biz.paluch.dap.maven;
 
 import java.util.Map;
 
-import biz.paluch.dap.DependencyScanEntry;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
@@ -65,7 +64,18 @@ class MavenFixtures {
 	public static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
 
 		if (MavenUtils.isMavenExtensionsFile(file)) {
-			return new UpdateExtensionsProjectState(file.getProject()).doUpdate(file);
+			MavenExtensionsAssistant assistant = new MavenExtensionsAssistant();
+			if (!assistant.supports(file)) {
+				return new DependencyCollector();
+			}
+			DependencyCollector collector = new DependencyCollector();
+			assistant.collect(file, collector);
+			StateService service = StateService.getInstance(file.getProject());
+			ProjectState projectState = service
+					.getProjectState(assistant.createContext(file.getProject(), file).getProjectId());
+			projectState.invalidateDependencies();
+			projectState.setDependencies(collector);
+			return collector;
 		}
 
 		MavenProject mavenProject = new MavenProject(file.getVirtualFile());
@@ -78,11 +88,10 @@ class MavenFixtures {
 		file.putUserData(MavenProjectContext.KEY, projectContext);
 
 		MavenAssistant assistant = new MavenAssistant();
-		DependencyScanEntry entry = DependencyScanEntry.of(file, projectContext);
 		DependencyCollector collector = new DependencyCollector();
 		collector.addPropertyValues(properties);
 		IntrospectedDependencies introspected = assistant.introspect(file.getProject());
-		assistant.collect(entry, collector, introspected);
+		assistant.collect(file, collector, introspected);
 		introspected.complete(collector);
 
 		StateService service = StateService.getInstance(file.getProject());

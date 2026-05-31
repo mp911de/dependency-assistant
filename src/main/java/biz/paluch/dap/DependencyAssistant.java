@@ -17,28 +17,25 @@
 package biz.paluch.dap;
 
 import biz.paluch.dap.artifact.DependencyCollector;
-import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
 /**
  * SPI for build-tool integrations such as Maven and Gradle.
  *
- * <p>
- * Implementations are contributed through the
+ * <p>Implementations are contributed through the
  * {@code biz.paluch.dap.assistant} extension point and are shared across
  * projects. They should therefore be stateless or hold only immutable
  * configuration.
  *
- * <p>
- * Support checks are expected to be cheap. Expensive parsing and state
+ * <p>Support checks are expected to be cheap. Expensive parsing and state
  * access belongs in project initialization, dependency scanning, or a
  * {@link ProjectDependencyContext}.
  *
  * @author Mark Paluch
  * @see ProjectDependencyContext
  */
-public interface DependencyAssistant {
+public interface DependencyAssistant extends DependencySource {
 
 	/**
 	 * Return the stable integration id.
@@ -53,44 +50,38 @@ public interface DependencyAssistant {
 
 	/**
 	 * Return whether this integration applies to the given project.
-	 * <p>
-	 * This conditional must not trigger I/O or PSI access.
-	 * @param project the IntelliJ project to inspect; must not be
-	 * {@literal null}.
+	 * <p>This conditional must not trigger I/O or PSI access.
+	 * @param project the IntelliJ project to inspect; must not be {@literal null}.
 	 */
 	boolean supports(Project project);
 
 	/**
 	 * Return whether this integration owns the given file.
-	 * <p>
-	 * This conditional must not trigger I/O or PSI access.
+	 * <p>This conditional must not trigger I/O or PSI access.
 	 * @param file the file to inspect; must not be {@literal null}.
 	 */
 	boolean supports(PsiFile file);
 
 	/**
 	 * Initialize project-scoped dependency state for this integration.
-	 * @param project the project to initialize; must not be {@literal null}.
-	 * @param indicator the progress indicator to report to; must not be
-	 * {@literal null}.
+	 * @param indexer the project state indexer.
 	 */
-	void initializeState(Project project, ProgressIndicator indicator);
+	default void initializeState(ProjectStateIndexer indexer) {
+		indexer.readAndUpdateAll(this);
+	}
 
 	/**
 	 * Scan all build files owned by this integration.
-	 * @param project the project to scan; must not be {@literal null}.
-	 * @param indicator the progress indicator to report to; must not be
-	 * {@literal null}.
+	 * @param indexer the project state indexer; must not be {@literal null}.
 	 * @return the aggregated dependency data.
 	 */
-	DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator);
+	DependencyCollector getAllDependencies(ProjectStateIndexer indexer);
 
 	/**
 	 * Create the file-scoped dependency context for the given anchor file.
-	 * <p>
-	 * Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
-	 * @param anchor the build file or catalog file that anchors the operation;
-	 * must not be {@literal null}.
+	 * <p>Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
+	 * @param anchor the build file or catalog file that anchors the operation; must
+	 * not be {@literal null}.
 	 * @return a file-scoped context.
 	 * @throws IllegalStateException if this integration does not own the file.
 	 */
@@ -100,11 +91,10 @@ public interface DependencyAssistant {
 
 	/**
 	 * Create the file-scoped dependency context for the given anchor file.
-	 * <p>
-	 * Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
+	 * <p>Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
 	 * @param project the IntelliJ project; must not be {@literal null}.
-	 * @param anchor the build file or catalog file that anchors the operation;
-	 * must not be {@literal null}.
+	 * @param anchor the build file or catalog file that anchors the operation; must
+	 * not be {@literal null}.
 	 * @return a file-scoped context.
 	 * @throws IllegalStateException if this integration does not own the file.
 	 */

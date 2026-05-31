@@ -20,23 +20,21 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
 
 /**
- * Phase-scoped completion handle for one {@link ProjectStateUpdater} run.
+ * Phase-scoped completion handle for one {@link ProjectStateIndexer} run.
  *
- * <p>
- * A {@link DependencySource} produces a fresh instance per run, and the updater
- * invokes {@link #complete(DependencyCollector)} for each phase-one collector
- * after all enumeration and collection has finished. Implementations may use
- * scan-wide knowledge accumulated during collection to enrich each collector in
- * place. {@link #updateCache(Cache)} runs once, after all collectors have been
- * completed and all Project State stores have run.
+ * <p>A {@link DependencySource} produces a fresh instance per run, and the
+ * indexer invokes {@link #complete(DependencyCollector)} for each phase-one
+ * collector after all enumeration and collection has finished. Implementations
+ * may use scan-wide knowledge accumulated during collection to enrich each
+ * collector in place. {@link #updateCache(Cache)} runs once, after all
+ * collectors have been completed and all Project State stores have run.
  *
- * <p>
- * The empty instance returned by {@link #empty()} is usable by integrations
+ * <p>The empty instance returned by {@link #empty()} is usable by integrations
  * that do not require any post-scan introspection, such as NPM.
  *
  * @author Mark Paluch
  * @see DependencySource
- * @see ProjectStateUpdater
+ * @see ProjectStateIndexer
  */
 public interface IntrospectedDependencies {
 
@@ -46,8 +44,7 @@ public interface IntrospectedDependencies {
 	/**
 	 * Mutate the given collector in place using introspection state accumulated
 	 * during phase one.
-	 * <p>
-	 * Implementations must use the very instance produced by the updater during
+	 * <p>Implementations must use the very instance produced by the indexer during
 	 * phase one and must not return a substitute.
 	 * @param collector the collector to enrich; must not be {@literal null}.
 	 */
@@ -55,8 +52,7 @@ public interface IntrospectedDependencies {
 
 	/**
 	 * Update the persistent cache with any introspection-derived metadata.
-	 * <p>
-	 * Invoked only once per updater run, after all collectors have completed and
+	 * <p>Invoked only once per indexer run, after all collectors have completed and
 	 * after Project State stores have been applied.
 	 * @param cache the cache to mutate; must not be {@literal null}.
 	 */

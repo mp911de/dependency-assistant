@@ -44,6 +44,8 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 class DependencyCycleArchitectureTests {
 
 	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
+			.excludingClass("biz.paluch.dap.ProjectStateIndexer",
+					"ProjectStateIndexer drives DependencyAssistant for now; collapse DependencySource later")
 			.excludingClass("biz.paluch.dap.maven.wrapper.WrapperEntry", "closed hierarchy")
 			.excludingClass("biz.paluch.dap.npm.NpmGitRef",
 					"Fix todo's")

@@ -24,11 +24,9 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyScanEntry;
-import biz.paluch.dap.DependencySource;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateUpdater;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -55,8 +53,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jspecify.annotations.Nullable;
 
@@ -65,15 +65,14 @@ import org.springframework.util.Assert;
 /**
  * NPM implementation of {@link DependencyAssistant}.
  *
- * <p>
- * Supports {@code package.json} files whose JSON root carries a
+ * <p>Supports {@code package.json} files whose JSON root carries a
  * {@code dependencies} or {@code devDependencies} object. The assistant relies
  * on the bundled IntelliJ JSON support, declared via
  * {@code com.intellij.modules.json} in the plugin XML.
  *
  * @author Mark Paluch
  */
-public class NpmAssistant implements DependencyAssistant, DependencySource {
+public class NpmAssistant implements DependencyAssistant {
 
 	private static final PluginId JSON = PluginId.getId("com.intellij.modules.json");
 
@@ -100,28 +99,32 @@ public class NpmAssistant implements DependencyAssistant, DependencySource {
 	}
 
 	@Override
-	public void initializeState(Project project, ProgressIndicator indicator) {
-		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
-	}
+	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
 
-	@Override
-	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		DependencyCollector aggregate = new ProjectStateUpdater(project).aggregate(this, indicator);
-		aggregate.addAllReleaseSources(NpmProjectContext.getReleaseSources(project));
+		DependencyCollector aggregate = indexer.aggregate(this);
+		aggregate.addAllReleaseSources(NpmProjectContext.getReleaseSources(indexer.getProject()));
 		return aggregate;
 	}
 
 	@Override
-	public List<DependencyScanEntry> enumerate(Project project) {
+	public List<PsiFile> enumerate(Project project) {
 
 		if (!AVAILABLE) {
 			return List.of();
 		}
 
-		List<DependencyScanEntry> entries = new ArrayList<>();
+		List<PsiFile> anchors = new ArrayList<>();
+		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
+
+			@Override
+			public boolean contains(VirtualFile file) {
+				return !file.getPath().contains("node_modules") && super.contains(file) && NpmUtils.isPackageJson(file);
+			}
+
+		};
 		PsiManager psiManager = PsiManager.getInstance(project);
 		Collection<VirtualFile> jsonFiles = FileTypeIndex.getFiles(JsonFileType.INSTANCE,
-				GlobalSearchScope.projectScope(project));
+				scope);
 
 		for (VirtualFile file : jsonFiles) {
 
@@ -131,27 +134,16 @@ public class NpmAssistant implements DependencyAssistant, DependencySource {
 
 			PsiFile psiFile = psiManager.findFile(file);
 			if (psiFile != null) {
-				entries.add(DependencyScanEntry.of(psiFile, NpmProjectContext.of(project, file)));
+				anchors.add(psiFile);
 			}
 		}
 
-		return entries;
+		return anchors;
 	}
 
 	@Override
-	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
+	public void collect(PsiFile anchor, DependencyCollector collector) {
 
-		if (!supports(file)) {
-			return null;
-		}
-
-		return DependencyScanEntry.of(file, NpmProjectContext.of(project, file.getVirtualFile()));
-	}
-
-	@Override
-	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
-
-		PsiFile anchor = entry.anchor();
 		StateService service = StateService.getInstance(anchor.getProject());
 		new NpmDependencyCollector(service.getCache()).doCollect(anchor, collector);
 	}
@@ -172,7 +164,8 @@ public class NpmAssistant implements DependencyAssistant, DependencySource {
 				it -> buildCachedContext(this, project, it));
 	}
 
-	private static ProjectDependencyContext buildCachedContext(NpmAssistant assistant, Project project, PsiFile anchor) {
+	private static ProjectDependencyContext buildCachedContext(NpmAssistant assistant, Project project,
+			PsiFile anchor) {
 
 		NpmProjectContext context = NpmProjectContext.of(project, anchor.getVirtualFile());
 		return new NpmDependencyContext(assistant, project, anchor.getVirtualFile(), context);
@@ -222,16 +215,6 @@ public class NpmAssistant implements DependencyAssistant, DependencySource {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return NpmInterface.INSTANCE;
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-
-			if (!NpmUtils.isPackageJson(file)) {
-				return;
-			}
-
-			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override

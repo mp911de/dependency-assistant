@@ -24,11 +24,9 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyScanEntry;
-import biz.paluch.dap.DependencySource;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateUpdater;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -65,7 +63,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-class GradleAssistant implements DependencyAssistant, DependencySource {
+class GradleAssistant implements DependencyAssistant {
 
 	@Override
 	public String getId() {
@@ -88,18 +86,18 @@ class GradleAssistant implements DependencyAssistant, DependencySource {
 	}
 
 	@Override
-	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new ProjectStateUpdater(project).aggregate(this, indicator);
+	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
+		return indexer.aggregate(this);
 	}
 
 	@Override
-	public void initializeState(Project project, ProgressIndicator indicator) {
-		new GradleInitService().execute(project, null);
-		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
+	public void initializeState(ProjectStateIndexer indexer) {
+		new GradleInitService().execute(indexer.getProject(), null);
+		DependencyAssistant.super.initializeState(indexer);
 	}
 
 	@Override
-	public List<DependencyScanEntry> enumerate(Project project) {
+	public List<PsiFile> enumerate(Project project) {
 
 		if (!GradleProjectContext.isGradleProject(project)) {
 			return List.of();
@@ -117,35 +115,24 @@ class GradleAssistant implements DependencyAssistant, DependencySource {
 			}
 		}
 
-		List<DependencyScanEntry> entries = new ArrayList<>();
+		List<PsiFile> anchors = new ArrayList<>();
 
 		for (VirtualFile directory : linkedDirectories) {
 			for (String name : GradleUtils.GRADLE_SCRIPT_NAMES) {
-				addEntry(project, psiManager, directory, name, entries);
+				addAnchor(psiManager, directory, name, anchors);
 			}
-			addEntry(project, psiManager, directory, GradleUtils.LIBS_VERSIONS_TOML, entries);
+			addAnchor(psiManager, directory, GradleUtils.LIBS_VERSIONS_TOML, anchors);
 		}
 
 		for (VirtualFile directory : linkedDirectories) {
-			addEntry(project, psiManager, directory, GradleUtils.GRADLE_PROPERTIES, entries);
+			addAnchor(psiManager, directory, GradleUtils.GRADLE_PROPERTIES, anchors);
 		}
 
-		return entries;
+		return anchors;
 	}
 
 	@Override
-	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
-
-		if (!supports(file)) {
-			return null;
-		}
-
-		return DependencyScanEntry.of(file, GradleProjectContext.of(project, file));
-	}
-
-	@Override
-	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
-		PsiFile anchor = entry.anchor();
+	public void collect(PsiFile anchor, DependencyCollector collector) {
 		new GradleDependencyCollector(anchor.getProject()).collect(anchor, collector);
 	}
 
@@ -163,8 +150,8 @@ class GradleAssistant implements DependencyAssistant, DependencySource {
 		return directory;
 	}
 
-	private static void addEntry(Project project, PsiManager psiManager, VirtualFile directory, String relativePath,
-			List<DependencyScanEntry> entries) {
+	private static void addAnchor(PsiManager psiManager, VirtualFile directory, String relativePath,
+			List<PsiFile> anchors) {
 
 		VirtualFile child = directory.findFileByRelativePath(relativePath);
 		if (child == null || child.isDirectory()) {
@@ -173,7 +160,7 @@ class GradleAssistant implements DependencyAssistant, DependencySource {
 
 		PsiFile file = psiManager.findFile(child);
 		if (file != null) {
-			entries.add(DependencyScanEntry.of(file, GradleProjectContext.of(project, file)));
+			anchors.add(file);
 		}
 	}
 
@@ -231,16 +218,6 @@ class GradleAssistant implements DependencyAssistant, DependencySource {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return GradleInterface.INSTANCE;
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-
-			if (!GradleUtils.isGradleFile(file)) {
-				return;
-			}
-
-			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override

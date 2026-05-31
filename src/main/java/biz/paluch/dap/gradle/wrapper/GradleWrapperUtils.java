@@ -116,6 +116,10 @@ class GradleWrapperUtils {
 		return pos;
 	}
 
+	static boolean isWrapperFile(@Nullable VirtualFile file) {
+		return file != null && WRAPPER_FILENAME.equals(file.getName());
+	}
+
 	static boolean isWrapperFile(@Nullable PsiFile file) {
 		return file instanceof PropertiesFile && WRAPPER_FILENAME.equals(file.getName());
 	}

@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,35 +28,34 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.PropertyUtils;
-import biz.paluch.dap.util.StringUtils;
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.project.DumbModeTask;
-import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.search.DelegatingGlobalSearchScope;
+import com.intellij.psi.search.FilenameIndex;
+import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import icons.MavenIcons;
@@ -89,37 +90,42 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	}
 
 	@Override
-	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
-		return new UpdateWrapperPropertiesProjectState(project).getAllDependencies(indicator);
+	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
+		return indexer.aggregate(this);
 	}
 
 	@Override
-	public void initializeState(Project project, ProgressIndicator indicator) {
+	public List<PsiFile> enumerate(Project project) {
 
-		Cache cache = StateService.getInstance(project).getCache();
+		PsiManager psiManager = PsiManager.getInstance(project);
+		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
 
-		UpdateWrapperPropertiesProjectState init = new UpdateWrapperPropertiesProjectState(project);
-		init.readAndUpdateAll(indicator);
+			@Override
+			public boolean contains(VirtualFile file) {
+				return super.contains(file) && MavenWrapperUtils.isWrapperFile(file);
+			}
 
-		// avoid excessive network access so this is disabled in tests.
-		if (StringUtils.isEmpty(System.getProperty("junit.jupiter.extensions.autodetection.enabled"))) {
+		};
 
-			DumbService ds = DumbService.getInstance(project);
-			ds.queueTask(new DumbModeTask() {
+		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(MavenWrapperUtils.WRAPPER_FILENAME,
+				scope);
+		List<PsiFile> anchors = new ArrayList<>(files.size());
 
-				@Override
-				public void performInDumbMode(ProgressIndicator indicator) {
-					RefreshMavenWrapperVersions refresh = new RefreshMavenWrapperVersions(cache,
-							init.getReleaseSources());
-					refresh.refreshWrapperVersions(indicator);
+		for (VirtualFile file : files) {
+			PsiFile psiFile = psiManager.findFile(file);
+			if (psiFile != null && supports(psiFile)) {
+				anchors.add(psiFile);
+			}
+		}
 
-					ds.runWhenSmart(() -> {
-						DaemonCodeAnalyzer.getInstance(project)
-								.restart(MessageBundle.message("action.refresh-releases.task.done.title"));
-					});
-				}
+		return anchors;
+	}
 
-			});
+	@Override
+	public void collect(PsiFile anchor, DependencyCollector collector) {
+
+		if (anchor instanceof PropertiesFile propertiesFile) {
+			new MavenWrapperParser(collector).collect(propertiesFile);
 		}
 	}
 
@@ -204,16 +210,6 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return MavenWrapperInterface.INSTANCE;
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-
-			if (!MavenWrapperUtils.isWrapperFile(file)) {
-				return;
-			}
-
-			new UpdateWrapperPropertiesProjectState(project).update(file);
 		}
 
 		@Override

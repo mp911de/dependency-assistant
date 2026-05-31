@@ -26,13 +26,11 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.DependencyScanEntry;
-import biz.paluch.dap.DependencySource;
 import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateUpdater;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -86,7 +84,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class GitHubAssistant implements DependencyAssistant, DependencySource {
+public class GitHubAssistant implements DependencyAssistant {
 
 	private static final PluginId YAML = PluginId.getId("org.jetbrains.plugins.yaml");
 
@@ -113,54 +111,49 @@ public class GitHubAssistant implements DependencyAssistant, DependencySource {
 	}
 
 	@Override
-	public void initializeState(Project project, ProgressIndicator indicator) {
-		new ProjectStateUpdater(project).readAndUpdateAll(this, indicator);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(Project project, ProgressIndicator indicator) {
+	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
 
 		DependencyCollector aggregate = new DependencyCollector();
-		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(project);
+		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(indexer.getProject());
 		Map<GitRepositoryMetadata, GitHubReleaseSource> releaseSources = new HashMap<>();
 
-		List<DependencyScanEntry> entries = enumerate(project);
+		List<PsiFile> anchors = enumerate(indexer.getProject());
 		int processed = 0;
 
-		for (DependencyScanEntry entry : entries) {
+		for (PsiFile anchor : anchors) {
 
-			indicator.checkCanceled();
-			if (entry.context().isAvailable()) {
-				collect(entry, aggregate);
+			indexer.checkCanceled();
+			if (createContext(indexer.getProject(), anchor).isAvailable()) {
+				collect(anchor, aggregate);
 				GitRepositoryMetadata coordinates = repositoryResolver
-						.resolveOwnerAndRepository(entry.anchor().getVirtualFile());
+						.resolveOwnerAndRepository(anchor.getVirtualFile());
 				if (coordinates != null) {
 					releaseSources.computeIfAbsent(coordinates,
-							it -> GitHubReleaseSource.from(project, it.host()));
+							it -> GitHubReleaseSource.from(indexer.getProject(), it.host()));
 				}
 			}
 			processed += 1;
-			indicator.setFraction((double) processed / entries.size());
+			indexer.getProgressIndicator().setFraction((double) processed / anchors.size());
 		}
 
 		if (releaseSources.isEmpty()) {
-			aggregate.addReleaseSource(GitHubReleaseSource.from(project));
+			aggregate.addReleaseSource(GitHubReleaseSource.from(indexer.getProject()));
 		} else {
 			aggregate.addAllReleaseSources(releaseSources.values());
 		}
 
-		introspect(project).complete(aggregate);
+		introspect(indexer.getProject()).complete(aggregate);
 		return aggregate;
 	}
 
 	@Override
-	public List<DependencyScanEntry> enumerate(Project project) {
+	public List<PsiFile> enumerate(Project project) {
 
 		if (!AVAILABLE) {
 			return List.of();
 		}
 
-		List<DependencyScanEntry> entries = new ArrayList<>();
+		List<PsiFile> anchors = new ArrayList<>();
 		PsiManager psiManager = PsiManager.getInstance(project);
 		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML,
 				GlobalSearchScope.projectScope(project));
@@ -173,26 +166,15 @@ public class GitHubAssistant implements DependencyAssistant, DependencySource {
 
 			PsiFile psiFile = psiManager.findFile(yaml);
 			if (psiFile != null) {
-				entries.add(DependencyScanEntry.of(psiFile, GitHubProjectContext.of(project, yaml)));
+				anchors.add(psiFile);
 			}
 		}
 
-		return entries;
+		return anchors;
 	}
 
 	@Override
-	public @Nullable DependencyScanEntry createEntry(Project project, PsiFile file) {
-
-		if (!supports(file)) {
-			return null;
-		}
-
-		return DependencyScanEntry.of(file, GitHubProjectContext.of(project, file.getVirtualFile()));
-	}
-
-	@Override
-	public void collect(DependencyScanEntry entry, DependencyCollector collector) {
-		PsiFile anchor = entry.anchor();
+	public void collect(PsiFile anchor, DependencyCollector collector) {
 		new GitHubDependencyCollector(anchor.getProject()).doCollect(anchor, collector);
 	}
 
@@ -263,16 +245,6 @@ public class GitHubAssistant implements DependencyAssistant, DependencySource {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return GitHubInterface.INSTANCE;
-		}
-
-		@Override
-		public void invalidateState(PsiFile file) {
-
-			if (!GitHubUtils.isWorkflowFile(file)) {
-				return;
-			}
-
-			new ProjectStateUpdater(project).invalidateFile(assistant, file);
 		}
 
 		@Override

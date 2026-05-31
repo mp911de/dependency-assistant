@@ -18,7 +18,6 @@ package biz.paluch.dap;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.extensions.ExtensionPointName;
@@ -88,24 +87,6 @@ public class DependencyAssistantDispatcher {
 		}
 
 		return integrations;
-	}
-
-	/**
-	 * Invoke the given consumer with a {@link ProjectDependencyContext} for each
-	 * integration that claims the file.
-	 * @param file the PSI file to which the context applies.
-	 * @param consumer the callback invoked with a context per matching integration.
-	 */
-	public static void doWithContext(PsiFile file, Consumer<ProjectDependencyContext> consumer) {
-
-		for (DependencyAssistant assistant : INTEGRATIONS.getExtensionList()) {
-			if (assistant.supports(file)) {
-				ProjectDependencyContext context = assistant.createContext(file.getProject(), file);
-				if (context.isAvailable()) {
-					consumer.accept(context);
-				}
-			}
-		}
 	}
 
 	/**

@@ -34,6 +34,7 @@ import java.util.function.Function;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
@@ -145,8 +146,8 @@ class DependencyCheck {
 
 		indicator.setText(
 				MessageBundle.message("action.index-dependencies.indexing.assistant", assistant.getDisplayName()));
-
-		DependencyCollector collector = assistant.getAllDependencies(project, indicator);
+		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
+		DependencyCollector collector = assistant.getAllDependencies(indexer);
 		List<ArtifactId> usages = collector.getUsages().stream().map(Dependency::getArtifactId).toList();
 		List<ArtifactId> declarations = collector.getDeclarations().stream().map(DeclaredDependency::getArtifactId)
 				.toList();
