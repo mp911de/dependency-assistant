@@ -26,7 +26,6 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -34,13 +33,12 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.GitVersionResolver;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.json.JsonFileType;
@@ -96,14 +94,6 @@ public class NpmAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return AVAILABLE && NpmUtils.isPackageJson(file);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
-
-		DependencyCollector aggregate = indexer.aggregate(this);
-		aggregate.addAllReleaseSources(NpmProjectContext.getReleaseSources(indexer.getProject()));
-		return aggregate;
 	}
 
 	@Override
@@ -176,9 +166,7 @@ public class NpmAssistant implements DependencyAssistant {
 				&& FileTypeManager.getInstance().findFileTypeByName("JSON") != null;
 	}
 
-	private static class NpmDependencyContext implements ProjectDependencyContext {
-
-		private final NpmAssistant assistant;
+	private static class NpmDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final Project project;
 
@@ -190,26 +178,11 @@ public class NpmAssistant implements DependencyAssistant {
 
 		NpmDependencyContext(NpmAssistant assistant, Project project, VirtualFile anchor,
 				NpmProjectContext projectContext) {
-			this.assistant = assistant;
+			super(projectContext);
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
 			this.service = StateService.getInstance(project);
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return projectContext.isAvailable();
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			return projectContext.getProjectId();
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return projectContext.getReleaseSources();
 		}
 
 		@Override

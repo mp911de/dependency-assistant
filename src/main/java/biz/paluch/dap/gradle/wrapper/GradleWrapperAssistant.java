@@ -26,13 +26,13 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.gradle.GradleDistributionReleaseSource;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
@@ -85,11 +85,6 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return GradleWrapperUtils.isWrapperFile(file);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
-		return indexer.aggregate(this);
 	}
 
 	@Override
@@ -150,37 +145,18 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 				List.of(GradleDistributionReleaseSource.INSTANCE));
 	}
 
-	public static class GradleWrapperDependencyContext implements ProjectDependencyContext {
+	public static class GradleWrapperDependencyContext extends AbstractProjectBuildContext
+			implements ProjectDependencyContext {
 
 		private final Project project;
 
 		private final VirtualFile anchor;
 
-		private final ProjectId projectId;
-
-		private final List<ReleaseSource> releaseSources;
-
 		GradleWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId,
 				List<ReleaseSource> releaseSources) {
+			super(projectId, releaseSources);
 			this.project = project;
 			this.anchor = anchor;
-			this.projectId = projectId;
-			this.releaseSources = releaseSources;
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return true;
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			return projectId;
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return releaseSources;
 		}
 
 		@Override
@@ -233,7 +209,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public String toString() {
-			return "GradleWrapperDependencyContext[%s] projectId=%s".formatted(anchor, projectId);
+			return "GradleWrapperDependencyContext[%s] projectId=%s".formatted(anchor, getProjectId());
 		}
 
 	}

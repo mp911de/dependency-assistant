@@ -26,18 +26,16 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
@@ -86,14 +84,8 @@ class GradleAssistant implements DependencyAssistant {
 	}
 
 	@Override
-	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
-		return indexer.aggregate(this);
-	}
-
-	@Override
-	public void initializeState(ProjectStateIndexer indexer) {
-		new GradleInitService().execute(indexer.getProject(), null);
-		DependencyAssistant.super.initializeState(indexer);
+	public void prepare(Project project) {
+		new GradleInitService().execute(project, null);
 	}
 
 	@Override
@@ -178,7 +170,7 @@ class GradleAssistant implements DependencyAssistant {
 				});
 	}
 
-	static class GradleDependencyContext implements ProjectDependencyContext {
+	static class GradleDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final GradleAssistant assistant;
 
@@ -192,27 +184,12 @@ class GradleAssistant implements DependencyAssistant {
 
 		GradleDependencyContext(GradleAssistant assistant, Project project, VirtualFile anchor,
 				GradleProjectContext projectContext) {
-
+			super(projectContext);
 			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
 			this.service = StateService.getInstance(project);
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return projectContext.isAvailable();
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			return projectContext.getProjectId();
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return projectContext.getReleaseSources();
 		}
 
 		@Override

@@ -16,6 +16,8 @@
 
 package biz.paluch.dap;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.DependencyCollector;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -26,16 +28,25 @@ import com.intellij.psi.PsiFile;
  * <p>Implementations are contributed through the
  * {@code biz.paluch.dap.assistant} extension point and are shared across
  * projects. They should therefore be stateless or hold only immutable
- * configuration.
+ * configuration; per-run state lives in the {@link IntrospectedDependencies}
+ * instance returned by {@link #introspect(Project)}.
+ *
+ * <p>An assistant provides integration points for {@link ProjectStateIndexer}
+ * drives to enumerate files an ecosystem owns and collects each into a
+ * store-ready {@link DependencyCollector}. The indexer derives the build
+ * context for each anchor on demand through
+ * {@link #createContext(Project, PsiFile)}.
  *
  * <p>Support checks are expected to be cheap. Expensive parsing and state
- * access belongs in project initialization, dependency scanning, or a
- * {@link ProjectDependencyContext}.
+ * access belongs in {@link #prepare(Project) preparation}, dependency scanning,
+ * or a {@link ProjectDependencyContext}.
  *
  * @author Mark Paluch
+ * @see ProjectStateIndexer
+ * @see IntrospectedDependencies
  * @see ProjectDependencyContext
  */
-public interface DependencyAssistant extends DependencySource {
+public interface DependencyAssistant {
 
 	/**
 	 * Return the stable integration id.
@@ -63,19 +74,62 @@ public interface DependencyAssistant extends DependencySource {
 	boolean supports(PsiFile file);
 
 	/**
-	 * Initialize project-scoped dependency state for this integration.
-	 * @param indexer the project state indexer.
+	 * Initialization hook after project startup.
+	 * @param project the IntelliJ project; must not be {@literal null}.
 	 */
-	default void initializeState(ProjectStateIndexer indexer) {
-		indexer.readAndUpdateAll(this);
+	default void prepare(Project project) {
 	}
 
 	/**
-	 * Scan all build files owned by this integration.
-	 * @param indexer the project state indexer; must not be {@literal null}.
-	 * @return the aggregated dependency data.
+	 * Enumerate the anchor files owned by this integration for the given project.
+	 * <p>Implementations must apply their own file-scope filters here. The indexer
+	 * derives the build context for each anchor on demand.
+	 * @param project the IntelliJ project to enumerate against; must not be
+	 * {@literal null}.
+	 * @return the anchor files to be processed by the indexer.
 	 */
-	DependencyCollector getAllDependencies(ProjectStateIndexer indexer);
+	List<PsiFile> enumerate(Project project);
+
+	/**
+	 * Collect dependencies for the given anchor file into the provided collector.
+	 * <p>The collector is the same instance the indexer later passes to
+	 * {@link IntrospectedDependencies#complete(DependencyCollector)} and stores in
+	 * the {@link biz.paluch.dap.state.ProjectState}. Implementations must mutate
+	 * the provided collector directly and must not replace it with a new instance.
+	 * @param anchor the anchor file to collect for; must not be {@literal null}.
+	 * @param collector the collector to populate in place; must not be
+	 * {@literal null}.
+	 */
+	void collect(PsiFile anchor, DependencyCollector collector);
+
+	/**
+	 * Collect dependencies for the given anchor file into the provided collector,
+	 * giving the integration access to the run-scoped
+	 * {@link IntrospectedDependencies}.
+	 * <p>The default delegates to {@link #collect(PsiFile, DependencyCollector)}
+	 * and is suitable for integrations that do not accumulate per-entry
+	 * introspection state. Integrations that need to feed phase-one state into
+	 * their {@link IntrospectedDependencies} should override this method.
+	 * @param anchor the anchor file to collect for; must not be {@literal null}.
+	 * @param collector the collector to populate in place; must not be
+	 * {@literal null}.
+	 * @param introspected the introspection handle for the current indexer run;
+	 * must not be {@literal null}.
+	 */
+	default void collect(PsiFile anchor, DependencyCollector collector, IntrospectedDependencies introspected) {
+		collect(anchor, collector);
+	}
+
+	/**
+	 * Return a fresh {@link IntrospectedDependencies} instance scoped to one
+	 * indexer run.
+	 * <p>The default returns the empty instance, suitable for integrations that do
+	 * not derive scan-wide metadata.
+	 * @param project the IntelliJ project; must not be {@literal null}.
+	 */
+	default IntrospectedDependencies introspect(Project project) {
+		return IntrospectedDependencies.empty();
+	}
 
 	/**
 	 * Create the file-scoped dependency context for the given anchor file.

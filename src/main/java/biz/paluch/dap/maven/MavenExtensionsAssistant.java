@@ -23,7 +23,6 @@ import java.util.List;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
@@ -72,11 +71,6 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return MavenUtils.isMavenExtensionsFile(file);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
-		return indexer.aggregate(this);
 	}
 
 	@Override
@@ -140,7 +134,6 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		private final StateService service;
 
 		MavenExtensionContext(Project project, VirtualFile anchor) {
-
 			this.project = project;
 			this.anchor = anchor;
 			this.service = StateService.getInstance(project);

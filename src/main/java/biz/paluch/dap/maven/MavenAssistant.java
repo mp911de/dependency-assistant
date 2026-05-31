@@ -28,18 +28,16 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.icons.AllIcons;
@@ -82,14 +80,6 @@ class MavenAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return MavenUtils.isMavenPomFile(file);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
-
-		DependencyCollector aggregate = indexer.aggregate(this);
-		aggregate.addAllReleaseSources(MavenUtils.getReleaseSources(indexer.getProject()));
-		return aggregate;
 	}
 
 	@Override
@@ -185,7 +175,7 @@ class MavenAssistant implements DependencyAssistant {
 		return new VersionUpgradeLookup(context, new MavenArtifactReferenceResolver(context, pom, buildContext));
 	}
 
-	static class MavenDependencyContext implements ProjectDependencyContext {
+	static class MavenDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final MavenProjectContext projectContext;
 
@@ -197,26 +187,11 @@ class MavenAssistant implements DependencyAssistant {
 
 		MavenDependencyContext(Project project, PsiFile pomFile, VirtualFile anchor,
 				MavenProjectContext projectContext) {
-
+			super(projectContext);
 			this.propertyResolver = MavenPropertyResolver.create(projectContext, pomFile);
 			this.projectContext = projectContext;
 			this.anchor = anchor;
 			this.service = StateService.getInstance(project);
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return projectContext.isAvailable();
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			return projectContext.getProjectId();
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return projectContext.getReleaseSources();
 		}
 
 		@Override

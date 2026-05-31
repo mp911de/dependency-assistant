@@ -19,8 +19,8 @@ package biz.paluch.dap.github;
 import java.util.List;
 
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -35,16 +35,12 @@ import com.intellij.openapi.vfs.VirtualFile;
  *
  * @author Mark Paluch
  */
-class GitHubProjectContext implements ProjectBuildContext {
+class GitHubProjectContext extends AbstractProjectBuildContext {
 
 	/**
 	 * Key used to inject a test-scoped context into a PSI file's user data.
 	 */
 	static final Key<GitHubProjectContext> KEY = Key.create("GitHubProjectContext");
-
-	private final ProjectId projectId;
-
-	private final GitHubReleaseSource releaseSource;
 
 	/**
 	 * Create a context for the given project identity and release source.
@@ -52,8 +48,7 @@ class GitHubProjectContext implements ProjectBuildContext {
 	 * @param releaseSource the release source for this GitHub Actions file.
 	 */
 	GitHubProjectContext(ProjectId projectId, GitHubReleaseSource releaseSource) {
-		this.projectId = projectId;
-		this.releaseSource = releaseSource;
+		super(projectId, List.of(releaseSource));
 	}
 
 	/**
@@ -87,26 +82,6 @@ class GitHubProjectContext implements ProjectBuildContext {
 				? ProjectId.of(gitRepository.owner(), gitRepository.repository(), anchor.getPath())
 				: ProjectId.of(anchor);
 		return new GitHubProjectContext(projectId, releaseSource);
-	}
-
-	@Override
-	public boolean isAvailable() {
-		return true;
-	}
-
-	@Override
-	public ProjectId getProjectId() {
-		return projectId;
-	}
-
-	@Override
-	public List<ReleaseSource> getReleaseSources() {
-		return List.of(releaseSource);
-	}
-
-	@Override
-	public String toString() {
-		return "%s".formatted(projectId);
 	}
 
 }

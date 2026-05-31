@@ -71,7 +71,8 @@ public class PostStartup implements ProjectActivity {
 		for (DependencyAssistant assistant : assistants) {
 
 			steps.setText(MessageBundle.message("post-startup.indexing", assistant.getDisplayName()));
-			assistant.initializeState(indexer);
+			assistant.prepare(project);
+			indexer.readAndUpdateAll(assistant);
 			steps.setFraction(1);
 			steps.nextStep();
 		}

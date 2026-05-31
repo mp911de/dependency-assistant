@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.github.GitReleaseSource;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -36,20 +37,15 @@ import com.intellij.psi.PsiFile;
  * state.
  * @author Mark Paluch
  */
-class NpmProjectContext implements ProjectBuildContext {
+class NpmProjectContext extends AbstractProjectBuildContext {
 
 	/**
 	 * Key used to inject a test-scoped context into a PSI file's user data.
 	 */
 	static final Key<NpmProjectContext> KEY = Key.create("NpmProjectContext");
 
-	private final List<ReleaseSource> releaseSources;
-
-	private final ProjectId projectId;
-
 	NpmProjectContext(Project project, ProjectId projectId) {
-		this.projectId = projectId;
-		this.releaseSources = getReleaseSources(project);
+		super(projectId, getReleaseSources(project));
 	}
 
 	public static List<ReleaseSource> getReleaseSources(Project project) {
@@ -79,23 +75,4 @@ class NpmProjectContext implements ProjectBuildContext {
 		return new NpmProjectContext(project, projectId);
 	}
 
-	@Override
-	public boolean isAvailable() {
-		return true;
-	}
-
-	@Override
-	public ProjectId getProjectId() {
-		return projectId;
-	}
-
-	@Override
-	public List<ReleaseSource> getReleaseSources() {
-		return releaseSources;
-	}
-
-	@Override
-	public String toString() {
-		return "%s, ReleaseSources: %s".formatted(projectId, releaseSources);
-	}
 }

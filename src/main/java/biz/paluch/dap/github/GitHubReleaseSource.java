@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -104,6 +105,19 @@ public class GitHubReleaseSource implements ReleaseSource {
 		this.server = server;
 		this.client = client;
 		this.pageSize = pageSize;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof GitHubReleaseSource that)) {
+			return false;
+		}
+		return Objects.equals(server, that.server);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(server);
 	}
 
 	/**

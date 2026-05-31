@@ -18,9 +18,7 @@ package biz.paluch.dap.github;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.swing.Icon;
 
@@ -30,13 +28,11 @@ import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
@@ -108,42 +104,6 @@ public class GitHubAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return AVAILABLE && GitHubUtils.isWorkflowFile(file);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
-
-		DependencyCollector aggregate = new DependencyCollector();
-		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(indexer.getProject());
-		Map<GitRepositoryMetadata, GitHubReleaseSource> releaseSources = new HashMap<>();
-
-		List<PsiFile> anchors = enumerate(indexer.getProject());
-		int processed = 0;
-
-		for (PsiFile anchor : anchors) {
-
-			indexer.checkCanceled();
-			if (createContext(indexer.getProject(), anchor).isAvailable()) {
-				collect(anchor, aggregate);
-				GitRepositoryMetadata coordinates = repositoryResolver
-						.resolveOwnerAndRepository(anchor.getVirtualFile());
-				if (coordinates != null) {
-					releaseSources.computeIfAbsent(coordinates,
-							it -> GitHubReleaseSource.from(indexer.getProject(), it.host()));
-				}
-			}
-			processed += 1;
-			indexer.getProgressIndicator().setFraction((double) processed / anchors.size());
-		}
-
-		if (releaseSources.isEmpty()) {
-			aggregate.addReleaseSource(GitHubReleaseSource.from(indexer.getProject()));
-		} else {
-			aggregate.addAllReleaseSources(releaseSources.values());
-		}
-
-		introspect(indexer.getProject()).complete(aggregate);
-		return aggregate;
 	}
 
 	@Override

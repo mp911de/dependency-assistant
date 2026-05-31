@@ -147,7 +147,7 @@ class DependencyCheck {
 		indicator.setText(
 				MessageBundle.message("action.index-dependencies.indexing.assistant", assistant.getDisplayName()));
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
-		DependencyCollector collector = assistant.getAllDependencies(indexer);
+		DependencyCollector collector = indexer.aggregate(assistant);
 		List<ArtifactId> usages = collector.getUsages().stream().map(Dependency::getArtifactId).toList();
 		List<ArtifactId> declarations = collector.getDeclarations().stream().map(DeclaredDependency::getArtifactId)
 				.toList();

@@ -6,8 +6,9 @@
  * <ul>
  * <li>{@link biz.paluch.dap.ProjectStateIndexer} - cross-ecosystem coordinator
  * that owns the collect-complete-store flow for one run.</li>
- * <li>{@link biz.paluch.dap.DependencySource} - SPI implemented by each
- * integration to enumerate anchor files and collect their dependencies.</li>
+ * <li>{@link biz.paluch.dap.DependencyAssistant} - SPI implemented by each
+ * integration to enumerate anchor files, collect their dependencies, and
+ * produce file-scoped contexts.</li>
  * <li>{@link biz.paluch.dap.IntrospectedDependencies} - phase-scoped completion
  * handle for one indexer run, applied to phase-one collectors before the
  * Project State is stored.</li>

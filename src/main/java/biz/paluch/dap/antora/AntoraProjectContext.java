@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.github.GitReleaseSource;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -37,16 +38,12 @@ import com.intellij.openapi.vfs.VirtualFile;
  *
  * @author Mark Paluch
  */
-class AntoraProjectContext implements ProjectBuildContext {
+class AntoraProjectContext extends AbstractProjectBuildContext {
 
 	/**
 	 * Key used to inject a test-scoped context into a PSI file's user data.
 	 */
 	static final Key<AntoraProjectContext> KEY = Key.create("AntoraProjectContext");
-
-	private final ProjectId projectId;
-
-	private final List<ReleaseSource> releaseSources;
 
 	/**
 	 * Create a context for the given project identity and release sources.
@@ -54,8 +51,7 @@ class AntoraProjectContext implements ProjectBuildContext {
 	 * @param releaseSources the release sources for this Antora playbook.
 	 */
 	AntoraProjectContext(ProjectId projectId, List<ReleaseSource> releaseSources) {
-		this.projectId = projectId;
-		this.releaseSources = releaseSources;
+		super(projectId, releaseSources);
 	}
 
 	/**
@@ -76,26 +72,6 @@ class AntoraProjectContext implements ProjectBuildContext {
 	 */
 	static List<ReleaseSource> getReleaseSources(Project project) {
 		return List.of(new GitReleaseSource(project, true));
-	}
-
-	@Override
-	public boolean isAvailable() {
-		return true;
-	}
-
-	@Override
-	public ProjectId getProjectId() {
-		return projectId;
-	}
-
-	@Override
-	public List<ReleaseSource> getReleaseSources() {
-		return releaseSources;
-	}
-
-	@Override
-	public String toString() {
-		return projectId.toString();
 	}
 
 }

@@ -92,7 +92,7 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 					indexer.readAndUpdateAll(assistant);
 				} else {
 					for (PsiFile buildFile : buildFiles) {
-						indexer.invalidateFile(assistant, buildFile);
+						indexer.invalidate(assistant, buildFile);
 					}
 				}
 			});

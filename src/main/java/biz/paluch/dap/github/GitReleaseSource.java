@@ -18,6 +18,7 @@ package biz.paluch.dap.github;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -82,6 +83,19 @@ public class GitReleaseSource implements ReleaseSource {
 	public GitReleaseSource(Project project, boolean strict) {
 		this.project = project;
 		this.strict = strict;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof GitReleaseSource that)) {
+			return false;
+		}
+		return strict == that.strict && Objects.equals(project, that.project);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(project, strict);
 	}
 
 	/**

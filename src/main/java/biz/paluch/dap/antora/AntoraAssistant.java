@@ -28,7 +28,6 @@ import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -36,13 +35,12 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.GitVersionResolver;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.ide.plugins.PluginManagerCore;
@@ -107,13 +105,6 @@ public class AntoraAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return AVAILABLE && AntoraUtils.isPlaybookFile(file);
-	}
-
-	@Override
-	public DependencyCollector getAllDependencies(ProjectStateIndexer indexer) {
-		DependencyCollector aggregate = indexer.aggregate(this);
-		aggregate.addAllReleaseSources(AntoraProjectContext.getReleaseSources(indexer.getProject()));
-		return aggregate;
 	}
 
 	@Override
@@ -192,9 +183,8 @@ public class AntoraAssistant implements DependencyAssistant {
 		return PluginManagerCore.isPluginInstalled(GITHUB) && !PluginManagerCore.isDisabled(GITHUB);
 	}
 
-	private static class AntoraDependencyContext implements ProjectDependencyContext {
-
-		private final AntoraAssistant assistant;
+	private static class AntoraDependencyContext extends ProjectBuildContextWrapper
+			implements ProjectDependencyContext {
 
 		private final Project project;
 
@@ -204,25 +194,10 @@ public class AntoraAssistant implements DependencyAssistant {
 
 		AntoraDependencyContext(AntoraAssistant assistant, Project project, VirtualFile anchor,
 				AntoraProjectContext projectContext) {
-			this.assistant = assistant;
+			super(projectContext);
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return projectContext.isAvailable();
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			return projectContext.getProjectId();
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return projectContext.getReleaseSources();
 		}
 
 		@Override

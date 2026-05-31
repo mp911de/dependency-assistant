@@ -45,7 +45,6 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  * @see DependencyAssistant
- * @see DependencySource
  * @see IntrospectedDependencies
  */
 public class ProjectStateIndexer {
@@ -131,8 +130,6 @@ public class ProjectStateIndexer {
 			state.invalidateDependencies();
 			state.setDependencies(scan.collector());
 		}
-
-		introspected.updateCache(service.getCache());
 	}
 
 	/**
@@ -164,7 +161,7 @@ public class ProjectStateIndexer {
 	 * {@literal null}.
 	 * @param file the saved PSI file; must not be {@literal null}.
 	 */
-	public void invalidateFile(DependencyAssistant assistant, PsiFile file) {
+	public void invalidate(DependencyAssistant assistant, PsiFile file) {
 
 		if (!assistant.supports(file)) {
 			return;
@@ -183,8 +180,6 @@ public class ProjectStateIndexer {
 		ProjectState state = service.getProjectState(context.getProjectId());
 		state.invalidateDependencies();
 		state.setDependencies(collector);
-
-		introspected.updateCache(service.getCache());
 	}
 
 	private List<ActiveScan> collectPhase(DependencyAssistant assistant, IntrospectedDependencies introspected) {

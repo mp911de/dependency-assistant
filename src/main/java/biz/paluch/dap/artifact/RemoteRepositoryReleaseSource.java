@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -81,6 +82,19 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 	public RemoteRepository getRepository() {
 		return repository;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof RemoteRepositoryReleaseSource that)) {
+			return false;
+		}
+		return Objects.equals(repository, that.repository);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(repository);
 	}
 
 	@Override
