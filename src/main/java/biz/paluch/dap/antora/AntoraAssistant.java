@@ -124,23 +124,16 @@ public class AntoraAssistant implements DependencyAssistant {
 
 		};
 
-		List<PsiFile> anchors = new ArrayList<>();
-		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML,
-				scope);
-
+		List<PsiFile> playbooks = new ArrayList<>();
+		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML, scope);
 		for (VirtualFile yaml : yamlFiles) {
-
-			if (!AntoraUtils.isPlaybookFile(yaml)) {
-				continue;
-			}
-
 			PsiFile psiFile = psiManager.findFile(yaml);
-			if (psiFile != null) {
-				anchors.add(psiFile);
+			if (AntoraUtils.isPlaybookFile(psiFile)) {
+				playbooks.add(psiFile);
 			}
 		}
 
-		return anchors;
+		return playbooks;
 	}
 
 	@Override

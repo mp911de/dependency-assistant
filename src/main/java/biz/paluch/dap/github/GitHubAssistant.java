@@ -35,13 +35,12 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.GitVersionResolver;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.ide.plugins.PluginManagerCore;
@@ -54,8 +53,10 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.yaml.YAMLFileType;
 import org.jetbrains.yaml.psi.YAMLScalar;
@@ -66,16 +67,14 @@ import org.springframework.util.Assert;
 /**
  * GitHub Actions implementation of {@link DependencyAssistant}.
  *
- * <p>
- * Supports YAML files under {@code .github/workflows/} and GitHub Action
+ * <p>Supports YAML files under {@code .github/workflows/} and GitHub Action
  * metadata files named {@code action.yml} or {@code action.yaml}. The assistant
  * is only active when both the YAML plugin and the GitHub plugin are available,
  * which is checked via class-availability guards so that the always-loaded
  * portion of this class never triggers loading of the optional plugin types
  * eagerly.
  *
- * <p>
- * Each supported file forms its own lightweight project context keyed by the
+ * <p>Each supported file forms its own lightweight project context keyed by the
  * file path.
  *
  * @author Mark Paluch
@@ -113,24 +112,26 @@ public class GitHubAssistant implements DependencyAssistant {
 			return List.of();
 		}
 
-		List<PsiFile> anchors = new ArrayList<>();
+		List<PsiFile> actionFiles = new ArrayList<>();
 		PsiManager psiManager = PsiManager.getInstance(project);
-		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML,
-				GlobalSearchScope.projectScope(project));
+		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
 
-		for (VirtualFile yaml : yamlFiles) {
-
-			if (!GitHubUtils.isWorkflowFile(yaml)) {
-				continue;
+			@Override
+			public boolean contains(VirtualFile file) {
+				return super.contains(file) && GitHubUtils.isWorkflowFile(file);
 			}
 
+		};
+
+		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML, scope);
+		for (VirtualFile yaml : yamlFiles) {
 			PsiFile psiFile = psiManager.findFile(yaml);
-			if (psiFile != null) {
-				anchors.add(psiFile);
+			if (GitHubUtils.isWorkflowFile(psiFile)) {
+				actionFiles.add(psiFile);
 			}
 		}
 
-		return anchors;
+		return actionFiles;
 	}
 
 	@Override
@@ -152,16 +153,15 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		GitHubProjectContext injected = anchor.getUserData(GitHubProjectContext.KEY);
 		if (injected != null) {
-			return new GitHubDependencyContext(this, project, anchor.getVirtualFile(), injected);
+			return new GitHubDependencyContext(project, anchor.getVirtualFile(), injected);
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(this, project, it.getVirtualFile()));
+				it -> createContext(project, it.getVirtualFile()));
 	}
 
-	private static ProjectDependencyContext createContext(GitHubAssistant assistant, Project project,
-			VirtualFile anchor) {
-		return new GitHubDependencyContext(assistant, project, anchor, GitHubProjectContext.of(project, anchor));
+	private static ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
+		return new GitHubDependencyContext(project, anchor, GitHubProjectContext.of(project, anchor));
 	}
 
 	private static boolean isYamlAvailable() {
@@ -169,9 +169,8 @@ public class GitHubAssistant implements DependencyAssistant {
 				&& FileTypeManager.getInstance().findFileTypeByName("YAML") != null;
 	}
 
-	private static class GitHubDependencyContext implements ProjectDependencyContext {
-
-		private final GitHubAssistant assistant;
+	private static class GitHubDependencyContext extends ProjectBuildContextWrapper
+			implements ProjectDependencyContext {
 
 		private final Project project;
 
@@ -179,27 +178,12 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		private final GitHubProjectContext projectContext;
 
-		GitHubDependencyContext(GitHubAssistant assistant, Project project, VirtualFile anchor,
+		GitHubDependencyContext(Project project, VirtualFile anchor,
 				GitHubProjectContext projectContext) {
-			this.assistant = assistant;
+			super(projectContext);
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
-		}
-
-		@Override
-		public boolean isAvailable() {
-			return projectContext.isAvailable();
-		}
-
-		@Override
-		public ProjectId getProjectId() {
-			return projectContext.getProjectId();
-		}
-
-		@Override
-		public List<ReleaseSource> getReleaseSources() {
-			return projectContext.getReleaseSources();
 		}
 
 		@Override
@@ -258,7 +242,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public String toString() {
-			return "GitHubDependencyContext[%s] %s".formatted(anchor, projectContext);
+			return "GitHubDependencyContext[%s] %s".formatted(anchor, getProjectId());
 		}
 
 	}

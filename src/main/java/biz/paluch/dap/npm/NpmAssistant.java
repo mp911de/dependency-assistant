@@ -113,8 +113,7 @@ public class NpmAssistant implements DependencyAssistant {
 
 		};
 		PsiManager psiManager = PsiManager.getInstance(project);
-		Collection<VirtualFile> jsonFiles = FileTypeIndex.getFiles(JsonFileType.INSTANCE,
-				scope);
+		Collection<VirtualFile> jsonFiles = FileTypeIndex.getFiles(JsonFileType.INSTANCE, scope);
 
 		for (VirtualFile file : jsonFiles) {
 

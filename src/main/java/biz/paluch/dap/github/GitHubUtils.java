@@ -23,6 +23,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utilities for identifying GitHub Actions files.
@@ -35,14 +36,17 @@ class GitHubUtils {
 
 	/**
 	 * Return whether the given file is supported by the GitHub Actions integration.
-	 * <p>
-	 * A supported file must be a YAML file and either live under
+	 * <p>A supported file must be a YAML file and either live under
 	 * {@code .github/workflows/} or be named {@code action.yml} or
 	 * {@code action.yaml}.
 	 * @param file the PSI file to test.
 	 * @return {@literal true} if this file is supported.
 	 */
-	static boolean isWorkflowFile(PsiFile file) {
+	static boolean isWorkflowFile(@Nullable PsiFile file) {
+
+		if (file == null) {
+			return false;
+		}
 
 		if (file.getUserData(GitHubProjectContext.KEY) != null) {
 			return true;
@@ -52,8 +56,7 @@ class GitHubUtils {
 
 	/**
 	 * Return whether the given file is supported by the GitHub Actions integration.
-	 * <p>
-	 * A supported file must be a YAML file and either live under
+	 * <p>A supported file must be a YAML file and either live under
 	 * {@code .github/workflows/} or be named {@code action.yml} or
 	 * {@code action.yaml}.
 	 * @param file the file to test.
@@ -82,8 +85,7 @@ class GitHubUtils {
 	 * Compute the {@link TextRange} that covers only the ref portion (after
 	 * {@code @}) of the {@code uses:} scalar that owns the given element.
 	 *
-	 * <p>
-	 * Used by both the GitHub annotator and line marker provider so they
+	 * <p>Used by both the GitHub annotator and line marker provider so they
 	 * highlight a consistent sub-range and don't include the
 	 * {@code owner/repository} prefix.
 	 *

@@ -56,10 +56,13 @@ class GitHubWorkflowCompletionTests {
 
 		fixture.type('@');
 		fixture.completeBasic();
-
 		// Empty ref after `@` is SHA-style per `RefStyle.from(...)`, so SHA-aware
 		// releases insert their SHA. v4.1.0 has no SHA metadata and falls through.
 		assertThat(fixture.getLookupElementStrings()).contains(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(workflowFile).caretAfter("d1185ce59f7757407fe6a5febb1e03e3dba2a530");
+		assertThat(workflowFile).containsText("actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0");
 	}
 
 	@Test

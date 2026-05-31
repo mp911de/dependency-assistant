@@ -32,7 +32,6 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import org.jetbrains.yaml.YAMLElementGenerator;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
-import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jetbrains.yaml.psi.impl.YAMLBlockMappingImpl;
 import org.jspecify.annotations.Nullable;
@@ -40,18 +39,13 @@ import org.jspecify.annotations.Nullable;
 /**
  * PSI updater for GitHub Actions workflow {@code uses:} declarations.
  *
- * <p>
- * This updater applies dependency updates without changing the workflow's
- * dependency model. Only repository-backed GitHub Action references are in
- * scope; local actions, Docker image references, malformed values, and updates
- * that do not resolve to {@link GitVersion} are left untouched.
+ * <p>This updater applies dependency updates preserving surrounding formatting.
  *
- * <p>
- * The existing pinning style is part of the contract. Version refs are
- * rendered as version refs. SHA-pinned refs are rendered as SHAs when the
- * selected release has SHA metadata, with a managed explanatory version
- * comment. This keeps workflows reproducible while still exposing semantic
- * release information to the user.
+ * The existing pinning style is part of the contract. Version refs are rendered
+ * as version refs. SHA-pinned refs are rendered as SHAs when the selected
+ * release has SHA metadata, with a managed explanatory version comment. This
+ * keeps workflows reproducible while still exposing semantic release
+ * information to the user.
  *
  * @author Mark Paluch
  * @see UsesRepositoryAction
@@ -59,19 +53,15 @@ import org.jspecify.annotations.Nullable;
  */
 class UpdateGitHubWorkflowFile {
 
-	private final Project project;
-
 	private final YAMLElementGenerator factory;
 
 	public UpdateGitHubWorkflowFile(Project project) {
-		this.project = project;
 		this.factory = new YAMLElementGenerator(project);
 	}
 
 	/**
 	 * Apply matching GitHub Action updates to the given GitHub Actions YAML file.
-	 * <p>
-	 * Only the {@code uses:} value and its managed version comment are changed.
+	 * <p>Only the {@code uses:} value and its managed version comment are changed.
 	 * Declarations without a matching update are left as-is.
 	 * @param psiFile the GitHub Actions YAML PSI file
 	 * @param updates the dependency updates to apply
@@ -123,34 +113,15 @@ class UpdateGitHubWorkflowFile {
 	}
 
 	/**
-	 * Return the editor offset immediately after the scalar value.
-	 * <p>
-	 * For quoted scalars, the returned offset is before the closing quote so
-	 * completion handlers can leave the caret at the end of the inserted ref.
-	 * @param scalar the GitHub Actions scalar
-	 * @return the absolute editor offset at the end of the scalar value
-	 */
-	public static int getValueEndOffset(YAMLScalar scalar) {
-
-		String text = scalar.getText();
-		int endOffsetInScalar = text.length();
-		if (scalar instanceof YAMLQuotedText) {
-			endOffsetInScalar--;
-		}
-
-		return scalar.getTextRange().getStartOffset() + endOffsetInScalar;
-	}
-
-	/**
 	 * Update a workflow {@code uses:} scalar with the given rendered version text.
-	 * <p>
-	 * The method returns the replacement scalar so callers can continue PSI
+	 * <p>The method returns the replacement scalar so callers can continue PSI
 	 * operations, for example to position the editor caret after completion
 	 * insertion. A {@literal null} result indicates that the scalar is not in a
 	 * writable {@code uses:} key-value context.
 	 * @param scalar the scalar containing a repository-backed {@code uses:} value
 	 * @param versionText the ref text and optional managed comment to render
-	 * @return the updated scalar, or {@literal null} if no safe update could be made
+	 * @return the updated scalar, or {@literal null} if no safe update could be
+	 * made
 	 */
 	public @Nullable YAMLScalar updateVersionAndComment(YAMLScalar scalar, VersionText versionText) {
 
@@ -193,12 +164,12 @@ class UpdateGitHubWorkflowFile {
 			if (comment != null) {
 				comment.replace(newComment);
 			} else {
-				mapping.addAfter(newComment, replaced);
+				PsiElement space = mapping.addAfter(factory.createSpace(), replaced);
+				mapping.addAfter(newComment, space);
 			}
 		}
 
 		return (YAMLScalar) replaced.getValue();
 	}
-
 
 }

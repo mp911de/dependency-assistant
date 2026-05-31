@@ -87,16 +87,15 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		};
 
 		Collection<VirtualFile> xmlFiles = FileTypeIndex.getFiles(XmlFileType.INSTANCE, scope);
-		List<PsiFile> anchors = new ArrayList<>();
-
+		List<PsiFile> extensionsFiles = new ArrayList<>();
 		for (VirtualFile xmlFile : xmlFiles) {
 			PsiFile psiFile = psiManager.findFile(xmlFile);
-			if (psiFile != null) {
-				anchors.add(psiFile);
+			if (MavenUtils.isMavenExtensionsFile(psiFile)) {
+				extensionsFiles.add(psiFile);
 			}
 		}
 
-		return anchors;
+		return extensionsFiles;
 	}
 
 	@Override
