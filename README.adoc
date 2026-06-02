@@ -6,15 +6,16 @@ Mark Paluch
 
 image:{github}/actions/workflows/build.yml/badge.svg?branch=main[Build Status (GitHub Workflow Build), link={github}/actions?query=workflow%3ABuild+branch%3Amain]
 
-An https://plugins.jetbrains.com[IntelliJ IDEA] plugin that helps you upgrade Maven dependencies and build plugins.
-It determines available versions from your configured repositories and can apply updates selectively.
+An https://plugins.jetbrains.com[IntelliJ IDEA] plugin that helps you upgrade dependencies declared in Maven, Gradle, GitHub Actions, NPM, Antora, Maven Wrapper, and Gradle Wrapper projects.
+Dependency Assistant resolves available releases from the relevant repositories, registries, or release feeds and can apply updates selectively.
 
 == Features
 
-* Scans the open `pom.xml` for dependencies and plugins (including `dependencyManagement`, `pluginManagement`, and `profiles`)
-* Resolves versions from literals, properties, and profile-specific properties where possible
-* Lists update candidates and lets you pick target versions (patch / minor / major / latest strategies)
-* Uses repositories from the active Maven project (e.g. Maven Central and repos declared in the POM); **repository authentication is not supported yet**
+* Scans supported build files, including `pom.xml`, Gradle build files, Gradle version catalogs, GitHub Actions workflows, `package.json`, Antora playbooks, and wrapper properties.
+* Resolves versions from literals, Maven and Gradle properties, Maven profile-specific properties, Gradle version catalogs, Git refs, and wrapper URLs where possible.
+* Suggests update candidates and lets you pick target versions.
+* Uses ecosystem-specific release metadata sources, including Maven repositories, the Gradle Plugin Portal, Gradle distribution metadata, GitHub, Git tags, and npmjs.
+* Supports Maven repository credentials declared in Maven `settings.xml` when they can be resolved by the active Maven installation.
 
 .Screenshot: dependency version check dialog
 image::images/screenshot.png[Maven dependency check dialog,width=800]
@@ -22,12 +23,12 @@ image::images/screenshot.png[Maven dependency check dialog,width=800]
 {empty} +
 
 .Screenshot: Version Suggestions
-image::images/version-suggestions.png[Suggstions,width=400]
+image::images/version-suggestions.png[Suggestions,width=400]
 
 {empty} +
 
 .Screenshot: Version Documentations
-image::images/documentation-highlights.png[Suggstions,width=400]
+image::images/documentation-highlights.png[Suggestions,width=400]
 
 == Installation
 
@@ -35,14 +36,14 @@ Install the *Dependency Assistant* plugin named from the IDE *Settings / Plugins
 
 == Usage
 
-. Open a `pom.xml` in the editor (the file must belong to an active Maven project).
+. Open a supported build file in the editor.
 . Start a check
-** Use the intention action (light bulb) when the caret is in a relevant place in the POM (e.g. `properties`, or a `version` under `dependency` / `plugin`), or
-** Alternatively: Choose menu:Tools[Update Maven Plugins and Dependencies].
+** Use the intention action (light bulb) when the caret is on a supported dependency version or declaration, or
+** Alternatively: Choose menu:Tools[Dependency Assistant > Update Dependencies].
 . In the dialog, review suggestions, adjust *Update to* and the *Update* checkbox per row, then confirm to apply changes.
 
-Updates are written to the **currently open** `pom.xml`.
-The plugin considers other Maven modules in the project when collecting coordinates, but only versions that can be tied to declarations in that open POM are offered for update.
+Updates are written to the build files that contain the selected dependency declarations.
+The plugin may consider related files in the project when resolving coordinates, properties, catalogs, and release sources.
 
 == Building
 

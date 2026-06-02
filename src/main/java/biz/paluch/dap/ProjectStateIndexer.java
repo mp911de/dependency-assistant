@@ -112,8 +112,8 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Run a full population pass: enumerate, collect, complete, invalidate, store,
-	 * update cache.
+	 * Run a full population pass: enumerate, collect, complete, invalidate, and
+	 * store.
 	 * @param assistant the assistant to run; must not be {@literal null}.
 	 */
 	public void updateAll(DependencyAssistant assistant) {
@@ -156,7 +156,7 @@ public class ProjectStateIndexer {
 
 	/**
 	 * Run a file-scoped invalidation: re-collect the state owned by the given file
-	 * and route it through the same complete-store-cache flow.
+	 * and route it through the same complete-store flow.
 	 * @param assistant the assistant that owns the file; must not be
 	 * {@literal null}.
 	 * @param file the saved PSI file; must not be {@literal null}.
