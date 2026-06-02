@@ -110,4 +110,52 @@ class MavenHighlightingTests {
 		assertThat(fixture).hasNoGutterMarks();
 	}
 
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<build>
+					<extensions>
+						<extension>
+							<groupId>org.junit</groupId>
+							<artifactId>junit-bom</artifactId>
+							<version>6.0.0</version>
+						</extension>
+					</extensions>
+				</build>
+			</project>
+			""")
+	void buildExtensionInlineVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<reporting>
+					<plugins>
+						<plugin>
+							<groupId>org.springframework.modulith</groupId>
+							<artifactId>spring-modulith-bom</artifactId>
+							<version>2.0.4</version>
+						</plugin>
+					</plugins>
+				</reporting>
+			</project>
+			""")
+	void reportingPluginInlineVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "2.0.5");
+	}
+
 }

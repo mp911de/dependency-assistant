@@ -294,6 +294,11 @@ class MavenParser {
 				doWithPlugins(resolver, DeclarationSource.pluginManagement(), callback, pluginManagement);
 			}
 			doWithPlugins(resolver, DeclarationSource.plugin(), callback, build);
+			doWithExtensions(resolver, DeclarationSource.plugin(), callback, build);
+		}
+
+		for (XmlTag reporting : root.findSubTags("reporting")) {
+			doWithPlugins(resolver, DeclarationSource.plugin(), callback, reporting);
 		}
 
 		for (XmlTag profiles : root.findSubTags("profiles")) {
@@ -315,6 +320,11 @@ class MavenParser {
 								pluginManagement);
 					}
 					doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, build);
+					doWithExtensions(resolver, DeclarationSource.profilePlugin(id), callback, build);
+				}
+
+				for (XmlTag reporting : profile.findSubTags("reporting")) {
+					doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, reporting);
 				}
 			}
 		}
@@ -334,6 +344,18 @@ class MavenParser {
 		for (XmlTag plugins : build.findSubTags("plugins")) {
 			for (XmlTag plugin : plugins.findSubTags("plugin")) {
 				doWithDependency(resolver, plugin, declarationSource, callback);
+			}
+		}
+	}
+
+	private void doWithExtensions(PropertyResolver resolver, DeclarationSource declarationSource,
+			BiConsumer<ArtifactId, ArtifactUsage> callback, XmlTag build) {
+		for (XmlTag extensions : build.findSubTags("extensions")) {
+			for (XmlTag extension : extensions.findSubTags("extension")) {
+				if (StringUtils.isEmpty(extension.getSubTagText("groupId"))) {
+					continue;
+				}
+				doWithDependency(resolver, extension, declarationSource, callback);
 			}
 		}
 	}

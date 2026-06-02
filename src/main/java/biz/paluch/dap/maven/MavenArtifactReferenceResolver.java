@@ -79,13 +79,11 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		if (isResolvableElement(element) && canResolve()) {
 
-			if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag
-					&& MavenUtils.isVersionElement(versionTag)) {
+			if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag) {
 				return resolveDirect(versionTag);
 			}
 
-			if (XmlUtil.findPropertyTag(element) instanceof XmlTag propertyTag
-					&& MavenUtils.isVersionElement(propertyTag)) {
+			if (XmlUtil.findPropertyTag(element) instanceof XmlTag propertyTag) {
 				return resolveProperty(propertyTag);
 			}
 		}

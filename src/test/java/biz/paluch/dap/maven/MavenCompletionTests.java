@@ -216,4 +216,48 @@ class MavenCompletionTests {
 		assertThat(fixture.getLookupElementStrings()).contains("2.0.5");
 	}
 
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<build>
+					<extensions>
+						<extension>
+							<groupId>org.junit</groupId>
+							<artifactId>junit-bom</artifactId>
+							<version>6.0.<caret></version>
+						</extension>
+					</extensions>
+				</build>
+			</project>
+			""")
+	void completesBuildExtensionVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<reporting>
+					<plugins>
+						<plugin>
+							<groupId>org.springframework.modulith</groupId>
+							<artifactId>spring-modulith-bom</artifactId>
+							<version>2.0.<caret></version>
+						</plugin>
+					</plugins>
+				</reporting>
+			</project>
+			""")
+	void completesReportingPluginVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		fixture.completeBasic();
+		assertThat(fixture.getLookupElementStrings()).contains("2.0.5");
+	}
+
 }

@@ -116,9 +116,10 @@ class UpdatePomFile {
 		}
 	}
 
-	private void updateDeclaration(XmlTag projectTag, ArtifactId coordinate, DeclarationSource vds, String newVersion) {
+	private void updateDeclaration(XmlTag projectTag, ArtifactId coordinate, DeclarationSource declarationSource,
+			String newVersion) {
 
-		List<XmlTag> tags = findDependencyOrPluginTag(projectTag, coordinate, vds);
+		List<XmlTag> tags = findDependencyOrPluginTag(projectTag, coordinate, declarationSource);
 
 		for (XmlTag artifactTag : tags) {
 			XmlTag versionTag = artifactTag.findFirstSubTag("version");
@@ -157,21 +158,22 @@ class UpdatePomFile {
 
 		if (source instanceof DeclarationSource.Dependency && source instanceof DeclarationSource.Managed) {
 			XmlTag dm = searchRoot.findFirstSubTag("dependencyManagement");
-			XmlTag deps = dm != null ? dm.findFirstSubTag("dependencies") : null;
-			findAndCollect(deps, coordinate, tags::add);
+			findAndCollect(dm != null ? dm.findFirstSubTag("dependencies") : null, coordinate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Plugin && !(source instanceof DeclarationSource.Managed)) {
 			XmlTag build = searchRoot.findFirstSubTag("build");
-			XmlTag plugins = build != null ? build.findFirstSubTag("plugins") : null;
-			findAndCollect(plugins, coordinate, tags::add);
+			findAndCollect(build != null ? build.findFirstSubTag("plugins") : null, coordinate, tags::add);
+			findAndCollect(build != null ? build.findFirstSubTag("extensions") : null, coordinate, tags::add);
+
+			XmlTag reporting = searchRoot.findFirstSubTag("reporting");
+			findAndCollect(reporting != null ? reporting.findFirstSubTag("plugins") : null, coordinate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Plugin && source instanceof DeclarationSource.Managed) {
 			XmlTag build = searchRoot.findFirstSubTag("build");
 			XmlTag pm = build != null ? build.findFirstSubTag("pluginManagement") : null;
-			XmlTag plugins = pm != null ? pm.findFirstSubTag("plugins") : null;
-			findAndCollect(plugins, coordinate, tags::add);
+			findAndCollect(pm != null ? pm.findFirstSubTag("plugins") : null, coordinate, tags::add);
 		}
 
 		return tags;
@@ -180,17 +182,14 @@ class UpdatePomFile {
 	private @Nullable XmlTag findProfile(XmlTag projectTag, @Nullable String profileId) {
 
 		XmlTag profiles = projectTag.findFirstSubTag("profiles");
-
 		if (profiles == null || profileId == null) {
 			return null;
 		}
 
 		for (XmlTag profile : profiles.getSubTags()) {
-
 			if (!"profile".equals(profile.getLocalName())) {
 				continue;
 			}
-
 			XmlTag idTag = profile.findFirstSubTag("id");
 			String id;
 			id = idTag != null ? idTag.getValue().getText() : null;
@@ -204,11 +203,9 @@ class UpdatePomFile {
 
 	private void findAndCollect(@Nullable XmlTag container, ArtifactId artifactId,
 			Consumer<XmlTag> action) {
-
 		if (container == null) {
 			return;
 		}
-
 		for (XmlTag dep : container.getSubTags()) {
 
 			String g = getSubTagText(dep, "groupId");

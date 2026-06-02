@@ -53,7 +53,7 @@ class UpdatePomFileTests {
 			""")
 	void dependencyInlineVersionIsUpdated(PsiFile pom) {
 
-		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.commons", "commons-lang3", "3.19.0", "3.20.0");
+		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.commons", "commons-lang3", "3.20.0");
 
 		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
 	}
@@ -80,8 +80,8 @@ class UpdatePomFileTests {
 			""")
 	void dependencyManagementInlineVersionIsUpdated(PsiFile pom) {
 
-		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework.boot", "spring-boot-dependencies", "3.5.0",
-				DeclarationSource.managed(), VersionSource.declared("3.5.0"), "3.5.1");
+		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework.boot", "spring-boot-dependencies",
+				DeclarationSource.managed(), "3.5.1");
 
 		assertThat(updated).hasDependency("spring-boot-dependencies", "3.5.1");
 	}
@@ -107,7 +107,7 @@ class UpdatePomFileTests {
 			""")
 	void propertyVersionIsUpdated(PsiFile pom) {
 
-		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework", "spring-core", "6.1.0",
+		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework", "spring-core",
 				DeclarationSource.dependency(), VersionSource.property("spring.version"), "6.2.0");
 
 		assertThat(updated).hasProperty("spring.version", "6.2.0");
@@ -133,8 +133,8 @@ class UpdatePomFileTests {
 			""")
 	void pluginInlineVersionIsUpdated(PsiFile pom) {
 
-		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.maven.plugins", "maven-compiler-plugin", "3.13.0",
-				DeclarationSource.plugin(), VersionSource.declared("3.13.0"), "3.14.0");
+		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.maven.plugins", "maven-compiler-plugin",
+				DeclarationSource.plugin(), "3.14.0");
 
 		assertThat(updated).hasDependency("maven-compiler-plugin", "3.14.0");
 	}
@@ -164,11 +164,125 @@ class UpdatePomFileTests {
 			""")
 	void profilePropertyVersionIsUpdated(PsiFile pom) {
 
-		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework", "spring-core", "6.1.0",
+		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework", "spring-core",
 				DeclarationSource.profileDependency("dev"), VersionSource.profileProperty("dev", "spring.version"),
 				"6.2.0");
 
 		assertThat(updated).hasProperty("spring.version", "6.2.0");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<build>
+					<extensions>
+						<extension>
+							<groupId>org.springframework.build</groupId>
+							<artifactId>aws-maven</artifactId>
+							<version>5.0.0</version>
+						</extension>
+					</extensions>
+				</build>
+			</project>
+			""")
+	void buildExtensionInlineVersionIsUpdated(PsiFile pom) {
+
+		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework.build", "aws-maven",
+				DeclarationSource.plugin(), "5.0.1");
+
+		assertThat(updated).hasDependency("aws-maven", "5.0.1");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<reporting>
+					<plugins>
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-javadoc-plugin</artifactId>
+							<version>3.11.1</version>
+						</plugin>
+					</plugins>
+				</reporting>
+			</project>
+			""")
+	void reportingPluginInlineVersionIsUpdated(PsiFile pom) {
+
+		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.maven.plugins", "maven-javadoc-plugin",
+				DeclarationSource.plugin(), "3.11.2");
+
+		assertThat(updated).hasDependency("maven-javadoc-plugin", "3.11.2");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<profiles>
+					<profile>
+						<id>release</id>
+						<build>
+							<extensions>
+								<extension>
+									<groupId>org.springframework.build</groupId>
+									<artifactId>aws-maven</artifactId>
+									<version>5.0.0</version>
+								</extension>
+							</extensions>
+						</build>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void profileBuildExtensionInlineVersionIsUpdated(PsiFile pom) {
+
+		UpdatedBuildFile updated = applyUpdate(pom, "org.springframework.build", "aws-maven",
+				DeclarationSource.profilePlugin("release"), "5.0.1");
+
+		assertThat(updated).hasDependency("aws-maven", "5.0.1");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<profiles>
+					<profile>
+						<id>docs</id>
+						<reporting>
+							<plugins>
+								<plugin>
+									<groupId>org.apache.maven.plugins</groupId>
+									<artifactId>maven-javadoc-plugin</artifactId>
+									<version>3.11.1</version>
+								</plugin>
+							</plugins>
+						</reporting>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void profileReportingPluginInlineVersionIsUpdated(PsiFile pom) {
+
+		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.maven.plugins", "maven-javadoc-plugin",
+				DeclarationSource.profilePlugin("docs"), "3.11.2");
+
+		assertThat(updated).hasDependency("maven-javadoc-plugin", "3.11.2");
 	}
 
 }

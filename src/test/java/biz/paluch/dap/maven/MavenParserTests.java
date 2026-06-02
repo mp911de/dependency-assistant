@@ -218,6 +218,180 @@ class MavenParserTests {
 	}
 
 	// -------------------------------------------------------------------------
+	// Build extensions / Reporting plugins
+	// -------------------------------------------------------------------------
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<build>
+					<extensions>
+						<extension>
+							<groupId>org.springframework.build</groupId>
+							<artifactId>aws-maven</artifactId>
+							<version>5.0.0</version>
+						</extension>
+					</extensions>
+				</build>
+			</project>
+			""")
+	void buildExtensionWithInlineVersionIsDiscovered(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.build", "aws-maven")
+				.hasVersion("5.0.0")
+				.hasDeclaration(DeclarationSource.plugin());
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<properties>
+					<extension.version>5.0.0</extension.version>
+				</properties>
+				<build>
+					<extensions>
+						<extension>
+							<groupId>org.springframework.build</groupId>
+							<artifactId>aws-maven</artifactId>
+							<version>${extension.version}</version>
+						</extension>
+					</extensions>
+				</build>
+			</project>
+			""")
+	void buildExtensionVersionResolvedViaProperty(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.build", "aws-maven")
+				.hasVersion("5.0.0")
+				.hasPropertyVersion("extension.version");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<build>
+					<extensions>
+						<extension>
+							<artifactId>aws-maven</artifactId>
+							<version>5.0.0</version>
+						</extension>
+					</extensions>
+				</build>
+			</project>
+			""")
+	void buildExtensionWithoutGroupIdIsSkipped(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector).hasNoDependencyUsage("aws-maven");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<reporting>
+					<plugins>
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-javadoc-plugin</artifactId>
+							<version>3.11.2</version>
+						</plugin>
+					</plugins>
+				</reporting>
+			</project>
+			""")
+	void reportingPluginWithInlineVersionIsDiscovered(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.maven.plugins", "maven-javadoc-plugin")
+				.hasVersion("3.11.2")
+				.hasDeclaration(DeclarationSource.plugin());
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<profiles>
+					<profile>
+						<id>release</id>
+						<build>
+							<extensions>
+								<extension>
+									<groupId>org.springframework.build</groupId>
+									<artifactId>aws-maven</artifactId>
+									<version>5.0.0</version>
+								</extension>
+							</extensions>
+						</build>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void profileBuildExtensionIsDiscovered(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.build", "aws-maven")
+				.hasVersion("5.0.0")
+				.hasDeclaration(DeclarationSource.profilePlugin("release"));
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<profiles>
+					<profile>
+						<id>docs</id>
+						<reporting>
+							<plugins>
+								<plugin>
+									<artifactId>maven-javadoc-plugin</artifactId>
+									<version>3.11.2</version>
+								</plugin>
+							</plugins>
+						</reporting>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void profileReportingPluginIsDiscovered(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.maven.plugins", "maven-javadoc-plugin")
+				.hasVersion("3.11.2")
+				.hasDeclaration(DeclarationSource.profilePlugin("docs"));
+	}
+
+	// -------------------------------------------------------------------------
 	// PropertyFile
 	// -------------------------------------------------------------------------
 

@@ -44,7 +44,8 @@ public class MavenReleaseVersionCompletionContributor extends CompletionContribu
 	private static final PsiElementPattern.Capture<PsiElement> DEPENDENCY_VERSION = PlatformPatterns.psiElement() //
 			.inside(XmlPatterns.xmlTag().withLocalName("version")
 					.inside(PlatformPatterns.or(XmlPatterns.xmlTag().withLocalName("dependency"),
-							XmlPatterns.xmlTag().withLocalName("plugin")))
+							XmlPatterns.xmlTag().withLocalName("plugin"),
+							XmlPatterns.xmlTag().withLocalName("extension")))
 					.inside(XmlPatterns.xmlFile().with(IS_MAVEN_FILE)));
 
 	private static final PsiElementPattern.Capture<PsiElement> EXTENSION_VERSION = PlatformPatterns.psiElement() //

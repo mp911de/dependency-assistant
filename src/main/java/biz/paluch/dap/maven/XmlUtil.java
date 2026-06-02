@@ -74,7 +74,7 @@ public class XmlUtil {
 
 	/**
 	 * Return the version tag for the given context element if the element is a
-	 * version tag within a dependency or plugin.
+	 * version tag within a dependency, plugin, or build extension.
 	 */
 	public static @Nullable XmlTag findPomVersionTag(PsiElement contextElement) {
 
@@ -93,7 +93,8 @@ public class XmlUtil {
 			return null;
 		}
 
-		if ("dependency".equals(owner.getLocalName()) || "plugin".equals(owner.getLocalName())) {
+		if ("dependency".equals(owner.getLocalName()) || "plugin".equals(owner.getLocalName())
+				|| "extension".equals(owner.getLocalName())) {
 			return versionTag;
 		}
 
