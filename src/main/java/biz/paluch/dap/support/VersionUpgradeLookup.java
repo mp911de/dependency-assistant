@@ -166,7 +166,8 @@ public class VersionUpgradeLookup {
 	/**
 	 * Determine all available upgrade suggestions for the given version.
 	 * <p>The returned {@link AvailableUpgrades#getUpgrades() upgrade map} contains
-	 * entries for every matched major, minor, and patch tier, in that order.
+	 * entries for every matched major, minor, patch, preview, and release tier, in
+	 * that order.
 	 * @param artifactReference the resolved artifact reference.
 	 * @param current the current artifact version.
 	 * @param options the candidate release options.
@@ -179,11 +180,14 @@ public class VersionUpgradeLookup {
 		Release major = UpgradeStrategy.MAJOR.select(current, options);
 		Release minor = UpgradeStrategy.MINOR.select(current, options);
 		Release patch = UpgradeStrategy.PATCH.select(current, options);
-		Release preview = current.isPreview() ? UpgradeStrategy.PREVIEW.select(current, options) : null;
+		Release preview = current.isSnapshotVersion() || current.isPreview()
+				? UpgradeStrategy.PREVIEW.select(current, options)
+				: null;
 		Release latestCandidate = UpgradeStrategy.LATEST.select(current, options);
+		Release release = UpgradeStrategy.RELEASE.select(current, options);
 		Release latest = latestCandidate != null && latestCandidate.isNewer(current) ? latestCandidate : null;
 
-		if (major == null && minor == null && patch == null && preview == null) {
+		if (major == null && minor == null && patch == null && preview == null && release == null) {
 			return AvailableUpgrades.none();
 		}
 
@@ -208,6 +212,11 @@ public class VersionUpgradeLookup {
 		if (preview != null) {
 			strategy = UpgradeStrategy.PREVIEW;
 			upgrades.put(strategy, UpgradeSuggestion.of(strategy, preview, artifactReference));
+		}
+
+		if (release != null) {
+			strategy = UpgradeStrategy.RELEASE;
+			upgrades.put(strategy, UpgradeSuggestion.of(strategy, release, artifactReference));
 		}
 
 		return AvailableUpgrades.of(artifactReference, upgrades.get(strategy), upgrades, latest);

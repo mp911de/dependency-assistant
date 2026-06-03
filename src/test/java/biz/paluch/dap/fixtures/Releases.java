@@ -26,10 +26,6 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Test fixture providing curated {@link CachedArtifact} samples.
- * <p>Each artifact carries a representative slice of its release history: the
- * latest stable version, a milestone/preview, and two older versions. This is
- * enough to exercise upgrade-strategy and version-comparison logic without
- * dragging in the full upstream catalogue.
  *
  * @author Mark Paluch
  */
@@ -41,6 +37,7 @@ public class Releases {
 			.add("6.0.3", "2026-02-15")
 			.add("6.1.0-M1", "2025-11-17")
 			.add("6.0.2", "2026-01-06")
+			.add("6.0.0-M1", "2025-11-17")
 			.add("5.14.3", "2026-02-15")
 			.add("5.14.2", "2026-02-14")
 			.add("5.14.1", "2026-02-13")

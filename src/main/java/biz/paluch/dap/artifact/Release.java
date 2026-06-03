@@ -26,6 +26,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A release that consists of a version and an optional release date.
+ *
+ * @author Mark Paluch
  */
 public record Release(ArtifactVersion version,
 		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, VersionAware {
@@ -107,35 +109,6 @@ public record Release(ArtifactVersion version,
 		return StringUtils.hasText(date) ? LocalDateTime.of(LocalDate.parse(date), LocalTime.MIDNIGHT) : null;
 	}
 
-	@Override
-	public ArtifactVersion getVersion() {
-		return version;
-	}
-
-	@Override
-	public int compareTo(Release o) {
-
-		if (version.canCompare(o.version)) {
-			return version.compareTo(o.version);
-		}
-
-		if (releaseDate != null && o.releaseDate != null) {
-			return releaseDate.compareTo(o.releaseDate);
-		}
-
-		return 0;
-	}
-
-	@Override
-	public String toString() {
-		String string = version.toString();
-
-		if (releaseDate != null) {
-			string += " (" + releaseDate.toLocalDate() + ")";
-		}
-		return string;
-	}
-
 	/**
 	 * Return whether this release is newer than the given release.
 	 */
@@ -183,6 +156,42 @@ public record Release(ArtifactVersion version,
 	 */
 	public boolean isPreview() {
 		return this.version.isPreview();
+	}
+
+	/**
+	 * Return whether this release is a development (snapshot) version.
+	 */
+	public boolean isSnapshotVersion() {
+		return this.version.isSnapshotVersion();
+	}
+
+	@Override
+	public ArtifactVersion getVersion() {
+		return version;
+	}
+
+	@Override
+	public int compareTo(Release o) {
+
+		if (version.canCompare(o.version)) {
+			return version.compareTo(o.version);
+		}
+
+		if (releaseDate != null && o.releaseDate != null) {
+			return releaseDate.compareTo(o.releaseDate);
+		}
+
+		return 0;
+	}
+
+	@Override
+	public String toString() {
+		String string = version.toString();
+
+		if (releaseDate != null) {
+			string += " (" + releaseDate.toLocalDate() + ")";
+		}
+		return string;
 	}
 
 }
