@@ -141,7 +141,7 @@ class DependencyCheck {
 
 		this.service.getState().setUsedOnce(true);
 		try {
-			return fetchUpdates(steps, projectName, tasks, consistency, 0.0);
+			return fetchUpdates(steps, projectName, tasks, consistency);
 		} finally {
 			steps.nextStep();
 		}
@@ -172,7 +172,8 @@ class DependencyCheck {
 	public DependencyUpdates updateReleaseMetadata(ProgressIndicator indicator,
 			List<ArtifactRefreshCandidate> candidates, Consistency consistency) {
 
-
+		indicator.setText(
+				MessageBundle.message("action.check.dependency.loading"));
 		Map<ArtifactId, ArtifactRefreshCandidate> consolidated = new LinkedHashMap<>();
 		for (ArtifactRefreshCandidate candidate : candidates) {
 			consolidated
@@ -187,7 +188,7 @@ class DependencyCheck {
 					releases -> Dependency.from(declaration, ArtifactVersion.of("1.0"))));
 		}
 
-		return fetchUpdates(indicator, "", tasks, consistency, 0.0);
+		return fetchUpdates(indicator, "", tasks, consistency);
 	}
 
 	/**
@@ -197,12 +198,10 @@ class DependencyCheck {
 	 * @param projectName the name to record on the result.
 	 * @param tasks the tasks to fetch releases for.
 	 * @param consistency the release-cache consistency to use.
-	 * @param progressStart the fraction at which iteration progress begins; the
-	 * remaining range up to {@literal 1.0} is consumed by task iteration.
 	 * @return the assembled dependency updates.
 	 */
 	private DependencyUpdates fetchUpdates(ProgressIndicator indicator, String projectName, List<UpdateTask> tasks,
-			Consistency consistency, double progressStart) {
+			Consistency consistency) {
 
 		Cache cache = service.getCache();
 		ExecutorService executor = AppExecutorUtil.getAppExecutorService();
@@ -221,19 +220,18 @@ class DependencyCheck {
 		}
 
 		double total = futures.size();
-		double range = 1.0 - progressStart;
 		int i = 0;
 		for (Map.Entry<UpdateTask, Future<ResolverResult>> entry : futures.entrySet()) {
 
+			String artifactId = entry.getKey().getArtifactId().toString();
+
 			try {
+				indicator.setText2(MessageBundle.message("action.check.dependency", artifactId));
 				indicator.checkCanceled();
 			} catch (ProcessCanceledException e) {
 				cancelRemainingFutures(futures);
 				throw e;
 			}
-
-			String artifactId = entry.getKey().getArtifactId().toString();
-			indicator.setText2(artifactId);
 
 			ResolverResult res;
 			boolean abort = false;
@@ -265,16 +263,14 @@ class DependencyCheck {
 				errors.add(res.error());
 			}
 
-			double progress = (i + 1) / total;
-			indicator.setFraction(progressStart + range * progress);
-			indicator.setText(MessageBundle.message("action.check.dependency.checked", artifactId));
-
 			Dependency dependency = entry.getKey().toDependency().apply(res.releases());
 			if (dependency != null) {
 				items.add(new DependencyUpdateOption(dependency, res.releases()));
 			}
 
 			i++;
+			indicator.setFraction((i + 1) / total);
+			indicator.setText2(MessageBundle.message("action.check.dependency.checked", artifactId));
 
 			if (abort) {
 				break;
@@ -307,7 +303,6 @@ class DependencyCheck {
 	private ResolverResult fetchReleases(ProgressIndicator indicator, ArtifactId artifactId,
 			Collection<ReleaseSource> sources, ExecutorService executor, Cache cache, Consistency consistency) {
 
-		indicator.setText(MessageBundle.message("action.check.dependency", artifactId));
 		indicator.checkCanceled();
 
 		try {

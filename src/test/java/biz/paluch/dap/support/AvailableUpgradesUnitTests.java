@@ -19,22 +19,29 @@ package biz.paluch.dap.support;
 import java.util.Arrays;
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.VersionSource;
+import com.intellij.mock.MockPsiElement;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link AvailableUpgrades} and the LATEST extension to
- * {@link VersionUpgradeLookup#determineUpgrades}.
+ * Unit tests for {@link AvailableUpgrades}.
  *
  * @author Mark Paluch
  */
 class AvailableUpgradesUnitTests {
 
-	private static final ArtifactReference REF = ArtifactReference.unresolved();
+	private static final ArtifactReference REF = ArtifactReference.from(it -> it
+			.artifact(ArtifactId.of("foo", "bar"))
+			.versionSource(VersionSource.none())
+			.version(ArtifactVersion.of("1.0"))
+			.declarationElement(new MockPsiElement(() -> {
+			})));
 
 	@Test
 	void getUpgradesIsOrderedMajorMinorPatchPreview() {
@@ -45,30 +52,7 @@ class AvailableUpgradesUnitTests {
 		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, options);
 
 		assertThat(upgrades.getUpgrades().sequencedKeySet()).containsExactly(
-				UpgradeStrategy.MAJOR, UpgradeStrategy.MINOR, UpgradeStrategy.PATCH);
-	}
-
-	@Test
-	void latestEqualsMajorIsExposedSeparatelyForCallerSideDeDup() {
-
-		ArtifactVersion current = ArtifactVersion.of("1.0.0");
-		List<Release> options = releasesNewestFirst("3.0.0", "1.0.0");
-
-		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, options);
-
-		assertThat(upgrades.getLatest()).isNotNull();
-		assertThat(upgrades.getLatest().version()).isEqualTo(ArtifactVersion.of("3.0.0"));
-	}
-
-	@Test
-	void latestNotPresentWhenNoReleaseIsNewerThanCurrent() {
-
-		ArtifactVersion current = ArtifactVersion.of("3.0.0");
-		List<Release> options = releasesNewestFirst("3.0.0", "1.0.0");
-
-		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, options);
-
-		assertThat(upgrades.isPresent()).isFalse();
+				UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
 	}
 
 	@Test

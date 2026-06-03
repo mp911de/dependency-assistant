@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.support;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.SequencedMap;
@@ -88,7 +90,8 @@ public class VersionUpgradeLookup {
 	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
 	 */
 	public AvailableUpgrades suggestUpgrades(PsiElement element) {
-		return suggestUpgrades(context.cache(), resolveArtifactReference(element));
+		ArtifactReference artifactReference = resolveArtifactReference(element);
+		return suggestUpgrades(context.cache(), artifactReference);
 	}
 
 	/**
@@ -186,40 +189,35 @@ public class VersionUpgradeLookup {
 		Release latestCandidate = UpgradeStrategy.LATEST.select(current, options);
 		Release release = UpgradeStrategy.RELEASE.select(current, options);
 		Release latest = latestCandidate != null && latestCandidate.isNewer(current) ? latestCandidate : null;
-
-		if (major == null && minor == null && patch == null && preview == null && release == null) {
-			return AvailableUpgrades.none();
-		}
-
-		SequencedMap<UpgradeStrategy, UpgradeSuggestion> upgrades = new LinkedHashMap<>();
-		UpgradeStrategy strategy = null;
+		List<UpgradeSuggestion> suggestions = new ArrayList<>();
 
 		if (major != null) {
-			strategy = UpgradeStrategy.MAJOR;
-			upgrades.put(strategy, UpgradeSuggestion.of(strategy, major, artifactReference));
+			suggestions.add(UpgradeSuggestion.of(UpgradeStrategy.MAJOR, major, artifactReference));
 		}
 
 		if (minor != null) {
-			strategy = UpgradeStrategy.MINOR;
-			upgrades.put(strategy, UpgradeSuggestion.of(strategy, minor, artifactReference));
+			suggestions.add(UpgradeSuggestion.of(UpgradeStrategy.MINOR, minor, artifactReference));
 		}
 
 		if (patch != null) {
-			strategy = UpgradeStrategy.PATCH;
-			upgrades.put(strategy, UpgradeSuggestion.of(strategy, patch, artifactReference));
+			suggestions.add(UpgradeSuggestion.of(UpgradeStrategy.PATCH, patch, artifactReference));
 		}
 
 		if (preview != null) {
-			strategy = UpgradeStrategy.PREVIEW;
-			upgrades.put(strategy, UpgradeSuggestion.of(strategy, preview, artifactReference));
+			suggestions.add(UpgradeSuggestion.of(UpgradeStrategy.PREVIEW, preview, artifactReference));
 		}
 
 		if (release != null) {
-			strategy = UpgradeStrategy.RELEASE;
-			upgrades.put(strategy, UpgradeSuggestion.of(strategy, release, artifactReference));
+			suggestions.add(UpgradeSuggestion.of(UpgradeStrategy.RELEASE, release, artifactReference));
 		}
 
-		return AvailableUpgrades.of(artifactReference, upgrades.get(strategy), upgrades, latest);
+		if (suggestions.isEmpty()) {
+			return AvailableUpgrades.none();
+		}
+		Collections.reverse(suggestions);
+		SequencedMap<UpgradeStrategy, UpgradeSuggestion> upgrades = new LinkedHashMap<>();
+		suggestions.forEach(s -> upgrades.put(s.getStrategy(), s));
+		return AvailableUpgrades.of(artifactReference, suggestions.getFirst(), upgrades, latest);
 	}
 
 }
