@@ -41,3 +41,7 @@ bin/
 ### Mac OS ###
 .DS_Store
 docs/
+node_modules/
+package.json
+package-lock.json
+*.md
