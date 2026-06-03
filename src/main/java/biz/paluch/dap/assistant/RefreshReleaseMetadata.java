@@ -64,6 +64,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 1 + assistants.size());
 		steps.setText(MessageBundle.message("action.index-dependencies.indexing"));
+		steps.setIndeterminate(false);
 
 		List<ArtifactRefreshCandidate> artifactIdentifiers = new ArrayList<>();
 
@@ -83,7 +84,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 			return;
 		}
 
-		DependencyUpdates result = dependencyCheck.updateReleaseMetadata(indicator, artifactIdentifiers,
+		DependencyUpdates result = dependencyCheck.updateReleaseMetadata(steps, artifactIdentifiers,
 				DependencyCheck.bypassCache());
 		steps.nextStep();
 		updates = result.updates().stream().map(DependencyUpdateOption::getArtifactId).toList();

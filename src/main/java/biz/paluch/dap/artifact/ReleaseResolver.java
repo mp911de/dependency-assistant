@@ -54,16 +54,10 @@ public class ReleaseResolver {
 		this.executor = executor;
 	}
 
-	public List<Release> getReleases(ArtifactId artifactId, @Nullable ProgressIndicator indicator) {
-		return getReleases(artifactId, null, indicator);
-	}
-
 	/**
 	 * Resolve releases for the given artifact across all configured sources.
 	 *
 	 * @param artifactId the artifact to resolve releases for; must not be
-	 * {@literal null}.
-	 * @param currentVersion the current version to retain in the result; can be
 	 * {@literal null}.
 	 * @param indicator the progress indicator to use for cancellation; can be
 	 * {@literal null} in which case an {@link EmptyProgressIndicator} is
@@ -71,8 +65,7 @@ public class ReleaseResolver {
 	 * @return the resolved releases, newest first; guaranteed to be not
 	 * {@literal null}.
 	 */
-	public List<Release> getReleases(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
-			@Nullable ProgressIndicator indicator) {
+	public List<Release> getReleases(ArtifactId artifactId, @Nullable ProgressIndicator indicator) {
 
 		ProgressIndicator progressIndicator = indicator != null ? indicator : new EmptyProgressIndicator();
 		Set<Release> result = new TreeSet<>(Comparator.<Release>naturalOrder().reversed());
@@ -117,10 +110,6 @@ public class ReleaseResolver {
 		}
 		if (result.isEmpty() && notFoundException != null) {
 			throw notFoundException;
-		}
-
-		if (!result.isEmpty() && currentVersion != null) {
-			result.add(Release.of(currentVersion));
 		}
 
 		return new ArrayList<>(result);

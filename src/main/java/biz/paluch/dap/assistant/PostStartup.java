@@ -67,7 +67,9 @@ public class PostStartup implements ProjectActivity {
 
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, assistants.size());
-		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
+		ProjectStateIndexer indexer = new ProjectStateIndexer(project, steps);
+		steps.setIndeterminate(false);
+
 		for (DependencyAssistant assistant : assistants) {
 
 			steps.setText(MessageBundle.message("post-startup.indexing", assistant.getDisplayName()));

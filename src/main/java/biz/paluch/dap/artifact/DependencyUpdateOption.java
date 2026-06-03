@@ -30,6 +30,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Version and update info for a single dependency.
+ *
+ * @author Mark Paluch
  */
 public class DependencyUpdateOption implements HasArtifactId {
 
@@ -47,14 +49,21 @@ public class DependencyUpdateOption implements HasArtifactId {
 	 */
 	public DependencyUpdateOption(Dependency dependency, List<Release> releases) {
 		this.dependency = dependency;
-		this.releases = releases;
-		this.filtered = filterVersionSuggestions(releases, dependency.getCurrentVersion());
+		this.releases = new ArrayList<>(releases);
+
+		if (releases.stream().map(Release::getVersion).noneMatch(it -> it.equals(dependency.getCurrentVersion())
+				|| it.toString().equals(dependency.getCurrentVersion().toString()))) {
+			this.releases.add(new Release(dependency.getCurrentVersion(), null));
+			this.releases.sort(Comparator.reverseOrder());
+		}
+
+		this.filtered = filterVersionSuggestions(this.releases, dependency.getCurrentVersion());
 		this.updateTo = dependency.getCurrentVersion();
 		this.applyUpdate = false;
 		this.targets = new LinkedHashMap<>();
 
 		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
-			Release option = strategy.select(currentVersion(), releases);
+			Release option = strategy.select(currentVersion(), this.releases);
 			if (option != null && !option.version().equals(currentVersion())) {
 				targets.put(strategy, option);
 			}

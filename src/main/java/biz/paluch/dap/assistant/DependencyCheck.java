@@ -45,6 +45,7 @@ import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
+import com.intellij.util.progress.StepsProgressIndicator;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.CollectionUtils;
@@ -100,18 +101,21 @@ class DependencyCheck {
 	public DependencyUpdates getDependencyUpdates(ProgressIndicator indicator, ProjectDependencyContext context,
 			Consistency consistency) {
 
+		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 2);
+		steps.setIndeterminate(false);
 		ProjectState projectState = service.getProjectState(context.getProjectId());
 		DependencyCollector collector = ReadAction.nonBlocking(() -> {
-			DependencyCollector c = context.scanDependencies(indicator);
+			DependencyCollector c = context.scanDependencies(steps);
 			projectState.setDependencies(c);
 			return c;
 		}).inSmartMode(project).executeSynchronously();
 
 		String projectName = project.getName();
-		indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
-		indicator.setFraction(0.3);
+		steps.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
+
 
 		if (collector.isEmpty() && collector.getDeclarations().isEmpty()) {
+			indicator.stop();
 			return new DependencyUpdates(projectName, List.of(),
 					List.of(MessageBundle.message("action.check.dependencies.empty")));
 		}
@@ -133,9 +137,14 @@ class DependencyCheck {
 						releases -> context.resolveDependency(declaration, releases)));
 			}
 		}
+		steps.nextStep();
 
 		this.service.getState().setUsedOnce(true);
-		return fetchUpdates(indicator, projectName, tasks, consistency, 0.5);
+		try {
+			return fetchUpdates(steps, projectName, tasks, consistency, 0.0);
+		} finally {
+			steps.nextStep();
+		}
 	}
 
 	/**
@@ -162,6 +171,7 @@ class DependencyCheck {
 
 	public DependencyUpdates updateReleaseMetadata(ProgressIndicator indicator,
 			List<ArtifactRefreshCandidate> candidates, Consistency consistency) {
+
 
 		Map<ArtifactId, ArtifactRefreshCandidate> consolidated = new LinkedHashMap<>();
 		for (ArtifactRefreshCandidate candidate : candidates) {
@@ -257,6 +267,7 @@ class DependencyCheck {
 
 			double progress = (i + 1) / total;
 			indicator.setFraction(progressStart + range * progress);
+			indicator.setText(MessageBundle.message("action.check.dependency.checked", artifactId));
 
 			Dependency dependency = entry.getKey().toDependency().apply(res.releases());
 			if (dependency != null) {
