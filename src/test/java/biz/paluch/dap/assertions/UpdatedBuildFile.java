@@ -128,6 +128,17 @@ public class UpdatedBuildFile implements AssertProvider<UpdatedBuildFile.Updated
 		}
 
 		/**
+		 * Verifies that the actual updated file does not expose any dependency or
+		 * plugin usage.
+		 * @return an assertion object for the matching dependency usage.
+		 */
+		public DependencyCollectorAssert hasNoDependencies() {
+			isNotNull();
+			return biz.paluch.dap.assertions.Assertions.assertThat(this.actual.collector)
+					.isEmpty();
+		}
+
+		/**
 		 * Verifies that the actual updated file exposes a dependency or plugin usage
 		 * for the given artifact id with the expected version.
 		 * @param artifactId the expected artifact id.

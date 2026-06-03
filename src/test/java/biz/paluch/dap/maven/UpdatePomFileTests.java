@@ -90,6 +90,49 @@ class UpdatePomFileTests {
 	@ProjectFile(name = "pom.xml", content = """
 			<?xml version="1.0" encoding="UTF-8"?>
 			<project>
+				<parent>
+					<groupId>org.apache.commons</groupId>
+					<artifactId>commons-lang3</artifactId>
+					<version>3.19.0</version>
+				</parent>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+			</project>
+			""")
+	void updatesParentVersion(PsiFile pom) {
+
+		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.commons", "commons-lang3", "3.20.0");
+
+		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
+				<parent>
+					<groupId>org.apache.commons</groupId>
+					<artifactId>commons-lang3</artifactId>
+					<version>3.19.0</version>
+				</parent>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+			</project>
+			""")
+	void skipsParentVersionUpdate(PsiFile pom) {
+
+		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.commons", "commons-lang3", "3.20.0");
+
+		assertThat(updated).hasNoDependencies();
+		assertThat(pom).containsText("<version>3.19.0</version>");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>

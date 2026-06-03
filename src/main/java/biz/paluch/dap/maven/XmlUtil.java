@@ -93,8 +93,13 @@ public class XmlUtil {
 			return null;
 		}
 
-		if ("dependency".equals(owner.getLocalName()) || "plugin".equals(owner.getLocalName())
-				|| "extension".equals(owner.getLocalName())) {
+		String tagName = owner.getLocalName();
+		if ("dependency".equals(tagName) || "plugin".equals(tagName)
+				|| "extension".equals(tagName)) {
+			return versionTag;
+		}
+
+		if ("parent".equals(tagName) && MavenParser.isParentDependencyCandidate(owner.getParentTag(), owner)) {
 			return versionTag;
 		}
 

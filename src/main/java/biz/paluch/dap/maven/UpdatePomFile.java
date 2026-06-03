@@ -119,7 +119,11 @@ class UpdatePomFile {
 	private void updateDeclaration(XmlTag projectTag, ArtifactId coordinate, DeclarationSource declarationSource,
 			String newVersion) {
 
-		List<XmlTag> tags = findDependencyOrPluginTag(projectTag, coordinate, declarationSource);
+		ArtifactIdPredicate predicate = (groupId, artifactId) -> coordinate.artifactId().equals(artifactId)
+				&& coordinate.groupId()
+						.equals(groupId);
+
+		List<XmlTag> tags = findDependencyOrPluginTag(projectTag, predicate, declarationSource);
 
 		for (XmlTag artifactTag : tags) {
 			XmlTag versionTag = artifactTag.findFirstSubTag("version");
@@ -141,7 +145,8 @@ class UpdatePomFile {
 		}
 	}
 
-	private List<XmlTag> findDependencyOrPluginTag(XmlTag projectTag, ArtifactId coordinate, DeclarationSource source) {
+	private List<XmlTag> findDependencyOrPluginTag(XmlTag projectTag, ArtifactIdPredicate predicate,
+			DeclarationSource source) {
 
 		List<XmlTag> tags = new ArrayList<>();
 		XmlTag searchRoot = source instanceof DeclarationSource.Profile inProfile
@@ -152,28 +157,33 @@ class UpdatePomFile {
 			return tags;
 		}
 
+		XmlTag parent = projectTag.findFirstSubTag("parent");
+		XmlTag build = searchRoot.findFirstSubTag("build");
+		if (MavenParser.isParentDependencyCandidate(searchRoot, parent)) {
+			doWithTag(parent, predicate, tags::add);
+		}
+
 		if (source instanceof DeclarationSource.Dependency && !(source instanceof DeclarationSource.Managed)) {
-			findAndCollect(searchRoot.findFirstSubTag("dependencies"), coordinate, tags::add);
+			findAndCollect(searchRoot.findFirstSubTag("dependencies"), predicate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Dependency && source instanceof DeclarationSource.Managed) {
 			XmlTag dm = searchRoot.findFirstSubTag("dependencyManagement");
-			findAndCollect(dm != null ? dm.findFirstSubTag("dependencies") : null, coordinate, tags::add);
+			findAndCollect(dm != null ? dm.findFirstSubTag("dependencies") : null, predicate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Plugin && !(source instanceof DeclarationSource.Managed)) {
-			XmlTag build = searchRoot.findFirstSubTag("build");
-			findAndCollect(build != null ? build.findFirstSubTag("plugins") : null, coordinate, tags::add);
-			findAndCollect(build != null ? build.findFirstSubTag("extensions") : null, coordinate, tags::add);
+
+			findAndCollect(build != null ? build.findFirstSubTag("plugins") : null, predicate, tags::add);
+			findAndCollect(build != null ? build.findFirstSubTag("extensions") : null, predicate, tags::add);
 
 			XmlTag reporting = searchRoot.findFirstSubTag("reporting");
-			findAndCollect(reporting != null ? reporting.findFirstSubTag("plugins") : null, coordinate, tags::add);
+			findAndCollect(reporting != null ? reporting.findFirstSubTag("plugins") : null, predicate, tags::add);
 		}
 
 		if (source instanceof DeclarationSource.Plugin && source instanceof DeclarationSource.Managed) {
-			XmlTag build = searchRoot.findFirstSubTag("build");
 			XmlTag pm = build != null ? build.findFirstSubTag("pluginManagement") : null;
-			findAndCollect(pm != null ? pm.findFirstSubTag("plugins") : null, coordinate, tags::add);
+			findAndCollect(pm != null ? pm.findFirstSubTag("plugins") : null, predicate, tags::add);
 		}
 
 		return tags;
@@ -201,28 +211,31 @@ class UpdatePomFile {
 		return null;
 	}
 
-	private void findAndCollect(@Nullable XmlTag container, ArtifactId artifactId,
+	private void findAndCollect(@Nullable XmlTag container, ArtifactIdPredicate predicate,
 			Consumer<XmlTag> action) {
 		if (container == null) {
 			return;
 		}
 		for (XmlTag dep : container.getSubTags()) {
+			doWithTag(dep, predicate, action);
+		}
+	}
 
-			String g = getSubTagText(dep, "groupId");
-			String a = getSubTagText(dep, "artifactId");
-			String v = getSubTagText(dep, "version");
+	private void doWithTag(XmlTag tag, ArtifactIdPredicate predicate, Consumer<XmlTag> action) {
 
-			if (StringUtils.isEmpty(a) || StringUtils.isEmpty(g)) {
-				continue;
-			}
+		String g = getSubTagText(tag, "groupId");
+		String a = getSubTagText(tag, "artifactId");
+		String v = getSubTagText(tag, "version");
 
-			String resolvedGroupId = propertyResolver.resolvePlaceholders(g);
-			String resolvedArtifactId = propertyResolver.resolvePlaceholders(a);
+		if (StringUtils.isEmpty(a) || StringUtils.isEmpty(g) || StringUtils.isEmpty(v)) {
+			return;
+		}
 
-			if (artifactId.artifactId().equals(resolvedArtifactId) && artifactId.groupId().equals(resolvedGroupId)
-					&& StringUtils.hasText(v)) {
-				action.accept(dep);
-			}
+		String resolvedGroupId = propertyResolver.resolvePlaceholders(g);
+		String resolvedArtifactId = propertyResolver.resolvePlaceholders(a);
+
+		if (predicate.test(resolvedGroupId, resolvedArtifactId)) {
+			action.accept(tag);
 		}
 	}
 
@@ -234,6 +247,25 @@ class UpdatePomFile {
 	private static boolean isPropertiesChild(XmlTag tag) {
 		XmlTag parent = tag.getParentTag();
 		return parent != null && "properties".equals(parent.getName());
+	}
+
+	/**
+	 * Represents a predicate (boolean-valued function) for a {@code groupId} and
+	 * {@code artifactId}.
+	 */
+	@FunctionalInterface
+	interface ArtifactIdPredicate {
+
+		/**
+		 * Evaluates this predicate on the given argument.
+		 *
+		 * @param groupId the input group Id.
+		 * @param artifactId the input artifact Id.
+		 * @return {@code true} if the input argument matches the predicate, otherwise
+		 * {@code false}
+		 */
+		boolean test(String groupId, String artifactId);
+
 	}
 
 }

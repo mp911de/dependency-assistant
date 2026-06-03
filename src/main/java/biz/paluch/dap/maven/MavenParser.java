@@ -41,6 +41,8 @@ import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.lang.Contract;
+
 /**
  * Parser for Maven files.
  *
@@ -59,7 +61,6 @@ class MavenParser {
 	public MavenParser(DependencyCollector collector) {
 		this(collector, PropertyResolver.empty());
 	}
-
 
 	/**
 	 * Create a new {@code MavenParser}.
@@ -210,19 +211,6 @@ class MavenParser {
 		doParseExtensionsFile(extensionsFile);
 	}
 
-	/**
-	 * Parse dependencies, plugins, and properties from the given POM file.
-	 * @param cache the project cache used for property-to-artifact associations.
-	 * @param pomFile the POM file to parse.
-	 */
-	public void parsePomFile(Cache cache, XmlFile pomFile, PropertyResolver propertyResolver) {
-
-		Map<String, PropertyValue> properties = parseProperties(pomFile);
-		collector.addProperties(properties.keySet());
-
-		doParsePomFile(cache, pomFile, properties, propertyResolver);
-	}
-
 	private void doParsePomFile(Cache cache, XmlFile pomFile, Map<String, PropertyValue> properties,
 			PropertyResolver propertyResolver) {
 
@@ -352,6 +340,12 @@ class MavenParser {
 			return;
 		}
 
+		XmlTag parent = root.findFirstSubTag("parent");
+		if (isParentDependencyCandidate(root, parent)) {
+
+			doWithDependency(resolver, parent, DeclarationSource.dependency(), callback);
+		}
+
 		for (XmlTag dependencyManagement : root.findSubTags("dependencyManagement")) {
 			doWithDependencies(dependencyManagement, resolver, DeclarationSource.managed(), callback);
 		}
@@ -396,6 +390,40 @@ class MavenParser {
 			}
 
 		});
+	}
+
+
+	/**
+	 * Return whether the given {@code parent} tag is a candidate for being a parent
+	 * dependency declaration. A parent tag is a candidate if it declares a groupId
+	 * that is not inherited from the current project and does not specify a
+	 * relativePath, which would indicate a local multi-module project.
+	 * @param root project root tag.
+	 * @param parent parent tag.
+	 * @return {@literal true} if the given {@code parent} tag is a supported
+	 * dependency candidate.
+	 */
+	@Contract("_, null -> false; null, _ -> false")
+	public static boolean isParentDependencyCandidate(@Nullable XmlTag root, @Nullable XmlTag parent) {
+
+		if (root == null || parent == null) {
+			return false;
+		}
+
+		String groupId = text(root, "groupId");
+		String parentGroupId = text(parent, "groupId");
+
+		// inherited groupId indicates a local multi-module project
+		if (StringUtils.isEmpty(groupId) || groupId.equals(parentGroupId)) {
+			return false;
+		}
+
+		// skip local multi-module projects with relativePath
+		if (StringUtils.hasText(text(parent, "relativePath"))) {
+			return false;
+		}
+
+		return true;
 	}
 
 	private static void doWithProfiles(XmlTag root, Consumer<XmlTag> callback) {

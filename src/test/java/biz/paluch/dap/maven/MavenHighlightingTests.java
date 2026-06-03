@@ -92,6 +92,43 @@ class MavenHighlightingTests {
 	@Test
 	@EditorFile(name = "pom.xml", content = """
 			<project>
+				<parent>
+					<groupId>org.junit</groupId>
+					<artifactId>junit-bom</artifactId>
+					<version>6.0.0</version>
+				</parent>
+				<groupId>foo</groupId>
+				<artifactId>module</artifactId>
+			</project>
+			""")
+	void parentVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		assertThat(fixture).hasSingleGutterContaining("Patch", "6.0.3");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<parent>
+					<groupId>org.junit</groupId>
+					<artifactId>junit-bom</artifactId>
+					<version>6.0.0</version>
+				</parent>
+				<artifactId>module</artifactId>
+			</project>
+			""")
+	void ignoresInheritedParent(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+
+		assertThat(fixture).hasNoGutterMarks();
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>

@@ -188,6 +188,29 @@ class MavenParserTests {
 		assertThat(collector).hasDependencyUsage("commons-lang3");
 	}
 
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<parent>
+					<groupId>org.junit.jupiter</groupId>
+					<artifactId>junit-jupiter</artifactId>
+					<version>5.11.0</version>
+				</parent>
+				<groupId>foo</groupId>
+				<artifactId>module</artifactId>
+			</project>
+			""")
+	void shouldParseParent(XmlFile pomFile) {
+
+		DependencyCollector collector = new DependencyCollector();
+		MavenParser parser = new MavenParser(collector);
+		parser.parsePomFile(new Cache(), pomFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("junit-jupiter")
+				.hasVersion("5.11.0");
+	}
+
 	// -------------------------------------------------------------------------
 	// Plugins
 	// -------------------------------------------------------------------------
@@ -477,7 +500,7 @@ class MavenParserTests {
 	}
 
 	// -------------------------------------------------------------------------
-	// PropertyFile
+	// Properties
 	// -------------------------------------------------------------------------
 
 	@Test

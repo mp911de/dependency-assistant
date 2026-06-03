@@ -123,16 +123,19 @@ class MavenUtils {
 			return false;
 		}
 
-		if (currentTag.getLocalName().equals("properties") || parentTag.getLocalName().equals("properties")
-				|| currentTag.getLocalName().equals("extension") || parentTag.getLocalName().equals("extension")
-				|| currentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")
-				|| parentTag.getLocalName().equals("dependency") || parentTag.getLocalName().equals("plugin")) {
+		String tagName = currentTag.getLocalName();
+		String parentName = parentTag.getLocalName();
+
+		if (tagName.equals("properties") || parentName.equals("properties")
+				|| tagName.equals("extension") || parentName.equals("extension")
+				|| parentName.equals("dependency") || parentName.equals("plugin")
+				|| parentName.equals("parent")) {
 			return true;
 		}
 
-		return "version".equals(currentTag.getLocalName())
-				&& ("dependency".equals(parentTag.getLocalName()) || "plugin".equals(parentTag.getLocalName())
-						|| "extension".equals(parentTag.getLocalName()));
+		return "version".equals(tagName)
+				&& ("dependency".equals(parentName) || "plugin".equals(parentName)
+						|| "extension".equals(parentName) || "parent".equals(parentName));
 	}
 
 }
