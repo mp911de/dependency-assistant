@@ -17,6 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
@@ -40,9 +41,9 @@ public enum UpgradeStrategy {
 
 	/**
 	 * Select the newest non-preview release within the same major and minor version
-	 * as {@code current}, limited to release and bug-fix versions.
-	 * <p>
-	 * Return {@literal null} when the current version is already the latest
+	 * as {@code current}, limited to general-availability releases (including
+	 * bug-fix releases).
+	 * <p>Return {@literal null} when the current version is already the latest
 	 * within its major.minor line, or no qualifying release exists.
 	 */
 	PATCH {
@@ -54,7 +55,7 @@ public enum UpgradeStrategy {
 			return options.stream() //
 					.filter(Predicate.not(Release::isPreview)) //
 					.filter(opt -> opt.version().hasSameMajorMinor(current) && opt.isNewer(current)) //
-					.filter(opt -> opt.isReleaseVersion() || opt.isBugFixVersion()) //
+					.filter(Release::isReleaseVersion) //
 					.findFirst().orElse(null);
 		}
 
@@ -120,15 +121,27 @@ public enum UpgradeStrategy {
 
 	/**
 	 * Select the newest preview release (RC, milestone) that is newer than
-	 * {@code current}.
-	 * <p>
-	 * Return {@literal null} when no qualifying preview release exists.
+	 * {@code current}. If the current version is a snapshot, select a non-snapshot
+	 * preview release.
+	 * <p>Return {@literal null} when no qualifying preview release exists.
 	 */
 	PREVIEW {
 
 		@Override
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
+
+			if (current.isSnapshotVersion()) {
+				Release release = options.stream() //
+						.filter(Predicate.not(Release::isSnapshotVersion)) //
+						.filter(Release::isPreview)
+						.filter(opt -> opt.hasSameMajorMinor(current)) //
+						.findFirst().orElse(null);
+				if (release != null) {
+					return release;
+				}
+			}
+
 			return options.stream() //
 					.filter(Release::isPreview) //
 					.filter(opt -> opt.isNewer(current)) //
@@ -138,18 +151,31 @@ public enum UpgradeStrategy {
 	},
 
 	/**
-	 * Select the newest non-preview release that is newer than {@code current}
-	 * considering major and minor version components.
-	 * <p>
-	 * Return {@literal null} when no qualifying release exists.
+	 * Select the newest non-preview, non-snapshot release within the same major and
+	 * minor line as {@code current}.
+	 * <p>When {@code current} is a snapshot or preview, finalize it instead: select
+	 * the oldest stable release in the same line that is newer than
+	 * {@code current}, which is the general-availability release matching the
+	 * pre-release version.
+	 * <p>Return {@literal null} when no qualifying release exists.
 	 */
 	RELEASE {
 
 		@Override
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
+
+			if (current.isSnapshotVersion() || current.isPreview()) {
+				return options.stream() //
+						.filter(Predicate.not(Release::isPreview)) //
+						.filter(Predicate.not(Release::isSnapshotVersion)) //
+						.filter(opt -> opt.isNewer(current) && opt.hasSameMajorMinor(current)) //
+						.min(Comparator.naturalOrder()).orElse(null);
+			}
+
 			return options.stream() //
 					.filter(Predicate.not(Release::isPreview)) //
+					.filter(Predicate.not(Release::isSnapshotVersion)) //
 					.filter(opt -> opt.isNewer(current) && opt.hasSameMajorMinor(current)) //
 					.findFirst().orElse(null);
 		}
