@@ -153,14 +153,6 @@ class UpgradeStrategyUnitTests {
 	// -------------------------------------------------------------------------
 
 	@Test
-	void releaseSelectsNewerStableReleaseInSameLine() {
-
-		Release release = select(UpgradeStrategy.RELEASE, "3.9.6", Releases.APACHE_MAVEN);
-
-		assertThat(release.version()).hasToString("3.9.9");
-	}
-
-	@Test
 	void releaseSelectsNewerStableReleaseFromSnapshot() {
 
 		Release release = select(UpgradeStrategy.RELEASE, "3.9.6-SNAPSHOT", Releases.APACHE_MAVEN);
@@ -174,6 +166,14 @@ class UpgradeStrategyUnitTests {
 		Release release = select(UpgradeStrategy.RELEASE, "3.9.6-M1", Releases.APACHE_MAVEN);
 
 		assertThat(release.version()).hasToString("3.9.6");
+	}
+
+	@Test
+	void releaseSelectsLatestBugfixWhenExactGaMissing() {
+
+		Release release = select(UpgradeStrategy.RELEASE, "3.9.7-SNAPSHOT", Releases.APACHE_MAVEN);
+
+		assertThat(release.version()).hasToString("3.9.9");
 	}
 
 	@Test

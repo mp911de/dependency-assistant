@@ -252,7 +252,7 @@ interface Suffix extends Comparable<Suffix> {
 	private static int comparePreReleaseWith(PreReleaseSuffix suffix, Suffix other) {
 
 		if (other instanceof Snapshot) {
-			return 1;
+			return suffix.isServiceRelease() ? 1 : -1;
 		}
 
 		if (other instanceof Release) {
@@ -387,7 +387,20 @@ interface Suffix extends Comparable<Suffix> {
 
 		@Override
 		public int compareTo(Suffix other) {
-			return other instanceof Snapshot ? 0 : -1;
+
+			if (other instanceof Snapshot) {
+				return 0;
+			}
+
+			if (other instanceof Release) {
+				return -1;
+			}
+
+			if (other instanceof PreReleaseSuffix preRelease && preRelease.isServiceRelease()) {
+				return -1;
+			}
+
+			return 1;
 		}
 
 		@Override
@@ -454,7 +467,7 @@ interface Suffix extends Comparable<Suffix> {
 			}
 
 			if (other instanceof Snapshot) {
-				return 1;
+				return -1;
 			}
 
 			if (other instanceof PreReleaseSuffix preRelease) {

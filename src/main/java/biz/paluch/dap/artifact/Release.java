@@ -138,17 +138,18 @@ public record Release(ArtifactVersion version,
 	}
 
 	/**
-	 * Return whether this release is a bugfix release.
+	 * Return whether this release shares the same numeric version, ignoring any
+	 * suffix or qualifier.
 	 */
-	public boolean isBugFixVersion() {
-		return this.version.isBugFixVersion();
+	public boolean hasSameBaseVersion(ArtifactVersion current) {
+		return this.version.hasSameBaseVersion(current);
 	}
 
 	/**
-	 * Return whether this release is a general-availability release.
+	 * Return whether this release is a development (snapshot) version.
 	 */
-	public boolean isReleaseVersion() {
-		return this.version.isReleaseVersion();
+	public boolean isSnapshotVersion() {
+		return this.version.isSnapshotVersion();
 	}
 
 	/**
@@ -159,10 +160,17 @@ public record Release(ArtifactVersion version,
 	}
 
 	/**
-	 * Return whether this release is a development (snapshot) version.
+	 * Return whether this release is a general-availability release.
 	 */
-	public boolean isSnapshotVersion() {
-		return this.version.isSnapshotVersion();
+	public boolean isReleaseVersion() {
+		return this.version.isReleaseVersion();
+	}
+
+	/**
+	 * Return whether this release is a bugfix release.
+	 */
+	public boolean isBugFixVersion() {
+		return this.version.isBugFixVersion();
 	}
 
 	@Override

@@ -238,6 +238,12 @@ class SemanticArtifactVersion implements ArtifactVersion {
 				&& components.getMajor() == sav.components.getMajor();
 	}
 
+	@Override
+	public boolean hasSameBaseVersion(ArtifactVersion other) {
+		return other.getVersion() instanceof SemanticArtifactVersion sav
+				&& components.compareTo(sav.components) == 0;
+	}
+
 	/**
 	 * Return whether the version is a release version.
 	 *

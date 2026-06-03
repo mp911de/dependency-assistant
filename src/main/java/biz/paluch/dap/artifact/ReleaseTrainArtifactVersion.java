@@ -134,13 +134,19 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	@Override
+	public boolean hasSameMajor(ArtifactVersion other) {
+		return other instanceof ReleaseTrainArtifactVersion otherTrain && trainName.equalsIgnoreCase(otherTrain.trainName);
+	}
+
+	@Override
 	public boolean hasSameMajorMinor(ArtifactVersion other) {
 		return other instanceof ReleaseTrainArtifactVersion otherTrain && trainName.equalsIgnoreCase(otherTrain.trainName);
 	}
 
 	@Override
-	public boolean hasSameMajor(ArtifactVersion other) {
-		return other instanceof ReleaseTrainArtifactVersion otherTrain && trainName.equalsIgnoreCase(otherTrain.trainName);
+	public boolean hasSameBaseVersion(ArtifactVersion other) {
+		return other.getVersion() instanceof ReleaseTrainArtifactVersion otherTrain
+				&& trainName.equalsIgnoreCase(otherTrain.trainName);
 	}
 
 	@Override
@@ -186,11 +192,6 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	@Override
-	public String toString() {
-		return trainName + "-" + suffix.canonical();
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;
@@ -205,4 +206,10 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	public int hashCode() {
 		return Objects.hash(trainName.toLowerCase(), suffix.canonical());
 	}
+
+	@Override
+	public String toString() {
+		return trainName + "-" + suffix.canonical();
+	}
+
 }

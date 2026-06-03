@@ -103,16 +103,16 @@ class DependencyCheck {
 
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 2);
 		steps.setIndeterminate(false);
+
+		String projectName = project.getName();
+		steps.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
+
 		ProjectState projectState = service.getProjectState(context.getProjectId());
 		DependencyCollector collector = ReadAction.nonBlocking(() -> {
 			DependencyCollector c = context.scanDependencies(steps);
 			projectState.setDependencies(c);
 			return c;
 		}).inSmartMode(project).executeSynchronously();
-
-		String projectName = project.getName();
-		steps.setText(MessageBundle.message("action.check.dependencies.progress.collecting", projectName));
-
 
 		if (collector.isEmpty() && collector.getDeclarations().isEmpty()) {
 			indicator.stop();

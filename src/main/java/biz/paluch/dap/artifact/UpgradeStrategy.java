@@ -17,7 +17,6 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
@@ -152,11 +151,13 @@ public enum UpgradeStrategy {
 
 	/**
 	 * Select the newest non-preview, non-snapshot release within the same major and
-	 * minor line as {@code current}.
+	 * minor line as {@code current} if the current version is a snapshot or
+	 * preview.
 	 * <p>When {@code current} is a snapshot or preview, finalize it instead: select
-	 * the oldest stable release in the same line that is newer than
-	 * {@code current}, which is the general-availability release matching the
-	 * pre-release version.
+	 * the general-availability release with the same numeric version (e.g.
+	 * {@code 3.9.6-SNAPSHOT} or {@code 3.9.6-M1} resolves to {@code 3.9.6}). If
+	 * that release was never published, fall back to the newest stable release in
+	 * the same line that is newer than {@code current}.
 	 * <p>Return {@literal null} when no qualifying release exists.
 	 */
 	RELEASE {
@@ -165,12 +166,32 @@ public enum UpgradeStrategy {
 		@Nullable
 		public Release select(ArtifactVersion current, Collection<Release> options) {
 
-			if (current.isSnapshotVersion() || current.isPreview()) {
-				return options.stream() //
+			if (!current.isPreview() && !current.isSnapshotVersion()) {
+				return null;
+			}
+
+			if (current.isPreview()) {
+
+				Release finalized = options.stream() //
 						.filter(Predicate.not(Release::isPreview)) //
 						.filter(Predicate.not(Release::isSnapshotVersion)) //
-						.filter(opt -> opt.isNewer(current) && opt.hasSameMajorMinor(current)) //
-						.min(Comparator.naturalOrder()).orElse(null);
+						.filter(opt -> opt.hasSameBaseVersion(current)) //
+						.findFirst().orElse(null);
+				if (finalized != null) {
+					return finalized;
+				}
+			}
+
+			if (current.isSnapshotVersion()) {
+
+				Release finalized = options.stream() //
+						.filter(Predicate.not(Release::isPreview)) //
+						.filter(Predicate.not(Release::isSnapshotVersion)) //
+						.filter(opt -> opt.hasSameBaseVersion(current)) //
+						.findFirst().orElse(null);
+				if (finalized != null) {
+					return finalized;
+				}
 			}
 
 			return options.stream() //

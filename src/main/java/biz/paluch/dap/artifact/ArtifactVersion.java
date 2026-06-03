@@ -99,6 +99,12 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	boolean isOlder(ArtifactVersion other);
 
 	/**
+	 * Return whether this version shares the same major line or release train.
+	 * @param other the version to compare with.
+	 */
+	boolean hasSameMajor(ArtifactVersion other);
+
+	/**
 	 * Return whether this version shares the same major/minor line or release
 	 * train.
 	 * @param other the version to compare with.
@@ -106,10 +112,11 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	boolean hasSameMajorMinor(ArtifactVersion other);
 
 	/**
-	 * Return whether this version shares the same major line or release train.
+	 * Return whether this version shares the same base version as the given
+	 * version, ignoring any suffix or qualifier.
 	 * @param other the version to compare with.
 	 */
-	boolean hasSameMajor(ArtifactVersion other);
+	boolean hasSameBaseVersion(ArtifactVersion other);
 
 	/**
 	 * Return whether this version is a snapshot.

@@ -277,12 +277,28 @@ class SemanticArtifactVersionParseUnitTests {
 				.isGreaterThan(version("1.9.2.RELEASE"));
 		assertThat(version("1.9.0-M2")).isLessThan(version("1.9.0-M3"))
 				.isGreaterThan(version("1.9.0-M1"));
-		assertThat(version("1.9.0-M2")).isGreaterThan(version("1.9.0-SNAPSHOT"))
-				.isLessThan(version("1.9.0-RC1")).isLessThan(version("1.9.0"));
+		assertThat(version("1.9.0-M2")).isLessThan(version("1.9.0-RC1"))
+				.isLessThan(version("1.9.0-SNAPSHOT")).isLessThan(version("1.9.0"));
+
+		assertThat(version("1.9.0-RC1")).isLessThan(version("1.9.0-SNAPSHOT"));
+		assertThat(version("1.9.0-SNAPSHOT")).isLessThan(version("1.9.0"))
+				.isLessThan(version("1.9.0-SR1"));
 
 		assertThat(version("1.9.0.M1")).isLessThan(version("1.9.0"))
 				.isLessThan(version("1.9.0.RELEASE")).isLessThan(version("1.9.0-SR1"));
 		assertThat(version("1.9.0.RELEASE")).isGreaterThan(version("1.9.0.M1"));
+	}
+
+	@Test
+	void hasSameNumericVersionIgnoresSuffix() {
+
+		assertThat(version("3.9.6").hasSameBaseVersion(version("3.9.6-SNAPSHOT"))).isTrue();
+		assertThat(version("3.9.6").hasSameBaseVersion(version("3.9.6-M1"))).isTrue();
+		assertThat(version("3.9.6-SNAPSHOT").hasSameBaseVersion(version("3.9.6-M1"))).isTrue();
+		assertThat(version("3.9.6").hasSameBaseVersion(version("3.9.6.0"))).isTrue();
+
+		assertThat(version("3.9.6").hasSameBaseVersion(version("3.9.9"))).isFalse();
+		assertThat(version("3.9.6").hasSameBaseVersion(version("3.10.6"))).isFalse();
 	}
 
 	@ParameterizedTest

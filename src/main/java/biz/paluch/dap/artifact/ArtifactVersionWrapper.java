@@ -18,7 +18,7 @@ package biz.paluch.dap.artifact;
 
 /**
  * Wrapper class for {@link ArtifactVersion} delegating to the wrapped version.
- * 
+ *
  * @author Mark Paluch
  */
 abstract class ArtifactVersionWrapper implements ArtifactVersion {
@@ -27,16 +27,6 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 
 	protected ArtifactVersionWrapper(ArtifactVersion delegate) {
 		this.delegate = delegate;
-	}
-
-	@Override
-	public boolean hasSameMajorMinor(ArtifactVersion other) {
-		return delegate.hasSameMajorMinor(other.getVersion());
-	}
-
-	@Override
-	public boolean hasSameMajor(ArtifactVersion other) {
-		return delegate.hasSameMajor(other.getVersion());
 	}
 
 	@Override
@@ -52,6 +42,21 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 	@Override
 	public boolean isOlder(ArtifactVersion other) {
 		return delegate.isOlder(other.getVersion());
+	}
+
+	@Override
+	public boolean hasSameMajor(ArtifactVersion other) {
+		return delegate.hasSameMajor(other.getVersion());
+	}
+
+	@Override
+	public boolean hasSameMajorMinor(ArtifactVersion other) {
+		return delegate.hasSameMajorMinor(other.getVersion());
+	}
+
+	@Override
+	public boolean hasSameBaseVersion(ArtifactVersion other) {
+		return delegate.hasSameBaseVersion(other.getVersion());
 	}
 
 	@Override
@@ -84,20 +89,6 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 		return delegate.isBugFixVersion();
 	}
 
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>
-	 * For another {@code GitVersion}, the comparison delegates to the wrapped
-	 * {@link ArtifactVersion} so that GitHub-only release lists sort consistently.
-	 *
-	 * <p>
-	 * For non-{@code GitVersion} arguments, comparison throws
-	 * {@link ClassCastException}. Returning {@code 0} for incomparable types would
-	 * silently mis-merge sorted lists; throwing makes the incompatibility loud and
-	 * matches the {@link Comparable} contract that orderings be total within a
-	 * compared type.
-	 */
 	@Override
 	public int compareTo(ArtifactVersion other) {
 		return delegate.compareTo(other.getVersion());
