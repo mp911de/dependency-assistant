@@ -120,13 +120,6 @@ public class GitVersionResolver {
 	 */
 	public Optional<ArtifactVersion> resolveCurrent(ArtifactId artifactId, String rawRef) {
 
-		if (projectState != null) {
-			Dependency dependency = projectState.findDependency(artifactId);
-			if (dependency != null) {
-				return Optional.of(dependency.getCurrentVersion());
-			}
-		}
-
 		List<Release> releases = cache.getReleases(artifactId);
 		GitVersion gitVersion = releases.isEmpty() ? null : resolveVersion(rawRef, releases);
 		if (gitVersion != null) {
