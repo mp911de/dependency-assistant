@@ -150,7 +150,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return MavenUtils.getReleaseSources(project);
+			return MavenRepositories.getReleaseSources(project);
 		}
 
 		@Override

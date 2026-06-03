@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -27,6 +28,7 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.xml.XmlFile;
+import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -389,6 +391,89 @@ class MavenParserTests {
 				.hasDependencyUsage("org.apache.maven.plugins", "maven-javadoc-plugin")
 				.hasVersion("3.11.2")
 				.hasDeclaration(DeclarationSource.profilePlugin("docs"));
+	}
+
+	// -------------------------------------------------------------------------
+	// Repositories
+	// -------------------------------------------------------------------------
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<repositories>
+					<repository>
+						<id>central</id>
+						<name>Maven Central</name>
+						<url>https://repo.maven.apache.org/maven2</url>
+					</repository>
+				</repositories>
+			</project>
+			""")
+	void parsesTopLevelRepository(XmlFile file) {
+
+		List<MavenRemoteRepository> repositories = MavenParser.parseRepositories(file);
+
+		assertThat(repositories).extracting(MavenRemoteRepository::getId, MavenRemoteRepository::getUrl)
+				.containsExactly(tuple("central", "https://repo.maven.apache.org/maven2"));
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<pluginRepositories>
+					<pluginRepository>
+						<id>plugins</id>
+						<url>https://plugins.example.com/maven2</url>
+					</pluginRepository>
+				</pluginRepositories>
+			</project>
+			""")
+	void parsesTopLevelPluginRepository(XmlFile file) {
+
+		List<MavenRemoteRepository> repositories = MavenParser.parseRepositories(file);
+
+		assertThat(repositories).extracting(MavenRemoteRepository::getId, MavenRemoteRepository::getUrl)
+				.containsExactly(tuple("plugins", "https://plugins.example.com/maven2"));
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<profiles>
+					<profile>
+						<id>release</id>
+						<repositories>
+							<repository>
+								<id>profile-repo</id>
+								<url>https://profile.example.com/maven2</url>
+							</repository>
+						</repositories>
+						<pluginRepositories>
+							<pluginRepository>
+								<id>profile-plugins</id>
+								<url>https://profile-plugins.example.com/maven2</url>
+							</pluginRepository>
+						</pluginRepositories>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void parsesProfileRepositories(XmlFile file) {
+
+		List<MavenRemoteRepository> repositories = MavenParser.parseRepositories(file);
+
+		assertThat(repositories).extracting(MavenRemoteRepository::getId, MavenRemoteRepository::getUrl)
+				.containsExactly(tuple("profile-repo", "https://profile.example.com/maven2"),
+						tuple("profile-plugins", "https://profile-plugins.example.com/maven2"));
 	}
 
 	// -------------------------------------------------------------------------

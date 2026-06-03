@@ -155,7 +155,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 		public List<ReleaseSource> getReleaseSources() {
 
 			Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
-			Set<RemoteRepository> remoteRepositories = MavenUtils.getRemoteRepositories(credentials, mavenProject);
+			Set<RemoteRepository> remoteRepositories = MavenRepositories.getRemoteRepositories(credentials,
+					mavenProject, psiManager.findFile(mavenProject.getFile()));
 			return ReleaseSource.getReleaseSources(remoteRepositories);
 		}
 

@@ -16,9 +16,12 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactUsage;
@@ -35,6 +38,7 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -78,13 +82,11 @@ class MavenParser {
 			return result;
 		}
 
-		for (XmlTag profiles : root.findSubTags("profiles")) {
-			for (XmlTag profile : profiles.findSubTags("profile")) {
-				for (XmlTag properties : profile.findSubTags("properties")) {
-					collectProperties(properties, result);
-				}
+		doWithProfiles(root, profile -> {
+			for (XmlTag properties : profile.findSubTags("properties")) {
+				collectProperties(properties, result);
 			}
-		}
+		});
 
 		for (XmlTag properties : root.findSubTags("properties")) {
 			collectProperties(properties, result);
@@ -113,6 +115,73 @@ class MavenParser {
 			}
 			target.put(name.trim(), new PropertyValue(name, child.getValue().getTrimmedText().trim(), child));
 		}
+	}
+
+	/**
+	 * Parse Maven repositories from the given {@link PsiFile}.
+	 * @param pomFile the Maven POM file.
+	 * @return list of repositories.
+	 */
+	public static List<MavenRemoteRepository> parseRepositories(PsiFile pomFile) {
+
+		List<MavenRemoteRepository> repositories = new ArrayList<>();
+
+		if (!(pomFile instanceof XmlFile xmlFile)) {
+			return repositories;
+		}
+
+		XmlTag root = xmlFile.getDocument() != null ? xmlFile.getDocument().getRootTag() : null;
+		if (root == null) {
+			return repositories;
+		}
+
+		collectRepositories(root, repositories);
+		doWithProfiles(root, profile -> collectRepositories(profile, repositories));
+
+		return repositories;
+	}
+
+	private static void collectRepositories(XmlTag parent, List<MavenRemoteRepository> target) {
+		collectRepositories(parent, "repositories", "repository", target);
+		collectRepositories(parent, "pluginRepositories", "pluginRepository", target);
+	}
+
+	private static void collectRepositories(XmlTag parent, String containerTag, String entryTag,
+			List<MavenRemoteRepository> target) {
+
+		for (XmlTag container : parent.findSubTags(containerTag)) {
+			for (XmlTag entry : container.findSubTags(entryTag)) {
+				target.add(toRemoteRepository(entry));
+			}
+		}
+	}
+
+	private static MavenRemoteRepository toRemoteRepository(XmlTag repository) {
+
+		String id = text(repository, "id");
+		String name = text(repository, "name");
+		String url = text(repository, "url");
+		String layout = text(repository, "layout");
+
+		MavenRemoteRepository.Policy releases = parsePolicy(repository.findFirstSubTag("releases"));
+		MavenRemoteRepository.Policy snapshots = parsePolicy(repository.findFirstSubTag("snapshots"));
+
+		return new MavenRemoteRepository(id, name, url, layout, releases, snapshots);
+	}
+
+	private static MavenRemoteRepository.Policy parsePolicy(@Nullable XmlTag policy) {
+
+		if (policy == null) {
+			return new MavenRemoteRepository.Policy(true, "daily", "warn");
+		}
+
+		String enabled = text(policy, "enabled");
+		String updatePolicy = text(policy, "updatePolicy");
+		String checksumPolicy = text(policy, "checksumPolicy");
+
+		return new MavenRemoteRepository.Policy(!"false".equals(enabled),
+				updatePolicy.isEmpty() ? "daily" : updatePolicy,
+				checksumPolicy.isEmpty() ? "warn" : checksumPolicy);
 	}
 
 	/**
@@ -225,7 +294,7 @@ class MavenParser {
 	 */
 	public static @Nullable ArtifactId parseArtifactId(@Nullable XmlTag tag, PropertyResolver propertyResolver) {
 		return tag != null
-				? parseArtifactId(tag.getSubTagText("groupId"), tag.getSubTagText("artifactId"), propertyResolver)
+				? parseArtifactId(text(tag, "groupId"), text(tag, "artifactId"), propertyResolver)
 				: null;
 	}
 
@@ -301,31 +370,38 @@ class MavenParser {
 			doWithPlugins(resolver, DeclarationSource.plugin(), callback, reporting);
 		}
 
+		doWithProfiles(root, profile -> {
+
+			String id = profile.getSubTagText("id");
+			if (StringUtils.isEmpty(id)) {
+				return;
+			}
+
+			for (XmlTag dependencyManagement : profile.findSubTags("dependencyManagement")) {
+				doWithDependencies(dependencyManagement, resolver, DeclarationSource.profileManaged(id), callback);
+			}
+			doWithDependencies(profile, resolver, DeclarationSource.profileDependency(id), callback);
+
+			for (XmlTag build : profile.findSubTags("build")) {
+				for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
+					doWithPlugins(resolver, DeclarationSource.profilePluginManagement(id), callback,
+							pluginManagement);
+				}
+				doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, build);
+				doWithExtensions(resolver, DeclarationSource.profilePlugin(id), callback, build);
+			}
+
+			for (XmlTag reporting : profile.findSubTags("reporting")) {
+				doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, reporting);
+			}
+
+		});
+	}
+
+	private static void doWithProfiles(XmlTag root, Consumer<XmlTag> callback) {
 		for (XmlTag profiles : root.findSubTags("profiles")) {
 			for (XmlTag profile : profiles.findSubTags("profile")) {
-
-				String id = profile.getSubTagText("id");
-				if (StringUtils.isEmpty(id)) {
-					continue;
-				}
-
-				for (XmlTag dependencyManagement : profile.findSubTags("dependencyManagement")) {
-					doWithDependencies(dependencyManagement, resolver, DeclarationSource.profileManaged(id), callback);
-				}
-				doWithDependencies(profile, resolver, DeclarationSource.profileDependency(id), callback);
-
-				for (XmlTag build : profile.findSubTags("build")) {
-					for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
-						doWithPlugins(resolver, DeclarationSource.profilePluginManagement(id), callback,
-								pluginManagement);
-					}
-					doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, build);
-					doWithExtensions(resolver, DeclarationSource.profilePlugin(id), callback, build);
-				}
-
-				for (XmlTag reporting : profile.findSubTags("reporting")) {
-					doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, reporting);
-				}
+				callback.accept(profile);
 			}
 		}
 	}
@@ -358,6 +434,11 @@ class MavenParser {
 				doWithDependency(resolver, extension, declarationSource, callback);
 			}
 		}
+	}
+
+	private static String text(XmlTag tag, String subTag) {
+		String value = tag.getSubTagText(subTag);
+		return value != null ? value.trim() : "";
 	}
 
 }

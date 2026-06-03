@@ -198,8 +198,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 		return result;
 	}
 
-
-	// TODO: do not log URI credentials.
 	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
 			@Nullable RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri) {
 
@@ -220,7 +218,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, e.getStatusCode(), uri), e);
 			return null;
 		} catch (IOException e) {
-			throw new UncheckedIOException("%s: Failed to fetch %s".formatted(artifactId, uri), e);
+			throw new UncheckedIOException("%s: Failed to fetch %s: %s".formatted(artifactId, uri, e.getMessage()), e);
 		}
 	}
 

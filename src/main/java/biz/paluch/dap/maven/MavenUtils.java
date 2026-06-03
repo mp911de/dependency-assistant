@@ -16,18 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BiConsumer;
-
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RepositoryCredentials;
-import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -35,9 +23,6 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.annotations.Contract;
-import org.jetbrains.idea.maven.model.MavenRemoteRepository;
-import org.jetbrains.idea.maven.project.MavenProject;
-import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -119,75 +104,6 @@ class MavenUtils {
 		}
 		String namespace = rootTag.getNamespace();
 		return namespace.isEmpty() || "http://maven.apache.org/POM/4.0.0".equals(namespace);
-	}
-
-	/**
-	 * Collect all remote repositories (dependency and plugin) from the given Maven
-	 * project, decorated with credentials where available.
-	 * <p>Repositories are deduplicated by URL.
-	 *
-	 * @param credentials credentials keyed by repository id; must not be
-	 * {@literal null}.
-	 * @param project the Maven project to inspect; must not be {@literal null}.
-	 * @return the deduplicated set of remote repositories; guaranteed to be not
-	 * {@literal null} but may be empty.
-	 */
-	public static Set<RemoteRepository> getRemoteRepositories(Map<String, RepositoryCredentials> credentials,
-			MavenProject project) {
-
-		Set<RemoteRepository> urls = new LinkedHashSet<>();
-
-		forEach(project.getRemoteRepositories(),
-				(id, url) -> urls.add(remoteRepository(id, url, credentials.get(id))));
-		forEach(project.getRemotePluginRepositories(),
-				(id, url) -> urls.add(remoteRepository(id, url, credentials.get(id))));
-
-		return urls;
-	}
-
-	private static void forEach(Collection<MavenRemoteRepository> repositories, BiConsumer<String, String> consumer) {
-		for (MavenRemoteRepository repo : repositories) {
-
-			String url = repo.getUrl();
-			if (StringUtils.hasText(url) && (url.startsWith("http://") || url.startsWith("https://"))) {
-				String repoId = repo.getId();
-				String urlToUse = url.endsWith("/") ? url : url + "/";
-
-				consumer.accept(repoId, urlToUse);
-			}
-		}
-	}
-
-	/**
-	 * Collect release sources for all Maven sub-projects in the given project.
-	 * <p>Loads credentials from {@code settings.xml}, then aggregates the remote
-	 * repositories across every project known to {@link MavenProjectsManager},
-	 * deduplicates them, and wraps each as a {@link ReleaseSource}.
-	 *
-	 * @param project the IntelliJ project; must not be {@literal null}.
-	 * @return the aggregated release sources; guaranteed to be not {@literal null}
-	 * but may be empty.
-	 */
-	public static List<ReleaseSource> getReleaseSources(Project project) {
-
-		Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
-		Set<RemoteRepository> remoteRepositories = new LinkedHashSet<>();
-		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
-
-		for (MavenProject candidate : manager.getProjects()) {
-			remoteRepositories.addAll(MavenUtils.getRemoteRepositories(credentials, candidate));
-		}
-
-		return ReleaseSource.getReleaseSources(remoteRepositories);
-	}
-
-	private static RemoteRepository remoteRepository(String id, String url,
-			@Nullable RepositoryCredentials credentials) {
-
-		if (credentials != null && !credentials.allowsRepositoryUrl(url)) {
-			credentials = null;
-		}
-		return new RemoteRepository(id, url, credentials);
 	}
 
 	@Contract("null -> false")
