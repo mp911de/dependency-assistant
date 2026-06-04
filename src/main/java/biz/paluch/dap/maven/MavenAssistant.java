@@ -74,7 +74,7 @@ class MavenAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean supports(Project project) {
-		return true;
+		return !MavenProjectsManager.getInstance(project).getProjects().isEmpty();
 	}
 
 	@Override
