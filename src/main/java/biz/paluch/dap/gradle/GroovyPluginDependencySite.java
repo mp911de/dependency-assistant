@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
@@ -60,7 +61,8 @@ class GroovyPluginDependencySite {
 		String versionText = GroovyDslUtils.getText(versionLiteral);
 		Expression expression = Expression.from(versionText);
 
-		return GradleDependency.of(GradlePluginId.of(id), expression).toDependencySite(call, versionLiteral);
+		return GradleDependency.of(GradlePluginId.of(id), expression, DeclarationSource.plugin()).toDependencySite(call,
+				versionLiteral);
 	}
 
 	private static @Nullable GrLiteral findFirstLiteralArgument(GrMethodCall call) {

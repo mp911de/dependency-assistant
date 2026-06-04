@@ -23,6 +23,7 @@ import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.Release;
@@ -56,7 +57,9 @@ class VersionUpgradeLookupUnitTests {
 	});
 
 	ArtifactReference tieringReference = ArtifactReference
-			.from(it -> it.artifact(artifactId).versionSource(VersionSource.none()).declarationElement(element));
+			.from(it -> it.artifact(artifactId).versionSource(VersionSource.none())
+					.declarationSource(DeclarationSource.dependency())
+					.declarationElement(element));
 
 	@Test
 	void suggestUpgradesResolvesReferenceAgainstCache() {
@@ -214,12 +217,16 @@ class VersionUpgradeLookupUnitTests {
 	}
 
 	private ArtifactReference declaredReference(String version) {
-		return ArtifactReference.from(it -> it.artifact(artifactId).versionSource(VersionSource.declared(version))
+		return ArtifactReference.from(it -> it.artifact(artifactId)
+				.versionSource(VersionSource.declared(version))
+				.declarationSource(DeclarationSource.dependency())
 				.version(ArtifactVersion.of(version)).declarationElement(element));
 	}
 
 	private ArtifactReference versionUndefinedReference() {
-		return ArtifactReference.from(it -> it.artifact(artifactId).versionSource(VersionSource.declared("1.0.0"))
+		return ArtifactReference.from(it -> it.artifact(artifactId)
+				.versionSource(VersionSource.declared("1.0.0"))
+				.declarationSource(DeclarationSource.dependency())
 				.declarationElement(element));
 	}
 

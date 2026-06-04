@@ -20,7 +20,6 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import org.jspecify.annotations.Nullable;
@@ -60,12 +59,9 @@ record WrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral, Prop
 
 	/**
 	 * Return a {@link VersionSource} based on the declared version.
-	 * <p>{@link #pathVersion} is always set from a regex group and can be the empty
-	 * string for incomplete URLs; the {@link StringUtils#hasText} guard converts
-	 * that case to {@link VersionSource#none()}.
 	 */
 	public VersionSource versionSource() {
-		return StringUtils.hasText(pathVersion) ? VersionSource.declared(pathVersion) : VersionSource.none();
+		return VersionSource.from(pathVersion());
 	}
 
 }

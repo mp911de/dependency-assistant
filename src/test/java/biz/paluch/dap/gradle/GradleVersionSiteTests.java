@@ -16,20 +16,13 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
 import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
-import biz.paluch.dap.gradle.GradleVersionSite.MapPropertyVersion;
-import biz.paluch.dap.gradle.GradleVersionSite.PluginVersion;
 import biz.paluch.dap.gradle.GradleVersionSite.TomlCatalogAlias;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferLiteral;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyLiteral;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyProperty;
 import biz.paluch.dap.support.DependencySite;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
@@ -75,30 +68,6 @@ class GradleVersionSiteTests {
 		TomlCatalogAlias site = new TomlCatalogAlias(TomlReference.libs("spring.core"), file);
 
 		assertThat((Object) site).isNotInstanceOf(DependencySite.class);
-	}
-
-	@Test
-	@ProjectFile(name = "build.gradle", content = "ext.springVersion = '6.2.0'")
-	void resolvedVariantsImplementDependencySite(PsiFile file) {
-
-		ArtifactId id = ArtifactId.of("org.springframework", "spring-core");
-		VersionSource declared = VersionSource.declared("6.2.0");
-		VersionSource property = VersionSource.property("springVersion");
-
-		assertThat((Object) new DirectCoordinate(id, declared, file, file)).isInstanceOf(DependencySite.class);
-		assertThat((Object) new MapLiteralVersion(id, declared, file, file)).isInstanceOf(DependencySite.class);
-		assertThat((Object) new MapPropertyVersion(id, "springVersion", property, file, file))
-				.isInstanceOf(DependencySite.class);
-		assertThat((Object) new VersionBlockPreferLiteral(id, declared, file, file))
-				.isInstanceOf(DependencySite.class);
-		assertThat((Object) new VersionBlockPreferProperty(id, "springVersion", property, file, file))
-				.isInstanceOf(DependencySite.class);
-		assertThat((Object) new VersionBlockStrictlyLiteral(id, declared, file, file))
-				.isInstanceOf(DependencySite.class);
-		assertThat((Object) new VersionBlockStrictlyProperty(id, "springVersion", property, file, file))
-				.isInstanceOf(DependencySite.class);
-		assertThat((Object) new PluginVersion(ArtifactId.of("org.springframework.boot", "org.springframework.boot"),
-				declared, file, file)).isInstanceOf(DependencySite.class);
 	}
 
 	// -------------------------------------------------------------------------
@@ -152,7 +121,7 @@ class GradleVersionSiteTests {
 
 		GradleVersionSite site = locateGroovyLiteral(file, "'3.3.2'");
 
-		assertThat(site).isInstanceOf(PluginVersion.class);
+		assertThat(site.getDeclarationSource()).isEqualTo(DeclarationSource.plugin());
 	}
 
 	@Test

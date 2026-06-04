@@ -18,6 +18,7 @@ package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.VersionProperty;
@@ -110,11 +111,11 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private ArtifactReference resolveDirect(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
-
 		ArtifactId artifactId = MavenParser.parseArtifactId(parentTag, propertyResolver);
 		if (artifactId == null) {
 			return ArtifactReference.unresolved();
 		}
+		DeclarationSource declarationSource = MavenParser.getDeclarationSource(parentTag);
 
 		String version = versionTag.getValue().getText().trim();
 		Expression expression = Expression.from(version);
@@ -124,7 +125,8 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 			ResolvedProperty property = resolveProperty(expression);
 			return ArtifactReference.from(it -> {
 				it.artifact(artifactId).declarationElement(parentTag)
-						.versionSource(VersionSource.property(expression.getPropertyName()));
+						.versionSource(VersionSource.property(expression.getPropertyName()))
+						.declarationSource(declarationSource);
 				if (property != null) {
 					ArtifactVersion.from(property.value()).ifPresent(it::version);
 					it.versionLiteral(property.propertyValue().getValueLiteral());
@@ -141,8 +143,8 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(artifactId).declarationElement(parentTag)
-					.versionSource(
-							StringUtils.hasText(version) ? VersionSource.declared(version) : VersionSource.none());
+					.declarationSource(declarationSource)
+					.versionSource(VersionSource.from(version));
 			ArtifactVersion.from(version).ifPresent(it::version);
 			it.versionLiteral(versionTag);
 		});
@@ -184,8 +186,10 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		CachedArtifact firstArtifact = property.artifacts().getFirst();
 
 		return ArtifactReference.from(it -> {
-			it.artifact(firstArtifact.toArtifactId()).declarationElement(propertyTag)
-					.versionSource(VersionSource.property(tagName));
+			it.artifact(firstArtifact.toArtifactId())
+					.declarationElement(propertyTag)
+					.versionSource(VersionSource.property(tagName))
+					.declarationSource(DeclarationSource.dependency());
 
 			if (currentVersion != null) {
 				it.version(currentVersion);

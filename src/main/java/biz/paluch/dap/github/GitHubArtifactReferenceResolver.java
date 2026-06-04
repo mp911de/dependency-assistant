@@ -20,6 +20,7 @@ import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ArtifactReferenceResolver;
@@ -88,6 +89,7 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return ArtifactReference.from(builder -> {
 			builder.artifact(artifactId)
 					.versionSource(ref.toVersionSource())
+					.declarationSource(DeclarationSource.dependency())
 					.declarationElement(scalar)
 					.versionLiteral(scalar);
 

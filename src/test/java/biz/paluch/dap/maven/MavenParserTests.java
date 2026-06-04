@@ -242,6 +242,35 @@ class MavenParserTests {
 				.hasDeclaration(DeclarationSource.plugin());
 	}
 
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<build>
+					<pluginManagement>
+						<plugins>
+							<plugin>
+								<artifactId>maven-compiler-plugin</artifactId>
+								<version>3.14.0</version>
+							</plugin>
+						</plugins>
+					</pluginManagement>
+				</build>
+			</project>
+			""")
+	void managedPluginWithInlineVersionIsDiscovered(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.maven.plugins", "maven-compiler-plugin")
+				.hasVersion("3.14.0")
+				.hasDeclaration(DeclarationSource.pluginManagement());
+	}
+
 	// -------------------------------------------------------------------------
 	// Build extensions / Reporting plugins
 	// -------------------------------------------------------------------------

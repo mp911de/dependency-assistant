@@ -86,7 +86,7 @@ record AntoraBundleUrl(String host, String owner, String repository, String vers
 	 * Return the declared version source for this bundle URL.
 	 */
 	VersionSource toVersionSource() {
-		return StringUtils.hasText(version) ? VersionSource.declared(version) : VersionSource.none();
+		return VersionSource.from(version());
 	}
 
 }

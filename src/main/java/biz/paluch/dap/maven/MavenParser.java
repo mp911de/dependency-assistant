@@ -36,6 +36,7 @@ import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
@@ -326,10 +327,9 @@ class MavenParser {
 			if (expression.isProperty()) {
 				return VersionSource.property(expression.getPropertyName());
 			}
-			return VersionSource.declared(version);
 		}
 
-		return VersionSource.none();
+		return VersionSource.from(version);
 	}
 
 	private void doWithArtifacts(PropertyResolver resolver, XmlFile pomFile,
@@ -342,54 +342,74 @@ class MavenParser {
 
 		XmlTag parent = root.findFirstSubTag("parent");
 		if (isParentDependencyCandidate(root, parent)) {
-
-			doWithDependency(resolver, parent, DeclarationSource.dependency(), callback);
+			doWithDependency(resolver, parent, getDeclarationSource(parent), callback);
 		}
 
-		for (XmlTag dependencyManagement : root.findSubTags("dependencyManagement")) {
-			doWithDependencies(dependencyManagement, resolver, DeclarationSource.managed(), callback);
-		}
-
-		doWithDependencies(root, resolver, DeclarationSource.dependency(), callback);
-
-		for (XmlTag build : root.findSubTags("build")) {
-			for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
-				doWithPlugins(resolver, DeclarationSource.pluginManagement(), callback, pluginManagement);
-			}
-			doWithPlugins(resolver, DeclarationSource.plugin(), callback, build);
-			doWithExtensions(resolver, DeclarationSource.plugin(), callback, build);
-		}
-
-		for (XmlTag reporting : root.findSubTags("reporting")) {
-			doWithPlugins(resolver, DeclarationSource.plugin(), callback, reporting);
-		}
-
+		doWithPluginsAndDependencies(resolver, callback, root);
 		doWithProfiles(root, profile -> {
-
 			String id = profile.getSubTagText("id");
 			if (StringUtils.isEmpty(id)) {
 				return;
 			}
-
-			for (XmlTag dependencyManagement : profile.findSubTags("dependencyManagement")) {
-				doWithDependencies(dependencyManagement, resolver, DeclarationSource.profileManaged(id), callback);
-			}
-			doWithDependencies(profile, resolver, DeclarationSource.profileDependency(id), callback);
-
-			for (XmlTag build : profile.findSubTags("build")) {
-				for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
-					doWithPlugins(resolver, DeclarationSource.profilePluginManagement(id), callback,
-							pluginManagement);
-				}
-				doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, build);
-				doWithExtensions(resolver, DeclarationSource.profilePlugin(id), callback, build);
-			}
-
-			for (XmlTag reporting : profile.findSubTags("reporting")) {
-				doWithPlugins(resolver, DeclarationSource.profilePlugin(id), callback, reporting);
-			}
-
+			doWithPluginsAndDependencies(resolver, callback, profile);
 		});
+	}
+
+	private void doWithPluginsAndDependencies(PropertyResolver resolver, BiConsumer<ArtifactId, ArtifactUsage> callback,
+			XmlTag root) {
+
+		for (XmlTag dependencyManagement : root.findSubTags("dependencyManagement")) {
+			doWithDependencies(dependencyManagement, resolver, callback);
+		}
+
+		doWithDependencies(root, resolver, callback);
+
+		for (XmlTag build : root.findSubTags("build")) {
+			for (XmlTag pluginManagement : build.findSubTags("pluginManagement")) {
+				doWithPlugins(resolver, callback, pluginManagement);
+			}
+			doWithPlugins(resolver, callback, build);
+			doWithExtensions(resolver, callback, build);
+		}
+
+		for (XmlTag reporting : root.findSubTags("reporting")) {
+			doWithPlugins(resolver, callback, reporting);
+		}
+	}
+
+	/**
+	 * Return the {@link DeclarationSource} for the given dependency or plugin
+	 * declaration tag.
+	 * 
+	 * @param owner the dependency, plugin, or extension tag to classify.
+	 * @return the declaration source describing where the artifact is declared.
+	 */
+	public static DeclarationSource getDeclarationSource(XmlTag owner) {
+
+		XmlTag profile = (XmlTag) PsiTreeUtil.findFirstParent(owner,
+				psiElement -> psiElement instanceof XmlTag tag && "profile".equals(tag.getLocalName()));
+		String profileId = profile != null ? text(profile, "id") : null;
+
+		if (owner.getParentTag() instanceof XmlTag parent && parent.getParentTag() instanceof XmlTag grandParent) {
+
+			if ("pluginManagement".equals(grandParent.getLocalName())) {
+				return StringUtils.hasText(profileId) ? DeclarationSource.profilePluginManagement(profileId)
+						: DeclarationSource.pluginManagement();
+			}
+
+			if ("dependencyManagement".equals(grandParent.getLocalName())) {
+				return StringUtils.hasText(profileId) ? DeclarationSource.profileManaged(profileId)
+						: DeclarationSource.managed();
+			}
+		}
+
+		if ("plugin".equals(owner.getLocalName()) || "extension".equals(owner.getLocalName())) {
+			return StringUtils.hasText(profileId) ? DeclarationSource.profilePlugin(profileId)
+					: DeclarationSource.plugin();
+		}
+
+		return StringUtils.hasText(profileId) ? DeclarationSource.profileDependency(profileId)
+				: DeclarationSource.dependency();
 	}
 
 
@@ -434,32 +454,32 @@ class MavenParser {
 		}
 	}
 
-	private void doWithDependencies(XmlTag root, PropertyResolver resolver, DeclarationSource declarationSource,
+	private void doWithDependencies(XmlTag root, PropertyResolver resolver,
 			BiConsumer<ArtifactId, ArtifactUsage> callback) {
 		for (XmlTag dependencies : root.findSubTags("dependencies")) {
 			for (XmlTag dependency : dependencies.findSubTags("dependency")) {
-				doWithDependency(resolver, dependency, declarationSource, callback);
+				doWithDependency(resolver, dependency, getDeclarationSource(dependency), callback);
 			}
 		}
 	}
 
-	private void doWithPlugins(PropertyResolver resolver, DeclarationSource declarationSource,
+	private void doWithPlugins(PropertyResolver resolver,
 			BiConsumer<ArtifactId, ArtifactUsage> callback, XmlTag build) {
 		for (XmlTag plugins : build.findSubTags("plugins")) {
 			for (XmlTag plugin : plugins.findSubTags("plugin")) {
-				doWithDependency(resolver, plugin, declarationSource, callback);
+				doWithDependency(resolver, plugin, getDeclarationSource(plugin), callback);
 			}
 		}
 	}
 
-	private void doWithExtensions(PropertyResolver resolver, DeclarationSource declarationSource,
+	private void doWithExtensions(PropertyResolver resolver,
 			BiConsumer<ArtifactId, ArtifactUsage> callback, XmlTag build) {
 		for (XmlTag extensions : build.findSubTags("extensions")) {
 			for (XmlTag extension : extensions.findSubTags("extension")) {
 				if (StringUtils.isEmpty(extension.getSubTagText("groupId"))) {
 					continue;
 				}
-				doWithDependency(resolver, extension, declarationSource, callback);
+				doWithDependency(resolver, extension, getDeclarationSource(extension), callback);
 			}
 		}
 	}

@@ -48,22 +48,23 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 		super(collector);
 	}
 
-	void register(DependencySite site, DeclarationSource declarationSource, PropertyResolver propertyResolver) {
+	void register(DependencySite site, PropertyResolver propertyResolver) {
 
 		if (site instanceof VersionedDependencySite versioned) {
-			getCollector().registerUsage(versioned.getArtifactId(), versioned.getVersion(), declarationSource,
+			getCollector().registerUsage(versioned.getArtifactId(), versioned.getVersion(), site.getDeclarationSource(),
 					versioned.getVersionSource());
 		} else if (site.getVersionSource() instanceof VersionSource.VersionProperty property) {
 
 			String version = propertyResolver.getProperty(property.getProperty());
 			if (StringUtils.hasText(version)) {
 				ArtifactVersion.from(version)
-						.ifPresent(it -> getCollector().registerUsage(site.getArtifactId(), it, declarationSource,
+						.ifPresent(it -> getCollector().registerUsage(site.getArtifactId(), it,
+								site.getDeclarationSource(),
 								site.getVersionSource()));
 			}
 		}
 
-		getCollector().registerDeclaration(site.getArtifactId(), declarationSource, site.getVersionSource());
+		getCollector().registerDeclaration(site.getArtifactId(), site.getDeclarationSource(), site.getVersionSource());
 	}
 
 	/**
@@ -72,9 +73,8 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 	 * </pre>
 	 */
 	record NamedDependencyDeclaration(PsiFile buildFile, @Nullable String id, @Nullable String group,
-			@Nullable String artifact,
-			@Nullable String versionProperty,
-			@Nullable String version, PsiElement declaration, @Nullable PsiElement versionLiteral) {
+			@Nullable String artifact, @Nullable String versionProperty, @Nullable String version,
+			PsiElement declaration, @Nullable PsiElement versionLiteral, DeclarationSource declarationSource) {
 
 		/**
 		 * Check whether the declaration is complete (having id and version information
@@ -120,9 +120,8 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 				if (element != null) {
 					Optional<ArtifactVersion> version = ArtifactVersion.from(element.getValue());
 					if (version.isPresent()) {
-						return VersionedDependencySite.of(artifactId, version
-								.get(), versionSource, element.getValueLiteral(),
-								declaration);
+						return VersionedDependencySite.of(artifactId, version.get(), versionSource, declarationSource,
+								element.getValueLiteral(), declaration);
 					}
 				}
 
@@ -130,22 +129,23 @@ abstract class GradleParserSupport extends BuildFileParserSupport {
 					Optional<ArtifactVersion> version = ArtifactVersion.from(version());
 					if (version.isPresent()) {
 						return VersionedDependencySite.of(artifactId, version.get(),
-								versionSource, declaration, getRequiredVersionLiteral());
+								versionSource, declarationSource, declaration,
+								getRequiredVersionLiteral());
 					}
 				}
 
-				return DependencySite.of(artifactId, versionSource, declaration);
+				return DependencySite.of(artifactId, versionSource, declarationSource, declaration);
 			}
 
 			if (StringUtils.hasText(this.version)) {
 				Optional<ArtifactVersion> version = ArtifactVersion.from(version());
 				if (version.isPresent()) {
-					return VersionedDependencySite.of(artifactId, version.get(),
-							VersionSource.declared(this.version), declaration, getRequiredVersionLiteral());
+					return VersionedDependencySite.of(artifactId, version.get(), VersionSource.declared(this.version),
+							declarationSource, declaration, getRequiredVersionLiteral());
 				}
 			}
 
-			return DependencySite.of(artifactId, VersionSource.none(), declaration);
+			return DependencySite.of(artifactId, VersionSource.none(), DeclarationSource.dependency(), declaration);
 		}
 
 	}

@@ -51,6 +51,13 @@ class GroovyDslUtils {
 	}
 
 	/**
+	 * Return whether the element is nested inside a Groovy {@code platform} block.
+	 */
+	public static boolean isInsidePlatformBlock(PsiElement element) {
+		return isInsideGroovyBlock(element, GradleUtils::isPlatformSection);
+	}
+
+	/**
 	 * Return whether the element is nested inside a Groovy block accepted by
 	 * {@code conditional}.
 	 */

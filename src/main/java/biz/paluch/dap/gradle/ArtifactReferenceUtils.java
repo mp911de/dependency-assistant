@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.function.Supplier;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.VersionProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
@@ -64,7 +65,9 @@ class ArtifactReferenceUtils {
 		}
 
 		return ArtifactReference.from(it -> {
-			it.artifact(artifact.toArtifactId()).declarationElement(site.declarationElement())
+			it.artifact(artifact.toArtifactId())
+					.declarationElement(site.declarationElement())
+					.declarationSource(DeclarationSource.managed())
 					.versionSource(VersionSource.versionCatalogProperty(site.propertyName()));
 			ArtifactVersion.from(site.version()).ifPresent(it::version);
 			it.versionLiteral(site.versionElement());
@@ -100,6 +103,7 @@ class ArtifactReferenceUtils {
 				return ArtifactReference.from(it -> {
 					it.artifact(dependencySite.getArtifactId())
 							.versionSource(versionSource)
+							.declarationSource(dependencySite.getDeclarationSource())
 							.declarationElement(dependencySite.getDeclarationElement())
 							.versionLiteral(element.getValueLiteral());
 					ArtifactVersion.from(element.getValue()).ifPresent(it::version);
@@ -110,6 +114,7 @@ class ArtifactReferenceUtils {
 		return ArtifactReference.from(it -> {
 			it.artifact(dependencySite.getArtifactId())
 					.versionSource(versionSource)
+					.declarationSource(dependencySite.getDeclarationSource())
 					.declarationElement(dependencySite.getDeclarationElement());
 			if (resolvedVersion != null) {
 				it.version(resolvedVersion);

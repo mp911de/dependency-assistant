@@ -20,6 +20,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
@@ -70,8 +71,7 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 
 	/**
 	 * Locate the {@link GradleVersionSite} owning the given Groovy PSI element.
-	 * <p>
-	 * Supports direct dependency literals, property-backed declarations, and
+	 * <p>Supports direct dependency literals, property-backed declarations, and
 	 * version catalog references such as: <pre class="code">
 	 * implementation 'org.springframework:spring-core:6.2.0'
 	 * implementation "org.springframework:spring-core:$springVersion"
@@ -119,8 +119,7 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 
 	/**
 	 * Locate a {@link DependencySite} from a Groovy dependency or plugin call.
-	 * <p>
-	 * Supports direct string notation, named-argument declarations, version
+	 * <p>Supports direct string notation, named-argument declarations, version
 	 * blocks, and plugin declarations such as: <pre class="code">
 	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
@@ -129,8 +128,8 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 	 * </pre>
 	 *
 	 * @param call the method call to inspect.
-	 * @return the dependency site, or {@literal null} if the call does not represent a
-	 * supported declaration.
+	 * @return the dependency site, or {@literal null} if the call does not
+	 * represent a supported declaration.
 	 */
 	@Nullable
 	DependencySite locateDeclaration(GrMethodCall call) {
@@ -146,13 +145,14 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 		}
 
 		if (GradleParser.isMapStyleDeclarationCandidate(call)) {
-			DependencySite site = GradleParser.parseMapDeclaration(call, propertyResolver);
+			DependencySite site = GradleParser.parseMapDeclaration(call, DeclarationSource.dependency(),
+					propertyResolver);
 			if (site != null) {
 				return site;
 			}
 		}
 
-		return GradleParser.parseDependency(call, propertyResolver);
+		return GradleParser.parseDependency(call, DeclarationSource.dependency(), propertyResolver);
 	}
 
 	private GradleVersionSite locatePropertyLiteral(GrLiteral literal) {
@@ -196,7 +196,7 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 			return GradleVersionSite.absent();
 		}
 
-		GradleDependency dependency = GradleDependency.parse(text, propertyResolver);
+		GradleDependency dependency = GradleDependency.parse(text, DeclarationSource.managed(), propertyResolver);
 		if (dependency == null) {
 			return GradleVersionSite.absent();
 		}
@@ -204,7 +204,7 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 		PsiElement stringElement = GradleParser.findCommandPlatformString(element);
 		PsiElement versionElement = stringElement != null ? stringElement : element;
 		return new DirectCoordinate(dependency.toDependencySite(call, versionElement).getArtifactId(),
-				dependency.getVersionSource(), call, versionElement);
+				dependency.getVersionSource(), dependency.getDeclarationSource(), call, versionElement);
 	}
 
 	private @Nullable DependencySite resolvePropertyDeclaration(GrReferenceExpression refExpr) {
@@ -218,7 +218,9 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 			if (declarationCall != null) {
 
 				if (GradleParser.isMapStyleDeclarationCandidate(declarationCall)) {
-					DependencySite site = GradleParser.parseMapDeclaration(declarationCall, propertyResolver);
+					DependencySite site = GradleParser.parseMapDeclaration(declarationCall,
+							DeclarationSource.dependency(),
+							propertyResolver);
 					if (site != null) {
 						return site;
 					}
@@ -237,7 +239,8 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 
 			GrMethodCall dependencyCall = GradleParser.findVersionBlockDependencyCall(enclosingCall);
 			if (dependencyCall != null) {
-				DependencySite site = GradleParser.parseMapDeclaration(dependencyCall, propertyResolver);
+				DependencySite site = GradleParser.parseMapDeclaration(dependencyCall, DeclarationSource.dependency(),
+						propertyResolver);
 
 				if (site != null) {
 					return site;
@@ -292,14 +295,14 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 		boolean strictly = GradleVersionConstraint.STRICTLY.equals(constraintName);
 
 		return strictly
-				? new VersionBlockStrictlyLiteral(id, source, declaration, literal, version)
-				: new VersionBlockPreferLiteral(id, source, declaration, literal, version);
+				? new VersionBlockStrictlyLiteral(id, source, site.getDeclarationSource(), declaration, literal,
+						version)
+				: new VersionBlockPreferLiteral(id, source, site.getDeclarationSource(), declaration, literal, version);
 	}
 
 	/**
 	 * Resolve a version-block literal inside a Groovy dependency declaration.
-	 * <p>
-	 * Matches literals used in declarations such as: <pre class="code">
+	 * <p>Matches literals used in declarations such as: <pre class="code">
 	 * implementation('org.junit.jupiter:junit-jupiter') {
 	 *     version {
 	 *         prefer '5.11.0'
@@ -309,8 +312,8 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 	 *
 	 * @param literal the literal to inspect.
 	 * @param propertyResolver property resolver used for dependency metadata.
-	 * @return the resolved dependency site, or {@literal null} if the literal does not
-	 * belong to a supported version block.
+	 * @return the resolved dependency site, or {@literal null} if the literal does
+	 * not belong to a supported version block.
 	 */
 	private static @Nullable DependencySite resolveVersionBlockLiteral(GrLiteral literal,
 			PropertyResolver propertyResolver) {
@@ -372,14 +375,14 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 		VersionSource versionSource = VersionSource.declared(version);
 
 		return ArtifactVersion.from(version).map(
-				it -> (DependencySite) VersionedDependencySite.of(artifactId, it, versionSource, depCall, literal))
-				.orElseGet(() -> DependencySite.of(artifactId, versionSource, depCall));
+				it -> (DependencySite) VersionedDependencySite.of(artifactId, it, versionSource,
+						DeclarationSource.dependency(), depCall, literal))
+				.orElseGet(() -> DependencySite.of(artifactId, versionSource, DeclarationSource.dependency(), depCall));
 	}
 
 	/**
 	 * Locate a {@link DependencySite} for a Groovy version literal.
-	 * <p>
-	 * Supports direct string notation, named-argument versions, version-block
+	 * <p>Supports direct string notation, named-argument versions, version-block
 	 * constraints, and plugin versions such as: <pre class="code">
 	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
@@ -389,8 +392,8 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 	 *
 	 * @param element the literal to inspect.
 	 * @param scriptProperties property resolver used for property-backed versions.
-	 * @return the dependency site, or {@literal null} if the literal is not part of a
-	 * supported declaration.
+	 * @return the dependency site, or {@literal null} if the literal is not part of
+	 * a supported declaration.
 	 */
 	public static @Nullable DependencySite findDependencySite(GrLiteral element,
 			PropertyResolver scriptProperties) {
@@ -417,9 +420,17 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 			return null;
 		}
 
+		DeclarationSource declarationSource;
+
+		if (GroovyDslUtils.isInsidePlatformBlock(call)) {
+			declarationSource = DeclarationSource.managed();
+		} else {
+			declarationSource = DeclarationSource.dependency();
+		}
+
 		if (GradleParser.isMapStyleDeclarationCandidate(call)) {
 			if (GradleParser.isVersionNamedArgumentLiteral(element)) {
-				site = GradleParser.parseMapDeclaration(call, scriptProperties);
+				site = GradleParser.parseMapDeclaration(call, declarationSource, scriptProperties);
 				if (site != null) {
 					return site;
 				}
@@ -434,7 +445,7 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 		if (parts.length < 3) {
 			return null;
 		}
-		GradleDependency dependency = GradleDependency.parse(text);
+		GradleDependency dependency = GradleDependency.parse(text, declarationSource);
 		if (dependency == null || !dependency.getVersionSource().isDefined()) {
 			return null;
 		}
@@ -452,8 +463,8 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 	 *
 	 * @param call the outer {@code version} call.
 	 * @param scriptProperties property resolver used for plugin ID parsing.
-	 * @return the dependency site, or {@literal null} if the call does not match the
-	 * supported plugin declaration shape.
+	 * @return the dependency site, or {@literal null} if the call does not match
+	 * the supported plugin declaration shape.
 	 */
 	public static @Nullable DependencySite resolvePluginVersionLiteral(GrMethodCall call,
 			PropertyResolver scriptProperties) {
@@ -482,10 +493,10 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 		}
 
 		if (isMapStyleVersionContext(literal)) {
-			return new MapLiteralVersion(id, source, declaration, literal, version);
+			return new MapLiteralVersion(id, source, site.getDeclarationSource(), declaration, literal, version);
 		}
 
-		return new DirectCoordinate(id, source, declaration, literal, version);
+		return new DirectCoordinate(id, source, site.getDeclarationSource(), declaration, literal, version);
 	}
 
 	private GradleVersionSite classifyPropertyReferenceSite(DependencySite site, GrReferenceExpression refExpr) {
@@ -500,14 +511,17 @@ class GroovyVersionSiteLocator implements VersionSiteLocator<GroovyPsiElement> {
 		String enclosingName = enclosingCall != null ? GroovyDslUtils.getGroovyMethodName(enclosingCall) : null;
 
 		if (GradleVersionConstraint.PREFER.equals(enclosingName)) {
-			return new VersionBlockPreferProperty(id, propertyName, source, declaration, refExpr, version);
+			return new VersionBlockPreferProperty(id, propertyName, source, site.getDeclarationSource(), declaration,
+					refExpr, version);
 		}
 
 		if (GradleVersionConstraint.STRICTLY.equals(enclosingName)) {
-			return new VersionBlockStrictlyProperty(id, propertyName, source, declaration, refExpr, version);
+			return new VersionBlockStrictlyProperty(id, propertyName, source, site.getDeclarationSource(), declaration,
+					refExpr, version);
 		}
 
-		return new MapPropertyVersion(id, propertyName, source, declaration, refExpr, version);
+		return new MapPropertyVersion(id, propertyName, source, site.getDeclarationSource(), declaration, refExpr,
+				version);
 	}
 
 	private static boolean isPluginContext(GrLiteral literal) {

@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.VersionedDependencySite;
@@ -49,6 +50,15 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		GradleVersionSite.BackingProperty, GradleVersionSite.TomlCatalogAlias, GradleVersionSite.Absent {
 
 	/**
+	 * Return the artifact identifier for this site.
+	 *
+	 * @return the artifact identifier.
+	 * @throws UnsupportedOperationException if the site does not define an artifact
+	 * id (such as a backing-property or TOML-catalog-alias site).
+	 */
+	ArtifactId getArtifactId();
+
+	/**
 	 * Return the PSI element that owns this declaration site.
 	 */
 	PsiElement getDeclarationElement();
@@ -61,14 +71,19 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	}
 
 	/**
-	 * Return whether this site is absent (i.e. not {@link #isAbsent()}.
+	 * Return whether this site is absent (i.e. not {@link #isPresent()}.
 	 */
 	default boolean isAbsent() {
 		return !isPresent();
 	}
 
 	/**
-	 * Return the {@link Absent} singleton.
+	 * Return the declaration source.
+	 */
+	DeclarationSource getDeclarationSource();
+
+	/**
+	 * Return an absent version site.
 	 */
 	static GradleVersionSite absent() {
 		return Absent.INSTANCE;
@@ -97,13 +112,13 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	/**
 	 * Direct compact-string dependency notation such as {@code 'g:a:v'}.
 	 */
-	record DirectCoordinate(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement,
-			PsiElement versionLiteral, @Nullable ArtifactVersion version)
+	record DirectCoordinate(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
+			PsiElement declarationElement, PsiElement versionLiteral, @Nullable ArtifactVersion version)
 			implements GradleVersionSite, DependencySite, VersionAware {
 
-		DirectCoordinate(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement,
-				PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationElement, versionLiteral, null);
+		DirectCoordinate(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
+				PsiElement declarationElement, PsiElement versionLiteral) {
+			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
 		}
 
 		@Override
@@ -114,6 +129,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return declarationSource;
 		}
 
 		@Override
@@ -127,13 +147,13 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	 * Map-style declaration with a literal version such as
 	 * {@code group: 'g', name: 'a', version: '1.0'}.
 	 */
-	record MapLiteralVersion(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement,
-			PsiElement versionLiteral, @Nullable ArtifactVersion version)
+	record MapLiteralVersion(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
+			PsiElement declarationElement, PsiElement versionLiteral, @Nullable ArtifactVersion version)
 			implements GradleVersionSite, DependencySite, VersionAware {
 
-		MapLiteralVersion(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement,
-				PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationElement, versionLiteral, null);
+		MapLiteralVersion(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
+				PsiElement declarationElement, PsiElement versionLiteral) {
+			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
 		}
 
 		@Override
@@ -144,6 +164,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return declarationSource;
 		}
 
 		@Override
@@ -158,12 +183,14 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	 * {@code group: 'g', name: 'a', version: propVar}.
 	 */
 	record MapPropertyVersion(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-			PsiElement declarationElement, PsiElement versionReferenceElement, @Nullable ArtifactVersion version)
-			implements GradleVersionSite, DependencySite, VersionAware {
+			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionReferenceElement,
+			@Nullable ArtifactVersion version) implements GradleVersionSite, DependencySite, VersionAware {
 
 		MapPropertyVersion(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-				PsiElement declarationElement, PsiElement versionReferenceElement) {
-			this(artifactId, propertyName, versionSource, declarationElement, versionReferenceElement, null);
+				DeclarationSource declarationSource, PsiElement declarationElement,
+				PsiElement versionReferenceElement) {
+			this(artifactId, propertyName, versionSource, declarationSource, declarationElement,
+					versionReferenceElement, null);
 		}
 
 		@Override
@@ -174,6 +201,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return declarationSource;
 		}
 
 		@Override
@@ -188,12 +220,14 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	 * {@code version { prefer '1.2.3' }}.
 	 */
 	record VersionBlockPreferLiteral(ArtifactId artifactId, VersionSource versionSource,
-			PsiElement declarationElement, PsiElement versionLiteral, @Nullable ArtifactVersion version)
+			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionLiteral,
+			@Nullable ArtifactVersion version)
 			implements GradleVersionSite, DependencySite, VersionAware {
 
-		VersionBlockPreferLiteral(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement,
+		VersionBlockPreferLiteral(ArtifactId artifactId, VersionSource versionSource,
+				DeclarationSource declarationSource, PsiElement declarationElement,
 				PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationElement, versionLiteral, null);
+			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
 		}
 
 		@Override
@@ -204,6 +238,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return declarationSource;
 		}
 
 		@Override
@@ -218,12 +257,15 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	 * {@code version { prefer springVersion }}.
 	 */
 	record VersionBlockPreferProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-			PsiElement declarationElement, PsiElement versionReferenceElement, @Nullable ArtifactVersion version)
+			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionReferenceElement,
+			@Nullable ArtifactVersion version)
 			implements GradleVersionSite, DependencySite, VersionAware {
 
 		VersionBlockPreferProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-				PsiElement declarationElement, PsiElement versionReferenceElement) {
-			this(artifactId, propertyName, versionSource, declarationElement, versionReferenceElement, null);
+				DeclarationSource declarationSource, PsiElement declarationElement,
+				PsiElement versionReferenceElement) {
+			this(artifactId, propertyName, versionSource, declarationSource, declarationElement,
+					versionReferenceElement, null);
 		}
 
 		@Override
@@ -234,6 +276,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return declarationSource;
 		}
 
 		@Override
@@ -248,12 +295,12 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	 * {@code version { strictly '1.2.3' }}.
 	 */
 	record VersionBlockStrictlyLiteral(ArtifactId artifactId, VersionSource versionSource,
-			PsiElement declarationElement, PsiElement versionLiteral, @Nullable ArtifactVersion version)
-			implements GradleVersionSite, DependencySite, VersionAware {
+			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionLiteral,
+			@Nullable ArtifactVersion version) implements GradleVersionSite, DependencySite, VersionAware {
 
 		VersionBlockStrictlyLiteral(ArtifactId artifactId, VersionSource versionSource,
-				PsiElement declarationElement, PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationElement, versionLiteral, null);
+				DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionLiteral) {
+			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
 		}
 
 		@Override
@@ -264,6 +311,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return declarationSource;
 		}
 
 		@Override
@@ -278,12 +330,15 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	 * {@code version { strictly springVersion }}.
 	 */
 	record VersionBlockStrictlyProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-			PsiElement declarationElement, PsiElement versionReferenceElement, @Nullable ArtifactVersion version)
+			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionReferenceElement,
+			@Nullable ArtifactVersion version)
 			implements GradleVersionSite, DependencySite, VersionAware {
 
 		VersionBlockStrictlyProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-				PsiElement declarationElement, PsiElement versionReferenceElement) {
-			this(artifactId, propertyName, versionSource, declarationElement, versionReferenceElement, null);
+				DeclarationSource declarationSource, PsiElement declarationElement,
+				PsiElement versionReferenceElement) {
+			this(artifactId, propertyName, versionSource, declarationSource, declarationElement,
+					versionReferenceElement, null);
 		}
 
 		@Override
@@ -294,6 +349,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public VersionSource getVersionSource() {
 			return versionSource;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return declarationSource;
 		}
 
 		@Override
@@ -328,6 +388,11 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		}
 
 		@Override
+		public DeclarationSource getDeclarationSource() {
+			return DeclarationSource.plugin();
+		}
+
+		@Override
 		public PsiElement getDeclarationElement() {
 			return declarationElement;
 		}
@@ -347,6 +412,19 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	record BackingProperty(String propertyName, String version, PsiElement declarationElement,
 			PsiElement versionElement) implements GradleVersionSite {
 
+		/**
+		 * This site type does not define an artifact id.
+		 */
+		@Override
+		public ArtifactId getArtifactId() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			throw new UnsupportedOperationException();
+		}
+
 		@Override
 		public PsiElement getDeclarationElement() {
 			return declarationElement;
@@ -362,9 +440,22 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	 */
 	record TomlCatalogAlias(TomlReference reference, PsiElement declarationElement) implements GradleVersionSite {
 
+		/**
+		 * This site type does not define an artifact id.
+		 */
+		@Override
+		public ArtifactId getArtifactId() {
+			throw new UnsupportedOperationException("TOML catalog aliases do not define an artifact id");
+		}
+
 		@Override
 		public PsiElement getDeclarationElement() {
 			return declarationElement;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return DeclarationSource.managed();
 		}
 
 	}
@@ -379,6 +470,16 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public boolean isPresent() {
 			return false;
+		}
+
+		@Override
+		public ArtifactId getArtifactId() {
+			throw new IllegalStateException("Absent version site has no declaration element");
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			throw new IllegalStateException("Absent version site has no declaration element");
 		}
 
 		@Override

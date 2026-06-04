@@ -18,6 +18,7 @@ package biz.paluch.dap.antora;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ArtifactReferenceResolver;
@@ -77,6 +78,7 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 		ArtifactId artifactId = bundleUrl.toArtifactId();
 		return ArtifactReference.from(builder -> {
 			builder.artifact(artifactId)
+					.declarationSource(DeclarationSource.dependency())
 					.versionSource(bundleUrl.toVersionSource())
 					.declarationElement(scalar)
 					.versionLiteral(scalar);

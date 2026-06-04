@@ -18,11 +18,11 @@ package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ArtifactReferenceResolver;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
@@ -90,12 +90,14 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 		if (artifactId == null) {
 			return ArtifactReference.unresolved();
 		}
+		DeclarationSource declarationSource = MavenParser.getDeclarationSource(parentTag);
 
 		String version = versionTag.getValue().getText().trim();
 		return ArtifactReference.from(it -> {
 			it.artifact(artifactId).declarationElement(parentTag)
-					.versionSource(
-							StringUtils.hasText(version) ? VersionSource.declared(version) : VersionSource.none());
+					.declarationSource(MavenParser.getDeclarationSource(parentTag))
+					.versionSource(VersionSource.from(version))
+					.declarationSource(declarationSource);
 			ArtifactVersion.from(version).ifPresent(it::version);
 			it.versionLiteral(versionTag);
 		});

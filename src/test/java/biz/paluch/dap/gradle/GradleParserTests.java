@@ -59,7 +59,8 @@ class GradleParserTests {
 
 		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
-		assertThat(collector).hasDependencyUsage("org.springframework.boot").hasVersion("4.0.3");
+		assertThat(collector).hasDependencyUsage("org.springframework.boot").hasDeclaration(DeclarationSource.plugin())
+				.hasVersion("4.0.3");
 	}
 
 	// -------------------------------------------------------------------------
@@ -78,6 +79,7 @@ class GradleParserTests {
 
 		assertThat(collector)
 				.hasDependencyUsage("org.foo", "org.foo")
+				.hasDeclaration(DeclarationSource.plugin())
 				.hasVersion("1.0");
 	}
 

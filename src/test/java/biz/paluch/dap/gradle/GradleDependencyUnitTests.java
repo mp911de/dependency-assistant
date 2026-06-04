@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
@@ -38,7 +39,7 @@ class GradleDependencyUnitTests {
 	void parsesLiteralGav() {
 
 		SimpleDependency dependency = (SimpleDependency) GradleDependency
-				.parse("org.springframework:spring-core:6.1.0");
+				.parse("org.springframework:spring-core:6.1.0", DeclarationSource.dependency());
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.id().groupId()).isEqualTo("org.springframework");
@@ -52,7 +53,7 @@ class GradleDependencyUnitTests {
 
 		Map<String, String> props = Map.of("springVersion", "6.1.0");
 		GradleDependency dependency = GradleDependency.parse("org.springframework:spring-core:${springVersion}",
-				props::get);
+				DeclarationSource.dependency(), props::get);
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
@@ -64,7 +65,8 @@ class GradleDependencyUnitTests {
 	@Test
 	void returnsNullForGavWithUnresolvablePropertyVersion() {
 
-		GradleDependency dependency = GradleDependency.parse("org.springframework:spring-core:${springVersion}");
+		GradleDependency dependency = GradleDependency.parse("org.springframework:spring-core:${springVersion}",
+				DeclarationSource.dependency());
 
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
 		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
@@ -78,7 +80,7 @@ class GradleDependencyUnitTests {
 			"org.example.group:my-artifact:2.3.4, org.example.group, my-artifact, 2.3.4"})
 	void parsesVariousCoordinates(String gav, String group, String artifact, String version) {
 
-		GradleDependency parsed = GradleDependency.parse(gav);
+		GradleDependency parsed = GradleDependency.parse(gav, DeclarationSource.dependency());
 
 		assertThat(parsed).isNotNull();
 		assertThat(parsed.getId().groupId()).isEqualTo(group);
@@ -88,7 +90,8 @@ class GradleDependencyUnitTests {
 	@Test
 	void versionSourceIsDeclaredForLiteralVersion() {
 
-		GradleDependency dependency = GradleDependency.parse("com.example:artifact:1.0.0");
+		GradleDependency dependency = GradleDependency.parse("com.example:artifact:1.0.0",
+				DeclarationSource.dependency());
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.DeclaredVersion.class);
@@ -98,7 +101,8 @@ class GradleDependencyUnitTests {
 	void versionSourceIsPropertyForTemplateVersion() {
 
 		Map<String, String> properties = Map.of("myVersion", "3.2.1");
-		GradleDependency dependency = GradleDependency.parse("com.example:artifact:${myVersion}", properties::get);
+		GradleDependency dependency = GradleDependency.parse("com.example:artifact:${myVersion}",
+				DeclarationSource.dependency(), properties::get);
 
 		assertThat(dependency).isNotNull();
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);

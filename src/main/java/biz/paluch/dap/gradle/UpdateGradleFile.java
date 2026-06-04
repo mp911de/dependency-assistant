@@ -244,9 +244,9 @@ class UpdateGradleFile {
 					continue;
 				}
 
-				GradleDependency dep = entry.toDependency();
+				GradleDependency dependency = entry.toDependency();
 
-				if (!(dep instanceof SimpleDependency sd) || !sd.id().equals(artifactId)
+				if (!(dependency instanceof SimpleDependency sd) || !sd.id().equals(artifactId)
 						|| entry.versionLiteral() == null) {
 					continue;
 				}

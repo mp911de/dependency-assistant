@@ -18,13 +18,15 @@ package biz.paluch.dap.artifact;
 
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * Source from which a dependency version is obtained in a build file.
  *
- * <p>
- * A version may be declared inline, resolved from a property, provided by a
+ * <p>A version may be declared inline, resolved from a property, provided by a
  * managed declaration, or absent.
  *
  * @author Mark Paluch
@@ -41,8 +43,7 @@ public abstract class VersionSource {
 
 	/**
 	 * Return whether a version is defined.
-	 * <p>
-	 * Return {@literal false} only for the {@link #none()} singleton.
+	 * <p>Return {@literal false} only for the {@link #none()} singleton.
 	 */
 	public boolean isDefined() {
 		return this != NONE;
@@ -78,6 +79,17 @@ public abstract class VersionSource {
 	}
 
 	/**
+	 * Return a source representing a version string declared at the dependency
+	 * site.
+	 * @param version the literal version string. Can be empty or {@literal null}
+	 * @return the version source, or {@link #none()} if the version string is empty
+	 * or {@literal null}.
+	 */
+	public static VersionSource from(@Nullable String version) {
+		return StringUtils.hasText(version) ? declared(version) : none();
+	}
+
+	/**
 	 * Return a source representing a version string declared inline at the
 	 * dependency site.
 	 * @param version the literal version string.
@@ -85,7 +97,6 @@ public abstract class VersionSource {
 	public static VersionSource declared(String version) {
 		return new DeclaredVersion(version);
 	}
-
 
 	/**
 	 * Return a source representing a version prefix (such as {@code 1.0.x})
@@ -134,8 +145,7 @@ public abstract class VersionSource {
 
 	/**
 	 * Version source representing an absent version.
-	 * <p>
-	 * {@link #isDefined()} returns {@code false} for this type.
+	 * <p>{@link #isDefined()} returns {@code false} for this type.
 	 */
 	public static class NoVersionSource extends VersionSource {
 

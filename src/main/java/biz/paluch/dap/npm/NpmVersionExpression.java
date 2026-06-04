@@ -292,7 +292,7 @@ sealed interface NpmVersionExpression
 	 * @return the version source to register for dependency analysis.
 	 */
 	default VersionSource versionSource() {
-		return StringUtils.hasText(text()) ? VersionSource.declared(text()) : VersionSource.none();
+		return VersionSource.from(text());
 	}
 
 	private static @Nullable NpmVersionExpression parseExact(String value) {

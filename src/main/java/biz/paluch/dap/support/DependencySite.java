@@ -18,14 +18,14 @@ package biz.paluch.dap.support;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
 /**
  * Dependency usage or declaration site in a build file.
  *
- * <p>
- * A site exposes artifact coordinates, the source from which the version is
+ * <p>A site exposes artifact coordinates, the source from which the version is
  * obtained, and the PSI element that owns the declaration.
  *
  * @author Mark Paluch
@@ -46,6 +46,11 @@ public interface DependencySite {
 	VersionSource getVersionSource();
 
 	/**
+	 * Return the source from which the dependency declaration is obtained.
+	 */
+	DeclarationSource getDeclarationSource();
+
+	/**
 	 * Return the PSI element that represents this dependency site.
 	 */
 	PsiElement getDeclarationElement();
@@ -59,20 +64,21 @@ public interface DependencySite {
 	 * @return the new {@link VersionedDependencySite}.
 	 */
 	default VersionedDependencySite withVersion(ArtifactVersion version, PsiElement versionElement) {
-		return new ResolvedDependencySite(getArtifactId(), version, getVersionSource(), getDeclarationElement(),
-				versionElement);
+		return new ResolvedDependencySite(getArtifactId(), version, getVersionSource(), getDeclarationSource(),
+				getDeclarationElement(), versionElement);
 	}
 
 	/**
 	 * Create a new {@code DependencySite}.
 	 * @param artifactId the artifact identifier.
 	 * @param versionSource the version source.
+	 * @param declarationSource the declaration source.
 	 * @param declarationElement element that represents this dependency site.
 	 * @return the dependency site.
 	 */
-	static DependencySite of(ArtifactId artifactId, VersionSource versionSource,
+	static DependencySite of(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
 			PsiElement declarationElement) {
-		return new SimpleDependencySite(artifactId, versionSource, declarationElement);
+		return new SimpleDependencySite(artifactId, versionSource, declarationSource, declarationElement);
 	}
 
 }

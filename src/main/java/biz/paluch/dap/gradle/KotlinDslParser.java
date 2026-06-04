@@ -39,8 +39,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Parser for Kotlin DSL Gradle build files ({@code build.gradle.kts} and
  * {@code settings.gradle.kts}).
- * <p>
- * Extracted declarations are accumulated into a {@link DependencyCollector}
+ * <p>Extracted declarations are accumulated into a {@link DependencyCollector}
  * using the common Gradle dependency model so that version lookup and update
  * code can operate on Kotlin DSL semantics instead of raw PSI traversal.
  *
@@ -88,18 +87,15 @@ class KotlinDslParser extends GradleParser {
 			return;
 		}
 
-		DeclarationSource declarationSource = isPlugin ? DeclarationSource.plugin()
-				: isPlatform ? DeclarationSource.managed() : DeclarationSource.dependency();
 		DependencySite site = parseDependencySite(call, isPlugin, isPlatform, propertyResolver);
 		if (site != null) {
-			register(site, declarationSource, propertyResolver);
+			register(site, propertyResolver);
 		}
 	}
 
 	/**
 	 * Parse a Kotlin DSL declaration from the given call.
-	 * <p>
-	 * Supports declarations such as: <pre class="code">
+	 * <p>Supports declarations such as: <pre class="code">
 	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
 	 * implementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.11.0")
 	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
@@ -108,8 +104,8 @@ class KotlinDslParser extends GradleParser {
 	 *
 	 * @param call the call to parse.
 	 * @param propertyResolver property resolver used for property-backed versions.
-	 * @return the dependency site, or {@literal null} if the call is not a supported
-	 * declaration.
+	 * @return the dependency site, or {@literal null} if the call is not a
+	 * supported declaration.
 	 */
 	public static @Nullable DependencySite parseDependencySite(KtCallElement call, PropertyResolver propertyResolver) {
 
@@ -439,7 +435,6 @@ class KotlinDslParser extends GradleParser {
 	private static @Nullable DependencySite parseDependencySite(KtCallElement call, boolean isPlugin,
 			boolean isPlatform, PropertyResolver propertyResolver) {
 
-
 		if (isMapStyleDeclarationCandidate(call)) {
 
 			// Named arguments: group = "g", name = "a", version = "v"
@@ -474,8 +469,7 @@ class KotlinDslParser extends GradleParser {
 
 	/**
 	 * Parse a supported Kotlin DSL dependency or plugin declaration.
-	 * <p>
-	 * Supports declarations such as: <pre class="code">
+	 * <p>Supports declarations such as: <pre class="code">
 	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
 	 * implementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.11.0")
 	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
@@ -484,8 +478,8 @@ class KotlinDslParser extends GradleParser {
 	 *
 	 * @param call the call to parse.
 	 * @param scriptProperties property resolver used for property-backed versions.
-	 * @return the dependency site, or {@literal null} if the call is not a supported
-	 * declaration.
+	 * @return the dependency site, or {@literal null} if the call is not a
+	 * supported declaration.
 	 */
 	private static @Nullable DependencySite findDependencySite(KtCallElement call,
 			PropertyResolver scriptProperties) {
@@ -504,7 +498,6 @@ class KotlinDslParser extends GradleParser {
 			return KotlinPluginDependencySite.fromBinary(call,
 					PsiTreeUtil.getParentOfType(call, KtBinaryExpression.class), scriptProperties);
 		}
-
 		KtStringTemplateExpression directNotation = findInlineDependencyLiteral(call, scriptProperties);
 		if (directNotation != null) {
 
@@ -529,18 +522,18 @@ class KotlinDslParser extends GradleParser {
 		Expression expression = ktVersion.hasProperty() ? Expression.property(ktVersion.getProperty())
 				: Expression.from(ktVersion.getVersion());
 
-		return getDependencySite(KtLiterals.from(call.getValueArgumentList()).toString(), call, expression,
+		return getDependencySite(KtLiterals.from(call.getValueArgumentList()).toString(), call,
+				expression,
 				versionElement);
 	}
 
 	/**
 	 * Create a {@link DependencySite} from parsed Kotlin DSL dependency data.
-	 * <p>
-	 * The supplied {@code declaration} and {@code versionElement} elements are
+	 * <p>The supplied {@code declaration} and {@code versionElement} elements are
 	 * reused as the PSI anchors for the resulting site.
 	 */
-	public static @Nullable DependencySite getDependencySite(String gav, KtCallElement declaration,
-			@Nullable Expression versionExpression, @Nullable PsiElement versionElement) {
+	public static @Nullable DependencySite getDependencySite(String gav,
+			KtCallElement declaration, @Nullable Expression versionExpression, @Nullable PsiElement versionElement) {
 
 		if (versionElement instanceof KtCallElement ktCall
 				&& GradleUtils.isPlugin(KotlinDslUtils.getKotlinCallName(ktCall))
@@ -551,11 +544,16 @@ class KotlinDslParser extends GradleParser {
 				return null;
 			}
 
-			GradleDependency dependency = GradleDependency.of(GradlePluginId.of(gav), versionExpression);
+			GradleDependency dependency = GradleDependency.of(GradlePluginId.of(gav), versionExpression,
+					DeclarationSource.plugin());
 			return dependency.toDependencySite(declaration, versionElement);
 		}
 
-		GradleDependency dependency = GradleDependency.parse(gav);
+		DeclarationSource declarationSource = KotlinDslUtils.isPlatformSection(declaration)
+				|| KotlinDslUtils.isInsidePlatformBlock(declaration)
+						? DeclarationSource.managed()
+						: DeclarationSource.dependency();
+		GradleDependency dependency = GradleDependency.parse(gav, declarationSource);
 		if (dependency == null) {
 			return null;
 		}
@@ -581,11 +579,9 @@ class KotlinDslParser extends GradleParser {
 	 *     }
 	 * }
 	 * </pre>
-	 * <p>
-	 * When {@code propertyResolver} is provided, bare name references such as
+	 * <p>When {@code propertyResolver} is provided, bare name references such as
 	 * {@code prefer(junit)} are resolved through it.
-	 * <p>
-	 * Return a {@link NamedDependencyDeclaration} when a usable version can be
+	 * <p>Return a {@link NamedDependencyDeclaration} when a usable version can be
 	 * extracted, or {@literal null} otherwise.
 	 */
 	@Nullable
@@ -717,7 +713,8 @@ class KotlinDslParser extends GradleParser {
 		ArtifactId artifactId = GradleArtifactId.from(gavText);
 
 		return new NamedDependencyDeclaration(call.getContainingFile(), null, artifactId.groupId(),
-				artifactId.artifactId(), versionProperty, version, call, versionLiteralElement);
+				artifactId.artifactId(), versionProperty, version, call, versionLiteralElement,
+				DeclarationSource.dependency());
 	}
 
 	private static @Nullable PropertyValue resolveVersionProperty(PropertyResolver propertyResolver,
@@ -737,7 +734,7 @@ class KotlinDslParser extends GradleParser {
 			KtExpression expression = valueArgument.getArgumentExpression();
 			if (expression instanceof KtStringTemplateExpression template) {
 				GradleDependency dependency = GradleDependency.parse(KtLiterals.from(template).toString(),
-						propertyResolver);
+						DeclarationSource.dependency(), propertyResolver);
 				if (dependency != null && dependency.getVersionSource().isDefined()) {
 					return template;
 				}
@@ -829,7 +826,7 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact, versionProperty, version,
-				call, versionLiteral);
+				call, versionLiteral, DeclarationSource.dependency());
 	}
 
 }

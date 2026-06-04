@@ -18,6 +18,7 @@ package biz.paluch.dap.support;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
@@ -27,8 +28,7 @@ import org.springframework.util.Assert;
 /**
  * Value object representing an artifact declaration and its associated
  * metadata.
- * <p>
- * Captures the artifact identifier, the origin of the version, whether the
+ * <p>Captures the artifact identifier, the origin of the version, whether the
  * version is defined in the same file, and optional PSI elements for the
  * declaration and version.
  *
@@ -40,6 +40,8 @@ public class ArtifactDeclaration implements DependencySite {
 
 	private final VersionSource versionSource;
 
+	private final DeclarationSource declarationSource;
+
 	private final boolean versionDefinedInSameFile;
 
 	private final @Nullable ArtifactVersion version;
@@ -48,10 +50,12 @@ public class ArtifactDeclaration implements DependencySite {
 
 	private final @Nullable PsiElement versionLiteral;
 
-	private ArtifactDeclaration(ArtifactId artifactId, VersionSource versionSource, boolean versionDefinedInSameFile,
+	private ArtifactDeclaration(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
+			boolean versionDefinedInSameFile,
 			@Nullable ArtifactVersion version, PsiElement declarationElement, @Nullable PsiElement versionLiteral) {
 		this.artifactId = artifactId;
 		this.versionSource = versionSource;
+		this.declarationSource = declarationSource;
 		this.versionDefinedInSameFile = versionDefinedInSameFile;
 		this.version = version;
 		this.declarationElement = declarationElement;
@@ -86,6 +90,13 @@ public class ArtifactDeclaration implements DependencySite {
 	 */
 	public VersionSource getVersionSource() {
 		return versionSource;
+	}
+
+	/**
+	 * Return the source from which the declaration is obtained.
+	 */
+	public DeclarationSource getDeclarationSource() {
+		return declarationSource;
 	}
 
 	/**
@@ -136,6 +147,7 @@ public class ArtifactDeclaration implements DependencySite {
 	public String toString() {
 		return artifactId + " {" +
 				"versionSource=" + versionSource +
+				"declarationSource=" + declarationSource +
 				", version=" + version +
 				'}';
 	}
@@ -148,6 +160,8 @@ public class ArtifactDeclaration implements DependencySite {
 		private @Nullable ArtifactId id;
 
 		private @Nullable VersionSource versionSource;
+
+		private @Nullable DeclarationSource declarationSource;
 
 		private boolean versionDefinedInSameFile;
 
@@ -179,6 +193,17 @@ public class ArtifactDeclaration implements DependencySite {
 		 */
 		public Builder versionSource(VersionSource versionSource) {
 			this.versionSource = versionSource;
+			return this;
+		}
+
+		/**
+		 * Configure the source from which the declaration was obtained.
+		 *
+		 * @param declarationSource the declaration source.
+		 * @return {@code this} builder.
+		 */
+		public Builder declarationSource(DeclarationSource declarationSource) {
+			this.declarationSource = declarationSource;
 			return this;
 		}
 
@@ -248,8 +273,7 @@ public class ArtifactDeclaration implements DependencySite {
 
 		/**
 		 * Build a new {@link ArtifactDeclaration}.
-		 * <p>
-		 * Requires both {@link ArtifactId} and {@link VersionSource} to be
+		 * <p>Requires both {@link ArtifactId} and {@link VersionSource} to be
 		 * configured.
 		 *
 		 * @return a new {@link ArtifactDeclaration}.
@@ -260,9 +284,11 @@ public class ArtifactDeclaration implements DependencySite {
 
 			Assert.notNull(id, "ArtifactId must not be null");
 			Assert.notNull(versionSource, "VersionSource must not be null");
+			Assert.notNull(declarationSource, "DeclarationSource must not be null");
 			Assert.notNull(declarationElement, "Declaration element must not be null");
 
-			return new ArtifactDeclaration(id, versionSource, versionDefinedInSameFile, version, declarationElement,
+			return new ArtifactDeclaration(id, versionSource, declarationSource, versionDefinedInSameFile, version,
+					declarationElement,
 					versionLiteral);
 		}
 

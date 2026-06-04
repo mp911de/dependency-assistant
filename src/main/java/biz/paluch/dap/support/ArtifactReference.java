@@ -62,8 +62,10 @@ public class ArtifactReference {
 	 */
 	public static ArtifactReference from(VersionedDependencySite dependencySite) {
 		return from(it -> {
-			it.artifact(dependencySite.getArtifactId()).version(dependencySite.getVersion())
+			it.artifact(dependencySite.getArtifactId())
+					.version(dependencySite.getVersion())
 					.versionSource(dependencySite.getVersionSource())
+					.declarationSource(dependencySite.getDeclarationSource())
 					.declarationElement(dependencySite.getDeclarationElement())
 					.versionLiteral(dependencySite.getVersionElement());
 		});

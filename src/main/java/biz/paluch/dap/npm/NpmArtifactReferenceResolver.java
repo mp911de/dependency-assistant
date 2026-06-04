@@ -20,6 +20,7 @@ import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.ArtifactReferenceResolver;
@@ -77,6 +78,7 @@ class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		return ArtifactReference.from(builder -> {
 			builder.artifact(artifactId)
+					.declarationSource(DeclarationSource.dependency())
 					.versionSource(versionSource)
 					.declarationElement(literal)
 					.versionLiteral(literal);

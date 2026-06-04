@@ -18,9 +18,9 @@ package biz.paluch.dap.gradle.wrapper;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.VersionedDependencySite;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.psi.PsiElement;
@@ -44,7 +44,12 @@ record GradleWrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral
 	}
 
 	VersionSource versionSource() {
-		return StringUtils.hasText(versionText) ? VersionSource.declared(versionText) : VersionSource.none();
+		return VersionSource.from(versionText());
+	}
+
+	@Override
+	public DeclarationSource getDeclarationSource() {
+		return DeclarationSource.dependency();
 	}
 
 	@Override

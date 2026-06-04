@@ -21,6 +21,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
@@ -39,6 +40,7 @@ class AvailableUpgradesUnitTests {
 	private static final ArtifactReference REF = ArtifactReference.from(it -> it
 			.artifact(ArtifactId.of("foo", "bar"))
 			.versionSource(VersionSource.none())
+			.declarationSource(DeclarationSource.dependency())
 			.version(ArtifactVersion.of("1.0"))
 			.declarationElement(new MockPsiElement(() -> {
 			})));

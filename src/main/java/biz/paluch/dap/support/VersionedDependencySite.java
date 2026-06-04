@@ -18,14 +18,14 @@ package biz.paluch.dap.support;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
 /**
  * Extension of {@link DependencySite} for dependency sites with a resolved
  * version.
- * <p>
- * In addition to the artifact coordinates, version source, and declaration
+ * <p>In addition to the artifact coordinates, version source, and declaration
  * element exposed through {@link DependencySite}, implementations provide the
  * concrete {@link #getVersion() dependency version} together with the
  * {@link PsiElement PSI} element that points to the version value within the
@@ -47,8 +47,7 @@ public interface VersionedDependencySite extends DependencySite {
 	/**
 	 * Return the PSI element that points to the {@link #getVersion() version
 	 * value}.
-	 * <p>
-	 * The returned element typically represents the version literal or property
+	 * <p>The returned element typically represents the version literal or property
 	 * usage from which the dependency version was obtained.
 	 *
 	 * @return the PSI element representing the dependency version.
@@ -61,13 +60,15 @@ public interface VersionedDependencySite extends DependencySite {
 	 * @param artifactId the artifact identifier.
 	 * @param version the artifact version.
 	 * @param versionSource the version source, an inline-version or a property.
+	 * @param declarationSource the declaration source.
 	 * @param declarationElement element that represents this dependency site.
 	 * @param versionElement element that represents the version literal.
 	 * @return the dependency site.
 	 */
 	static VersionedDependencySite of(ArtifactId artifactId, ArtifactVersion version, VersionSource versionSource,
-			PsiElement declarationElement, PsiElement versionElement) {
-		return new ResolvedDependencySite(artifactId, version, versionSource, declarationElement, versionElement);
+			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionElement) {
+		return new ResolvedDependencySite(artifactId, version, versionSource, declarationSource, declarationElement,
+				versionElement);
 	}
 
 }

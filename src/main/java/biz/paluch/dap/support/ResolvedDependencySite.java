@@ -18,6 +18,7 @@ package biz.paluch.dap.support;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
@@ -27,8 +28,8 @@ import com.intellij.psi.PsiElement;
  * @author Mark Paluch
  */
 record ResolvedDependencySite(ArtifactId artifactId, ArtifactVersion version,
-		VersionSource versionSource, PsiElement declarationElement, PsiElement versionElement)
-		implements VersionedDependencySite {
+		VersionSource versionSource, DeclarationSource declarationSource, PsiElement declarationElement,
+		PsiElement versionElement) implements VersionedDependencySite {
 
 	@Override
 	public ArtifactId getArtifactId() {
@@ -43,6 +44,11 @@ record ResolvedDependencySite(ArtifactId artifactId, ArtifactVersion version,
 	@Override
 	public VersionSource getVersionSource() {
 		return versionSource();
+	}
+
+	@Override
+	public DeclarationSource getDeclarationSource() {
+		return declarationSource();
 	}
 
 	@Override

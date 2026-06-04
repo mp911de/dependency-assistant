@@ -77,8 +77,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 
 	/**
 	 * Find the dependency call that owns the given PSI element.
-	 * <p>
-	 * Used by lookup-site resolution to map version literals, named arguments,
+	 * <p>Used by lookup-site resolution to map version literals, named arguments,
 	 * and version-constraint entries back to their declaration call.
 	 */
 	public static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
@@ -191,8 +190,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 
 	/**
 	 * Find the Kotlin property declaration that owns the given PSI element.
-	 * <p>
-	 * Used for literal entries nested within property initializers.
+	 * <p>Used for literal entries nested within property initializers.
 	 */
 	public static @Nullable KtProperty findProperty(KtElement element) {
 		return element instanceof KtLiteralStringTemplateEntry entry
@@ -202,8 +200,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 
 	/**
 	 * Find the {@code extra["key"] = ...} assignment that owns the given value PSI.
-	 * <p>
-	 * Also supports the {@code "value".also { extra["key"] = it }} form.
+	 * <p>Also supports the {@code "value".also { extra["key"] = it }} form.
 	 */
 	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
 
@@ -236,8 +233,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 
 	/**
 	 * Locate the {@link GradleVersionSite} owning the given Kotlin PSI element.
-	 * <p>
-	 * Supports direct dependency literals, property-backed declarations,
+	 * <p>Supports direct dependency literals, property-backed declarations,
 	 * {@code extra} assignments, and version catalog references such as:
 	 * <pre class="code">
 	 * implementation("org.springframework:spring-core:6.2.0")
@@ -411,26 +407,30 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 		String enclosingCallName = enclosingCallName(versionElement);
 		if (GradleVersionConstraint.PREFER.equals(enclosingCallName)) {
 			return isProperty
-					? new VersionBlockPreferProperty(id, propertyNameOf(source), source, declarationElement,
-							versionElement, version)
-					: new VersionBlockPreferLiteral(id, source, declarationElement, versionElement, version);
+					? new VersionBlockPreferProperty(id, propertyNameOf(source), source, site.getDeclarationSource(),
+							declarationElement, versionElement, version)
+					: new VersionBlockPreferLiteral(id, source, site.getDeclarationSource(), declarationElement,
+							versionElement, version);
 		}
 
 		if (GradleVersionConstraint.STRICTLY.equals(enclosingCallName)) {
 			return isProperty
-					? new VersionBlockStrictlyProperty(id, propertyNameOf(source), source, declarationElement,
-							versionElement, version)
-					: new VersionBlockStrictlyLiteral(id, source, declarationElement, versionElement, version);
+					? new VersionBlockStrictlyProperty(id, propertyNameOf(source), source, site.getDeclarationSource(),
+							declarationElement, versionElement, version)
+					: new VersionBlockStrictlyLiteral(id, source, site.getDeclarationSource(), declarationElement,
+							versionElement, version);
 		}
 
 		if (isNamedVersionArgument(versionElement)) {
 			return isProperty
-					? new MapPropertyVersion(id, propertyNameOf(source), source, declarationElement, versionElement,
-							version)
-					: new MapLiteralVersion(id, source, declarationElement, versionElement, version);
+					? new MapPropertyVersion(id, propertyNameOf(source), source, site.getDeclarationSource(),
+							declarationElement, versionElement, version)
+					: new MapLiteralVersion(id, source, site.getDeclarationSource(), declarationElement, versionElement,
+							version);
 		}
 
-		return new DirectCoordinate(id, source, declarationElement, versionElement, version);
+		return new DirectCoordinate(id, source, site.getDeclarationSource(), declarationElement, versionElement,
+				version);
 	}
 
 	private static String propertyNameOf(VersionSource source) {

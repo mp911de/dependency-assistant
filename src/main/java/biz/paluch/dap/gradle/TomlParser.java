@@ -145,8 +145,7 @@ class TomlParser extends GradleParserSupport {
 			if (LIBRARIES.equals(tableName)) {
 				parseEntries(table, propertyResolver, (it) -> {
 					if (it.isComplete()) {
-						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()),
-								DeclarationSource.managed(), propertyResolver);
+						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()), propertyResolver);
 					}
 				});
 			}
@@ -154,8 +153,7 @@ class TomlParser extends GradleParserSupport {
 			if (PLUGINS.equals(tableName)) {
 				parseEntries(table, propertyResolver, (it) -> {
 					if (it.isComplete()) {
-						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()),
-								DeclarationSource.plugin(), propertyResolver);
+						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()), propertyResolver);
 					}
 				});
 			}
@@ -301,7 +299,7 @@ class TomlParser extends GradleParserSupport {
 
 		String text = getText(literal);
 		if (StringUtils.hasText(text)) {
-			GradleDependency dependency = GradleDependency.parse(text);
+			GradleDependency dependency = GradleDependency.parse(text, DeclarationSource.managed());
 			// plugin
 			if (dependency instanceof GradleDependency.DependencyReference reference) {
 				return new TomlDependencyDeclaration(literal, entry,
@@ -382,8 +380,7 @@ class TomlParser extends GradleParserSupport {
 	}
 
 	record TomlDependencyDeclaration(TomlElement element, String key, @Nullable String id, @Nullable String module,
-			@Nullable String versionRef,
-			@Nullable String version, @Nullable TomlValue versionLiteral) {
+			@Nullable String versionRef, @Nullable String version, @Nullable TomlValue versionLiteral) {
 
 		/**
 		 * Check whether the declaration is complete (having id and version information
@@ -426,8 +423,7 @@ class TomlParser extends GradleParserSupport {
 
 		/**
 		 * Resolve a {@link GradleDependency} from this declaration.
-		 * <p>
-		 * As declarations can be incomplete (e.g. missing version information), make
+		 * <p>As declarations can be incomplete (e.g. missing version information), make
 		 * sure to check {@link #isComplete()} before calling it.
 		 *
 		 * @return the resolved dependency.
@@ -443,13 +439,13 @@ class TomlParser extends GradleParserSupport {
 				return of(GradlePluginId.of(id), versionExpression);
 			}
 
-			return of(GradleDependency.parse(getRequiredModule()).getId(), versionExpression);
+			GradleArtifactId artifactId = GradleArtifactId.from(getRequiredModule());
+			return of(artifactId, versionExpression);
 		}
 
 		/**
 		 * Resolve a {@link DependencySite} from this declaration.
-		 * <p>
-		 * As declarations can be incomplete (e.g. missing version information), make
+		 * <p>As declarations can be incomplete (e.g. missing version information), make
 		 * sure to check {@link #isComplete()} before calling it.
 		 *
 		 * @return the resolved dependency site.
@@ -462,15 +458,18 @@ class TomlParser extends GradleParserSupport {
 					? Expression.from(this.version)
 					: Expression.property(versionRef);
 
+
+			DeclarationSource declarationSource = StringUtils.hasText(id) ? DeclarationSource.plugin()
+					: DeclarationSource.managed();
 			ArtifactId artifactId = StringUtils.hasText(id) ? GradlePluginId.of(id)
-					: GradleDependency.parse(module).getId();
+					: GradleDependency.parse(module, declarationSource).getId();
 
 			return ArtifactVersion.from(this.version)
 					.map(it -> (DependencySite) VersionedDependencySite.of(artifactId, it,
-							getVersionSource(versionExpression),
-							declaration, version))
+							getVersionSource(versionExpression), declarationSource, declaration, version))
 					.orElseGet(() -> {
-						return DependencySite.of(artifactId, getVersionSource(versionExpression), declaration);
+						return DependencySite.of(artifactId, getVersionSource(versionExpression), declarationSource,
+								declaration);
 					});
 		}
 
@@ -484,10 +483,11 @@ class TomlParser extends GradleParserSupport {
 
 			if (versionExpression.isProperty()) {
 				return new PropertyManagedDependency(artifactId, versionExpression.getPropertyName(),
-						VersionSource.versionCatalogProperty(versionExpression.getPropertyName()));
+						VersionSource.versionCatalogProperty(versionExpression.getPropertyName()),
+						DeclarationSource.managed());
 			}
 			return new SimpleDependency(artifactId, versionExpression.toString(),
-					VersionSource.versionCatalog());
+					VersionSource.versionCatalog(), DeclarationSource.managed());
 		}
 
 		/**

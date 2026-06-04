@@ -96,10 +96,11 @@ class TomlVersionSiteLocator implements VersionSiteLocator<TomlLiteral> {
 		ArtifactVersion version = GradleVersionSite.versionOf(site);
 
 		if (source instanceof VersionSource.VersionProperty property) {
-			return new MapPropertyVersion(id, property.getProperty(), source, declaration, versionElement, version);
+			return new MapPropertyVersion(id, property.getProperty(), source, site.getDeclarationSource(), declaration,
+					versionElement, version);
 		}
 
-		return new DirectCoordinate(id, source, declaration, versionElement, version);
+		return new DirectCoordinate(id, source, site.getDeclarationSource(), declaration, versionElement, version);
 	}
 
 }

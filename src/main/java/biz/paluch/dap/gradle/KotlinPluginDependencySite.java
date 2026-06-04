@@ -17,6 +17,7 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
@@ -31,8 +32,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Factory for {@link DependencySite} instances parsed from Kotlin DSL plugin
  * declarations.
- * <p>
- * Supports the conventional infix shape:
+ * <p>Supports the conventional infix shape:
  *
  * <pre class="code">
  * id("org.springframework.boot") version "3.3.2"
@@ -84,22 +84,24 @@ class KotlinPluginDependencySite {
 		String versionText = literals.toString();
 		GradlePluginId artifactId = GradlePluginId.of(id);
 		if (literals.hasProperty()) {
-			return DependencySite.of(artifactId, VersionSource.property(literals.getProperty()), call);
+			return DependencySite.of(artifactId, VersionSource.property(literals.getProperty()),
+					DeclarationSource.plugin(), call);
 		}
 
-		DependencySite dependencySite = DependencySite.of(artifactId, VersionSource.declared(versionText), call);
+		DependencySite dependencySite = DependencySite.of(artifactId, VersionSource.declared(versionText),
+				DeclarationSource.plugin(), call);
 		return ArtifactVersion.from(versionText)
 				.map(it -> (DependencySite) dependencySite.withVersion(it, versionExpr))
 				.orElse(dependencySite);
 	}
 
-	private static @Nullable KtStringTemplateExpression findVersionLiteral(@Nullable KtBinaryExpression be) {
+	private static @Nullable KtStringTemplateExpression findVersionLiteral(@Nullable KtBinaryExpression expression) {
 
-		if (be == null) {
+		if (expression == null) {
 			return null;
 		}
 
-		PsiElement[] children = be.getChildren();
+		PsiElement[] children = expression.getChildren();
 		for (int i = 0; i < children.length; i++) {
 			PsiElement child = children[i];
 			if (child instanceof KtOperationReferenceExpression ops

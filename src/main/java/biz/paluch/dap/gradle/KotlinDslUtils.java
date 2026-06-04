@@ -34,8 +34,7 @@ import org.jspecify.annotations.Nullable;
  * Internal Kotlin DSL PSI helpers used by parsers, lookup-site locators, and
  * update routines.
  *
- * <p>
- * This class centralizes Kotlin build-script traversal rules shared across
+ * <p>This class centralizes Kotlin build-script traversal rules shared across
  * parser infrastructure. It is not intended as a general-purpose Kotlin PSI
  * abstraction.
  *
@@ -66,6 +65,16 @@ class KotlinDslUtils {
 		return GradleUtils.isPlugin(methodName) && isInsidePluginsBlock(call);
 	}
 
+	public static boolean isPlatformSection(KtCallElement call) {
+
+		String methodName = getKotlinCallName(call);
+		if (StringUtils.isEmpty(methodName)) {
+			return false;
+		}
+
+		return GradleUtils.isPlatformSection(methodName);
+	}
+
 	static @Nullable String getKotlinCallName(KtCallElement call) {
 		PsiElement callee = call.getCalleeExpression();
 		if (callee instanceof KtNameReferenceExpression ref) {
@@ -76,6 +85,10 @@ class KotlinDslUtils {
 
 	static boolean isInsidePluginsBlock(PsiElement element) {
 		return isInsideBlock(element, GradleUtils::isPluginSection);
+	}
+
+	static boolean isInsidePlatformBlock(PsiElement element) {
+		return isInsideBlock(element, GradleUtils::isPlatformSection);
 	}
 
 	static boolean isInsideBlock(PsiElement element, Predicate<String> predicate) {

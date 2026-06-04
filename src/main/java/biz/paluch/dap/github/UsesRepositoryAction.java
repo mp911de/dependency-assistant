@@ -76,7 +76,7 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 	 * without manufacturing version metadata that was not present in the workflow.
 	 */
 	public VersionSource toVersionSource() {
-		return StringUtils.hasText(version()) ? VersionSource.declared(version()) : VersionSource.none();
+		return VersionSource.from(version());
 	}
 
 	/**
