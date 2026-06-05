@@ -17,11 +17,10 @@
 package biz.paluch.dap.assistant;
 
 import java.awt.Image;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.InterfaceAssistant;
@@ -62,7 +61,7 @@ import org.jspecify.annotations.Nullable;
 public class DependencyDocumentationProvider
 		implements PsiDocumentationTargetProvider {
 
-	static final int MAX_VERSIONS = 10;
+	static final int MAX_VERSIONS = 23;
 
 	@Override
 	public @Nullable DocumentationTarget documentationTarget(PsiElement element, @Nullable PsiElement originalElement) {
@@ -233,11 +232,12 @@ public class DependencyDocumentationProvider
 	}
 
 	/**
-	 * Builds the HTML body.
+	 * Builds the HTML body for a version property, listing the releases of every
+	 * artifact the property drives.
 	 */
 	private static @Nullable String buildHtmlBody(InterfaceAssistant interfaceAssistant, Cache cache,
-			VersionProperty property,
-			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages) {
+			VersionProperty property, @Nullable ArtifactVersion artifactVersion,
+			@Nullable Map<String, Image> iconImages) {
 
 		if (property.artifacts().isEmpty()) {
 			return null;
@@ -246,70 +246,17 @@ public class DependencyDocumentationProvider
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		StringBuilder sb = new StringBuilder();
 
-		sb.append(DocumentationMarkup.DEFINITION_START);
-		sb.append(property.name());
-		sb.append(DocumentationMarkup.DEFINITION_END);
+		appendDefinition(sb, property.name());
 
 		sb.append(DocumentationMarkup.CONTENT_START);
-
-		if (artifactVersion != null) {
-			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.current-value"),
-					StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(artifactVersion))));
-		}
+		appendCurrentValue(sb, interfaceAssistant, artifactVersion);
 
 		for (CachedArtifact artifact : property.artifacts()) {
 
 			ArtifactId artifactId = artifact.toArtifactId();
 			sb.append("<p>%s <code>%s</code></p>".formatted(MessageBundle.message("documentation.property-for"),
 					artifactId));
-
-			List<Release> versions = cache.getReleases(artifactId);
-			if (versions.isEmpty()) {
-				continue;
-			}
-			Set<String> seen = new HashSet<>();
-
-			sb.append("<table>");
-			int count = 0;
-			for (Release v : versions) {
-
-				if (!seen.add(v.version().getVersion().getVersion().toString())) {
-					continue;
-				}
-
-				if (count++ >= MAX_VERSIONS) {
-					break;
-				}
-				sb.append("<tr>");
-
-				if (iconImages != null && artifactVersion != null) {
-					VersionAge age = VersionAge.between(artifactVersion, v.getVersion());
-					sb.append("<td>" + HtmlChunk.icon(age.getIconName(), age.getIcon()) + "</td>");
-				}
-
-				sb.append("<td>");
-				boolean preview = v.isPreview();
-				boolean current = v.version().equals(artifactVersion);
-				if (preview) {
-					sb.append("<i>");
-				}
-				if (current) {
-					sb.append("<b>");
-				}
-				sb.append(v.version().getVersion().getVersion());
-				if (current) {
-					sb.append("</b>");
-				}
-				if (preview) {
-					sb.append("</i>");
-				}
-				sb.append("</td><td>");
-				if (v.releaseDate() != null) {
-					sb.append(formatter.formatLong(v.releaseDate()));
-				}
-				sb.append("</td></tr>");
-			}
-			sb.append("</table>");
+			appendVersionsTable(sb, cache.getReleases(artifactId), artifactVersion, iconImages, formatter);
 		}
 
 		sb.append(DocumentationMarkup.CONTENT_END);
@@ -318,74 +265,97 @@ public class DependencyDocumentationProvider
 	}
 
 	/**
-	 * Builds the HTML body.
+	 * Builds the HTML body for a concrete artifact.
 	 */
 	protected static String buildHtmlBody(InterfaceAssistant interfaceAssistant, Cache cache, ArtifactId artifactId,
-			@Nullable ArtifactVersion artifactVersion,
-			@Nullable Map<String, Image> iconImages) {
+			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages) {
 
-		StringBuilder sb = new StringBuilder();
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
+		StringBuilder sb = new StringBuilder();
 
-		sb.append(DocumentationMarkup.DEFINITION_START);
-		sb.append(artifactId);
-		sb.append(DocumentationMarkup.DEFINITION_END);
+		appendDefinition(sb, artifactId);
 
 		sb.append(DocumentationMarkup.CONTENT_START);
-
-		if (artifactVersion != null) {
-			sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.current-value"),
-					StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(artifactVersion))));
-		}
-
-		List<Release> versions = cache.getReleases(artifactId);
-		Set<String> seen = new HashSet<>();
-		if (!versions.isEmpty()) {
-			sb.append("<table>");
-			int count = 0;
-			for (Release v : versions) {
-
-				if (!seen.add(v.version().getVersion().getVersion().toString())) {
-					continue;
-				}
-				if (count++ >= MAX_VERSIONS) {
-					break;
-				}
-				sb.append("<tr>");
-
-				if (iconImages != null && artifactVersion != null) {
-					VersionAge age = VersionAge.between(artifactVersion, v.getVersion());
-					sb.append("<td>" + HtmlChunk.icon(age.getIconName(), age.getIcon()) + "</td>");
-				}
-
-				sb.append("<td>");
-				boolean preview = v.isPreview();
-				boolean current = v.version().equals(artifactVersion);
-				if (preview) {
-					sb.append("<i>");
-				}
-				if (current) {
-					sb.append("<b>");
-				}
-				sb.append(v.version().getVersion().getVersion());
-				if (current) {
-					sb.append("</b>");
-				}
-				if (preview) {
-					sb.append("</i>");
-				}
-				sb.append("</td><td>");
-				if (v.releaseDate() != null) {
-					sb.append(formatter.formatLong(v.releaseDate()));
-				}
-				sb.append("</td></tr>");
-			}
-			sb.append("</table>");
-		}
+		appendCurrentValue(sb, interfaceAssistant, artifactVersion);
+		appendVersionsTable(sb, cache.getReleases(artifactId), artifactVersion, iconImages, formatter);
 
 		sb.append(DocumentationMarkup.CONTENT_END);
 
 		return sb.toString();
+	}
+
+	private static void appendDefinition(StringBuilder sb, Object header) {
+
+		sb.append(DocumentationMarkup.DEFINITION_START);
+		sb.append(header);
+		sb.append(DocumentationMarkup.DEFINITION_END);
+	}
+
+	private static void appendCurrentValue(StringBuilder sb, InterfaceAssistant interfaceAssistant,
+			@Nullable ArtifactVersion artifactVersion) {
+
+		if (artifactVersion == null) {
+			return;
+		}
+		sb.append("<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.current-value"),
+				StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(artifactVersion))));
+	}
+
+	/**
+	 * Renders a table of releases, de-duplicated and with preview runs condensed by
+	 * {@link ReleaseIterator}, capped at {@link #MAX_VERSIONS} rows. Renders
+	 * nothing when there are no releases.
+	 */
+	private static void appendVersionsTable(StringBuilder sb, List<Release> versions,
+			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages,
+			ReleaseDateFormatter formatter) {
+
+		if (versions.isEmpty()) {
+			return;
+		}
+
+		sb.append("<table>");
+		Iterator<Release> iterator = versions.iterator();
+		int count = 0;
+		while (iterator.hasNext() && count < MAX_VERSIONS) {
+			appendVersionRow(sb, iterator.next(), artifactVersion, iconImages, formatter);
+			count++;
+		}
+		sb.append("</table>");
+	}
+
+	private static void appendVersionRow(StringBuilder sb, Release release,
+			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages,
+			ReleaseDateFormatter formatter) {
+
+		sb.append("<tr>");
+
+		if (iconImages != null && artifactVersion != null) {
+			VersionAge age = VersionAge.between(artifactVersion, release.getVersion());
+			sb.append("<td>").append(HtmlChunk.icon(age.getIconName(), age.getIcon())).append("</td>");
+		}
+
+		sb.append("<td>");
+		boolean preview = release.isPreview();
+		boolean current = release.version().equals(artifactVersion);
+		if (preview) {
+			sb.append("<i>");
+		}
+		if (current) {
+			sb.append("<b>");
+		}
+		sb.append(ReleaseIterator.versionString(release));
+		if (current) {
+			sb.append("</b>");
+		}
+		if (preview) {
+			sb.append("</i>");
+		}
+		sb.append("</td><td>");
+		if (release.releaseDate() != null) {
+			sb.append(formatter.formatLong(release.releaseDate()));
+		}
+		sb.append("</td></tr>");
 	}
 
 }
