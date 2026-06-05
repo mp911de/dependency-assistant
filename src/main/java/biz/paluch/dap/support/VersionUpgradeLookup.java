@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.SequencedMap;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.state.Cache;
@@ -91,6 +92,10 @@ public class VersionUpgradeLookup {
 	 */
 	public AvailableUpgrades suggestUpgrades(PsiElement element) {
 		ArtifactReference artifactReference = resolveArtifactReference(element);
+		if (artifactReference.isResolved() && artifactReference.getDeclaration().isVersionDefined()
+				&& artifactReference.getDeclaration().getVersion() instanceof GitRef) {
+			return AvailableUpgrades.none();
+		}
 		return suggestUpgrades(context.cache(), artifactReference);
 	}
 
@@ -119,7 +124,6 @@ public class VersionUpgradeLookup {
 		ArtifactDeclaration declaration = reference.getDeclaration();
 		return declaration.isVersionDefined() ? declaration.getVersion() : null;
 	}
-
 
 	public @Nullable VersionProperty findProperty(String property) {
 		return context.findProperty(property);

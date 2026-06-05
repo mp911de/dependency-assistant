@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -25,8 +26,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Dependency declaration found while scanning build files.
  *
- * <p>
- * The same artifact can appear in several structural locations. Each
+ * <p>The same artifact can appear in several structural locations. Each
  * declaration location is captured as a {@link DeclarationSource}, and each
  * version origin is captured as a {@link VersionSource}.
  *
@@ -81,6 +81,10 @@ public class DeclaredDependency implements HasArtifactId {
 		return this;
 	}
 
+	public void addAllVersionSources(Collection<? extends VersionSource> versionSources) {
+		this.versionSources.addAll(versionSources);
+	}
+
 	/**
 	 * Add a declaration source to this dependency.
 	 * @param declarationSource the declaration source to add.
@@ -91,6 +95,10 @@ public class DeclaredDependency implements HasArtifactId {
 		return this;
 	}
 
+	public void addAllDeclarationSources(Collection<? extends DeclarationSource> declarationSources) {
+		this.declarationSources.addAll(declarationSources);
+	}
+
 	/**
 	 * Return whether any registered version source is property-based.
 	 */
@@ -98,18 +106,24 @@ public class DeclaredDependency implements HasArtifactId {
 		return findPropertyVersion() != null;
 	}
 
+	public boolean hasDefinedVersion() {
+		for (VersionSource versionSource : versionSources) {
+			if (versionSource.isDefined())
+				return true;
+		}
+		return false;
+	}
+
 	/**
 	 * Return the first property-based version source, or {@literal null} if none is
 	 * registered.
 	 */
 	public VersionSource.@Nullable VersionProperty findPropertyVersion() {
-
 		for (VersionSource versionSource : versionSources) {
 			if (versionSource instanceof VersionSource.VersionProperty) {
 				return (VersionSource.VersionProperty) versionSource;
 			}
 		}
-
 		return null;
 	}
 

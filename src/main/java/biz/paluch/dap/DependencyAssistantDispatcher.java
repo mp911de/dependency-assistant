@@ -55,11 +55,9 @@ public class DependencyAssistantDispatcher {
 	 * @param project the project to inspect; must not be {@literal null}.
 	 */
 	public static boolean supports(Project project) {
-
 		if (StateService.getInstance(project).hasDependenciesOrReleases()) {
 			return true;
 		}
-
 		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
 			if (integration.supports(project)) {
 				return true;
@@ -68,8 +66,39 @@ public class DependencyAssistantDispatcher {
 		return false;
 	}
 
-	public static boolean supports(PsiFile psiFile) {
-		return findFirstContext(psiFile).isAvailable();
+	/**
+	 * Return whether any registered integration supports the given {@code file}.
+	 * <p>Return {@literal true} immediately if the project-scoped
+	 * {@link StateService} already holds dependency or release data, avoiding
+	 * repeated project applicability checks during UI updates.
+	 * @param file the PSI file to test; must not be {@literal null}.
+	 * @return {@literal true} if some integration supports the file;
+	 * {@literal false} otherwise.
+	 */
+	public static boolean supports(PsiFile file) {
+		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
+			if (integration.supports(file)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Return whether the first integration owning the given {@code file} exposes an
+	 * {@link ProjectDependencyContext#isAvailable() available} context, i.e. its
+	 * project model is imported and ready to scan or write.
+	 * <p>Stricter than {@link #supports(PsiFile)}, which only checks whether some
+	 * integration recognizes the file type. Use this method when an actual context
+	 * is required (resolving declarations, writing upgrades), and {@code supports}
+	 * when only file-type recognition matters (for example completion confidence).
+	 * @param file the PSI file to test; must not be {@literal null}.
+	 * @return {@literal true} if an available context exists for the file;
+	 * {@literal false} otherwise.
+	 * @see #supports(PsiFile)
+	 */
+	public static boolean contextSupports(PsiFile file) {
+		return findFirstContext(file).isAvailable();
 	}
 
 	/**

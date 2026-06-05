@@ -18,11 +18,13 @@ package biz.paluch.dap;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -34,14 +36,12 @@ import org.jspecify.annotations.Nullable;
 /**
  * File-scoped operational handle for a build-tool integration.
  *
- * <p>
- * A context is created after a {@link DependencyAssistant} has claimed an
+ * <p>A context is created after a {@link DependencyAssistant} has supported an
  * anchor file. It exposes the build-tool specific work needed by shared editor
  * features: state invalidation, dependency scanning, PSI lookup, and update
  * application.
  *
- * <p>
- * Contexts are lightweight and created on demand. Mutable project state
+ * <p>Contexts are lightweight and created on demand. Mutable project state
  * belongs in the project cache, not in the context itself.
  *
  * @author Mark Paluch
@@ -74,6 +74,10 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * not be resolved.
 	 */
 	default @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
+		return null;
+	}
+
+	default @Nullable ArtifactVersion resolveVersion(VersionSource source, List<Release> releases) {
 		return null;
 	}
 

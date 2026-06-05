@@ -16,11 +16,12 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.List;
+
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInsight.intention.HighPriorityAction;
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
@@ -57,7 +58,7 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 
 	@Override
 	public boolean isAvailable(Project project, Editor editor, PsiFile psiFile) {
-		return DependencyAssistantDispatcher.supports(psiFile);
+		return DependencyAssistantDispatcher.contextSupports(psiFile);
 	}
 
 	@Override
@@ -68,10 +69,8 @@ public class UpgradeDependenciesIntention extends BaseIntentionAction
 	@Override
 	public void invoke(Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
 
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
-				psiFile);
-		if (context.isAvailable()) {
-			ProgressManager.getInstance().run(new DependencyCheckTask(project, psiFile.getVirtualFile(), context));
+		if (DependencyAssistantDispatcher.findFirstContext(project, psiFile).isAvailable()) {
+			ProgressManager.getInstance().run(new DependencyCheckTask(project, new UpgradeRequest(List.of(), psiFile)));
 		}
 	}
 

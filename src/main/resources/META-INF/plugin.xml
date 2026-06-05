@@ -98,6 +98,7 @@
 		        class="biz.paluch.dap.assistant.UpgradeDependenciesAction"
 		        text="Update Dependencies…">
 			<add-to-group group-id="biz.paluch.dap.DependencyAssistant" anchor="first"/>
+			<add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
 		</action>
 		<action id="biz.paluch.dap.RefreshReleasesMetadataAction"
 		        class="biz.paluch.dap.assistant.RefreshReleasesMetadataAction"

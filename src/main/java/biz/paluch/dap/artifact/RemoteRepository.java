@@ -18,6 +18,8 @@ package biz.paluch.dap.artifact;
 
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.util.Assert;
+
 /**
  * A remote Maven repository with an optional set of HTTP Basic-auth credentials resolved from {@code settings.xml}.
  *
@@ -27,6 +29,15 @@ public record RemoteRepository(String id, String url, @Nullable RepositoryCreden
 
 	static final RemoteRepository MAVEN_CENTRAL = new RemoteRepository("central", "https://repo1.maven.org/maven2/",
 			null);
+
+	public RemoteRepository {
+		Assert.hasText(id, "Id must not be null or empty!");
+		Assert.hasText(url, "URL must not be null or empty!");
+
+		if (!url.endsWith("/")) {
+			url = url + "/";
+		}
+	}
 
 	/**
 	 * Return the Maven Central repository descriptor.

@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionAware;
@@ -51,7 +52,7 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 
 	public ArtifactReleaseRenderer(InterfaceAssistant assistant, @Nullable ArtifactVersion currentVersion) {
 		this.assistant = assistant;
-		this.currentVersion = currentVersion;
+		this.currentVersion = currentVersion instanceof GitRef ? null : currentVersion;
 	}
 
 	public String formatReleaseDate(ArtifactRelease release) {

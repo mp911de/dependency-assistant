@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -36,8 +37,7 @@ import com.intellij.psi.PsiFile;
  * repository-backed {@code uses:} references with a
  * {@link DependencyCollector}.
  *
- * <p>
- * This collector is intentionally syntax-only. It records the repository
+ * <p>This collector is intentionally syntax-only. It records the repository
  * identity and declared ref as found in the workflow and leaves cache-based
  * version resolution to the project context and lookup services. This keeps
  * workflow scanning independent of release metadata availability.
@@ -87,19 +87,26 @@ class GitHubDependencyCollector {
 			collector.registerDeclaration(artifactId, DeclarationSource.dependency(),
 					versionSource);
 
-			if (StringUtils.hasText(ref.version())) {
-				Optional<GitVersion> version = versionResolver.resolve(artifactId, ref.version());
-				if (version.isPresent()) {
-					version.ifPresent(gitVersion -> collector.registerUsage(artifactId, gitVersion,
-							DeclarationSource.dependency(),
-							versionSource));
-					return;
-				}
+			if (StringUtils.isEmpty(ref.version())) {
+				continue;
 			}
 
-			ArtifactVersion.from(ref.version())
-					.ifPresent(version -> collector.registerUsage(artifactId, version, DeclarationSource.dependency(),
-							versionSource));
+			Optional<GitVersion> version = versionResolver.resolve(artifactId, ref.version());
+			if (version.isPresent()) {
+				version.ifPresent(gitVersion -> collector.registerUsage(artifactId, gitVersion,
+						DeclarationSource.dependency(), versionSource));
+			} else {
+
+				Optional<ArtifactVersion> artifactVersion = ArtifactVersion.from(ref.version());
+				if (artifactVersion.isPresent()) {
+					artifactVersion
+							.ifPresent(it -> collector.registerUsage(artifactId, it, DeclarationSource.dependency(),
+									versionSource));
+				} else {
+					collector.registerUsage(artifactId, new GitRef(ref.version()), DeclarationSource.dependency(),
+							versionSource);
+				}
+			}
 		}
 	}
 

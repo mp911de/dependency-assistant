@@ -63,6 +63,19 @@ public class Notifications {
 	}
 
 	/**
+	 * Notify the user with an informational balloon.
+	 * @param project the project to notify in.
+	 * @param title the balloon title.
+	 * @param content the balloon body text.
+	 */
+	public static void info(Project project, String title, String content) {
+
+		Notification notification = new Notification(BALLOON_NOTIFICATION, title, content,
+				NotificationType.INFORMATION);
+		notification.notify(project);
+	}
+
+	/**
 	 * Return a displayable message for the given error.
 	 */
 	public static String errorMessage(Throwable error) {

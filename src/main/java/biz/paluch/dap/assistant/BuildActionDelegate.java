@@ -16,13 +16,14 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.support.BuildFileUpdater;
 import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.support.UpdateBuildFile;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
@@ -34,67 +35,88 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 
 /**
- * Delegate to update the build file providing write action guarding.
+ * Delegate to update build files providing write action guarding.
+ *
+ * <p>Every write runs inside a {@link WriteCommandAction} tagged with a shared
+ * command group, so a fan-out of writes issued back-to-back (one chosen target
+ * routed to several files) coalesces into a single undoable command.
  *
  * @author Mark Paluch
- * @see UpdateBuildFile
+ * @see BuildFileUpdater
  */
-public class BuildActionDelegate implements UpdateBuildFile {
+public class BuildActionDelegate implements BuildFileUpdater {
 
 	private static final Logger LOG = Logger.getInstance(BuildActionDelegate.class);
+
+	private static final String COMMAND_GROUP = "biz.paluch.dap.UpdateDependencies";
 
 	private final Project project;
 
 	public final BiConsumer<PsiFile, List<DependencyUpdate>> updateAction;
 
-	private final VirtualFile buildFile;
-
 	/**
 	 * Create a delegate using the update action from the given dependency context.
 	 */
-	public BuildActionDelegate(Project project, ProjectDependencyContext dependencyContext, VirtualFile buildFile) {
-		this(project, dependencyContext::applyUpdates, buildFile);
+	public BuildActionDelegate(Project project, ProjectDependencyContext dependencyContext) {
+		this(project, dependencyContext::applyUpdates);
 	}
 
-	public BuildActionDelegate(Project project, BiConsumer<PsiFile, List<DependencyUpdate>> updateAction,
-			VirtualFile buildFile) {
+	public BuildActionDelegate(Project project, BiConsumer<PsiFile, List<DependencyUpdate>> updateAction) {
 		this.project = project;
 		this.updateAction = updateAction;
-		this.buildFile = buildFile;
 	}
 
 	@Override
-	public void updateBuildFile(List<DependencyUpdate> updates) {
+	public void updateBuildFile(VirtualFile file, List<DependencyUpdate> updates) {
 
 		if (updates.isEmpty()) {
 			return;
 		}
 
-		Runnable updatePom = () -> {
-			Document document = FileDocumentManager.getInstance().getDocument(buildFile);
-			if (document != null) {
-				PsiDocumentManager.getInstance(project).commitDocument(document);
-			}
+		runCommand(() -> applyToFile(file, updates));
+	}
 
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(buildFile);
+	@Override
+	public void updateBuildFiles(Collection<VirtualFile> files, List<DependencyUpdate> updates) {
 
-			if (psiFile == null) {
-				Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
-						MessageBundle.message("UpdateBuildFile.notification.no-file", buildFile.getPresentableUrl()));
-				return;
-			}
-			try {
-				updateAction.accept(psiFile, updates);
-			} catch (Exception ex) {
-				LOG.warn("Build file update failed", ex);
-				Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
-						MessageBundle.message("UpdateBuildFile.notification.failed", buildFile.getPresentableUrl(),
-								Notifications.errorMessage(ex)));
-			}
-		};
+		if (files.isEmpty() || updates.isEmpty()) {
+			return;
+		}
 
-		WriteCommandAction.runWriteCommandAction(project, MessageBundle.message("UpdateBuildFile.title"), null,
-				updatePom);
+		runCommand(() -> {
+			for (VirtualFile file : files) {
+				applyToFile(file, updates);
+			}
+		});
+	}
+
+	private void runCommand(Runnable command) {
+		WriteCommandAction.runWriteCommandAction(project, MessageBundle.message("UpdateBuildFile.title"), COMMAND_GROUP,
+				command);
+	}
+
+	private void applyToFile(VirtualFile file, List<DependencyUpdate> updates) {
+
+		Document document = FileDocumentManager.getInstance().getDocument(file);
+		if (document != null) {
+			PsiDocumentManager.getInstance(project).commitDocument(document);
+		}
+
+		PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
+		if (psiFile == null) {
+			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
+					MessageBundle.message("UpdateBuildFile.notification.no-file", file.getPresentableUrl()));
+			return;
+		}
+
+		try {
+			updateAction.accept(psiFile, updates);
+		} catch (Exception ex) {
+			LOG.warn("Build file update failed", ex);
+			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
+					MessageBundle.message("UpdateBuildFile.notification.failed", file.getPresentableUrl(),
+							Notifications.errorMessage(ex)));
+		}
 	}
 
 }

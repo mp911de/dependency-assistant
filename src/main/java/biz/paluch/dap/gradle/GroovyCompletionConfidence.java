@@ -35,7 +35,7 @@ public class GroovyCompletionConfidence extends CompletionConfidence {
 	public ThreeState shouldSkipAutopopup(Editor editor, PsiElement contextElement, PsiFile psiFile,
 			int offset) {
 
-		if (GradleUtils.isGradleFile(psiFile) && DependencyAssistantDispatcher.supports(psiFile)
+		if (GradleUtils.isGradleFile(psiFile) && DependencyAssistantDispatcher.contextSupports(psiFile)
 				&& GroovyCompletionContributor.isSupportedCompletionSite(contextElement)) {
 			return ThreeState.NO;
 		}

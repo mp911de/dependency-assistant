@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.artifact;
+package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,40 +26,52 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.VersionSource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Version and update info for a single dependency.
+ * The immutable set of upgrade choices for a single dependency: every known
+ * release, the display-filtered subset, and the per-strategy target.
+ *
+ * <p>This is what the dialog <em>can</em> offer for a row, not what the user
+ * has picked. The pick lives in an {@link UpgradeSelection} owned by
+ * {@link DependencyUpgradeReview}.
  *
  * @author Mark Paluch
  */
-public class DependencyUpdateOption implements HasArtifactId {
+class DependencyUpdateOption implements HasArtifactId {
 
 	private final Dependency dependency;
+
 	private final List<Release> releases;
+
 	private final List<Release> filtered;
-	private @Nullable ArtifactVersion updateTo;
+
 	private final Map<UpgradeStrategy, Release> targets;
-	private boolean applyUpdate;
 
 	/**
 	 * Create a new {@code DependencyUpdateOption}.
 	 * @param dependency the dependency to update.
 	 * @param releases the known release options.
 	 */
-	public DependencyUpdateOption(Dependency dependency, List<Release> releases) {
+	DependencyUpdateOption(Dependency dependency, List<Release> releases) {
 		this.dependency = dependency;
 		this.releases = new ArrayList<>(releases);
 
-		if (releases.stream().map(Release::getVersion).noneMatch(it -> it.equals(dependency.getCurrentVersion())
-				|| it.toString().equals(dependency.getCurrentVersion().toString()))) {
+		if (releases.stream().map(Release::getVersion)
+				.noneMatch(it -> it.matches(dependency.getCurrentVersion()))) {
 			this.releases.add(new Release(dependency.getCurrentVersion(), null));
 			this.releases.sort(Comparator.reverseOrder());
 		}
 
 		this.filtered = filterVersionSuggestions(this.releases, dependency.getCurrentVersion());
-		this.updateTo = dependency.getCurrentVersion();
-		this.applyUpdate = false;
 		this.targets = new LinkedHashMap<>();
 
 		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
@@ -71,7 +83,7 @@ public class DependencyUpdateOption implements HasArtifactId {
 	}
 
 	private List<Release> filterVersionSuggestions(Collection<Release> versions,
-			@Nullable ArtifactVersion current) {
+			ArtifactVersion current) {
 
 		Set<Release> result = new TreeSet<>(Comparator.reverseOrder());
 		List<Release> newer = new ArrayList<>();
@@ -79,11 +91,12 @@ public class DependencyUpdateOption implements HasArtifactId {
 
 		for (Release version : versions.stream().sorted().toList()) {
 
-			if (current != null && current.equals(version.version())) {
+			if (current.matches(version.version())) {
 				result.add(version);
+				continue;
 			}
 
-			if (version.version().isPreview()) {
+			if (!current.isPreview() && version.version().isPreview()) {
 				continue;
 			}
 
@@ -153,49 +166,6 @@ public class DependencyUpdateOption implements HasArtifactId {
 	}
 
 	/**
-	 * Return the selected target version, or {@literal null} if none is selected.
-	 */
-	public @Nullable ArtifactVersion getUpdateTo() {
-		return updateTo;
-	}
-
-	/**
-	 * Return the selected target version.
-	 * @throws IllegalStateException if no target version is selected.
-	 */
-	public ArtifactVersion getRequiredUpdateTo() {
-
-		if (updateTo == null) {
-			throw new IllegalStateException(
-					"Update version for " + getArtifactId().artifactId() + " is required but not set");
-		}
-		return updateTo;
-	}
-
-	/**
-	 * Set the selected target version.
-	 * @param updateTo the selected target version, or {@literal null}.
-	 */
-	public void setUpdateTo(@Nullable ArtifactVersion updateTo) {
-		this.updateTo = updateTo;
-		setApplyUpdate(!currentVersion().equals(updateTo));
-	}
-
-	/**
-	 * Return whether this option should be applied.
-	 */
-	public boolean isApplyUpdate() {
-		return applyUpdate;
-	}
-
-	/**
-	 * Set whether this option should be applied.
-	 */
-	public void setApplyUpdate(boolean applyUpdate) {
-		this.applyUpdate = applyUpdate;
-	}
-
-	/**
 	 * Return the dependency represented by this option.
 	 */
 	public Dependency getDependency() {
@@ -228,4 +198,5 @@ public class DependencyUpdateOption implements HasArtifactId {
 		return dependency.getArtifactId() + ": " + currentVersion() + " -> ["
 				+ filtered.stream().map(Release::version).map(Object::toString).collect(Collectors.joining(", ")) + "]";
 	}
+
 }

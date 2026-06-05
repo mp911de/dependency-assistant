@@ -61,8 +61,8 @@ class UpdateTestSupport {
 				dep.getVersionSources());
 
 		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdateGradleFile(targetFile.getProject()).applyUpdates(targetFile, updates),
-				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
+				(file, updates) -> new UpdateGradleFile(targetFile.getProject()).applyUpdates(targetFile, updates))
+						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
 		return UpdateTestSupport.of(targetFile);
 	}
 

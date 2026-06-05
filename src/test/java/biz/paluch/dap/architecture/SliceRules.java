@@ -53,7 +53,7 @@ class SliceRules {
 
 	/**
 	 * Slice assignment that maps each class to its fully qualified class name,
-	 * unless or closed hierarchy declaration claims the class first. Matching
+	 * unless or closed hierarchy declaration supports the class first. Matching
 	 * hierarchy members share the root type's slice identifier.
 	 *
 	 * <p>Usage examples:

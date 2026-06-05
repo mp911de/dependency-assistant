@@ -101,7 +101,7 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 	}
 
 	/**
-	 * Group the given files under the assistants that claim them.
+	 * Group the given files under the assistants that support them.
 	 */
 	public static Map<DependencyAssistant, List<PsiFile>> groupByOwner(Project project,
 			List<PsiFile> files) {

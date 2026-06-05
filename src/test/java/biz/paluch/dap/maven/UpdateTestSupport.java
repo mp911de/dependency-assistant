@@ -68,8 +68,8 @@ class UpdateTestSupport {
 				dep.getVersionSources());
 
 		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates),
-				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
+				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates))
+						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
 		return UpdateTestSupport.of(targetFile);
 	}
 

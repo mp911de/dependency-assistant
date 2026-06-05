@@ -16,56 +16,91 @@
 
 package biz.paluch.dap.assistant;
 
-import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.DependencyUpdates;
+import java.util.List;
+
 import biz.paluch.dap.support.MessageBundle;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Background task that checks dependency and plugin updates for one context and
- * shows {@link DependencyCheckDialog} on success.
+ * Background task that resolves the {@code Upgrade Scope}, runs a
+ * {@code Dependency
+ * Check} over it, and shows {@link DependencyCheckDialog} on success.
  *
  * @author Mark Paluch
  */
-public class DependencyCheckTask extends Task.Backgroundable {
+class DependencyCheckTask extends Task.Backgroundable {
 
 	private static final Logger LOG = Logger.getInstance(DependencyCheckTask.class);
 
 	private final Project project;
 
-	private final VirtualFile buildFile;
+	private final UpgradeRequest request;
 
-	private final ProjectDependencyContext context;
+	private volatile @Nullable UpgradeScope scope;
 
-	private volatile @Nullable DependencyUpdates resultRef;
+	private volatile @Nullable DependencyCheckResult resultRef;
 
-	public DependencyCheckTask(Project project, VirtualFile buildFile, ProjectDependencyContext context) {
+	public DependencyCheckTask(Project project, UpgradeRequest request) {
 		super(project, MessageBundle.message("action.check.dependencies.progress"), true);
 		this.project = project;
-		this.buildFile = buildFile;
-		this.context = context;
+		this.request = request;
 	}
 
 	@Override
 	public void run(ProgressIndicator indicator) {
-		resultRef = new DependencyCheck(project).getDependencyUpdates(indicator, context,
-				DependencyCheck.cached());
+		indicator.setIndeterminate(true);
+		if (!request.hasSingleSource()) {
+			indicator.setText(MessageBundle.message("action.check.dependencies.resolvingScope"));
+		}
+
+		UpgradeScope scope = ReadAction.nonBlocking(() -> UpgradeScopeResolver.resolve(project, request))
+				.inSmartMode(project)
+				.executeSynchronously();
+
+		this.scope = scope;
+		if (scope.isEmpty()) {
+			indicator.stop();
+			return;
+		}
+
+		indicator.setText(MessageBundle.message("action.check.dependencies.progress"));
+		List<UpgradeScope.Entry> entries = scope.entries();
+		if (entries.isEmpty()) {
+			return;
+		}
+
+		resultRef = new DependencyCheck(project).resolveScope(indicator, entries, DependencyCheck.Consistency.CACHED);
 	}
 
 	@Override
 	public void onSuccess() {
 
-		DependencyUpdates result = resultRef;
-		if (result != null) {
-			new DependencyCheckDialog(project, buildFile, result, new BuildActionDelegate(project, context, buildFile),
-					context.getInterfaceAssistant())
-							.show();
+		UpgradeScope scope = this.scope;
+		if (scope != null) {
+			if (!scope.isEmpty()) {
+				showResult(scope);
+				return;
+			}
+
+			notifyNotFound(scope.reason());
 		}
+	}
+
+	private void showResult(UpgradeScope scope) {
+
+		DependencyCheckResult result = resultRef;
+		if (result == null || result.candidates().isEmpty()) {
+			Notifications.info(project, MessageBundle.message("plugin.name"),
+					MessageBundle.message("action.check.dependencies.noUpdates"));
+			return;
+		}
+
+		new DependencyCheckDialog(project, result, getTitle(scope)).show();
 	}
 
 	@Override
@@ -74,6 +109,30 @@ public class DependencyCheckTask extends Task.Backgroundable {
 
 		Notifications.error(project,
 				MessageBundle.message("action.check.dependencies.task.error", Notifications.errorMessage(error)));
+	}
+
+	private void notifyNotFound(UpgradeScope.Reason reason) {
+
+		String message = switch (reason) {
+		case NO_BUILD_FILES -> MessageBundle.message("action.check.dependencies.notFound.noBuildFiles");
+		case NOT_IMPORTED -> MessageBundle.message("action.check.dependencies.notFound.notImported");
+		case SUCCESS -> "";
+		};
+
+		Notifications.info(project, MessageBundle.message("plugin.name"), message);
+	}
+
+	private String getTitle(UpgradeScope scope) {
+
+		List<UpgradeScope.Entry> entries = scope.entries();
+		if (entries.size() == 1) {
+			UpgradeScope.Entry entry = entries.getFirst();
+			return MessageBundle.message("dialog.title",
+					entry.context().getInterfaceAssistant().getDisplayName(entry.buildFile().getVirtualFile()),
+					project.getName());
+		}
+
+		return MessageBundle.message("dialog.title.multi", project.getName(), entries.size());
 	}
 
 }

@@ -35,7 +35,7 @@ public class GradlePropertiesCompletionConfidence extends CompletionConfidence {
 	public ThreeState shouldSkipAutopopup(Editor editor, PsiElement contextElement, PsiFile psiFile,
 			int offset) {
 
-		if (GradleUtils.isGradleFile(psiFile) && DependencyAssistantDispatcher.supports(psiFile)
+		if (GradleUtils.isGradleFile(psiFile) && DependencyAssistantDispatcher.contextSupports(psiFile)
 				&& GradlePropertiesCompletionContributor.isSupportedCompletionSite(contextElement)) {
 			return ThreeState.NO;
 		}

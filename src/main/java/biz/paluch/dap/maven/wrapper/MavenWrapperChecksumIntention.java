@@ -176,7 +176,7 @@ public class MavenWrapperChecksumIntention extends BaseIntentionAction implement
 		}
 	}
 
-	public static final class Distribution extends MavenWrapperChecksumIntention {
+	public static class Distribution extends MavenWrapperChecksumIntention {
 
 		public Distribution() {
 			super(WrapperProperty.DISTRIBUTION);
@@ -188,7 +188,7 @@ public class MavenWrapperChecksumIntention extends BaseIntentionAction implement
 
 	}
 
-	public static final class Wrapper extends MavenWrapperChecksumIntention {
+	public static class Wrapper extends MavenWrapperChecksumIntention {
 
 		public Wrapper() {
 			super(WrapperProperty.WRAPPER);

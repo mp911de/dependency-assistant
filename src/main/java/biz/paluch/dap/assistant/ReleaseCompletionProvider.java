@@ -27,6 +27,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
@@ -87,10 +88,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Add release completions for the artifact resolved at the current completion
 	 * position.
 	 *
-	 * <p>
-	 * Subclasses that gate completion should usually
-	 * call {@code super.addCompletions(...)} once their format-specific
-	 * preconditions are satisfied.
+	 * <p>Subclasses that gate completion should usually call
+	 * {@code super.addCompletions(...)} once their format-specific preconditions
+	 * are satisfied.
 	 * @param parameters the IntelliJ completion parameters; must not be
 	 * {@literal null}.
 	 * @param context the processing context supplied by IntelliJ; must not be
@@ -164,6 +164,11 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			completion = gitVersion.getSha();
 			lookupStrings.add(gitVersion.getSha());
 			lookupStrings.add(gitVersion.getShortSha());
+		} else if (completionVersion instanceof GitRef gitRef
+				&& StringUtils.hasText(gitRef.getRef())
+				&& refStyle == RefStyle.SHA) {
+			completion = gitRef.toString();
+			lookupStrings.add(gitRef.toString());
 		} else {
 			completion = completionVersion.toString();
 		}
@@ -198,10 +203,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Return whether the given Git-backed version can be used for SHA insertion at
 	 * the current completion position.
 	 *
-	 * <p>
-	 * The default accepts every {@link GitVersion}. Override when a
-	 * contributor can resolve Git-backed releases but a particular PSI location
-	 * must still insert the version text instead of the release SHA.
+	 * <p>The default accepts every {@link GitVersion}. Override when a contributor
+	 * can resolve Git-backed releases but a particular PSI location must still
+	 * insert the version text instead of the release SHA.
 	 * @param element the PSI element used to resolve completion metadata.
 	 * @param gitVersion the Git-backed release version under consideration.
 	 * @return {@literal true} if SHA insertion is supported for the given element;
@@ -214,8 +218,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return the reference style to use when choosing the inserted lookup string.
 	 *
-	 * <p>
-	 * The default inserts version text. Contributors for formats that preserve
+	 * <p>The default inserts version text. Contributors for formats that preserve
 	 * SHA references can return {@link RefStyle#SHA}; in that case Git-backed
 	 * releases with SHA metadata insert the SHA while keeping version lookup
 	 * strings available for matching.
@@ -247,11 +250,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Customize the lookup element for a release option.
 	 *
-	 * <p>
-	 * The builder already has the release renderer, lookup strings, and default
-	 * replacement handler applied. Override to add format-specific
-	 * insert handling or lookup metadata while preserving the supplied builder's
-	 * existing behavior. The default returns {@code builder} unchanged.
+	 * <p>The builder already has the release renderer, lookup strings, and default
+	 * replacement handler applied. Override to add format-specific insert handling
+	 * or lookup metadata while preserving the supplied builder's existing behavior.
+	 * The default returns {@code builder} unchanged.
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param builder the lookup element builder prepared by this provider.
 	 * @param element the PSI element used to resolve completion metadata.
@@ -267,8 +269,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Return the result set with the prefix matcher used for release lookup
 	 * elements.
 	 *
-	 * <p>
-	 * The default matcher uses an empty prefix after explicit repeated
+	 * <p>The default matcher uses an empty prefix after explicit repeated
 	 * completion invocation and otherwise uses
 	 * {@link #getPrefix(CompletionParameters)}. Contributors with larger
 	 * surrounding syntaxes, such as URLs or dependency notations, can override this
@@ -296,8 +297,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return the version-token prefix at the current completion position.
 	 *
-	 * <p>
-	 * The original position is preferred when IntelliJ has inserted completion
+	 * <p>The original position is preferred when IntelliJ has inserted completion
 	 * placeholder PSI. If no original position is available, the live completion
 	 * position is used.
 	 * @param parameters the IntelliJ completion parameters.
@@ -317,8 +317,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Return the version-token prefix inside the given literal.
 	 *
-	 * <p>
-	 * Version tokens may contain letters, digits, dots, hyphens, underscores,
+	 * <p>Version tokens may contain letters, digits, dots, hyphens, underscores,
 	 * and plus signs. The returned prefix is the contiguous token fragment between
 	 * the token start and the caret offset.
 	 * @param parameters the IntelliJ completion parameters.
@@ -407,8 +406,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		/**
 		 * Create metadata without a default replacement literal.
 		 *
-		 * <p>
-		 * Use this constructor when a subclass supplies its own insert handler or
+		 * <p>Use this constructor when a subclass supplies its own insert handler or
 		 * when completion should only contribute lookup elements.
 		 * @param artifactId the resolved artifact whose releases should be suggested.
 		 * @param currentVersion the currently declared version, or {@literal null} if

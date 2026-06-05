@@ -105,8 +105,8 @@ class UpdateGradleWrapperPropertiesTests {
 
 	private void applyUpdate(PsiFile targetFile, String toVersion) {
 		new BuildActionDelegate(targetFile.getProject(),
-				UpdateGradleWrapperProperties::applyUpdates,
-				targetFile.getVirtualFile()).updateBuildFile(List.of(update(toVersion)));
+				UpdateGradleWrapperProperties::applyUpdates)
+						.updateBuildFile(targetFile.getVirtualFile(), List.of(update(toVersion)));
 	}
 
 	private DependencyUpdate update(String toVersion) {

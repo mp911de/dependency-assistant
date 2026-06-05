@@ -30,7 +30,7 @@ import com.intellij.psi.PsiFile;
  * Fixtures for Gradle.
  * @author Mark Paluch
  */
-class GradleFixtures {
+public class GradleFixtures {
 
 	/**
 	 * Set up Dependency Assistant for the given project.

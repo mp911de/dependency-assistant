@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
@@ -65,24 +66,30 @@ class NpmDependencyCollector {
 		for (NpmDependency dependency : dependencies) {
 
 			VersionSource versionSource = dependency.versionSource();
-			if (versionSource.isDefined() && !versionSource.isPrefix()) {
+			collector.registerDeclaration(dependency.artifactId(), DeclarationSource.dependency(), versionSource);
 
-				if (dependency.version() instanceof NpmVersionExpression.Git git) {
-					Optional<GitVersion> version = gitVersionResolver.resolve(dependency.artifactId(), git.text());
+			if (!versionSource.isDefined() || versionSource.isPrefix()) {
+				continue;
+			}
+
+			if (dependency.version() instanceof NpmVersionExpression.Git git) {
+				Optional<GitVersion> version = gitVersionResolver.resolve(dependency.artifactId(), git.text());
+				if (version.isPresent()) {
 					version.ifPresent(it -> {
 						collector.registerUsage(dependency.artifactId(), it, DeclarationSource.dependency(),
 								versionSource);
 					});
-
 				} else {
-					dependency.artifactVersion().ifPresent(version -> {
-						collector.registerUsage(dependency.artifactId(), version, DeclarationSource.dependency(),
-								versionSource);
-					});
+					collector.registerUsage(dependency.artifactId(), new GitRef(git.text()),
+							DeclarationSource.dependency(),
+							versionSource);
 				}
+			} else {
+				dependency.artifactVersion().ifPresent(version -> {
+					collector.registerUsage(dependency.artifactId(), version, DeclarationSource.dependency(),
+							versionSource);
+				});
 			}
-
-			collector.registerDeclaration(dependency.artifactId(), DeclarationSource.dependency(), versionSource);
 		}
 	}
 

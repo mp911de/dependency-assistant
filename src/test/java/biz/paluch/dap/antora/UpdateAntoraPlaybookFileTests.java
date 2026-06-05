@@ -145,8 +145,8 @@ class UpdateAntoraPlaybookFileTests {
 
 		UpdateAntoraPlaybookFile updater = new UpdateAntoraPlaybookFile(file.getProject());
 
-		new BuildActionDelegate(file.getProject(), updater::applyUpdates, file.getVirtualFile())
-				.updateBuildFile(List.of(update));
+		new BuildActionDelegate(file.getProject(), updater::applyUpdates)
+				.updateBuildFile(file.getVirtualFile(), List.of(update));
 	}
 
 }

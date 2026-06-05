@@ -188,7 +188,8 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 			int trainCompare = trainName.compareToIgnoreCase(other.trainName);
 			return trainCompare != 0 ? trainCompare : suffix.compareTo(other.suffix);
 		}
-		return -1;
+
+		return toString().compareToIgnoreCase(that.toString());
 	}
 
 	@Override

@@ -32,17 +32,6 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 		Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
 
 	/**
-	 * Create an update from a selected update option.
-	 * @param option the selected update option.
-	 * @return the dependency update to apply.
-	 * @throws IllegalStateException if the option has no target version selected.
-	 */
-	public static DependencyUpdate from(DependencyUpdateOption option) {
-		return new DependencyUpdate(option.getArtifactId(), option.getRequiredUpdateTo(),
-				option.getDependency().getDeclarationSources(), option.getDependency().getVersionSources());
-	}
-
-	/**
 	 * Create an update for a dependency and release.
 	 * @param dependency the dependency to update.
 	 * @param release the selected release.

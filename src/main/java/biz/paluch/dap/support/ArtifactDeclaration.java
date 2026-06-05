@@ -51,8 +51,8 @@ public class ArtifactDeclaration implements DependencySite {
 	private final @Nullable PsiElement versionLiteral;
 
 	private ArtifactDeclaration(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
-			boolean versionDefinedInSameFile,
-			@Nullable ArtifactVersion version, PsiElement declarationElement, @Nullable PsiElement versionLiteral) {
+			boolean versionDefinedInSameFile, @Nullable ArtifactVersion version, PsiElement declarationElement,
+			@Nullable PsiElement versionLiteral) {
 		this.artifactId = artifactId;
 		this.versionSource = versionSource;
 		this.declarationSource = declarationSource;
@@ -147,7 +147,7 @@ public class ArtifactDeclaration implements DependencySite {
 	public String toString() {
 		return artifactId + " {" +
 				"versionSource=" + versionSource +
-				"declarationSource=" + declarationSource +
+				", declarationSource=" + declarationSource +
 				", version=" + version +
 				'}';
 	}

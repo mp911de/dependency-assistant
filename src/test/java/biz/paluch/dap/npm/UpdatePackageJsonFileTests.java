@@ -173,8 +173,8 @@ class UpdatePackageJsonFileTests {
 				List.of(VersionSource.declared(targetVersion.toString())));
 
 		UpdatePackageJsonFile updater = new UpdatePackageJsonFile(file.getProject());
-		new BuildActionDelegate(file.getProject(), updater::applyUpdates, file.getVirtualFile())
-				.updateBuildFile(List.of(update));
+		new BuildActionDelegate(file.getProject(), updater::applyUpdates)
+				.updateBuildFile(file.getVirtualFile(), List.of(update));
 	}
 
 }

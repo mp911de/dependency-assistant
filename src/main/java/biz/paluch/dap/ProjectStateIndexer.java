@@ -28,6 +28,7 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -155,6 +156,26 @@ public class ProjectStateIndexer {
 	}
 
 	/**
+	 * Run an aggregate scan and return one combined collector enriched with release
+	 * sources and post-scan completion.
+	 * <p>The aggregate result is not stored in the {@link ProjectState} and does
+	 * not invoke the cache update.
+	 * @param assistant the assistant to run; must not be {@literal null}.
+	 * @return the aggregated collector.
+	 */
+	public void forEach(DependencyAssistant assistant, BiConsumer<VirtualFile, DependencyCollector> consumer) {
+
+		forEachAvailableEntry(assistant, (anchor, context) -> {
+
+			DependencyCollector collector = new DependencyCollector();
+			assistant.collect(anchor, collector);
+			consumer.accept(anchor.getVirtualFile(), collector);
+
+			collector.addAllReleaseSources(context.getReleaseSources());
+		});
+	}
+
+	/**
 	 * Run a file-scoped invalidation: re-collect the state owned by the given file
 	 * and route it through the same complete-store flow.
 	 * @param assistant the assistant that owns the file; must not be
@@ -195,8 +216,8 @@ public class ProjectStateIndexer {
 		return active;
 	}
 
-	private void forEachAvailableEntry(DependencyAssistant assistant,
-			BiConsumer<PsiFile, ProjectBuildContext> action) {
+	public void forEachAvailableEntry(DependencyAssistant assistant,
+			BiConsumer<PsiFile, ProjectDependencyContext> action) {
 
 		List<PsiFile> anchors = assistant.enumerate(project);
 		int processed = 0;
@@ -204,7 +225,7 @@ public class ProjectStateIndexer {
 		for (PsiFile anchor : anchors) {
 
 			indicator.checkCanceled();
-			ProjectBuildContext context = assistant.createContext(project, anchor);
+			ProjectDependencyContext context = assistant.createContext(project, anchor);
 			if (context.isAvailable()) {
 				action.accept(anchor, context);
 			}

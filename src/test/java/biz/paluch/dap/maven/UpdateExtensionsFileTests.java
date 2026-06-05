@@ -73,8 +73,8 @@ class UpdateExtensionsFileTests {
 				dep.getVersionSources());
 
 		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdateExtensionsFile().applyUpdates(targetFile, updates),
-				targetFile.getVirtualFile()).updateBuildFile(List.of(update));
+				(file, updates) -> new UpdateExtensionsFile().applyUpdates(targetFile, updates))
+						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
 		return UpdateTestSupport.of(targetFile);
 	}
 

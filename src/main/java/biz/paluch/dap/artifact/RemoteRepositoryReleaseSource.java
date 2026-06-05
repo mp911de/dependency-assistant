@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
@@ -43,6 +42,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.ObjectUtils;
 
 /**
  * Release source that fetches releases from a remote Maven repository.
@@ -82,19 +83,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 	public RemoteRepository getRepository() {
 		return repository;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof RemoteRepositoryReleaseSource that)) {
-			return false;
-		}
-		return Objects.equals(repository, that.repository);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hashCode(repository);
 	}
 
 	@Override
@@ -239,6 +227,19 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 		String raw = credentials.username() + ":" + credentials.password();
 		return "Basic " + Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof RemoteRepositoryReleaseSource source)) {
+			return false;
+		}
+		return ObjectUtils.nullSafeEquals(repository, source.repository);
+	}
+
+	@Override
+	public int hashCode() {
+		return ObjectUtils.nullSafeHashCode(repository);
 	}
 
 }

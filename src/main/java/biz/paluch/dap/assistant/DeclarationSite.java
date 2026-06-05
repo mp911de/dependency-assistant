@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.support;
+package biz.paluch.dap.assistant;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.DeclaredDependency;
+import biz.paluch.dap.state.ProjectId;
+import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Strategy interface for updating a build file.
+ * Concrete location where a dependency declaration was found during scanning.
  *
  * @author Mark Paluch
+ * @param file the build file containing the declaration.
+ * @param projectId the project identity associated with the declaration.
+ * @param dependency the declared dependency captured at the location.
  */
-public interface UpdateBuildFile {
-
-	/**
-	 * Update the build file.
-	 */
-	void updateBuildFile(List<DependencyUpdate> updates);
+record DeclarationSite(VirtualFile file, ProjectId projectId,
+		DeclaredDependency dependency) {
 
 }

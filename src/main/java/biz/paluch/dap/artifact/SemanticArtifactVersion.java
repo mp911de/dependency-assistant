@@ -52,7 +52,8 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	private final Suffix suffix;
 
 	/**
-	 * Creates a new {@link SemanticArtifactVersion} from the given logical {@link NumericVersionComponents}.
+	 * Creates a new {@link SemanticArtifactVersion} from the given logical
+	 * {@link NumericVersionComponents}.
 	 *
 	 * @param components must not be {@literal null}.
 	 */
@@ -219,7 +220,8 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	public boolean isNewerMinor(ArtifactVersion other) {
 
 		if (other.getVersion() instanceof SemanticArtifactVersion sav) {
-			return components.getMajor() == sav.components.getMajor() && sav.components.getMinor() > components.getMinor()
+			return components.getMajor() == sav.components.getMajor()
+					&& sav.components.getMinor() > components.getMinor()
 					&& isNewer(sav);
 		}
 
@@ -361,7 +363,8 @@ class SemanticArtifactVersion implements ArtifactVersion {
 		if (that.isWrapped()) {
 			return compareTo(that.getVersion());
 		}
-		return that instanceof SemanticArtifactVersion sav ? compareTo(sav) : 1;
+		return that instanceof SemanticArtifactVersion sav ? compareTo(sav)
+				: toString().compareToIgnoreCase(that.toString());
 	}
 
 	/**

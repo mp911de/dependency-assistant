@@ -16,14 +16,15 @@
 
 package biz.paluch.dap.assistant;
 
-import java.awt.*;
+import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.*;
+
+import javax.swing.AbstractCellEditor;
+import javax.swing.JTable;
 import javax.swing.table.TableCellEditor;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DependencyUpdateOption;
 import biz.paluch.dap.artifact.Release;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.CollectionComboBoxModel;
@@ -31,7 +32,8 @@ import com.intellij.util.ui.JBUI;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Table cell editor for the Suggested column: combobox of version options (with release dates and version-age icon).
+ * Table cell editor for the Suggested column: combobox of version options (with
+ * release dates and version-age icon).
  *
  * @author Mark Paluch
  */
@@ -39,17 +41,29 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 
 	private final ComboBox<Release> combo = new ComboBox<>();
 
-	private final DependencyUpdateModel model;
+	private final DependencyUpgradeReview review;
+
+	private final UpdateCandidate candidate;
+
 	private final List<Release> options = new ArrayList<>();
 
 	/**
 	 * Create an editor for the suggested version column.
 	 */
-	public SuggestedVersionComboBoxEditor(DependencyUpdateModel model, DependencyUpdateOption option) {
-		this.model = model;
+	public SuggestedVersionComboBoxEditor(DependencyUpgradeReview review, UpdateCandidate candidate) {
+		this.review = review;
+		this.candidate = candidate;
 		this.combo.putClientProperty("JComboBox.isTableCellEditor", Boolean.TRUE);
 		this.combo.setModel(new CollectionComboBoxModel<>(options));
-		this.combo.setRenderer(new VersionOptionCellRenderer(option.currentVersion()));
+		this.combo.setRenderer(new VersionOptionCellRenderer(candidate.currentVersion()));
+		this.combo.addActionListener(e -> {
+
+			Release selected = (Release) combo.getSelectedItem();
+			if (selected != null && !selected.version().matches(review.getUpdateTo(candidate))) {
+				review.selectTarget(candidate, selected.version());
+				fireEditingStopped();
+			}
+		});
 	}
 
 	@Override
@@ -59,32 +73,28 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 		combo.setFont(table.getFont());
 		combo.setBorder(JBUI.Borders.empty());
 
-		DependencyUpdateOption info = ModelUtil.getOption(table, row);
-		refreshOptions(info);
+		refreshOptions();
 		return combo;
 	}
 
-	private void refreshOptions(DependencyUpdateOption info) {
+	private void refreshOptions() {
 
-		ArtifactVersion currentValue = info.getUpdateTo() == null
-				? (combo.getSelectedItem() instanceof Release vo ? vo.version() : info.currentVersion())
-				: info.getUpdateTo();
-		List<Release> options = model.isFilterVersionSuggestions() ? info.filtered() : info.versionOptions();
+		ArtifactVersion updateTo = review.getUpdateTo(candidate);
+		ArtifactVersion currentValue = updateTo == null
+				? (combo.getSelectedItem() instanceof Release release ? release.version() : candidate.currentVersion())
+				: updateTo;
+		List<Release> releases = review.visibleReleases(candidate);
 
-		if (!this.options.equals(options)) {
+		if (!this.options.equals(releases)) {
 			this.options.clear();
-			this.options.addAll(options);
+			this.options.addAll(releases);
 		}
 
 		Release selected = null;
-		for (Release opt : options) {
-
-			if (opt.version().canCompare(currentValue) && opt.version().compareTo(currentValue) == 0) {
-				selected = opt;
+		for (Release release : releases) {
+			if (release.version().matches(currentValue)) {
+				selected = release;
 				break;
-			}
-			if (opt.version().equals(currentValue)) {
-				selected = opt;
 			}
 		}
 
@@ -96,17 +106,10 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 	@Override
 	public @Nullable Object getCellEditorValue() {
 		Object item = combo.getSelectedItem();
-		if (item instanceof Release vo) {
-			return vo.version();
+		if (item instanceof Release release) {
+			return release.version();
 		}
 		return null;
-	}
-
-	/**
-	 * Return the underlying combo box for tests and table integration.
-	 */
-	public ComboBox<Release> getCombo() {
-		return combo;
 	}
 
 }

@@ -28,22 +28,21 @@ import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Resolver for a Git ref (tag, SHA, branch) into an {@link ArtifactVersion} using
- * the canonical resolution order.
+ * Resolver for a Git ref (tag, SHA, branch) into an {@link ArtifactVersion}
+ * using the canonical resolution order.
  *
- * <p>
- * The {@link #resolveCurrent(ArtifactId, String) instance method} applies the
- * canonical chain: <strong>Project State</strong> current version, then cached
- * <strong>Releases</strong> matched by SHA or tag prefix (via the existing
- * cache-only resolver), then a best-effort {@link ArtifactVersion#from(String)}
- * parse of the raw ref.
+ * <p>The {@link #resolveCurrent(ArtifactId, String) instance method} applies
+ * the canonical chain: <strong>Project State</strong> current version, then
+ * cached <strong>Releases</strong> matched by SHA or tag prefix (via the
+ * existing cache-only resolver), then a best-effort
+ * {@link ArtifactVersion#from(String)} parse of the raw ref.
  *
- * <p>
- * The static {@link #resolveVersion(String, List)} entry point preserves the
+ * <p>The static {@link #resolveVersion(String, List)} entry point preserves the
  * cache-only matching used by dependency collectors and assistant context
  * helpers that already own a release list.
  *
@@ -57,8 +56,7 @@ public class GitVersionResolver {
 
 	/**
 	 * Create a resolver using the {@link Cache} without project state.
-	 * <p>
-	 * The Project-State branch of {@link #resolveCurrent(ArtifactId, String)} is
+	 * <p>The Project-State branch of {@link #resolveCurrent(ArtifactId, String)} is
 	 * skipped when no project state is available.
 	 * @param cache the shared release cache.
 	 */
@@ -69,8 +67,8 @@ public class GitVersionResolver {
 	/**
 	 * Create a resolver using the {@link Cache} and project state.
 	 * @param cache the shared release cache.
-	 * @param projectState the project state to consult first, or {@literal null}
-	 * to skip the project-state branch.
+	 * @param projectState the project state to consult first, or {@literal null} to
+	 * skip the project-state branch.
 	 */
 	public GitVersionResolver(Cache cache, @Nullable ProjectState projectState) {
 		this.cache = cache;
@@ -79,10 +77,9 @@ public class GitVersionResolver {
 
 	/**
 	 * Resolve the given ref against cached releases for the given artifact.
-	 * <p>
-	 * This is the cache-only path used by dependency collectors that need to
-	 * pair a declared SHA or tag with a known release. The Project-State branch
-	 * is intentionally not consulted here.
+	 * <p>This is the cache-only path used by dependency collectors that need to
+	 * pair a declared SHA or tag with a known release. The Project-State branch is
+	 * intentionally not consulted here.
 	 * @param artifactId the artifact whose cached releases to inspect.
 	 * @param lookupString the raw commit SHA (full or abbreviated) or version
 	 * string.
@@ -99,10 +96,9 @@ public class GitVersionResolver {
 	}
 
 	/**
-	 * Resolve the current effective {@link ArtifactVersion} for the given
-	 * artifact and raw ref using the canonical chain.
-	 * <p>
-	 * Resolution order:
+	 * Resolve the current effective {@link ArtifactVersion} for the given artifact
+	 * and raw ref using the canonical chain.
+	 * <p>Resolution order:
 	 * <ol>
 	 * <li>If project state holds a dependency for {@code artifactId} with a
 	 * non-{@literal null} current version, return that version.</li>
@@ -115,8 +111,8 @@ public class GitVersionResolver {
 	 * @param artifactId the artifact to resolve; must not be {@literal null}.
 	 * @param rawRef the raw Git ref (tag, SHA, branch); must not be
 	 * {@literal null}.
-	 * @return the resolved current version, or {@link Optional#empty()} when
-	 * none of the branches yields a value.
+	 * @return the resolved current version, or {@link Optional#empty()} when none
+	 * of the branches yields a value.
 	 */
 	public Optional<ArtifactVersion> resolveCurrent(ArtifactId artifactId, String rawRef) {
 
@@ -129,18 +125,28 @@ public class GitVersionResolver {
 		return ArtifactVersion.from(rawRef);
 	}
 
+	public static @Nullable ArtifactVersion resolveVersion(VersionSource versionSource,
+			List<Release> releases) {
+
+		String source = versionSource.toString();
+		if (!StringUtils.hasText(source)) {
+			return null;
+		}
+
+		return resolveVersion(source, releases);
+	}
+
 	/**
 	 * Resolve a {@link DeclaredDependency} to a {@link Dependency} using the
 	 * cache-only matching on the supplied release list.
-	 * <p>
-	 * Shared delegation for build-tool integrations whose
+	 * <p>Shared delegation for build-tool integrations whose
 	 * {@link biz.paluch.dap.ProjectDependencyContext#resolveDependency(DeclaredDependency, List)}
 	 * implementation only needs cache matching.
 	 * @param declaredDependency the declared dependency to resolve; must not be
 	 * {@literal null}.
 	 * @param releases the releases to inspect; must not be {@literal null}.
-	 * @return the resolved dependency, or {@literal null} when the first
-	 * version source is empty or the cache yields no unique match.
+	 * @return the resolved dependency, or {@literal null} when the first version
+	 * source is empty or the cache yields no unique match.
 	 */
 	public static @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency,
 			List<Release> releases) {
@@ -160,8 +166,7 @@ public class GitVersionResolver {
 
 	/**
 	 * Resolve a ref against the given release list.
-	 * <p>
-	 * Exact version matches win. Otherwise, a unique version or SHA prefix match
+	 * <p>Exact version matches win. Otherwise, a unique version or SHA prefix match
 	 * is accepted; ambiguous prefixes are unresolved.
 	 * @param versionRef the raw workflow ref
 	 * @param releases the releases to inspect

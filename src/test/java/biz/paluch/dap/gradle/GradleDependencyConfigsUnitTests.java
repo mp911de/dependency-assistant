@@ -31,16 +31,16 @@ import static org.assertj.core.api.Assertions.*;
  */
 class GradleDependencyConfigsUnitTests {
 
-	@ParameterizedTest(name = "recognises config: {0}")
+	@ParameterizedTest(name = "supports config: {0}")
 	@ValueSource(strings = { "implementation", "api", "runtimeOnly", "compileOnly", "testImplementation",
 			"testRuntimeOnly", "testCompileOnly", "annotationProcessor", "kapt", "ksp", "classpath" })
-	void recognisesCommonDependencyConfigs(String config) {
+	void supportsCommonDependencyConfigs(String config) {
 		assertThat(GradleUtils.DEPENDENCY_CONFIGS).contains(config);
 	}
 
-	@ParameterizedTest(name = "recognises platform: {0}")
+	@ParameterizedTest(name = "supports platform: {0}")
 	@ValueSource(strings = { "platform", "enforcedPlatform" })
-	void recognisesPlatformFunctions(String func) {
+	void supportsPlatformFunctions(String func) {
 		assertThat(GradleUtils.PLATFORM_FUNCTIONS).contains(func);
 	}
 

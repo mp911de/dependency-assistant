@@ -18,13 +18,13 @@ package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DependencyUpdateOption;
-import biz.paluch.dap.artifact.DependencyUpdates;
-import biz.paluch.dap.assistant.DependencyCheck.ArtifactRefreshCandidate;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.assistant.DependencyCheck.ReleaseSources;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.ReadAction;
@@ -62,21 +62,20 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 		long startNs = System.nanoTime();
 		DependencyCheck dependencyCheck = new DependencyCheck(project);
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
-		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 1 + assistants.size());
-		steps.setText(MessageBundle.message("action.index-dependencies.indexing"));
+		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 2);
+		steps.setText(MessageBundle.message("action.index-dependencies.analyzing"));
 		steps.setIndeterminate(false);
 
-		List<ArtifactRefreshCandidate> artifactIdentifiers = new ArrayList<>();
+		List<ReleaseSources> sources = new ArrayList<>();
 
 		ReadAction.nonBlocking(() -> {
 			for (DependencyAssistant assistant : assistants) {
+				steps.setText2(MessageBundle.message("action.index-dependencies.analyzing.assistant",
+						assistant.getDisplayName()));
 				if (steps.isCanceled()) {
 					return;
 				}
-
-				artifactIdentifiers.addAll(dependencyCheck.collectDependencies(steps, assistant));
-				steps.setFraction(1);
-				steps.nextStep();
+				sources.addAll(dependencyCheck.collectDependencies(steps, assistant));
 			}
 		}).inSmartMode(project).executeSynchronously();
 
@@ -84,10 +83,12 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 			return;
 		}
 
-		DependencyUpdates result = dependencyCheck.updateReleaseMetadata(steps, artifactIdentifiers,
-				DependencyCheck.bypassCache());
 		steps.nextStep();
-		updates = result.updates().stream().map(DependencyUpdateOption::getArtifactId).toList();
+
+		Map<ArtifactId, List<Release>> result = dependencyCheck.getReleases(steps, sources,
+				DependencyCheck.Consistency.NO_CACHE);
+		steps.nextStep();
+		updates = result.keySet().stream().toList();
 		duration = TimeoutUtil.getDurationMillis(startNs);
 	}
 

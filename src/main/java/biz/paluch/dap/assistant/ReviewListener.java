@@ -16,24 +16,20 @@
 
 package biz.paluch.dap.assistant;
 
-import javax.swing.JTable;
-
-import com.intellij.util.ui.SortableColumnModel;
+import java.util.EventListener;
 
 /**
- * Utility methods for working with table models.
+ * Listener notified when the review state changes.
  *
  * @author Mark Paluch
  */
-class ModelUtil {
+@FunctionalInterface
+interface ReviewListener extends EventListener {
 
 	/**
-	 * Return the {@link UpdateCandidate} row backing the given view row.
-	 * @param viewRow row index in view coordinates (e.g. from renderer/editor),
-	 * respects row sorter.
+	 * Called when the review changed and the table must reflect it.
+	 * @param change describes which rows to refresh and whether to reload.
 	 */
-	static UpdateCandidate getRow(JTable table, int viewRow) {
-		int modelRow = table.convertRowIndexToModel(viewRow);
-		return (UpdateCandidate) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);
-	}
+	void changed(ReviewChange change);
+
 }

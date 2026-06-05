@@ -198,7 +198,7 @@ class GitVersionResolverUnitTests {
 		return new InMemoryProjectState();
 	}
 
-	private static final class InMemoryProjectState implements ProjectState {
+	private static class InMemoryProjectState implements ProjectState {
 
 		private final Map<ArtifactId, Dependency> dependencies = new HashMap<>();
 

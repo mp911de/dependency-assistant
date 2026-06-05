@@ -16,24 +16,29 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.List;
+
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.Presentation;
-import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Tools menu action to check dependency versions for the active build file.
+ * Action to upgrade dependencies across an {@link UpgradeScope upgrade scope},
+ * surfaced both in the Tools menu and the Project View popup.
+ *
+ * <p>The scope is resolved by {@link UpgradeScopeResolver}: an explicit Project
+ * View selection, else the active editor's build file, else the whole project.
+ * The action is a thin shell; all resolution logic lives in the resolver.
  *
  * @author Mark Paluch
  */
@@ -52,25 +57,12 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware {
 			return;
 		}
 
-		Editor editor = event.getData(CommonDataKeys.EDITOR);
-		if (editor == null) {
-			Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.noEditorOpen"),
-					MessageBundle.message("action.check.dependencies.noEditorOpen.title"),
-					Messages.getInformationIcon());
-			return;
-		}
+		VirtualFile[] selectedFiles = event.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY);
+		List<VirtualFile> selection = (selectedFiles != null ? List.of(selectedFiles) : List.of());
+		selection = selection.stream().filter(it -> !it.isDirectory() && it.isValid()).toList();
+		PsiFile editorFile = event.getData(CommonDataKeys.PSI_FILE);
 
-		PsiFile psiFile = event.getData(CommonDataKeys.PSI_FILE);
-
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, psiFile);
-		if (psiFile == null || context.isAbsent()) {
-			Messages.showMessageDialog(project, MessageBundle.message("action.check.dependencies.noSupportedFile"),
-					MessageBundle.message("action.check.dependencies.noEditorOpen.title"),
-					Messages.getInformationIcon());
-			return;
-		}
-
-		ProgressManager.getInstance().run(new DependencyCheckTask(project, psiFile.getVirtualFile(), context));
+		ProgressManager.getInstance().run(new DependencyCheckTask(project, new UpgradeRequest(selection, editorFile)));
 	}
 
 	@Override

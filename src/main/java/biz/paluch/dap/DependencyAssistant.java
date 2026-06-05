@@ -150,7 +150,7 @@ public interface DependencyAssistant {
 	 * @param anchor the build file or catalog file that anchors the operation; must
 	 * not be {@literal null}.
 	 * @return a file-scoped context.
-	 * @throws IllegalStateException if this integration does not own the file.
+	 * @throws IllegalStateException if this integration does not support the file.
 	 */
 	ProjectDependencyContext createContext(Project project, PsiFile anchor);
 

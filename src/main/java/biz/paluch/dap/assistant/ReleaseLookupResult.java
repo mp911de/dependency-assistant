@@ -16,24 +16,22 @@
 
 package biz.paluch.dap.assistant;
 
-import javax.swing.JTable;
+import java.util.List;
 
-import com.intellij.util.ui.SortableColumnModel;
+import biz.paluch.dap.artifact.Release;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Utility methods for working with table models.
+ * Outcome of resolving releases for an artifact, carrying either the resolved
+ * releases, a non-fatal lookup error, or both when a source partially succeeds.
+ *
+ * <p>Callers treat a {@literal null} error as success.
  *
  * @author Mark Paluch
+ * @param error the lookup error message, or {@literal null} when release lookup
+ * succeeded.
+ * @param releases the releases that were resolved for the artifact.
  */
-class ModelUtil {
+record ReleaseLookupResult(@Nullable String error, List<Release> releases) {
 
-	/**
-	 * Return the {@link UpdateCandidate} row backing the given view row.
-	 * @param viewRow row index in view coordinates (e.g. from renderer/editor),
-	 * respects row sorter.
-	 */
-	static UpdateCandidate getRow(JTable table, int viewRow) {
-		int modelRow = table.convertRowIndexToModel(viewRow);
-		return (UpdateCandidate) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);
-	}
 }

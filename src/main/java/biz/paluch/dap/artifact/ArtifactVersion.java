@@ -21,10 +21,11 @@ import java.util.Optional;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.lang.Contract;
+
 /**
  * Common contract for semantic and release-train artifact versions.
- * <p>
- * {@link Object#toString()} returns the version string.
+ * <p>{@link Object#toString()} returns the version string.
  *
  * @author Mark Paluch
  */
@@ -151,10 +152,13 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	/**
 	 * Return whether the given version can be compared with this one.
 	 */
-	default boolean canCompare(ArtifactVersion version) {
-		ArtifactVersion self = getVersion();
-		ArtifactVersion other = version.getVersion();
-		return self.getClass().equals(other.getClass());
+	default boolean canCompare(ArtifactVersion other) {
+		return getVersion().getClass().equals(other.getVersion().getClass());
+	}
+
+	@Contract("null -> false")
+	default boolean matches(@Nullable ArtifactVersion other) {
+		return other != null && compareTo(other) == 0;
 	}
 
 	/**
