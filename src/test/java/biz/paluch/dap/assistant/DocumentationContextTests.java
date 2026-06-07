@@ -33,13 +33,13 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link DependencyDocumentationProvider}.
+ * Unit tests for {@link DocumentationContext}.
  *
  * @author Mark Paluch
  */
-class DependencyDocumentationProviderTests {
+class DocumentationContextTests {
 
-	private static final InterfaceAssistant ASSISTANT = new TestInterfaceAssistant();
+	static InterfaceAssistant ASSISTANT = new TestInterfaceAssistant();
 
 	@Test
 	void propertyDocumentationCollapsesArtifactsWithSameReleaseVersions() {
@@ -51,7 +51,7 @@ class DependencyDocumentationProviderTests {
 		cache.putVersionOptions(context, List.of(release("6.1.1", 3), release("6.2.0", 4)));
 		VersionProperty property = property("spring.version", core, context);
 
-		String html = DependencyDocumentationProvider.buildHtmlBody(ASSISTANT, cache, property, null, false, null);
+		String html = documentation(cache).render(property, null);
 
 		assertThat(html)
 				.containsOnlyOnce("Version property for:")
@@ -72,7 +72,7 @@ class DependencyDocumentationProviderTests {
 		cache.putVersionOptions(boot, List.of(release("3.5.0", 5), release("3.4.1", 6)));
 		VersionProperty property = property("spring.version", core, context, boot);
 
-		String html = DependencyDocumentationProvider.buildHtmlBody(ASSISTANT, cache, property, null, false, null);
+		String html = documentation(cache).render(property, null);
 
 		assertThat(StringUtils.countMatches(html, "Version property for:")).isEqualTo(2);
 		assertThat(StringUtils.countMatches(html, "<table>")).isEqualTo(2);
@@ -80,6 +80,10 @@ class DependencyDocumentationProviderTests {
 				.contains("<p>Version property for: <code>org.springframework:spring-core</code>, "
 						+ "<code>org.springframework:spring-context</code></p>")
 				.contains("<p>Version property for: <code>org.springframework.boot:spring-boot</code></p>");
+	}
+
+	private static DocumentationContext documentation(Cache cache) {
+		return new DocumentationContext(ASSISTANT, cache, null, false);
 	}
 
 	private static VersionProperty property(String name, ArtifactId... artifactIds) {

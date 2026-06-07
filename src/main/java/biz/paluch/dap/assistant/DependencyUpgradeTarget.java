@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -33,6 +34,11 @@ interface DependencyUpgradeTarget {
 	Project getProject();
 
 	/**
+	 * Return the associated ArtifactId.
+	 */
+	ArtifactId getArtifactId();
+
+	/**
 	 * Apply the given version to the documented declaration.
 	 * <p>Must be called inside a write action; the implementation rewrites the
 	 * version literal in place through the shared update path and never opens its
@@ -42,5 +48,6 @@ interface DependencyUpgradeTarget {
 	 * table; must not be {@literal null}.
 	 */
 	void applyVersion(String version);
+
 
 }

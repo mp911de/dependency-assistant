@@ -64,7 +64,7 @@ public final class DependencyUpgradeLinkHandler implements DocumentationLinkHand
 			}
 
 			ApplicationManager.getApplication().invokeAndWait(() -> WriteCommandAction.writeCommandAction(project)
-					.withName(MessageBundle.message("documentation.upgrade-to", version))
+					.withName(MessageBundle.message("documentation.upgrade-to", upgradeTarget.getArtifactId(), version))
 					.run(() -> upgradeTarget.applyVersion(version)));
 
 			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));
