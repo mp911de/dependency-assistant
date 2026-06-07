@@ -19,8 +19,7 @@ package biz.paluch.dap.assistant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import javax.swing.Icon;
+import java.util.Map;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
@@ -32,9 +31,9 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.mock.MockProjectEx;
 import com.intellij.mock.MockVirtualFile;
@@ -53,28 +52,46 @@ import static org.assertj.core.api.Assertions.*;
  */
 class DependencyCheckAggregatorTests {
 
+	ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
+
+	ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
+
+	ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
+
+	ProjectId ACME_APP = ProjectId.of("com.acme", "app");
+
+	ProjectId ACME_LIB = ProjectId.of("com.acme", "lib");
+
+	ArtifactVersion LETTUCE_CURRENT = ArtifactVersion.of("7.4.1.RELEASE");
+
+	ArtifactVersion LETTUCE_UPDATE = ArtifactVersion.of("7.5.0.RELEASE");
+
+	ArtifactVersion SPRING_CURRENT = ArtifactVersion.of("6.2.0");
+
+	ArtifactVersion SPRING_UPDATE = ArtifactVersion.of("6.2.1");
+
+	String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
+
 	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(new MockProjectEx(() -> {
 	}), new StateService());
 
 	@Test
 	void groupsDeclarationsByArtifact() {
 
-		VirtualFile a = new MockVirtualFile("aggregate-a/build.gradle", "// test");
-		VirtualFile b = new MockVirtualFile("aggregate-b/build.gradle", "// test");
+		VirtualFile a = buildFile("aggregate-a/build.gradle");
+		VirtualFile b = buildFile("aggregate-b/build.gradle");
 		ReleaseSource mavenCentral = new TestReleaseSource("mavenCentral");
 		ReleaseSource pluginPortal = new TestReleaseSource("pluginPortal");
 
-		aggregator.add(dependency("io.lettuce", "lettuce-core", "7.4.1.RELEASE"), context("com.acme", "app"),
-				a, List.of(mavenCentral));
-		aggregator.add(dependency("io.lettuce", "lettuce-core", "7.5.0.RELEASE"), context("com.acme", "lib"),
-				b, List.of(pluginPortal));
+		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), context(ACME_APP), a, List.of(mavenCentral));
+		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_UPDATE), context(ACME_LIB), b, List.of(pluginPortal));
 
 		List<ArtifactId> artifacts = new ArrayList<>();
 		aggregator.forEach(artifacts::add);
 		List<Collection<ReleaseSource>> releaseSources = new ArrayList<>();
 		aggregator.forEachArtifact((artifactId, sources) -> releaseSources.add(sources));
 
-		assertThat(artifacts).containsExactly(ArtifactId.of("io.lettuce", "lettuce-core"));
+		assertThat(artifacts).containsExactly(LETTUCE_CORE);
 		assertThat(releaseSources).singleElement().satisfies(sources -> assertThat(sources)
 				.containsExactlyInAnyOrder(mavenCentral, pluginPortal));
 		assertThat(aggregator.getFiles()).containsExactly(a, b);
@@ -83,63 +100,62 @@ class DependencyCheckAggregatorTests {
 	@Test
 	void createsSortedCandidatesAndCarriesReleaseErrors() {
 
-		VirtualFile a = new MockVirtualFile("result-a/build.gradle", "// test");
-		VirtualFile b = new MockVirtualFile("result-b/build.gradle", "// test");
-		ArtifactId spring = ArtifactId.of("org.springframework", "spring-core");
-		ArtifactId lettuce = ArtifactId.of("io.lettuce", "lettuce-core");
+		VirtualFile a = buildFile("result-a/build.gradle");
+		VirtualFile b = buildFile("result-b/build.gradle");
 
-		aggregator.add(dependency(spring, "6.2.0"), context("com.acme", "app"), a, List.of());
-		aggregator.add(dependency(lettuce, "7.4.1.RELEASE"), context("com.acme", "lib"), b, List.of());
+		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), a, List.of());
+		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), context(ACME_LIB), b, List.of());
 
-		DependencyCheckResult result = aggregator.toDependencyCheckResult(java.util.Map.of(spring,
-				new ReleaseLookupResult(null, List.of(release("6.2.1"))), lettuce,
-				new ReleaseLookupResult(null, List.of(release("7.5.0.RELEASE"))),
-				ArtifactId.of("broken", "artifact"), new ReleaseLookupResult("broken: unavailable", List.of())));
+		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), LETTUCE_CORE,
+				resolved(LETTUCE_UPDATE), BROKEN_ARTIFACT, lookupError(BROKEN_ARTIFACT_ERROR));
+		DependencyCheckResult result = aggregator.toDependencyCheckResult(releases);
 
 		assertThat(result.candidates()).extracting(candidate -> candidate.getArtifactId().artifactId())
-				.containsExactly("lettuce-core", "spring-core");
+				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());
 		assertThat(result.candidates()).extracting(UpdateCandidate::currentVersion)
-				.containsExactly(ArtifactVersion.of("7.4.1.RELEASE"), ArtifactVersion.of("6.2.0"));
-		assertThat(result.errors()).containsExactly("broken: unavailable");
+				.containsExactly(LETTUCE_CURRENT, SPRING_CURRENT);
+		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
 		assertThat(result.files()).containsExactly(a, b);
 	}
 
 	@Test
 	void mergedDeclarationsCombineDeclarationSources() {
 
-		VirtualFile file = new MockVirtualFile("sources/build.gradle", "// test");
+		VirtualFile file = buildFile("sources/build.gradle");
 
-		ArtifactId artifactId = ArtifactId.of("io.lettuce", "lettuce-core");
-		Dependency first = dependency(artifactId, "7.4.1.RELEASE");
-		Dependency second = dependency(artifactId, "7.5.0.RELEASE");
+		Dependency first = dependency(LETTUCE_CORE, LETTUCE_CURRENT);
+		Dependency second = dependency(LETTUCE_CORE, LETTUCE_UPDATE);
 
-		aggregator.add(first, context("com.acme", "app"), file, List.of());
-		aggregator.add(second, context("com.acme", "lib"), file, List.of());
+		aggregator.add(first, context(ACME_APP), file, List.of());
+		aggregator.add(second, context(ACME_LIB), file, List.of());
 
 		DependencyCheckAggregator.Entry entry = new DependencyCheckAggregator.Entry(List.of(), List.of(),
-				List.of(new DeclarationSite(file, ProjectId.of("com.acme", "app"), first),
-						new DeclarationSite(file, ProjectId.of("com.acme", "lib"), second)));
-		DeclaredDependency dependency = aggregator.mergeDeclarations(artifactId, entry);
+				List.of(new DeclarationSite(file, ACME_APP, first), new DeclarationSite(file, ACME_LIB, second)));
+		DeclaredDependency dependency = aggregator.mergeDeclarations(LETTUCE_CORE, entry);
 
 		assertThat(dependency.getVersionSources()).hasSize(2);
 	}
 
-	private static Dependency dependency(String groupId, String artifactId, String version) {
-		return dependency(ArtifactId.of(groupId, artifactId), version);
-	}
-
-	private static Dependency dependency(ArtifactId artifactId, String version) {
-		Dependency dependency = new Dependency(artifactId, ArtifactVersion.of(version));
-		dependency.addVersionSource(biz.paluch.dap.artifact.VersionSource.declared(version));
+	private static Dependency dependency(ArtifactId artifactId, ArtifactVersion version) {
+		Dependency dependency = new Dependency(artifactId, version);
+		dependency.addVersionSource(biz.paluch.dap.artifact.VersionSource.declared(version.toString()));
 		return dependency;
 	}
 
-	private static TestContext context(String groupId, String artifactId) {
-		return new TestContext(ProjectId.of(groupId, artifactId), new TestInterfaceAssistant());
+	private static TestContext context(ProjectId projectId) {
+		return new TestContext(projectId, new TestInterfaceAssistant());
 	}
 
-	private static Release release(String version) {
-		return Release.of(ArtifactVersion.of(version));
+	private static VirtualFile buildFile(String path) {
+		return new MockVirtualFile(path, "// test");
+	}
+
+	private static ReleaseLookupResult resolved(ArtifactVersion version) {
+		return new ReleaseLookupResult(null, List.of(Release.of(version)));
+	}
+
+	private static ReleaseLookupResult lookupError(String error) {
+		return new ReleaseLookupResult(error, List.of());
 	}
 
 	private record TestReleaseSource(String name) implements ReleaseSource {
@@ -197,35 +213,6 @@ class DependencyCheckAggregatorTests {
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
 			return List.of();
-		}
-
-	}
-
-	private static class TestInterfaceAssistant implements InterfaceAssistant {
-
-		@Override
-		public String getDisplayName() {
-			return "Test";
-		}
-
-		@Override
-		public String getDisplayName(VirtualFile file) {
-			return "Test";
-		}
-
-		@Override
-		public Icon getGutterIcon(ArtifactDeclaration declaration) {
-			return null;
-		}
-
-		@Override
-		public Icon getNavigateIcon(ArtifactDeclaration declaration) {
-			return null;
-		}
-
-		@Override
-		public Icon getTableIcon(Dependency dependency) {
-			return null;
 		}
 
 	}

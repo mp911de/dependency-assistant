@@ -78,6 +78,8 @@
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
 				implementation="biz.paluch.dap.assistant.DependencyDocumentationProvider"/>
+		<platform.backend.documentation.linkHandler
+				implementation="biz.paluch.dap.assistant.DependencyUpgradeLinkHandler"/>
 		<annotator language="Properties"
 		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
 		<intentionAction id="dap.upgrade.dependencies">

@@ -17,8 +17,10 @@
 package biz.paluch.dap.assistant;
 
 import java.awt.Image;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +30,7 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
@@ -66,10 +69,19 @@ public class DependencyDocumentationProvider
 
 	@Override
 	public @Nullable DocumentationTarget documentationTarget(PsiElement element, @Nullable PsiElement originalElement) {
+		return createTarget(PsiElements.unleaf(originalElement != null ? originalElement : element));
+	}
 
-		PsiElement target = PsiElements.unleaf(originalElement != null ? originalElement : element);
-		Project project = target.getProject();
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project,
+	/**
+	 * Resolve the given element into a documentation target, or {@literal null}
+	 * when the element does not resolve to a dependency declaration.
+	 * <p>Used both for the initial documentation request and for re-resolving the
+	 * target after an upgrade has rewritten the version literal, so the re-rendered
+	 * popup reflects the live declaration state.
+	 */
+	static @Nullable DocumentationTarget createTarget(PsiElement target) {
+
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(target.getProject(),
 				target.getContainingFile());
 		if (context.isAbsent()) {
 			return null;
@@ -84,38 +96,46 @@ public class DependencyDocumentationProvider
 		Cache cache = lookup.getCache();
 		ArtifactDeclaration declaration = artifactReference.getDeclaration();
 		ArtifactVersion currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
-		if (declaration
-				.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
+		boolean linkable = declaration.getVersionLiteral() != null;
+		InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
+
+		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
 
 			VersionProperty property = lookup.findProperty(propertySource.getProperty());
 			if (property == null || property.artifacts().isEmpty()) {
 				return null;
 			}
 
-			return new PropertyDocumentationTarget(target, cache, currentVersion,
-					element.getText(), property, context.getInterfaceAssistant());
+			return new PropertyDocumentationTarget(target, cache, currentVersion, linkable, interfaceAssistant,
+					property);
 		}
 
-		return new DependencyVersionTarget(target, cache, artifactReference.getArtifactId(),
-				currentVersion, element.getText(), context.getInterfaceAssistant());
+		return new DependencyVersionTarget(target, cache, artifactReference.getArtifactId(), currentVersion, linkable,
+				interfaceAssistant);
 	}
 
-	private abstract static class DocumentationTargetSupport implements DocumentationTarget {
+	private abstract static class DocumentationTargetSupport implements DocumentationTarget, DependencyUpgradeTarget {
 
 		final PsiElement target;
+
+		final SmartPsiElementPointer<PsiElement> pointer;
 
 		final Cache cache;
 
 		final @Nullable ArtifactVersion currentVersion;
 
-		final @Nullable String currentValue;
+		final boolean linkable;
 
-		public DocumentationTargetSupport(PsiElement target, Cache cache, @Nullable ArtifactVersion currentVersion,
-				@Nullable String currentValue) {
+		final InterfaceAssistant interfaceAssistant;
+
+		DocumentationTargetSupport(PsiElement target, Cache cache, @Nullable ArtifactVersion currentVersion,
+				boolean linkable, InterfaceAssistant interfaceAssistant) {
 			this.target = target;
+			this.pointer = SmartPointerManager.createPointer(target);
 			this.cache = cache;
 			this.currentVersion = currentVersion;
-			this.currentValue = currentValue;
+			this.linkable = linkable;
+			this.interfaceAssistant = interfaceAssistant;
 		}
 
 		@Override
@@ -123,10 +143,56 @@ public class DependencyDocumentationProvider
 			return TargetPresentation.builder(target.toString()).presentation();
 		}
 
+		@Override
+		public Project getProject() {
+			return target.getProject();
+		}
+
+		@Override
+		public final Pointer<? extends DocumentationTarget> createPointer() {
+			SmartPsiElementPointer<PsiElement> pointer = this.pointer;
+			return () -> {
+				PsiElement element = pointer.getElement();
+				return element != null ? createTarget(element) : null;
+			};
+		}
+
+		/**
+		 * Re-resolve the live declaration and rewrite its version literal through the
+		 * shared update path. Runs inside the write action opened by the link handler.
+		 */
+		@Override
+		public void applyVersion(String version) {
+
+			PsiElement element = pointer.getElement();
+			if (element == null) {
+				return;
+			}
+
+			ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
+			if (context.isAbsent()) {
+				return;
+			}
+
+			VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
+			ArtifactReference reference = lookup.resolveArtifactReference(element);
+			if (!reference.isResolved()) {
+				return;
+			}
+
+			PsiElement versionLiteral = reference.getDeclaration().getVersionLiteral();
+			if (versionLiteral == null) {
+				return;
+			}
+
+			Release release = findRelease(lookup.getCache(), reference.getArtifactId(), version);
+			context.applyUpdate(versionLiteral, DependencyUpdate.from(reference.toDependency(), release));
+		}
+
 		/**
 		 * Full documentation shown in the Quick Documentation popup ({@code Ctrl+Q}).
 		 * Version rows include {@link VersionAge} icons rendered relative to the tag's
-		 * current value.
+		 * current value; upgradeable rows wrap the icon in an upgrade link.
 		 */
 		@Override
 		public @Nullable DocumentationResult computeDocumentation() {
@@ -140,7 +206,8 @@ public class DependencyDocumentationProvider
 		}
 
 		/**
-		 * Simplified content shown in the hover tooltip (no icons - plain HTML).
+		 * Simplified content shown in the hover tooltip (no icons and no links - plain
+		 * HTML).
 		 */
 		@Override
 		public @Nullable String computeDocumentationHint() {
@@ -152,7 +219,8 @@ public class DependencyDocumentationProvider
 		 * rendered.
 		 *
 		 * @param iconImages sink for the {@link VersionAge} icons referenced by the
-		 * HTML, or {@literal null} to render plain HTML without icons (hover hint).
+		 * HTML, or {@literal null} to render plain HTML without icons or links (hover
+		 * hint).
 		 * @return the HTML body, or {@literal null} if no documentation is available.
 		 */
 		protected abstract @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages);
@@ -163,33 +231,16 @@ public class DependencyDocumentationProvider
 
 		private final VersionProperty property;
 
-		private final InterfaceAssistant interfaceAssistant;
-
-		private final SmartPsiElementPointer<PsiElement> pointer;
-
-		public PropertyDocumentationTarget(PsiElement target, Cache cache, @Nullable ArtifactVersion currentVersion,
-				@Nullable String currentValue, VersionProperty property, InterfaceAssistant interfaceAssistant) {
-			super(target, cache, currentVersion, currentValue);
+		PropertyDocumentationTarget(PsiElement target, Cache cache, @Nullable ArtifactVersion currentVersion,
+				boolean linkable, InterfaceAssistant interfaceAssistant, VersionProperty property) {
+			super(target, cache, currentVersion, linkable, interfaceAssistant);
 			this.property = property;
-			this.interfaceAssistant = interfaceAssistant;
-			this.pointer = SmartPointerManager.createPointer(target);
-		}
-
-		@Override
-		public Pointer<? extends DocumentationTarget> createPointer() {
-			return () -> {
-				PsiElement element = pointer.getElement();
-				return element != null
-						? new PropertyDocumentationTarget(element, cache, currentVersion, currentValue, property,
-								interfaceAssistant)
-						: null;
-			};
 		}
 
 		@Override
 		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
 			return DependencyDocumentationProvider.buildHtmlBody(interfaceAssistant, cache, property, currentVersion,
-					iconImages);
+					linkable, iconImages);
 		}
 
 	}
@@ -201,34 +252,16 @@ public class DependencyDocumentationProvider
 
 		private final ArtifactId artifactId;
 
-		private final InterfaceAssistant interfaceAssistant;
-
-		private final SmartPsiElementPointer<PsiElement> pointer;
-
-		public DependencyVersionTarget(PsiElement target, Cache cache, ArtifactId artifactId,
-				@Nullable ArtifactVersion currentVersion, @Nullable String currentValue,
-				InterfaceAssistant interfaceAssistant) {
-			super(target, cache, currentVersion, currentValue);
+		DependencyVersionTarget(PsiElement target, Cache cache, ArtifactId artifactId,
+				@Nullable ArtifactVersion currentVersion, boolean linkable, InterfaceAssistant interfaceAssistant) {
+			super(target, cache, currentVersion, linkable, interfaceAssistant);
 			this.artifactId = artifactId;
-			this.interfaceAssistant = interfaceAssistant;
-			this.pointer = SmartPointerManager.createPointer(target);
-		}
-
-		@Override
-		public Pointer<? extends DocumentationTarget> createPointer() {
-			return () -> {
-				PsiElement element = pointer.getElement();
-				return element != null
-						? new DependencyVersionTarget(element, cache, artifactId, currentVersion, currentValue,
-								interfaceAssistant)
-						: null;
-			};
 		}
 
 		@Override
 		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
 			return DependencyDocumentationProvider.buildHtmlBody(interfaceAssistant, cache, artifactId, currentVersion,
-					iconImages);
+					linkable, iconImages);
 		}
 
 	}
@@ -237,9 +270,9 @@ public class DependencyDocumentationProvider
 	 * Builds the documentation HTML body for a version property, rendering one
 	 * release table per artifact the property drives.
 	 */
-	private static @Nullable String buildHtmlBody(InterfaceAssistant interfaceAssistant, Cache cache,
-			VersionProperty property,
-			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages) {
+	static @Nullable String buildHtmlBody(InterfaceAssistant interfaceAssistant, Cache cache,
+			VersionProperty property, @Nullable ArtifactVersion artifactVersion, boolean linkable,
+			@Nullable Map<String, Image> iconImages) {
 
 		if (property.artifacts().isEmpty()) {
 			return null;
@@ -256,13 +289,12 @@ public class DependencyDocumentationProvider
 
 		appendCurrentValue(sb, interfaceAssistant, artifactVersion);
 
-		for (CachedArtifact artifact : property.artifacts()) {
+		for (ReleaseGroup group : groupByVersions(cache, property.artifacts())) {
 
-			ArtifactId artifactId = artifact.toArtifactId();
-			sb.append("<p>%s <code>%s</code></p>".formatted(MessageBundle.message("documentation.property-for"),
-					artifactId));
+			sb.append("<p>%s %s</p>".formatted(MessageBundle.message("documentation.property-for"),
+					formatArtifactIds(group.artifactIds())));
 
-			appendVersionsTable(sb, cache.getReleases(artifactId), artifactVersion, iconImages, formatter);
+			appendVersionsTable(sb, group.releases(), artifactVersion, linkable, iconImages, formatter);
 		}
 
 		sb.append(DocumentationMarkup.CONTENT_END);
@@ -270,11 +302,49 @@ public class DependencyDocumentationProvider
 		return sb.toString();
 	}
 
+	private static List<ReleaseGroup> groupByVersions(Cache cache, List<CachedArtifact> artifacts) {
+
+		Map<Set<String>, ReleaseGroup> groups = new LinkedHashMap<>();
+		for (CachedArtifact artifact : artifacts) {
+			ArtifactId artifactId = artifact.toArtifactId();
+			List<Release> releases = cache.getReleases(artifactId);
+			Set<String> versionKeys = releaseVersionKeys(releases);
+
+			ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(new ArrayList<>(),
+					releases));
+			group.artifactIds().add(artifactId);
+		}
+		return List.copyOf(groups.values());
+	}
+
+	private static Set<String> releaseVersionKeys(List<Release> releases) {
+
+		Set<String> versions = new LinkedHashSet<>();
+		for (Release release : releases) {
+			versions.add(releaseVersionKey(release));
+		}
+		return versions;
+	}
+
+	private static String formatArtifactIds(List<ArtifactId> artifactIds) {
+
+		StringBuilder sb = new StringBuilder();
+		for (ArtifactId artifactId : artifactIds) {
+			if (!sb.isEmpty()) {
+				sb.append(", ");
+			}
+			sb.append("<code>");
+			sb.append(StringUtil.escapeXmlEntities(artifactId.toString()));
+			sb.append("</code>");
+		}
+		return sb.toString();
+	}
+
 	/**
 	 * Builds the documentation HTML body for a single concrete artifact.
 	 */
 	protected static String buildHtmlBody(InterfaceAssistant interfaceAssistant, Cache cache, ArtifactId artifactId,
-			@Nullable ArtifactVersion artifactVersion,
+			@Nullable ArtifactVersion artifactVersion, boolean linkable,
 			@Nullable Map<String, Image> iconImages) {
 
 		StringBuilder sb = new StringBuilder();
@@ -288,7 +358,7 @@ public class DependencyDocumentationProvider
 
 		appendCurrentValue(sb, interfaceAssistant, artifactVersion);
 
-		appendVersionsTable(sb, cache.getReleases(artifactId), artifactVersion, iconImages, formatter);
+		appendVersionsTable(sb, cache.getReleases(artifactId), artifactVersion, linkable, iconImages, formatter);
 
 		sb.append(DocumentationMarkup.CONTENT_END);
 
@@ -309,10 +379,12 @@ public class DependencyDocumentationProvider
 	/**
 	 * Appends a release table for a single artifact, rendering at most
 	 * {@link #MAX_VERSIONS} distinct versions and skipping duplicates. Renders
-	 * nothing when {@code versions} is empty.
+	 * nothing when {@code versions} is empty. When {@code linkable} and icons are
+	 * rendered, every non-current row wraps its age icon in an upgrade link handled
+	 * by {@link DependencyUpgradeLinkHandler}.
 	 */
 	private static void appendVersionsTable(StringBuilder sb, List<Release> versions,
-			@Nullable ArtifactVersion artifactVersion, @Nullable Map<String, Image> iconImages,
+			@Nullable ArtifactVersion artifactVersion, boolean linkable, @Nullable Map<String, Image> iconImages,
 			ReleaseDateFormatter formatter) {
 
 		if (versions.isEmpty()) {
@@ -324,7 +396,8 @@ public class DependencyDocumentationProvider
 		int count = 0;
 		for (Release v : versions) {
 
-			if (!seen.add(v.version().getVersion().getVersion().toString())) {
+			String versionKey = releaseVersionKey(v);
+			if (!seen.add(versionKey)) {
 				continue;
 			}
 			if (count++ >= MAX_VERSIONS) {
@@ -332,21 +405,28 @@ public class DependencyDocumentationProvider
 			}
 			sb.append("<tr>");
 
+			boolean current = v.version().equals(artifactVersion);
 			if (iconImages != null && artifactVersion != null) {
+
 				VersionAge age = VersionAge.between(artifactVersion, v.getVersion());
-				sb.append("<td>" + HtmlChunk.icon(age.getIconName(), age.getIcon()) + "</td>");
+				HtmlChunk icon = HtmlChunk.icon(age.getIconName(), age.getIcon());
+				HtmlChunk cell = linkable && !current
+						? HtmlChunk.tag("a").attr("href", DependencyUpgradeLinkHandler.SCHEME + versionKey)
+								.attr("title", MessageBundle.message("documentation.upgrade-to", versionKey))
+								.child(icon)
+						: icon;
+				sb.append("<td>").append(cell).append("</td>");
 			}
 
 			sb.append("<td>");
 			boolean preview = v.isPreview();
-			boolean current = v.version().equals(artifactVersion);
 			if (preview) {
 				sb.append("<i>");
 			}
 			if (current) {
 				sb.append("<b>");
 			}
-			sb.append(v.version().getVersion().getVersion());
+			sb.append(versionKey);
 			if (current) {
 				sb.append("</b>");
 			}
@@ -360,6 +440,23 @@ public class DependencyDocumentationProvider
 			sb.append("</td></tr>");
 		}
 		sb.append("</table>");
+	}
+
+	private static String releaseVersionKey(Release release) {
+		return release.version().getVersion().getVersion().toString();
+	}
+
+	private static Release findRelease(Cache cache, ArtifactId artifactId, String version) {
+
+		for (Release release : cache.getReleases(artifactId)) {
+			if (releaseVersionKey(release).equals(version)) {
+				return release;
+			}
+		}
+		return Release.of(ArtifactVersion.of(version));
+	}
+
+	private record ReleaseGroup(List<ArtifactId> artifactIds, List<Release> releases) {
 	}
 
 }
