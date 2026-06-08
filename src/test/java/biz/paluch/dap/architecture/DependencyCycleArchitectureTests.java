@@ -45,9 +45,9 @@ class DependencyCycleArchitectureTests {
 
 	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
-					"Fix todo's")
+					"Gradle catalog caching still depends on settings parsers")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
-					"Fix todo's");
+					"Property interpolation helper is shared by resolver implementations");
 
 	/*
 	 * Variant 1: explicit closed hierarchy declaration. DeclarationSource, its
@@ -59,11 +59,12 @@ class DependencyCycleArchitectureTests {
 				it.withStrictClosedHierarchy(ArtifactVersion.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
-						.withClosedHierarchy("biz.paluch.dap.gradle.GradleVersionSite")
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(ReleaseSource.class)
 						.withStrictClosedHierarchy(ArtifactId.class)
 						.withClosedHierarchy(Properties.class)
+						.withStrictClosedHierarchy("biz.paluch.dap.npm.NpmVersionExpression")
+						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradleVersionSite")
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradlePluginId")
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradleArtifactId");
 			});

@@ -53,15 +53,12 @@ class SliceRules {
 
 	/**
 	 * Slice assignment that maps each class to its fully qualified class name,
-	 * unless or closed hierarchy declaration supports the class first. Matching
+	 * unless a closed hierarchy declaration supports the class first. Matching
 	 * hierarchy members share the root type's slice identifier.
 	 *
 	 * <p>Usage examples:
 	 *
 	 * <pre class="code">
-	 * // Plain class slicing: each class is a slice.
-	 * SliceRules.classes()
-	 *
 	 * // Explicitly treat DeclarationSource and its subtypes as one slice.
 	 * SliceRules.classes(builder -> {
 	 *     builder.withClosedHierarchy(DeclarationSource.class);
@@ -73,29 +70,28 @@ class SliceRules {
 	 */
 	static SliceAssignment classes(Consumer<AssignmentBuilder> builderConsumer) {
 
-		List<ClosedHierarchy> closedHierarchies = new ArrayList<>();
-		List<StrictClosedHierarchy> strictClosedHierarchies = new ArrayList<>();
+		List<Hierarchy> hierarchies = new ArrayList<>();
 
 		AssignmentBuilder builder = new AssignmentBuilder() {
 
 			@Override
 			public AssignmentBuilder with(ClosedHierarchy hierarchy) {
 
-				closedHierarchies.add(hierarchy);
+				hierarchies.add(hierarchy);
 				return this;
 			}
 
 			@Override
 			public AssignmentBuilder with(StrictClosedHierarchy hierarchy) {
 
-				strictClosedHierarchies.add(hierarchy);
+				hierarchies.add(hierarchy);
 				return this;
 			}
 
 		};
 
 		builderConsumer.accept(builder);
-		return new ClassesWithClosedHierarchies(closedHierarchies, strictClosedHierarchies);
+		return new ClassesWithClosedHierarchies(hierarchies);
 	}
 
 	/**
@@ -165,6 +161,66 @@ class SliceRules {
 		return topLevel;
 	}
 
+	private static boolean belongsToRoot(JavaClass javaClass, String rootTypeName) {
+		return isNestedInRoot(javaClass, rootTypeName) || isSealedMemberOfRoot(javaClass, rootTypeName);
+	}
+
+	private static boolean isNestedInRoot(JavaClass javaClass, String rootTypeName) {
+		JavaClass current = javaClass;
+
+		while (true) {
+			if (current.getName().equals(rootTypeName)) {
+				return true;
+			}
+
+			if (current.getEnclosingClass().isEmpty()) {
+				return false;
+			}
+
+			current = current.getEnclosingClass().get();
+		}
+	}
+
+	private static boolean isSealedMemberOfRoot(JavaClass javaClass, String rootTypeName) {
+
+		if (javaClass.isPrimitive() || javaClass.isArray()) {
+			return false;
+		}
+
+		try {
+			Class<?> candidate = javaClass.reflect();
+			Class<?> rootType = Class.forName(rootTypeName, false, candidate.getClassLoader());
+			return isPermittedBy(rootType, candidate);
+		}
+		catch (ReflectiveOperationException | RuntimeException | LinkageError ex) {
+			return false;
+		}
+	}
+
+	private static boolean isPermittedBy(Class<?> rootType, Class<?> candidate) {
+
+		Class<?>[] permittedSubclasses = rootType.getPermittedSubclasses();
+		if (permittedSubclasses == null) {
+			return false;
+		}
+
+		for (Class<?> permittedSubclass : permittedSubclasses) {
+			if (permittedSubclass.equals(candidate) || isPermittedBy(permittedSubclass, candidate)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static boolean isAssignableToRoot(JavaClass javaClass, String rootTypeName) {
+		return !javaClass.isPrimitive() && !javaClass.isArray() && javaClass.isAssignableTo(rootTypeName);
+	}
+
+	private static boolean isInPackage(String typeName, String packageName) {
+		return typeName.startsWith(packageName + ".");
+	}
+
 	/**
 	 * Slice assignment that maps each class to its declared package. Every package
 	 * and sub-package becomes its own slice, so cycles between packages at any
@@ -184,7 +240,17 @@ class SliceRules {
 
 	}
 
-	public record ClosedHierarchy(String rootTypeName) {
+	private interface Hierarchy {
+
+		SliceIdentifier identifier();
+
+		boolean matchesByMembership(JavaClass javaClass);
+
+		boolean matchesByAssignability(JavaClass javaClass, JavaClass topLevel);
+
+	}
+
+	public record ClosedHierarchy(String rootTypeName) implements Hierarchy {
 
 		public ClosedHierarchy {
 			Assert.hasText(rootTypeName, "Root type name must not be blank");
@@ -194,32 +260,20 @@ class SliceRules {
 			return new ClosedHierarchy(rootType.getName());
 		}
 
-		SliceIdentifier identifier() {
+		@Override
+		public SliceIdentifier identifier() {
 			return SliceIdentifier.of(this.rootTypeName);
 		}
 
-		boolean matches(JavaClass javaClass, JavaClass topLevel) {
-			return belongsToRoot(javaClass) || isAssignableToRoot(javaClass) || isAssignableToRoot(topLevel);
+		@Override
+		public boolean matchesByMembership(JavaClass javaClass) {
+			return belongsToRoot(javaClass, this.rootTypeName);
 		}
 
-		private boolean belongsToRoot(JavaClass javaClass) {
-			JavaClass current = javaClass;
-
-			while (true) {
-				if (current.getName().equals(this.rootTypeName)) {
-					return true;
-				}
-
-				if (current.getEnclosingClass().isEmpty()) {
-					return false;
-				}
-
-				current = current.getEnclosingClass().get();
-			}
-		}
-
-		private boolean isAssignableToRoot(JavaClass javaClass) {
-			return !javaClass.isPrimitive() && !javaClass.isArray() && javaClass.isAssignableTo(this.rootTypeName);
+		@Override
+		public boolean matchesByAssignability(JavaClass javaClass, JavaClass topLevel) {
+			return isAssignableToRoot(javaClass, this.rootTypeName)
+			       || isAssignableToRoot(topLevel, this.rootTypeName);
 		}
 
 	}
@@ -227,7 +281,7 @@ class SliceRules {
 	/**
 	 * Same-package and package-protected.
 	 */
-	public record StrictClosedHierarchy(String rootTypeName) {
+	public record StrictClosedHierarchy(String rootTypeName) implements Hierarchy {
 
 		public StrictClosedHierarchy {
 			Assert.hasText(rootTypeName, "Root type name must not be blank");
@@ -237,61 +291,28 @@ class SliceRules {
 			return new StrictClosedHierarchy(rootType.getName());
 		}
 
-		SliceIdentifier identifier() {
+		@Override
+		public SliceIdentifier identifier() {
 			return SliceIdentifier.of(this.rootTypeName);
 		}
 
-		boolean matches(JavaClass javaClass, JavaClass topLevel) {
-			boolean b = belongsToRoot(javaClass) ||
-					(javaClass.getPackageName().equals(topLevel.getPackageName())
-							&& rootTypeName.startsWith(javaClass.getPackageName())
-							&& isPackagePrivate(javaClass.getModifiers()) && (isAssignableToRoot(javaClass)
-									|| isAssignableToRoot(topLevel)));
+		@Override
+		public boolean matchesByMembership(JavaClass javaClass) {
+			return belongsToRoot(javaClass, this.rootTypeName);
+		}
 
-			return b;
+		@Override
+		public boolean matchesByAssignability(JavaClass javaClass, JavaClass topLevel) {
+			return javaClass.getPackageName().equals(topLevel.getPackageName())
+			       && isInPackage(this.rootTypeName, javaClass.getPackageName())
+			       && isPackagePrivate(javaClass.getModifiers()) && (isAssignableToRoot(javaClass, this.rootTypeName)
+			                                                         || isAssignableToRoot(topLevel, this.rootTypeName));
 		}
 
 		private boolean isPackagePrivate(Set<JavaModifier> modifiers) {
 			return !modifiers.contains(JavaModifier.PROTECTED) &&
 					!modifiers.contains(JavaModifier.PRIVATE) &&
 					!modifiers.contains(JavaModifier.PUBLIC);
-		}
-
-		private boolean belongsToRoot(JavaClass javaClass) {
-			JavaClass current = javaClass;
-
-			while (true) {
-				if (current.getName().equals(this.rootTypeName)) {
-					return true;
-				}
-
-				if (current.getEnclosingClass().isEmpty()) {
-					return false;
-				}
-
-				current = current.getEnclosingClass().get();
-			}
-		}
-
-		private boolean isAssignableToRoot(JavaClass javaClass) {
-			return !javaClass.isPrimitive() && !javaClass.isArray() && javaClass.isAssignableTo(this.rootTypeName);
-		}
-
-	}
-
-	/**
-	 * Slice assignment that maps each class to its fully qualified class name.
-	 */
-	private static class Classes implements SliceAssignment {
-
-		@Override
-		public SliceIdentifier getIdentifierOf(JavaClass javaClass) {
-			return SliceIdentifier.of(javaClass.getName());
-		}
-
-		@Override
-		public String getDescription() {
-			return "Class";
 		}
 
 	}
@@ -302,14 +323,10 @@ class SliceRules {
 	 */
 	private static class ClassesWithClosedHierarchies implements SliceAssignment {
 
-		private final List<ClosedHierarchy> closedHierarchies;
+		private final List<Hierarchy> hierarchies;
 
-		private final List<StrictClosedHierarchy> strictClosedHierarchies;
-
-		private ClassesWithClosedHierarchies(List<ClosedHierarchy> closedHierarchies,
-				List<StrictClosedHierarchy> strictClosedHierarchies) {
-			this.closedHierarchies = closedHierarchies;
-			this.strictClosedHierarchies = strictClosedHierarchies;
+		private ClassesWithClosedHierarchies(List<Hierarchy> hierarchies) {
+			this.hierarchies = List.copyOf(hierarchies);
 		}
 
 		@Override
@@ -317,14 +334,14 @@ class SliceRules {
 
 			JavaClass topLevel = findTopLevelType(javaClass);
 
-			for (ClosedHierarchy hierarchy : this.closedHierarchies) {
-				if (hierarchy.matches(javaClass, topLevel)) {
+			for (Hierarchy hierarchy : this.hierarchies) {
+				if (hierarchy.matchesByMembership(javaClass)) {
 					return hierarchy.identifier();
 				}
 			}
 
-			for (StrictClosedHierarchy hierarchy : this.strictClosedHierarchies) {
-				if (hierarchy.matches(javaClass, topLevel)) {
+			for (Hierarchy hierarchy : this.hierarchies) {
+				if (hierarchy.matchesByAssignability(javaClass, topLevel)) {
 					return hierarchy.identifier();
 				}
 			}

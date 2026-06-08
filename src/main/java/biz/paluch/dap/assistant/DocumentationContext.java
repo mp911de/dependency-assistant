@@ -52,26 +52,27 @@ import org.jspecify.annotations.Nullable;
  * {@link #render(VersionProperty, Map)}.
  *
  * @param interfaceAssistant the UI support used to format versions; must not be
- * {@literal null}.
- * @param cache the release metadata cache to read versions from; must not be
- * {@literal null}.
- * @param currentVersion the declaration's current version, or {@literal null}
- * when no version is resolved.
- * @param linkable whether release rows may carry an upgrade link;
- * {@literal true} only when the declaration exposes a writable version literal.
+ *                           {@literal null}.
+ * @param cache              the release metadata cache to read versions from; must not be
+ *                           {@literal null}.
+ * @param currentVersion     the declaration's current version, or {@literal null}
+ *                           when no version is resolved.
+ * @param linkable           whether release rows may carry an upgrade link;
+ *                           {@literal true} only when the declaration exposes a writable version literal.
  * @author Mark Paluch
  */
 record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
-		@Nullable ArtifactVersion currentVersion, boolean linkable) {
+                            @Nullable ArtifactVersion currentVersion, boolean linkable) {
 
 	private static final int MAX_VERSIONS = 10;
 
 	/**
 	 * Render the documentation body for a single concrete artifact.
+	 *
 	 * @param artifactId the artifact to document; must not be {@literal null}.
 	 * @param iconImages sink for the {@link VersionAge} icons referenced by the
-	 * HTML, or {@literal null} to render plain HTML without icons or links (hover
-	 * hint).
+	 *                   HTML, or {@literal null} to render plain HTML without icons or links (hover
+	 *                   hint).
 	 * @return the HTML body.
 	 */
 	String render(ArtifactId artifactId, @Nullable Map<String, Image> iconImages) {
@@ -99,11 +100,12 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 	/**
 	 * Render the documentation body for a version property, with one release table
 	 * per group of artifacts sharing the same available versions.
-	 * @param property the version property to document; must not be
-	 * {@literal null}.
+	 *
+	 * @param property   the version property to document; must not be
+	 *                   {@literal null}.
 	 * @param iconImages sink for the {@link VersionAge} icons referenced by the
-	 * HTML, or {@literal null} to render plain HTML without icons or links (hover
-	 * hint).
+	 *                   HTML, or {@literal null} to render plain HTML without icons or links (hover
+	 *                   hint).
 	 * @return the HTML body, or {@literal null} if the property drives no
 	 * artifacts.
 	 */
@@ -127,10 +129,9 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			sb.append(renderCurrentVersion(currentVersion));
 		}
 
-		for (ReleaseGroup group : ReleaseGroup.group(cache, property.artifacts())) {
+		for (ReleaseGroup group : ReleaseGroup.group(cache, MAX_VERSIONS, property.artifacts())) {
 
 			sb.append(group.renderHeader());
-
 			appendVersionsTable(sb, group.artifactIds.getFirst(), group.releases(), iconImages, formatter);
 		}
 
@@ -142,11 +143,12 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 	/**
 	 * Locate the release matching the given version string, falling back to a
 	 * version-only release when the cache holds no matching entry.
-	 * @param cache the release cache to search; must not be {@literal null}.
+	 *
+	 * @param cache      the release cache to search; must not be {@literal null}.
 	 * @param artifactId the artifact whose releases to search; must not be
-	 * {@literal null}.
-	 * @param version the canonical version string to match; must not be
-	 * {@literal null}.
+	 *                   {@literal null}.
+	 * @param version    the canonical version string to match; must not be
+	 *                   {@literal null}.
 	 * @return the matching release, never {@literal null}.
 	 */
 	static Release findRelease(Cache cache, ArtifactId artifactId, String version) {
@@ -182,56 +184,16 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 		sb.append("<table>");
 		int count = 0;
 		for (Release v : versions) {
-
-			String versionKey = releaseVersionKey(v);
-			if (!seen.add(versionKey)) {
+			DocumentedRelease documented = currentVersion != null ? new CurrentVersionDocumentedRelease(artifactId.toString(), v, interfaceAssistant, linkable, currentVersion, iconImages != null) : new DocumentedRelease(v, interfaceAssistant, linkable);
+			if (!seen.add(documented.getKey())) {
 				continue;
 			}
 			if (count++ >= MAX_VERSIONS) {
 				break;
 			}
 			sb.append("<tr>");
-
-			boolean current = v.version().equals(currentVersion);
-			if (iconImages != null && currentVersion != null) {
-
-				VersionAge age = VersionAge.between(currentVersion, v.getVersion());
-				HtmlChunk icon = HtmlChunk.icon(age.getIconName(), age.getIcon());
-				HtmlChunk cell = linkable && !current
-						? HtmlChunk.tag("a").attr("href", DependencyUpgradeLinkHandler.SCHEME + versionKey)
-								.attr("title",
-										MessageBundle.message("documentation.upgrade-to", artifactId, versionKey))
-								.child(icon)
-						: icon;
-				sb.append("<td>").append(cell).append("</td>");
-			}
-
-			sb.append("<td>");
-			if (linkable && !current) {
-				sb.append("<a href=\"").append(DependencyUpgradeLinkHandler.SCHEME).append(versionKey).append("\">");
-			}
-			boolean preview = v.isPreview();
-			if (preview) {
-				sb.append("<i>");
-			}
-			if (current) {
-				sb.append("<b>");
-			}
-			sb.append(versionKey);
-			if (current) {
-				sb.append("</b>");
-			}
-			if (preview) {
-				sb.append("</i>");
-			}
-			if (linkable && !current) {
-				sb.append("</a>");
-			}
-			sb.append("</td><td>");
-			if (v.releaseDate() != null) {
-				sb.append(formatter.formatLong(v.releaseDate()));
-			}
-			sb.append("</td></tr>");
+			sb.append(documented.render(formatter));
+			sb.append("</tr>");
 		}
 		sb.append("</table>");
 	}
@@ -242,13 +204,13 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 
 	private record ReleaseGroup(List<ArtifactId> artifactIds, List<Release> releases) {
 
-		public static Collection<ReleaseGroup> group(Cache cache, List<CachedArtifact> artifacts) {
+		public static Collection<ReleaseGroup> group(Cache cache, int limit, List<CachedArtifact> artifacts) {
 
 			Map<Set<String>, ReleaseGroup> groups = new LinkedHashMap<>();
 			for (CachedArtifact artifact : artifacts) {
 				ArtifactId artifactId = artifact.toArtifactId();
 				List<Release> releases = cache.getReleases(artifactId);
-				Set<String> versionKeys = releaseVersionKeys(releases);
+				Set<String> versionKeys = releaseVersionKeys(releases, limit);
 
 				ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(new ArrayList<>(),
 						releases));
@@ -257,11 +219,14 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			return groups.values();
 		}
 
-		private static Set<String> releaseVersionKeys(List<Release> releases) {
+		private static Set<String> releaseVersionKeys(List<Release> releases, int limit) {
 
 			Set<String> versions = new LinkedHashSet<>();
 			for (Release release : releases) {
 				versions.add(releaseVersionKey(release));
+				if (versions.size() >= limit) {
+					break;
+				}
 			}
 			return versions;
 		}
@@ -283,6 +248,123 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 				sb.append("</code>");
 			}
 			return sb.toString();
+		}
+
+	}
+
+	static class DocumentedRelease {
+
+		private final Release release;
+
+		private final String key;
+
+		private final InterfaceAssistant interfaceAssistant;
+
+		private final boolean linkable;
+
+		public DocumentedRelease(Release release, InterfaceAssistant interfaceAssistant, boolean linkable) {
+			this.release = release;
+			this.key = releaseVersionKey(release);
+			this.interfaceAssistant = interfaceAssistant;
+			this.linkable = linkable;
+		}
+
+		public Release getRelease() {
+			return release;
+		}
+
+		public String getKey() {
+			return key;
+		}
+
+		public StringBuilder render(ReleaseDateFormatter formatter) {
+
+			StringBuilder sb = new StringBuilder();
+			sb.append("<td>");
+			if (isLinkable()) {
+				sb.append("<a href=\"").append(DependencyUpgradeLinkHandler.SCHEME)
+						.append(key).append("\">");
+			}
+			boolean preview = release.isPreview();
+			if (preview) {
+				sb.append("<i>");
+			}
+			sb.append(renderVersion());
+			if (preview) {
+				sb.append("</i>");
+			}
+			if (isLinkable()) {
+				sb.append("</a>");
+			}
+			sb.append("</td><td>");
+			if (release.releaseDate() != null) {
+				sb.append(formatter.formatLong(release.releaseDate()));
+			}
+			sb.append("</td>");
+
+			System.out.println(sb);
+
+			return sb;
+		}
+
+		protected boolean isLinkable() {
+			return linkable;
+		}
+
+		protected String renderVersion() {
+			return StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(release.version()));
+		}
+	}
+
+	static class CurrentVersionDocumentedRelease extends DocumentedRelease {
+
+		private final boolean isCurrentVersion;
+		private final @Nullable HtmlChunk firstColumnIcon;
+
+		public CurrentVersionDocumentedRelease(String name, Release release, InterfaceAssistant assistant, boolean linkable, ArtifactVersion version, boolean withIcons) {
+			super(release, assistant, linkable);
+			this.isCurrentVersion = release.version().equals(version);
+
+			if (withIcons) {
+
+				VersionAge age = VersionAge.between(version, release.getVersion());
+				HtmlChunk icon = HtmlChunk.icon(age.getIconName(), age.getIcon());
+				HtmlChunk content = isLinkable()
+						? HtmlChunk.tag("a")
+						  .attr("href", DependencyUpgradeLinkHandler.SCHEME + getKey())
+						  .attr("title",
+								  MessageBundle.message("documentation.upgrade-to", name, getKey()))
+						  .child(icon)
+						: icon;
+				firstColumnIcon = HtmlChunk.tag("td").child(content);
+			}
+			else {
+				firstColumnIcon = null;
+			}
+		}
+
+		@Override
+		public StringBuilder render(ReleaseDateFormatter formatter) {
+			if (firstColumnIcon == null) {
+				return super.render(formatter);
+			}
+
+			StringBuilder builder = new StringBuilder();
+			builder.append(firstColumnIcon).append(super.render(formatter));
+			return builder;
+		}
+
+		@Override
+		protected boolean isLinkable() {
+			return super.isLinkable() && !isCurrentVersion;
+		}
+
+		@Override
+		protected String renderVersion() {
+			if (isCurrentVersion) {
+				return "<b>" + super.renderVersion() + "</b>";
+			}
+			return super.renderVersion();
 		}
 
 	}
