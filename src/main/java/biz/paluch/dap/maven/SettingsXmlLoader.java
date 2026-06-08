@@ -52,9 +52,9 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class SettingsXmlCredentialsLoader {
+class SettingsXmlLoader {
 
-	private static final Logger LOG = Logger.getInstance(SettingsXmlCredentialsLoader.class);
+	private static final Logger LOG = Logger.getInstance(SettingsXmlLoader.class);
 
 	/**
 	 * Detects passwords that are still in Maven-encrypted {@code {base64}} form
@@ -64,7 +64,7 @@ class SettingsXmlCredentialsLoader {
 
 	private final static Map<File, URLClassLoader> MAVEN_CLASSLOADERS = new LinkedHashMap<>();
 
-	private SettingsXmlCredentialsLoader() {
+	private SettingsXmlLoader() {
 	}
 
 	/**
@@ -73,25 +73,25 @@ class SettingsXmlCredentialsLoader {
 	 * @param project the IntelliJ project.
 	 * @return map from server {@code <id>} to credentials.
 	 */
-	public static Map<String, RepositoryCredentials> load(Project project) {
+	public static MavenSettings load(Project project) {
 
 		if (!TrustedProjects.isProjectTrusted(project)) {
-			return Collections.emptyMap();
+			return MavenSettings.empty();
 		}
 
 		MavenProjectsManager mavenManager = MavenProjectsManager.getInstance(project);
 		if (mavenManager == null) {
-			return Collections.emptyMap();
+			return MavenSettings.empty();
 		}
 
 		// Resolve Maven home
 		StaticResolvedMavenHomeType homeType = MavenHomeKt
 				.staticOrBundled(mavenManager.getGeneralSettings().getMavenHomeType());
 		Path mavenHomePath = MavenUtil.getMavenHomePath(homeType);
-		File mavenHome = (mavenHomePath != null) ? mavenHomePath.toFile() : null;
+		File mavenHome = mavenHomePath != null ? mavenHomePath.toFile() : null;
 		if (mavenHome == null || !mavenHome.isDirectory()) {
 			LOG.debug("Maven home not resolved; skipping settings.xml credential loading");
-			return Collections.emptyMap();
+			return MavenSettings.empty();
 		}
 
 		// Global settings (lower priority) <maven_home>/conf/settings.xml.
@@ -107,7 +107,6 @@ class SettingsXmlCredentialsLoader {
 		// settings-security.xml for master-password decryption.
 		String securityFilePath = System.getProperty("settings.security",
 				System.getProperty("user.home") + "/.m2/settings-security.xml");
-
 
 		URLClassLoader mavenClassLoader = MAVEN_CLASSLOADERS.computeIfAbsent(mavenHome, it -> {
 
@@ -131,18 +130,18 @@ class SettingsXmlCredentialsLoader {
 	// Settings loading via Maven API
 	// -------------------------------------------------------------------------
 
-	private static Map<String, RepositoryCredentials> loadWithMavenApi(URLClassLoader loader, Path globalSettings,
+	private static MavenSettings loadWithMavenApi(URLClassLoader loader, Path globalSettings,
 			Path userSettings, String securityFilePath) {
 
 		try {
 			Object mergedSettings = mergeSettings(loader, globalSettings, userSettings);
 			if (mergedSettings == null) {
-				return Collections.emptyMap();
+				return MavenSettings.empty();
 			}
 			return extractCredentials(loader, mergedSettings, securityFilePath);
 		} catch (Exception e) {
-			LOG.debug("Error loading credentials from Maven settings via Maven API", e);
-			return Collections.emptyMap();
+			LOG.warn("Error loading credentials from Maven settings via Maven API", e);
+			return MavenSettings.empty();
 		}
 	}
 
@@ -204,7 +203,7 @@ class SettingsXmlCredentialsLoader {
 	 * {@link RepositoryCredentials}. Servers whose passwords remain encrypted after
 	 * the attempt (decryption failed) are silently omitted.
 	 */
-	private static Map<String, RepositoryCredentials> extractCredentials(URLClassLoader loader, Object settingsObj,
+	private static MavenSettings extractCredentials(URLClassLoader loader, Object settingsObj,
 			String securityFilePath) throws Exception {
 
 		Map<String, List<URI>> repositoryBindings = extractServerRepositoryBindings(loader, settingsObj);
@@ -269,7 +268,43 @@ class SettingsXmlCredentialsLoader {
 			credentials.put(trimmedId, new RepositoryCredentials(trimmedId, username.trim(), password.trim(), bases));
 		}
 
-		return credentials;
+		return new MavenSettings(credentials, extractMirrors(loader, settingsObj));
+	}
+
+	/**
+	 * Reflectively reads the {@code <mirrors>} from the merged settings, keeping
+	 * only fully populated entries (id, URL, and {@code mirrorOf}) in declaration
+	 * order so that the first matching mirror wins.
+	 */
+	private static List<Mirror> extractMirrors(URLClassLoader loader, Object settingsObj) throws Exception {
+
+		Class<?> settingsClass = loader.loadClass("org.apache.maven.settings.Settings");
+		@SuppressWarnings("unchecked")
+		List<Object> mirrors = (List<Object>) settingsClass.getMethod("getMirrors")
+				.invoke(settingsObj);
+		if (mirrors == null || mirrors.isEmpty()) {
+			return List.of();
+		}
+
+		Class<?> mirrorClass = loader.loadClass("org.apache.maven.settings.Mirror");
+		Method getId = mirrorClass.getMethod("getId");
+		Method getUrl = mirrorClass.getMethod("getUrl");
+		Method getMirrorOf = mirrorClass.getMethod("getMirrorOf");
+
+		List<Mirror> result = new ArrayList<>();
+		for (Object mirror : mirrors) {
+			String id = (String) getId.invoke(mirror);
+			String url = (String) getUrl.invoke(mirror);
+			String mirrorOf = (String) getMirrorOf.invoke(mirror);
+
+			if (id == null || id.isBlank() || url == null || url.isBlank() || mirrorOf == null || mirrorOf.isBlank()) {
+				continue;
+			}
+
+			result.add(new Mirror(id.trim(), url.trim(), mirrorOf.trim()));
+		}
+
+		return List.copyOf(result);
 	}
 
 	private static Map<String, List<URI>> extractServerRepositoryBindings(URLClassLoader loader, Object settingsObj)

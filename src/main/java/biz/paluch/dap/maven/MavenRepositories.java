@@ -18,13 +18,11 @@ package biz.paluch.dap.maven;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -45,13 +43,13 @@ class MavenRepositories {
 	 * project, decorated with credentials where available.
 	 * <p>Repositories are deduplicated by URL.
 	 *
-	 * @param credentials credentials keyed by repository id; must not be
+	 * @param settings Maven settings; must not be
 	 * {@literal null}.
 	 * @param project the Maven project to inspect; must not be {@literal null}.
 	 * @return the deduplicated set of remote repositories; guaranteed to be not
 	 * {@literal null} but may be empty.
 	 */
-	public static Set<RemoteRepository> getRemoteRepositories(Map<String, RepositoryCredentials> credentials,
+	public static Set<RemoteRepository> getRemoteRepositories(MavenSettings settings,
 			MavenProject project, @Nullable PsiFile pomFile) {
 
 		record RepositoryId(String id, String url) {
@@ -72,7 +70,7 @@ class MavenRepositories {
 		Set<RemoteRepository> remoteRepositories = new LinkedHashSet<>();
 
 		for (RepositoryId url : urls) {
-			RemoteRepository remoteRepository = remoteRepository(url.id, url.url, credentials.get(url.id));
+			RemoteRepository remoteRepository = settings.getRemoteRepository(url.id, url.url);
 			remoteRepositories.add(remoteRepository);
 		}
 
@@ -105,25 +103,16 @@ class MavenRepositories {
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 
 		PsiManager psiManager = PsiManager.getInstance(project);
-		Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
+		MavenSettings settings = SettingsXmlLoader.load(project);
 		Set<RemoteRepository> remoteRepositories = new LinkedHashSet<>();
 		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);
 
 		for (MavenProject candidate : manager.getProjects()) {
 			PsiFile pomFile = psiManager.findFile(candidate.getFile());
-			remoteRepositories.addAll(getRemoteRepositories(credentials, candidate, pomFile));
+			remoteRepositories.addAll(getRemoteRepositories(settings, candidate, pomFile));
 		}
 
 		return ReleaseSource.getReleaseSources(remoteRepositories);
-	}
-
-	private static RemoteRepository remoteRepository(String id, String url,
-			@Nullable RepositoryCredentials credentials) {
-
-		if (credentials != null && !credentials.allowsRepositoryUrl(url)) {
-			credentials = null;
-		}
-		return new RemoteRepository(id, url, credentials);
 	}
 
 }
