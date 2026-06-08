@@ -39,6 +39,17 @@ import org.jspecify.annotations.Nullable;
 public enum UpgradeStrategy {
 
 	/**
+	 * Remediation: Align the version according to {@link biz.paluch.dap.rule.DependencyRule}.
+	 */
+	RULE {
+		@Override
+		@Nullable
+		public Release select(ArtifactVersion current, Collection<Release> options) {
+			return null;
+		}
+	},
+
+	/**
 	 * Select the newest non-preview release within the same major and minor version
 	 * as {@code current}, limited to general-availability releases (including
 	 * bug-fix releases).
@@ -201,7 +212,9 @@ public enum UpgradeStrategy {
 					.findFirst().orElse(null);
 		}
 
-	};
+	}
+
+	;
 
 	/**
 	 * Select the best upgrade candidate from {@code options} according to this

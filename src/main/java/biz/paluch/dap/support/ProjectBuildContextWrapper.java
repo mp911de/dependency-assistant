@@ -19,6 +19,7 @@ package biz.paluch.dap.support;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 
 /**
@@ -47,6 +48,11 @@ public class ProjectBuildContextWrapper implements ProjectBuildContext {
 	@Override
 	public ProjectId getProjectId() {
 		return delegate.getProjectId();
+	}
+
+	@Override
+	public Versioned getProjectVersion() {
+		return delegate.getProjectVersion();
 	}
 
 	@Override

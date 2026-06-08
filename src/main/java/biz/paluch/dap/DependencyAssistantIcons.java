@@ -77,7 +77,9 @@ public class DependencyAssistantIcons {
 	 */
 	public static final Icon UPGRADE_GITHUB_ICON = load("/META-INF/icons/github/upgrade-github.svg");
 
-	// TODO: UPGRADE_PROPERTY
+	public static final Icon DEPENDENCY_RULE_WARN = load("/META-INF/icons/dependencyRuleWarn.svg");
+
+	public static final Icon DEPENDENCY_RULE = load("/META-INF/icons/dependencyRule.svg");
 
 	private static Icon load(String path) {
 		return IconLoader.getIcon(path, DependencyAssistantIcons.class.getClassLoader());

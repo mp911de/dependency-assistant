@@ -16,21 +16,26 @@
 
 package biz.paluch.dap.assistant;
 
-import java.awt.*;
-import javax.swing.*;
+import javax.swing.JList;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.support.ReleaseDateFormatter;
+import com.intellij.ui.ColoredListCellRenderer;
+import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.util.ui.JBUI;
 import org.jspecify.annotations.Nullable;
 
 /**
  * List cell renderer that shows an icon (older / newer patch / minor / major)
- * plus version text.
+ * plus version text, graying out versions that do not satisfy the dependency
+ * rule.
  */
-class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<Release> {
+class VersionOptionCellRenderer extends ColoredListCellRenderer<Release> {
+
+	private final UpdateCandidate candidate;
 
 	private final ArtifactVersion currentVersion;
 
@@ -39,28 +44,35 @@ class VersionOptionCellRenderer extends JLabel implements ListCellRenderer<Relea
 	/**
 	 * Create a renderer that classifies options relative to the current version.
 	 */
-	public VersionOptionCellRenderer(ArtifactVersion currentVersion) {
+	public VersionOptionCellRenderer(UpdateCandidate candidate, ArtifactVersion currentVersion) {
+		this.candidate = candidate;
 		this.currentVersion = currentVersion;
 		setIconTextGap(JBUI.scale(4));
 		setBorder(JBUI.Borders.empty());
 	}
 
 	@Override
-	public Component getListCellRendererComponent(JList<? extends Release> list, @Nullable Release value,
-			int index, boolean isSelected, boolean cellHasFocus) {
+	protected void customizeCellRenderer(JList<? extends Release> list, @Nullable Release value, int index,
+			boolean selected, boolean hasFocus) {
 
 		if (value == null) {
-			setText("");
-		} else {
-			String text = value.getVersion().getVersion().toString();
-			if (value.releaseDate() != null) {
-				text += " (" + formatter.format(value.releaseDate()) + ")";
-			}
-			setText(text);
+			return;
 		}
 
-		setIcon(value != null ? VersionAge.between(currentVersion, value.getVersion()).getIcon() : null);
-		return this;
+		String text = value.getVersion().getVersion().toString();
+		if (value.releaseDate() != null) {
+			text += " (" + formatter.format(value.releaseDate()) + ")";
+		}
+
+		boolean valid = candidate.rule().test(value.getVersion());
+		append(text, valid ? SimpleTextAttributes.REGULAR_ATTRIBUTES : SimpleTextAttributes.GRAYED_ATTRIBUTES);
+
+		if (!valid) {
+			setIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
+		}
+		else {
+			setIcon(VersionAge.between(currentVersion, value.getVersion()).getIcon());
+		}
 	}
 
 }

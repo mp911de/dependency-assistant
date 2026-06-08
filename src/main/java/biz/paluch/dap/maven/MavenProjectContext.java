@@ -19,17 +19,21 @@ package biz.paluch.dap.maven;
 import java.util.List;
 import java.util.Set;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -128,6 +132,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		private final ProjectId projectId;
 
+		private final Versioned projectVersion;
+
 		/**
 		 * Create a context for the given Maven project.
 		 */
@@ -138,6 +144,22 @@ interface MavenProjectContext extends ProjectBuildContext {
 			this.psiManager = psiManager;
 			this.mavenProject = mavenProject;
 			this.projectId = createProjectId(mavenProject.getMavenId());
+			this.projectVersion = resolveProjectVersion(psiManager.findFile(mavenProject.getFile()));
+		}
+
+		private static Versioned resolveProjectVersion(@Nullable PsiFile pom) {
+
+			if (!(pom instanceof XmlFile xmlFile)) {
+				return Versioned.unversioned();
+			}
+
+			MavenProjectMetadataPropertyResolver resolver = new MavenProjectMetadataPropertyResolver(xmlFile);
+			PropertyValue version = resolver.getVersion() != null ? resolver.getVersion() : resolver.getParentVersion();
+			if (version == null) {
+				return Versioned.unversioned();
+			}
+			return ArtifactVersion.from(version.getValue().trim()).map(Versioned::of)
+					.orElseGet(Versioned::unversioned);
 		}
 
 		@Override
@@ -159,6 +181,11 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return remoteRepositories.stream().map(MavenRepository::new)
 					.map(it -> (ReleaseSource) it)
 					.toList();
+		}
+
+		@Override
+		public Versioned getProjectVersion() {
+			return projectVersion;
 		}
 
 		@Override

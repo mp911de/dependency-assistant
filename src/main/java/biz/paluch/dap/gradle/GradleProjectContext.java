@@ -30,12 +30,17 @@ import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import com.intellij.openapi.externalSystem.model.project.ProjectData;
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import org.jetbrains.plugins.gradle.model.ExternalProject;
+import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
@@ -68,10 +73,19 @@ interface GradleProjectContext extends ProjectBuildContext {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 
-		String linkedPath = GradleUtils.findLinkedProjectPath(project, virtualFile);
+		Module module = ModuleUtilCore.findModuleForFile(virtualFile, project);
+
+		if (module == null) {
+			return EmptyGradleBuildContext.INSTANCE;
+		}
+
+		String linkedPath = ExternalSystemApiUtil.getExternalRootProjectPath(module);
+		// String linkedPath = GradleUtils.findLinkedProjectPath(project, virtualFile);
 		if (linkedPath == null) {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
+
+		GradleProjectDescriptor descriptor = resolveDescriptor(project, file, linkedPath);
 
 		ProjectId identity = resolveIdentity(project, file, linkedPath);
 		if (identity == null) {
@@ -79,6 +93,49 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		return new GradleBuildContextImpl(project, linkedPath, identity);
+	}
+
+	private static @Nullable GradleProjectDescriptor resolveDescriptor(
+			Project project, PsiFile buildFile, String linkedPath) {
+
+		ExternalProjectInfo projectInfo = ProjectDataManager.getInstance()
+				.getExternalProjectData(project, GradleConstants.SYSTEM_ID, linkedPath);
+
+		ExternalProject root = ExternalProjectDataCache.getInstance(project)
+				.getRootExternalProject(linkedPath);
+
+		if (projectInfo == null || root == null) {
+			return null;
+		}
+
+		DataNode<ProjectData> projectNode = projectInfo.getExternalProjectStructure();
+		if (projectNode == null) {
+			return null;
+		}
+
+		ProjectData data = projectNode.getData();
+		String group = data.getGroup();
+		String name = data.getExternalName();
+
+		if (group == null || group.isBlank()) {
+			group = name;
+		}
+
+		VirtualFile virtualFile = buildFile.getVirtualFile();
+		if (virtualFile == null) {
+			return null;
+		}
+
+		String version = data.getVersion();// resolveVersion(project, linkedPath);
+		ProjectId projectId = ProjectId.of(group, name, virtualFile.getPath());
+
+		return GradleProjectDescriptor.of(projectId, version, linkedPath, projectInfo);
+	}
+
+	private static @Nullable String resolveVersion(Project project, String linkedPath) {
+		ExternalProject rootExternalProject = ExternalProjectDataCache.getInstance(project)
+				.getRootExternalProject(linkedPath);
+		return rootExternalProject != null ? rootExternalProject.getVersion() : null;
 	}
 
 	/**

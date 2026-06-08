@@ -34,6 +34,7 @@
 
 	<depends>com.intellij.modules.xml</depends>
 	<depends>com.intellij.modules.java</depends>
+	<depends>com.intellij.modules.vcs</depends>
 	<depends optional="true" config-file="maven.xml">org.jetbrains.idea.maven</depends>
 	<depends optional="true" config-file="kotlin.xml">org.jetbrains.kotlin</depends>
 	<depends optional="true" config-file="gradle.xml">org.jetbrains.plugins.gradle</depends>
@@ -74,6 +75,8 @@
 				implementation="biz.paluch.dap.severity.DependencyAssistantColorSettingsPage"/>
 		<projectService
 				serviceImplementation="biz.paluch.dap.state.StateService"/>
+		<projectService
+				serviceImplementation="biz.paluch.dap.rule.RuleService"/>
 		<severitiesProvider
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
@@ -89,6 +92,13 @@
 				level="WARNING"
 				enabledByDefault="true"
 				implementationClass="biz.paluch.dap.assistant.DependencyVersionDriftInspection"/>
+		<localInspection id="dap.dependency-rule"
+		                 bundle="messages.MessageBundle"
+		                 groupKey="plugin.name"
+		                 key="inspection.dependency-rule.display-name"
+		                 level="WARNING"
+		                 enabledByDefault="true"
+		                 implementationClass="biz.paluch.dap.assistant.DependencyRuleInspection"/>
 		<intentionAction id="dap.upgrade.dependencies">
 			<language/>
 			<skipBeforeAfter>true</skipBeforeAfter>

@@ -20,24 +20,27 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.rule.DependencyRule;
 
 /**
- * UI-facing update candidate enriched with assistant context and version-drift
+ * User-interface update candidate enriched with assistant context and version-drift
  * details.
- *
- * <p>The wrapped {@link DependencyUpdateOption} provides the artifact and
- * target release data. The associated {@link InterfaceAssistant} identifies the
- * project format that can apply the update.
  *
  * @author Mark Paluch
  */
 class UpdateCandidate implements HasArtifactId {
 
-	private final DependencyUpdateOption option;
+	private final DependencyUpdateCandidate option;
 
 	private final InterfaceAssistant interfaceAssistant;
 
 	private final DeclaredVersions declaredVersions;
+
+	private final DependencyRule rule;
+
+	private final EvaluatedDependencyRule ruleResult;
 
 	/**
 	 * Create an update candidate.
@@ -46,12 +49,45 @@ class UpdateCandidate implements HasArtifactId {
 	 * @param assistant the format-specific assistant that can apply the update.
 	 * @param declaredVersions the versions the artifact is declared at, used for
 	 * drift reporting.
+	 * @param rule the associated dependency rule.
 	 */
-	public UpdateCandidate(DependencyUpdateOption option, InterfaceAssistant assistant,
-			DeclaredVersions declaredVersions) {
+	public UpdateCandidate(DependencyUpdateCandidate option, InterfaceAssistant assistant, DeclaredVersions declaredVersions, DependencyRule rule) {
+
 		this.option = option;
 		this.interfaceAssistant = assistant;
 		this.declaredVersions = declaredVersions;
+		this.rule = rule;
+
+		if (rule.isDefined()) {
+			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
+				if (!rule.isEnabled(strategy)) {
+					option.getTargets().remove(strategy);
+				}
+			}
+
+			if (!rule.test(option.currentVersion())) {
+				filterUpgrades(option, rule);
+			}
+		}
+
+		this.ruleResult = EvaluatedDependencyRule.of(rule, getArtifactId(), currentVersion(), assistant);
+	}
+
+	private void filterUpgrades(DependencyUpdateCandidate option, DependencyRule rule) {
+
+		ArtifactVersion generation = ArtifactVersion.of(rule.getGeneration());
+
+		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
+
+			if (!rule.isEnabled(strategy)) {
+				continue;
+			}
+
+			Release release = strategy.select(generation, this.option.versionOptions());
+			if (release != null && rule.test(release.version())) {
+				option.getTargets().put(UpgradeStrategy.RULE, release);
+			}
+		}
 	}
 
 	/**
@@ -82,7 +118,7 @@ class UpdateCandidate implements HasArtifactId {
 	 *
 	 * @return the update option used to render and apply the candidate.
 	 */
-	public DependencyUpdateOption option() {
+	public DependencyUpdateCandidate option() {
 		return option;
 	}
 
@@ -94,6 +130,14 @@ class UpdateCandidate implements HasArtifactId {
 	 */
 	public InterfaceAssistant interfaceAssistant() {
 		return interfaceAssistant;
+	}
+
+	public DependencyRule rule() {
+		return rule;
+	}
+
+	public EvaluatedDependencyRule ruleResult() {
+		return ruleResult;
 	}
 
 	@Override

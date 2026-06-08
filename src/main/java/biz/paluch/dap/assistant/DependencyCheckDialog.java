@@ -45,6 +45,7 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
@@ -74,12 +75,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Dialog showing Maven dependency versions and update suggestions.
- * 
+ *
  * @author Mark Paluch
  */
 public class DependencyCheckDialog extends DialogWrapper {
 
-	/** Model index of {@link Upgrades} in the dependency table. */
 	private static final int AVAILABLE_UPDATES_COLUMN_INDEX = 2;
 
 	private final Project project;
@@ -123,7 +123,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			this.review = review;
 
 			this.tableModel = new ListTableModel<>(new DependencyCoordinateColumn(),
-					new CurrentVersionColumn(), new Upgrades(review), new UpdateToColumn(review),
+					new CurrentVersionColumn(review), new Upgrades(review), new UpdateToColumn(review),
 					new DoUpdateColumn(review));
 			this.table = new DependencyUpdateTable(tableModel);
 			this.strategyComboBox = new ComboBox<>(
@@ -355,7 +355,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private DependencyUpdate toDependencyUpdate(UpdateCandidate candidate) {
 
-		DependencyUpdateOption option = candidate.option();
+		DependencyUpdateCandidate option = candidate.option();
 		return new DependencyUpdate(candidate.getArtifactId(), review.getRequiredUpdateTo(candidate),
 				option.getDependency().getDeclarationSources(), option.getDependency().getVersionSources());
 	}
@@ -509,7 +509,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			getComponent().setFocusable(false);
 			buttonPanel.setOpaque(true);
 
-			DependencyUpdateOption option = candidate.option();
+			DependencyUpdateCandidate option = candidate.option();
 			GridBagConstraints constraints = new GridBagConstraints();
 			constraints.gridy = 0;
 			constraints.anchor = GridBagConstraints.CENTER;
@@ -630,7 +630,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				Component tableCellRendererComponent = super.getTableCellRendererComponent(table, value, isSelected,
 						hasFocus, row, column);
 				UpdateCandidate merged = ModelUtil.getRow(table, row);
-				DependencyUpdateOption option = merged.option();
+				DependencyUpdateCandidate option = merged.option();
 
 				String artifactId = option.getArtifactId().toString();
 				String tooltip = artifactId;
@@ -676,7 +676,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		 */
 		Icon getIcon(UpdateCandidate row, JTable table) {
 
-			DependencyUpdateOption option = row.option();
+			DependencyUpdateCandidate option = row.option();
 			Icon base = row.interfaceAssistant().getTableIcon(option.getDependency());
 
 			int pad = 0;
@@ -720,12 +720,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	static class CurrentVersionColumn extends ColumnInfo<UpdateCandidate, ArtifactVersion> {
 
-		private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+		private final DependencyUpgradeReview review;
 
-			{
-				setHorizontalTextPosition(SwingConstants.LEFT);
-				setIconTextGap(JBUI.scale(4));
-			}
+		private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
 
 			@Override
 			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
@@ -733,10 +730,18 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row,
 						column);
-				DeclaredVersions declaredVersions = ModelUtil.getRow(table, row).getDeclaredVersions();
+				UpdateCandidate candidate = ModelUtil.getRow(table, row);
+				DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
+				EvaluatedDependencyRule rule = candidate.ruleResult();
+
 				if (declaredVersions.hasConflict()) {
 					setIcon(AllIcons.General.Warning);
-					setToolTipText(conflictTooltip(declaredVersions));
+				}
+				else if (rule.isPresent()) {
+					setIcon(rule.getIcon());
+				}
+				if (declaredVersions.hasConflict() || rule.isPresent()) {
+					setToolTipText(conflictTooltip(candidate, rule));
 				} else {
 					setIcon(null);
 					setToolTipText(null);
@@ -746,8 +751,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		};
 
-		CurrentVersionColumn() {
+		CurrentVersionColumn(DependencyUpgradeReview review) {
 			super(MessageBundle.message("dialog.column.current"));
+			this.review = review;
 		}
 
 		@Override
@@ -765,21 +771,24 @@ public class DependencyCheckDialog extends DialogWrapper {
 			return ArtifactVersion.class;
 		}
 
+		private static String conflictTooltip(UpdateCandidate candidate, EvaluatedDependencyRule rule) {
+			StringBuilder tooltip = new StringBuilder();
+			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
+			if (declaredVersions.hasConflict()) {
+				tooltip.append(declaredVersions.getToolTipText());
+			}
+			if (rule.isPresent()) {
+				tooltip.append(rule.getToolTipText());
+			}
+
+			if (StringUtils.isEmpty(tooltip.toString())) {
+				return "";
+			}
+			return String.format("<html>%s</html>".formatted(tooltip));
+		}
+
 	}
 
-	private static String conflictTooltip(DeclaredVersions declaredVersions) {
-
-		StringBuilder tooltip = new StringBuilder("<html>")
-				.append(MessageBundle.message("dialog.conflict.tooltip.header"));
-		tooltip.append("<ul>");
-		declaredVersions.forEachConflict((version, file) -> {
-			tooltip.append("<li>")
-					.append(MessageBundle.message("dialog.conflict.tooltip.entry", "<code>" + version + "</code>",
-							file))
-					.append("</li>");
-		});
-		return tooltip.append("</ul></html>").toString();
-	}
 
 	static class Upgrades extends ColumnInfo<UpdateCandidate, Object> {
 

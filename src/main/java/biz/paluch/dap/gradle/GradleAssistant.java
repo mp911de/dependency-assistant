@@ -31,7 +31,6 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
@@ -166,13 +165,11 @@ class GradleAssistant implements DependencyAssistant {
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
 				it -> {
 					GradleProjectContext context = GradleProjectContext.of(project, anchor);
-					return new GradleDependencyContext(this, project, anchor.getVirtualFile(), context);
+					return new GradleDependencyContext(project, anchor.getVirtualFile(), context);
 				});
 	}
 
 	static class GradleDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
-
-		private final GradleAssistant assistant;
 
 		private final Project project;
 
@@ -180,16 +177,12 @@ class GradleAssistant implements DependencyAssistant {
 
 		private final GradleProjectContext projectContext;
 
-		private final StateService service;
-
-		GradleDependencyContext(GradleAssistant assistant, Project project, VirtualFile anchor,
+		GradleDependencyContext(Project project, VirtualFile anchor,
 				GradleProjectContext projectContext) {
 			super(projectContext);
-			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
-			this.service = StateService.getInstance(project);
 		}
 
 		@Override

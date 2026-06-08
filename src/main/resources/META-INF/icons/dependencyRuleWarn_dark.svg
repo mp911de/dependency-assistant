@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Ebene_1" xmlns="http://www.w3.org/2000/svg" version="1.1"
+     viewBox="0 0 13.54 13.72">
+	<!-- Generator: Adobe Illustrator 30.5.1, SVG Export Plug-In . SVG Version: 2.1.4 Build 3)  -->
+	<defs>
+		<style>
+			.st0 {
+			fill: #43454a;
+			}
+
+			.st1 {
+			fill: #f2c55c;
+			}
+
+			.st1, .st2 {
+			fill-rule: evenodd;
+			}
+
+			.st2 {
+			fill: #ced0d6;
+			}
+
+			.st3 {
+			fill: #5e4d33;
+			}
+		</style>
+	</defs>
+	<path class="st2"
+	      d="M5.8,11.44l.25-.44h-1.05V1h3v6.56l.32-.56c.17-.3.41-.53.68-.71v-1.3h3v2.44l1,1.77v-4.2c0-.55-.45-1-1-1h-3V1c0-.55-.45-1-1-1h-3c-.55,0-1,.45-1,1v1H1c-.55,0-1,.45-1,1v8c0,.55.45,1,1,1h4.59c.04-.19.11-.38.21-.56ZM4,11H1V3h3v8Z"/>
+	<path class="st0" d="M4,11V3H1v8h3Z"/>
+	<polygon class="st0" points="8 7.56 8 1 5 1 5 11 6.05 11 8 7.56"/>
+	<path class="st0"
+	      d="M10.04,6c.72,0,1.36.37,1.72,1l.25.43v-2.44h-3v1.3c.3-.19.66-.3,1.04-.3Z"/>
+	<path class="st1"
+	      d="M6.67,12.15l2.51-4.44c.37-.66,1.32-.66,1.7,0l2.51,4.44c.4.7-.11,1.57-.91,1.57h-4.9c-.8,0-1.31-.87-.91-1.57Z"/>
+	<path class="st3"
+	      d="M10.54,9.22c0-.28-.22-.5-.5-.5s-.5.22-.5.5v1.25c0,.28.22.5.5.5s.5-.22.5-.5v-1.25Z"/>
+	<path class="st3"
+	      d="M10.04,12.72c.28,0,.5-.22.5-.5s-.22-.5-.5-.5-.5.22-.5.5.22.5.5.5Z"/>
+</svg>

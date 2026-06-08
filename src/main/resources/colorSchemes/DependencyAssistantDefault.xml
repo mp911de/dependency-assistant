@@ -3,17 +3,15 @@
 	<!-- TODO For eg. Gradle, the colors override syntax highlighting 😬-->
 	<option name="UPGRADE_AVAILABLE">
 		<value>
-			<option name="FOREGROUND" value="052E09FF"/>
-			<option name="BACKGROUND" value="C8FFC852"/>
-			<option name="ERROR_STRIPE_COLOR" value="CDFABFFF"/>
+			<option name="BACKGROUND" value="E1F8E152"/>
+			<option name="ERROR_STRIPE_COLOR" value="CDFABFCF"/>
 		</value>
 	</option>
 
 	<option name="UPGRADE_SUGGESTION">
 		<value>
-			<option name="FOREGROUND" value="166826FF"/>
-			<option name="BACKGROUND" value="CCFFCC79"/>
-			<option name="ERROR_STRIPE_COLOR" value="5ECA5EAB"/>
+			<option name="BACKGROUND" value="C8FFC852"/>
+			<option name="ERROR_STRIPE_COLOR" value="CDFABFFF"/>
 		</value>
 	</option>
 </list>

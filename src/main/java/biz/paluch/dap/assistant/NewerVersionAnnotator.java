@@ -18,12 +18,15 @@ package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeAvailable;
 import biz.paluch.dap.support.UpgradeSuggestion;
+import biz.paluch.dap.support.UpgradeSuggestionGroup;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
@@ -51,8 +54,18 @@ public class NewerVersionAnnotator implements Annotator {
 			return;
 		}
 
+		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
+		RuleService ruleService = RuleService.getInstance(element.getProject());
+		DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration()
+				.getArtifactId(), element.getProject(), containingFile, context.getProjectVersion());
+		upgrades = upgrades.filterSuggestions(rule::isEnabled);
+
+		if (!upgrades.isPresent()) {
+			return;
+		}
+
 		UpgradeSuggestion bestOption = upgrades.getUpgradeSuggestion();
-		String message = bestOption.getMessage();
+		String message = rule.isDefined() ? bestOption.getSuggestionMessage() : bestOption.getMessage();
 		ArtifactDeclaration declaration = upgrades.getArtifactDeclaration();
 		PsiElement versionLiteral = declaration.getVersionLiteral();
 		boolean sameFileDeclaration = true;
@@ -77,9 +90,17 @@ public class NewerVersionAnnotator implements Annotator {
 		AnnotationBuilder builder = holder
 				.newAnnotation(DependencyAssistantSeverities.UPGRADE_AVAILABLE,
 						declaration.getArtifactId() + ": " + message)
-				.problemGroup(UpgradeAvailable.problemGroup())
-				.range(context.getInterfaceAssistant().getHighlightRange(element))
+
+				.range(context.getInterfaceAssistant().getHighlightRange(element));
+
+		if (rule.isDefined()) {
+			builder.problemGroup(UpgradeSuggestionGroup.problemGroup())
+					.textAttributes(DependencyAssistantSeverities.UPGRADE_SUGGESTION_KEY);
+		}
+		else {
+			builder.problemGroup(UpgradeAvailable.problemGroup())
 				.textAttributes(DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY);
+		}
 
 		if (sameFileDeclaration) {
 

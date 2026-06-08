@@ -46,7 +46,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class DependencyUpdateOption implements HasArtifactId {
+class DependencyUpdateCandidate implements HasArtifactId {
 
 	private final Dependency dependency;
 
@@ -61,7 +61,7 @@ class DependencyUpdateOption implements HasArtifactId {
 	 * @param dependency the dependency to update.
 	 * @param releases the known release options.
 	 */
-	DependencyUpdateOption(Dependency dependency, List<Release> releases) {
+	DependencyUpdateCandidate(Dependency dependency, List<Release> releases) {
 		this.dependency = dependency;
 		this.releases = new ArrayList<>(releases);
 
@@ -103,7 +103,7 @@ class DependencyUpdateOption implements HasArtifactId {
 			doAdd(current, version, newer, older);
 		}
 
-		result.addAll(older.reversed().stream().limit(10).toList());
+		result.addAll(older.reversed());
 		result.addAll(newer);
 
 		return List.copyOf(result);
@@ -134,7 +134,8 @@ class DependencyUpdateOption implements HasArtifactId {
 	 * Return whether the newest known release is newer than the current version.
 	 */
 	public boolean hasUpdateCandidate() {
-		return !releases.isEmpty() && releases.get(0).version().isNewer(dependency.getCurrentVersion());
+		return !releases.isEmpty() && releases.get(0).version()
+				.isNewer(dependency.getCurrentVersion()) && !getTargets().isEmpty();
 	}
 
 	/**

@@ -36,6 +36,10 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 
 	private final Map<String, PropertyValue> properties = new HashMap<>();
 
+	private final @Nullable PropertyValue version;
+
+	private final @Nullable PropertyValue parentVersion;
+
 	/**
 	 * Create a new {@code PropertyResolver} for {@link XmlFile}
 	 * @param pom the POM file providing project coordinates.
@@ -44,6 +48,8 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 
 		XmlTag rootTag = pom.getDocument().getRootTag();
 		if (rootTag == null) {
+			this.version = null;
+			this.parentVersion = null;
 			return;
 		}
 
@@ -59,11 +65,34 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 			properties.put("project.groupId", groupId);
 		}
 
-		PropertyValue version = find(rootTag, "version");
-		if (version != null) {
-			properties.put("version", version);
-			properties.put("project.version", version);
+		this.version = findDirect(rootTag, "version");
+		this.parentVersion = findParent(rootTag, "version");
+
+		PropertyValue effectiveVersion = this.version != null ? this.version : this.parentVersion;
+		if (effectiveVersion != null) {
+			properties.put("version", effectiveVersion);
+			properties.put("project.version", effectiveVersion);
 		}
+	}
+
+	/**
+	 * Return the version declared locally in the POM, ignoring inheritance.
+	 *
+	 * @return the local {@code <version>}, or {@literal null} when the POM inherits
+	 * its version from the parent.
+	 */
+	@Nullable PropertyValue getVersion() {
+		return this.version;
+	}
+
+	/**
+	 * Return the version declared by the {@code <parent>} element.
+	 *
+	 * @return the {@code <parent><version>}, or {@literal null} when the POM has no
+	 * parent version.
+	 */
+	@Nullable PropertyValue getParentVersion() {
+		return this.parentVersion;
 	}
 
 	@Override
@@ -84,16 +113,14 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 
 	private @Nullable PropertyValue find(XmlTag tag, String tagName) {
 
-		for (XmlTag subTag : tag.findSubTags(tagName)) {
-			if (!subTag.isValid()) {
-				continue;
-			}
-			XmlTagValue value = subTag.getValue();
-			String text = value.getTrimmedText();
-			if (StringUtils.hasText(text)) {
-				return new PropertyValue(tagName, text, subTag);
-			}
+		PropertyValue direct = findDirect(tag, tagName);
+		if (direct != null) {
+			return direct;
 		}
+		return findParent(tag, tagName);
+	}
+
+	private @Nullable PropertyValue findParent(XmlTag tag, String tagName) {
 
 		for (XmlTag parent : tag.findSubTags("parent")) {
 			if (!parent.isValid()) {
@@ -102,6 +129,21 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 			PropertyValue property = find(parent, tagName);
 			if (property != null) {
 				return property;
+			}
+		}
+		return null;
+	}
+
+	private static @Nullable PropertyValue findDirect(XmlTag tag, String tagName) {
+
+		for (XmlTag subTag : tag.findSubTags(tagName)) {
+			if (!subTag.isValid()) {
+				continue;
+			}
+			XmlTagValue value = subTag.getValue();
+			String text = value.getTrimmedText();
+			if (StringUtils.hasText(text)) {
+				return new PropertyValue(tagName, text, subTag);
 			}
 		}
 		return null;

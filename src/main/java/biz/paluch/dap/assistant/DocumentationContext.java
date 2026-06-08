@@ -302,8 +302,6 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			}
 			sb.append("</td>");
 
-			System.out.println(sb);
-
 			return sb;
 		}
 

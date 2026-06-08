@@ -29,6 +29,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
+ * Absent {@link ProjectDependencyContext} implementation that throws exceptions
+ * for all operations. Used when no dependency context is available.
  * @author Mark Paluch
  */
 enum AbsentDependencyContext implements ProjectDependencyContext {

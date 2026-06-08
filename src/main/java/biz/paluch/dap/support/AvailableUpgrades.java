@@ -19,6 +19,7 @@ package biz.paluch.dap.support;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.SequencedMap;
+import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
@@ -112,6 +113,28 @@ public class AvailableUpgrades {
 		return latest;
 	}
 
+	public AvailableUpgrades filterSuggestions(Predicate<UpgradeStrategy> strategyFilter) {
+
+		SequencedMap<UpgradeStrategy, UpgradeSuggestion> upgrades = new LinkedHashMap<>();
+
+		this.upgrades.forEach((strategy, suggestion) -> {
+			if (strategyFilter.test(strategy)) {
+				upgrades.put(strategy, suggestion);
+			}
+		});
+
+		UpgradeSuggestion bestOption = strategyFilter.test(this.bestOption.getStrategy()) ? this.bestOption
+				: UpgradeSuggestion.none();
+
+		if (!bestOption.isPresent() && !upgrades.isEmpty()) {
+			bestOption = upgrades.values().iterator().next();
+		}
+
+		if (upgrades.isEmpty()) {
+			return NONE;
+		}
+		return new AvailableUpgrades(artifactReference, bestOption, upgrades, latest);
+	}
 
 	@Override
 	public String toString() {

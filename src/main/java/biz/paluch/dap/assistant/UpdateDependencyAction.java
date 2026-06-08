@@ -20,7 +20,10 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.util.PsiElements;
@@ -38,8 +41,12 @@ import com.intellij.psi.PsiElement;
 import com.intellij.ui.LayeredIcon;
 
 /**
- * Dependency upgrade action to upgrade the associated {@link PsiElement}
- * version literal to a {@link UpgradeSuggestion}.
+ * Dependency update action that rewrites the associated {@link PsiElement}
+ * version literal to the target of a {@link DependencyUpdate}.
+ *
+ * <p>The presentation impact category (the gutter age icon) is derived from the
+ * relationship between the {@link ArtifactDeclaration declaration}'s current
+ * version and the update target, not from a preselected strategy.
  *
  * @author Mark Paluch
  */
@@ -47,18 +54,30 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 
 	private final ProjectDependencyContext dependencyContext;
 
-	private final UpgradeSuggestion suggestion;
+	private final DependencyUpdate update;
 
-	protected UpdateDependencyAction(PsiElement element,
-			ProjectDependencyContext dependencyContext,
+	private final ArtifactDeclaration declaration;
+
+	protected UpdateDependencyAction(PsiElement element, ProjectDependencyContext dependencyContext,
 			UpgradeSuggestion suggestion) {
+		this(element, dependencyContext, suggestion.toDependencyUpdate(), suggestion.getArtifactDeclaration());
+	}
+
+	protected UpdateDependencyAction(ArtifactDeclaration declaration, ProjectDependencyContext dependencyContext,
+			DependencyUpdate update) {
+		this(declaration.getVersionLiteral(), dependencyContext, update, declaration);
+	}
+
+	protected UpdateDependencyAction(PsiElement element, ProjectDependencyContext dependencyContext,
+			DependencyUpdate update, ArtifactDeclaration declaration) {
 		super(element);
 		this.dependencyContext = dependencyContext;
-		this.suggestion = suggestion;
+		this.update = update;
+		this.declaration = declaration;
 	}
 
 	@Override
-	protected void invoke(ActionContext context, PsiElement element, ModPsiUpdater updater) {
+	public void invoke(ActionContext context, PsiElement element, ModPsiUpdater updater) {
 
 		int caretOffset = context.offset();
 		String previousText = null;
@@ -67,9 +86,9 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 			container = PsiElements.unleaf(element);
 			previousText = container.getText();
 		}
-		dependencyContext.applyUpdate(element, suggestion.toDependencyUpdate());
+		dependencyContext.applyUpdate(element, update);
 
-		if (container != null) {
+		if (container != null && updater != null) {
 			String currentText = container.getText();
 			int cpl = StringUtil.commonSuffixLength(previousText, currentText);
 			int newOffset = container.getTextRange().getEndOffset() - cpl;
@@ -85,28 +104,40 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 	@Override
 	protected Presentation getPresentation(ActionContext context, PsiElement element) {
 
-		String strategy = MessageBundle.message("upgrade-strategy.%s".formatted(suggestion.getStrategy().name()));
-		String name = MessageBundle.message("UpgradeDependencyAction.name", strategy,
-				suggestion.getRelease().getVersion());
+		String name = MessageBundle.message("UpgradeDependencyAction.name", update.versionAsString());
+		return Presentation.of(name).withIcon(getIcon());
+	}
 
+	protected Icon getIcon() {
 		InterfaceAssistant ia = dependencyContext.getInterfaceAssistant();
-		Icon dependencyIcon = ia.getGutterIcon(suggestion.getArtifactDeclaration());
-		VersionAge age = VersionAge.fromTarget(suggestion.getStrategy());
-		Icon ageIcon = age.getIcon();
+		Icon dependencyIcon = ia.getGutterIcon(declaration);
+		Icon ageIcon = getVersionAgeIcon();
 
 		LayeredIcon icon = new LayeredIcon(2);
 		Icon scaled = ((ScalableIcon) dependencyIcon).scale(0.7f);
 		icon.setIcon(scaled, 0, dependencyIcon.getIconHeight() - scaled.getIconHeight(), 0);
 		icon.setIcon(((ScalableIcon) ageIcon).scale(0.7f), 1, dependencyIcon.getIconWidth() / 2,
 				dependencyIcon.getIconHeight() / 2);
+		return icon;
+	}
 
-		return Presentation.of(name).withIcon(icon);
+	protected Icon getVersionAgeIcon() {
+		return versionAge().getIcon();
+	}
+
+	private VersionAge versionAge() {
+
+		if (!declaration.isVersionDefined()) {
+			return VersionAge.SAME_OR_UNKNOWN;
+		}
+
+		ArtifactVersion current = declaration.getVersion();
+		return VersionAge.between(current, update.version());
 	}
 
 	@Override
 	public @IntentionFamilyName String getFamilyName() {
 		return MessageBundle.message("problemgroup.upgrade-available");
 	}
-
 
 }

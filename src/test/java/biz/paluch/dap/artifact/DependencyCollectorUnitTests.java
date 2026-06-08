@@ -41,7 +41,7 @@ class DependencyCollectorUnitTests {
 		VersionSource declaredV4 = VersionSource.declared("v4.2.0");
 		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), declaredV4);
 
-		collector.promoteResolvedDeclarations(declaration -> Dependency.from(declaration, ArtifactVersion.of("4.2.0")));
+		collector.promoteResolvedDeclarations(declaration -> Dependency.from(declaration, (ArtifactVersion.of("4.2.0"))));
 
 		assertThat(collector.getUsages()).hasSize(1);
 		Dependency usage = collector.getUsage(CHECKOUT);

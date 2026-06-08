@@ -42,7 +42,7 @@ record VisibilityFilter(boolean hideUpToDate) {
 	/**
 	 * Return the release options to show for the given option.
 	 */
-	List<Release> visibleReleases(DependencyUpdateOption option) {
+	List<Release> visibleReleases(DependencyUpdateCandidate option) {
 		return hideUpToDate ? option.filtered() : option.versionOptions();
 	}
 
@@ -50,7 +50,7 @@ record VisibilityFilter(boolean hideUpToDate) {
 	 * Return whether the option's row is shown. When hiding up-to-date rows, an
 	 * option is shown only if it has an update candidate and is not preview-only.
 	 */
-	boolean includes(DependencyUpdateOption option) {
+	boolean includes(DependencyUpdateCandidate option) {
 
 		if (!hideUpToDate) {
 			return true;

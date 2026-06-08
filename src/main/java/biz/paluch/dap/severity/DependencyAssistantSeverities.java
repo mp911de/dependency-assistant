@@ -57,16 +57,6 @@ public class DependencyAssistantSeverities extends SeveritiesProvider {
 			MessageBundle.lazyMessage("severity.upgrade.available.count.message"));
 
 	/**
-	 * Upgrade suggestion highlight severity.
-	 */
-	public static final HighlightSeverity UPGRADE_SUGGESTION = new HighlightSeverity(
-			UPGRADE_SUGGESTION_KEY.getExternalName(),
-			HighlightSeverity.INFORMATION.myVal + 5, //
-			MessageBundle.lazyMessage("severity.upgrade.suggestion"), //
-			MessageBundle.lazyMessage("severity.upgrade.suggestion.capitalized"), //
-			MessageBundle.lazyMessage("severity.upgrade.suggestion.count.message"));
-
-	/**
 	 * Create a new {@code DependencyAssistantSeverities}.
 	 */
 	public DependencyAssistantSeverities() {
@@ -102,7 +92,7 @@ public class DependencyAssistantSeverities extends SeveritiesProvider {
 		}
 
 		return List.of(new UA(UPGRADE_AVAILABLE, UPGRADE_AVAILABLE_KEY),
-				new US(UPGRADE_SUGGESTION, UPGRADE_SUGGESTION_KEY));
+				new US(UPGRADE_AVAILABLE, UPGRADE_SUGGESTION_KEY));
 	}
 
 }

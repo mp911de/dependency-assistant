@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Editable state of the dependency upgrade review dialog.
- * 
+ *
  * @author Mark Paluch
  */
 class DependencyUpgradeReview {
@@ -42,6 +42,8 @@ class DependencyUpgradeReview {
 	private final List<String> errors;
 
 	private final Map<UpdateCandidate, UpgradeSelection> selections = new LinkedHashMap<>();
+
+	private final boolean hasRule;
 
 	private final EventDispatcher<ReviewListener> listeners = EventDispatcher.create(ReviewListener.class);
 
@@ -57,9 +59,14 @@ class DependencyUpgradeReview {
 	DependencyUpgradeReview(List<UpdateCandidate> candidates, List<String> errors) {
 		this.candidates = candidates;
 		this.errors = errors;
+
+		boolean hasRule = false;
 		for (UpdateCandidate candidate : candidates) {
+			if (candidate.rule().isDefined()) {
+				hasRule = true;
+			}
 			selections.put(candidate, new UpgradeSelection(candidate.currentVersion()));
-		}
+		} this.hasRule = hasRule;
 	}
 
 	private UpgradeSelection selection(UpdateCandidate candidate) {
@@ -93,7 +100,7 @@ class DependencyUpgradeReview {
 	 * Return the release options shown for the given option under the active
 	 * filter.
 	 */
-	List<Release> visibleReleases(DependencyUpdateOption option) {
+	List<Release> visibleReleases(DependencyUpdateCandidate option) {
 		return filter.visibleReleases(option);
 	}
 
@@ -232,6 +239,13 @@ class DependencyUpgradeReview {
 		return true;
 	}
 
+	public EvaluatedDependencyRule getResult(EvaluatedDependencyRule rule) {
+
+		if (!rule.isPresent() && hasRule) {
+			return EvaluatedDependencyRule.absent();
+		} return rule;
+	}
+
 	enum UpgradeStrategies {
 
 		MANUAL("dialog.upgradeStrategy.manual"), //
@@ -287,7 +301,7 @@ class DependencyUpgradeReview {
 			case RELEASE, PATCH -> VersionAge.NEWER_PATCH;
 			case MINOR -> VersionAge.NEWER_MINOR;
 			case MAJOR, LATEST -> VersionAge.NEWER_MAJOR;
-			case PREVIEW -> VersionAge.PREVIEW;
+				case PREVIEW -> VersionAge.PREVIEW; case RULE -> VersionAge.RULE;
 			}).getIcon();
 		}
 

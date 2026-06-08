@@ -106,15 +106,15 @@ public class UpgradeAvailableInspection extends LocalInspectionTool {
 					builder.range(rangeInElement);
 				}
 
-				builder.fix((ModCommandAction) new UpdateDependencyAction(element, context, bestOption));
+				builder.fix((ModCommandAction) new UpdateDependencyAction(element, context,
+						bestOption.toDependencyUpdate(), bestOption.getArtifactDeclaration()));
 
 				for (UpgradeSuggestion suggestion : upgrades.getUpgrades().values()) {
 					if (suggestion == bestOption) {
 						continue;
 					}
-					builder = builder
-							.maybeFix((ModCommandAction) new UpdateDependencyAction(element, context,
-									suggestion));
+					builder = builder.maybeFix((ModCommandAction) new UpdateDependencyAction(element, context,
+							suggestion.toDependencyUpdate(), suggestion.getArtifactDeclaration()));
 				}
 
 				builder.register();

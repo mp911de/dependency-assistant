@@ -50,8 +50,8 @@ import com.intellij.psi.PsiFile;
  * <p>The project-wide declared-version set is read from the in-memory
  * {@link StateService#getDeclaredVersions(ArtifactId) project state}; only
  * declarations that resolve cleanly through the per-ecosystem
- * {@link VersionUpgradeLookup} are flagged. Each drifting version literal in the
- * open file is highlighted and can be reconciled to the highest or lowest
+ * {@link VersionUpgradeLookup} are flagged. Each drifting version literal in
+ * the open file is highlighted and can be reconciled to the highest or lowest
  * declared version.
  *
  * @author Mark Paluch
@@ -64,27 +64,17 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool {
 		PsiFile file = holder.getFile();
 		Project project = file.getProject();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, file);
-		if (context == null || context.isAbsent()) {
+		if (context.isAbsent()) {
 			return PsiElementVisitor.EMPTY_VISITOR;
 		}
 
 		StateService state = StateService.getInstance(project);
 		Set<PsiElement> reported = new HashSet<>();
 
-		return new PsiElementVisitor() {
+		return new ArtifactReferenceVisitor(context, file) {
 
 			@Override
-			public void visitElement(PsiElement element) {
-
-				if (!context.isVersionElement(element)) {
-					return;
-				}
-
-				VersionUpgradeLookup lookup = context.getLookup(element, file.getVirtualFile());
-				ArtifactReference reference = lookup.resolveArtifactReference(element);
-				if (!reference.isResolved()) {
-					return;
-				}
+			public void visitArtifactReference(PsiElement element, ArtifactReference reference) {
 
 				ArtifactDeclaration declaration = reference.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();

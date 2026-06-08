@@ -72,6 +72,15 @@ public class UpgradeSuggestion {
 	}
 
 	/**
+	 * Return the localized gutter message for this suggestion.
+	 */
+	public String getSuggestionMessage() {
+		String upgradeTarget = MessageBundle.message("upgrade-strategy." + strategy.name());
+		return MessageBundle.message("gutter.suggestion.tooltip", upgradeTarget, getRelease().version()
+				.toString());
+	}
+
+	/**
 	 * Return whether a suggestion is present.
 	 */
 	public boolean isPresent() {

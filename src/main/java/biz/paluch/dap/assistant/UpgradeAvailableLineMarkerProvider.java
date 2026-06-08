@@ -24,6 +24,8 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
@@ -76,8 +78,18 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			return null;
 		}
 
-		String tooltip = suggestion.getMessage();
-		String accessibleName = MessageBundle.message("gutter.newer.accessible");
+		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
+		RuleService ruleService = RuleService.getInstance(element.getProject());
+		DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration()
+				.getArtifactId(), element.getProject(), containingFile, context.getProjectVersion());
+		upgrades = upgrades.filterSuggestions(rule::isEnabled);
+
+		if (!upgrades.isPresent()) {
+			return null;
+		}
+
+		String tooltip = rule.isDefined() ? suggestion.getSuggestionMessage() : suggestion.getMessage();
+		String accessibleName = rule.isDefined() ? MessageBundle.message("gutter.suggestion.accessible") : MessageBundle.message("gutter.newer.accessible");
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
 		InterfaceAssistant ui = context.getInterfaceAssistant();
 

@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-class SemanticArtifactVersion implements ArtifactVersion {
+class SemanticArtifactVersion implements NumericVersion {
 
 	private static final Pattern DOT_SUFFIX_PATTERN = Pattern
 			.compile("((\\d+)(\\.\\d+)*)(\\.((SR\\d+)|(RC\\d+)|(M\\d+)|(BUILD-SNAPSHOT)|(RELEASE)))");
@@ -204,6 +204,16 @@ class SemanticArtifactVersion implements ArtifactVersion {
 	 */
 	public boolean isVersionWithin(NumericVersionComponents version) {
 		return this.components.toMajorMinorBugfix().startsWith(version.toString());
+	}
+
+	@Override
+	public int[] getParts() {
+		return this.components.getParts();
+	}
+
+	@Override
+	public int size() {
+		return this.components.getComponents();
 	}
 
 	@Override

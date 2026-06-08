@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
  * dialog: the chosen target version and whether to apply it.
  *
  * <p>Owned by {@link DependencyUpgradeReview}, keyed by candidate. Sits between
- * the {@link DependencyUpdateOption} (what can be chosen) and the
+ * the {@link DependencyUpdateCandidate} (what can be chosen) and the
  * {@code DependencyUpdate} written on confirm (what was chosen). Selecting a
  * target other than the current version arms the apply flag; reselecting the
  * current version clears it.

@@ -33,6 +33,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseResolver;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
@@ -83,10 +84,11 @@ class DependencyCheck {
 	public DependencyCheckResult resolveScope(ProgressIndicator indicator, List<UpgradeScope.Entry> scope,
 			Consistency consistency) {
 		this.service.getState().setUsedOnce(true);
+		RuleService ruleService = RuleService.getInstance(project);
 		DependencyCheckAggregator aggregator = aggregate(indicator, scope);
 		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(indicator, getArtifactSources(aggregator),
 				consistency);
-		return aggregator.toDependencyCheckResult(releases);
+		return aggregator.toDependencyCheckResult(releases, ruleService);
 	}
 
 	private DependencyCheckAggregator aggregate(ProgressIndicator indicator, List<UpgradeScope.Entry> scope) {

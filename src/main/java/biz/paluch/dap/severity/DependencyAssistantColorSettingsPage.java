@@ -28,7 +28,6 @@ import com.intellij.openapi.fileTypes.SyntaxHighlighter;
 import com.intellij.openapi.options.colors.AttributesDescriptor;
 import com.intellij.openapi.options.colors.ColorDescriptor;
 import com.intellij.openapi.options.colors.ColorSettingsPage;
-import com.intellij.ui.JBColor;
 
 /**
  * Exposes {@link DependencyAssistantSeverities#UPGRADE_AVAILABLE_KEY} in Color
@@ -39,20 +38,15 @@ import com.intellij.ui.JBColor;
  */
 public class DependencyAssistantColorSettingsPage implements ColorSettingsPage {
 
-	private final static JBColor UPGRADE_AVAILABLE_COLOR_BG = new JBColor(0x3A067C06, 0x3A003100);
-
-	private final static JBColor UPGRADE_AVAILABLE_COLOR_STRIPE = new JBColor(0xFFC0E1B4, 0x3A003100);
-
-	private final static JBColor UPGRADE_SUGGESTION_COLOR_BG = new JBColor(0x4FC2FFC2, 0x3A009100);
-
-	private final static JBColor UPGRADE_SUGGESTION_COLOR_STRIPE = new JBColor(0xFFABEF92, 0x3A009100);
-
-	private static final AttributesDescriptor[] DESCRIPTORS = {new AttributesDescriptor(
+	public static final AttributesDescriptor UPGRADE_AVAILABLE = new AttributesDescriptor(
 			MessageBundle.lazyMessage("severity.upgrade.available"),
-			DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY),
-			new AttributesDescriptor(
-					MessageBundle.lazyMessage("severity.upgrade.suggestion"),
-					DependencyAssistantSeverities.UPGRADE_SUGGESTION_KEY)};
+			DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY);
+
+	public static final AttributesDescriptor UPGRADE_SUGGESTION = new AttributesDescriptor(
+			MessageBundle.lazyMessage("severity.upgrade.suggestion"),
+			DependencyAssistantSeverities.UPGRADE_SUGGESTION_KEY);
+
+	private static final AttributesDescriptor[] DESCRIPTORS = {UPGRADE_AVAILABLE, UPGRADE_SUGGESTION,};
 
 	@Override
 	public AttributesDescriptor[] getAttributeDescriptors() {

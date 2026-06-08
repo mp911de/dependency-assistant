@@ -78,7 +78,9 @@ public enum VersionAge {
 	 * Stable release target selected by policy rather than inferred from a concrete
 	 * version comparison.
 	 */
-	RELEASE;
+	RELEASE,
+
+	RULE;
 
 	/**
 	 * Return the presentation category for the given upgrade strategy.
@@ -97,6 +99,7 @@ public enum VersionAge {
 		case MAJOR, LATEST -> NEWER_MAJOR;
 		case PREVIEW -> PREVIEW;
 		case RELEASE -> RELEASE;
+			case RULE -> RULE;
 		};
 	}
 
@@ -164,6 +167,7 @@ public enum VersionAge {
 		case NEWER_MAJOR -> AllIcons.Actions.RunAll;
 		case PREVIEW -> AllIcons.Debugger.DebuggerSync;
 		case SAME_OR_UNKNOWN -> AllIcons.Nodes.PpLibFolder;
+			case RULE -> AllIcons.Actions.QuickfixBulb;
 		};
 	}
 
@@ -179,6 +183,7 @@ public enum VersionAge {
 		case NEWER_MAJOR -> "AllIcons.Actions.RunAll";
 		case PREVIEW -> "AllIcons.Debugger.DebuggerSync";
 		case SAME_OR_UNKNOWN -> "AllIcons.Nodes.PpLibFolder";
+			case RULE -> "AllIcons.Actions.QuickfixBulb";
 		};
 	}
 

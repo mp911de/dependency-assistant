@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
@@ -168,6 +169,29 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	public ArtifactVersion getHighestDeclaredVersion() {
 		Assert.state(hasVersion(), "Cannot get declared version from empty versions");
 		return versions.iterator().next();
+	}
+
+	/**
+	 * Render the tool tip text.
+	 */
+	public String getToolTipText() {
+
+		StringBuilder tooltip = new StringBuilder();
+
+		tooltip.append("<h3>")
+				.append(MessageBundle.message("dialog.conflict.tooltip.header"))
+				.append("</h3>");
+		tooltip.append("<ul>");
+
+		forEachConflict((version, file) -> {
+			tooltip.append("<li>")
+					.append(MessageBundle.message("dialog.conflict.tooltip.entry", "<code>" + version + "</code>",
+							file))
+					.append("</li>");
+		});
+		tooltip.append("</ul>");
+
+		return tooltip.toString();
 	}
 
 	/**

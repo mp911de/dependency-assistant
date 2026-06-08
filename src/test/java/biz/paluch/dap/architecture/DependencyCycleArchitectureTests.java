@@ -56,7 +56,7 @@ class DependencyCycleArchitectureTests {
 	 */
 	private static final SliceAssignment CLASSES_AND_HIERARCHIES = SliceRules.classes(
 			it -> {
-				it.withStrictClosedHierarchy(ArtifactVersion.class)
+				it.withClosedHierarchy(ArtifactVersion.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
 						.withClosedHierarchy(DependencySite.class)
@@ -92,7 +92,7 @@ class DependencyCycleArchitectureTests {
 
 	@ArchTest
 	static final ArchRule assistantPackage = packageDependencies(
-			"assistant", "biz.paluch.dap", "artifact", "severity", "state", "support", "util");
+			"assistant", "biz.paluch.dap", "artifact", "rule", "severity", "state", "support", "util");
 
 	@ArchTest
 	static final ArchRule antora = packageDependencies("antora",

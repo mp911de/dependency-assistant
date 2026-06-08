@@ -33,6 +33,9 @@ import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -209,9 +212,62 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getHighestDeclaredVersion());
-			DependencyUpdateOption option = new DependencyUpdateOption(dependency, lookup.releases());
+			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
 			candidates.add(new UpdateCandidate(option, entry.contexts().iterator().next().getInterfaceAssistant(),
-					declaredVersions));
+					declaredVersions, DependencyRule.absent()));
+		});
+
+		candidates.sort(Comparator.comparing(UpdateCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
+
+		return new DependencyCheckResult(candidates, files, errors);
+	}
+
+	/**
+	 * Create a dependency-check result from the resolved releases.
+	 *
+	 * <p>Artifacts without resolved releases are skipped. Release lookup errors are
+	 * copied into the result so the UI can display them alongside the candidates
+	 * that were resolved successfully.
+	 *
+	 * @param releases the resolved releases keyed by artifact.
+	 * @return a new dependency-check result with candidates sorted by artifact.
+	 */
+	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases, RuleService ruleService) {
+
+		List<UpdateCandidate> candidates = new ArrayList<>();
+		List<String> errors = getErrors(releases);
+
+		entries.forEach((artifactId, entry) -> {
+
+			ReleaseLookupResult lookup = releases.get(artifactId);
+			if (lookup == null) {
+				return;
+			}
+
+			DeclaredVersions declaredVersions = DeclaredVersions.from(entry.declarationSites(),
+					it -> GitVersionResolver.resolveVersion(it, lookup.releases()));
+			if (!declaredVersions.hasVersion()) {
+				return;
+			}
+
+			Versioned versioned = Versioned.unversioned();
+			for (ProjectDependencyContext context : entry.contexts()) {
+				Versioned projectVersion = context.getProjectVersion();
+				if (projectVersion.isVersioned()) {
+					versioned = projectVersion;
+					break;
+				}
+			}
+
+			DependencyRule rule = ruleService.resolve(artifactId, project, entry.declarationSites()
+					.iterator().next().file(), versioned);
+
+			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
+			Dependency dependency = Dependency.from(merged, declaredVersions.getHighestDeclaredVersion());
+			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
+			candidates.add(new UpdateCandidate(option, entry.contexts().iterator().next()
+					.getInterfaceAssistant(),
+					declaredVersions, rule));
 		});
 
 		candidates.sort(Comparator.comparing(UpdateCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));

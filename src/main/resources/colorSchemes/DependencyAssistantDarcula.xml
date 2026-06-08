@@ -2,17 +2,15 @@
 <list>
 	<option name="UPGRADE_AVAILABLE">
 		<value>
-			<option name="FOREGROUND" value="A2CFA8FF"/>
-			<option name="BACKGROUND" value="11751154"/>
-			<option name="ERROR_STRIPE_COLOR" value="07910784"/>
+			<option name="BACKGROUND" value="0A400A54"/>
+			<option name="ERROR_STRIPE_COLOR" value="05630584"/>
 		</value>
 	</option>
 
 	<option name="UPGRADE_SUGGESTION">
 		<value>
-			<option name="FOREGROUND" value="A9D3A2FF"/>
-			<option name="BACKGROUND" value="00910071"/>
-			<option name="ERROR_STRIPE_COLOR" value="23AE23E2"/>
+			<option name="BACKGROUND" value="1175117E"/>
+			<option name="ERROR_STRIPE_COLOR" value="17A51784"/>
 		</value>
 	</option>
 </list>

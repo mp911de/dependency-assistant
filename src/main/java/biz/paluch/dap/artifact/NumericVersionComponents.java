@@ -44,9 +44,6 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/**
 	 * Creates a new {@link NumericVersionComponents} from the given integer values.
-	 * At least one value has to be given but a maximum of 4.
-	 *
-	 * @param parts must not be {@literal null} or empty.
 	 */
 	private NumericVersionComponents(int major, int minor, int bugfix) {
 		this(BigDecimal.valueOf(major), BigDecimal.valueOf(minor), BigDecimal.valueOf(bugfix));
@@ -115,6 +112,14 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
+	 * Return the numeric version parts.
+	 * @return a new array containing the numeric version parts.
+	 */
+	public int[] getParts() {
+		return Arrays.stream(parts).mapToInt(BigDecimal::intValue).toArray();
+	}
+
+	/**
 	 * Return the major component.
 	 */
 	public int getMajor() {
@@ -143,22 +148,6 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	}
 
 	/**
-	 * Return whether this version is greater than the given one.
-	 * @param version the version to compare with.
-	 */
-	public boolean isGreaterThan(NumericVersionComponents version) {
-		return compareTo(version) > 0;
-	}
-
-	/**
-	 * Return whether this version is greater than or equal to the given one.
-	 * @param version the version to compare with.
-	 */
-	public boolean isGreaterThanOrEqualTo(NumericVersionComponents version) {
-		return compareTo(version) >= 0;
-	}
-
-	/**
 	 * Return whether the current {@link NumericVersionComponents} is the same as
 	 * the given one.
 	 * @param version the version to compare with.
@@ -174,29 +163,6 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	 */
 	public boolean hasSameMajorMinor(NumericVersionComponents other) {
 		return getMajor() == other.getMajor() && getMinor() == other.getMinor();
-	}
-
-	/**
-	 * Return whether this version is less than the given one.
-	 * @param version the version to compare with.
-	 */
-	public boolean isLessThan(NumericVersionComponents version) {
-		return compareTo(version) < 0;
-	}
-
-	/**
-	 * Return whether this version is less than or equal to the given one.
-	 * @param version the version to compare with.
-	 */
-	public boolean isLessThanOrEqualTo(NumericVersionComponents version) {
-		return compareTo(version) <= 0;
-	}
-
-	/**
-	 * Return the next major version line.
-	 */
-	public NumericVersionComponents nextMajor() {
-		return new NumericVersionComponents(getMajor() + 1, 0, 0);
 	}
 
 	/**
@@ -216,22 +182,8 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 	/**
 	 * Return a copy with the given bugfix component.
 	 */
-	public NumericVersionComponents withBugfix(BigDecimal bugfix) {
-		return new NumericVersionComponents(getMajor(), getMinor(), bugfix.intValueExact());
-	}
-
-	/**
-	 * Return a copy with the given bugfix component.
-	 */
 	public NumericVersionComponents withBugfix(int bugfix) {
 		return new NumericVersionComponents(getMajor(), getMinor(), bugfix);
-	}
-
-	/**
-	 * Return the {@code major.minor} representation.
-	 */
-	public String toMajorMinor() {
-		return "%s.%s".formatted(getMajor(), getMinor());
 	}
 
 	/**

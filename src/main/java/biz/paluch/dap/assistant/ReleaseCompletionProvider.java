@@ -31,6 +31,8 @@ import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
@@ -45,6 +47,7 @@ import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.ElementManipulator;
@@ -115,17 +118,21 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		RefStyle refStyle = getRefStyle(position, metadata);
+		Project project = parameters.getPosition().getProject();
 		StateService service = StateService
-				.getInstance(parameters.getPosition().getProject());
+				.getInstance(project);
 		List<ArtifactRelease> releases = getReleases(metadata.artifactId(), service.getCache());
 
 		if (releases.isEmpty()) {
 			return;
 		}
 
+		RuleService ruleService = RuleService.getInstance(project);
+		DependencyRule rule = ruleService.resolve(metadata.artifactId(), project, parameters.getEditor()
+				.getVirtualFile(), metadata.context.getProjectVersion());
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
-				.getInterfaceAssistant(), metadata.currentVersion());
+				.getInterfaceAssistant(), metadata.currentVersion(), rule);
 
 		List<LookupElement> elements = new ArrayList<>();
 		double priority = releases.size();

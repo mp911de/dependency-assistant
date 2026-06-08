@@ -1,0 +1,20 @@
+<html>
+<body>
+Reports dependency declarations whose version violates the governing dependency rule.
+<p>
+    Rules are resolved through the project's <code>dependencyfile.json</code> descriptor
+    and
+    pin a dependency to a required generation. A declared version that does not satisfy
+    its
+    rule is flagged. The inspection is advisory: it stays silent for artifacts that no
+    rule
+    governs and produces nothing when the project has no descriptor.
+</p>
+<p>
+    When the release cache holds a version matching the governing generation, a batchable
+    quick-fix realigns the declaration to the newest compliant release. Running the
+    inspection over the whole project realigns every violating declaration at once.
+</p>
+<!-- tooltip end -->
+</body>
+</html>

@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
@@ -30,6 +31,7 @@ import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionAware;
+import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.lookup.LookupElement;
@@ -50,9 +52,12 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 
 	private final @Nullable ArtifactVersion currentVersion;
 
-	public ArtifactReleaseRenderer(InterfaceAssistant assistant, @Nullable ArtifactVersion currentVersion) {
+	private final DependencyRule rule;
+
+	public ArtifactReleaseRenderer(InterfaceAssistant assistant, @Nullable ArtifactVersion currentVersion, DependencyRule rule) {
 		this.assistant = assistant;
 		this.currentVersion = currentVersion instanceof GitRef ? null : currentVersion;
+		this.rule = rule;
 	}
 
 	public String formatReleaseDate(ArtifactRelease release) {
@@ -94,7 +99,13 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 			}
 		}
 
-		presentation.setIcon(getIcon(release.artifactId(), version));
+		if (rule.isDefined() && !rule.test(release.getVersion())) {
+			presentation.setIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
+			presentation.setStrikeout(true);
+		}
+		else {
+			presentation.setIcon(getIcon(release.artifactId(), version));
+		}
 	}
 
 	private Icon getIcon(ArtifactId artifactId, ArtifactVersion version) {

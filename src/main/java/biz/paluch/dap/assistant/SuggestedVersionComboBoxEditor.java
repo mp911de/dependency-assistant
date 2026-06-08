@@ -55,7 +55,7 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 		this.candidate = candidate;
 		this.combo.putClientProperty("JComboBox.isTableCellEditor", Boolean.TRUE);
 		this.combo.setModel(new CollectionComboBoxModel<>(options));
-		this.combo.setRenderer(new VersionOptionCellRenderer(candidate.currentVersion()));
+		this.combo.setRenderer(new VersionOptionCellRenderer(candidate, candidate.currentVersion()));
 		this.combo.addActionListener(e -> {
 
 			Release selected = (Release) combo.getSelectedItem();
@@ -83,6 +83,7 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 		ArtifactVersion currentValue = updateTo == null
 				? (combo.getSelectedItem() instanceof Release release ? release.version() : candidate.currentVersion())
 				: updateTo;
+
 		List<Release> releases = review.visibleReleases(candidate);
 
 		if (!this.options.equals(releases)) {
@@ -92,6 +93,7 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 
 		Release selected = null;
 		for (Release release : releases) {
+
 			if (release.version().matches(currentValue)) {
 				selected = release;
 				break;
