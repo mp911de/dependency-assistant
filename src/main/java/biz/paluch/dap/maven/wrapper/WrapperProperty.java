@@ -16,31 +16,19 @@
 
 package biz.paluch.dap.maven.wrapper;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.util.PropertyUtils;
-import biz.paluch.dap.util.StringUtils;
-import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.IProperty;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -205,49 +193,6 @@ enum WrapperProperty {
 		return null;
 	}
 
-	/**
-	 * Parse the property as this wrapper property.
-	 * @param property the property to parse.
-	 * @return the parsed wrapper entry, or {@literal null} if the property does not
-	 * match this wrapper property.
-	 */
-	public @Nullable WrapperEntry parseProperty(PropertyImpl property) {
-
-		PropertyValueImpl value = PropertyUtils.findPropertyValue(property);
-		if (!key().equals(property.getUnescapedKey()) || value == null
-				|| PropertyUtils.containsLineContinuation(value.getText())) {
-			return null;
-		}
-
-		String decoded = property.getUnescapedValue();
-		if (StringUtils.isEmpty(decoded)) {
-			return null;
-		}
-
-		URI uri;
-		try {
-			uri = URI.create(decoded);
-		} catch (IllegalArgumentException malformed) {
-			return null;
-		}
-
-		RemoteRepository repository;
-		if (TrustedProjects.isProjectTrusted(property.getProject())) {
-			RepositoryCredentials credentials = parseCredentials(uri);
-			repository = parseRemoteRepository(uri, credentials);
-		} else {
-			repository = RemoteRepository.mavenCentral();
-		}
-
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(decoded);
-		if (!matcher.find()) {
-			return null;
-		}
-
-		String pathVersion = matcher.group("version1");
-		String fileVersion = matcher.group("version2");
-		return new WrapperEntry(this, property, value, repository, pathVersion, fileVersion);
-	}
 
 	/**
 	 * Return the latest {@link ArtifactRelease}. Returns a default release if
@@ -274,62 +219,6 @@ enum WrapperProperty {
 				.orElseGet(() -> Release.from(defaultVersion, null));
 	}
 
-	RemoteRepository parseRemoteRepository(URI uri, @Nullable RepositoryCredentials credentials) {
-		URI repositoryBase = repositoryBaseUri(uri);
-		if (repositoryBase == null) {
-			return RemoteRepository.mavenCentral();
-		}
-		URI defaultMaven = URI.create(RemoteRepository.mavenCentral().url());
-		if (credentials == null && repositoryBase.normalize().equals(defaultMaven.normalize())) {
-			return RemoteRepository.mavenCentral();
-		}
-		return new RemoteRepository(MavenWrapperUtils.REPOSITORY_ID, repositoryBase.toASCIIString(), credentials);
-	}
 
-	private @Nullable URI repositoryBaseUri(URI uri) {
-
-		String rawPath = uri.getRawPath();
-		if (StringUtils.isEmpty(rawPath) || uri.getScheme() == null || uri.getRawAuthority() == null) {
-			return null;
-		}
-
-		String groupPath = "/" + canonicalGroupPath();
-		int from = 0;
-		while (from < rawPath.length()) {
-			int start = rawPath.indexOf(groupPath, from);
-			if (start < 0) {
-				return null;
-			}
-
-			int end = start + groupPath.length();
-			if (end == rawPath.length() || rawPath.charAt(end) == '/') {
-				try {
-					return new URI(uri.getScheme(), uri.getRawAuthority(), rawPath.substring(0, start + 1), null,
-							null);
-				} catch (URISyntaxException ex) {
-					return null;
-				}
-			}
-			from = end;
-		}
-
-		return null;
-	}
-
-	private @Nullable RepositoryCredentials parseCredentials(URI uri) {
-
-		String userInfo = uri.getUserInfo();
-		if (StringUtils.hasText(userInfo)) {
-			int colon = userInfo.indexOf(':');
-			if (colon >= 0) {
-				String user = URLDecoder.decode(userInfo.substring(0, colon), StandardCharsets.UTF_8);
-				String pass = URLDecoder.decode(userInfo.substring(colon + 1), StandardCharsets.UTF_8);
-				return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, pass, List.of(uri));
-			}
-			String user = URLDecoder.decode(userInfo, StandardCharsets.UTF_8);
-			return new RepositoryCredentials(MavenWrapperUtils.REPOSITORY_ID, user, "", List.of(uri));
-		}
-		return null;
-	}
 
 }

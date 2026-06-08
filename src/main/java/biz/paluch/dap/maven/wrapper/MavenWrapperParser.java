@@ -72,7 +72,7 @@ class MavenWrapperParser {
 		}
 
 		WrapperProperty wp = WrapperProperty.forKey(property.getUnescapedKey());
-		return wp != null ? wp.parseProperty(property) : null;
+		return wp != null ? WrapperPropertyParser.parseProperty(wp, property) : null;
 	}
 
 	/**
