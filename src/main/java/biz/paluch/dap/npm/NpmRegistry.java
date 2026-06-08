@@ -49,15 +49,15 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class NpmRegistryReleaseSource implements ReleaseSource {
+public class NpmRegistry implements ReleaseSource {
 
 	/**
 	 * Singleton release source bound to the public NPM registry.
 	 */
-	public static final NpmRegistryReleaseSource NPM_REGISTRY = new NpmRegistryReleaseSource(
+	public static final NpmRegistry NPM_REGISTRY = new NpmRegistry(
 			"https://registry.npmjs.org/");
 
-	private static final Logger LOG = Logger.getInstance(NpmRegistryReleaseSource.class);
+	private static final Logger LOG = Logger.getInstance(NpmRegistry.class);
 
 	private static final String ACCEPT_HEADER = "application/json";
 
@@ -67,7 +67,7 @@ public class NpmRegistryReleaseSource implements ReleaseSource {
 
 	private final String registryBaseUrl;
 
-	NpmRegistryReleaseSource(String registryBaseUrl) {
+	NpmRegistry(String registryBaseUrl) {
 		this.registryBaseUrl = registryBaseUrl.endsWith("/") ? registryBaseUrl : registryBaseUrl + "/";
 	}
 

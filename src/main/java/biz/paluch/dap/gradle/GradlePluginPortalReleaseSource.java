@@ -19,10 +19,10 @@ package biz.paluch.dap.gradle;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
@@ -45,7 +45,7 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 
 	private static final String PORTAL_URL = "https://plugins.gradle.org/m2/";
 
-	private static final RemoteRepositoryReleaseSource GRADLE_PLUGIN_PORTAL = new RemoteRepositoryReleaseSource(
+	private static final MavenRepository GRADLE_PLUGIN_PORTAL = new MavenRepository(
 			new RemoteRepository("gradle-plugin-portal", PORTAL_URL, null));
 
 	private GradlePluginPortalReleaseSource() {

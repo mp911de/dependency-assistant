@@ -19,7 +19,7 @@ package biz.paluch.dap.npm;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.github.GitReleaseSource;
+import biz.paluch.dap.github.GitHubReleaseSourceRouter;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
@@ -50,9 +50,9 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 		if (NpmUtils.GITHUB_AVAILABLE) {
-			return List.of(new GitReleaseSource(project, true), NpmRegistryReleaseSource.NPM_REGISTRY);
+			return List.of(new GitHubReleaseSourceRouter(project, true), NpmRegistry.NPM_REGISTRY);
 		}
-		return List.of(NpmRegistryReleaseSource.NPM_REGISTRY);
+		return List.of(NpmRegistry.NPM_REGISTRY);
 	}
 
 	/**

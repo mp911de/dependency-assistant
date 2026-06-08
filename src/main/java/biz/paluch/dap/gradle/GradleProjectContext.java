@@ -20,9 +20,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.application.ApplicationManager;
@@ -119,7 +119,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		for (RemoteRepository repository : repositories) {
-			sources.add(new RemoteRepositoryReleaseSource(repository));
+			sources.add(new MavenRepository(repository));
 		}
 
 		return sources;

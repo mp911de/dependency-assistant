@@ -23,7 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.gradle.GradleDistributionReleaseSource;
+import biz.paluch.dap.gradle.GradleDistributionService;
 import biz.paluch.dap.state.Cache;
 import com.intellij.lang.properties.IProperty;
 import org.jspecify.annotations.Nullable;
@@ -40,7 +40,7 @@ enum WrapperProperty {
 	 */
 	DISTRIBUTION("distributionUrl", "distributionSha256Sum", "9.5.1");
 
-	static final ArtifactId GRADLE_DISTRIBUTION = GradleDistributionReleaseSource.GRADLE_DISTRIBUTION;
+	static final ArtifactId GRADLE_DISTRIBUTION = GradleDistributionService.GRADLE_DISTRIBUTION;
 
 	private static final WrapperProperty[] VALUES = values();
 

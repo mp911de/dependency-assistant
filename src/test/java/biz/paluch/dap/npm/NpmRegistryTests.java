@@ -26,13 +26,13 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link NpmRegistryReleaseSource}.
+ * Unit tests for {@link NpmRegistry}.
  *
  * @author Mark Paluch
  */
-class NpmRegistryReleaseSourceTests {
+class NpmRegistryTests {
 
-	private static final NpmRegistryReleaseSource SOURCE = NpmRegistryReleaseSource.NPM_REGISTRY;
+	private static final NpmRegistry SOURCE = NpmRegistry.NPM_REGISTRY;
 
 	@Test
 	void parsesAxiosLikePayload() throws IOException {
@@ -114,8 +114,8 @@ class NpmRegistryReleaseSourceTests {
 
 	@Test
 	void encodesScopedPackageName() {
-		assertThat(NpmRegistryReleaseSource.encodePackageName("axios")).isEqualTo("axios");
-		assertThat(NpmRegistryReleaseSource.encodePackageName("@vitejs/plugin-vue"))
+		assertThat(NpmRegistry.encodePackageName("axios")).isEqualTo("axios");
+		assertThat(NpmRegistry.encodePackageName("@vitejs/plugin-vue"))
 				.isEqualTo("%40vitejs/plugin-vue");
 	}
 

@@ -30,7 +30,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.gradle.GradleDistributionReleaseSource;
+import biz.paluch.dap.gradle.GradleDistributionService;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -142,7 +142,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		Project project = anchor.getProject();
 		ProjectId projectId = GradleWrapperUtils.createProjectId(virtualFile);
 		return new GradleWrapperDependencyContext(project, virtualFile, projectId,
-				List.of(GradleDistributionReleaseSource.INSTANCE));
+				List.of(GradleDistributionService.INSTANCE));
 	}
 
 	public static class GradleWrapperDependencyContext extends AbstractProjectBuildContext

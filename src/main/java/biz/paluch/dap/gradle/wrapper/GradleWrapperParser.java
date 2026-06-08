@@ -23,7 +23,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.gradle.GradleDistributionReleaseSource;
+import biz.paluch.dap.gradle.GradleDistributionService;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
@@ -94,7 +94,7 @@ class GradleWrapperParser {
 			}
 		}
 
-		collector.addReleaseSource(GradleDistributionReleaseSource.INSTANCE);
+		collector.addReleaseSource(GradleDistributionService.INSTANCE);
 	}
 
 }

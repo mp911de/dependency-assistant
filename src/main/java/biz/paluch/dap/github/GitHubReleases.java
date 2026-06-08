@@ -74,9 +74,9 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see GitHubAccountResolver
  */
-public class GitHubReleaseSource implements ReleaseSource {
+public class GitHubReleases implements ReleaseSource {
 
-	private static final Logger LOG = Logger.getInstance(GitHubReleaseSource.class);
+	private static final Logger LOG = Logger.getInstance(GitHubReleases.class);
 
 	private static final int DEFAULT_TAGS_PAGE_SIZE = 100;
 
@@ -93,11 +93,11 @@ public class GitHubReleaseSource implements ReleaseSource {
 	 * {@link GithubServerPath#DEFAULT_SERVER}); must not be {@literal null}.
 	 * @param executor the API request executor; must not be {@literal null}.
 	 */
-	GitHubReleaseSource(GithubServerPath server, GithubApiRequestExecutor executor) {
+	GitHubReleases(GithubServerPath server, GithubApiRequestExecutor executor) {
 		this(server, new ExecutorBackedClient(executor), DEFAULT_TAGS_PAGE_SIZE);
 	}
 
-	GitHubReleaseSource(GithubServerPath server, GitHubApiClient client, int pageSize) {
+	GitHubReleases(GithubServerPath server, GitHubApiClient client, int pageSize) {
 		this.server = server;
 		this.client = client;
 		this.pageSize = pageSize;
@@ -105,7 +105,7 @@ public class GitHubReleaseSource implements ReleaseSource {
 
 	@Override
 	public boolean equals(Object o) {
-		if (!(o instanceof GitHubReleaseSource that)) {
+		if (!(o instanceof GitHubReleases that)) {
 			return false;
 		}
 		return Objects.equals(server, that.server);
@@ -119,14 +119,14 @@ public class GitHubReleaseSource implements ReleaseSource {
 	/**
 	 * Create a release source for the given project.
 	 */
-	public static GitHubReleaseSource from(Project project) {
+	public static GitHubReleases from(Project project) {
 		return from(project, "");
 	}
 
 	/**
 	 * Create a release source for the given project and git host.
 	 */
-	public static GitHubReleaseSource from(Project project, String gitHost) {
+	public static GitHubReleases from(Project project, String gitHost) {
 
 		GitHubAccountResolver resolver = new GitHubAccountResolver(project);
 		GitHubAccountResolver.ResolvedAccount resolved = StringUtils.hasText(gitHost) ? resolver.resolve(gitHost)
@@ -135,7 +135,7 @@ public class GitHubReleaseSource implements ReleaseSource {
 		GithubApiRequestExecutor executor = resolved.isAuthenticated()
 				? factory.create(resolved.server(), resolved.token())
 				: factory.create();
-		return new GitHubReleaseSource(resolved.server(), executor);
+		return new GitHubReleases(resolved.server(), executor);
 	}
 
 	@Override

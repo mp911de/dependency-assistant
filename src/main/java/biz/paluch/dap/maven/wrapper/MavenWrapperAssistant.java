@@ -31,6 +31,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.state.ProjectId;
@@ -164,7 +165,9 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 			for (WrapperEntry entry : MavenWrapperParser.parse(propertiesFile)) {
 				repositories.add(entry.repository());
 			}
-			return ReleaseSource.getReleaseSources(repositories);
+			return repositories.stream().map(MavenRepository::new)
+					.map(rs -> (ReleaseSource) rs)
+					.toList();
 		});
 	}
 

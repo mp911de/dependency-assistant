@@ -33,7 +33,7 @@ class WrapperPropertyUnitTests {
 	@Test
 	void parsesRepositoryCorrectly() {
 
-		RemoteRepository repository = WrapperProperty.DISTRIBUTION.parseRemoteRepository(
+		RemoteRepository repository = WrapperPropertyParser.parseRemoteRepository(WrapperProperty.DISTRIBUTION,
 				URI.create("https://foo.bar.baz/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip"), null);
 
 		assertThat(repository.url()).isEqualTo("https://foo.bar.baz/");
@@ -42,7 +42,7 @@ class WrapperPropertyUnitTests {
 	@Test
 	void parsesRepositoryWithPathCorrectly() {
 
-		RemoteRepository repository = WrapperProperty.DISTRIBUTION.parseRemoteRepository(
+		RemoteRepository repository = WrapperPropertyParser.parseRemoteRepository(WrapperProperty.DISTRIBUTION,
 				URI.create("https://foo.bar.baz/x/y/z/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip"),
 				null);
 
@@ -52,7 +52,7 @@ class WrapperPropertyUnitTests {
 	@Test
 	void parsesIncompleteRepositoryWithPathCorrectly() {
 
-		RemoteRepository repository = WrapperProperty.DISTRIBUTION.parseRemoteRepository(
+		RemoteRepository repository = WrapperPropertyParser.parseRemoteRepository(WrapperProperty.DISTRIBUTION,
 				URI.create("https://foo.bar.baz/x/y/z/org/apache/maven"),
 				null);
 
@@ -62,7 +62,7 @@ class WrapperPropertyUnitTests {
 	@Test
 	void defaultsToMavenCentral() {
 
-		RemoteRepository repository = WrapperProperty.DISTRIBUTION.parseRemoteRepository(
+		RemoteRepository repository = WrapperPropertyParser.parseRemoteRepository(WrapperProperty.DISTRIBUTION,
 				URI.create("https://foo.bar.baz/x/z/org/"),
 				null);
 

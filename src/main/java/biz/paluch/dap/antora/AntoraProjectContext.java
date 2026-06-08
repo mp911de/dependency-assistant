@@ -19,7 +19,7 @@ package biz.paluch.dap.antora;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.github.GitReleaseSource;
+import biz.paluch.dap.github.GitHubReleaseSourceRouter;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
@@ -33,7 +33,7 @@ import com.intellij.openapi.vfs.VirtualFile;
  * <p>
  * Each {@code antora-playbook.yml} file produces its own context so that
  * dependency state for independent playbooks remains isolated. Release lookup
- * uses a strict {@link GitReleaseSource} keyed on the host parsed from the
+ * uses a strict {@link GitHubReleaseSourceRouter} keyed on the host parsed from the
  * declared {@code ui.bundle.url}.
  *
  * @author Mark Paluch
@@ -71,7 +71,7 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 	 * @param project the IntelliJ project.
 	 */
 	static List<ReleaseSource> getReleaseSources(Project project) {
-		return List.of(new GitReleaseSource(project, true));
+		return List.of(new GitHubReleaseSourceRouter(project, true));
 	}
 
 }

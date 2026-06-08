@@ -42,7 +42,7 @@ import com.intellij.psi.PsiFile;
  * collectors per project, and finally lets the introspection update the cache.
  * Read-action wrapping, progress reporting, availability guards, and
  * cancellation are handled here so build-tool integrations contribute only the
- * source seam.
+ * source component.
  *
  * @author Mark Paluch
  * @see DependencyAssistant

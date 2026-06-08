@@ -43,22 +43,20 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.util.ObjectUtils;
-
 /**
  * Release source that fetches releases from a remote Maven repository.
  *
  * @author Mark Paluch
  */
-public class RemoteRepositoryReleaseSource implements ReleaseSource {
+public class MavenRepository implements ReleaseSource {
 
 	/**
 	 * Release source for Maven Central.
 	 */
-	public static final RemoteRepositoryReleaseSource MAVEN_CENTRAL = new RemoteRepositoryReleaseSource(
+	public static final MavenRepository MAVEN_CENTRAL = new MavenRepository(
 			RemoteRepository.mavenCentral());
 
-	private static final Logger LOG = Logger.getInstance(RemoteRepositoryReleaseSource.class);
+	private static final Logger LOG = Logger.getInstance(MavenRepository.class);
 
 	private static final Pattern DIRECTORY_LISTING_PATTERN = Pattern
 			.compile("<a (?>[^>]+)>([^/]+)/</a>(?>\\s*)(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2})(?>\\s*)(?>-)?");
@@ -77,7 +75,7 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 	/**
 	 * Create a release source backed by the given repository.
 	 */
-	public RemoteRepositoryReleaseSource(RemoteRepository repository) {
+	public MavenRepository(RemoteRepository repository) {
 		this.repository = repository;
 	}
 
@@ -227,19 +225,6 @@ public class RemoteRepositoryReleaseSource implements ReleaseSource {
 
 		String raw = credentials.username() + ":" + credentials.password();
 		return "Basic " + Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof RemoteRepositoryReleaseSource source)) {
-			return false;
-		}
-		return ObjectUtils.nullSafeEquals(repository, source.repository);
-	}
-
-	@Override
-	public int hashCode() {
-		return ObjectUtils.nullSafeHashCode(repository);
 	}
 
 }

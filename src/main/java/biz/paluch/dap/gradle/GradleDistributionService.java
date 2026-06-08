@@ -49,7 +49,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class GradleDistributionReleaseSource implements ReleaseSource {
+public class GradleDistributionService implements ReleaseSource {
 
 	/**
 	 * Synthetic artifact coordinate for the Gradle distribution.
@@ -59,9 +59,9 @@ public class GradleDistributionReleaseSource implements ReleaseSource {
 	/**
 	 * Shared Gradle distribution release source.
 	 */
-	public static final GradleDistributionReleaseSource INSTANCE = new GradleDistributionReleaseSource();
+	public static final GradleDistributionService INSTANCE = new GradleDistributionService();
 
-	private static final Logger LOG = Logger.getInstance(GradleDistributionReleaseSource.class);
+	private static final Logger LOG = Logger.getInstance(GradleDistributionService.class);
 
 	private static final URI VERSIONS_ALL = URI.create("https://services.gradle.org/versions/all");
 
@@ -73,11 +73,11 @@ public class GradleDistributionReleaseSource implements ReleaseSource {
 
 	private final VersionsFetcher fetcher;
 
-	private GradleDistributionReleaseSource() {
-		this(GradleDistributionReleaseSource::fetchUrl);
+	private GradleDistributionService() {
+		this(GradleDistributionService::fetchUrl);
 	}
 
-	public GradleDistributionReleaseSource(VersionsFetcher fetcher) {
+	public GradleDistributionService(VersionsFetcher fetcher) {
 		this.fetcher = fetcher;
 	}
 

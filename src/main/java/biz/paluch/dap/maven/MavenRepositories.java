@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
+import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.util.StringUtils;
@@ -112,7 +113,9 @@ class MavenRepositories {
 			remoteRepositories.addAll(getRemoteRepositories(settings, candidate, pomFile));
 		}
 
-		return ReleaseSource.getReleaseSources(remoteRepositories);
+		return remoteRepositories.stream().map(MavenRepository::new)
+				.map(it -> (ReleaseSource) it)
+				.toList();
 	}
 
 }

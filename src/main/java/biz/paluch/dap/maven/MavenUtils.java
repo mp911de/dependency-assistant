@@ -34,19 +34,6 @@ import org.jspecify.annotations.Nullable;
 class MavenUtils {
 
 	/**
-	 * Return whether the given file is a Maven POM by filename alone.
-	 * <p>This is a lightweight check suitable for action-visibility guards. It does
-	 * not inspect file content or PSI structure.
-	 *
-	 * @param file the file to test; can be {@literal null}.
-	 * @return {@literal true} if the filename is {@code pom.xml}; {@literal false}
-	 * otherwise.
-	 */
-	public static boolean isMavenPomFile(@Nullable VirtualFile file) {
-		return file != null && "pom.xml".equals(file.getName());
-	}
-
-	/**
 	 * Return whether the given file is a Maven POM by filename and type.
 	 * <p>This is a lightweight check suitable for action-visibility guards. It does
 	 * not inspect file content or PSI structure.

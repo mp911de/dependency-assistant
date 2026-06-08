@@ -47,7 +47,7 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 	 * @param projectId the project identity.
 	 * @param releaseSource the release source for this GitHub Actions file.
 	 */
-	GitHubProjectContext(ProjectId projectId, GitHubReleaseSource releaseSource) {
+	GitHubProjectContext(ProjectId projectId, GitHubReleases releaseSource) {
 		super(projectId, List.of(releaseSource));
 	}
 
@@ -74,9 +74,9 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 
 		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(project);
 		GitRepositoryMetadata gitRepository = repositoryResolver.resolveOwnerAndRepository(anchor);
-		GitHubReleaseSource releaseSource = gitRepository != null
-				? GitHubReleaseSource.from(project, gitRepository.host())
-				: GitHubReleaseSource.from(project);
+		GitHubReleases releaseSource = gitRepository != null
+				? GitHubReleases.from(project, gitRepository.host())
+				: GitHubReleases.from(project);
 
 		ProjectId projectId = gitRepository != null
 				? ProjectId.of(gitRepository.owner(), gitRepository.repository(), anchor.getPath())

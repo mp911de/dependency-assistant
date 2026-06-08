@@ -31,16 +31,16 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link GradleDistributionReleaseSource}.
+ * Unit tests for {@link GradleDistributionService}.
  *
  * @author Mark Paluch
  */
-class GradleDistributionReleaseSourceTests {
+class GradleDistributionServiceTests {
 
 	@Test
 	void returnsStableReleasesWithReleaseDateAndSha() {
 
-		GradleDistributionReleaseSource source = new GradleDistributionReleaseSource(uri -> """
+		GradleDistributionService source = new GradleDistributionService(uri -> """
 				[
 				  {
 				    "version": "8.14.3",
@@ -55,7 +55,7 @@ class GradleDistributionReleaseSourceTests {
 				]
 				""");
 
-		List<Release> releases = source.getReleases(GradleDistributionReleaseSource.GRADLE_DISTRIBUTION,
+		List<Release> releases = source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
 				new AbstractProgressIndicatorBase());
 
 		assertThat(releases).singleElement().satisfies(release -> {
@@ -67,7 +67,7 @@ class GradleDistributionReleaseSourceTests {
 	@Test
 	void dropsSnapshotNightlyBrokenRcAndMilestoneEntries() {
 
-		GradleDistributionReleaseSource source = new GradleDistributionReleaseSource(uri -> """
+		GradleDistributionService source = new GradleDistributionService(uri -> """
 				[
 				  { "version": "8.14.3", "checksum": "stable", "snapshot": false, "nightly": false, "broken": false },
 				  { "version": "8.15.0-20260201000000+0000", "snapshot": true },
@@ -78,7 +78,7 @@ class GradleDistributionReleaseSourceTests {
 				]
 				""");
 
-		List<Release> releases = source.getReleases(GradleDistributionReleaseSource.GRADLE_DISTRIBUTION,
+		List<Release> releases = source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
 				new AbstractProgressIndicatorBase());
 
 		assertThat(releases).extracting(release -> release.version().toString()).containsExactly("8.14.3");
@@ -87,7 +87,7 @@ class GradleDistributionReleaseSourceTests {
 	@Test
 	void returnsEmptyForNonGradleDistributionArtifact() {
 
-		GradleDistributionReleaseSource source = new GradleDistributionReleaseSource(uri -> {
+		GradleDistributionService source = new GradleDistributionService(uri -> {
 			throw new AssertionError("Should not fetch versions for non-Gradle artifacts");
 		});
 
@@ -100,23 +100,23 @@ class GradleDistributionReleaseSourceTests {
 	@Test
 	void honorsCancellationBeforeFetching() {
 
-		GradleDistributionReleaseSource source = new GradleDistributionReleaseSource(uri -> {
+		GradleDistributionService source = new GradleDistributionService(uri -> {
 			throw new AssertionError("Should not fetch after cancellation");
 		});
 		assertThatExceptionOfType(ProcessCanceledException.class)
-				.isThrownBy(() -> source.getReleases(GradleDistributionReleaseSource.GRADLE_DISTRIBUTION,
+				.isThrownBy(() -> source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
 						new CancelingProgressIndicator()));
 	}
 
 	@Test
 	void fetchesGradleVersionsAllEndpoint() {
 
-		GradleDistributionReleaseSource source = new GradleDistributionReleaseSource(uri -> {
+		GradleDistributionService source = new GradleDistributionService(uri -> {
 			assertThat(uri).isEqualTo(URI.create("https://services.gradle.org/versions/all"));
 			return "[]";
 		});
 
-		assertThat(source.getReleases(GradleDistributionReleaseSource.GRADLE_DISTRIBUTION,
+		assertThat(source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
 				new AbstractProgressIndicatorBase())).isEmpty();
 	}
 

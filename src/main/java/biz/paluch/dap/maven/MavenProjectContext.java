@@ -17,12 +17,11 @@
 package biz.paluch.dap.maven;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
+import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.util.StringUtils;
@@ -154,10 +153,12 @@ interface MavenProjectContext extends ProjectBuildContext {
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
 
-			Map<String, RepositoryCredentials> credentials = SettingsXmlCredentialsLoader.load(project);
-			Set<RemoteRepository> remoteRepositories = MavenRepositories.getRemoteRepositories(credentials,
+			MavenSettings settings = SettingsXmlLoader.load(project);
+			Set<RemoteRepository> remoteRepositories = MavenRepositories.getRemoteRepositories(settings,
 					mavenProject, psiManager.findFile(mavenProject.getFile()));
-			return ReleaseSource.getReleaseSources(remoteRepositories);
+			return remoteRepositories.stream().map(MavenRepository::new)
+					.map(it -> (ReleaseSource) it)
+					.toList();
 		}
 
 		@Override

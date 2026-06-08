@@ -62,7 +62,7 @@ class GitHubFixtures {
 
 		StateService service = StateService.getInstance(file.getProject());
 
-		GitHubReleaseSource releaseSource = new GitHubReleaseSource(
+		GitHubReleases releaseSource = new GitHubReleases(
 				GithubServerPath.DEFAULT_SERVER, new EmptyApiClient(), 100);
 		DependencyCollector collector = new GitHubDependencyCollector(file.getProject()).collect(file);
 
@@ -89,11 +89,11 @@ class GitHubFixtures {
 	}
 
 	/**
-	 * Test seam {@link GitHubReleaseSource.GitHubApiClient} that never makes a
+	 * Test component {@link GitHubReleases.GitHubApiClient} that never makes a
 	 * network call: the fixture cache is pre-populated, so any release-source
 	 * lookup at test time yields an empty list.
 	 */
-	static class EmptyApiClient implements GitHubReleaseSource.GitHubApiClient {
+	static class EmptyApiClient implements GitHubReleases.GitHubApiClient {
 
 		@Override
 		public <T> List<T> loadAll(ProgressIndicator indicator, GithubApiPagesLoader.Request<T> request) {

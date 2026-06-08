@@ -23,8 +23,8 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.artifact.RemoteRepositoryReleaseSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.Properties;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -103,7 +103,7 @@ class MavenWrapperParser {
 			repositories.add(entry.repository());
 		}
 
-		repositories.forEach(it -> collector.addReleaseSource(new RemoteRepositoryReleaseSource(it)));
+		repositories.forEach(it -> collector.addReleaseSource(new MavenRepository(it)));
 	}
 
 }

@@ -22,7 +22,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.gradle.GradleDistributionReleaseSource;
+import biz.paluch.dap.gradle.GradleDistributionService;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ class GradleWrapperParserTests {
 				.hasDependencyUsage("org.gradle", "gradle")
 				.hasVersion("8.14.3")
 				.hasDeclaration(DeclarationSource.dependency());
-		assertThat(collector.getReleaseSources()).contains(GradleDistributionReleaseSource.INSTANCE);
+		assertThat(collector.getReleaseSources()).contains(GradleDistributionService.INSTANCE);
 	}
 
 	@Test

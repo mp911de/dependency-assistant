@@ -19,7 +19,7 @@ package biz.paluch.dap.support;
 import com.intellij.psi.PsiElement;
 
 /**
- * Build-tool-specific seam that parses the element under the caret and resolves
+ * Build-tool-specific component that parses the element under the caret and resolves
  * its current version into an {@link ArtifactReference}.
  *
  * <p>Each build ecosystem (Maven, Gradle, GitHub Actions, NPM, Antora, and the
@@ -37,7 +37,7 @@ import com.intellij.psi.PsiElement;
  * unresolved property or catalog indirection rather than throwing.
  *
  * <p>Not to be confused with the Gradle-internal {@code VersionSiteLocator},
- * which locates a {@code GradleVersionSite}; this seam resolves a fully formed
+ * which locates a {@code GradleVersionSite}; this component resolves a fully formed
  * {@link ArtifactReference} across all ecosystems.
  *
  * @author Mark Paluch

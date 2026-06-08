@@ -34,11 +34,11 @@ import org.jetbrains.plugins.github.api.GithubServerPath;
  * from Git repositories.
  *
  * <p>
- * This type sits one level above {@link GitHubReleaseSource}. It accepts the
+ * This type sits one level above {@link GitHubReleases}. It accepts the
  * common {@link ArtifactId} contract used by dependency collectors and routes
  * Git-backed artifacts to a host-specific GitHub release source. The actual API
  * access, authentication, and release/tag aggregation remain the responsibility
- * of {@link GitHubReleaseSource}.
+ * of {@link GitHubReleases}.
  *
  * <p>
  * {@link GitArtifactId} carries the split between the dependency identity
@@ -49,7 +49,7 @@ import org.jetbrains.plugins.github.api.GithubServerPath;
  * application for caching, display, and update grouping.
  *
  * <p>
- * The {@link #GitReleaseSource(Project, boolean) strict mode} controls how
+ * The {@link #GitHubReleaseSourceRouter(Project, boolean) strict mode} controls how
  * broad this source participates in release resolution. Strict mode is intended
  * for ecosystems that mix registry and Git-backed dependencies, where only
  * explicit {@link GitArtifactId} instances should be resolved through GitHub.
@@ -59,15 +59,15 @@ import org.jetbrains.plugins.github.api.GithubServerPath;
  *
  * @author Mark Paluch
  * @see GitArtifactId
- * @see GitHubReleaseSource
+ * @see GitHubReleases
  */
-public class GitReleaseSource implements ReleaseSource {
+public class GitHubReleaseSourceRouter implements ReleaseSource {
 
 	private final Project project;
 
 	private final boolean strict;
 
-	private final Map<String, GitHubReleaseSource> releaseSources = new ConcurrentHashMap<>();
+	private final Map<String, GitHubReleases> releaseSources = new ConcurrentHashMap<>();
 
 	/**
 	 * Create a routing release source for Git-backed dependency lookups.
@@ -80,14 +80,14 @@ public class GitReleaseSource implements ReleaseSource {
 	 * instead of being interpreted as repositories on
 	 * {@link GithubServerPath#DEFAULT_HOST}.
 	 */
-	public GitReleaseSource(Project project, boolean strict) {
+	public GitHubReleaseSourceRouter(Project project, boolean strict) {
 		this.project = project;
 		this.strict = strict;
 	}
 
 	@Override
 	public boolean equals(Object o) {
-		if (!(o instanceof GitReleaseSource that)) {
+		if (!(o instanceof GitHubReleaseSourceRouter that)) {
 			return false;
 		}
 		return strict == that.strict && Objects.equals(project, that.project);
@@ -117,14 +117,14 @@ public class GitReleaseSource implements ReleaseSource {
 		if (artifactId instanceof GitArtifactId gitArtifactId) {
 			id = gitArtifactId.releaseSource();
 			releaseSource = releaseSources.computeIfAbsent(gitArtifactId.host(),
-					host -> GitHubReleaseSource.from(project, host));
+					host -> GitHubReleases.from(project, host));
 		} else {
 			if (strict) {
 				return List.of();
 			}
 
 			releaseSource = releaseSources.computeIfAbsent(GithubServerPath.DEFAULT_HOST,
-					host -> GitHubReleaseSource.from(project, host));
+					host -> GitHubReleases.from(project, host));
 		}
 
 		return releaseSource.getReleases(id, indicator);
