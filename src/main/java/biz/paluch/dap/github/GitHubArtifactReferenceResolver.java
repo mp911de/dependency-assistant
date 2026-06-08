@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
  * parsing the scalar text and resolving the ref through
  * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}. The canonical
- * chain consults project state, the shared release cache, and a raw
+ * chain consults the shared release cache, then a raw
  * {@link ArtifactVersion#from(String)} parse, in that order. Remote API access
  * is never triggered.
  *

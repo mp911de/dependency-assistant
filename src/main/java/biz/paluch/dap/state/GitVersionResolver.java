@@ -37,9 +37,8 @@ import org.jspecify.annotations.Nullable;
  * using the canonical resolution order.
  *
  * <p>The {@link #resolveCurrent(ArtifactId, String) instance method} applies
- * the canonical chain: <strong>Project State</strong> current version, then
- * cached <strong>Releases</strong> matched by SHA or tag prefix (via the
- * existing cache-only resolver), then a best-effort
+ * the canonical chain: cached <strong>Releases</strong> matched by SHA or tag
+ * prefix (via the existing cache-only resolver), then a best-effort
  * {@link ArtifactVersion#from(String)} parse of the raw ref.
  *
  * <p>The static {@link #resolveVersion(String, List)} entry point preserves the
@@ -55,9 +54,7 @@ public class GitVersionResolver {
 	private final @Nullable ProjectState projectState;
 
 	/**
-	 * Create a resolver using the {@link Cache} without project state.
-	 * <p>The Project-State branch of {@link #resolveCurrent(ArtifactId, String)} is
-	 * skipped when no project state is available.
+	 * Create a resolver using the {@link Cache}.
 	 * @param cache the shared release cache.
 	 */
 	public GitVersionResolver(Cache cache) {
@@ -67,8 +64,9 @@ public class GitVersionResolver {
 	/**
 	 * Create a resolver using the {@link Cache} and project state.
 	 * @param cache the shared release cache.
-	 * @param projectState the project state to consult first, or {@literal null} to
-	 * skip the project-state branch.
+	 * @param projectState the project state carried for callers that share this
+	 * resolver, or {@literal null}; {@link #resolveCurrent(ArtifactId, String)}
+	 * resolves from the cache and raw ref only.
 	 */
 	public GitVersionResolver(Cache cache, @Nullable ProjectState projectState) {
 		this.cache = cache;
@@ -100,11 +98,7 @@ public class GitVersionResolver {
 	 * and raw ref using the canonical chain.
 	 * <p>Resolution order:
 	 * <ol>
-	 * <li>If project state holds a dependency for {@code artifactId} with a
-	 * non-{@literal null} current version, return that version.</li>
-	 * <li>Otherwise consult the cached releases via
-	 * {@link #resolveVersion(String, List)} and return the matched
-	 * {@link GitVersion}.</li>
+	 * <li>Cached releases.
 	 * <li>Otherwise return {@link ArtifactVersion#from(String)} of the raw
 	 * ref.</li>
 	 * </ol>
@@ -123,17 +117,6 @@ public class GitVersionResolver {
 		}
 
 		return ArtifactVersion.from(rawRef);
-	}
-
-	public static @Nullable ArtifactVersion resolveVersion(VersionSource versionSource,
-			List<Release> releases) {
-
-		String source = versionSource.toString();
-		if (!StringUtils.hasText(source)) {
-			return null;
-		}
-
-		return resolveVersion(source, releases);
 	}
 
 	/**

@@ -18,7 +18,6 @@ package biz.paluch.dap.github;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -28,6 +27,8 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubServerPath;
+
+import org.springframework.util.ObjectUtils;
 
 /**
  * {@link ReleaseSource} facade for dependencies whose versions are discovered
@@ -75,27 +76,15 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	 * The supplied project is used by host-specific delegates to resolve GitHub
 	 * accounts and authentication. Delegates are created lazily and cached per
 	 * host.
+	 *
 	 * @param project IntelliJ project used for GitHub account resolution.
-	 * @param strict whether plain {@link ArtifactId} values should be ignored
-	 * instead of being interpreted as repositories on
-	 * {@link GithubServerPath#DEFAULT_HOST}.
+	 * @param strict  whether plain {@link ArtifactId} values should be ignored
+	 *                instead of being interpreted as repositories on
+	 *                {@link GithubServerPath#DEFAULT_HOST}.
 	 */
 	public GitHubReleaseSourceRouter(Project project, boolean strict) {
 		this.project = project;
 		this.strict = strict;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof GitHubReleaseSourceRouter that)) {
-			return false;
-		}
-		return strict == that.strict && Objects.equals(project, that.project);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(project, strict);
 	}
 
 	/**
@@ -106,6 +95,7 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	 * {@link ArtifactId} values are treated as owner/repository coordinates on the
 	 * default GitHub host. In strict mode they are outside this source's domain and
 	 * therefore yield no releases.
+	 *
 	 * @param artifactId dependency identity or Git-backed repository identity.
 	 * @return releases obtained from the selected GitHub release source.
 	 */
@@ -118,7 +108,8 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 			id = gitArtifactId.releaseSource();
 			releaseSource = releaseSources.computeIfAbsent(gitArtifactId.host(),
 					host -> GitHubReleases.from(project, host));
-		} else {
+		}
+		else {
 			if (strict) {
 				return List.of();
 			}
@@ -130,4 +121,22 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 		return releaseSource.getReleases(id, indicator);
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof GitHubReleaseSourceRouter that)) {
+			return false;
+		}
+		if (strict != that.strict) {
+			return false;
+		}
+		if (!ObjectUtils.nullSafeEquals(project, that.project)) {
+			return false;
+		}
+		return ObjectUtils.nullSafeEquals(releaseSources, that.releaseSources);
+	}
+
+	@Override
+	public int hashCode() {
+		return ObjectUtils.nullSafeHash(project, strict, releaseSources);
+	}
 }

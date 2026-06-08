@@ -36,9 +36,9 @@ import org.jspecify.annotations.Nullable;
  * <p>Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
  * an {@link ArtifactReference}. The declared version is resolved through the
  * canonical chain of
- * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}: project state,
- * shared release cache, and raw {@link ArtifactVersion#from(String)} parse.
- * Remote API access is never triggered.
+ * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}: the shared
+ * release cache, then a raw {@link ArtifactVersion#from(String)} parse. Remote
+ * API access is never triggered.
  *
  * @author Mark Paluch
  */
