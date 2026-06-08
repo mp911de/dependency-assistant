@@ -54,8 +54,6 @@ intellijPlatform {
 		}
 
 		name = "Dependency Assistant"
-		description =
-			"Provides assisted upgrading of Maven dependencies and plugins in a Maven project."
 
 		changeNotes = """
             Initial version

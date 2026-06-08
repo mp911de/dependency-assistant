@@ -80,7 +80,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 			return none();
 		}
 
-		Set<ArtifactVersion> versions = new TreeSet<>();
+		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
 		Set<VersionDrift> entries = new TreeSet<>();
 		for (DeclarationSite site : declarationSites) {
 			if (site.dependency() instanceof Dependency dependency) {

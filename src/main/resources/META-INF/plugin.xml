@@ -82,6 +82,13 @@
 				implementation="biz.paluch.dap.assistant.DependencyUpgradeLinkHandler"/>
 		<annotator language="Properties"
 		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
+		<localInspection id="dap.version-drift"
+				bundle="messages.MessageBundle"
+				groupKey="plugin.name"
+				key="inspection.version-drift.display-name"
+				level="WARNING"
+				enabledByDefault="true"
+				implementationClass="biz.paluch.dap.assistant.DependencyVersionDriftInspection"/>
 		<intentionAction id="dap.upgrade.dependencies">
 			<language/>
 			<skipBeforeAfter>true</skipBeforeAfter>

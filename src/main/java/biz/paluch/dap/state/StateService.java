@@ -17,10 +17,13 @@
 package biz.paluch.dap.state;
 
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import com.intellij.openapi.components.PersistentStateComponent;
@@ -118,6 +121,27 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 	 */
 	public ProjectState getProjectState(ProjectId identity) {
 		return new DefaultProjectState(identity);
+	}
+
+	/**
+	 * Return the distinct versions the given artifact is declared at across every
+	 * module currently held in runtime dependency state.
+	 *
+	 * @param artifactId the artifact coordinates to look up; must not be
+	 *                   {@literal null}.
+	 * @return the distinct declared versions; empty when no module declares the
+	 * artifact.
+	 */
+	public Set<ArtifactVersion> getDeclaredVersions(ArtifactId artifactId) {
+
+		Set<ArtifactVersion> versions = new TreeSet<>();
+		for (DependencyCollector collector : dependencies.values()) {
+			Dependency dependency = collector.getUsage(artifactId);
+			if (dependency != null) {
+				versions.add(dependency.getCurrentVersion());
+			}
+		}
+		return versions;
 	}
 
 	/**
