@@ -230,7 +230,7 @@ class NpmVersionExpressionUnitTests {
 	@Test
 	void gitReplaceableRangeMatchesCommittish() {
 
-		NpmGitRef ref = new NpmGitRef("git+ssh://git@github.com:npm/cli.git#",
+		NpmVersionExpression.NpmGitRef ref = new NpmVersionExpression.NpmGitRef("git+ssh://git@github.com:npm/cli.git#",
 				new GitRepositoryMetadata("github.com", "npm", "cli"), new Exact("", "v1.0.27"));
 		NpmVersionExpression.Git git = new NpmVersionExpression.Git(ref);
 
@@ -243,7 +243,7 @@ class NpmVersionExpressionUnitTests {
 	@Test
 	void gitWithoutCommittishIsNotUpdatable() {
 
-		NpmGitRef ref = new NpmGitRef("", new GitRepositoryMetadata("github.com", "npm", "cli"), new Exact("", ""));
+		NpmVersionExpression.NpmGitRef ref = new NpmVersionExpression.NpmGitRef("", new GitRepositoryMetadata("github.com", "npm", "cli"), new Exact("", ""));
 		NpmVersionExpression.Git git = new NpmVersionExpression.Git(ref);
 
 		assertThat(git.isUpdatable()).isFalse();
@@ -252,7 +252,7 @@ class NpmVersionExpressionUnitTests {
 	@Test
 	void gitReplaceableRangeAccountsForSemverPrefix() {
 
-		NpmGitRef ref = new NpmGitRef("git+https://github.com/owner/repo.git#semver:",
+		NpmVersionExpression.NpmGitRef ref = new NpmVersionExpression.NpmGitRef("git+https://github.com/owner/repo.git#semver:",
 				new GitRepositoryMetadata("github.com", "owner", "repo"), new Exact("^", "5.0"));
 		NpmVersionExpression.Git git = new NpmVersionExpression.Git(ref);
 		String raw = "git+https://github.com/owner/repo.git#semver:^5.0";

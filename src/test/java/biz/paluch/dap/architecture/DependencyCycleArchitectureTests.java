@@ -44,9 +44,6 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 class DependencyCycleArchitectureTests {
 
 	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
-			.excludingClass("biz.paluch.dap.maven.wrapper.WrapperEntry", "closed hierarchy")
-			.excludingClass("biz.paluch.dap.npm.NpmGitRef",
-					"Fix todo's")
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
 					"Fix todo's")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
