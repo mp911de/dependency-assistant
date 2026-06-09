@@ -18,6 +18,7 @@ package biz.paluch.dap;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -42,6 +43,14 @@ public interface InterfaceAssistant {
 	 * @param file the file to get the display name for.
 	 */
 	String getDisplayName(VirtualFile file);
+
+	/**
+	 * Return the humane-readable name for an {@link ArtifactId}.
+	 * @param artifactId the artifact Id to render.
+	 */
+	default String getDisplayName(ArtifactId artifactId){
+		return artifactId.toString();
+	}
 
 	/**
 	 * Return the gutter action icon to use for the given declaration.

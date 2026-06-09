@@ -163,7 +163,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		Optional<DependencyRule> dependencyRule = artifacts().stream()
 				.filter(it -> it.pattern().test(artifactId))
 				.max(ArtifactRule::compareTo)
-				.<DependencyRule>map(it -> new ResolvedDependencyRule(it.generation(), this::supports));
+				.<DependencyRule>map(it -> new ResolvedDependencyRule(it.generation(), it.name(), this::supports));
 
 		return dependencyRule.orElseGet(() -> {
 
@@ -178,18 +178,23 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	class FallbackDependencyRule implements DependencyRule {
 
 		@Override
+		public boolean isPresent() {
+			return true;
+		}
+
+		@Override
 		public String getGeneration() {
+			return "";
+		}
+
+		@Override
+		public String getDependencyName() {
 			return "";
 		}
 
 		@Override
 		public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
 			return BranchRule.this.supports(upgradeStrategy);
-		}
-
-		@Override
-		public boolean isDefined() {
-			return true;
 		}
 
 		@Override

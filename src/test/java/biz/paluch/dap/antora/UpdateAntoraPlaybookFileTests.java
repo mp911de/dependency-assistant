@@ -136,12 +136,11 @@ class UpdateAntoraPlaybookFileTests {
 
 		ArtifactId id = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
 
-		Dependency dep = new Dependency(id, targetVersion);
-		dep.addDeclarationSource(DeclarationSource.dependency());
-		dep.addVersionSource(VersionSource.declared("v0.4.25"));
+		Dependency dependency = new Dependency(id, targetVersion);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.declared("v0.4.25"));
 
-		DependencyUpdate update = new DependencyUpdate(id, targetVersion, dep.getDeclarationSources(),
-				dep.getVersionSources());
+		DependencyUpdate update = DependencyUpdate.from(dependency, targetVersion);
 
 		UpdateAntoraPlaybookFile updater = new UpdateAntoraPlaybookFile(file.getProject());
 

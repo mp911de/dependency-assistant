@@ -177,13 +177,11 @@ class UpdateGitHubWorkflowFileTests {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 
-		Dependency dep = new Dependency(id, targetVersion);
-		dep.addDeclarationSource(DeclarationSource.dependency());
-		dep.addVersionSource(VersionSource.declared(fromRef));
+		Dependency dependency = new Dependency(id, targetVersion);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.declared(fromRef));
 
-		DependencyUpdate update = new DependencyUpdate(id, targetVersion, dep.getDeclarationSources(),
-				dep.getVersionSources());
-
+		DependencyUpdate update = DependencyUpdate.from(dependency, targetVersion);
 		UpdateGitHubWorkflowFile updater = new UpdateGitHubWorkflowFile(file.getProject());
 
 		new BuildActionDelegate(file.getProject(), updater::applyUpdates)

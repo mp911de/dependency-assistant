@@ -41,12 +41,17 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 		}
 
 		@Override
+		public String getDependencyName() {
+			return "";
+		}
+
+		@Override
 		public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
 			return true;
 		}
 
 		@Override
-		public boolean isDefined() {
+		public boolean isPresent() {
 			return false;
 		}
 	};
@@ -59,16 +64,24 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 	}
 
 	/**
+	 * If a rule is defined and present, returns {@code true}, otherwise {@code false}.
+	 */
+	boolean isPresent();
+
+	/**
 	 * Return the required generation.
 	 */
 	String getGeneration();
+
+	/**
+	 * Return the dependency name.
+	 */
+	String getDependencyName();
 
 	/**
 	 * Return whether the given upgrade strategy is enabled.
 	 * @param upgradeStrategy the upgrade strategy.
 	 */
 	boolean isEnabled(UpgradeStrategy upgradeStrategy);
-
-	boolean isDefined();
 
 }

@@ -18,6 +18,7 @@ package biz.paluch.dap.assistant;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -45,6 +46,8 @@ public class Notifications {
 	private static final String STICKY_NOTIFICATION = "biz.paluch.dependency-assistant.releases-sticky";
 
 	private static final String ERROR_NOTIFICATION = "biz.paluch.dependency-assistant.errors";
+
+	private static final String UPGRADE_NOTIFICATIONS = "biz.paluch.dependency-assistant.upgrades";
 
 	/**
 	 * Notify the user about an error.
@@ -123,6 +126,43 @@ public class Notifications {
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
 						notification::expire))
 				.notify(project);
+	}
+
+	/**
+	 * Notify that a dependency upgrade has been applied.
+	 */
+	static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates) {
+
+		if (updates.isEmpty()) {
+			return;
+		}
+
+		StringBuilder message = new StringBuilder();
+		message.append(MessageBundle.message("notification.dependencies-updates.description", updates.size()));
+
+		message.append("<ul>");
+		for (AppliedDependencyUpdate update : updates) {
+			message.append("<li>");
+			if (update.to().isNewer(update.from())) {
+				message.append(MessageBundle.message("notification.dependencies-updates.upgrade",
+						update.getDependencyName(), update.to()));
+			}
+			else if (update.from().isNewer(update.to())) {
+				message.append(MessageBundle.message("notification.dependencies-updates.downgrade",
+						update.getDependencyName(), update.to()));
+			}
+			else {
+				message.append(MessageBundle.message("notification.dependencies-updates.update",
+						update.getDependencyName(), update.to()));
+			}
+			message.append("</li>");
+		}
+		message.append("</ul>");
+
+		Notification notification = new Notification(
+				UPGRADE_NOTIFICATIONS, MessageBundle.message("notification.dependencies-updates"), message.toString(), NotificationType.INFORMATION);
+
+		notification.notify(project);
 	}
 
 	/**

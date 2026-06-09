@@ -24,6 +24,8 @@ import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -356,8 +358,31 @@ public class DependencyCheckDialog extends DialogWrapper {
 	private DependencyUpdate toDependencyUpdate(UpdateCandidate candidate) {
 
 		DependencyUpdateCandidate option = candidate.option();
-		return new DependencyUpdate(candidate.getArtifactId(), review.getRequiredUpdateTo(candidate),
-				option.getDependency().getDeclarationSources(), option.getDependency().getVersionSources());
+
+		record FriendlyArtifactId(ArtifactId id,
+		                          String friendlyName) implements ArtifactId {
+
+			@Override
+			public String groupId() {
+				return id.groupId();
+			}
+
+			@Override
+			public String artifactId() {
+				return id.artifactId();
+			}
+
+			@Override
+			public String toString() {
+				return friendlyName;
+			}
+
+		}
+
+		FriendlyArtifactId artifactId = new FriendlyArtifactId(option.getArtifactId(),
+				candidate.getDependencyName());
+		return DependencyUpdate.from(artifactId, option
+				.getDependency(), review.getRequiredUpdateTo(candidate));
 	}
 
 	private void setBusy(boolean busy) {
@@ -370,6 +395,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	private void applyUpdates(List<DependencyUpdate> updates, List<DependencyAssistant> assistants,
 			ProgressIndicator indicator) {
 
+		Set<AppliedDependencyUpdate> applied = new TreeSet<>();
 		new BuildActionDelegate(project, (file, fileUpdates) -> {
 
 			indicator.setText2(file.getName());
@@ -381,9 +407,15 @@ public class DependencyCheckDialog extends DialogWrapper {
 				ProjectDependencyContext context = dependencyAssistant.createContext(file);
 				if (context.isAvailable()) {
 					context.applyUpdates(file, fileUpdates);
+
+					for (DependencyUpdate fileUpdate : fileUpdates) {
+						applied.add(new AppliedDependencyUpdate(fileUpdate.coordinate(), fileUpdate.from(), fileUpdate.version()));
+					}
 				}
 			}
 		}).updateBuildFiles(files, updates);
+
+		Notifications.updatesApplied(project, applied);
 	}
 
 	class ApplyUpdatesTask extends Task.Backgroundable {

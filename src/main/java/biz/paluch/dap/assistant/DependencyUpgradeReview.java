@@ -62,7 +62,7 @@ class DependencyUpgradeReview {
 
 		boolean hasRule = false;
 		for (UpdateCandidate candidate : candidates) {
-			if (candidate.rule().isDefined()) {
+			if (candidate.rule().isPresent()) {
 				hasRule = true;
 			}
 			selections.put(candidate, new UpgradeSelection(candidate.currentVersion()));

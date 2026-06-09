@@ -168,7 +168,7 @@ class UpdatePackageJsonFileTests {
 
 	private void applyUpdate(PsiFile file, ArtifactId id, ArtifactVersion targetVersion) {
 
-		DependencyUpdate update = new DependencyUpdate(id, targetVersion,
+		DependencyUpdate update = new DependencyUpdate(id, targetVersion, targetVersion,
 				List.of(DeclarationSource.dependency()),
 				List.of(VersionSource.declared(targetVersion.toString())));
 

@@ -99,7 +99,7 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 			}
 		}
 
-		if (rule.isDefined() && !rule.test(release.getVersion())) {
+		if (rule.isPresent() && !rule.test(release.getVersion())) {
 			presentation.setIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
 			presentation.setStrikeout(true);
 		}

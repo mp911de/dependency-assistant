@@ -65,12 +65,11 @@ class UpdateExtensionsFileTests {
 		ArtifactVersion current = ArtifactVersion.of(fromVersion);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
 
-		Dependency dep = new Dependency(id, current);
-		dep.addDeclarationSource(DeclarationSource.dependency());
-		dep.addVersionSource(VersionSource.declared(fromVersion));
+		Dependency dependency = new Dependency(id, current);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.declared(fromVersion));
 
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
-				dep.getVersionSources());
+		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
 		new BuildActionDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdateExtensionsFile().applyUpdates(targetFile, updates))

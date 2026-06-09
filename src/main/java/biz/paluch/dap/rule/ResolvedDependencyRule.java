@@ -25,16 +25,19 @@ class ResolvedDependencyRule implements DependencyRule {
 
 	private final Generation generation;
 
+	private final String dependencyName;
+
 	private final Predicate<UpgradeStrategy> upgradeStrategies;
 
-	ResolvedDependencyRule(Generation generation, Predicate<UpgradeStrategy> upgradeStrategies) {
+	ResolvedDependencyRule(Generation generation, String dependencyName, Predicate<UpgradeStrategy> upgradeStrategies) {
 		this.generation = generation;
+		this.dependencyName = dependencyName;
 		this.upgradeStrategies = upgradeStrategies;
 	}
 
 	@Override
-	public boolean test(ArtifactVersion version) {
-		return this.generation.asVersionPredicate().test(version);
+	public boolean isPresent() {
+		return true;
 	}
 
 	@Override
@@ -43,17 +46,23 @@ class ResolvedDependencyRule implements DependencyRule {
 	}
 
 	@Override
+	public String getDependencyName() {
+		return dependencyName;
+	}
+
+	@Override
 	public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
 		return this.upgradeStrategies.test(upgradeStrategy);
 	}
 
 	@Override
-	public boolean isDefined() {
-		return true;
+	public boolean test(ArtifactVersion version) {
+		return this.generation.asVersionPredicate().test(version);
 	}
 
 	@Override
 	public String toString() {
 		return generation.toString();
 	}
+
 }

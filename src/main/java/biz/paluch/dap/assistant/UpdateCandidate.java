@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.util.StringUtils;
 
 /**
  * User-interface update candidate enriched with assistant context and version-drift
@@ -58,7 +59,7 @@ class UpdateCandidate implements HasArtifactId {
 		this.declaredVersions = declaredVersions;
 		this.rule = rule;
 
-		if (rule.isDefined()) {
+		if (rule.isPresent()) {
 			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
 				if (!rule.isEnabled(strategy)) {
 					option.getTargets().remove(strategy);
@@ -138,6 +139,14 @@ class UpdateCandidate implements HasArtifactId {
 
 	public EvaluatedDependencyRule ruleResult() {
 		return ruleResult;
+	}
+
+	public String getDependencyName() {
+		String name = rule().getDependencyName();
+		if (StringUtils.isEmpty(name)) {
+			name = interfaceAssistant.getDisplayName(getArtifactId());
+		}
+		return name;
 	}
 
 	@Override

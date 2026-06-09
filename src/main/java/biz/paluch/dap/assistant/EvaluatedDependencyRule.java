@@ -89,7 +89,7 @@ class EvaluatedDependencyRule {
 		this.artifactId = artifactId;
 		this.renderedVersion = renderedVersion;
 
-		if (rule.isDefined()) {
+		if (rule.isPresent()) {
 			this.result = rule.test(version) ? EvaluationState.PASSED : EvaluationState.NOT_PASSED;
 		}
 		else {

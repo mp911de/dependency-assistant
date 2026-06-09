@@ -88,8 +88,8 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			return null;
 		}
 
-		String tooltip = rule.isDefined() ? suggestion.getSuggestionMessage() : suggestion.getMessage();
-		String accessibleName = rule.isDefined() ? MessageBundle.message("gutter.suggestion.accessible") : MessageBundle.message("gutter.newer.accessible");
+		String tooltip = rule.isPresent() ? suggestion.getSuggestionMessage() : suggestion.getMessage();
+		String accessibleName = rule.isPresent() ? MessageBundle.message("gutter.suggestion.accessible") : MessageBundle.message("gutter.newer.accessible");
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
 		InterfaceAssistant ui = context.getInterfaceAssistant();
 

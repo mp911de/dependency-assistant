@@ -60,12 +60,11 @@ class UpdateTestSupport {
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
 
-		Dependency dep = new Dependency(id, updateTo);
-		dep.addDeclarationSource(declarationSource);
-		dep.addVersionSource(versionSource);
+		Dependency dependency = new Dependency(id, updateTo);
+		dependency.addDeclarationSource(declarationSource);
+		dependency.addVersionSource(versionSource);
 
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
-				dep.getVersionSources());
+		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
 		new BuildActionDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates))

@@ -65,7 +65,7 @@ public class NewerVersionAnnotator implements Annotator {
 		}
 
 		UpgradeSuggestion bestOption = upgrades.getUpgradeSuggestion();
-		String message = rule.isDefined() ? bestOption.getSuggestionMessage() : bestOption.getMessage();
+		String message = rule.isPresent() ? bestOption.getSuggestionMessage() : bestOption.getMessage();
 		ArtifactDeclaration declaration = upgrades.getArtifactDeclaration();
 		PsiElement versionLiteral = declaration.getVersionLiteral();
 		boolean sameFileDeclaration = true;
@@ -93,7 +93,7 @@ public class NewerVersionAnnotator implements Annotator {
 
 				.range(context.getInterfaceAssistant().getHighlightRange(element));
 
-		if (rule.isDefined()) {
+		if (rule.isPresent()) {
 			builder.problemGroup(UpgradeSuggestionGroup.problemGroup())
 					.textAttributes(DependencyAssistantSeverities.UPGRADE_SUGGESTION_KEY);
 		}

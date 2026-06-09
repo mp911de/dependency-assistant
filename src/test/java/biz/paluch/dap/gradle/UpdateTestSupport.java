@@ -53,12 +53,11 @@ class UpdateTestSupport {
 		ArtifactVersion current = ArtifactVersion.of(fromVersion);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
 
-		Dependency dep = new Dependency(id, current);
-		dep.addDeclarationSource(declarationSource);
-		dep.addVersionSource(versionSource);
+		Dependency dependency = new Dependency(id, current);
+		dependency.addDeclarationSource(declarationSource);
+		dependency.addVersionSource(versionSource);
 
-		DependencyUpdate update = new DependencyUpdate(id, updateTo, dep.getDeclarationSources(),
-				dep.getVersionSources());
+		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
 		new BuildActionDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdateGradleFile(targetFile.getProject()).applyUpdates(targetFile, updates))

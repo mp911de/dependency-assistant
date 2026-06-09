@@ -28,8 +28,10 @@ import java.util.function.Predicate;
  * @param declarationSources the declaration sources to update.
  * @param versionSources the version sources to update.
  */
-public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
-		Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
+public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from,
+                               ArtifactVersion version,
+                               Collection<DeclarationSource> declarationSources,
+                               Collection<VersionSource> versionSources) {
 
 	/**
 	 * Create an update for a dependency and release.
@@ -38,7 +40,31 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(Dependency dependency, Release release) {
-		return new DependencyUpdate(dependency.getArtifactId(), release.getVersion(),
+		return from(dependency, release.version());
+	}
+
+	/**
+	 * Create an update for a dependency and release.
+	 *
+	 * @param dependency the dependency to update.
+	 * @param version  the selected version.
+	 * @return the dependency update to apply.
+	 */
+	public static DependencyUpdate from(Dependency dependency, ArtifactVersion version) {
+		return new DependencyUpdate(dependency.getArtifactId(), dependency.getCurrentVersion(), version,
+				dependency.getDeclarationSources(), dependency.getVersionSources());
+	}
+
+	/**
+	 * Create an update for a dependency and release.
+	 *
+	 * @param artifactId the artifact Id to update.
+	 * @param dependency the dependency to update.
+	 * @param version the selected version.
+	 * @return the dependency update to apply.
+	 */
+	public static DependencyUpdate from(ArtifactId artifactId, Dependency dependency, ArtifactVersion version) {
+		return new DependencyUpdate(artifactId, dependency.getCurrentVersion(), version,
 				dependency.getDeclarationSources(), dependency.getVersionSources());
 	}
 
@@ -72,7 +98,7 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 	 */
 	public static DependencyUpdate create(ArtifactId artifactId, ArtifactVersion version,
 			DeclarationSource declarationSource, VersionSource versionSource) {
-		return new DependencyUpdate(artifactId, version, List.of(declarationSource), List.of(versionSource));
+		return new DependencyUpdate(artifactId, version, version, List.of(declarationSource), List.of(versionSource));
 	}
 
 	/**
@@ -99,4 +125,7 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion version,
 		return version.toString();
 	}
 
+	public String getArtifactName() {
+		return null;
+	}
 }

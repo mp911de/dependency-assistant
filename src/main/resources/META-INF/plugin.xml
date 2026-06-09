@@ -58,15 +58,19 @@
 	<extensions defaultExtensionNs="com.intellij">
 		<postStartupActivity implementation="biz.paluch.dap.assistant.PostStartup"/>
 		<actionOnSave implementation="biz.paluch.dap.assistant.FlushStateOnSave"/>
-		<notificationGroup id="biz.paluch.dependency-assistant.releases"
-		                   displayType="BALLOON"
+		<notificationGroup id="biz.paluch.dependency-assistant"
+		                   displayType="NONE"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.releases-sticky"
 		                   displayType="STICKY_BALLOON"
-		                   bundle="messages.MessageBundle" key="plugin.name"/>
+		                   bundle="messages.MessageBundle" key="notification.refresh-release-metadata"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.errors"
 		                   displayType="BALLOON"
-		                   bundle="messages.MessageBundle" key="plugin.name"/>
+	                   bundle="messages.MessageBundle" key="UpdateBuildFile.notification.error.title"/>
+		<notificationGroup id="biz.paluch.dependency-assistant.upgrades"
+		                   displayType="NONE"
+		                   isLogByDefault="true"
+		                   bundle="messages.MessageBundle" key="notification.dependencies-updates"/>
 		<additionalTextAttributes scheme="Default"
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
 		<additionalTextAttributes scheme="Darcula"
