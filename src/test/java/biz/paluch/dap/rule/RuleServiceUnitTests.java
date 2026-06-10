@@ -40,7 +40,7 @@ class RuleServiceUnitTests {
 		List<Path> candidates = RuleService.candidatePaths(ROOT, HOME, false);
 
 		assertThat(candidates).containsExactly(ROOT.resolve("dependencyfile.json"),
-				ROOT.resolve(".github").resolve("dependencyfile.json"));
+				ROOT.resolve(".idea").resolve("dependencyfile.json"));
 	}
 
 	@Test
@@ -49,7 +49,7 @@ class RuleServiceUnitTests {
 		List<Path> candidates = RuleService.candidatePaths(ROOT, HOME, true);
 
 		assertThat(candidates).containsExactly(ROOT.resolve("dependencyfile.json"),
-				ROOT.resolve(".github").resolve("dependencyfile.json"),
+				ROOT.resolve(".idea").resolve("dependencyfile.json"),
 				Path.of("/work").resolve("dependencyfile.json"), HOME.resolve("dependencyfile.json"));
 	}
 
@@ -59,7 +59,7 @@ class RuleServiceUnitTests {
 		List<Path> candidates = RuleService.candidatePaths(Path.of("/"), HOME, true);
 
 		assertThat(candidates).containsExactly(Path.of("/").resolve("dependencyfile.json"),
-				Path.of("/").resolve(".github").resolve("dependencyfile.json"), HOME.resolve("dependencyfile.json"));
+				Path.of("/").resolve(".idea").resolve("dependencyfile.json"), HOME.resolve("dependencyfile.json"));
 	}
 
 }

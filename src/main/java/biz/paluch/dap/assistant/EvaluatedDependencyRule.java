@@ -120,11 +120,16 @@ class EvaluatedDependencyRule {
 	/**
 	 * Return the gutter icon for this outcome.
 	 *
-	 * @return the compliant icon for a passed rule, otherwise the warning icon.
+	 * @return the icon for a passed rule, otherwise the warning icon.
 	 */
 	public Icon getIcon() {
-		return result == EvaluationState.PASSED ? DependencyAssistantIcons.DEPENDENCY_RULE
-				: DependencyAssistantIcons.DEPENDENCY_RULE_WARN;
+		if (result == EvaluationState.PASSED) {
+			if (isLocked()) {
+				return DependencyAssistantIcons.DEPENDENCY_LOCK;
+			}
+			return DependencyAssistantIcons.DEPENDENCY_RULE;
+		}
+		return DependencyAssistantIcons.DEPENDENCY_RULE_WARN;
 	}
 
 	/**
@@ -146,7 +151,7 @@ class EvaluatedDependencyRule {
 
 		StringBuilder sb = new StringBuilder();
 
-		if (!StringUtils.isEmpty(rule.getGeneration())) {
+		if (isLocked()) {
 
 			if (result == EvaluationState.NOT_PASSED) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.problem",
@@ -169,6 +174,10 @@ class EvaluatedDependencyRule {
 		}
 
 		return sb.toString();
+	}
+
+	private boolean isLocked() {
+		return StringUtils.hasText(rule.getGeneration());
 	}
 
 	private String getUpgradeStrategiesHint() {

@@ -22,6 +22,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.rule.DependencyRuleResolver;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.Properties;
@@ -62,6 +63,7 @@ class DependencyCycleArchitectureTests {
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(ReleaseSource.class)
 						.withStrictClosedHierarchy(ArtifactId.class)
+						.withStrictClosedHierarchy(DependencyRuleResolver.class)
 						.withClosedHierarchy(Properties.class)
 						.withStrictClosedHierarchy("biz.paluch.dap.npm.NpmVersionExpression")
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradleVersionSite")
