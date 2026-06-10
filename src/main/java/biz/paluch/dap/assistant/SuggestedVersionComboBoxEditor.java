@@ -39,6 +39,8 @@ import org.jspecify.annotations.Nullable;
  */
 class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements TableCellEditor {
 
+	private static final int CELL_HORIZONTAL_PADDING = 6;
+
 	private final ComboBox<Release> combo = new ComboBox<>();
 
 	private final DependencyUpgradeReview review;
@@ -71,7 +73,7 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 			int column) {
 
 		combo.setFont(table.getFont());
-		combo.setBorder(JBUI.Borders.empty());
+		combo.setBorder(JBUI.Borders.empty(0, CELL_HORIZONTAL_PADDING, 0, CELL_HORIZONTAL_PADDING));
 
 		refreshOptions();
 		return combo;
