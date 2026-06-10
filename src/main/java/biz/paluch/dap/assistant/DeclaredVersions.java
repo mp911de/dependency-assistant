@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.SequencedCollection;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
@@ -106,7 +107,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	 * @return {@literal true} if the inline declared versions differ;
 	 * {@literal false} otherwise.
 	 */
-	boolean hasConflict() {
+	boolean hasVersionDrift() {
 		return versions().size() > 1 && entries.size() > 1;
 	}
 
@@ -118,7 +119,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	 *
 	 * @param consumer the consumer receiving version strings and display locations.
 	 */
-	public void forEachConflict(BiConsumer<String, String> consumer) {
+	public void forEachDrift(BiConsumer<String, String> consumer) {
 
 		List<String> locations = new ArrayList<>();
 		for (VersionDrift entry : entries) {
@@ -172,20 +173,36 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	}
 
 	/**
+	 * Return the lowest version the artifact is declared at, used as the upgrade
+	 * baseline.
+	 *
+	 * @return the last version according to the artifact version ordering.
+	 * @throws IllegalStateException if no version was found.
+	 */
+	public ArtifactVersion getLowestDeclaredVersion() {
+		Assert.state(hasVersion(), "Cannot get declared version from empty versions");
+		if (versions instanceof SequencedCollection<?> s) {
+			return (ArtifactVersion) s.getLast();
+		}
+
+		return new ArrayList<>(versions).getLast();
+	}
+
+	/**
 	 * Render the tool tip text.
 	 */
 	public String getToolTipText() {
 
 		StringBuilder tooltip = new StringBuilder();
 
-		tooltip.append("<h3>")
-				.append(MessageBundle.message("dialog.conflict.tooltip.header"))
-				.append("</h3>");
+		tooltip.append("<b>")
+				.append(MessageBundle.message("dialog.version-drift.tooltip.header"))
+				.append("</b>");
 		tooltip.append("<ul>");
 
-		forEachConflict((version, file) -> {
+		forEachDrift((version, file) -> {
 			tooltip.append("<li>")
-					.append(MessageBundle.message("dialog.conflict.tooltip.entry", "<code>" + version + "</code>",
+					.append(MessageBundle.message("dialog.version-drift.tooltip.entry", "<code>" + version + "</code>",
 							file))
 					.append("</li>");
 		});

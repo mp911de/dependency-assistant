@@ -35,7 +35,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.RuleService;
+import biz.paluch.dap.rule.DependencyRuleResolver;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -193,33 +193,8 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
 	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
-
-		List<UpdateCandidate> candidates = new ArrayList<>();
-		List<String> errors = getErrors(releases);
-
-		entries.forEach((artifactId, entry) -> {
-
-			ReleaseLookupResult lookup = releases.get(artifactId);
-			if (lookup == null) {
-				return;
-			}
-
-			DeclaredVersions declaredVersions = DeclaredVersions.from(entry.declarationSites(),
-					it -> GitVersionResolver.resolveVersion(it, lookup.releases()));
-			if (!declaredVersions.hasVersion()) {
-				return;
-			}
-
-			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
-			Dependency dependency = Dependency.from(merged, declaredVersions.getHighestDeclaredVersion());
-			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
-			candidates.add(new UpdateCandidate(option, entry.contexts().iterator().next().getInterfaceAssistant(),
-					declaredVersions, DependencyRule.absent()));
-		});
-
-		candidates.sort(Comparator.comparing(UpdateCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
-
-		return new DependencyCheckResult(candidates, files, errors);
+		return toDependencyCheckResult(releases,
+				(artifactId, project1, file, projectVersion) -> DependencyRule.absent());
 	}
 
 	/**
@@ -230,9 +205,11 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * that were resolved successfully.
 	 *
 	 * @param releases the resolved releases keyed by artifact.
+	 * @param evaluator the rule evaluator.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
-	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases, RuleService ruleService) {
+	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
+			DependencyRuleResolver evaluator) {
 
 		List<UpdateCandidate> candidates = new ArrayList<>();
 		List<String> errors = getErrors(releases);
@@ -259,11 +236,11 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 				}
 			}
 
-			DependencyRule rule = ruleService.resolve(artifactId, project, entry.declarationSites()
+			DependencyRule rule = evaluator.resolve(artifactId, project, entry.declarationSites()
 					.iterator().next().file(), versioned);
 
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
-			Dependency dependency = Dependency.from(merged, declaredVersions.getHighestDeclaredVersion());
+			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
 			candidates.add(new UpdateCandidate(option, entry.contexts().iterator().next()
 					.getInterfaceAssistant(),

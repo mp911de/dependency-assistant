@@ -69,7 +69,7 @@ class DependencyCheckScopeTests {
 
 		assertThat(result.candidates()).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
-			assertThat(merged.getDeclaredVersions().hasConflict()).isTrue();
+			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isTrue();
 		});
 	}
 
@@ -88,7 +88,7 @@ class DependencyCheckScopeTests {
 		assertThat(result.candidates()).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
 			assertThat(merged.currentVersion()).isEqualTo(ArtifactVersion.of("7.4.1.RELEASE"));
-			assertThat(merged.getDeclaredVersions().hasConflict()).isFalse();
+			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isFalse();
 			assertThat(merged.option().hasUpdateCandidate()).isTrue();
 		});
 	}

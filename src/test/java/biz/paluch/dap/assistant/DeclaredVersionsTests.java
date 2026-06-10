@@ -42,7 +42,7 @@ class DeclaredVersionsTests {
 
 		DeclaredVersions declaredVersions = DeclaredVersions.none();
 
-		assertThat(declaredVersions.hasConflict()).isFalse();
+		assertThat(declaredVersions.hasVersionDrift()).isFalse();
 		assertThat(declaredVersions.hasVersion()).isFalse();
 	}
 
@@ -54,7 +54,7 @@ class DeclaredVersionsTests {
 		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(site(a, "com.acme", "app", "7.4.1.RELEASE"),
 				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null);
 
-		assertThat(declaredVersions.hasConflict()).isTrue();
+		assertThat(declaredVersions.hasVersionDrift()).isTrue();
 		assertThat(declaredVersions.versions()).extracting(Object::toString)
 				.containsExactlyInAnyOrder("7.4.1.RELEASE", "7.5.0.RELEASE");
 	}
@@ -79,7 +79,7 @@ class DeclaredVersionsTests {
 				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null);
 		List<String> conflicts = new ArrayList<>();
 
-		declaredVersions.forEachConflict((version, location) -> conflicts.add(version + "@" + location));
+		declaredVersions.forEachDrift((version, location) -> conflicts.add(version + "@" + location));
 
 		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@app", "7.5.0.RELEASE@lib");
 	}

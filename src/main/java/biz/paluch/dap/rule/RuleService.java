@@ -62,7 +62,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class RuleService implements Disposable {
+public class RuleService implements Disposable, DependencyRuleResolver {
 
 	private static final String FILE_NAME = "dependencyfile.json";
 
@@ -87,6 +87,7 @@ public class RuleService implements Disposable {
 		return project.getService(RuleService.class);
 	}
 
+	@Override
 	public DependencyRule resolve(ArtifactId artifactId, Project project, @Nullable VirtualFile file,
 			Versioned projectVersion) {
 		return rules().resolve(artifactId, currentBranchName(project, file), projectVersion.orElseGet(() -> null));
