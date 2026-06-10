@@ -16,7 +16,15 @@
 
 package biz.paluch.dap.assistant;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Point;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -58,6 +66,7 @@ import com.intellij.openapi.actionSystem.ActionToolbar;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.impl.ActionButton;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
@@ -523,7 +532,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final DependencyUpgradeReview review;
 
-		private final Map<UpgradeStrategy, JButton> buttons = new EnumMap<>(UpgradeStrategy.class);
+		private final Map<UpgradeStrategy, JComponent> buttons = new EnumMap<>(UpgradeStrategy.class);
 
 		UpgradeTargetsToolbarEditor(UpdateCandidate candidate, DependencyUpgradeReview review) {
 			super(new JTextField());
@@ -550,8 +559,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 				Icon icon = VersionAge.fromTarget(strategy).getIcon();
 				String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
 				String tooltip = MessageBundle.message("dialog.upgradeTarget.tooltip", shortLabel, release.version());
-				JButton b = createButton(icon, tooltip, shortLabel, release);
-				b.addActionListener(e -> review.applyStrategyTarget(candidate, strategy));
+				JComponent b = createButton(icon, tooltip, shortLabel, release,
+						() -> review.applyStrategyTarget(candidate, strategy));
 				buttons.put(strategy, b);
 				constraints.gridx = gridx++;
 				buttonPanel.add(b, constraints);
@@ -569,54 +578,30 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			List<Release> visibleReleases = review.visibleReleases(candidate);
 			Map<UpgradeStrategy, Release> targets = candidate.option().getTargets();
-			for (Map.Entry<UpgradeStrategy, JButton> entry : buttons.entrySet()) {
+			for (Map.Entry<UpgradeStrategy, JComponent> entry : buttons.entrySet()) {
 				Release target = targets.get(entry.getKey());
 				entry.getValue().setVisible(target != null && visibleReleases.contains(target));
 			}
 		}
 
-		private static JButton createButton(Icon icon, String tooltip, String shortLabel, Release version) {
+		private static JComponent createButton(Icon icon, String tooltip, String shortLabel, Release version,
+				Runnable action) {
 
-			JButton b = new JButton(icon) {
+			AnAction buttonAction = new AnAction(shortLabel, tooltip, icon) {
 
 				@Override
-				protected void paintComponent(Graphics g) {
-
-					ButtonModel model = getModel();
-					boolean pressed = model.isArmed() && model.isPressed();
-					if (pressed || model.isRollover()) {
-
-						Graphics2D g2 = (Graphics2D) g.create();
-						try {
-							g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-							int arc = JBUI.scale(4);
-							g2.setColor(pressed ? JBUI.CurrentTheme.ActionButton.pressedBackground()
-									: JBUI.CurrentTheme.ActionButton.hoverBackground());
-							g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
-							g2.setColor(pressed ? JBUI.CurrentTheme.ActionButton.pressedBorder()
-									: JBUI.CurrentTheme.ActionButton.hoverBorder());
-							g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, arc, arc);
-						} finally {
-							g2.dispose();
-						}
-					}
-
-					super.paintComponent(g);
+				public void actionPerformed(AnActionEvent e) {
+					action.run();
 				}
 
 			};
 
+			int padding = JBUI.scale(8);
+			Dimension preferredSize = new Dimension(icon.getIconWidth() + padding, icon.getIconHeight() + padding);
+			ActionButton b = new ActionButton(buttonAction, null, "DependencyAssistant.UpgradeTarget", preferredSize);
 			b.setToolTipText(tooltip);
 			b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 			b.getAccessibleContext().setAccessibleName(shortLabel + " " + version.version());
-			b.setBorderPainted(false);
-			b.setContentAreaFilled(false);
-			b.setOpaque(false);
-			b.setFocusPainted(false);
-			b.setRolloverEnabled(true);
-
-			int padding = JBUI.scale(6);
-			Dimension preferredSize = new Dimension(icon.getIconWidth() + padding, icon.getIconHeight() + padding);
 			b.setPreferredSize(preferredSize);
 			b.setMinimumSize(preferredSize);
 			b.setMaximumSize(preferredSize);
@@ -627,12 +612,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public JComponent getTableCellEditorComponent(JTable table, @Nullable Object value, boolean isSelected, int row,
 				int column) {
 			refreshButtonVisibility();
-			Color bg = isSelected ? table.getSelectionBackground() : table.getBackground();
 			buttonPanel.setBorder(JBUI.Borders.empty());
-			buttonPanel.setBackground(bg);
-			for (Component ch : buttonPanel.getComponents()) {
-				ch.setBackground(bg);
-			}
 			return buttonPanel;
 		}
 
@@ -758,13 +738,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 				DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
 				EvaluatedDependencyRule rule = candidate.ruleResult();
 
-				if (declaredVersions.hasConflict()) {
+				if (declaredVersions.hasVersionDrift()) {
 					setIcon(AllIcons.General.Warning);
 				}
 				else if (rule.isPresent()) {
 					setIcon(rule.getIcon());
 				}
-				if (declaredVersions.hasConflict() || rule.isPresent()) {
+				if (declaredVersions.hasVersionDrift() || rule.isPresent()) {
 					setToolTipText(conflictTooltip(candidate, rule));
 				} else {
 					setIcon(null);
@@ -798,7 +778,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private static String conflictTooltip(UpdateCandidate candidate, EvaluatedDependencyRule rule) {
 			StringBuilder tooltip = new StringBuilder();
 			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
-			if (declaredVersions.hasConflict()) {
+			if (declaredVersions.hasVersionDrift()) {
 				tooltip.append(declaredVersions.getToolTipText());
 			}
 			if (rule.isPresent()) {
@@ -841,7 +821,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		@Override
 		public void setValue(UpdateCandidate item, Object value) {
-			// Applied from picker {@link JButton} actions.
+			// Applied from picker button actions.
 		}
 
 		@Override
