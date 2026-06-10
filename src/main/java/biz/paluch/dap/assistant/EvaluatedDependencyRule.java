@@ -18,43 +18,52 @@ package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.DependencyRuleResolver;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Outcome of testing a {@link DependencyRule} against a concrete artifact version, paired with
- * the presentation an upgrade view needs to surface it.
+ * Outcome of testing a {@link DependencyRule} against a concrete artifact
+ * version, paired with the presentation an upgrade view needs to surface it.
  *
- * <p>The rule is evaluated once at construction and the result is retained as one of three
- * states: undefined (no rule governs the artifact), passed, or not passed. A renderer consults
- * {@link #isPresent()} to decide whether to show an indicator at all, then {@link #getIcon()}
- * and {@link #getToolTipText()} for the indicator itself.
+ * <p>The rule is evaluated once at construction and the result is retained as
+ * one of three states: undefined (no rule governs the artifact), passed, or not
+ * passed. A renderer consults {@link #isPresent()} to decide whether to show an
+ * indicator at all, then {@link #getIcon()} and {@link #getToolTipText()} for
+ * the indicator itself.
  *
- * <p>{@link #absent()} is a distinct sentinel for "the project defines rules, but none govern
- * this artifact": unlike an undefined evaluation it reports {@link #isPresent() present} and
- * renders a neutral icon with an explanatory tooltip. {@link DependencyUpgradeReview#getResult}
- * substitutes it when the project has rules yet the candidate is ungoverned.
+ * <p>{@link #absent()} is a distinct sentinel for "the project defines rules,
+ * but none govern this artifact": unlike an undefined evaluation it reports
+ * {@link #isPresent() present} and renders a neutral icon with an explanatory
+ * tooltip. {@link UpgradeReview#getResult} substitutes it when the project has
+ * rules yet the candidate is ungoverned.
  *
  * @author Mark Paluch
  */
-class EvaluatedDependencyRule {
+class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 
 	private static final EvaluatedDependencyRule ABSENT = new EvaluatedDependencyRule(DependencyRule.absent(),
 			ArtifactId.of("", ""), ArtifactVersion.of("1.0"), "") {
 
 		@Override
 		public boolean isPresent() {
-			return true;
+			return false;
 		}
 
 		@Override
@@ -117,6 +126,25 @@ class EvaluatedDependencyRule {
 		return ABSENT;
 	}
 
+	public static EvaluatedDependencyRule evaluate(DependencyRuleResolver rules, Project project,
+			ArtifactDeclaration declaration, ProjectDependencyContext context, VirtualFile virtualFile,
+			Versioned projectVersion) {
+
+		DependencyRule rule = rules.resolve(declaration.getArtifactId(), project, virtualFile, projectVersion);
+		InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
+		return EvaluatedDependencyRule.of(rule, declaration.getArtifactId(),
+				declaration.getVersion(), interfaceAssistant);
+	}
+
+	@Override
+	public boolean test(ArtifactVersion artifactVersion) {
+		return rule.test(artifactVersion);
+	}
+
+	public DependencyRule getRule() {
+		return rule;
+	}
+
 	/**
 	 * Return the gutter icon for this outcome.
 	 *
@@ -142,6 +170,20 @@ class EvaluatedDependencyRule {
 		return result != EvaluationState.UNDEFINED;
 	}
 
+	public String getDependencyName() {
+		if (StringUtils.hasText(rule.getDependencyName())) {
+			return rule.getDependencyName();
+		}
+		return artifactId.toString();
+	}
+
+	private String getDependencyNameForToolTip() {
+		if (StringUtils.hasText(rule.getDependencyName())) {
+			return rule.getDependencyName();
+		}
+		return "'" + artifactId.toString() + "'";
+	}
+
 	/**
 	 * Build the HTML tooltip describing the rule outcome and the enabled upgrade strategies.
 	 *
@@ -152,31 +194,46 @@ class EvaluatedDependencyRule {
 		StringBuilder sb = new StringBuilder();
 
 		if (isLocked()) {
-
 			if (result == EvaluationState.NOT_PASSED) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.problem",
-						artifactId.artifactId(), renderedVersion, rule.getGeneration()));
+						getDependencyNameForToolTip(), renderedVersion, rule.getGeneration()));
 			}
 
 			if (result == EvaluationState.PASSED) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.description",
-						artifactId.artifactId(), rule.getGeneration()));
+						getDependencyNameForToolTip(), rule.getGeneration()));
 			}
 		}
 
-		String strategies = getUpgradeStrategiesHint();
-
-		if (StringUtils.hasText(strategies)) {
-			if (!sb.isEmpty()) {
-				sb.append("<br>");
-			}
-			sb.append(strategies);
+		if (!isLocked() && rule.isPresent()) {
+			sb.append(MessageBundle.message("inspection.dependency-rule.semantic-upgrade.enabled"));
 		}
 
 		return sb.toString();
 	}
 
-	private boolean isLocked() {
+	public String getAccessibleName() {
+
+		if (isLocked()) {
+			if (result == EvaluationState.NOT_PASSED) {
+				return MessageBundle.message("inspection.dependency-rule.display-name");
+			}
+			if (result == EvaluationState.PASSED) {
+				return MessageBundle.message("inspection.dependency-rule.passed");
+			}
+		}
+
+		String strategies = getUpgradeStrategiesHint();
+		if (StringUtils.hasText(strategies)) {
+			return strategies;
+		} else if (!isLocked() && rule.isPresent()) {
+			return MessageBundle.message("inspection.dependency-rule.semantic-upgrade.enabled");
+		}
+
+		return "";
+	}
+
+	public boolean isLocked() {
 		return StringUtils.hasText(rule.getGeneration());
 	}
 
@@ -205,7 +262,6 @@ class EvaluatedDependencyRule {
 
 		return "";
 	}
-
 
 	enum EvaluationState {
 		UNDEFINED, PASSED, NOT_PASSED;

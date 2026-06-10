@@ -1,32 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Ebene_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 16 16">
-  <!-- Generator: Adobe Illustrator 29.7.0, SVG Export Plug-In . SVG Version: 2.1.1 Build 138)  -->
+<svg id="Ebene_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 13.96 14">
+	<!-- Generator: Adobe Illustrator 30.5.1, SVG Export Plug-In . SVG Version: 2.1.4 Build 3)  -->
   <defs>
     <style>
       .st0 {
-        fill: #548af7;
-      }
-
-      .st0, .st1 {
-        fill-rule: evenodd;
-      }
-
-      .st2 {
         fill: #43454a;
       }
 
       .st1 {
         fill: #ced0d6;
+	    fill-rule: evenodd;
       }
     </style>
   </defs>
-  <path class="st2" d="M6,13V5h-3v8h3Z"/>
-  <path class="st0" d="M8.96,13h-1.96V3h3v6.61c.1-.74.46-1.4,1-1.87v-.75h3v.2c.37.14.71.35,1,.62v-.81c0-.55-.45-1-1-1h-3v-3c0-.55-.45-1-1-1h-3c-.55,0-1,.45-1,1v1h-3c-.55,0-1,.45-1,1v8c0,.55.45,1,1,1h5.96v-1ZM6,13h-3V5h3v8Z"/>
-  <path class="st2" d="M8.96,12c0-.74.4-1.39,1-1.73v-.27c0-.13.02-.26.04-.39V3h-3v10h1.96v-1Z"/>
+	<path class="st0" d="M4,11V3H1v8h3Z"/>
+	<path class="st1"
+	      d="M6.96,11h-1.96V1h3v6.61c.1-.74.46-1.4,1-1.87v-.75h3v.2c.37.14.71.35,1,.62v-.81c0-.55-.45-1-1-1h-3V1c0-.55-.45-1-1-1h-3c-.55,0-1,.45-1,1v1H1c-.55,0-1,.45-1,1v8c0,.55.45,1,1,1h5.96v-1ZM4,11H1V3h3v8Z"/>
+	<path class="st0"
+	      d="M6.96,10c0-.74.4-1.39,1-1.73v-.27c0-.13.02-.26.04-.39V1h-3v10h1.96v-1Z"/>
   <g>
-    <path class="st2" d="M14,7h-1.04c.37,0,.71.08,1.04.2v-.2Z"/>
-    <path class="st2" d="M12.96,7h-1.96v.75c.53-.46,1.21-.75,1.96-.75Z"/>
+	  <path class="st0" d="M12,5h-1.04c.37,0,.71.08,1.04.2v-.2Z"/>
+	  <path class="st0" d="M10.96,5h-1.96v.75c.53-.46,1.21-.75,1.96-.75Z"/>
   </g>
-  <rect class="st2" x="10.96" y="12" width="4" height="3"/>
-  <path class="st1" d="M14.96,11v-1c0-1.1-.9-2-2-2s-2,.9-2,2v1c-.55,0-1,.45-1,1v3c0,.55.45,1,1,1h4c.55,0,1-.45,1-1v-3c0-.55-.45-1-1-1ZM11.96,10c0-.55.45-1,1-1s1,.45,1,1v1h-2v-1ZM10.96,15v-3h4v3h-4Z"/>
+	<rect class="st0" x="8.96" y="10" width="4" height="3"/>
+	<path class="st1"
+	      d="M12.96,9v-1c0-1.1-.9-2-2-2s-2,.9-2,2v1c-.55,0-1,.45-1,1v3c0,.55.45,1,1,1h4c.55,0,1-.45,1-1v-3c0-.55-.45-1-1-1ZM9.96,8c0-.55.45-1,1-1s1,.45,1,1v1h-2v-1ZM8.96,13v-3h4v3h-4Z"/>
 </svg>

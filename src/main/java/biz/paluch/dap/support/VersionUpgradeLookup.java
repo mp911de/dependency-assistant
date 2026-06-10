@@ -92,7 +92,15 @@ public class VersionUpgradeLookup {
 	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
 	 */
 	public AvailableUpgrades suggestUpgrades(PsiElement element) {
-		ArtifactReference artifactReference = resolveArtifactReference(element);
+		return suggestUpgrades(resolveArtifactReference(element));
+	}
+
+	/**
+	 * Resolve available upgrades for the given {@link ArtifactReference}.
+	 * @param artifactReference the artifact reference.
+	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
+	 */
+	public AvailableUpgrades suggestUpgrades(ArtifactReference artifactReference) {
 		if (artifactReference.isResolved() && artifactReference.getDeclaration().isVersionDefined()
 				&& artifactReference.getDeclaration().getVersion() instanceof GitRef) {
 			return AvailableUpgrades.none();

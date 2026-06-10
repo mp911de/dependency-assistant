@@ -37,7 +37,7 @@ import org.jetbrains.idea.maven.project.MavenProjectsManager;
  *
  * @author Mark Paluch
  */
-class MavenFixtures {
+public class MavenFixtures {
 
 	static final MavenId MAVEN_ID = new MavenId("com.example", "demo", "");
 
@@ -46,7 +46,7 @@ class MavenFixtures {
 	/**
 	 * Set up Dependency Assistant for the given project.
 	 */
-	static void setup(Project project) {
+	public static void setup(Project project) {
 		DependencyAssistantFixtures.setup(project);
 	}
 

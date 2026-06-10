@@ -49,7 +49,7 @@ import org.springframework.util.Assert;
  * @author Mark Paluch
  * @param versions the distinct parsed versions found in the declaration sites.
  * @param entries the sortable declaration entries used for conflict display.
- * @see UpdateCandidate
+ * @see UpgradeCandidate
  */
 record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries) {
 

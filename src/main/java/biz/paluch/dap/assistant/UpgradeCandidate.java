@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.assistant;
 
+import javax.swing.Icon;
+
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -25,16 +27,19 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.icons.AllIcons;
+import com.intellij.ui.LayeredIcon;
+import com.intellij.util.IconUtil;
 
 /**
- * User-interface update candidate enriched with assistant context and version-drift
- * details.
+ * User-interface upgrade candidate enriched with assistant context and
+ * version-drift details.
  *
  * @author Mark Paluch
  */
-class UpdateCandidate implements HasArtifactId {
+class UpgradeCandidate implements HasArtifactId {
 
-	private final DependencyUpdateCandidate option;
+	private final DependencyUpdateCandidate candidate;
 
 	private final InterfaceAssistant interfaceAssistant;
 
@@ -44,18 +49,21 @@ class UpdateCandidate implements HasArtifactId {
 
 	private final EvaluatedDependencyRule ruleResult;
 
+	private final Icon tableIcon;
+
 	/**
 	 * Create an update candidate.
 	 *
-	 * @param option the dependency update option to offer.
+	 * @param candidate the dependency update option to offer.
 	 * @param assistant the format-specific assistant that can apply the update.
 	 * @param declaredVersions the versions the artifact is declared at, used for
 	 * drift reporting.
 	 * @param rule the associated dependency rule.
 	 */
-	public UpdateCandidate(DependencyUpdateCandidate option, InterfaceAssistant assistant, DeclaredVersions declaredVersions, DependencyRule rule) {
+	public UpgradeCandidate(DependencyUpdateCandidate candidate, InterfaceAssistant assistant,
+			DeclaredVersions declaredVersions, DependencyRule rule) {
 
-		this.option = option;
+		this.candidate = candidate;
 		this.interfaceAssistant = assistant;
 		this.declaredVersions = declaredVersions;
 		this.rule = rule;
@@ -63,34 +71,60 @@ class UpdateCandidate implements HasArtifactId {
 		if (rule.isPresent()) {
 			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
 				if (!rule.isEnabled(strategy)) {
-					option.getTargets().remove(strategy);
+					candidate.getFilteredTargets().remove(strategy);
 				}
 			}
 
-			if (!rule.test(option.currentVersion())) {
-				filterUpgrades(option, rule);
+			if (!rule.test(candidate.getCurrentVersion())) {
+				filterUpgrades(candidate, rule);
 			}
 		}
 
-		this.ruleResult = EvaluatedDependencyRule.of(rule, getArtifactId(), currentVersion(), assistant);
+		this.ruleResult = EvaluatedDependencyRule.of(rule, getArtifactId(), getCurrentVersion(), assistant);
+		this.tableIcon = createTableIcon();
 	}
 
 	private void filterUpgrades(DependencyUpdateCandidate option, DependencyRule rule) {
 
 		ArtifactVersion generation = ArtifactVersion.of(rule.getGeneration());
-		Releases releases = this.option.versionOptions();
+		Releases releases = this.candidate.getReleases();
 
 		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
-
 			if (!rule.isEnabled(strategy)) {
 				continue;
 			}
-
 			Release release = strategy.select(generation, releases);
 			if (release != null && rule.test(release.version())) {
 				option.getTargets().put(UpgradeStrategy.RULE, release);
+				option.getFilteredTargets().put(UpgradeStrategy.RULE, release);
 			}
 		}
+	}
+
+	private Icon createTableIcon() {
+
+		Icon base = interfaceAssistant.getTableIcon(getUpdateCandidate().getDependency());
+		if (base == null) {
+			return AllIcons.Nodes.Library;
+		}
+
+		if (getUpdateCandidate().hasPropertyVersion()) {
+
+			int pad = 0;
+			int bw = base.getIconWidth();
+			int bh = base.getIconHeight();
+
+			LayeredIcon layered = new LayeredIcon(2);
+			layered.setIcon(base, 0);
+			Icon propertySmall = IconUtil.scale(AllIcons.Nodes.Property, null, 0.5f);
+
+			int ow = propertySmall.getIconWidth();
+			int oh = propertySmall.getIconHeight();
+			layered.setIcon(propertySmall, 1, Math.max(0, bw - ow - pad), Math.max(0, bh - oh - pad));
+			return layered;
+		}
+
+		return base;
 	}
 
 	/**
@@ -104,7 +138,7 @@ class UpdateCandidate implements HasArtifactId {
 
 	@Override
 	public ArtifactId getArtifactId() {
-		return option.getArtifactId();
+		return candidate.getArtifactId();
 	}
 
 	/**
@@ -112,8 +146,8 @@ class UpdateCandidate implements HasArtifactId {
 	 *
 	 * @return the current version from the wrapped update option.
 	 */
-	public ArtifactVersion currentVersion() {
-		return option.currentVersion();
+	public ArtifactVersion getCurrentVersion() {
+		return candidate.getCurrentVersion();
 	}
 
 	/**
@@ -121,30 +155,24 @@ class UpdateCandidate implements HasArtifactId {
 	 *
 	 * @return the update option used to render and apply the candidate.
 	 */
-	public DependencyUpdateCandidate option() {
-		return option;
+	public DependencyUpdateCandidate getUpdateCandidate() {
+		return candidate;
 	}
 
-	/**
-	 * Return the format-specific assistant for this candidate.
-	 *
-	 * @return the assistant that can apply updates for the candidate's project
-	 * format.
-	 */
-	public InterfaceAssistant interfaceAssistant() {
-		return interfaceAssistant;
+	public Icon getTableIcon() {
+		return tableIcon;
 	}
 
-	public DependencyRule rule() {
+	public DependencyRule getRule() {
 		return rule;
 	}
 
-	public EvaluatedDependencyRule ruleResult() {
+	public EvaluatedDependencyRule getRuleResult() {
 		return ruleResult;
 	}
 
 	public String getDependencyName() {
-		String name = rule().getDependencyName();
+		String name = getRule().getDependencyName();
 		if (StringUtils.isEmpty(name)) {
 			name = interfaceAssistant.getDisplayName(getArtifactId());
 		}
@@ -153,7 +181,7 @@ class UpdateCandidate implements HasArtifactId {
 
 	@Override
 	public String toString() {
-		return getArtifactId() + "@" + currentVersion();
+		return getArtifactId() + "@" + getCurrentVersion();
 	}
 
 }

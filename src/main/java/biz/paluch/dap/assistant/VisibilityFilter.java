@@ -43,7 +43,14 @@ record VisibilityFilter(boolean hideUpToDate) {
 	 * Return the release options to show for the given option.
 	 */
 	Releases visibleReleases(DependencyUpdateCandidate option) {
-		return hideUpToDate ? option.filtered() : option.versionOptions();
+		return hideUpToDate ? option.getFilteredReleases() : option.getReleases();
+	}
+
+	/**
+	 * Return the upgrade targets to show for the given option.
+	 */
+	Map<UpgradeStrategy, Release> visibleTargets(DependencyUpdateCandidate option) {
+		return hideUpToDate ? option.getFilteredTargets() : option.getTargets();
 	}
 
 	/**
@@ -56,11 +63,16 @@ record VisibilityFilter(boolean hideUpToDate) {
 			return true;
 		}
 
-		if (!option.hasUpdateCandidate()) {
+		if (!option.hasUpgradeTargets()) {
 			return false;
 		}
 
 		Map<UpgradeStrategy, Release> targets = option.getTargets();
+		if (option.getDependency().getCurrentVersion().isPreview()) {
+			if (targets.containsKey(UpgradeStrategy.PREVIEW)) {
+				return true;
+			}
+		}
 		return !(targets.size() == 1 && targets.containsKey(UpgradeStrategy.PREVIEW));
 	}
 

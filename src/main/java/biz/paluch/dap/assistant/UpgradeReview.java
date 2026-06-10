@@ -36,13 +36,13 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class DependencyUpgradeReview {
+class UpgradeReview {
 
-	private final List<UpdateCandidate> candidates;
+	private final List<UpgradeCandidate> candidates;
 
 	private final List<String> errors;
 
-	private final Map<UpdateCandidate, UpgradeSelection> selections = new LinkedHashMap<>();
+	private final Map<UpgradeCandidate, UpgradeSelection> selections = new LinkedHashMap<>();
 
 	private final boolean hasRule;
 
@@ -57,52 +57,49 @@ class DependencyUpgradeReview {
 	 * @param candidates the update candidates to display.
 	 * @param errors release-fetch errors collected while resolving.
 	 */
-	DependencyUpgradeReview(List<UpdateCandidate> candidates, List<String> errors) {
+	UpgradeReview(List<UpgradeCandidate> candidates, List<String> errors) {
 		this.candidates = candidates;
 		this.errors = errors;
 
 		boolean hasRule = false;
-		for (UpdateCandidate candidate : candidates) {
-			if (candidate.rule().isPresent()) {
+		for (UpgradeCandidate candidate : candidates) {
+			if (candidate.getRule().isPresent()) {
 				hasRule = true;
 			}
-			selections.put(candidate, new UpgradeSelection(candidate.currentVersion()));
-		} this.hasRule = hasRule;
+			selections.put(candidate, new UpgradeSelection(candidate.getCurrentVersion()));
+		}
+		this.hasRule = hasRule;
 	}
 
-	private UpgradeSelection selection(UpdateCandidate candidate) {
-		return selections.computeIfAbsent(candidate, it -> new UpgradeSelection(it.currentVersion()));
+	private UpgradeSelection selection(UpgradeCandidate candidate) {
+		return selections.computeIfAbsent(candidate, it -> new UpgradeSelection(it.getCurrentVersion()));
 	}
 
 	/**
 	 * Register a listener notified when the review state changes. The listener is
 	 * removed when {@code parent} is disposed.
 	 */
-	void addListener(ReviewListener listener, Disposable parent) {
+	public void addListener(ReviewListener listener, Disposable parent) {
 		listeners.addListener(listener, parent);
 	}
 
 	/**
 	 * Return the candidates currently shown by the dialog under the active filter.
 	 */
-	List<UpdateCandidate> visibleCandidates() {
-		return candidates.stream().filter(candidate -> filter.includes(candidate.option())).toList();
+	List<UpgradeCandidate> getCandidates() {
+		return candidates.stream().filter(candidate -> filter.includes(candidate.getUpdateCandidate())).toList();
 	}
 
 	/**
 	 * Return the release options shown for the given candidate under the active
 	 * filter.
 	 */
-	Releases visibleReleases(UpdateCandidate candidate) {
-		return filter.visibleReleases(candidate.option());
+	public Releases getReleases(UpgradeCandidate candidate) {
+		return filter.visibleReleases(candidate.getUpdateCandidate());
 	}
 
-	/**
-	 * Return the release options shown for the given option under the active
-	 * filter.
-	 */
-	Releases visibleReleases(DependencyUpdateCandidate option) {
-		return filter.visibleReleases(option);
+	public Map<UpgradeStrategy, Release> getTargets(UpgradeCandidate candidate) {
+		return filter.visibleTargets(candidate.getUpdateCandidate());
 	}
 
 	/**
@@ -111,10 +108,10 @@ class DependencyUpgradeReview {
 	 * consistent with what the buttons and combo offer.
 	 */
 	@Nullable
-	Release resolveTarget(UpdateCandidate candidate, UpgradeStrategy strategy) {
+	Release resolveTarget(UpgradeCandidate candidate, UpgradeStrategy strategy) {
 
-		Release target = candidate.option().getTargets().get(strategy);
-		return target != null && visibleReleases(candidate).contains(target) ? target : null;
+		Release target = getTargets(candidate).get(strategy);
+		return target != null && getReleases(candidate).contains(target) ? target : null;
 	}
 
 	/**
@@ -143,15 +140,28 @@ class DependencyUpgradeReview {
 	 * cleared.
 	 */
 	@Nullable
-	ArtifactVersion getUpdateTo(UpdateCandidate candidate) {
+	ArtifactVersion getUpdateTo(UpgradeCandidate candidate) {
 		return selection(candidate).getTargetVersion();
+	}
+
+	/**
+	 * Return the visible release matching the candidate's selected target version
+	 * (falling back to the current version), or {@literal null} if no visible
+	 * release matches.
+	 */
+	@Nullable
+	Release getSelectedRelease(UpgradeCandidate candidate) {
+
+		ArtifactVersion updateTo = getUpdateTo(candidate);
+		ArtifactVersion shown = updateTo != null ? updateTo : candidate.getCurrentVersion();
+		return getReleases(candidate).getRelease(shown);
 	}
 
 	/**
 	 * Return the candidate's selected target version.
 	 * @throws IllegalStateException if no target version is selected.
 	 */
-	ArtifactVersion getRequiredUpdateTo(UpdateCandidate candidate) {
+	ArtifactVersion getRequiredUpdateTo(UpgradeCandidate candidate) {
 
 		ArtifactVersion updateTo = selection(candidate).getTargetVersion();
 		if (updateTo == null) {
@@ -164,14 +174,14 @@ class DependencyUpgradeReview {
 	/**
 	 * Return whether the candidate is selected to be applied.
 	 */
-	boolean isApplyUpdate(UpdateCandidate candidate) {
+	boolean isApplyUpdate(UpgradeCandidate candidate) {
 		return selection(candidate).isApplyUpdate();
 	}
 
 	/**
 	 * Select the given target version for the candidate.
 	 */
-	void selectTarget(UpdateCandidate candidate, ArtifactVersion version) {
+	void selectTarget(UpgradeCandidate candidate, ArtifactVersion version) {
 		selection(candidate).selectTarget(version);
 		listeners.getMulticaster().changed(ReviewChange.row(candidate));
 	}
@@ -179,7 +189,7 @@ class DependencyUpgradeReview {
 	/**
 	 * Select the candidate's target for the given strategy, if one is visible.
 	 */
-	void applyStrategyTarget(UpdateCandidate candidate, UpgradeStrategy strategy) {
+	void applyStrategyTarget(UpgradeCandidate candidate, UpgradeStrategy strategy) {
 		if (doApplyStrategyTarget(candidate, strategy)) {
 			listeners.getMulticaster().changed(ReviewChange.row(candidate));
 		}
@@ -196,7 +206,7 @@ class DependencyUpgradeReview {
 			return;
 		}
 
-		for (UpdateCandidate candidate : visibleCandidates()) {
+		for (UpgradeCandidate candidate : getCandidates()) {
 			doApplyStrategyTarget(candidate, strategy);
 		}
 		listeners.getMulticaster().changed(ReviewChange.allRows());
@@ -213,7 +223,7 @@ class DependencyUpgradeReview {
 	/**
 	 * Set whether the candidate should be applied.
 	 */
-	void setSelected(UpdateCandidate candidate, boolean apply) {
+	void setSelected(UpgradeCandidate candidate, boolean apply) {
 		selection(candidate).setApplyUpdate(apply);
 		listeners.getMulticaster().changed(ReviewChange.row(candidate));
 	}
@@ -223,13 +233,13 @@ class DependencyUpgradeReview {
 	 */
 	void selectAll(boolean apply) {
 
-		for (UpdateCandidate candidate : visibleCandidates()) {
+		for (UpgradeCandidate candidate : getCandidates()) {
 			selection(candidate).setApplyUpdate(apply);
 		}
 		listeners.getMulticaster().changed(ReviewChange.allRows());
 	}
 
-	private boolean doApplyStrategyTarget(UpdateCandidate candidate, UpgradeStrategy strategy) {
+	private boolean doApplyStrategyTarget(UpgradeCandidate candidate, UpgradeStrategy strategy) {
 
 		Release target = resolveTarget(candidate, strategy);
 		if (target == null) {
@@ -282,8 +292,9 @@ class DependencyUpgradeReview {
 		}
 
 		/**
-		 * Same visual language as {@link VersionOptionCellRenderer} /
-		 * {@link VersionAge} for version steps.
+		 * Same visual language as
+		 * {@link DependencyCheckDialog.VersionOptionCellRenderer} / {@link VersionAge}
+		 * for version steps.
 		 */
 		Icon getIcon() {
 
@@ -294,8 +305,9 @@ class DependencyUpgradeReview {
 		}
 
 		/**
-		 * Same visual language as {@link VersionOptionCellRenderer} /
-		 * {@link VersionAge} for version steps.
+		 * Same visual language as
+		 * {@link DependencyCheckDialog.VersionOptionCellRenderer} / {@link VersionAge}
+		 * for version steps.
 		 */
 		Icon getIcon(UpgradeStrategy upgradeStrategy) {
 			return (switch (upgradeStrategy) {

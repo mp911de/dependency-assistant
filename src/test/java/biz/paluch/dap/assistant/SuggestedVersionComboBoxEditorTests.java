@@ -32,12 +32,13 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.rule.DependencyRule;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.ListTableModel;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link SuggestedVersionComboBoxEditor}.
+ * Unit tests for {@link DependencyCheckDialog.SuggestedVersionComboBoxEditor}.
  *
  * @author Mark Paluch
  */
@@ -46,13 +47,18 @@ class SuggestedVersionComboBoxEditorTests {
 	@Test
 	void editorKeepsHorizontalCellPaddingWithoutUpgradeTargets() {
 
-		UpdateCandidate candidate = candidateWithoutUpgradeTargets();
-		DependencyUpgradeReview review = new DependencyUpgradeReview(List.of(candidate), List.of());
-		SuggestedVersionComboBoxEditor editor = new SuggestedVersionComboBoxEditor(review, candidate);
+		UpgradeCandidate candidate = candidateWithoutUpgradeTargets();
+		UpgradeReview review = new UpgradeReview(List.of(candidate), List.of());
+		review.setHideUpToDate(false);
 
-		Component component = editor.getTableCellEditorComponent(new JTable(1, 1), null, false, 0, 0);
+		DependencyCheckDialog.UpdateToColumn column = new DependencyCheckDialog.UpdateToColumn(review);
+		ListTableModel<UpgradeCandidate> model = new ListTableModel<>(column);
+		model.setItems(review.getCandidates());
 
-		assertThat(candidate.option().hasUpgradeTargets()).isFalse();
+		Component component = column.getEditor(candidate).getTableCellEditorComponent(new JTable(model), null, false,
+				0, 0);
+
+		assertThat(candidate.getUpdateCandidate().hasUpgradeTargets()).isFalse();
 		assertThat(component).isInstanceOfSatisfying(javax.swing.JComponent.class, it -> {
 			Border border = it.getBorder();
 			Insets insets = border.getBorderInsets(it);
@@ -61,14 +67,14 @@ class SuggestedVersionComboBoxEditorTests {
 		});
 	}
 
-	private static UpdateCandidate candidateWithoutUpgradeTargets() {
+	private static UpgradeCandidate candidateWithoutUpgradeTargets() {
 
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"), current);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency,
 				Releases.just(Release.of(current)));
-		return new UpdateCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.none(),
+		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.none(),
 				DependencyRule.absent());
 	}
 

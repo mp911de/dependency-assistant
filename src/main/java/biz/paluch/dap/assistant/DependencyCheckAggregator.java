@@ -210,7 +210,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
 			DependencyRuleResolver evaluator) {
 
-		List<UpdateCandidate> candidates = new ArrayList<>();
+		List<UpgradeCandidate> candidates = new ArrayList<>();
 		List<String> errors = getErrors(releases);
 
 		entries.forEach((artifactId, entry) -> {
@@ -241,12 +241,12 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
-			candidates.add(new UpdateCandidate(option, entry.contexts().iterator().next()
+			candidates.add(new UpgradeCandidate(option, entry.contexts().iterator().next()
 					.getInterfaceAssistant(),
 					declaredVersions, rule));
 		});
 
-		candidates.sort(Comparator.comparing(UpdateCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
+		candidates.sort(Comparator.comparing(UpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
 		return new DependencyCheckResult(candidates, files, errors);
 	}

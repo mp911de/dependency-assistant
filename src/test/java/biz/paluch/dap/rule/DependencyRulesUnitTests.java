@@ -44,7 +44,7 @@ class DependencyRulesUnitTests {
 
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "main", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("7.0");
+		assertThat(rule.getGeneration()).isEqualTo("7.0.x");
 		assertThat(rule).accepts(ArtifactVersion.of("7.0.1"));
 	}
 
@@ -77,7 +77,7 @@ class DependencyRulesUnitTests {
 
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "main", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("6.2");
+		assertThat(rule.getGeneration()).isEqualTo("6.2.x");
 	}
 
 	@Test
@@ -91,8 +91,8 @@ class DependencyRulesUnitTests {
 		DependencyRule branchRule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "3.5.x", null);
 		DependencyRule defaultRule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "main", null);
 
-		assertThat(branchRule.getGeneration()).isEqualTo("6.0");
-		assertThat(defaultRule.getGeneration()).isEqualTo("7.0");
+		assertThat(branchRule.getGeneration()).isEqualTo("6.0.x");
+		assertThat(defaultRule.getGeneration()).isEqualTo("7.0.x");
 	}
 
 	@Test
@@ -105,7 +105,7 @@ class DependencyRulesUnitTests {
 
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "3.5.x", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("5.13");
+		assertThat(rule.getGeneration()).isEqualTo("5.13.x");
 	}
 
 	@Test
@@ -118,7 +118,7 @@ class DependencyRulesUnitTests {
 
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "3.5.x", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("6.0");
+		assertThat(rule.getGeneration()).isEqualTo("6.0.x");
 	}
 
 	@Test
@@ -134,7 +134,7 @@ class DependencyRulesUnitTests {
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "2.5.x", null);
 		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
 
-		assertThat(rule.getGeneration()).isEqualTo("5.13");
+		assertThat(rule.getGeneration()).isEqualTo("5.13.x");
 		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH).rejects(UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
 	}
 
@@ -149,7 +149,7 @@ class DependencyRulesUnitTests {
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), null,
 				ArtifactVersion.of("2.1.0"));
 
-		assertThat(rule.getGeneration()).isEqualTo("5.0");
+		assertThat(rule.getGeneration()).isEqualTo("5.0.x");
 	}
 
 	@Test
@@ -163,7 +163,7 @@ class DependencyRulesUnitTests {
 
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "3.5.x", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("6.1");
+		assertThat(rule.getGeneration()).isEqualTo("6.1.x");
 	}
 
 	@Test
@@ -199,7 +199,7 @@ class DependencyRulesUnitTests {
 				.build();
 
 		assertThat(rule.name()).isEqualTo("Spring Framework");
-		assertThat(rule.generation().value()).isEqualTo("7.0");
+		assertThat(rule.generation().value()).isEqualTo("7.0.x");
 	}
 
 	@Test
@@ -262,7 +262,7 @@ class DependencyRulesUnitTests {
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), null,
 				ArtifactVersion.of("v2.1.0"));
 
-		assertThat(rule.getGeneration()).isEqualTo("5.0");
+		assertThat(rule.getGeneration()).isEqualTo("5.0.x");
 	}
 
 	@Test
@@ -276,7 +276,7 @@ class DependencyRulesUnitTests {
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), null,
 				ArtifactVersion.of("v2.1.0"));
 
-		assertThat(rule.getGeneration()).isEqualTo("5.0");
+		assertThat(rule.getGeneration()).isEqualTo("5.0.x");
 	}
 
 	@Test
@@ -291,7 +291,7 @@ class DependencyRulesUnitTests {
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), null,
 				ArtifactVersion.of("v2.1.0"));
 
-		assertThat(rule.getGeneration()).isEqualTo("5.1");
+		assertThat(rule.getGeneration()).isEqualTo("5.1.x");
 	}
 
 }

@@ -19,7 +19,7 @@ package biz.paluch.dap.assistant;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A change to the {@link DependencyUpgradeReview} that the table must reflect.
+ * A change to the {@link UpgradeReview} that the table must reflect.
  *
  * <p>Three shapes, distinguished so the table model can pick the cheapest
  * reaction: reload the visible row set, refresh a single row, or refresh every
@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  * @param reload whether the visible candidate set must be reloaded.
  * @author Mark Paluch
  */
-record ReviewChange(@Nullable UpdateCandidate candidate, boolean reload) {
+record ReviewChange(@Nullable UpgradeCandidate candidate, boolean reload) {
 
 	/**
 	 * The visible candidate set changed and must be reloaded.
@@ -42,7 +42,7 @@ record ReviewChange(@Nullable UpdateCandidate candidate, boolean reload) {
 	/**
 	 * A single candidate's selection changed; refresh its row.
 	 */
-	static ReviewChange row(UpdateCandidate candidate) {
+	static ReviewChange row(UpgradeCandidate candidate) {
 		return new ReviewChange(candidate, false);
 	}
 

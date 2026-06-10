@@ -30,14 +30,13 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 	private final Generation generation;
 
 	private ArtifactRule(ArtifactPattern pattern, String name, Generation generation) {
-
 		this.pattern = pattern;
 		this.name = name;
 		this.generation = generation;
 	}
 
 	/**
-	 * Create an artifact rule using the pattern as its display name.
+	 * Create an artifact rule.
 	 *
 	 * @param pattern the artifact pattern.
 	 * @param generation the required generation, see {@link Generation#of(String)}.
@@ -45,7 +44,7 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 	 * @see #of(String, String, String)
 	 */
 	public static ArtifactRule of(String pattern, String generation) {
-		return new ArtifactRule(ArtifactPattern.of(pattern), pattern, Generation.of(generation));
+		return new ArtifactRule(ArtifactPattern.of(pattern), "", Generation.of(generation));
 	}
 
 	/**

@@ -77,9 +77,10 @@ public class RuleService implements Disposable, DependencyRuleResolver {
 		this.project = project;
 
 		if (JSON_PRESENT) {
+			DescriptorChangeListener listener = new DescriptorChangeListener(project, this::invalidate);
 			project.getMessageBus()
 					.connect(this)
-					.subscribe(VirtualFileManager.VFS_CHANGES, new DescriptorChangeListener(project, this::invalidate));
+					.subscribe(VirtualFileManager.VFS_CHANGES, listener);
 		}
 	}
 
@@ -98,6 +99,7 @@ public class RuleService implements Disposable, DependencyRuleResolver {
 		return rules().resolve(artifactId, currentBranchName(this.project, file), projectVersion.orElseGet(() -> null));
 	}
 
+	@Override
 	public DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
 			@Nullable ArtifactVersion projectVersion) {
 		return rules().resolve(artifactId, branchName, projectVersion);

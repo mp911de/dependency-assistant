@@ -16,8 +16,8 @@
 
 package biz.paluch.dap.assistant;
 
-import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.psi.PsiElement;
@@ -27,16 +27,15 @@ import com.intellij.psi.PsiElement;
  */
 class UpgradeSuggestions {
 
-	/**
-	 * Suggest upgrade suggestions for the given PSI element.
-	 * @param element the PSI element under inspection.
-	 * @return the available upgrade suggestions, or
-	 * {@link AvailableUpgrades#none()} if none are available or the element is not
-	 * a version element in a supported context.
-	 */
-	public static AvailableUpgrades suggest(PsiElement element) {
-		return suggest(DependencyAssistantDispatcher.findFirstContext(element.getProject(),
-				element.getContainingFile()), element);
+
+	public static ArtifactReference resolveArtifact(ProjectDependencyContext context, PsiElement element) {
+
+		if (context.isAbsent() || !context.isVersionElement(element) || context.isAbsent()) {
+			return ArtifactReference.unresolved();
+		}
+
+		VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
+		return lookup.resolveArtifactReference(element);
 	}
 
 	/**

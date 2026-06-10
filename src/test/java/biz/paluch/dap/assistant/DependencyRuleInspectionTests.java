@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.maven;
+package biz.paluch.dap.assistant;
 
 import java.util.List;
 
-import biz.paluch.dap.assistant.DependencyRuleInspection;
-import biz.paluch.dap.assistant.UpdateDependencyAction;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.maven.MavenFixtures;
 import biz.paluch.dap.rule.DependencyRules;
 import biz.paluch.dap.rule.RuleService;
 import com.intellij.codeInspection.InspectionManager;

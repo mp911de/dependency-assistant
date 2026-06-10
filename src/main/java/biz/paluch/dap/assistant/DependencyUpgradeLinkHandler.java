@@ -39,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see DependencyUpgradeTarget
  */
-public final class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
+public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 
 	/**
 	 * URL scheme identifying an upgrade link. The remainder of the URL is the

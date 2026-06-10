@@ -20,11 +20,11 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The user's in-progress pick for one {@link UpdateCandidate} in the review
+ * The user's in-progress pick for one {@link UpgradeCandidate} in the review
  * dialog: the chosen target version and whether to apply it.
  *
- * <p>Owned by {@link DependencyUpgradeReview}, keyed by candidate. Sits between
- * the {@link DependencyUpdateCandidate} (what can be chosen) and the
+ * <p>Owned by {@link UpgradeReview}, keyed by candidate. Sits between the
+ * {@link DependencyUpdateCandidate} (what can be chosen) and the
  * {@code DependencyUpdate} written on confirm (what was chosen). Selecting a
  * target other than the current version arms the apply flag; reselecting the
  * current version clears it.

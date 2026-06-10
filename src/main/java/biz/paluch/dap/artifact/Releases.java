@@ -17,15 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
@@ -60,6 +52,8 @@ public class Releases implements Iterable<Release> {
 
 	private final Map<VersioningScheme, List<Release>> partitions;
 
+	private final Map<VersioningScheme, Map<ArtifactVersion, Release>> lookup = new HashMap<>();
+
 	private final List<VersioningScheme> schemesByRank;
 
 	private final List<Release> ordered;
@@ -70,7 +64,15 @@ public class Releases implements Iterable<Release> {
 			List<Release> ordered) {
 		this.partitions = partitions;
 		this.schemesByRank = schemesByRank;
-		this.ordered = List.copyOf(ordered);
+		this.ordered = ordered;
+
+		partitions.forEach((scheme, releases) -> {
+			Map<ArtifactVersion, Release> map = new TreeMap<>();
+			for (Release release : releases) {
+				map.put(release.version(), release);
+			}
+			lookup.put(scheme, map);
+		});
 		this.unique.addAll(ordered);
 	}
 
@@ -197,6 +199,11 @@ public class Releases implements Iterable<Release> {
 	 */
 	public @Nullable VersioningScheme successorScheme() {
 		return schemesByRank.isEmpty() ? null : schemesByRank.getFirst();
+	}
+
+	public @Nullable Release getRelease(ArtifactVersion version) {
+		Map<ArtifactVersion, Release> byScheme = lookup.get(version.scheme());
+		return byScheme != null ? byScheme.get(version) : null;
 	}
 
 	/**

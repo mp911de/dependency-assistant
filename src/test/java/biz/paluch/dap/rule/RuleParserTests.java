@@ -51,7 +51,7 @@ class RuleParserTests {
 
 		DependencyRule rule = parse(file).resolve(SPRING_CORE, "main", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("7.0");
+		assertThat(rule.getGeneration()).isEqualTo("7.0.x");
 		assertThat(rule).accepts(ArtifactVersion.of("7.0.1"))
 				.rejects(ArtifactVersion.of("8.0.0"));
 	}
@@ -68,7 +68,7 @@ class RuleParserTests {
 
 		DependencyRule rule = parse(file).resolve(SPRING_CORE, "main", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("7.0");
+		assertThat(rule.getGeneration()).isEqualTo("7.0.x");
 		assertThat(rule).accepts(ArtifactVersion.of("7.0.1"));
 	}
 
@@ -87,7 +87,7 @@ class RuleParserTests {
 
 		DependencyRule rule = parse(file).resolve(SPRING_CORE, "main", null);
 
-		assertThat(rule.getGeneration()).isEqualTo("6.2");
+		assertThat(rule.getGeneration()).isEqualTo("6.2.x");
 	}
 
 	@Test
@@ -109,11 +109,11 @@ class RuleParserTests {
 		Rules rules = parse(file);
 
 		assertThat(rules.resolve(SPRING_CORE, "3.5.x", null)
-				.getGeneration()).isEqualTo("6.0");
+				.getGeneration()).isEqualTo("6.0.x");
 		assertThat(rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "3.5.x", null)
-				.getGeneration()).isEqualTo("5.13");
+				.getGeneration()).isEqualTo("5.13.x");
 		assertThat(rules.resolve(SPRING_CORE, "main", null)
-				.getGeneration()).isEqualTo("7.0");
+				.getGeneration()).isEqualTo("7.0.x");
 	}
 
 	@Test
@@ -135,7 +135,7 @@ class RuleParserTests {
 		DependencyRule rule = parse(file).resolve(SPRING_CORE, "2.5.x", null);
 		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
 
-		assertThat(rule.getGeneration()).isEqualTo("5.0");
+		assertThat(rule.getGeneration()).isEqualTo("5.0.x");
 		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.MINOR)
 				.rejects(UpgradeStrategy.MAJOR);
 	}
@@ -176,7 +176,7 @@ class RuleParserTests {
 		assertThat(rules.resolve(SPRING_CORE, "main", null)).isSameAs(DependencyRule.absent());
 		assertThat(rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "main", null)
 				.getGeneration())
-				.isEqualTo("5.0");
+						.isEqualTo("5.0.x");
 	}
 
 	@Test
@@ -214,13 +214,13 @@ class RuleParserTests {
 		Rules rules = parse(file);
 
 		assertThat(rules.resolve(SPRING_CORE, "main", null)
-				.getGeneration()).isEqualTo("7.0");
+				.getGeneration()).isEqualTo("7.0.x");
 		assertThat(rules.resolve(SPRING_CORE, "3.5.x", null)
-				.getGeneration()).isEqualTo("6.0");
+				.getGeneration()).isEqualTo("6.0.x");
 		assertThat(rules.resolve(ArtifactId.of("org.springframework.security", "spring-security"), "3.5.x", null)
-				.getGeneration()).isEqualTo("7.0");
+				.getGeneration()).isEqualTo("7.0.x");
 		assertThat(rules.resolve(SPRING_CORE, "2.5.x", null)
-				.getGeneration()).isEqualTo("5.0");
+				.getGeneration()).isEqualTo("5.0.x");
 	}
 
 	private static Rules parse(PsiFile file) {

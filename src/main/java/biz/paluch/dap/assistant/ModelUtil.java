@@ -28,12 +28,12 @@ import com.intellij.util.ui.SortableColumnModel;
 class ModelUtil {
 
 	/**
-	 * Return the {@link UpdateCandidate} row backing the given view row.
+	 * Return the {@link UpgradeCandidate} row backing the given view row.
 	 * @param viewRow row index in view coordinates (e.g. from renderer/editor),
 	 * respects row sorter.
 	 */
-	static UpdateCandidate getRow(JTable table, int viewRow) {
+	static UpgradeCandidate getRow(JTable table, int viewRow) {
 		int modelRow = table.convertRowIndexToModel(viewRow);
-		return (UpdateCandidate) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);
+		return (UpgradeCandidate) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);
 	}
 }

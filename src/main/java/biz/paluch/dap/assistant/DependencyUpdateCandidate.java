@@ -42,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>This is what the dialog <em>can</em> offer for a row, not what the user
  * has picked. The pick lives in an {@link UpgradeSelection} owned by
- * {@link DependencyUpgradeReview}.
+ * {@link UpgradeReview}.
  *
  * @author Mark Paluch
  */
@@ -56,6 +56,8 @@ class DependencyUpdateCandidate implements HasArtifactId {
 
 	private final Map<UpgradeStrategy, Release> targets;
 
+	private final Map<UpgradeStrategy, Release> filteredTargets;
+
 	/**
 	 * Create a new {@code DependencyUpdateOption}.
 	 * @param dependency the dependency to update.
@@ -63,7 +65,6 @@ class DependencyUpdateCandidate implements HasArtifactId {
 	 */
 	DependencyUpdateCandidate(Dependency dependency, Releases releases) {
 		this.dependency = dependency;
-
 
 		if (releases.stream().map(Release::getVersion)
 				.noneMatch(it -> it.matches(dependency.getCurrentVersion()))) {
@@ -73,13 +74,16 @@ class DependencyUpdateCandidate implements HasArtifactId {
 		this.releases = releases;
 		this.filtered = filterVersionSuggestions(this.releases, dependency.getCurrentVersion());
 		this.targets = new LinkedHashMap<>();
+		this.filteredTargets = new LinkedHashMap<>();
 
 		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
-			Release option = strategy.select(currentVersion(), this.releases);
-			if (option != null && !option.version().equals(currentVersion())) {
+			Release option = strategy.select(getCurrentVersion(), this.releases);
+			if (option != null && !option.version().equals(getCurrentVersion())) {
 				targets.put(strategy, option);
 			}
 		}
+
+		filteredTargets.putAll(targets);
 	}
 
 	private Releases filterVersionSuggestions(Releases releases,
@@ -127,42 +131,45 @@ class DependencyUpdateCandidate implements HasArtifactId {
 	 * Return whether any automatic upgrade targets are available.
 	 */
 	public boolean hasUpgradeTargets() {
-		return !targets.isEmpty();
-	}
-
-	/**
-	 * Return whether the newest known release is newer than the current version.
-	 */
-	public boolean hasUpdateCandidate() {
-		return !releases.isEmpty() && releases.iterator().next().version()
-				.isNewer(dependency.getCurrentVersion()) && !getTargets().isEmpty();
+		return !filteredTargets.isEmpty();
 	}
 
 	/**
 	 * Return the dependency's current version.
 	 */
-	public ArtifactVersion currentVersion() {
+	public ArtifactVersion getCurrentVersion() {
 		return dependency.getCurrentVersion();
 	}
 
 	/**
 	 * Return all known release options.
 	 */
-	public Releases versionOptions() {
+	public Releases getReleases() {
 		return releases;
 	}
 
 	/**
 	 * Return release options suitable for display in the update dialog.
 	 */
-	public Releases filtered() {
+	public Releases getFilteredReleases() {
 		return filtered;
+	}
+
+	/**
+	 * Return automatically selected targets by upgrade strategy.
+	 */
+	public Map<UpgradeStrategy, Release> getTargets() {
+		return targets;
+	}
+
+	public Map<UpgradeStrategy, Release> getFilteredTargets() {
+		return filteredTargets;
 	}
 
 	/**
 	 * Return the first declaration source for the dependency.
 	 */
-	public DeclarationSource source() {
+	public DeclarationSource getDeclarationSource() {
 		return dependency.getDeclarationSources().iterator().next();
 	}
 
@@ -187,16 +194,9 @@ class DependencyUpdateCandidate implements HasArtifactId {
 		return dependency.findPropertyVersion();
 	}
 
-	/**
-	 * Return automatically selected targets by upgrade strategy.
-	 */
-	public Map<UpgradeStrategy, Release> getTargets() {
-		return targets;
-	}
-
 	@Override
 	public String toString() {
-		return dependency.getArtifactId() + ": " + currentVersion() + " -> ["
+		return dependency.getArtifactId() + ": " + getCurrentVersion() + " -> ["
 				+ filtered.stream().map(Release::version).map(Object::toString).collect(Collectors.joining(", ")) + "]";
 	}
 

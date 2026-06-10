@@ -113,7 +113,7 @@ class DependencyCheckAggregatorTests {
 
 		assertThat(result.candidates()).extracting(candidate -> candidate.getArtifactId().artifactId())
 				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());
-		assertThat(result.candidates()).extracting(UpdateCandidate::currentVersion)
+		assertThat(result.candidates()).extracting(UpgradeCandidate::getCurrentVersion)
 				.containsExactly(LETTUCE_CURRENT, SPRING_CURRENT);
 		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
 		assertThat(result.files()).containsExactly(a, b);

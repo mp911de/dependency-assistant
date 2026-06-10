@@ -46,7 +46,7 @@ class ResolvedDependencyRule implements DependencyRule {
 
 	@Override
 	public String getGeneration() {
-		return this.generation.toString();
+		return this.generation.value();
 	}
 
 	@Override

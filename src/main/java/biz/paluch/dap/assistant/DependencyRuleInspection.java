@@ -23,6 +23,7 @@ import java.util.Set;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
@@ -92,22 +93,24 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 					return;
 				}
 
-				if (!reported.add(versionLiteral)) {
+				if (!reported.add((versionLiteral))) {
 					return;
 				}
 
 				ArtifactVersion version = declaration.getVersion();
-				DependencyRule rule = rules.resolve(declaration.getArtifactId(), project, virtualFile,
-						projectVersion);
-				if (rule.test(version)) {
+				EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.evaluate(rules, project, declaration,
+						context, virtualFile, projectVersion);
+				if (evaluated.test(version)) {
 					return;
 				}
 
+				InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
 				String message = MessageBundle.message("inspection.dependency-rule.problem",
-						declaration.getArtifactId().artifactId(),
-						context.getInterfaceAssistant()
-								.getDocumentationText(version), rule.getGeneration());
-				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference, rule, cache, context);
+						evaluated.getDependencyName(), interfaceAssistant
+								.getDocumentationText(version),
+						evaluated.getRule().getGeneration());
+				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference, evaluated, cache,
+						context);
 
 				if (fix == null) {
 					holder.registerProblem(versionLiteral, message);
@@ -126,40 +129,38 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 	 */
 	static class AlignGenerationQuickFix extends UpdateDependencyAction implements Iconable {
 
-		private final ArtifactDeclaration declaration;
-
 		private final DependencyUpdate update;
 
+		private final EvaluatedDependencyRule evaluated;
+
 		AlignGenerationQuickFix(ArtifactDeclaration declaration, ProjectDependencyContext context,
-				DependencyUpdate update) {
+				DependencyUpdate update, EvaluatedDependencyRule evaluated) {
 			super(declaration, context, update);
-			this.declaration = declaration;
 			this.update = update;
+			this.evaluated = evaluated;
 		}
 
-		public static @Nullable AlignGenerationQuickFix findFix(ArtifactReference reference, DependencyRule rule,
-				Cache cache,
-				ProjectDependencyContext context) {
+		public static @Nullable AlignGenerationQuickFix findFix(ArtifactReference reference,
+				EvaluatedDependencyRule evaluated, Cache cache, ProjectDependencyContext context) {
 
 			if (reference.getDeclaration().getVersionLiteral() == null) {
 				return null;
 			}
 			Releases releases = cache.getReleases(reference.getArtifactId());
 			Release target = releases.stream()
-					.filter(release -> rule.test(release.getVersion()))
+					.filter(release -> evaluated.test(release.getVersion()))
 					.max(Comparator.naturalOrder()).orElse(null);
 			if (target == null) {
 				return null;
 			}
 			DependencyUpdate update = DependencyUpdate.from(reference.toDependency(), target);
-
-			return new AlignGenerationQuickFix(reference.getDeclaration(), context, update);
+			return new AlignGenerationQuickFix(reference.getDeclaration(), context, update, evaluated);
 		}
 
 		@Override
 		protected Presentation getPresentation(ActionContext context, PsiElement element) {
 			String message = MessageBundle.message("inspection.dependency-rule.fix.name",
-					declaration.getArtifactId().artifactId(), update.versionAsString());
+					evaluated.getDependencyName(), update.versionAsString());
 			return Presentation.of(message).withIcon(AllIcons.General.GreenCheckmark);
 		}
 

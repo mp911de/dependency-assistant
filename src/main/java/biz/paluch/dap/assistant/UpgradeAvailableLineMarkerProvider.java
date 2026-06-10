@@ -24,12 +24,16 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
+import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.GutterName;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
@@ -68,8 +72,33 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			return null;
 		}
 
-		AvailableUpgrades upgrades = UpgradeSuggestions.suggest(context, element);
+		VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
+
+		ArtifactReference artifactReference = UpgradeSuggestions.resolveArtifact(context, element);
+		if (!artifactReference.isResolved() || !artifactReference.getDeclaration().isVersionDefined()) {
+			return null;
+		}
+
+		AvailableUpgrades upgrades = lookup.suggestUpgrades(artifactReference);
+
+		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
+		RuleService ruleService = RuleService.getInstance(element.getProject());
+		ArtifactId artifactId = artifactReference.getArtifactId();
+		DependencyRule rule = ruleService.resolve(artifactId, element.getProject(), containingFile,
+				context.getProjectVersion());
+		EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.of(rule, artifactId,
+				artifactReference.getDeclaration().getVersion().getVersion(),
+				context.getInterfaceAssistant());
+		InterfaceAssistant ui = context.getInterfaceAssistant();
+		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
+
 		if (!upgrades.isPresent()) {
+			if (evaluated.isPresent() && evaluated.isLocked()) {
+				return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
+						evaluated.getIcon(), e -> evaluated.getToolTipText(),
+						new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
+						GutterIconRenderer.Alignment.LEFT, evaluated::getAccessibleName);
+			}
 			return null;
 		}
 
@@ -78,20 +107,20 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			return null;
 		}
 
-		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
-		RuleService ruleService = RuleService.getInstance(element.getProject());
-		DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration()
-				.getArtifactId(), element.getProject(), containingFile, context.getProjectVersion());
 		upgrades = upgrades.filterSuggestions(rule::isEnabled);
-
 		if (!upgrades.isPresent()) {
 			return null;
 		}
 
 		String tooltip = rule.isPresent() ? suggestion.getSuggestionMessage() : suggestion.getMessage();
 		String accessibleName = rule.isPresent() ? MessageBundle.message("gutter.suggestion.accessible") : MessageBundle.message("gutter.newer.accessible");
-		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
-		InterfaceAssistant ui = context.getInterfaceAssistant();
+
+		if (evaluated.isPresent()) {
+			String evaluatedToolTip = evaluated.getToolTipText();
+			if (StringUtils.hasText(evaluatedToolTip)) {
+				tooltip += "<br>" + evaluated.getToolTipText();
+			}
+		}
 
 		ArtifactDeclaration declaration = suggestion.getArtifactDeclaration();
 		PsiElement versionLiteral = declaration.getVersionLiteral();
@@ -101,7 +130,7 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			if (virtualFile != null) {
 
 				String tooltipToUse = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
-						+ System.lineSeparator() + tooltip;
+						+ "<br/>" + tooltip;
 
 				return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
 						ui.getNavigateIcon(declaration),
@@ -115,8 +144,10 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			}
 		}
 
+		String tooltipToUse = tooltip;
+
 		return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
-				ui.getGutterIcon(declaration), e -> tooltip,
+				evaluated.isPresent() ? evaluated.getIcon() : ui.getGutterIcon(declaration), e -> tooltipToUse,
 				new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 	}

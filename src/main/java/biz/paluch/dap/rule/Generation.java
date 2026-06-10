@@ -20,6 +20,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.util.StringUtils;
 
 import org.springframework.util.Assert;
 
@@ -65,7 +66,7 @@ public class Generation implements Predicate<String> {
 		Assert.hasText(generation, "Generation must not be empty");
 		if (!"*".equals(generation) && !GENERATION_PATTERN.matcher(generation).matches()) {
 			throw new IllegalArgumentException(
-					"Generation '%s' must be a numeric project generation such as 6, 6.0, 6.0.x, or 6.0.1"
+					"Generation '%s' must be a numeric project generation such as '6', '6.0', '6.0.x', or '6.0.1'"
 							.formatted(generation));
 		}
 		return new Generation(generation);
@@ -96,7 +97,10 @@ public class Generation implements Predicate<String> {
 	 * @return the normalized generation value.
 	 */
 	public String value() {
-		return this.generation;
+		if (this.generation.equals("*") || StringUtils.isEmpty(this.generation)) {
+			return "";
+		}
+		return this.generation + ".x";
 	}
 
 	@Override
