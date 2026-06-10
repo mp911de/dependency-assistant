@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.artifact;
 
-import java.util.Comparator;
-
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.state.CachedArtifact;
 import org.junit.jupiter.api.Test;
@@ -184,9 +182,36 @@ class UpgradeStrategyUnitTests {
 		assertThat(release).isNull();
 	}
 
+	@Test
+	void majorDoesNotSuggestReleaseTrainForCalendarVersion() {
+
+		Release release = select(UpgradeStrategy.MAJOR, "2025.0.6", Releases.REACTOR_BOM);
+
+		assertThat(release).isNull();
+	}
+
+	@Test
+	void latestForReleaseTrainCurrentStaysWithinTrains() {
+
+		Release release = select(UpgradeStrategy.LATEST, "Aluminium-RELEASE", Releases.REACTOR_BOM);
+
+		assertThat(release.version()).hasToString("Dysprosium-SR25");
+	}
+
+	@Test
+	void selectReturnsNullForOpaqueCurrent() {
+
+		biz.paluch.dap.artifact.Releases history = biz.paluch.dap.artifact.Releases
+				.of(Releases.REACTOR_BOM.getVersionOptions());
+
+		Release release = UpgradeStrategy.LATEST.select(new GitRef("main"), history);
+
+		assertThat(release).isNull();
+	}
+
 	private static Release select(UpgradeStrategy strategy, String currentVersion, CachedArtifact artifact) {
 		return strategy.select(ArtifactVersion.of(currentVersion),
-				artifact.getVersionOptions().stream().sorted(Comparator.<Release>naturalOrder().reversed()).toList());
+				biz.paluch.dap.artifact.Releases.of(artifact.getVersionOptions()));
 	}
 
 }

@@ -26,6 +26,7 @@ import javax.swing.table.TableCellEditor;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.util.ui.JBUI;
@@ -86,11 +87,11 @@ class SuggestedVersionComboBoxEditor extends AbstractCellEditor implements Table
 				? (combo.getSelectedItem() instanceof Release release ? release.version() : candidate.currentVersion())
 				: updateTo;
 
-		List<Release> releases = review.visibleReleases(candidate);
+		Releases releases = review.visibleReleases(candidate);
 
 		if (!this.options.equals(releases)) {
 			this.options.clear();
-			this.options.addAll(releases);
+			this.options.addAll(releases.toList());
 		}
 
 		Release selected = null;

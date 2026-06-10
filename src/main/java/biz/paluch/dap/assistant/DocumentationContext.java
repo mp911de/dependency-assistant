@@ -30,6 +30,7 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
@@ -168,22 +169,22 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 
 	/**
 	 * Appends a release table, rendering at most {@link #MAX_VERSIONS} distinct
-	 * versions and skipping duplicates. Renders nothing when {@code versions} is
+	 * releases and skipping duplicates. Renders nothing when {@code releases} is
 	 * empty. When {@link #linkable} and icons are rendered, every non-current row
 	 * wraps its age icon in an upgrade link handled by
 	 * {@link DependencyUpgradeLinkHandler}.
 	 */
-	private void appendVersionsTable(StringBuilder sb, ArtifactId artifactId, List<Release> versions,
+	private void appendVersionsTable(StringBuilder sb, ArtifactId artifactId, Releases releases,
 			@Nullable Map<String, Image> iconImages, ReleaseDateFormatter formatter) {
 
-		if (versions.isEmpty()) {
+		if (releases.isEmpty()) {
 			return;
 		}
 
 		Set<String> seen = new HashSet<>();
 		sb.append("<table>");
 		int count = 0;
-		for (Release v : versions) {
+		for (Release v : releases) {
 			DocumentedRelease documented = currentVersion != null ? new CurrentVersionDocumentedRelease(artifactId.toString(), v, interfaceAssistant, linkable, currentVersion, iconImages != null) : new DocumentedRelease(v, interfaceAssistant, linkable);
 			if (!seen.add(documented.getKey())) {
 				continue;
@@ -202,14 +203,14 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 		return release.version().getVersion().getVersion().toString();
 	}
 
-	private record ReleaseGroup(List<ArtifactId> artifactIds, List<Release> releases) {
+	private record ReleaseGroup(List<ArtifactId> artifactIds, Releases releases) {
 
 		public static Collection<ReleaseGroup> group(Cache cache, int limit, List<CachedArtifact> artifacts) {
 
 			Map<Set<String>, ReleaseGroup> groups = new LinkedHashMap<>();
 			for (CachedArtifact artifact : artifacts) {
 				ArtifactId artifactId = artifact.toArtifactId();
-				List<Release> releases = cache.getReleases(artifactId);
+				Releases releases = cache.getReleases(artifactId);
 				Set<String> versionKeys = releaseVersionKeys(releases, limit);
 
 				ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(new ArrayList<>(),
@@ -219,7 +220,7 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			return groups.values();
 		}
 
-		private static Set<String> releaseVersionKeys(List<Release> releases, int limit) {
+		private static Set<String> releaseVersionKeys(Releases releases, int limit) {
 
 			Set<String> versions = new LinkedHashSet<>();
 			for (Release release : releases) {

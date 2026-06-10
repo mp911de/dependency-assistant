@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
@@ -73,6 +74,24 @@ class VersionUpgradeLookupUnitTests {
 
 		assertThat(result.getStrategy()).isEqualTo(UpgradeStrategy.MAJOR);
 		assertThat(result.getRelease().version().toString()).isEqualTo("2.0.0");
+	}
+
+	@Test
+	void suggestUpgradesStayWithinDeclaredVersioningScheme() {
+
+		Cache cache = new Cache();
+		cache.putVersionOptions(artifactId, List.of( //
+				Release.from("2025.0.6", "2026-06-08"), //
+				Release.from("2020.0.0", "2020-10-26"), //
+				Release.from("Dysprosium-SR25", "2021-11-09"), //
+				Release.from("Aluminium-RELEASE", "2017-02-22")));
+
+		VersionUpgradeLookup lookup = lookup(cache, null, declaredReference("Aluminium-RELEASE"));
+
+		AvailableUpgrades upgrades = lookup.suggestUpgrades(element);
+
+		assertThat(upgrades.getUpgrades().values()).extracting(it -> it.getRelease().version().toString())
+				.containsOnly("Dysprosium-SR25");
 	}
 
 	@Test
@@ -212,7 +231,7 @@ class VersionUpgradeLookupUnitTests {
 		Project project = new MockProjectEx(() -> {
 		});
 		LookupContext context = new LookupContext(project, availableContext(), cache, projectState,
-				new GitVersionResolver(cache, projectState));
+				new GitVersionResolver(cache));
 		return new VersionUpgradeLookup(context, e -> reference);
 	}
 
@@ -253,7 +272,8 @@ class VersionUpgradeLookupUnitTests {
 
 	private UpgradeSuggestion determineUpgrade(ArtifactReference reference, ArtifactVersion version,
 			List<Release> releases) {
-		AvailableUpgrades availableUpgrades = VersionUpgradeLookup.determineUpgrades(reference, version, releases);
+		AvailableUpgrades availableUpgrades = VersionUpgradeLookup.determineUpgrades(reference, version,
+				Releases.of(releases));
 		return availableUpgrades.isPresent() ? availableUpgrades.getUpgradeSuggestion() : UpgradeSuggestion.none();
 	}
 

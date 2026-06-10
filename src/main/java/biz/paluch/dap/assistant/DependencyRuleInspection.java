@@ -18,7 +18,6 @@ package biz.paluch.dap.assistant;
 
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import javax.swing.Icon;
@@ -28,6 +27,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.RuleService;
@@ -144,7 +144,7 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 			if (reference.getDeclaration().getVersionLiteral() == null) {
 				return null;
 			}
-			List<Release> releases = cache.getReleases(reference.getArtifactId());
+			Releases releases = cache.getReleases(reference.getArtifactId());
 			Release target = releases.stream()
 					.filter(release -> rule.test(release.getVersion()))
 					.max(Comparator.naturalOrder()).orElse(null);

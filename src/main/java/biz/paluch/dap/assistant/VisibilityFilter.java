@@ -16,10 +16,10 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 
 /**
@@ -42,7 +42,7 @@ record VisibilityFilter(boolean hideUpToDate) {
 	/**
 	 * Return the release options to show for the given option.
 	 */
-	List<Release> visibleReleases(DependencyUpdateCandidate option) {
+	Releases visibleReleases(DependencyUpdateCandidate option) {
 		return hideUpToDate ? option.filtered() : option.versionOptions();
 	}
 

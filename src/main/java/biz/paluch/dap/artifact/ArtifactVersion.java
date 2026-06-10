@@ -150,10 +150,25 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	boolean isBugFixVersion();
 
 	/**
+	 * Return the {@link VersioningScheme} this version belongs to.
+	 *
+	 * <p>The scheme is intrinsic to the version: it classifies the version's shape,
+	 * independent of any other version. Wrapped versions report the scheme of the
+	 * wrapped version.
+	 *
+	 * @return the versioning scheme; guaranteed to be not {@literal null}.
+	 */
+	VersioningScheme scheme();
+
+	/**
 	 * Return whether the given version can be compared with this one.
+	 *
+	 * <p>Two versions are comparable only when they share the same
+	 * {@link VersioningScheme} and the scheme is not
+	 * {@link VersioningScheme#OPAQUE}.
 	 */
 	default boolean canCompare(ArtifactVersion other) {
-		return getVersion().getClass().equals(other.getVersion().getClass());
+		return scheme() != VersioningScheme.OPAQUE && scheme() == other.scheme();
 	}
 
 	@Contract("null -> false")

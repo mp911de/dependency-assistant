@@ -30,6 +30,11 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 	}
 
 	@Override
+	public VersioningScheme scheme() {
+		return delegate.scheme();
+	}
+
+	@Override
 	public boolean isNewer(ArtifactVersion other) {
 		return delegate.isNewer(other.getVersion());
 	}

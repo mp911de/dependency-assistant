@@ -25,6 +25,7 @@ import java.util.SequencedMap;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
@@ -162,12 +163,12 @@ public class VersionUpgradeLookup {
 			return AvailableUpgrades.none();
 		}
 
-		List<Release> options = cache.getReleases(declaration.getArtifactId());
-		if (options.isEmpty()) {
+		Releases releases = cache.getReleases(declaration.getArtifactId());
+		if (releases.isEmpty()) {
 			return AvailableUpgrades.none();
 		}
 
-		return determineUpgrades(artifactReference, declaration.getVersion(), options);
+		return determineUpgrades(artifactReference, declaration.getVersion(), releases);
 	}
 
 	/**
@@ -177,21 +178,21 @@ public class VersionUpgradeLookup {
 	 * that order.
 	 * @param artifactReference the resolved artifact reference.
 	 * @param current the current artifact version.
-	 * @param options the candidate release options.
+	 * @param releases the candidate releases.
 	 * @return the available upgrade suggestions, or
 	 * {@link AvailableUpgrades#none()}.
 	 */
 	public static AvailableUpgrades determineUpgrades(ArtifactReference artifactReference, ArtifactVersion current,
-			List<Release> options) {
+			Releases releases) {
 
-		Release major = UpgradeStrategy.MAJOR.select(current, options);
-		Release minor = UpgradeStrategy.MINOR.select(current, options);
-		Release patch = UpgradeStrategy.PATCH.select(current, options);
+		Release major = UpgradeStrategy.MAJOR.select(current, releases);
+		Release minor = UpgradeStrategy.MINOR.select(current, releases);
+		Release patch = UpgradeStrategy.PATCH.select(current, releases);
 		Release preview = current.isSnapshotVersion() || current.isPreview()
-				? UpgradeStrategy.PREVIEW.select(current, options)
+				? UpgradeStrategy.PREVIEW.select(current, releases)
 				: null;
-		Release latestCandidate = UpgradeStrategy.LATEST.select(current, options);
-		Release release = UpgradeStrategy.RELEASE.select(current, options);
+		Release latestCandidate = UpgradeStrategy.LATEST.select(current, releases);
+		Release release = UpgradeStrategy.RELEASE.select(current, releases);
 		Release latest = latestCandidate != null && latestCandidate.isNewer(current) ? latestCandidate : null;
 		List<UpgradeSuggestion> suggestions = new ArrayList<>();
 

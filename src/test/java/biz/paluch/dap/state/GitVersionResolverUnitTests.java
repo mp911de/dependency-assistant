@@ -124,7 +124,7 @@ class GitVersionResolverUnitTests {
 	@Test
 	void fallsBackToCacheForExactTagMatch() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases(), emptyState());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 		Optional<ArtifactVersion> result = resolver.resolveCurrent(ARTIFACT, "2.0.0");
 
 		assertThat(result).hasValueSatisfying(v -> {
@@ -136,7 +136,7 @@ class GitVersionResolverUnitTests {
 	@Test
 	void matchesShaPrefix() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases(), emptyState());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 		Optional<ArtifactVersion> result = resolver.resolveCurrent(ARTIFACT, "11223344");
 
 		assertThat(result).hasValueSatisfying(v -> assertThat(((GitVersion) v).getSha()).isEqualTo(SHA_V2));
@@ -145,7 +145,7 @@ class GitVersionResolverUnitTests {
 	@Test
 	void fallsBackToEmptyForAmbiguousPrefixThatIsNotParseable() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases(), emptyState());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 
 		Optional<ArtifactVersion> result = resolver.resolveCurrent(ARTIFACT, "aabbccdd");
 
@@ -155,7 +155,7 @@ class GitVersionResolverUnitTests {
 	@Test
 	void fallsBackToRawParseForUnknownRef() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases(), emptyState());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 		Optional<ArtifactVersion> result = resolver.resolveCurrent(ARTIFACT, "4.5.6");
 
 		assertThat(result).hasValueSatisfying(v -> {
@@ -167,7 +167,7 @@ class GitVersionResolverUnitTests {
 	@Test
 	void returnsEmptyForUnparseableUnknownRef() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases(), emptyState());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 		Optional<ArtifactVersion> result = resolver.resolveCurrent(ARTIFACT, "");
 
 		assertThat(result).isEmpty();
@@ -176,7 +176,7 @@ class GitVersionResolverUnitTests {
 	@Test
 	void ignoresCacheForDifferentArtifactId() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases(), emptyState());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 		Optional<ArtifactVersion> result = resolver.resolveCurrent(OTHER_ARTIFACT, "2.0.0");
 
 		assertThat(result).hasValueSatisfying(v -> {
@@ -188,14 +188,10 @@ class GitVersionResolverUnitTests {
 	@Test
 	void skipsProjectStateWhenAbsent() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases(), null);
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 		Optional<ArtifactVersion> result = resolver.resolveCurrent(ARTIFACT, "2.0.0");
 
 		assertThat(result).hasValueSatisfying(v -> assertThat(((GitVersion) v).getSha()).isEqualTo(SHA_V2));
-	}
-
-	private static ProjectState emptyState() {
-		return new InMemoryProjectState();
 	}
 
 	private static class InMemoryProjectState implements ProjectState {

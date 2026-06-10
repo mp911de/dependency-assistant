@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MatchFunction;
@@ -58,7 +59,7 @@ class GradleWrapperUtils {
 
 	static @Nullable String findSha(ArtifactId artifactId, ArtifactVersion version, StateService stateService) {
 
-		List<Release> releases = stateService.getCache()
+		Releases releases = stateService.getCache()
 				.getReleases(artifactId);
 
 		for (Release release : releases) {

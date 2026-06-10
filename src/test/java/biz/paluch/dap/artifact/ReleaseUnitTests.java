@@ -17,7 +17,9 @@
 package biz.paluch.dap.artifact;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.TreeSet;
 
 import org.junit.jupiter.api.Test;
 
@@ -42,6 +44,17 @@ class ReleaseUnitTests {
 
 		assertThat(train).isLessThan(v1);
 		assertThat(v1).isGreaterThan(train).isLessThan(v2);
+	}
+
+	@Test
+	void crossSchemeReleasesWithEqualDatesRemainDistinct() {
+
+		// reactor-bom published 2020.0.13 and Dysprosium-SR25 on the same day
+		Release numeric = Release.from("2020.0.13", "2021-11-09");
+		Release train = Release.from("Dysprosium-SR25", "2021-11-09");
+
+		assertThat(numeric.compareTo(train)).isNotZero();
+		assertThat(new TreeSet<>(List.of(numeric, train))).hasSize(2);
 	}
 
 	@Test

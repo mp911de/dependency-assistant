@@ -116,13 +116,18 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	@Override
+	public VersioningScheme scheme() {
+		return VersioningScheme.RELEASE_TRAIN;
+	}
+
+	@Override
 	public boolean isNewer(ArtifactVersion other) {
-		return compareTo(other) > 0;
+		return other.getVersion() instanceof ReleaseTrainArtifactVersion && compareTo(other) > 0;
 	}
 
 	@Override
 	public boolean isOlder(ArtifactVersion other) {
-		return compareTo(other) < 0;
+		return other.getVersion() instanceof ReleaseTrainArtifactVersion && compareTo(other) < 0;
 	}
 
 	@Override

@@ -16,9 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -32,6 +30,6 @@ import org.jspecify.annotations.Nullable;
  * succeeded.
  * @param releases the releases that were resolved for the artifact.
  */
-record ReleaseLookupResult(@Nullable String error, List<Release> releases) {
+record ReleaseLookupResult(@Nullable String error, Releases releases) {
 
 }

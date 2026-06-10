@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.mock.MockPsiElement;
@@ -49,9 +50,9 @@ class AvailableUpgradesUnitTests {
 	void getUpgradesIsOrderedMajorMinorPatchPreview() {
 
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
-		List<Release> options = releasesNewestFirst("3.0.0", "1.5.0", "1.0.5", "1.0.0");
+		List<Release> releases = releasesNewestFirst("3.0.0", "1.5.0", "1.0.5", "1.0.0");
 
-		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, options);
+		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, Releases.of(releases));
 
 		assertThat(upgrades.getUpgrades().sequencedKeySet()).containsExactly(
 				UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);

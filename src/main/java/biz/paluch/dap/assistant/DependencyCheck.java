@@ -30,9 +30,9 @@ import java.util.concurrent.TimeoutException;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseResolver;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
@@ -42,8 +42,6 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.progress.StepsProgressIndicator;
-
-import org.springframework.util.CollectionUtils;
 
 /**
  * Package service that collects declared dependencies and resolves available
@@ -141,11 +139,11 @@ class DependencyCheck {
 	 * @param consistency the release-cache consistency to use.
 	 * @return successfully resolved releases keyed by artifact, in encounter order.
 	 */
-	public Map<ArtifactId, List<Release>> getReleases(ProgressIndicator indicator,
+	public Map<ArtifactId, Releases> getReleases(ProgressIndicator indicator,
 			List<ReleaseSources> candidates, Consistency consistency) {
 		indicator.setText(MessageBundle.message("action.check.dependency.loading.remote"));
 		Map<ArtifactId, ReleaseLookupResult> resultMap = resolveReleases(indicator, candidates, consistency);
-		Map<ArtifactId, List<Release>> releases = new LinkedHashMap<>();
+		Map<ArtifactId, Releases> releases = new LinkedHashMap<>();
 		for (Map.Entry<ArtifactId, ReleaseLookupResult> entry : resultMap.entrySet()) {
 			if (entry.getValue().error() == null) {
 				releases.put(entry.getKey(), entry.getValue().releases());
@@ -214,7 +212,7 @@ class DependencyCheck {
 
 				entry.getValue().cancel(true);
 				Throwable cause = e.getCause() != null ? e.getCause() : e;
-				res = new ReleaseLookupResult("%s: %s".formatted(name, cause.getMessage()), List.of());
+				res = new ReleaseLookupResult("%s: %s".formatted(name, cause.getMessage()), Releases.empty());
 			} catch (InterruptedException e) {
 				res = cancelAndRecord(artifactId, futures, e);
 				Thread.currentThread().interrupt();
@@ -250,14 +248,14 @@ class DependencyCheck {
 		try {
 
 			ReleaseResolver resolver = new ReleaseResolver(artifactSource.sources(), executor);
-			List<Release> releases;
+			Releases releases;
 			if (consistency == Consistency.NO_CACHE) {
 				releases = resolver.getReleases(artifactSource.artifactId(), indicator);
 				cache.putVersionOptions(artifactSource.artifactId(), releases);
 			} else {
 
 				releases = cache.getReleases(artifactSource.artifactId(), consistency == Consistency.CACHED);
-				if (CollectionUtils.isEmpty(releases)) {
+				if (releases.isEmpty()) {
 					releases = resolver.getReleases(artifactSource.artifactId(), indicator);
 					cache.putVersionOptions(artifactSource.artifactId(), releases);
 				}
@@ -266,14 +264,14 @@ class DependencyCheck {
 		} catch (ProcessCanceledException e) {
 			throw e;
 		} catch (Exception e) {
-			return new ReleaseLookupResult(artifactSource.artifactId() + ": " + e.getMessage(), List.of());
+			return new ReleaseLookupResult(artifactSource.artifactId() + ": " + e.getMessage(), Releases.empty());
 		}
 	}
 
 	private static ReleaseLookupResult cancelAndRecord(ArtifactId artifactId,
 			Map<ArtifactId, Future<ReleaseLookupResult>> futures, Throwable cause) {
 		cancelRemainingFutures(futures);
-		return new ReleaseLookupResult("%s: %s".formatted(artifactId, cause.getMessage()), List.of());
+		return new ReleaseLookupResult("%s: %s".formatted(artifactId, cause.getMessage()), Releases.empty());
 	}
 
 	/**

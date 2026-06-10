@@ -24,6 +24,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import com.intellij.openapi.Disposable;
@@ -92,7 +93,7 @@ class DependencyUpgradeReview {
 	 * Return the release options shown for the given candidate under the active
 	 * filter.
 	 */
-	List<Release> visibleReleases(UpdateCandidate candidate) {
+	Releases visibleReleases(UpdateCandidate candidate) {
 		return filter.visibleReleases(candidate.option());
 	}
 
@@ -100,7 +101,7 @@ class DependencyUpgradeReview {
 	 * Return the release options shown for the given option under the active
 	 * filter.
 	 */
-	List<Release> visibleReleases(DependencyUpdateCandidate option) {
+	Releases visibleReleases(DependencyUpdateCandidate option) {
 		return filter.visibleReleases(option);
 	}
 

@@ -59,7 +59,7 @@ public record LookupContext(Project project, ProjectBuildContext buildContext, C
 		Cache cache = service.getCache();
 		ProjectState projectState = service.getProjectState(buildContext.getProjectId());
 		return new LookupContext(project, buildContext, cache, projectState,
-				new GitVersionResolver(cache, projectState));
+				new GitVersionResolver(cache));
 	}
 
 	/**

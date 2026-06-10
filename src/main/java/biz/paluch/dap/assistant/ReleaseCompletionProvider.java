@@ -17,7 +17,6 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +30,7 @@ import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.state.Cache;
@@ -243,14 +243,11 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 */
 	private List<ArtifactRelease> getReleases(ArtifactId artifactId, Cache cache) {
 
-		List<Release> versions = cache.getReleases(artifactId);
+		Releases releases = cache.getReleases(artifactId);
 		List<ArtifactRelease> result = new ArrayList<>();
-
-		for (Release release : versions) {
+		for (Release release : releases) {
 			result.add(new ArtifactRelease(artifactId, release));
 		}
-
-		result.sort(Comparator.naturalOrder());
 		return result;
 	}
 

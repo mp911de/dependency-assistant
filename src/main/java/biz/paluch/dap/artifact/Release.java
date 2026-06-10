@@ -178,6 +178,15 @@ public record Release(ArtifactVersion version,
 		return version;
 	}
 
+	/**
+	 * Compare this release with the given release.
+	 *
+	 * <p>Releases sharing a {@link VersioningScheme} compare by version. Across
+	 * schemes the result is a deterministic, non-authoritative tiebreak (release
+	 * date, then version text) that keeps distinct releases distinct in sorted
+	 * collections; the authoritative cross-scheme order is owned by
+	 * {@link Releases}.
+	 */
 	@Override
 	public int compareTo(Release o) {
 
@@ -186,10 +195,13 @@ public record Release(ArtifactVersion version,
 		}
 
 		if (releaseDate != null && o.releaseDate != null) {
-			return releaseDate.compareTo(o.releaseDate);
+			int byDate = releaseDate.compareTo(o.releaseDate);
+			if (byDate != 0) {
+				return byDate;
+			}
 		}
 
-		return 0;
+		return version.toString().compareToIgnoreCase(o.version.toString());
 	}
 
 	@Override

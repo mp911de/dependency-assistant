@@ -37,4 +37,9 @@ public interface NumericVersion extends ArtifactVersion {
 		return getParts().length;
 	}
 
+	@Override
+	default VersioningScheme scheme() {
+		return VersioningScheme.NUMERIC;
+	}
+
 }

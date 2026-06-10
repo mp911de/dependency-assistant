@@ -62,10 +62,10 @@ public class ReleaseResolver {
 	 * @param indicator the progress indicator to use for cancellation; can be
 	 * {@literal null} in which case an {@link EmptyProgressIndicator} is
 	 * substituted.
-	 * @return the resolved releases, newest first; guaranteed to be not
-	 * {@literal null}.
+	 * @return the resolved releases in the authoritative {@link Releases} order,
+	 * newest first; guaranteed to be not {@literal null}.
 	 */
-	public List<Release> getReleases(ArtifactId artifactId, @Nullable ProgressIndicator indicator) {
+	public Releases getReleases(ArtifactId artifactId, @Nullable ProgressIndicator indicator) {
 
 		ProgressIndicator progressIndicator = indicator != null ? indicator : new EmptyProgressIndicator();
 		Set<Release> result = new TreeSet<>(Comparator.<Release>naturalOrder().reversed());
@@ -88,7 +88,7 @@ public class ReleaseResolver {
 				future.cancel(true);
 				cancelRemaining(futures, i + 1);
 				Thread.currentThread().interrupt();
-				return new ArrayList<>(result);
+				return Releases.of(result);
 			} catch (TimeoutException e) {
 				future.cancel(true);
 				errors.add(new RuntimeException("Release source timed out", e));
@@ -112,7 +112,7 @@ public class ReleaseResolver {
 			throw notFoundException;
 		}
 
-		return new ArrayList<>(result);
+		return Releases.of(result);
 	}
 
 	private static void cancelRemaining(List<Future<List<Release>>> futures, int from) {

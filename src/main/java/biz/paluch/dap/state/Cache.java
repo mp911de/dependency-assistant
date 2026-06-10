@@ -29,6 +29,7 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -103,7 +104,7 @@ public class Cache {
 	 * present.
 	 */
 	@Transient
-	public List<Release> getReleases(ArtifactId artifactId) {
+	public Releases getReleases(ArtifactId artifactId) {
 		return getReleases(artifactId, false);
 	}
 
@@ -120,13 +121,13 @@ public class Cache {
 	 * present or the cache is considered stale.
 	 */
 	@Transient
-	public List<Release> getReleases(ArtifactId artifactId, boolean ensureRecent) {
+	public Releases getReleases(ArtifactId artifactId, boolean ensureRecent) {
 
 		if (ensureRecent) {
 			Duration age = getAge();
 
 			if (age == null || age.compareTo(CACHE_EXPIRATION) > 0) {
-				return List.of();
+				return Releases.empty();
 			}
 		}
 
@@ -134,12 +135,12 @@ public class Cache {
 		synchronized (artifacts) {
 			for (CachedArtifact artifact : artifacts) {
 				if (artifact.matches(artifactIdToUse)) {
-					return artifact.getVersionOptions();
+					return Releases.of(artifact.getVersionOptions());
 				}
 			}
 		}
 
-		return List.of();
+		return Releases.empty();
 	}
 
 	/**
@@ -164,9 +165,9 @@ public class Cache {
 	 * @param artifactId the artifact whose releases should be stored.
 	 * @param releases the releases to cache.
 	 */
-	public void putVersionOptions(ArtifactId artifactId, List<Release> releases) {
+	public void putVersionOptions(ArtifactId artifactId, Iterable<? extends Release> releases) {
 
-		List<CachedRelease> converted = new ArrayList<>(releases.size());
+		List<CachedRelease> converted = new ArrayList<>();
 		for (Release release : releases) {
 			converted.add(CachedRelease.from(release));
 		}

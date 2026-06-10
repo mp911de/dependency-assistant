@@ -23,7 +23,7 @@ import java.util.Map;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.DependencyCheck.ReleaseSources;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
@@ -85,7 +85,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 
 		steps.nextStep();
 
-		Map<ArtifactId, List<Release>> result = dependencyCheck.getReleases(steps, sources,
+		Map<ArtifactId, Releases> result = dependencyCheck.getReleases(steps, sources,
 				DependencyCheck.Consistency.NO_CACHE);
 		steps.nextStep();
 		updates = result.keySet().stream().toList();

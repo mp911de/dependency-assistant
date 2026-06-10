@@ -17,7 +17,6 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +31,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
 import org.jspecify.annotations.Nullable;
@@ -50,9 +50,9 @@ class DependencyUpdateCandidate implements HasArtifactId {
 
 	private final Dependency dependency;
 
-	private final List<Release> releases;
+	private final Releases releases;
 
-	private final List<Release> filtered;
+	private final Releases filtered;
 
 	private final Map<UpgradeStrategy, Release> targets;
 
@@ -61,16 +61,16 @@ class DependencyUpdateCandidate implements HasArtifactId {
 	 * @param dependency the dependency to update.
 	 * @param releases the known release options.
 	 */
-	DependencyUpdateCandidate(Dependency dependency, List<Release> releases) {
+	DependencyUpdateCandidate(Dependency dependency, Releases releases) {
 		this.dependency = dependency;
-		this.releases = new ArrayList<>(releases);
+
 
 		if (releases.stream().map(Release::getVersion)
 				.noneMatch(it -> it.matches(dependency.getCurrentVersion()))) {
-			this.releases.add(new Release(dependency.getCurrentVersion(), null));
-			this.releases.sort(Comparator.reverseOrder());
+			releases = releases.withRelease(new Release(dependency.getCurrentVersion(), null));
 		}
 
+		this.releases = releases;
 		this.filtered = filterVersionSuggestions(this.releases, dependency.getCurrentVersion());
 		this.targets = new LinkedHashMap<>();
 
@@ -82,31 +82,31 @@ class DependencyUpdateCandidate implements HasArtifactId {
 		}
 	}
 
-	private List<Release> filterVersionSuggestions(Collection<Release> versions,
+	private Releases filterVersionSuggestions(Releases releases,
 			ArtifactVersion current) {
 
 		Set<Release> result = new TreeSet<>(Comparator.reverseOrder());
 		List<Release> newer = new ArrayList<>();
 		List<Release> older = new ArrayList<>();
 
-		for (Release version : versions.stream().sorted().toList()) {
+		for (Release release : releases) {
 
-			if (current.matches(version.version())) {
-				result.add(version);
+			if (current.matches(release.version())) {
+				result.add(release);
 				continue;
 			}
 
-			if (!current.isPreview() && version.version().isPreview()) {
+			if (!current.isPreview() && release.version().isPreview()) {
 				continue;
 			}
 
-			doAdd(current, version, newer, older);
+			doAdd(current, release, newer, older);
 		}
 
 		result.addAll(older.reversed());
 		result.addAll(newer);
 
-		return List.copyOf(result);
+		return Releases.of(result);
 	}
 
 	private static void doAdd(@Nullable ArtifactVersion current, Release version, List<Release> newer,
@@ -134,7 +134,7 @@ class DependencyUpdateCandidate implements HasArtifactId {
 	 * Return whether the newest known release is newer than the current version.
 	 */
 	public boolean hasUpdateCandidate() {
-		return !releases.isEmpty() && releases.get(0).version()
+		return !releases.isEmpty() && releases.iterator().next().version()
 				.isNewer(dependency.getCurrentVersion()) && !getTargets().isEmpty();
 	}
 
@@ -148,14 +148,14 @@ class DependencyUpdateCandidate implements HasArtifactId {
 	/**
 	 * Return all known release options.
 	 */
-	public List<Release> versionOptions() {
+	public Releases versionOptions() {
 		return releases;
 	}
 
 	/**
 	 * Return release options suitable for display in the update dialog.
 	 */
-	public List<Release> filtered() {
+	public Releases filtered() {
 		return filtered;
 	}
 

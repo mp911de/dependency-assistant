@@ -31,6 +31,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
@@ -151,11 +152,11 @@ class DependencyCheckAggregatorTests {
 	}
 
 	private static ReleaseLookupResult resolved(ArtifactVersion version) {
-		return new ReleaseLookupResult(null, List.of(Release.of(version)));
+		return new ReleaseLookupResult(null, Releases.just(Release.of(version)));
 	}
 
 	private static ReleaseLookupResult lookupError(String error) {
-		return new ReleaseLookupResult(error, List.of());
+		return new ReleaseLookupResult(error, Releases.empty());
 	}
 
 	private record TestReleaseSource(String name) implements ReleaseSource {

@@ -21,6 +21,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.util.StringUtils;
@@ -77,6 +78,7 @@ class UpdateCandidate implements HasArtifactId {
 	private void filterUpgrades(DependencyUpdateCandidate option, DependencyRule rule) {
 
 		ArtifactVersion generation = ArtifactVersion.of(rule.getGeneration());
+		Releases releases = this.option.versionOptions();
 
 		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
 
@@ -84,7 +86,7 @@ class UpdateCandidate implements HasArtifactId {
 				continue;
 			}
 
-			Release release = strategy.select(generation, this.option.versionOptions());
+			Release release = strategy.select(generation, releases);
 			if (release != null && rule.test(release.version())) {
 				option.getTargets().put(UpgradeStrategy.RULE, release);
 			}

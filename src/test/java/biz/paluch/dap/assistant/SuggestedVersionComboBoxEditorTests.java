@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.rule.DependencyRule;
 import com.intellij.util.ui.JBUI;
@@ -65,7 +66,8 @@ class SuggestedVersionComboBoxEditorTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"), current);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
-		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, List.of(Release.of(current)));
+		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency,
+				Releases.just(Release.of(current)));
 		return new UpdateCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.none(),
 				DependencyRule.absent());
 	}

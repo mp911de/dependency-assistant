@@ -51,6 +51,11 @@ public class GitRef implements ArtifactVersion {
 	}
 
 	@Override
+	public VersioningScheme scheme() {
+		return VersioningScheme.OPAQUE;
+	}
+
+	@Override
 	public boolean isNewer(ArtifactVersion other) {
 		return false;
 	}

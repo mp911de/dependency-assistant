@@ -76,6 +76,17 @@ public class Releases {
 			.add("5.0.4", "2026-01-16")
 			.add("4.0.31", "2026-03-26"));
 
+	public static final CachedArtifact REACTOR_BOM = create("io.projectreactor", "reactor-bom", releases -> releases
+			.add("2025.0.6", "2026-06-08")
+			.add("2025.0.5", "2026-04-14")
+			.add("2024.0.18", "2026-06-08")
+			.add("2024.0.0", "2024-11-12")
+			.add("2020.0.13", "2021-11-09")
+			.add("2020.0.0", "2020-10-26")
+			.add("Dysprosium-SR25", "2021-11-09")
+			.add("Dysprosium-RELEASE", "2019-09-24")
+			.add("Aluminium-RELEASE", "2017-02-22"));
+
 	public static final CachedArtifact VAVR = create("io.vavr", "vavr", releases -> releases
 			.add("1.0.1", "2026-03-01")
 			.add("1.0.0-alpha-4", "2021-11-18")

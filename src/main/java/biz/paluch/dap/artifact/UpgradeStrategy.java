@@ -219,10 +219,11 @@ public enum UpgradeStrategy {
 	/**
 	 * Select the best upgrade candidate from {@code options} according to this
 	 * strategy.
-	 * <p>
-	 * The caller is responsible for providing {@code options} sorted
-	 * newest-first. Each strategy applies its own filter and returns the first
-	 * matching element.
+	 * <p>The caller is responsible for providing {@code options} sorted
+	 * newest-first and belonging to a single {@link VersioningScheme}. Each
+	 * strategy applies its own filter and returns the first matching element.
+	 * Prefer {@link #select(ArtifactVersion, Releases)} which scopes the candidates
+	 * to the current version's scheme.
 	 *
 	 * @param current the version currently in use; must not be {@literal null}.
 	 * @param options the available releases sorted newest-first; must not be
@@ -231,5 +232,27 @@ public enum UpgradeStrategy {
 	 * strategy's criteria.
 	 */
 	public abstract @Nullable Release select(ArtifactVersion current, Collection<Release> options);
+
+	/**
+	 * Select the best upgrade candidate from the given release history according to
+	 * this strategy, considering only releases in the same {@link VersioningScheme}
+	 * as {@code current}.
+	 * <p>A {@link VersioningScheme#OPAQUE} current version yields no upgrade. Build
+	 * one {@link Releases} per operation and pass it to all strategies to avoid
+	 * repeating the scheme analysis.
+	 *
+	 * @param current the version currently in use; must not be {@literal null}.
+	 * @param releases the analyzed release history; must not be {@literal null}.
+	 * @return the selected release, or {@literal null} if no release satisfies this
+	 * strategy's criteria within the current version's scheme.
+	 */
+	public @Nullable Release select(ArtifactVersion current, Releases releases) {
+
+		if (current.scheme() == VersioningScheme.OPAQUE) {
+			return null;
+		}
+
+		return select(current, releases.inScheme(current.scheme()));
+	}
 
 }

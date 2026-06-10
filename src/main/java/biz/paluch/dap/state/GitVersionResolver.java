@@ -28,7 +28,7 @@ import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -36,43 +36,19 @@ import org.jspecify.annotations.Nullable;
  * Resolver for a Git ref (tag, SHA, branch) into an {@link ArtifactVersion}
  * using the canonical resolution order.
  *
- * <p>The {@link #resolveCurrent(ArtifactId, String) instance method} applies
- * the canonical chain: cached <strong>Releases</strong> matched by SHA or tag
- * prefix (via the existing cache-only resolver), then a best-effort
- * {@link ArtifactVersion#from(String)} parse of the raw ref.
- *
- * <p>The static {@link #resolveVersion(String, List)} entry point preserves the
- * cache-only matching used by dependency collectors and assistant context
- * helpers that already own a release list.
- *
  * @author Mark Paluch
  */
 public class GitVersionResolver {
 
 	private final Cache cache;
 
-	private final @Nullable ProjectState projectState;
-
 	/**
 	 * Create a resolver using the {@link Cache}.
 	 * @param cache the shared release cache.
 	 */
 	public GitVersionResolver(Cache cache) {
-		this(cache, null);
-	}
-
-	/**
-	 * Create a resolver using the {@link Cache} and project state.
-	 * @param cache the shared release cache.
-	 * @param projectState the project state carried for callers that share this
-	 * resolver, or {@literal null}; {@link #resolveCurrent(ArtifactId, String)}
-	 * resolves from the cache and raw ref only.
-	 */
-	public GitVersionResolver(Cache cache, @Nullable ProjectState projectState) {
 		this.cache = cache;
-		this.projectState = projectState;
 	}
-
 	/**
 	 * Resolve the given ref against cached releases for the given artifact.
 	 * <p>This is the cache-only path used by dependency collectors that need to
@@ -85,7 +61,7 @@ public class GitVersionResolver {
 	 */
 	public Optional<GitVersion> resolve(ArtifactId artifactId, String lookupString) {
 
-		List<Release> releases = cache.getReleases(artifactId);
+		Releases releases = cache.getReleases(artifactId);
 		if (releases.isEmpty()) {
 			return Optional.empty();
 		}
@@ -108,9 +84,10 @@ public class GitVersionResolver {
 	 * @return the resolved current version, or {@link Optional#empty()} when none
 	 * of the branches yields a value.
 	 */
+	// TODO: Versioned
 	public Optional<ArtifactVersion> resolveCurrent(ArtifactId artifactId, String rawRef) {
 
-		List<Release> releases = cache.getReleases(artifactId);
+		Releases releases = cache.getReleases(artifactId);
 		GitVersion gitVersion = releases.isEmpty() ? null : resolveVersion(rawRef, releases);
 		if (gitVersion != null) {
 			return Optional.of(gitVersion);
@@ -132,7 +109,7 @@ public class GitVersionResolver {
 	 * source is empty or the cache yields no unique match.
 	 */
 	public static @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency,
-			List<Release> releases) {
+			Iterable<Release> releases) {
 
 		if (declaredDependency.getVersionSources().isEmpty()) {
 			return null;
@@ -155,7 +132,7 @@ public class GitVersionResolver {
 	 * @param releases the releases to inspect
 	 * @return the matching version, or {@literal null} if no unique match exists
 	 */
-	public static @Nullable GitVersion resolveVersion(String versionRef, List<Release> releases) {
+	public static @Nullable GitVersion resolveVersion(String versionRef, Iterable<Release> releases) {
 
 		List<GitVersion> candidates = new ArrayList<>();
 		for (Release release : releases) {

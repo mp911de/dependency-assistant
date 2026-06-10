@@ -51,6 +51,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
@@ -576,7 +577,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private void refreshButtonVisibility() {
 
-			List<Release> visibleReleases = review.visibleReleases(candidate);
+			Releases visibleReleases = review.visibleReleases(candidate);
 			Map<UpgradeStrategy, Release> targets = candidate.option().getTargets();
 			for (Map.Entry<UpgradeStrategy, JComponent> entry : buttons.entrySet()) {
 				Release target = targets.get(entry.getKey());
