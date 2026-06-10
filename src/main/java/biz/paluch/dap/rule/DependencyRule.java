@@ -24,7 +24,13 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 /**
  * Resolved rule for one governed dependency.
  *
+ * <p>A rule {@linkplain #test(Object) tests} whether an {@link ArtifactVersion}
+ * falls within the required generation; an {@linkplain #absent() absent} rule
+ * accepts every version.
+ *
  * @author Mark Paluch
+ * @see DependencyRules
+ * @see Generation
  */
 public interface DependencyRule extends Predicate<ArtifactVersion> {
 
@@ -58,23 +64,30 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 
 	/**
 	 * Return an absent rule that allows every version.
+	 *
+	 * @return the shared absent rule.
 	 */
 	static DependencyRule absent() {
 		return ABSENT;
 	}
 
 	/**
-	 * If a rule is defined and present, returns {@code true}, otherwise {@code false}.
+	 * Return whether a rule is defined for the dependency.
+	 *
+	 * @return {@literal true} if a rule is defined; {@literal false} for the
+	 * {@linkplain #absent() absent} rule.
 	 */
 	boolean isPresent();
 
 	/**
-	 * Return the required generation.
+	 * Return the required generation, or an empty string if this rule is
+	 * {@linkplain #isPresent() absent} or unconstrained.
 	 */
 	String getGeneration();
 
 	/**
-	 * Return the dependency name.
+	 * Return the friendly dependency name, or an empty string if this rule is
+	 * {@linkplain #isPresent() absent}.
 	 */
 	String getDependencyName();
 

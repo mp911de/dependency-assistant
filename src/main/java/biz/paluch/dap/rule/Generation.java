@@ -31,7 +31,8 @@ import org.springframework.util.Assert;
  * <ul>
  * <li>major lines such as {@code 6}</li>
  * <li>minor lines such as {@code 6.0} or {@code 6.0.x}</li>
- * <li>exact versions {@code 6.0.1}</li>
+ * <li>exact versions such as {@code 6.0.1}</li>
+ * <li>{@code *} to accept every version</li>
  * </ul>
  *
  * @author Mark Paluch
@@ -56,6 +57,9 @@ public class Generation implements Predicate<String> {
 	 *
 	 * @param generation the project development line; must not be {@literal null}.
 	 * @return a generation for the project development line.
+	 * @throws IllegalArgumentException if the value is empty or not a numeric
+	 * project generation such as {@code 6}, {@code 6.0}, {@code 6.0.x}, or
+	 * {@code 6.0.1}.
 	 */
 	public static Generation of(String generation) {
 		Assert.hasText(generation, "Generation must not be empty");

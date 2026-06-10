@@ -31,9 +31,21 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dependency Rules aggregate.
+ * Aggregate of artifact dependency rules and branch rules.
+ *
+ * <p>Resolution selects a branch rule first by branch name, then by project
+ * version; without a match, the top-level artifact rules apply with
+ * upgrade-strategy limits derived from the project version. Within a branch,
+ * the most specific artifact pattern wins.
+ *
+ * <p>Branch rules inherit the top-level artifact rules: an artifact without a
+ * matching branch-level artifact rule falls back to the top-level rules, still
+ * subject to the branch's upgrade-strategy limits.
  *
  * @author Mark Paluch
+ * @see BranchRule
+ * @see ArtifactRule
+ * @see RuleService
  */
 public class DependencyRules implements Rules {
 
@@ -43,12 +55,12 @@ public class DependencyRules implements Rules {
 
 	private DependencyRules(Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
 		this.artifacts = List.copyOf(artifacts);
-		this.branches = List.copyOf(branches);
+		this.branches = branches.stream().map(branch -> branch.withDefaults(this.artifacts)).toList();
 	}
 
 	/**
-	 * Create a builder for Dependency Rules.
-	 * @return a new Dependency Rules builder.
+	 * Create a builder for {@code DependencyRules}.
+	 * @return a new {@code DependencyRules} builder.
 	 */
 	public static Builder builder() {
 		return new Builder();
@@ -73,17 +85,21 @@ public class DependencyRules implements Rules {
 	}
 
 	/**
-	 * Create Dependency Rules from artifact dependency rules.
+	 * Create {@code DependencyRules} from artifact dependency rules.
+	 *
 	 * @param artifacts the artifact dependency rules.
+	 * @return the dependency rules.
 	 */
 	public static DependencyRules of(Collection<ArtifactRule> artifacts) {
 		return new DependencyRules(artifacts, List.of());
 	}
 
 	/**
-	 * Create Dependency Rules from artifact dependency rules and branch rules.
+	 * Create {@code DependencyRules} from artifact dependency rules and branch rules.
+	 *
 	 * @param artifacts the artifact dependency rules.
 	 * @param branches the branch rules.
+	 * @return the dependency rules.
 	 */
 	public static DependencyRules of(Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
 		return new DependencyRules(artifacts, branches);
@@ -105,10 +121,18 @@ public class DependencyRules implements Rules {
 	}
 
 	/**
-	 * Resolve the active branch rule.
-	 * @param branchName the active branch name.
-	 * @param projectVersion the project version.
-	 * @return the resolved branch rule, or an absent branch rule.
+	 * Resolve the active branch rule, matching the branch name before the
+	 * project version.
+	 *
+	 * <p>Without a matching branch rule, a semantic fallback rule is created
+	 * whose upgrade-strategy limits derive from the project version: service
+	 * releases (patch segment other than zero) permit only patch and release
+	 * upgrades.
+	 *
+	 * @param branchName the active branch name; can be {@literal null}.
+	 * @param projectVersion the project version; can be {@literal null}.
+	 * @return the resolved branch rule, or an absent branch rule; never
+	 * {@literal null}.
 	 */
 	public BranchRule resolveBranchRule(@Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
 
@@ -121,9 +145,9 @@ public class DependencyRules implements Rules {
 			return branchRule;
 		}
 		if (projectVersion != null) {
-			return BranchRule.fallback(this.artifacts, upgradeStrategies(projectVersion));
+			return BranchRule.semanticFallback(this.artifacts, upgradeStrategies(projectVersion));
 		}
-		return BranchRule.absent(this.artifacts, upgradeStrategies(projectVersion));
+		return BranchRule.of(this.artifacts, upgradeStrategies(projectVersion));
 	}
 
 	private @Nullable BranchRule selectBranchRule(@Nullable String value) {
@@ -232,7 +256,7 @@ public class DependencyRules implements Rules {
 		}
 
 		/**
-		 * Build Dependency Rules.
+		 * Build the {@code DependencyRules}.
 		 * @return the dependency rules.
 		 */
 		public DependencyRules build() {

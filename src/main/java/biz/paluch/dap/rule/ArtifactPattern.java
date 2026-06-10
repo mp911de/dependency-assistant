@@ -25,7 +25,17 @@ import com.intellij.openapi.util.Predicates;
 /**
  * Artifact coordinate pattern using {@code *} wildcards.
  *
+ * <p>A pattern is either a plain artifactId pattern matching any groupId
+ * (for example {@code spring-*}), or a groupId and artifactId pair separated
+ * by {@code :} or {@code /} (for example {@code org.springframework:spring-*}).
+ *
+ * <p>Patterns are ordered by specificity: exact coordinates order highest,
+ * followed by exact artifactId patterns, wildcard patterns, and the match-all
+ * pattern. Callers select the governing rule via {@code max(...)} over this
+ * ordering.
+ *
  * @author Mark Paluch
+ * @see ArtifactRule
  */
 public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<ArtifactPattern> {
 
@@ -53,7 +63,11 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 
 	/**
 	 * Create an artifact pattern.
-	 * @param value the pattern source.
+	 *
+	 * @param value the pattern, either an artifactId pattern or a
+	 * {@code groupId:artifactId} / {@code groupId/artifactId} pair; must not be
+	 * {@literal null}.
+	 * @return the artifact pattern.
 	 */
 	public static ArtifactPattern of(String value) {
 		return new ArtifactPattern(value);
@@ -63,10 +77,6 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 	public boolean test(ArtifactId artifactId) {
 		return this.groupIdPredicate.test(artifactId.groupId())
 				&& this.artifactIdPredicate.test(artifactId.artifactId());
-	}
-
-	int comparisonValue() {
-		return this.comparisonValue;
 	}
 
 	@Override

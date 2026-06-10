@@ -193,8 +193,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
 	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
-		return toDependencyCheckResult(releases,
-				(artifactId, project1, file, projectVersion) -> DependencyRule.absent());
+		return toDependencyCheckResult(releases, DependencyRuleResolver.absent());
 	}
 
 	/**

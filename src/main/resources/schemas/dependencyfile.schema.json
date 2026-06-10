@@ -1,0 +1,82 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://raw.githubusercontent.com/mp911de/dependency-assistant/main/src/main/resources/schemas/dependencyfile.schema.json",
+	"title": "Dependency Rules",
+	"description": "Dependency Rules descriptor (dependencyfile.json) defining dependency version rules per artifact and per branch.",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"artifacts": {
+			"type": "object",
+			"description": "Default artifact rules. Branch rules inherit them for artifacts they do not declare themselves. Keys are artifact patterns such as 'org.springframework:*', 'spring-*', or '*'.",
+			"additionalProperties": {
+				"$ref": "#/definitions/artifactRule"
+			}
+		},
+		"branches": {
+			"type": "object",
+			"description": "Branch rules expressed through a branch or project-version pattern such as '3.5.x' or '2.*.x'.",
+			"additionalProperties": {
+				"$ref": "#/definitions/branch"
+			}
+		}
+	},
+	"definitions": {
+		"artifactRule": {
+			"description": "An artifact rule, either a generation string ('7.0.x') or an object carrying a display name and a generation.",
+			"oneOf": [
+				{
+					"$ref": "#/definitions/generation"
+				},
+				{
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"name": {
+							"type": "string",
+							"description": "Friendly display name used in inspection messages instead of the artifact pattern."
+						},
+						"generation": {
+							"$ref": "#/definitions/generation"
+						}
+					}
+				}
+			]
+		},
+		"generation": {
+			"type": "string",
+			"description": "Project development line expressed as a version prefix: a major line ('6'), a minor line ('6.0' or '6.0.x'), or an exact version ('6.0.1'). '*' accepts any version.",
+			"pattern": "^(\\*|\\d+(\\.\\d+)*(\\.x)?)$"
+		},
+		"branch": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"upgrades": {
+					"type": "array",
+					"description": "Upgrade strategies permitted on matching branches. Omitting the array or leaving it empty permits all strategies.",
+					"uniqueItems": true,
+					"items": {
+						"type": "string",
+						"description": "An upgrade strategy. Values are matched case-insensitively; unknown values are ignored.",
+						"enum": [
+							"patch",
+							"minor",
+							"major",
+							"latest",
+							"preview",
+							"release"
+						]
+					}
+				},
+				"artifacts": {
+					"type": "object",
+					"description": "Artifact rules for branches matching this pattern. They take precedence over the default artifact rules; artifacts without a branch-level rule inherit the defaults. Keys represent artifact patterns such as 'org.springframework:*'.",
+					"additionalProperties": {
+						"$ref": "#/definitions/artifactRule"
+					}
+				}
+			}
+		}
+	}
+}

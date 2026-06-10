@@ -23,10 +23,11 @@ import org.jspecify.annotations.Nullable;
 /**
  * Interface for implementing a {@link DependencyRule} resolution.
  *
- * <p>A {@code Rules} service resolves for a single artifact a
- * {@link DependencyRule}. Rules can be fully defined or
- * {@link DependencyRule#absent() absent} in which there is effectively no
- * governance.
+ * <p>A {@code Rules} service resolves a {@link DependencyRule} for a single
+ * artifact. Rules can be fully defined or
+ * {@link DependencyRule#absent() absent}, in which case there is effectively
+ * no governance.
+ *
  * @author Mark Paluch
  * @see DependencyRules
  */

@@ -21,6 +21,10 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 
+/**
+ * {@link DependencyRule} backed by a matched {@link ArtifactRule}, testing
+ * versions against its {@link Generation}.
+ */
 class ResolvedDependencyRule implements DependencyRule {
 
 	private final Generation generation;

@@ -1,0 +1,5 @@
+<idea-plugin>
+	<extensions defaultExtensionNs="JavaScript.JsonSchema">
+		<ProviderFactory implementation="biz.paluch.dap.rule.DependencyfileSchemaProviderFactory"/>
+	</extensions>
+</idea-plugin>

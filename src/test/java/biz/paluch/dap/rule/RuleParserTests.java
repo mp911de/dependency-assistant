@@ -94,7 +94,8 @@ class RuleParserTests {
 	@ProjectFile(name = "dependencyfile.json", content = """
 			{
 			  "artifacts": {
-			    "org.springframework:*": "7.0"
+			    "org.springframework:*": "7.0",
+			    "org.junit:*": "5.13"
 			  },
 			  "branches": {
 			    "3.5.x": {
@@ -103,12 +104,14 @@ class RuleParserTests {
 			  }
 			}
 			""")
-	void parsesBranchRuleWithoutMergingDefaults(PsiFile file) {
+	void branchRuleOverridesDefaultsAndInheritsArtifacts(PsiFile file) {
 
 		Rules rules = parse(file);
 
 		assertThat(rules.resolve(SPRING_CORE, "3.5.x", null)
 				.getGeneration()).isEqualTo("6.0");
+		assertThat(rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "3.5.x", null)
+				.getGeneration()).isEqualTo("5.13");
 		assertThat(rules.resolve(SPRING_CORE, "main", null)
 				.getGeneration()).isEqualTo("7.0");
 	}

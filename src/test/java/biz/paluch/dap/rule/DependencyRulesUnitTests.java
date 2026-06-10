@@ -81,7 +81,7 @@ class DependencyRulesUnitTests {
 	}
 
 	@Test
-	void resolvesActiveBranchRuleWithoutMergingDefaultRules() {
+	void branchArtifactRuleOverridesDefaultRule() {
 
 		DependencyRules rules = DependencyRules.builder()
 				.artifact("org.springframework:*", "7.0")
@@ -93,6 +93,49 @@ class DependencyRulesUnitTests {
 
 		assertThat(branchRule.getGeneration()).isEqualTo("6.0");
 		assertThat(defaultRule.getGeneration()).isEqualTo("7.0");
+	}
+
+	@Test
+	void branchInheritsDefaultRuleForUngovernedArtifact() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.junit:*", "5.13")
+				.branch("3.5.x", branch -> branch.artifact("org.springframework:*", "6.0"))
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "3.5.x", null);
+
+		assertThat(rule.getGeneration()).isEqualTo("5.13");
+	}
+
+	@Test
+	void branchArtifactRuleOverridesMoreSpecificDefaultRule() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.springframework:spring-core", "6.2")
+				.branch("3.5.x", branch -> branch.artifact("org.springframework:*", "6.0"))
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "3.5.x", null);
+
+		assertThat(rule.getGeneration()).isEqualTo("6.0");
+	}
+
+	@Test
+	void branchUpgradeLimitsApplyToInheritedDefaultRule() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.junit:*", "5.13")
+				.branch("2.*.x", branch -> branch
+						.upgrades(UpgradeStrategy.PATCH)
+						.artifact("org.springframework:*", "5.0"))
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "2.5.x", null);
+		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
+
+		assertThat(rule.getGeneration()).isEqualTo("5.13");
+		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH).rejects(UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
 	}
 
 	@Test
@@ -162,7 +205,7 @@ class DependencyRulesUnitTests {
 	@Test
 	void absentBranchRuleMatchesEveryBranch() {
 
-		BranchRule rule = BranchRule.absent(List.of(ArtifactRule.of("org.springframework:*", "7.0")));
+		BranchRule rule = BranchRule.of(List.of(ArtifactRule.of("org.springframework:*", "7.0")));
 
 		assertThat((Predicate<String>) rule).accepts("main", "3.5.x", "v2.1.0");
 	}

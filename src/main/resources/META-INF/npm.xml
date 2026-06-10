@@ -16,6 +16,5 @@
 
 		<platform.backend.documentation.targetProvider
 				implementation="biz.paluch.dap.npm.NpmDependencyDocumentationTargetProvider"/>
-
 	</extensions>
 </idea-plugin>

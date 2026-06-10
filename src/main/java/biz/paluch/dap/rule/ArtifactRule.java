@@ -37,9 +37,12 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 	}
 
 	/**
-	 * Create an unnamed artifact rule.
+	 * Create an artifact rule using the pattern as its display name.
+	 *
 	 * @param pattern the artifact pattern.
-	 * @param generation the generation source.
+	 * @param generation the required generation, see {@link Generation#of(String)}.
+	 * @return the artifact rule.
+	 * @see #of(String, String, String)
 	 */
 	public static ArtifactRule of(String pattern, String generation) {
 		return new ArtifactRule(ArtifactPattern.of(pattern), pattern, Generation.of(generation));
@@ -47,9 +50,11 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 
 	/**
 	 * Create a named artifact rule.
+	 *
 	 * @param pattern the artifact pattern.
 	 * @param name the friendly display name.
-	 * @param generation the generation source.
+	 * @param generation the required generation, see {@link Generation#of(String)}.
+	 * @return the artifact rule.
 	 */
 	public static ArtifactRule of(String pattern, String name, String generation) {
 		return new ArtifactRule(ArtifactPattern.of(pattern), name, Generation.of(generation));
