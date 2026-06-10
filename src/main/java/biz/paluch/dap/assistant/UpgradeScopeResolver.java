@@ -22,10 +22,10 @@ import java.util.List;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 
 /**
  * Resolves the {@link UpgradeScope}: the set of build files a single
@@ -75,7 +75,7 @@ class UpgradeScopeResolver {
 
 	private static UpgradeScope resolveSelection(Project project, List<VirtualFile> selection) {
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		List<UpgradeScope.Entry> entries = new ArrayList<>();
 		boolean supportedButUnavailable = false;
 

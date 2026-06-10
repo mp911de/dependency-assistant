@@ -32,6 +32,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
@@ -171,17 +172,13 @@ class GradleAssistant implements DependencyAssistant {
 
 	static class GradleDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
-		private final Project project;
-
-		private final VirtualFile anchor;
+		private final DependencyFileDelegate delegate;
 
 		private final GradleProjectContext projectContext;
 
-		GradleDependencyContext(Project project, VirtualFile anchor,
-				GradleProjectContext projectContext) {
+		GradleDependencyContext(Project project, VirtualFile file, GradleProjectContext projectContext) {
 			super(projectContext);
-			this.project = project;
-			this.anchor = anchor;
+			this.delegate = DependencyFileDelegate.of(project, file);
 			this.projectContext = projectContext;
 		}
 
@@ -192,16 +189,11 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
-			if (psiFile == null) {
-				return new DependencyCollector();
-			}
-
-			DependencyCollector collector = new GradleDependencyCollector(project).collect(psiFile);
-			collector.addAllReleaseSources(projectContext.getReleaseSources());
-
-			return collector;
+			return delegate.collectDependencies(it -> {
+				DependencyCollector collector = new GradleDependencyCollector(delegate.getProject()).collect(it);
+				collector.addAllReleaseSources(projectContext.getReleaseSources());
+				return collector;
+			});
 		}
 
 		@Override
@@ -228,24 +220,24 @@ class GradleAssistant implements DependencyAssistant {
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
 			PsiFile psiFile = element.getContainingFile();
-			GradleProjectContext buildContext = GradleProjectContext.of(project, file);
-			LookupContext context = LookupContext.create(project, buildContext);
+			GradleProjectContext buildContext = GradleProjectContext.of(delegate.getProject(), file);
+			LookupContext context = LookupContext.create(delegate, buildContext);
 			return new VersionUpgradeLookup(context, new GradleArtifactReferenceResolver(context, psiFile));
 		}
 
 		@Override
 		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
-			new UpdateGradleFile(project).applyUpdate(anchor, update);
+			new UpdateGradleFile(delegate.getProject()).applyUpdate(anchor, update);
 		}
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateGradleFile(project).applyUpdates(psiFile, updates);
+			new UpdateGradleFile(delegate.getProject()).applyUpdates(psiFile, updates);
 		}
 
 		@Override
 		public String toString() {
-			return "GradleDependencyContext[%s] %s".formatted(anchor, projectContext);
+			return "GradleDependencyContext[%s] %s".formatted(delegate, projectContext);
 		}
 
 	}

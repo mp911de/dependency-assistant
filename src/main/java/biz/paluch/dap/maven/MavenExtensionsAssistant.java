@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -28,16 +27,17 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -76,7 +76,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	@Override
 	public List<PsiFile> enumerate(Project project) {
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
 
 			@Override
@@ -87,15 +87,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		};
 
 		Collection<VirtualFile> xmlFiles = FileTypeIndex.getFiles(XmlFileType.INSTANCE, scope);
-		List<PsiFile> extensionsFiles = new ArrayList<>();
-		for (VirtualFile xmlFile : xmlFiles) {
-			PsiFile psiFile = psiManager.findFile(xmlFile);
-			if (MavenUtils.isMavenExtensionsFile(psiFile)) {
-				extensionsFiles.add(psiFile);
-			}
-		}
-
-		return extensionsFiles;
+		return psiManager.stream(xmlFiles).filter(MavenUtils::isMavenExtensionsFile)
+				.toList();
 	}
 
 	@Override
@@ -126,16 +119,10 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	 */
 	static class MavenExtensionContext implements ProjectDependencyContext {
 
-		private final Project project;
+		private final DependencyFileDelegate delegate;
 
-		private final VirtualFile anchor;
-
-		private final StateService service;
-
-		MavenExtensionContext(Project project, VirtualFile anchor) {
-			this.project = project;
-			this.anchor = anchor;
-			this.service = StateService.getInstance(project);
+		MavenExtensionContext(Project project, VirtualFile file) {
+			this.delegate = DependencyFileDelegate.of(project, file);
 		}
 
 		@Override
@@ -145,12 +132,12 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		@Override
 		public ProjectId getProjectId() {
-			return ProjectId.of(anchor);
+			return ProjectId.of(delegate.getFile());
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
-			return MavenRepositories.getReleaseSources(project);
+			return MavenRepositories.getReleaseSources(delegate.getProject());
 		}
 
 		@Override
@@ -160,13 +147,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
-			if (psiFile == null) {
-				return new DependencyCollector();
-			}
-
-			return collect(psiFile);
+			return delegate.collectDependencies(this::collect);
 		}
 
 		@Override
@@ -193,7 +174,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		private DependencyCollector collect(PsiFile file) {
 
-			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(service.getCache());
+			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(delegate.getCache());
 			DependencyCollector collector = dependencyCollector.collect(file, PropertyResolver.empty());
 			collector.addAllReleaseSources(getReleaseSources());
 			return collector;
@@ -201,7 +182,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		@Override
 		public String toString() {
-			return "MavenExtensionsDependencyContext[%s]".formatted(anchor);
+			return "MavenExtensionsDependencyContext[%s]".formatted(delegate);
 		}
 
 		private static VersionUpgradeLookup createLookup(PsiFile extensions) {

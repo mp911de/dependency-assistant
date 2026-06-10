@@ -41,10 +41,6 @@ class GradleWrapperParser {
 
 	private final DependencyCollector collector;
 
-	GradleWrapperParser() {
-		this(new DependencyCollector());
-	}
-
 	GradleWrapperParser(DependencyCollector collector) {
 		this.collector = collector;
 	}

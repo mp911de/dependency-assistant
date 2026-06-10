@@ -24,10 +24,10 @@ import java.util.function.BiConsumer;
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -103,7 +103,7 @@ class MavenRepositories {
 	 */
 	public static List<ReleaseSource> getReleaseSources(Project project) {
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		MavenSettings settings = SettingsXmlLoader.load(project);
 		Set<RemoteRepository> remoteRepositories = new LinkedHashSet<>();
 		MavenProjectsManager manager = MavenProjectsManager.getInstance(project);

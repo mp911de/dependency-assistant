@@ -141,28 +141,6 @@ public class ProjectStateIndexer {
 	 * @param assistant the assistant to run; must not be {@literal null}.
 	 * @return the aggregated collector.
 	 */
-	public DependencyCollector aggregate(DependencyAssistant assistant) {
-
-		DependencyCollector aggregate = new DependencyCollector();
-		IntrospectedDependencies introspected = assistant.introspect(project);
-
-		forEachAvailableEntry(assistant, (anchor, context) -> {
-			assistant.collect(anchor, aggregate, introspected);
-			aggregate.addAllReleaseSources(context.getReleaseSources());
-		});
-
-		introspected.complete(aggregate);
-		return aggregate;
-	}
-
-	/**
-	 * Run an aggregate scan and return one combined collector enriched with release
-	 * sources and post-scan completion.
-	 * <p>The aggregate result is not stored in the {@link ProjectState} and does
-	 * not invoke the cache update.
-	 * @param assistant the assistant to run; must not be {@literal null}.
-	 * @return the aggregated collector.
-	 */
 	public void forEach(DependencyAssistant assistant, BiConsumer<VirtualFile, DependencyCollector> consumer) {
 
 		forEachAvailableEntry(assistant, (anchor, context) -> {

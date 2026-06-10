@@ -24,6 +24,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.support.BuildFileUpdater;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
@@ -32,7 +33,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 
 /**
  * Delegate to update build files providing write action guarding.
@@ -52,7 +52,9 @@ public class BuildActionDelegate implements BuildFileUpdater {
 
 	private final Project project;
 
-	public final BiConsumer<PsiFile, List<DependencyUpdate>> updateAction;
+	private final BiConsumer<PsiFile, List<DependencyUpdate>> updateAction;
+
+	private final BetterPsiManager psiManager;
 
 	/**
 	 * Create a delegate using the update action from the given dependency context.
@@ -64,6 +66,7 @@ public class BuildActionDelegate implements BuildFileUpdater {
 	public BuildActionDelegate(Project project, BiConsumer<PsiFile, List<DependencyUpdate>> updateAction) {
 		this.project = project;
 		this.updateAction = updateAction;
+		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
 	@Override
@@ -102,7 +105,7 @@ public class BuildActionDelegate implements BuildFileUpdater {
 			PsiDocumentManager.getInstance(project).commitDocument(document);
 		}
 
-		PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
+		PsiFile psiFile = psiManager.findFile(file);
 		if (psiFile == null) {
 			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
 					MessageBundle.message("UpdateBuildFile.notification.no-file", file.getPresentableUrl()));

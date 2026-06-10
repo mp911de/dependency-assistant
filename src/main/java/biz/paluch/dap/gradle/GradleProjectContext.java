@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
@@ -38,7 +39,6 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import org.jetbrains.plugins.gradle.model.ExternalProject;
 import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
@@ -54,6 +54,14 @@ import org.jspecify.annotations.Nullable;
 interface GradleProjectContext extends ProjectBuildContext {
 
 	Key<GradleProjectContext> KEY = Key.create("GradleProjectContext");
+
+
+	/**
+	 * Looks up the {@link GradleProjectContext} for the given PSI file.
+	 */
+	static GradleProjectContext of(PsiFile file) {
+		return of(file.getProject(), file);
+	}
 
 	/**
 	 * Looks up the {@link GradleProjectContext} for the given PSI file.
@@ -149,13 +157,9 @@ interface GradleProjectContext extends ProjectBuildContext {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		return ApplicationManager.getApplication().runReadAction((Computable<GradleProjectContext>) () -> {
-			PsiFile psiFile = psiManager.findFile(file);
-			if (psiFile != null) {
-				return of(project, psiFile);
-			}
-			return EmptyGradleBuildContext.INSTANCE;
+			return psiManager.optional(file).map(GradleProjectContext::of).orElse(EmptyGradleBuildContext.INSTANCE);
 		});
 	}
 

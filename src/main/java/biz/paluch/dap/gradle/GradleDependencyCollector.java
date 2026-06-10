@@ -22,10 +22,10 @@ import java.util.Map;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,6 +49,8 @@ class GradleDependencyCollector {
 
 	private final StateService service;
 
+	private final BetterPsiManager psiManager;
+
 	/**
 	 * Create a collector with no predefined Gradle properties.
 	 */
@@ -63,6 +65,7 @@ class GradleDependencyCollector {
 		this.project = project;
 		this.service = StateService.getInstance(project);
 		this.properties = properties;
+		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
 	/**
@@ -99,6 +102,7 @@ class GradleDependencyCollector {
 	 */
 	public void collect(PsiFile buildFile, DependencyCollector collector) {
 
+
 		if (GradleUtils.isGradleScript(buildFile)) {
 			VirtualFile root = GradleUtils.findProjectRoot(buildFile);
 			VirtualFile anchorFile = buildFile.getVirtualFile();
@@ -122,7 +126,7 @@ class GradleDependencyCollector {
 			return;
 		}
 
-		PsiFile psiFile = PsiManager.getInstance(project).findFile(sibling);
+		PsiFile psiFile = psiManager.findFile(sibling);
 		if (psiFile == null) {
 			return;
 		}

@@ -27,12 +27,12 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
@@ -94,7 +94,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 			return EmptyMavenContext.INSTANCE;
 		}
 
-		return new MavenContextImpl(project, projectsManager, PsiManager.getInstance(project), mavenProject);
+		return new MavenContextImpl(project, projectsManager, BetterPsiManager.getInstance(project), mavenProject);
 	}
 
 	static boolean isValid(MavenId mavenId) {
@@ -126,7 +126,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		private final MavenProjectsManager projectsManager;
 
-		private final PsiManager psiManager;
+		private final BetterPsiManager psiManager;
 
 		private final MavenProject mavenProject;
 
@@ -137,7 +137,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 		/**
 		 * Create a context for the given Maven project.
 		 */
-		public MavenContextImpl(Project project, MavenProjectsManager projectsManager, PsiManager psiManager,
+		public MavenContextImpl(Project project, MavenProjectsManager projectsManager, BetterPsiManager psiManager,
 				MavenProject mavenProject) {
 			this.project = project;
 			this.projectsManager = projectsManager;

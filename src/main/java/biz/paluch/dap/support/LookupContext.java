@@ -62,6 +62,20 @@ public record LookupContext(Project project, ProjectBuildContext buildContext, C
 				new GitVersionResolver(cache, projectState));
 	}
 
+	/**
+	 * Create a {@code LookupContext} for the project behind the given
+	 * {@link DependencyFileDelegate} and build context.
+	 * @param delegate the delegate whose project owns the lookup; must not be
+	 * {@literal null}.
+	 * @param buildContext the build context; must not be {@literal null}.
+	 * @return a context bound to the project's shared cache and, when the context
+	 * is available, its project state.
+	 * @see #create(Project, ProjectBuildContext)
+	 */
+	public static LookupContext create(DependencyFileDelegate delegate, ProjectBuildContext buildContext) {
+		return create(delegate.getProject(), buildContext);
+	}
+
 	public @Nullable ArtifactVersion findCurrentVersion(ArtifactId artifactId) {
 		Dependency dependency = projectState.findDependency(artifactId);
 		return dependency != null ? dependency.getCurrentVersion() : null;

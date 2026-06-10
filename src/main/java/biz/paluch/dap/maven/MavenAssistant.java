@@ -35,18 +35,19 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.xml.XmlFile;
 import icons.MavenIcons;
@@ -90,17 +91,12 @@ class MavenAssistant implements DependencyAssistant {
 			return List.of();
 		}
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		List<PsiFile> anchors = new ArrayList<>();
 
 		for (MavenProject mavenProject : manager.getProjects()) {
-
 			VirtualFile file = mavenProject.getFile();
-			PsiFile psiFile = psiManager.findFile(file);
-			if (psiFile == null) {
-				continue;
-			}
-			anchors.add(psiFile);
+			psiManager.doWithFile(file, anchors::add);
 		}
 
 		return anchors;
@@ -181,17 +177,14 @@ class MavenAssistant implements DependencyAssistant {
 
 		private final MavenPropertyResolver propertyResolver;
 
-		private final VirtualFile anchor;
-
-		private final StateService service;
+		private final DependencyFileDelegate delegate;
 
 		MavenDependencyContext(Project project, PsiFile pomFile, VirtualFile anchor,
 				MavenProjectContext projectContext) {
 			super(projectContext);
 			this.propertyResolver = MavenPropertyResolver.create(projectContext, pomFile);
 			this.projectContext = projectContext;
-			this.anchor = anchor;
-			this.service = StateService.getInstance(project);
+			this.delegate = DependencyFileDelegate.of(project, anchor);
 		}
 
 		@Override
@@ -201,13 +194,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-
-			PsiFile psiFile = projectContext.findFile(anchor);
-			if (psiFile == null) {
-				return new DependencyCollector();
-			}
-
-			return collect(psiFile);
+			return delegate.collectDependencies(this::collect);
 		}
 
 		@Override
@@ -234,7 +221,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		private DependencyCollector collect(PsiFile file) {
 
-			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(service.getCache());
+			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(delegate.getCache());
 			DependencyCollector collector = dependencyCollector.collect(file, propertyResolver);
 			collector.addAllReleaseSources(getReleaseSources());
 			return collector;
@@ -242,7 +229,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public String toString() {
-			return "MavenDependencyContext[%s] %s".formatted(anchor, projectContext);
+			return "MavenDependencyContext[%s] %s".formatted(delegate, projectContext);
 		}
 
 	}

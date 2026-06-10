@@ -25,6 +25,7 @@ import java.util.Map;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.TextRange;
@@ -88,9 +89,9 @@ class GradlePropertyResolver implements PropertyResolver {
 	private static GradlePropertyResolver parseTree(PsiFile file) {
 
 		VirtualFile virtualFile = file.getVirtualFile();
-		PsiManager psiManager = PsiManager.getInstance(file.getProject());
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(file.getProject());
 
-		if (virtualFile == null) {
+		if (!BetterPsiManager.isValid(virtualFile)) {
 			return ABSENT;
 		}
 
@@ -186,7 +187,7 @@ class GradlePropertyResolver implements PropertyResolver {
 		@Override
 		public CachedValueProvider.@Nullable Result<GradlePropertyResolver> compute() {
 
-			if (virtualFile == null) {
+			if (BetterPsiManager.isInvalid(virtualFile)) {
 				return CachedValueProvider.Result.create(ABSENT, PsiModificationTracker.MODIFICATION_COUNT);
 			}
 

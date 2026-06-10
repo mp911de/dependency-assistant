@@ -41,10 +41,6 @@ class MavenWrapperParser {
 
 	private final DependencyCollector collector;
 
-	public MavenWrapperParser() {
-		this(new DependencyCollector());
-	}
-
 	public MavenWrapperParser(DependencyCollector collector) {
 		this.collector = collector;
 	}

@@ -56,6 +56,9 @@ public class DependencyCollector {
 
 	private final Map<String, String> propertyValues = new LinkedHashMap<>();
 
+	public DependencyCollector() {
+	}
+
 	/**
 	 * Add property names observed in the scanned build files.
 	 * @param propertyNames the property names to register.

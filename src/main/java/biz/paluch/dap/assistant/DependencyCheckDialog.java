@@ -47,6 +47,7 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.icons.AllIcons;
@@ -57,6 +58,7 @@ import com.intellij.openapi.actionSystem.ActionToolbar;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -64,8 +66,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.ui.LayeredIcon;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.table.TableView;
@@ -434,10 +434,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public void run(ProgressIndicator indicator) {
 			indicator.setIndeterminate(true);
 			indicator.setText(MessageBundle.message("intention.UpgradingDependencies.text"));
-			indicator.start();
-
 			applyUpdates(updates, assistants, indicator);
-			indicator.stop();
 		}
 
 		@Override
@@ -467,16 +464,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private void restartHighlighting() {
 
-		DaemonCodeAnalyzer analyzer = DaemonCodeAnalyzer.getInstance(project);
-		PsiManager psiManager = PsiManager.getInstance(project);
-		for (VirtualFile file : files) {
-			if (file.isValid()) {
-				PsiFile psiFile = psiManager.findFile(file);
-				if (psiFile != null) {
-					analyzer.restart(psiFile);
-				}
-			}
-		}
+		ReadAction.run(() -> {
+			DaemonCodeAnalyzer analyzer = DaemonCodeAnalyzer.getInstance(project);
+			BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
+			psiManager.stream(files).forEach(analyzer::restart);
+		});
 	}
 
 	/**

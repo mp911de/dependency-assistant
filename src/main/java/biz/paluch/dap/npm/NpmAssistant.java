@@ -40,6 +40,7 @@ import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.json.JsonFileType;
 import com.intellij.openapi.extensions.PluginId;
@@ -50,7 +51,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -112,22 +112,9 @@ public class NpmAssistant implements DependencyAssistant {
 			}
 
 		};
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		Collection<VirtualFile> jsonFiles = FileTypeIndex.getFiles(JsonFileType.INSTANCE, scope);
-
-		for (VirtualFile file : jsonFiles) {
-
-			if (!NpmUtils.isPackageJson(file) || file.getPath().contains("node_modules")) {
-				continue;
-			}
-
-			PsiFile psiFile = psiManager.findFile(file);
-			if (psiFile != null) {
-				anchors.add(psiFile);
-			}
-		}
-
-		return anchors;
+		return psiManager.stream(jsonFiles).filter(NpmUtils::isPackageJson).toList();
 	}
 
 	@Override
@@ -175,6 +162,8 @@ public class NpmAssistant implements DependencyAssistant {
 
 		private final StateService service;
 
+		private final BetterPsiManager psiManager;
+
 		NpmDependencyContext(NpmAssistant assistant, Project project, VirtualFile anchor,
 				NpmProjectContext projectContext) {
 			super(projectContext);
@@ -182,6 +171,7 @@ public class NpmAssistant implements DependencyAssistant {
 			this.anchor = anchor;
 			this.projectContext = projectContext;
 			this.service = StateService.getInstance(project);
+			this.psiManager = BetterPsiManager.getInstance(project);
 		}
 
 		@Override
@@ -192,7 +182,7 @@ public class NpmAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
+			PsiFile psiFile = psiManager.findFile(anchor);
 			if (psiFile == null) {
 				return new DependencyCollector();
 			}

@@ -21,12 +21,12 @@ import java.util.List;
 
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlFile;
@@ -48,12 +48,13 @@ class TomlArtifactResolver {
 
 	private final @Nullable VersionCatalogRegistry registry;
 
-	TomlArtifactResolver(Project project, PsiFile file,
-			@Nullable VersionCatalogRegistry registry) {
+	private final BetterPsiManager psiManager;
 
+	TomlArtifactResolver(Project project, PsiFile file, @Nullable VersionCatalogRegistry registry) {
 		this.project = project;
 		this.file = file;
 		this.registry = registry;
+		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
 	/**
@@ -111,7 +112,7 @@ class TomlArtifactResolver {
 			VirtualFile root = GradleUtils.findProjectRoot(project, virtualFile);
 			VirtualFile catalogFile = root.findFileByRelativePath(path);
 			if (catalogFile != null && VfsUtil.isAncestor(root, catalogFile, false)) {
-				return PsiManager.getInstance(project).findFile(catalogFile);
+				return psiManager.findFile(catalogFile);
 			}
 			return null;
 		}

@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.gradle.wrapper;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -37,6 +36,7 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.lang.properties.IProperty;
@@ -49,7 +49,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FilenameIndex;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -90,7 +89,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 	@Override
 	public List<PsiFile> enumerate(Project project) {
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
 
 			@Override
@@ -102,16 +101,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(GradleWrapperUtils.WRAPPER_FILENAME,
 				scope);
-		List<PsiFile> anchors = new ArrayList<>(files.size());
-
-		for (VirtualFile file : files) {
-			PsiFile psiFile = psiManager.findFile(file);
-			if (psiFile != null && supports(psiFile)) {
-				anchors.add(psiFile);
-			}
-		}
-
-		return anchors;
+		return psiManager.stream(files).filter(this::supports).toList();
 	}
 
 	@Override
@@ -152,11 +142,14 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		private final VirtualFile anchor;
 
+		private final BetterPsiManager psiManager;
+
 		GradleWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId,
 				List<ReleaseSource> releaseSources) {
 			super(projectId, releaseSources);
 			this.project = project;
 			this.anchor = anchor;
+			this.psiManager = BetterPsiManager.getInstance(project);
 		}
 
 		@Override
@@ -168,7 +161,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
 			DependencyCollector collector = new DependencyCollector();
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
+			PsiFile psiFile = psiManager.findFile(anchor);
 			if (psiFile instanceof PropertiesFile propertiesFile && GradleWrapperUtils.isWrapperFile(psiFile)) {
 				new GradleWrapperParser(collector).collect(propertiesFile);
 			}

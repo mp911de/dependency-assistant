@@ -42,6 +42,7 @@ import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
@@ -52,7 +53,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -113,7 +113,7 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		List<PsiFile> actionFiles = new ArrayList<>();
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
 
 			@Override
@@ -125,10 +125,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML, scope);
 		for (VirtualFile yaml : yamlFiles) {
-			PsiFile psiFile = psiManager.findFile(yaml);
-			if (GitHubUtils.isWorkflowFile(psiFile)) {
-				actionFiles.add(psiFile);
-			}
+			psiManager.optional(yaml).filter(GitHubUtils::isWorkflowFile).ifPresent(actionFiles::add);
 		}
 
 		return actionFiles;
@@ -178,12 +175,15 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		private final GitHubProjectContext projectContext;
 
+		private final BetterPsiManager psiManager;
+
 		GitHubDependencyContext(Project project, VirtualFile anchor,
 				GitHubProjectContext projectContext) {
 			super(projectContext);
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
+			this.psiManager = BetterPsiManager.getInstance(project);
 		}
 
 		@Override
@@ -194,16 +194,12 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
-			if (psiFile == null) {
-				return new DependencyCollector();
-			}
-
-			GitHubDependencyCollector collector = new GitHubDependencyCollector(project);
-			DependencyCollector result = collector.collect(psiFile);
-			result.addAllReleaseSources(getReleaseSources());
-
-			return result;
+			return psiManager.optional(anchor).map(psiFile -> {
+				GitHubDependencyCollector collector = new GitHubDependencyCollector(project);
+				DependencyCollector result = collector.collect(psiFile);
+				result.addAllReleaseSources(getReleaseSources());
+				return result;
+			}).orElseGet(DependencyCollector::new);
 		}
 
 		@Override

@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.Map;
 import java.util.Objects;
 
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -62,7 +63,7 @@ class VersionCatalogRegistry {
 
 		Project project = file.getProject();
 		VirtualFile virtualFile = file.getVirtualFile();
-		PsiManager psiManager = PsiManager.getInstance(file.getProject());
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(file.getProject());
 		if (virtualFile == null) {
 			return ABSENT;
 		}

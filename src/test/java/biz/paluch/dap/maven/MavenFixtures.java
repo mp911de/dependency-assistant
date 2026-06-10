@@ -25,9 +25,9 @@ import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -82,7 +82,7 @@ class MavenFixtures {
 		mavenProject.updateMavenId(MAVEN_ID);
 
 		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(file.getProject());
-		PsiManager psiManager = PsiManager.getInstance(file.getProject());
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(file.getProject());
 		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), projectsManager, psiManager,
 				mavenProject);
 		file.putUserData(MavenProjectContext.KEY, projectContext);

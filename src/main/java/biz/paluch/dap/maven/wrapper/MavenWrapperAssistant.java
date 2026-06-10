@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven.wrapper;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -37,9 +36,11 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.lang.properties.IProperty;
@@ -52,7 +53,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FilenameIndex;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -93,7 +93,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	@Override
 	public List<PsiFile> enumerate(Project project) {
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
 
 			@Override
@@ -105,16 +105,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(MavenWrapperUtils.WRAPPER_FILENAME,
 				scope);
-		List<PsiFile> anchors = new ArrayList<>(files.size());
-
-		for (VirtualFile file : files) {
-			PsiFile psiFile = psiManager.findFile(file);
-			if (psiFile != null && supports(psiFile)) {
-				anchors.add(psiFile);
-			}
-		}
-
-		return anchors;
+		return psiManager.stream(files).filter(this::supports).toList();
 	}
 
 	@Override
@@ -174,15 +165,13 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	public static class MavenWrapperDependencyContext extends AbstractProjectBuildContext
 			implements ProjectDependencyContext {
 
-		private final Project project;
+		private final DependencyFileDelegate delegate;
 
-		private final VirtualFile anchor;
-
-		MavenWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId,
+		MavenWrapperDependencyContext(Project project, VirtualFile file, ProjectId projectId,
 				List<ReleaseSource> releaseSources) {
 			super(projectId, releaseSources);
-			this.project = project;
-			this.anchor = anchor;
+
+			this.delegate = DependencyFileDelegate.of(project, file);
 		}
 
 		@Override
@@ -193,12 +182,13 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			DependencyCollector collector = new DependencyCollector();
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
-			if (psiFile instanceof PropertiesFile propertiesFile && MavenWrapperUtils.isWrapperFile(psiFile)) {
-				new MavenWrapperParser(collector).collect(propertiesFile);
-			}
-			return collector;
+			return delegate.collectDependencies(it -> {
+				DependencyCollector collector = new DependencyCollector();
+				if (it instanceof PropertiesFile propertiesFile && MavenWrapperUtils.isWrapperFile(it)) {
+					new MavenWrapperParser(collector).collect(propertiesFile);
+				}
+				return collector;
+			});
 		}
 
 		@Override
@@ -222,7 +212,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			LookupContext context = LookupContext.create(project, this);
+			LookupContext context = LookupContext.create(delegate, this);
 			return new VersionUpgradeLookup(context, new MavenWrapperArtifactReferenceResolver());
 		}
 
@@ -238,7 +228,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public String toString() {
-			return "MavenWrapperDependencyContext[%s] projectId=%s".formatted(anchor, getProjectId());
+			return "MavenWrapperDependencyContext[%s] projectId=%s".formatted(delegate, getProjectId());
 		}
 
 	}

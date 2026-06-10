@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.antora;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -38,10 +37,12 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
@@ -52,7 +53,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.search.DelegatingGlobalSearchScope;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
@@ -114,7 +114,7 @@ public class AntoraAssistant implements DependencyAssistant {
 			return List.of();
 		}
 
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
 
 			@Override
@@ -124,16 +124,8 @@ public class AntoraAssistant implements DependencyAssistant {
 
 		};
 
-		List<PsiFile> playbooks = new ArrayList<>();
 		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML, scope);
-		for (VirtualFile yaml : yamlFiles) {
-			PsiFile psiFile = psiManager.findFile(yaml);
-			if (AntoraUtils.isPlaybookFile(psiFile)) {
-				playbooks.add(psiFile);
-			}
-		}
-
-		return playbooks;
+		return psiManager.stream(yamlFiles).filter(AntoraUtils::isPlaybookFile).toList();
 	}
 
 	@Override
@@ -179,17 +171,14 @@ public class AntoraAssistant implements DependencyAssistant {
 	private static class AntoraDependencyContext extends ProjectBuildContextWrapper
 			implements ProjectDependencyContext {
 
-		private final Project project;
-
-		private final VirtualFile anchor;
+		private final DependencyFileDelegate delegate;
 
 		private final AntoraProjectContext projectContext;
 
-		AntoraDependencyContext(AntoraAssistant assistant, Project project, VirtualFile anchor,
+		AntoraDependencyContext(AntoraAssistant assistant, Project project, VirtualFile file,
 				AntoraProjectContext projectContext) {
 			super(projectContext);
-			this.project = project;
-			this.anchor = anchor;
+			this.delegate = DependencyFileDelegate.of(project, file);
 			this.projectContext = projectContext;
 		}
 
@@ -201,14 +190,11 @@ public class AntoraAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			PsiFile psiFile = PsiManager.getInstance(project).findFile(anchor);
-			if (psiFile == null) {
-				return new DependencyCollector();
-			}
-
-			DependencyCollector collector = new AntoraDependencyCollector().collect(psiFile);
-			collector.addAllReleaseSources(getReleaseSources());
-			return collector;
+			return delegate.collectDependencies(it -> {
+				DependencyCollector collector = new AntoraDependencyCollector().collect(it);
+				collector.addAllReleaseSources(getReleaseSources());
+				return collector;
+			});
 		}
 
 		@Override
@@ -234,23 +220,23 @@ public class AntoraAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			LookupContext context = LookupContext.create(project, projectContext);
+			LookupContext context = LookupContext.create(delegate, projectContext);
 			return new VersionUpgradeLookup(context, new AntoraArtifactReferenceResolver(context, projectContext));
 		}
 
 		@Override
 		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-			new UpdateAntoraPlaybookFile(project).applyUpdate((YAMLScalar) versionLiteral, update);
+			new UpdateAntoraPlaybookFile(delegate.getProject()).applyUpdate((YAMLScalar) versionLiteral, update);
 		}
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateAntoraPlaybookFile(project).applyUpdates(psiFile, updates);
+			new UpdateAntoraPlaybookFile(delegate.getProject()).applyUpdates(psiFile, updates);
 		}
 
 		@Override
 		public String toString() {
-			return "AntoraDependencyContext[%s] %s".formatted(anchor, projectContext);
+			return "AntoraDependencyContext[%s] %s".formatted(delegate, projectContext);
 		}
 
 	}
