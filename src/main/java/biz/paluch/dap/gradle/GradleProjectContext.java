@@ -42,8 +42,6 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.plugins.gradle.model.ExternalProject;
-import org.jetbrains.plugins.gradle.service.project.data.ExternalProjectDataCache;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jetbrains.plugins.gradle.util.GradleConstants;
@@ -117,9 +115,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 		ExternalProjectInfo projectInfo = ProjectDataManager.getInstance()
 				.getExternalProjectData(project, GradleConstants.SYSTEM_ID, linkedPath);
-		ExternalProject root = ExternalProjectDataCache.getInstance(project)
-				.getRootExternalProject(linkedPath);
-		if (projectInfo == null || root == null) {
+		if (projectInfo == null) {
 			return GradleProjectDescriptor.of(ProjectId.of(buildFile.getVirtualFile()), "", "");
 		}
 
@@ -187,32 +183,6 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		return List.copyOf(sources);
-	}
-
-	/**
-	 * Resolves the Gradle project's {@code group} and {@code name} from the
-	 * external system data cache to build a {@link ProjectId}.
-	 */
-	private static @Nullable ProjectId resolveIdentity(Project project, PsiFile buildFile, String linkedPath) {
-
-		ExternalProjectInfo projectInfo = ProjectDataManager.getInstance().getExternalProjectData(project,
-				GradleConstants.SYSTEM_ID, linkedPath);
-
-		if (projectInfo == null) {
-			return null;
-		}
-
-		DataNode<ProjectData> projectNode = projectInfo.getExternalProjectStructure();
-		if (projectNode == null) {
-			return null;
-		}
-		ProjectData data = projectNode.getData();
-		String group = data.getGroup();
-		String name = data.getExternalName();
-		if (group == null || group.isBlank()) {
-			group = name;
-		}
-		return ProjectId.of(group, name, buildFile.getVirtualFile().getPath());
 	}
 
 	class GradleBuildContextImpl implements GradleProjectContext {

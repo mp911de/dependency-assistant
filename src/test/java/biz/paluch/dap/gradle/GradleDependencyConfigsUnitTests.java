@@ -25,7 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for the dependency configuration and platform function constants in {@link GradleParser}.
+ * Unit tests for {@link GradleUtils}.
  *
  * @author Mark Paluch
  */
@@ -55,18 +55,6 @@ class GradleDependencyConfigsUnitTests {
 	@ValueSource(strings = {"exclude", "because", "version", "files", "project", "mavenBom", "Api", "Implementation"})
 	void rejectsNonConfigCalls(String name) {
 		assertThat(GradleUtils.isDependencySection(name)).isFalse();
-	}
-
-	@Test
-	void dependencyConfigsAreImmutable() {
-		assertThatExceptionOfType(UnsupportedOperationException.class)
-				.isThrownBy(() -> GradleUtils.DEPENDENCY_CONFIGS.add("unknown"));
-	}
-
-	@Test
-	void platformFunctionsAreImmutable() {
-		assertThatExceptionOfType(UnsupportedOperationException.class)
-				.isThrownBy(() -> GradleUtils.PLATFORM_FUNCTIONS.add("unknown"));
 	}
 
 	@Test

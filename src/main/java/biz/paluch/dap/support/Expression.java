@@ -126,8 +126,8 @@ public abstract class Expression {
 	 * @param propertyResolver the property resolve to use for resolving property
 	 * references.
 	 * @return the resolved value.
-	 * @throws IllegalArgumentException if the expression is a property reference
-	 * but the resolver cannot resolve it.
+	 * @throws IllegalStateException if the expression is a property reference but
+	 * the resolver cannot resolve it.
 	 */
 	public String resolveRequired(PropertyResolver propertyResolver) {
 
