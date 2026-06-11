@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.externalSystem.MavenRepositoryData;
+import com.intellij.injected.editor.VirtualFileWindow;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import com.intellij.openapi.externalSystem.model.project.ProjectData;
@@ -64,6 +65,14 @@ class GradleUtils {
 			"testImplementation", "testRuntimeOnly", "testCompileOnly", "androidTestImplementation",
 			"debugImplementation", "releaseImplementation", "annotationProcessor", "kapt", "ksp", "provided", "compile",
 			"runtime", "testCompile", "testRuntime", "classpath");
+
+	/**
+	 * Configuration name suffixes that identify custom dependency configurations
+	 * derived from the canonical ones (e.g. {@code optionalApi},
+	 * {@code integrationTestImplementation}, {@code testFixturesRuntimeOnly}).
+	 */
+	static final Set<String> DEPENDENCY_CONFIG_SUFFIXES = Set.of("Implementation", "Api", "RuntimeOnly", "CompileOnly",
+			"AnnotationProcessor");
 
 	/** Configuration names that represent a BOM / platform import (managed). */
 	static final Set<String> PLATFORM_FUNCTIONS = Set.of("platform", "enforcedPlatform", "mavenBom");
@@ -178,7 +187,7 @@ class GradleUtils {
 	 * Return whether the given {@link PsiFile} is a Gradle-related file.
 	 */
 	public static boolean isGradleFile(@Nullable PsiFile file) {
-		if (file == null) {
+		if (file == null || isVirtualFileWindow(file.getVirtualFile())) {
 			return false;
 		}
 		return isGradleScript(file) || isGradlePropertiesFile(file) || isVersionCatalog(file);
@@ -188,7 +197,7 @@ class GradleUtils {
 	 * Return whether the given {@link VirtualFile} is a Gradle-related file.
 	 */
 	public static boolean isGradleFile(@Nullable VirtualFile file) {
-		if (file == null) {
+		if (file == null || isVirtualFileWindow(file)) {
 			return false;
 		}
 		return isGradleScript(file) || isGradlePropertiesFile(file) || isVersionCatalog(file);
@@ -205,7 +214,8 @@ class GradleUtils {
 	 * not qualify.
 	 */
 	public static boolean isGradleScript(@Nullable VirtualFile file) {
-		return file != null && !file.isDirectory() && hasGradleScriptName(file.getName());
+		return file != null && !isVirtualFileWindow(file) && !file.isDirectory() && hasGradleScriptName(file.getName())
+				&& !isVirtualFileWindow(file);
 	}
 
 	/**
@@ -218,7 +228,7 @@ class GradleUtils {
 	 * base name (a file named just {@code .gradle}) do not qualify.
 	 */
 	public static boolean isGradleScript(@Nullable PsiFile file) {
-		return file != null && hasGradleScriptName(file.getName());
+		return file != null && hasGradleScriptName(file.getName()) && !isVirtualFileWindow(file);
 	}
 
 	/**
@@ -251,14 +261,14 @@ class GradleUtils {
 	 * Return {@literal true} if the file is a {@code gradle.properties} file.
 	 */
 	public static boolean isGradlePropertiesFile(@Nullable VirtualFile file) {
-		return file != null && GRADLE_PROPERTIES.equals(file.getName());
+		return file != null && !isVirtualFileWindow(file) && GRADLE_PROPERTIES.equals(file.getName());
 	}
 
 	/**
 	 * Return {@literal true} if the file is a {@code gradle.properties} file.
 	 */
 	public static boolean isGradlePropertiesFile(@Nullable PsiFile file) {
-		return file != null && GRADLE_PROPERTIES.equals(file.getName());
+		return file != null && GRADLE_PROPERTIES.equals(file.getName()) && !isVirtualFileWindow(file);
 	}
 
 	/**
@@ -266,7 +276,7 @@ class GradleUtils {
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable VirtualFile file) {
-		return file != null && file.getName().endsWith(".versions.toml");
+		return file != null && !isVirtualFileWindow(file) && file.getName().endsWith(".versions.toml");
 	}
 
 	/**
@@ -274,7 +284,7 @@ class GradleUtils {
 	 * catalog.
 	 */
 	public static boolean isVersionCatalog(@Nullable PsiFile file) {
-		return file != null && file.getName().endsWith(".versions.toml");
+		return file != null && file.getName().endsWith(".versions.toml") && !isVirtualFileWindow(file);
 	}
 
 	/**
@@ -282,7 +292,7 @@ class GradleUtils {
 	 * extension).
 	 */
 	public static boolean isKotlinDsl(@Nullable VirtualFile file) {
-		return file != null && file.getName().endsWith(".kts");
+		return file != null && !isVirtualFileWindow(file) && file.getName().endsWith(".kts");
 	}
 
 	/**
@@ -307,6 +317,14 @@ class GradleUtils {
 	 */
 	public static boolean isGroovyDsl(@Nullable VirtualFile file) {
 		return isGradleScript(file) && !isKotlinDsl(file);
+	}
+
+	private static boolean isVirtualFileWindow(PsiFile file) {
+		return isVirtualFileWindow(file.getVirtualFile());
+	}
+
+	private static boolean isVirtualFileWindow(VirtualFile file) {
+		return file instanceof VirtualFileWindow;
 	}
 
 	/**
@@ -370,9 +388,27 @@ class GradleUtils {
 
 	/**
 	 * Return whether the call name refers to a dependency configuration.
+	 * <p>Matches the canonical configuration names as well as custom configurations
+	 * that follow Gradle's camelCase derivation convention, such as
+	 * {@code optionalApi} or {@code integrationTestImplementation}.
 	 */
 	public static boolean isDependencySection(@Nullable String name) {
-		return StringUtils.hasText(name) && DEPENDENCY_CONFIGS.contains(name);
+
+		if (!StringUtils.hasText(name)) {
+			return false;
+		}
+
+		if (DEPENDENCY_CONFIGS.contains(name)) {
+			return true;
+		}
+
+		for (String suffix : DEPENDENCY_CONFIG_SUFFIXES) {
+			if (name.length() > suffix.length() && name.endsWith(suffix)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**

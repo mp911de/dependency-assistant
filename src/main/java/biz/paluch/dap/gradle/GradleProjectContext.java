@@ -77,30 +77,23 @@ interface GradleProjectContext extends ProjectBuildContext {
 		if (context != null) {
 			return context;
 		}
+
 		VirtualFile virtualFile = file.getVirtualFile();
 		if (virtualFile == null) {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 
 		Module module = ModuleUtilCore.findModuleForFile(virtualFile, project);
-
 		if (module == null) {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 
 		String linkedPath = ExternalSystemApiUtil.getExternalRootProjectPath(module);
-		// String linkedPath = GradleUtils.findLinkedProjectPath(project, virtualFile);
 		if (linkedPath == null) {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 
 		GradleProjectDescriptor descriptor = resolveDescriptor(project, file, linkedPath);
-
-		ProjectId identity = resolveIdentity(project, file, linkedPath);
-		if (identity == null) {
-			return EmptyGradleBuildContext.INSTANCE;
-		}
-
 		return new GradleBuildContextImpl(project, descriptor);
 	}
 
@@ -132,17 +125,10 @@ interface GradleProjectContext extends ProjectBuildContext {
 			group = name;
 		}
 
-		// TODO: Gradle project version? properties, build.gradle?
-		String version = data.getVersion();// resolveVersion(project, linkedPath);
+		String version = data.getVersion();
 		ProjectId projectId = ProjectId.of(group, name, virtualFile.getPath());
 
 		return GradleProjectDescriptor.of(projectId, version, linkedPath);
-	}
-
-	private static @Nullable String resolveVersion(Project project, String linkedPath) {
-		ExternalProject rootExternalProject = ExternalProjectDataCache.getInstance(project)
-				.getRootExternalProject(linkedPath);
-		return rootExternalProject != null ? rootExternalProject.getVersion() : null;
 	}
 
 	/**
