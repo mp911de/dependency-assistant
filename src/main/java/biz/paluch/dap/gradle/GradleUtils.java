@@ -33,8 +33,7 @@ import com.intellij.openapi.externalSystem.model.project.ProjectData;
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Key;
-import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -311,88 +310,48 @@ class GradleUtils {
 	}
 
 	/**
-	 * Locates the Gradle project root for the given file by walking up to the first
-	 * ancestor that contains a settings file or returns the parent directory if
-	 * none is found.
-	 * <p>
-	 * When a linked Gradle project root can be resolved for the file, any
-	 * {@code settings.gradle} found above that boundary is ignored so a stray
-	 * settings file cannot widen resolution scope.
+	 * Locate the Gradle project root for the given file.
+	 *
+	 * @see #findProjectRoot(Project, VirtualFile)
 	 */
 	static VirtualFile findProjectRoot(PsiFile file) {
 		return findProjectRoot(file.getProject(), file.getVirtualFile());
 	}
 
 	/**
-	 * Locates the Gradle project root for the given file by walking up to the first
-	 * ancestor that contains a settings file or returns the parent directory if
-	 * none is found.
-	 * <p>
-	 * When a linked Gradle project root can be resolved for the file, any
-	 * {@code settings.gradle} found above that boundary is ignored so a stray
-	 * settings file cannot widen resolution scope.
+	 * Locate the Gradle project root for the given file by walking up from its
+	 * containing directory to the first directory holding a
+	 * {@link #GROOVY_SETTINGS} or {@link #KOTLIN_SETTINGS} file.
+	 * <p>The walk is bounded by the linked Gradle project root, or by the content
+	 * root containing the file when it is not part of a linked Gradle project, so a
+	 * stray settings file outside the project cannot widen resolution scope.
+	 *
+	 * @return the first directory containing a settings file; the linked Gradle
+	 * project root if none is found; the containing directory otherwise.
+	 * @throws IllegalStateException if the file has no parent directory.
 	 */
-	// TODO: Refine root detection
 	static VirtualFile findProjectRoot(Project project, VirtualFile file) {
 
-		String name = "ROOT: " + file.getCanonicalPath();
-		Key<VirtualFile> ROOT = (Key) Key.findKeyByName(name);
-		if (ROOT == null) {
-			ROOT = Key.create(name);
+		VirtualFile start = file.isDirectory() ? file : file.getParent();
+		if (start == null) {
+			throw new IllegalStateException("Cannot determine Gradle project root for %s".formatted(file.getPath()));
 		}
 
-		VirtualFile root = project.getUserData(ROOT);
-		if (root == null) {
-			root = doFindProjectRoot(project, file);
-			project.putUserData(ROOT, root);
-		} else {
-			return root;
-		}
+		VirtualFile linkedRoot = findLinkedProjectRoot(project, file);
+		VirtualFile ceiling = linkedRoot != null ? linkedRoot
+				: ProjectFileIndex.getInstance(project).getContentRootForFile(file);
 
-		return root;
-	}
+		for (VirtualFile dir = start; dir != null; dir = dir.getParent()) {
 
-	private static VirtualFile doFindProjectRoot(Project project, VirtualFile file) {
-
-		VirtualFile ceiling = resolveGradleProjectCeiling(project, file);
-		VirtualFile dir = file.isDirectory() ? file : file.getParent();
-
-		while (dir != null) {
-			boolean hasSettings = dir.findChild("settings.gradle") != null
-					|| dir.findChild("settings.gradle.kts") != null;
-			if (hasSettings && (VfsUtil.isAncestor(ceiling, dir, false) || dir.equals(ceiling))) {
+			if (dir.findChild(GROOVY_SETTINGS) != null || dir.findChild(KOTLIN_SETTINGS) != null) {
 				return dir;
 			}
-			VirtualFile parent = dir.getParent();
-			if (parent != null && !VfsUtil.isAncestor(ceiling, parent, false)) {
+			if (ceiling == null || !VfsUtil.isAncestor(ceiling, dir, true)) {
 				break;
 			}
-			dir = parent;
 		}
 
-		VirtualFile fallback = file.getParent();
-		if (fallback != null && !VfsUtil.isAncestor(ceiling, fallback, false)) {
-			return ceiling;
-		}
-
-		if (fallback == null) {
-			throw new IllegalStateException("Could not find linked project root for " + project);
-		}
-		return fallback;
-	}
-
-	private static VirtualFile resolveGradleProjectCeiling(Project project, VirtualFile file) {
-
-		String linked = findLinkedProjectPath(project, file);
-		if (StringUtils.isEmpty(linked)) {
-			return file.getParent();
-		}
-		VirtualFile linkedRoot = LocalFileSystem.getInstance().findFileByPath(linked);
-		if (linkedRoot != null) {
-			return linkedRoot;
-		}
-
-		return file.getParent();
+		return linkedRoot != null ? linkedRoot : start;
 	}
 
 	/**
@@ -461,28 +420,27 @@ class GradleUtils {
 	}
 
 	/**
-	 * Walks the ancestor directories of {@code file} until one of them matches a
+	 * Walk the ancestor directories of {@code file} until one of them matches a
 	 * registered linked Gradle project root.
+	 *
+	 * @return the linked Gradle project root, or {@literal null} if the file is not
+	 * part of a linked Gradle project.
 	 */
-	public static @Nullable String findLinkedProjectPath(Project project, VirtualFile file) {
+	static @Nullable VirtualFile findLinkedProjectRoot(Project project, VirtualFile file) {
 
-		GradleSettings settings = GradleSettings.getInstance(project);
-		Collection<GradleProjectSettings> linkedProjects = settings.getLinkedProjectsSettings();
-
+		Collection<GradleProjectSettings> linkedProjects = GradleSettings.getInstance(project)
+				.getLinkedProjectsSettings();
 		if (linkedProjects.isEmpty()) {
 			return null;
 		}
 
-		VirtualFile dir = file.isDirectory() ? file : file.getParent();
+		for (VirtualFile dir = file.isDirectory() ? file : file.getParent(); dir != null; dir = dir.getParent()) {
 
-		while (dir != null) {
-			String dirPath = dir.getPath();
-			for (GradleProjectSettings ps : linkedProjects) {
-				if (dirPath.equals(ps.getExternalProjectPath())) {
-					return dirPath;
+			for (GradleProjectSettings settings : linkedProjects) {
+				if (dir.getPath().equals(settings.getExternalProjectPath())) {
+					return dir;
 				}
 			}
-			dir = dir.getParent();
 		}
 
 		return null;

@@ -47,7 +47,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
-import com.intellij.psi.util.CachedValuesManager;
 import icons.GradleIcons;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
@@ -167,11 +166,8 @@ class GradleAssistant implements DependencyAssistant {
 			throw new IllegalStateException("Gradle integration does not support " + anchor);
 		}
 
-		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> {
-					GradleProjectContext context = GradleProjectContext.of(project, anchor);
-					return new GradleDependencyContext(project, anchor.getVirtualFile(), context);
-				});
+		GradleProjectContext context = GradleProjectContext.of(project, anchor);
+		return new GradleDependencyContext(project, anchor.getVirtualFile(), context);
 	}
 
 	static class GradleDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {

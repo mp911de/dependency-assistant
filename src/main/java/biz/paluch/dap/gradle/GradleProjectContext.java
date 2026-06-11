@@ -21,9 +21,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.util.BetterPsiManager;
@@ -101,25 +103,29 @@ interface GradleProjectContext extends ProjectBuildContext {
 			return EmptyGradleBuildContext.INSTANCE;
 		}
 
-		return new GradleBuildContextImpl(project, linkedPath, identity);
+		return new GradleBuildContextImpl(project, descriptor);
 	}
 
-	private static @Nullable GradleProjectDescriptor resolveDescriptor(
+	private static GradleProjectDescriptor resolveDescriptor(
 			Project project, PsiFile buildFile, String linkedPath) {
+
+		VirtualFile virtualFile = buildFile.getVirtualFile();
+		if (virtualFile == null) {
+			return GradleProjectDescriptor.of(ProjectId.of(project.getName(), project.getName(), buildFile.getName()),
+					"", "");
+		}
 
 		ExternalProjectInfo projectInfo = ProjectDataManager.getInstance()
 				.getExternalProjectData(project, GradleConstants.SYSTEM_ID, linkedPath);
-
 		ExternalProject root = ExternalProjectDataCache.getInstance(project)
 				.getRootExternalProject(linkedPath);
-
 		if (projectInfo == null || root == null) {
-			return null;
+			return GradleProjectDescriptor.of(ProjectId.of(buildFile.getVirtualFile()), "", "");
 		}
 
 		DataNode<ProjectData> projectNode = projectInfo.getExternalProjectStructure();
 		if (projectNode == null) {
-			return null;
+			return GradleProjectDescriptor.of(ProjectId.of(buildFile.getVirtualFile()), "", "");
 		}
 
 		ProjectData data = projectNode.getData();
@@ -130,15 +136,11 @@ interface GradleProjectContext extends ProjectBuildContext {
 			group = name;
 		}
 
-		VirtualFile virtualFile = buildFile.getVirtualFile();
-		if (virtualFile == null) {
-			return null;
-		}
-
+		// TODO: Gradle project version? properties, build.gradle?
 		String version = data.getVersion();// resolveVersion(project, linkedPath);
 		ProjectId projectId = ProjectId.of(group, name, virtualFile.getPath());
 
-		return GradleProjectDescriptor.of(projectId, version, linkedPath, projectInfo);
+		return GradleProjectDescriptor.of(projectId, version, linkedPath);
 	}
 
 	private static @Nullable String resolveVersion(Project project, String linkedPath) {
@@ -217,15 +219,18 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 		private final Project project;
 
-		private final String linkedProjectPath;
+		private final GradleProjectDescriptor descriptor;
 
-		private final ProjectId projectId;
+		private final Versioned projectVersion;
 
-		GradleBuildContextImpl(Project project, String linkedProjectPath, ProjectId projectId) {
+		GradleBuildContextImpl(Project project, GradleProjectDescriptor descriptor) {
 
 			this.project = project;
-			this.linkedProjectPath = linkedProjectPath;
-			this.projectId = projectId;
+			this.descriptor = descriptor;
+			this.projectVersion = descriptor.hasVersion()
+					? ArtifactVersion.from(descriptor.version()).map(Versioned::of)
+							.orElse(Versioned.unversioned())
+					: Versioned.unversioned();
 		}
 
 		@Override
@@ -235,21 +240,25 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 		@Override
 		public ProjectId getProjectId() {
-			return projectId;
+			return descriptor.projectId();
+		}
+
+		@Override
+		public Versioned getProjectVersion() {
+			return projectVersion;
 		}
 
 		@Override
 		public List<ReleaseSource> getReleaseSources() {
 
 			List<RemoteRepository> remoteRepositories = GradleUtils.getRepositoriesFromImportedProject(project,
-					linkedProjectPath);
-
+					descriptor.linkedProjectPath());
 			return GradleProjectContext.getReleaseSources(remoteRepositories);
 		}
 
 		@Override
 		public String toString() {
-			return "%s, Linked path: %s".formatted(projectId, linkedProjectPath);
+			return "%s, Linked path: %s".formatted(getProjectId(), descriptor.linkedProjectPath());
 		}
 
 	}

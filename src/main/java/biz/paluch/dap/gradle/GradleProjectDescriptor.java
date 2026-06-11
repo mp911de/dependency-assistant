@@ -18,7 +18,6 @@ package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import org.jspecify.annotations.Nullable;
 
 class GradleProjectDescriptor {
@@ -29,19 +28,15 @@ class GradleProjectDescriptor {
 
 	private final String linkedProjectPath;
 
-	private final ExternalProjectInfo externalProjectInfo;
-
 	private GradleProjectDescriptor(ProjectId projectId, @Nullable String version,
-			String linkedProjectPath, ExternalProjectInfo externalProjectInfo) {
+			String linkedProjectPath) {
 		this.projectId = projectId;
 		this.version = version;
 		this.linkedProjectPath = linkedProjectPath;
-		this.externalProjectInfo = externalProjectInfo;
 	}
 
-	public static GradleProjectDescriptor of(ProjectId projectId, @Nullable String version, String linkedProjectPath,
-			ExternalProjectInfo externalProjectInfo) {
-		return new GradleProjectDescriptor(projectId, version, linkedProjectPath, externalProjectInfo);
+	public static GradleProjectDescriptor of(ProjectId projectId, @Nullable String version, String linkedProjectPath) {
+		return new GradleProjectDescriptor(projectId, version, linkedProjectPath);
 	}
 
 	public ProjectId projectId() {
@@ -54,10 +49,6 @@ class GradleProjectDescriptor {
 
 	public String linkedProjectPath() {
 		return this.linkedProjectPath;
-	}
-
-	public ExternalProjectInfo externalProjectInfo() {
-		return this.externalProjectInfo;
 	}
 
 	public boolean hasVersion() {
