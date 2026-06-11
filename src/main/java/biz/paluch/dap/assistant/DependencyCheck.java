@@ -218,8 +218,7 @@ class DependencyCheck {
 				Thread.currentThread().interrupt();
 				abort = true;
 			} catch (TimeoutException e) {
-				res = cancelAndRecord(artifactId, futures, e);
-				abort = true;
+				res = new ReleaseLookupResult("%s: %s".formatted(name, e.getMessage()), Releases.empty());
 			}
 
 			results.put(artifactId, res);
@@ -245,6 +244,7 @@ class DependencyCheck {
 	private ReleaseLookupResult fetchReleases(ProgressIndicator indicator, ReleaseSources artifactSource,
 			ExecutorService executor, Cache cache, Consistency consistency) {
 		indicator.checkCanceled();
+
 		try {
 
 			ReleaseResolver resolver = new ReleaseResolver(artifactSource.sources(), executor);

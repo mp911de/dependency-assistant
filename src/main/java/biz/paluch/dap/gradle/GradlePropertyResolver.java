@@ -126,12 +126,7 @@ class GradlePropertyResolver implements PropertyResolver {
 				}
 			}
 
-			for (String fileName : GradleUtils.GRADLE_SCRIPT_NAMES) {
-
-				VirtualFile child = directory.findChild(fileName);
-				if (child == null) {
-					continue;
-				}
+			for (VirtualFile child : GradleUtils.findGradleScripts(directory)) {
 
 				PsiFile psiFile = psiManager.findFile(child);
 				if (psiFile == null) {

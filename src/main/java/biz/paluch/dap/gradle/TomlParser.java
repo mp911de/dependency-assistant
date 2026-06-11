@@ -384,7 +384,7 @@ class TomlParser extends GradleParserSupport {
 
 		/**
 		 * Check whether the declaration is complete (having id and version information
-		 * or group and artifact with version information).
+		 * or a parseable {@code group:artifact} module with version information).
 		 */
 		public boolean isComplete() {
 
@@ -396,7 +396,7 @@ class TomlParser extends GradleParserSupport {
 				return true;
 			}
 
-			return StringUtils.hasText(module);
+			return GradleArtifactId.isValid(module);
 		}
 
 		/**

@@ -63,6 +63,19 @@ class GradleParserTests {
 				.hasVersion("4.0.3");
 	}
 
+	@Test
+	@ProjectFile(name = "spring-security-config.gradle", content = """
+			dependencies {
+			    implementation 'org.springframework:spring-core:6.2.0'
+			}
+			""")
+	void customNamedBuildScriptIsAnalyzedLikeBuildGradle(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyUsage("org.springframework", "spring-core").hasVersion("6.2.0");
+	}
+
 	// -------------------------------------------------------------------------
 	// Plugins (plugin ID resolution)
 	// -------------------------------------------------------------------------

@@ -16,7 +16,9 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -167,9 +169,8 @@ class GradleUtils {
 	/** Default relative path of the Gradle version catalog file. */
 	public static final String DEFAULT_TOML_LOCATION = "gradle/" + GradleUtils.LIBS_VERSIONS_TOML;
 
-	/** Names of Gradle build/settings script files. */
-	public static final Set<String> GRADLE_SCRIPT_NAMES = Set.of("build.gradle", "build.gradle.kts", GROOVY_SETTINGS,
-			KOTLIN_SETTINGS);
+	/** File name suffixes of Gradle build/settings script files. */
+	public static final Set<String> GRADLE_SCRIPT_SUFFIXES = Set.of(".gradle", ".gradle.kts");
 
 	private GradleUtils() {
 	}
@@ -196,20 +197,55 @@ class GradleUtils {
 
 	/**
 	 * Return {@literal true} if the file is a Gradle build or settings script
-	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
-	 * {@code settings.gradle.kts}).
+	 * ({@code *.gradle}, {@code *.gradle.kts}).
+	 * <p>Build scripts may use any base name (e.g.
+	 * {@code spring-security-config.gradle}); settings scripts are the files named
+	 * {@link #GROOVY_SETTINGS} / {@link #KOTLIN_SETTINGS}. Code that deliberately
+	 * parses settings content must check those names explicitly. Directories and
+	 * files without a base name (such as the {@code .gradle} cache directory) do
+	 * not qualify.
 	 */
 	public static boolean isGradleScript(@Nullable VirtualFile file) {
-		return file != null && GRADLE_SCRIPT_NAMES.contains(file.getName());
+		return file != null && !file.isDirectory() && hasGradleScriptName(file.getName());
 	}
 
 	/**
 	 * Return {@literal true} if the file is a Gradle build or settings script
-	 * ({@code build.gradle}, {@code build.gradle.kts}, {@code settings.gradle},
-	 * {@code settings.gradle.kts}).
+	 * ({@code *.gradle}, {@code *.gradle.kts}).
+	 * <p>Build scripts may use any base name (e.g.
+	 * {@code spring-security-config.gradle}); settings scripts are the files named
+	 * {@link #GROOVY_SETTINGS} / {@link #KOTLIN_SETTINGS}. Code that deliberately
+	 * parses settings content must check those names explicitly. Files without a
+	 * base name (a file named just {@code .gradle}) do not qualify.
 	 */
 	public static boolean isGradleScript(@Nullable PsiFile file) {
-		return file != null && GRADLE_SCRIPT_NAMES.contains(file.getName());
+		return file != null && hasGradleScriptName(file.getName());
+	}
+
+	/**
+	 * Return the Gradle scripts directly contained in {@code directory}, sorted by
+	 * file name.
+	 */
+	public static List<VirtualFile> findGradleScripts(VirtualFile directory) {
+
+		List<VirtualFile> scripts = new ArrayList<>();
+		for (VirtualFile child : directory.getChildren()) {
+			if (isGradleScript(child)) {
+				scripts.add(child);
+			}
+		}
+		scripts.sort(Comparator.comparing(VirtualFile::getName));
+		return scripts;
+	}
+
+	private static boolean hasGradleScriptName(String fileName) {
+
+		for (String suffix : GRADLE_SCRIPT_SUFFIXES) {
+			if (fileName.length() > suffix.length() && fileName.endsWith(suffix)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

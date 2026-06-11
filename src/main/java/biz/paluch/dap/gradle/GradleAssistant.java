@@ -110,8 +110,12 @@ class GradleAssistant implements DependencyAssistant {
 		List<PsiFile> anchors = new ArrayList<>();
 
 		for (VirtualFile directory : linkedDirectories) {
-			for (String name : GradleUtils.GRADLE_SCRIPT_NAMES) {
-				addAnchor(psiManager, directory, name, anchors);
+			for (VirtualFile script : GradleUtils.findGradleScripts(directory)) {
+
+				PsiFile file = psiManager.findFile(script);
+				if (file != null) {
+					anchors.add(file);
+				}
 			}
 			addAnchor(psiManager, directory, GradleUtils.LIBS_VERSIONS_TOML, anchors);
 		}

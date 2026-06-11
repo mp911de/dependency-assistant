@@ -16,9 +16,10 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
@@ -172,7 +173,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 	static List<ReleaseSource> getReleaseSources(Collection<RemoteRepository> repositories) {
 
-		List<ReleaseSource> sources = new ArrayList<>();
+		Set<ReleaseSource> sources = new LinkedHashSet<>();
 		sources.add(GradlePluginPortalReleaseSource.INSTANCE);
 
 		if (repositories.isEmpty()) {
@@ -183,7 +184,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 			sources.add(new MavenRepository(repository));
 		}
 
-		return sources;
+		return List.copyOf(sources);
 	}
 
 	/**
