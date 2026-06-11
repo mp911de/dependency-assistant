@@ -54,14 +54,16 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
-		if (!artifactId.groupId().equals(artifactId.artifactId())) {
-			return List.of();
+		if (GradlePluginId.isPlugin(artifactId)) {
+			String pluginId = artifactId.groupId();
+			ArtifactId markerArtifact = ArtifactId.of(pluginId, pluginId + ".gradle.plugin");
+			return GRADLE_PLUGIN_PORTAL.getReleases(markerArtifact, indicator);
 		}
 
-		String pluginId = artifactId.groupId();
-		ArtifactId markerArtifact = ArtifactId.of(pluginId, pluginId + ".gradle.plugin");
-
-		return GRADLE_PLUGIN_PORTAL.getReleases(markerArtifact, indicator);
+		// TODO: HEAD for individual versions? might be an overkill.
+		// but only for these, that we don't yet know 🙃
+		// ??
+		return GRADLE_PLUGIN_PORTAL.getReleases(artifactId, indicator);
 	}
 
 }
