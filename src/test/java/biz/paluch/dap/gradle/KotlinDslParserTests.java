@@ -488,6 +488,23 @@ class KotlinDslParserTests {
 	@ProjectFile(name = "build.gradle.kts", content = """
 			val junit = "6.0.0"
 			dependencies {
+			    implementation("org.junit:junit-bom:$junit")
+			}
+			""")
+	void dependencyVersionResolvedViaUnbracedTemplate(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junit");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			val junit = "6.0.0"
+			dependencies {
 			    implementation(group = "org.junit", name = "junit-bom", version = junit)
 			}
 			""")

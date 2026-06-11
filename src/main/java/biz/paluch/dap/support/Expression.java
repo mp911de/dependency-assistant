@@ -28,16 +28,16 @@ import org.springframework.util.Assert;
 
 /**
  * Value object representing either a property expression such as
- * {@code ${name}} or a literal value.
- * <p>
- * Use {@link #from(String)} to create an instance and inspect its actual
+ * {@code ${name}} or {@code $name} or a literal value.
+ * <p>Use {@link #from(String)} to create an instance and inspect its actual
  * type through {@link #isProperty()} or subtype checks.
  *
  * @author Mark Paluch
  */
 public abstract class Expression {
 
-	private static final Pattern PROPERTY_PATTERN = Pattern.compile("\\$\\{([^}]*)\\}");
+	private static final Pattern PROPERTY_PATTERN = Pattern
+			.compile("\\$\\{([^}]*)\\}|\\$([a-zA-Z_][a-zA-Z0-9_]*)");
 
 	private final String value;
 
@@ -47,6 +47,9 @@ public abstract class Expression {
 
 	/**
 	 * Create a {@link Expression} from the given value.
+	 * <p>A value is a property expression when it consists entirely of a braced
+	 * ({@code ${name}}) or unbraced ({@code $name}) placeholder; any other value is
+	 * treated as a literal.
 	 *
 	 * @param value the source value.
 	 * @return a {@link Reference} if the value is a property expression; otherwise
@@ -61,7 +64,7 @@ public abstract class Expression {
 
 			Matcher matcher = PROPERTY_PATTERN.matcher(value);
 			if (matcher.matches()) {
-				return new Reference(matcher.group(1));
+				return new Reference(matcher.group(1) != null ? matcher.group(1) : matcher.group(2));
 			}
 
 			return new LiteralValue(value);

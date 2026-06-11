@@ -649,6 +649,134 @@ class GradleParserTests {
 	@Test
 	@ProjectFile(name = "build.gradle", content = """
 			ext {
+			    commonsVersion = '3.19.0'
+			}
+
+			dependencies {
+			    implementation "org.apache.commons:commons-lang3:$commonsVersion"
+			}
+			""")
+	void dependencyVersionResolvedViaUnbracedExtProperty(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.apache.commons", "commons-lang3")
+				.hasVersion("3.19.0")
+				.hasPropertyVersion("commonsVersion");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    optionalApi "io.netty:netty-transport:4.1.110.Final"
+			}
+			""")
+	void customConfigurationDependencyIsDiscovered(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("io.netty", "netty-transport")
+				.hasVersion("4.1.110.Final");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    springVersion = '6.2.0'
+			}
+
+			allprojects {
+			    dependencies {
+			        implementation "org.springframework:spring-core:$springVersion"
+			    }
+			}
+			""")
+	void unbracedExtPropertyInsideAllprojectsIsResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework", "spring-core")
+				.hasVersion("6.2.0")
+				.hasPropertyVersion("springVersion");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    nettyVersion = '4.1.110.Final'
+			    junitVersion = '5.11.0'
+			}
+
+			configure(allprojects) {
+			    dependencies {
+			        optionalApi "io.netty:netty-transport:${nettyVersion}"
+			        testImplementation "org.junit.jupiter:junit-jupiter:$junitVersion"
+			    }
+			}
+			""")
+	void configureBlockCustomAndTestConfigurationsAreResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("io.netty", "netty-transport")
+				.hasVersion("4.1.110.Final")
+				.hasPropertyVersion("nettyVersion");
+		assertThat(collector)
+				.hasDependencyUsage("org.junit.jupiter", "junit-jupiter")
+				.hasVersion("5.11.0")
+				.hasPropertyVersion("junitVersion");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    bomVersion = '3.3.2'
+			}
+
+			dependencyManagement {
+			    imports {
+			        mavenBom "org.springframework.boot:spring-boot-dependencies:$bomVersion"
+			    }
+			}
+			""")
+	void managedBomWithUnbracedExtPropertyIsResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.boot", "spring-boot-dependencies")
+				.hasVersion("3.3.2")
+				.hasDeclaration(DeclarationSource.managed())
+				.hasPropertyVersion("bomVersion");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    bootVersion = '3.3.2'
+			}
+
+			dependencies {
+			    implementation platform("org.springframework.boot:spring-boot-dependencies:$bootVersion")
+			}
+			""")
+	void platformWithUnbracedExtPropertyIsResolved(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyUsage("org.springframework.boot", "spring-boot-dependencies")
+				.hasVersion("3.3.2")
+				.hasPropertyVersion("bootVersion");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
 			    guavaVersion = '33.0.0-jre'
 			}
 

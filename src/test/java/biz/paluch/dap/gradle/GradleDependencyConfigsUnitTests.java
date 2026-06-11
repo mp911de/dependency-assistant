@@ -44,6 +44,19 @@ class GradleDependencyConfigsUnitTests {
 		assertThat(GradleUtils.PLATFORM_FUNCTIONS).contains(func);
 	}
 
+	@ParameterizedTest(name = "supports custom config: {0}")
+	@ValueSource(strings = {"optionalApi", "optionalImplementation", "integrationTestImplementation",
+			"testFixturesApi", "smokeTestRuntimeOnly", "integrationTestCompileOnly", "testAnnotationProcessor"})
+	void supportsCustomConfigsBySuffix(String config) {
+		assertThat(GradleUtils.isDependencySection(config)).isTrue();
+	}
+
+	@ParameterizedTest(name = "rejects non-config call: {0}")
+	@ValueSource(strings = {"exclude", "because", "version", "files", "project", "mavenBom", "Api", "Implementation"})
+	void rejectsNonConfigCalls(String name) {
+		assertThat(GradleUtils.isDependencySection(name)).isFalse();
+	}
+
 	@Test
 	void dependencyConfigsAreImmutable() {
 		assertThatExceptionOfType(UnsupportedOperationException.class)
