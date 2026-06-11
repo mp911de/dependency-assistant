@@ -23,18 +23,18 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 
 /**
  * {@link DependencyRule} backed by a matched {@link ArtifactRule}, testing
- * versions against its {@link Generation}.
+ * versions against its {@link Generations}.
  */
 class ResolvedDependencyRule implements DependencyRule {
 
-	private final Generation generation;
+	private final Generations generations;
 
 	private final String dependencyName;
 
 	private final Predicate<UpgradeStrategy> upgradeStrategies;
 
-	ResolvedDependencyRule(Generation generation, String dependencyName, Predicate<UpgradeStrategy> upgradeStrategies) {
-		this.generation = generation;
+	ResolvedDependencyRule(Generations generations, String dependencyName, Predicate<UpgradeStrategy> upgradeStrategies) {
+		this.generations = generations;
 		this.dependencyName = dependencyName;
 		this.upgradeStrategies = upgradeStrategies;
 	}
@@ -45,8 +45,8 @@ class ResolvedDependencyRule implements DependencyRule {
 	}
 
 	@Override
-	public String getGeneration() {
-		return this.generation.value();
+	public Generations getGenerations() {
+		return this.generations;
 	}
 
 	@Override
@@ -61,12 +61,12 @@ class ResolvedDependencyRule implements DependencyRule {
 
 	@Override
 	public boolean test(ArtifactVersion version) {
-		return this.generation.asVersionPredicate().test(version);
+		return this.generations.asVersionPredicate().test(version);
 	}
 
 	@Override
 	public String toString() {
-		return generation.toString();
+		return generations.toString();
 	}
 
 }

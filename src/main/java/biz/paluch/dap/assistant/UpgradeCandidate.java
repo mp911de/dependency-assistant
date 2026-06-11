@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.Generation;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.ui.LayeredIcon;
@@ -76,7 +77,7 @@ class UpgradeCandidate implements HasArtifactId {
 			}
 
 			if (!rule.test(candidate.getCurrentVersion())) {
-				filterUpgrades(candidate, rule);
+				filterUpgrades();
 			}
 		}
 
@@ -84,20 +85,29 @@ class UpgradeCandidate implements HasArtifactId {
 		this.tableIcon = createTableIcon();
 	}
 
-	private void filterUpgrades(DependencyUpdateCandidate option, DependencyRule rule) {
+	private void filterUpgrades() {
 
-		ArtifactVersion generation = ArtifactVersion.of(rule.getGeneration());
 		Releases releases = this.candidate.getReleases();
+		Release target = null;
 
-		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
-			if (!rule.isEnabled(strategy)) {
-				continue;
+		for (Generation generation : this.rule.getGenerations().list()) {
+
+			ArtifactVersion baseline = ArtifactVersion.of(generation.value());
+			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
+				if (!this.rule.isEnabled(strategy)) {
+					continue;
+				}
+				Release release = strategy.select(baseline, releases);
+				if (release != null && this.rule.test(release.version())
+						&& (target == null || release.compareTo(target) > 0)) {
+					target = release;
+				}
 			}
-			Release release = strategy.select(generation, releases);
-			if (release != null && rule.test(release.version())) {
-				option.getTargets().put(UpgradeStrategy.RULE, release);
-				option.getFilteredTargets().put(UpgradeStrategy.RULE, release);
-			}
+		}
+
+		if (target != null) {
+			this.candidate.getTargets().put(UpgradeStrategy.RULE, target);
+			this.candidate.getFilteredTargets().put(UpgradeStrategy.RULE, target);
 		}
 	}
 

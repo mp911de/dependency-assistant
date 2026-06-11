@@ -233,7 +233,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		return artifacts.stream()
 				.filter(it -> it.pattern().test(artifactId))
 				.max(ArtifactRule::compareTo)
-				.<DependencyRule>map(it -> new ResolvedDependencyRule(it.generation(), it.name(), this::supports))
+				.<DependencyRule>map(it -> new ResolvedDependencyRule(it.generations(), it.name(), this::supports))
 				.orElse(null);
 	}
 
@@ -245,8 +245,8 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		}
 
 		@Override
-		public String getGeneration() {
-			return "";
+		public Generations getGenerations() {
+			return Generations.unconstrained();
 		}
 
 		@Override

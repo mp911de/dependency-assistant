@@ -181,7 +181,7 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 		if (StringUtils.hasText(rule.getDependencyName())) {
 			return rule.getDependencyName();
 		}
-		return "'" + artifactId.toString() + "'";
+		return "'" + artifactId + "'";
 	}
 
 	/**
@@ -196,12 +196,12 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 		if (isLocked()) {
 			if (result == EvaluationState.NOT_PASSED) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.problem",
-						getDependencyNameForToolTip(), renderedVersion, rule.getGeneration()));
+						getDependencyNameForToolTip(), renderedVersion, rule.getGenerations().value()));
 			}
 
 			if (result == EvaluationState.PASSED) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.description",
-						getDependencyNameForToolTip(), rule.getGeneration()));
+						getDependencyNameForToolTip(), rule.getGenerations().value()));
 			}
 		}
 
@@ -234,7 +234,7 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 	}
 
 	public boolean isLocked() {
-		return StringUtils.hasText(rule.getGeneration());
+		return rule.getGenerations().isConstrained();
 	}
 
 	private String getUpgradeStrategiesHint() {

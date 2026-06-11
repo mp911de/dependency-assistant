@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.gradle.GradleVersionSite.Absent;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
 import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
@@ -158,6 +159,18 @@ class GradleVersionSiteTests {
 		GradleVersionSite site = locateTomlLiteral(file, "\"6.2.0\"");
 
 		assertThat(site).isInstanceOf(BackingProperty.class);
+	}
+
+	@Test
+	@ProjectFile(name = "libs.versions.toml", content = """
+			[libraries]
+			junit = { module = "junit", version = "4.13.2" }
+			""")
+	void tomlModuleWithoutGroupYieldsAbsentSite(PsiFile file) {
+
+		GradleVersionSite site = locateTomlLiteral(file, "\"4.13.2\"");
+
+		assertThat(site).isInstanceOf(Absent.class);
 	}
 
 	// -------------------------------------------------------------------------

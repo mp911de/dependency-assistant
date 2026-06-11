@@ -108,7 +108,7 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 				String message = MessageBundle.message("inspection.dependency-rule.problem",
 						evaluated.getDependencyName(), interfaceAssistant
 								.getDocumentationText(version),
-						evaluated.getRule().getGeneration());
+						evaluated.getRule().getGenerations().value());
 				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference, evaluated, cache,
 						context);
 

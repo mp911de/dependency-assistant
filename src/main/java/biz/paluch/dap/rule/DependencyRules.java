@@ -219,11 +219,11 @@ public class DependencyRules implements Rules {
 		/**
 		 * Add an artifact dependency rule.
 		 * @param pattern the artifact pattern.
-		 * @param generation the generation source.
+		 * @param generations the generation sources.
 		 * @return this builder.
 		 */
-		public Builder artifact(String pattern, String generation) {
-			this.artifacts.add(ArtifactRule.of(pattern, generation));
+		public Builder artifact(String pattern, String... generations) {
+			this.artifacts.add(ArtifactRule.of(pattern, Generations.of(generations)));
 			return this;
 		}
 
@@ -283,11 +283,11 @@ public class DependencyRules implements Rules {
 		/**
 		 * Add an artifact rule to this branch rule.
 		 * @param pattern the artifact pattern.
-		 * @param generation the generation source.
+		 * @param generations the generation sources.
 		 * @return this builder.
 		 */
-		public BranchRuleBuilder artifact(String pattern, String generation) {
-			this.artifacts.add(ArtifactRule.of(pattern, generation));
+		public BranchRuleBuilder artifact(String pattern, String... generations) {
+			this.artifacts.add(ArtifactRule.of(pattern, Generations.of(generations)));
 			return this;
 		}
 
@@ -336,7 +336,7 @@ public class DependencyRules implements Rules {
 
 		private String name;
 
-		private @Nullable Generation generation;
+		private Generations generations = Generations.unconstrained();
 
 		private ArtifactRuleBuilder(String pattern) {
 			this.pattern = pattern;
@@ -354,12 +354,21 @@ public class DependencyRules implements Rules {
 		}
 
 		/**
-		 * Set the generation.
-		 * @param generation the generation source.
+		 * Set the generations.
+		 * @param generations the generation sources.
 		 * @return this builder.
 		 */
-		public ArtifactRuleBuilder generation(String generation) {
-			this.generation = Generation.of(generation);
+		public ArtifactRuleBuilder generation(String... generations) {
+			return generation(Generations.of(generations));
+		}
+
+		/**
+		 * Set the generations.
+		 * @param generations the generations.
+		 * @return this builder.
+		 */
+		public ArtifactRuleBuilder generation(Generations generations) {
+			this.generations = generations;
 			return this;
 		}
 
@@ -368,7 +377,7 @@ public class DependencyRules implements Rules {
 		 * @return the artifact rule.
 		 */
 		public ArtifactRule build() {
-			return ArtifactRule.of(this.pattern, this.name, this.generation == null ? "*" : this.generation.toString());
+			return ArtifactRule.of(this.pattern, this.name, this.generations);
 		}
 
 	}

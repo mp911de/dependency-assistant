@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.json.psi.JsonArray;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
@@ -35,10 +34,13 @@ import org.jspecify.annotations.Nullable;
  * resolution view.
  *
  * <p>Parsing is lenient: an artifact or branch entry that cannot be interpreted
- * (for example a missing {@code generation} or an unknown upgrade strategy) is
- * logged and skipped rather than failing the whole descriptor, so a partially
- * valid file still yields the rules it can express. A descriptor whose
- * top-level value is not a JSON object resolves to {@link Rules#absent()}.
+ * is logged and skipped rather than failing the whole descriptor, so a
+ * partially valid file still yields the rules it can express. Generation
+ * values (a single string or an array of strings) are salvaged entry by entry:
+ * invalid entries are logged and dropped, and a rule whose generations all
+ * fail to parse stays present but unconstrained. Unknown upgrade strategies
+ * are ignored. A descriptor whose top-level value is not a JSON object
+ * resolves to {@link Rules#absent()}.
  *
  * <p>The parser reads PSI and must be invoked inside a read action.
  *
@@ -112,7 +114,7 @@ class RuleParser {
 		}
 	}
 
-	private static void applyArtifact(DependencyRules.ArtifactRuleBuilder rule, @Nullable JsonValue value) {
+	private void applyArtifact(DependencyRules.ArtifactRuleBuilder rule, @Nullable JsonValue value) {
 
 		if (value instanceof JsonObject definition) {
 
@@ -121,21 +123,53 @@ class RuleParser {
 				rule.name(name);
 			}
 
-			String generation = string(definition.findProperty("generation"));
-			if (StringUtils.hasText(generation)) {
-				rule.generation(generation);
+			JsonProperty generation = definition.findProperty("generation");
+			if (generation != null) {
+				rule.generation(generations(generation.getValue()));
 			}
 			return;
 		}
-		rule.generation(requireGeneration(string(value)));
+		rule.generation(generations(value));
 	}
 
-	private static String requireGeneration(@Nullable String generation) {
+	/**
+	 * Read a generation value (a single string or an array of strings) into
+	 * {@link Generations}, dropping entries that are not valid generations with
+	 * a warning. When no valid entry survives, the result is
+	 * {@linkplain Generations#unconstrained() unconstrained} rather than a
+	 * parse failure, so a typo never silently drops the whole rule.
+	 */
+	private Generations generations(@Nullable JsonValue value) {
 
-		if (generation == null) {
-			throw new IllegalArgumentException("Missing 'generation'");
+		List<String> entries = new ArrayList<>();
+		if (value instanceof JsonArray array) {
+			for (JsonValue element : array.getValueList()) {
+				addGeneration(entries, element);
+			}
+		} else {
+			addGeneration(entries, value);
 		}
-		return generation;
+
+		return Generations.of(entries.toArray(String[]::new));
+	}
+
+	private void addGeneration(List<String> entries, @Nullable JsonValue source) {
+
+		String entry = string(source);
+		if (entry == null) {
+			if (source != null) {
+				LOG.warn("Ignoring non-string generation '%s' in %s".formatted(source.getText(), file.getName()));
+			}
+			return;
+		}
+
+		try {
+			Generation.of(entry);
+		} catch (RuntimeException ex) {
+			LOG.warn("Ignoring invalid generation '%s' in %s".formatted(entry, file.getName()));
+			return;
+		}
+		entries.add(entry);
 	}
 
 	private UpgradeStrategy[] upgradeStrategies(JsonArray array) {

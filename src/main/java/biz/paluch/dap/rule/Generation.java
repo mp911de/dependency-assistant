@@ -104,6 +104,20 @@ public class Generation implements Predicate<String> {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+
+		if (!(o instanceof Generation that)) {
+			return false;
+		}
+		return this.generation.equals(that.generation);
+	}
+
+	@Override
+	public int hashCode() {
+		return this.generation.hashCode();
+	}
+
+	@Override
 	public String toString() {
 		return this.generation;
 	}

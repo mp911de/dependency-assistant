@@ -23,10 +23,13 @@
 	},
 	"definitions": {
 		"artifactRule": {
-			"description": "An artifact rule, either a generation string ('7.0.x') or an object carrying a display name and a generation.",
+			"description": "An artifact rule: a generation string ('7.0.x'), an array of generations (['6.5.x', '7.0.x']), or an object carrying a display name and generations.",
 			"oneOf": [
 				{
 					"$ref": "#/definitions/generation"
+				},
+				{
+					"$ref": "#/definitions/generationArray"
 				},
 				{
 					"type": "object",
@@ -37,7 +40,14 @@
 							"description": "Friendly display name used in inspection messages instead of the artifact pattern."
 						},
 						"generation": {
-							"$ref": "#/definitions/generation"
+							"oneOf": [
+								{
+									"$ref": "#/definitions/generation"
+								},
+								{
+									"$ref": "#/definitions/generationArray"
+								}
+							]
 						}
 					}
 				}
@@ -47,6 +57,20 @@
 			"type": "string",
 			"description": "Project development line expressed as a version prefix: a major line ('6'), a minor line ('6.0' or '6.0.x'), or an exact version ('6.0.1'). '*' accepts any version.",
 			"pattern": "^(\\*|\\d+(\\.\\d+)*(\\.x)?)$"
+		},
+		"generationLine": {
+			"type": "string",
+			"description": "Project development line expressed as a version prefix: a major line ('6'), a minor line ('6.0' or '6.0.x'), or an exact version ('6.0.1').",
+			"pattern": "^\\d+(\\.\\d+)*(\\.x)?$"
+		},
+		"generationArray": {
+			"type": "array",
+			"description": "Permitted project development lines; a version matches when it falls within any listed generation. '*' is not allowed inside arrays.",
+			"minItems": 1,
+			"uniqueItems": true,
+			"items": {
+				"$ref": "#/definitions/generationLine"
+			}
 		},
 		"branch": {
 			"type": "object",

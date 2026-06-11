@@ -27,24 +27,24 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 
 	private final String name;
 
-	private final Generation generation;
+	private final Generations generations;
 
-	private ArtifactRule(ArtifactPattern pattern, String name, Generation generation) {
+	private ArtifactRule(ArtifactPattern pattern, String name, Generations generations) {
 		this.pattern = pattern;
 		this.name = name;
-		this.generation = generation;
+		this.generations = generations;
 	}
 
 	/**
 	 * Create an artifact rule.
 	 *
 	 * @param pattern the artifact pattern.
-	 * @param generation the required generation, see {@link Generation#of(String)}.
+	 * @param generations the required generations, see {@link Generations#of(String...)}.
 	 * @return the artifact rule.
-	 * @see #of(String, String, String)
+	 * @see #of(String, String, Generations)
 	 */
-	public static ArtifactRule of(String pattern, String generation) {
-		return new ArtifactRule(ArtifactPattern.of(pattern), "", Generation.of(generation));
+	public static ArtifactRule of(String pattern, Generations generations) {
+		return new ArtifactRule(ArtifactPattern.of(pattern), "", generations);
 	}
 
 	/**
@@ -52,11 +52,11 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 	 *
 	 * @param pattern the artifact pattern.
 	 * @param name the friendly display name.
-	 * @param generation the required generation, see {@link Generation#of(String)}.
+	 * @param generations the required generations, see {@link Generations#of(String...)}.
 	 * @return the artifact rule.
 	 */
-	public static ArtifactRule of(String pattern, String name, String generation) {
-		return new ArtifactRule(ArtifactPattern.of(pattern), name, Generation.of(generation));
+	public static ArtifactRule of(String pattern, String name, Generations generations) {
+		return new ArtifactRule(ArtifactPattern.of(pattern), name, generations);
 	}
 
 	public ArtifactPattern pattern() {
@@ -67,8 +67,8 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 		return this.name;
 	}
 
-	public Generation generation() {
-		return this.generation;
+	public Generations generations() {
+		return this.generations;
 	}
 
 	@Override
@@ -81,7 +81,7 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 		return "ArtifactRule{" +
 		       "pattern=" + pattern +
 		       ", name='" + name + '\'' +
-		       ", generation=" + generation +
+		       ", generations=" + generations +
 		       '}';
 	}
 }

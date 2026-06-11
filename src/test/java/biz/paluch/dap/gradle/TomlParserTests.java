@@ -101,6 +101,18 @@ class TomlParserTests {
 	@Test
 	@ProjectFile(name = "libs.versions.toml", content = """
 			[libraries]
+			junit = { module = "junit", version = "4.13.2" }
+			""")
+	void moduleWithoutGroupIsIgnored(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasUsageCount(0);
+	}
+
+	@Test
+	@ProjectFile(name = "libs.versions.toml", content = """
+			[libraries]
 			guava = { group = "com.google.guava", name = "guava", version = "33.4.0-jre" }
 			""")
 	void groupAndNameInlineTableNormalizesToModule(PsiFile buildFile) {
