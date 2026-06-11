@@ -19,7 +19,10 @@ package biz.paluch.dap.rule;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link DependencyRule} backed by a matched {@link ArtifactRule}, testing
@@ -62,6 +65,29 @@ class ResolvedDependencyRule implements DependencyRule {
 	@Override
 	public boolean test(ArtifactVersion version) {
 		return this.generations.asVersionPredicate().test(version);
+	}
+
+	@Override
+	public @Nullable Release suggestRemediation(Releases releases) {
+
+		Release remediation = null;
+
+		for (Generation generation : getGenerations().list()) {
+
+			ArtifactVersion baseline = ArtifactVersion.of(generation.value());
+			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
+				if (!isEnabled(strategy)) {
+					continue;
+				}
+				Release release = strategy.select(baseline, releases);
+				if (release != null && test(release.version())
+						&& (remediation == null || release.compareTo(remediation) > 0)) {
+					remediation = release;
+				}
+			}
+		}
+
+		return remediation;
 	}
 
 	@Override

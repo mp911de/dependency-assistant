@@ -22,7 +22,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.swing.Icon;
+
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -39,6 +42,7 @@ import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.modcommand.ModCommand;
 import com.intellij.modcommand.ModCommandQuickFix;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Iconable;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
@@ -56,7 +60,7 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-public class DependencyVersionDriftInspection extends LocalInspectionTool {
+public class DependencyVersionDriftInspection extends LocalInspectionTool implements Iconable {
 
 	@Override
 	public PsiElementVisitor buildVisitor(ProblemsHolder holder, boolean isOnTheFly) {
@@ -110,6 +114,11 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool {
 			}
 
 		};
+	}
+
+	@Override
+	public Icon getIcon(int flags) {
+		return DependencyAssistantIcons.ICON;
 	}
 
 	/**

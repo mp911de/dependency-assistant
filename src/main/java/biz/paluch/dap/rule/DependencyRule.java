@@ -19,7 +19,10 @@ package biz.paluch.dap.rule;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Resolved rule for one governed dependency.
@@ -60,6 +63,11 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 		public boolean isPresent() {
 			return false;
 		}
+
+		@Override
+		public @Nullable Release suggestRemediation(Releases releases) {
+			return null;
+		}
 	};
 
 	/**
@@ -97,5 +105,8 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 	 * @param upgradeStrategy the upgrade strategy.
 	 */
 	boolean isEnabled(UpgradeStrategy upgradeStrategy);
+
+	@Nullable
+	Release suggestRemediation(Releases releases);
 
 }

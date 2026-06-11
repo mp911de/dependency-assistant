@@ -334,13 +334,12 @@ public class DependencyRules implements Rules {
 
 		private final String pattern;
 
-		private String name;
+		private String name = "";
 
 		private Generations generations = Generations.unconstrained();
 
 		private ArtifactRuleBuilder(String pattern) {
 			this.pattern = pattern;
-			this.name = pattern;
 		}
 
 		/**

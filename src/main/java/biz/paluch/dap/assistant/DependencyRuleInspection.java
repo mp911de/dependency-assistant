@@ -16,13 +16,10 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.Set;
-
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -63,7 +60,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class DependencyRuleInspection extends LocalInspectionTool {
+public class DependencyRuleInspection extends LocalInspectionTool implements Iconable {
 
 	@Override
 	public PsiElementVisitor buildVisitor(ProblemsHolder holder, boolean isOnTheFly) {
@@ -80,7 +77,6 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 		Cache cache = stateService.getCache();
 		RuleService rules = RuleService.getInstance(project);
 		Versioned projectVersion = context.getProjectVersion();
-		Set<PsiElement> reported = new HashSet<>();
 
 		return new ArtifactReferenceVisitor(context, file) {
 
@@ -93,10 +89,6 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 					return;
 				}
 
-				if (!reported.add((versionLiteral))) {
-					return;
-				}
-
 				ArtifactVersion version = declaration.getVersion();
 				EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.evaluate(rules, project, declaration,
 						context, virtualFile, projectVersion);
@@ -104,23 +96,35 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 					return;
 				}
 
+				Releases releases = cache.getReleases(reference.getArtifactId());
 				InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
+				Release remediation = evaluated.getRule().suggestRemediation(releases);
 				String message = MessageBundle.message("inspection.dependency-rule.problem",
 						evaluated.getDependencyName(), interfaceAssistant
 								.getDocumentationText(version),
 						evaluated.getRule().getGenerations().value());
-				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference, evaluated, cache,
-						context);
+
+				if (remediation != null) {
+					message += " " + MessageBundle.message("inspection.dependency-rule.remediation.message",
+							interfaceAssistant.getDocumentationText(remediation.getVersion()));
+				}
+				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference, evaluated,
+						context, remediation);
 
 				if (fix == null) {
-					holder.registerProblem(versionLiteral, message);
+					holder.registerProblem(element, message);
 					return;
 				}
-				holder.problem(versionLiteral, message).fix((ModCommandAction) fix)
+				holder.problem(element, message).fix((ModCommandAction) fix)
 						.register();
 			}
 
 		};
+	}
+
+	@Override
+	public Icon getIcon(int flags) {
+		return DependencyAssistantIcons.ICON;
 	}
 
 	/**
@@ -141,19 +145,13 @@ public class DependencyRuleInspection extends LocalInspectionTool {
 		}
 
 		public static @Nullable AlignGenerationQuickFix findFix(ArtifactReference reference,
-				EvaluatedDependencyRule evaluated, Cache cache, ProjectDependencyContext context) {
+				EvaluatedDependencyRule evaluated, ProjectDependencyContext context,
+				@Nullable Release remediation) {
 
-			if (reference.getDeclaration().getVersionLiteral() == null) {
+			if (reference.getDeclaration().getVersionLiteral() == null || remediation == null) {
 				return null;
 			}
-			Releases releases = cache.getReleases(reference.getArtifactId());
-			Release target = releases.stream()
-					.filter(release -> evaluated.test(release.getVersion()))
-					.max(Comparator.naturalOrder()).orElse(null);
-			if (target == null) {
-				return null;
-			}
-			DependencyUpdate update = DependencyUpdate.from(reference.toDependency(), target);
+			DependencyUpdate update = DependencyUpdate.from(reference.toDependency(), remediation);
 			return new AlignGenerationQuickFix(reference.getDeclaration(), context, update, evaluated);
 		}
 

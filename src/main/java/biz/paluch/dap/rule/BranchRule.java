@@ -24,7 +24,10 @@ import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -233,7 +236,18 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		return artifacts.stream()
 				.filter(it -> it.pattern().test(artifactId))
 				.max(ArtifactRule::compareTo)
-				.<DependencyRule>map(it -> new ResolvedDependencyRule(it.generations(), it.name(), this::supports))
+				.<DependencyRule>map(it -> {
+
+					String name = it.name();
+					if (StringUtils.isEmpty(name) && artifacts != defaultArtifacts) {
+						DependencyRule dependencyRule = selectRule(defaultArtifacts, artifactId);
+						if (dependencyRule != null && dependencyRule.isPresent()) {
+							name = dependencyRule.getDependencyName();
+						}
+					}
+
+					return new ResolvedDependencyRule(it.generations(), name, this::supports);
+				})
 				.orElse(null);
 	}
 
@@ -264,5 +278,9 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 			return true;
 		}
 
+		@Override
+		public @Nullable Release suggestRemediation(Releases releases) {
+			return null;
+		}
 	}
 }
