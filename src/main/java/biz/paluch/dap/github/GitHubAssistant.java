@@ -44,6 +44,7 @@ import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.PsiElements;
+import com.intellij.icons.AllIcons;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.fileTypes.FileTypeManager;
@@ -272,7 +273,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public Icon getTableIcon(Dependency dependency) {
-			return DependencyAssistantIcons.ICON;
+			return AllIcons.Vcs.Vendors.Github;
 		}
 
 		@Override
