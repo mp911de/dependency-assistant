@@ -24,7 +24,6 @@ import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.CachedValuesManager;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -152,25 +151,19 @@ public class DependencyAssistantDispatcher {
 			return ProjectDependencyContext.absent();
 		}
 
-		return CachedValuesManager.getProjectPsiDependentCache(file, it -> {
-
-			if (it == null) {
-				return ProjectDependencyContext.absent();
+		// TODO: review caching. Depends on integration, dumb mode, …
+		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
+			if (!integration.supports(file)) {
+				continue;
 			}
 
-			for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
-				if (!integration.supports(it)) {
-					continue;
-				}
-
-				ProjectDependencyContext context = integration.createContext(project, it);
-				if (context.isAvailable()) {
-					return context;
-				}
+			ProjectDependencyContext context = integration.createContext(project, file);
+			if (context.isAvailable()) {
+				return context;
 			}
+		}
 
-			return ProjectDependencyContext.absent();
-		});
+		return ProjectDependencyContext.absent();
 	}
 
 }

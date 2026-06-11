@@ -139,8 +139,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		MavenProjectContext context = anchor.getUserData(MavenProjectContext.KEY);
 		if (context == null) {
-			context = CachedValuesManager.getProjectPsiDependentCache(anchor,
-					it -> MavenProjectContext.of(project, anchor.getVirtualFile()));
+			context = MavenProjectContext.of(project, anchor.getVirtualFile());
 		}
 
 		return new MavenDependencyContext(project, anchor, anchor.getVirtualFile(), context);
