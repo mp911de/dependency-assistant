@@ -19,6 +19,7 @@ package biz.paluch.dap.artifact;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 
 /**
  * A remote Maven repository with an optional set of HTTP Basic-auth credentials resolved from {@code settings.xml}.
@@ -37,6 +38,22 @@ public record RemoteRepository(String id, String url, @Nullable RepositoryCreden
 		if (!url.endsWith("/")) {
 			url = url + "/";
 		}
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof RemoteRepository that)) {
+			return false;
+		}
+		if (!ObjectUtils.nullSafeEquals(url, that.url)) {
+			return false;
+		}
+		return ObjectUtils.nullSafeEquals(credentials, that.credentials);
+	}
+
+	@Override
+	public int hashCode() {
+		return ObjectUtils.nullSafeHash(url, credentials);
 	}
 
 	/**

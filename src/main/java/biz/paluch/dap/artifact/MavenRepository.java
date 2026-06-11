@@ -109,10 +109,25 @@ public class MavenRepository implements ReleaseSource {
 		URI metadataUri = repositoryBaseUri.resolve(metadataPath);
 		URI directoryUri = repositoryBaseUri.resolve(path);
 		indicator.checkCanceled();
-		String xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true, repositoryBaseUri);
-		indicator.checkCanceled();
 		String directoryListing = fetchUrl(artifactId, directoryUri, repository.credentials(), false,
 				repositoryBaseUri);
+		String xml;
+		try {
+			xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true, repositoryBaseUri);
+		} catch (ArtifactNotFoundException e) {
+			if (StringUtils.hasText(directoryListing)) {
+				Set<Release> releases = new TreeSet<>(Comparator.reverseOrder());
+				Map<String, LocalDateTime> releaseDates = parseDirectoryListingDates(directoryListing);
+				if (!releaseDates.isEmpty()) {
+					releaseDates.forEach((version, date) -> {
+						Release.tryFrom(version, date, null).ifPresent(releases::add);
+					});
+					return new ArrayList<>(releases);
+				}
+			}
+
+			throw e;
+		}
 
 		if (StringUtils.isEmpty(xml)) {
 			return List.of();
@@ -241,4 +256,8 @@ public class MavenRepository implements ReleaseSource {
 		return "Basic " + Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
 	}
 
+	@Override
+	public String toString() {
+		return "MavenRepository " + repository.id() + " [" + repository.url() + "]";
+	}
 }

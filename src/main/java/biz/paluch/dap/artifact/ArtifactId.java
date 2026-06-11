@@ -26,9 +26,10 @@ import java.util.Comparator;
 public interface ArtifactId extends Comparable<ArtifactId> {
 
 	Comparator<? super ArtifactId> COMPARATOR = Comparator.comparing(ArtifactId::groupId)
-			.thenComparing(ArtifactId::artifactId);
+			.thenComparing(ArtifactId::artifactId, String.CASE_INSENSITIVE_ORDER);
 
-	Comparator<? super ArtifactId> BY_ARTIFACT_ID = Comparator.comparing(ArtifactId::artifactId)
+	Comparator<? super ArtifactId> BY_ARTIFACT_ID = Comparator
+			.comparing(ArtifactId::artifactId, String.CASE_INSENSITIVE_ORDER)
 			.thenComparing(ArtifactId::groupId);
 
 	/**
