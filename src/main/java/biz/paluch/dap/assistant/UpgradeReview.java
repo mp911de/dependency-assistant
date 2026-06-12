@@ -16,13 +16,19 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.swing.Icon;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
@@ -46,6 +52,10 @@ class UpgradeReview {
 
 	private final boolean hasRule;
 
+	private final Set<String> ambiguousArtifactIds = new HashSet<>();
+
+	private final Map<UpgradeCandidate, List<UpgradeCandidate>> sharedPropertyPeers = new HashMap<>();
+
 	private final EventDispatcher<ReviewListener> listeners = EventDispatcher.create(ReviewListener.class);
 
 	private VisibilityFilter filter = VisibilityFilter.HIDE_UP_TO_DATE;
@@ -62,13 +72,65 @@ class UpgradeReview {
 		this.errors = errors;
 
 		boolean hasRule = false;
+		Set<String> coordinateLabels = new HashSet<>();
+		Map<UpgradeCandidate, Set<String>> versionProperties = new LinkedHashMap<>();
 		for (UpgradeCandidate candidate : candidates) {
+
 			if (candidate.getRule().isPresent()) {
 				hasRule = true;
 			}
+
+			if (!candidate.isLabeledByDependencyName()
+					&& !coordinateLabels.add(candidate.getArtifactId().artifactId())) {
+				ambiguousArtifactIds.add(candidate.getArtifactId().artifactId());
+			}
+
+			Set<String> propertyNames = candidate.getVersionPropertyNames();
+			if (!propertyNames.isEmpty()) {
+				versionProperties.put(candidate, propertyNames);
+			}
+
 			selections.put(candidate, new UpgradeSelection(candidate.getCurrentVersion()));
 		}
 		this.hasRule = hasRule;
+
+		versionProperties.forEach((candidate, propertyNames) -> {
+
+			List<UpgradeCandidate> peers = new ArrayList<>();
+			versionProperties.forEach((other, otherNames) -> {
+				if (other != candidate && !Collections.disjoint(propertyNames, otherNames)) {
+					peers.add(other);
+				}
+			});
+
+			if (!peers.isEmpty()) {
+				sharedPropertyPeers.put(candidate, peers);
+			}
+		});
+	}
+
+	/**
+	 * Return whether the candidate's bare artifactId collides with another row
+	 * labeled by its coordinate. Computed once over the full candidate set so
+	 * labels stay stable while filters toggle.
+	 */
+	boolean isAmbiguous(UpgradeCandidate candidate) {
+		return !candidate.isLabeledByDependencyName()
+				&& ambiguousArtifactIds.contains(candidate.getArtifactId().artifactId());
+	}
+
+	/**
+	 * Return the other rows coupled to the candidate through a Shared Version
+	 * Property: one bare property name backing the declared version of more than
+	 * one row. Computed once over the full candidate set so the rendering path
+	 * stays cheap; informative only, coupled rows are never pulled into a group or
+	 * blocked from applying.
+	 *
+	 * @return the coupled rows in row order; empty when the candidate's version
+	 * properties back no other row.
+	 */
+	List<UpgradeCandidate> getSharedPropertyPeers(UpgradeCandidate candidate) {
+		return sharedPropertyPeers.getOrDefault(candidate, List.of());
 	}
 
 	private UpgradeSelection selection(UpgradeCandidate candidate) {
@@ -176,6 +238,25 @@ class UpgradeReview {
 	 */
 	boolean isApplyUpdate(UpgradeCandidate candidate) {
 		return selection(candidate).isApplyUpdate();
+	}
+
+	/**
+	 * Return the updates for all visible candidates selected to be applied. A
+	 * selected {@link UpgradeGroup} fans out to one update per member coordinate.
+	 *
+	 * @return the updates to apply in row order.
+	 */
+	List<DependencyUpdate> getSelectedUpdates() {
+
+		List<DependencyUpdate> updates = new ArrayList<>();
+		for (UpgradeCandidate candidate : getCandidates()) {
+
+			if (isApplyUpdate(candidate)) {
+				updates.addAll(candidate.createUpdates(getRequiredUpdateTo(candidate)));
+			}
+		}
+
+		return updates;
 	}
 
 	/**

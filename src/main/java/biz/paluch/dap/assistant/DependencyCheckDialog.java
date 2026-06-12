@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,6 +66,7 @@ import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
+import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.IdeEventQueue;
 import com.intellij.openapi.Disposable;
@@ -77,6 +79,9 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.ex.ActionButtonLook;
 import com.intellij.openapi.actionSystem.impl.ActionButton;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.colors.TextAttributesKey;
+import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -87,6 +92,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.BooleanTableCellRenderer;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.ColoredListCellRenderer;
+import com.intellij.ui.ColoredTableCellRenderer;
 import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.components.JBScrollPane;
@@ -157,7 +163,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			super(new BorderLayout());
 			this.review = review;
 
-			this.tableModel = new ListTableModel<>(new DependencyCoordinateColumn(),
+			this.tableModel = new ListTableModel<>(new DependencyCoordinateColumn(review),
 					new CurrentVersionColumn(), new UpgradeTargetsColumn(review), new UpdateToColumn(review),
 					new DoUpdateColumn(review));
 			this.table = new DependencyUpdateTable(tableModel, escapeHandler);
@@ -208,11 +214,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			TableColumnModel columns = table.getColumnModel();
 
-			columns.getColumn(0).setPreferredWidth(JBUI.scale(250));
-			columns.getColumn(1).setPreferredWidth(JBUI.scale(150));
+			columns.getColumn(0).setPreferredWidth(JBUI.scale(300));
+			columns.getColumn(1).setPreferredWidth(JBUI.scale(90));
 			columns.getColumn(2).setPreferredWidth(JBUI.scale(100));
-			columns.getColumn(3).setPreferredWidth(JBUI.scale(250));
-			columns.getColumn(4).setPreferredWidth(JBUI.scale(50));
+			columns.getColumn(3).setPreferredWidth(JBUI.scale(160));
+			columns.getColumn(4).setPreferredWidth(JBUI.scale(40));
 
 			JCheckBox filterVersionsCheckBox = new JCheckBox(MessageBundle.message("dialog.filter.version.suggestions"),
 					this.review.isHideUpToDate());
@@ -335,7 +341,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		this.components.stopEditing();
 
-		List<DependencyUpdate> updates = getSelectedUpdates();
+		List<DependencyUpdate> updates = review.getSelectedUpdates();
 		if (updates.isEmpty()) {
 			super.doOKAction();
 			return;
@@ -356,42 +362,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 		restartHighlighting();
 		super.doCancelAction();
-	}
-
-	private List<DependencyUpdate> getSelectedUpdates() {
-		return review.getCandidates().stream()
-				.filter(review::isApplyUpdate)
-				.map(this::toDependencyUpdate)
-				.toList();
-	}
-
-	private DependencyUpdate toDependencyUpdate(UpgradeCandidate candidate) {
-
-		DependencyUpdateCandidate option = candidate.getUpdateCandidate();
-
-		record FriendlyArtifactId(ArtifactId id,
-		                          String friendlyName) implements ArtifactId {
-
-			@Override
-			public String groupId() {
-				return id.groupId();
-			}
-
-			@Override
-			public String artifactId() {
-				return id.artifactId();
-			}
-
-			@Override
-			public String toString() {
-				return friendlyName;
-			}
-
-		}
-
-		FriendlyArtifactId artifactId = new FriendlyArtifactId(option.getArtifactId(),
-				candidate.getDependencyName());
-		return DependencyUpdate.from(artifactId, option.getDependency(), review.getRequiredUpdateTo(candidate));
 	}
 
 	private void setBusy(boolean busy) {
@@ -738,53 +708,126 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	static class DependencyCoordinateColumn extends ColumnInfo<UpgradeCandidate, ArtifactId> {
 
-		private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+		static final TextAttributesKey WEAK_WARNING_KEY = HighlightInfoType.WEAK_WARNING.getAttributesKey();
+
+		static final TextAttributes WEAK_WARNING_ATTRIBUTES = EditorColorsManager.getInstance()
+				.getGlobalScheme().getAttributes(WEAK_WARNING_KEY);
+
+		/**
+		 * Weak-warning wave underline for rows coupled through a Shared Version
+		 * Property: informative, never blocking.
+		 */
+		static final SimpleTextAttributes SHARED_PROPERTY_ATTRIBUTES = new SimpleTextAttributes(
+				SimpleTextAttributes.STYLE_PLAIN | SimpleTextAttributes.STYLE_WAVED, null,
+				WEAK_WARNING_ATTRIBUTES.getEffectColor());
+
+		private final UpgradeReview review;
+
+		private final ColoredTableCellRenderer renderer = new ColoredTableCellRenderer() {
 
 			@Override
-			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
-					boolean hasFocus, int row, int column) {
+			protected void customizeCellRenderer(JTable table, Object value, boolean selected, boolean hasFocus,
+					int row, int column) {
 
-				Component tableCellRendererComponent = super.getTableCellRendererComponent(table, value, isSelected,
-						hasFocus, row, column);
-				UpgradeCandidate upgradeCandidate = ModelUtil.getRow(table, row);
-				DependencyUpdateCandidate option = upgradeCandidate.getUpdateCandidate();
+				UpgradeCandidate candidate = ModelUtil.getRow(table, row);
+				List<UpgradeCandidate> peers = review.getSharedPropertyPeers(candidate);
+				append(candidate.getRowLabel(),
+						peers.isEmpty() ? SimpleTextAttributes.REGULAR_ATTRIBUTES : SHARED_PROPERTY_ATTRIBUTES);
 
-				String artifactId = option.getArtifactId().toString();
-				String tooltip = artifactId;
-				if (option.hasPropertyVersion()) {
-					VersionSource.VersionProperty versionProperty = option.getPropertyVersion();
-					tooltip = MessageBundle.message("dialog.tooltip.property", versionProperty);
-					if (versionProperty instanceof VersionSource.Profile pps) {
-						tooltip += MessageBundle.message("dialog.tooltip.profile", pps.getProfileId());
-					}
+				if (candidate instanceof UpgradeGroup group) {
+					append("  (%d)".formatted(group.getMembers().size()), SimpleTextAttributes.GRAYED_ATTRIBUTES);
+				} else if (review.isAmbiguous(candidate)) {
+					append("  (%s)".formatted(candidate.getArtifactId().groupId()),
+							SimpleTextAttributes.GRAYED_ATTRIBUTES);
 				}
 
-				if (option.getDeclarationSource() instanceof DeclarationSource.Plugin) {
-					tooltip += MessageBundle.message("dialog.tooltip.plugin", artifactId);
-				}
-
-				if (option.getDeclarationSource() instanceof DeclarationSource.Profile profile) {
-					tooltip += MessageBundle.message("dialog.tooltip.profile", profile.getProfileId());
-				}
-
-				setIcon(upgradeCandidate.getTableIcon());
-				setToolTipText(tooltip);
-				return tableCellRendererComponent;
-			}
-
-			@Override
-			protected void setValue(Object value) {
-				if (value instanceof ArtifactId coordinate) {
-					setText(coordinate.artifactId());
-					return;
-				}
-				super.setValue(value);
+				setIcon(peers.isEmpty() ? candidate.getTableIcon() : DependencyAssistantIcons.SHARED_PROPERTY);
+				setToolTipText(toolTip(candidate, peers));
 			}
 
 		};
 
-		DependencyCoordinateColumn() {
+		DependencyCoordinateColumn(UpgradeReview review) {
 			super(MessageBundle.message("dialog.column.dependency"));
+			this.review = review;
+		}
+
+		private static String toolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
+
+			StringBuilder tooltip = new StringBuilder("<html>");
+			tooltip.append(candidate instanceof UpgradeGroup group ? memberToolTip(group)
+					: coordinateToolTip(candidate));
+
+			if (!peers.isEmpty()) {
+				tooltip.append(sharedPropertyToolTip(candidate, peers));
+			}
+
+			return tooltip.append("</html>").toString();
+		}
+
+		private static String coordinateToolTip(UpgradeCandidate candidate) {
+
+			DependencyUpdateCandidate option = candidate.getUpdateCandidate();
+
+			String artifactId = option.getArtifactId().toString();
+			String tooltip = artifactId;
+			if (option.hasPropertyVersion()) {
+				VersionSource.VersionProperty versionProperty = option.getPropertyVersion();
+				tooltip = MessageBundle.message("dialog.tooltip.property", versionProperty);
+				if (versionProperty instanceof VersionSource.Profile pps) {
+					tooltip += MessageBundle.message("dialog.tooltip.profile", pps.getProfileId());
+				}
+			}
+
+			if (option.getDeclarationSource() instanceof DeclarationSource.Plugin) {
+				tooltip += MessageBundle.message("dialog.tooltip.plugin", artifactId);
+			}
+
+			if (option.getDeclarationSource() instanceof DeclarationSource.Profile profile) {
+				tooltip += MessageBundle.message("dialog.tooltip.profile", profile.getProfileId());
+			}
+
+			return tooltip;
+		}
+
+		private static String memberToolTip(UpgradeGroup group) {
+
+			StringBuilder tooltip = new StringBuilder();
+			tooltip.append("<b>")
+					.append(MessageBundle.message("dialog.tooltip.group.header", group.getDependencyName()))
+					.append("</b><ul>");
+
+			for (UpgradeCandidate member : group.getMembers()) {
+
+				DependencyUpdateCandidate option = member.getUpdateCandidate();
+				String versionSource = option.hasPropertyVersion() ? "<code>" + option.getPropertyVersion() + "</code>"
+						: MessageBundle.message("dialog.tooltip.group.member.inline");
+				tooltip.append("<li>")
+						.append(MessageBundle.message("dialog.tooltip.group.member", member.getArtifactId(),
+								versionSource))
+						.append("</li>");
+			}
+
+			return tooltip.append("</ul>").toString();
+		}
+
+		private static String sharedPropertyToolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
+
+			Set<String> names = candidate.getVersionPropertyNames();
+			StringBuilder tooltip = new StringBuilder("<ul>");
+
+			for (UpgradeCandidate peer : peers) {
+
+				Set<String> shared = new LinkedHashSet<>(peer.getVersionPropertyNames());
+				shared.retainAll(names);
+				tooltip.append("<li>")
+						.append(MessageBundle.message("dialog.tooltip.sharedProperty",
+								"<code>" + String.join(", ", shared) + "</code>",
+								"<code>" + peer.getRowLabel() + "</code>"))
+						.append("</li>");
+			}
+
+			return tooltip.append("</ul>").toString();
 		}
 
 		@Override

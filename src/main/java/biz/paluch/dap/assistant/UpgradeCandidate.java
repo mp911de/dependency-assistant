@@ -16,15 +16,22 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 import javax.swing.Icon;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
@@ -50,6 +57,8 @@ class UpgradeCandidate implements HasArtifactId {
 	private final EvaluatedDependencyRule ruleResult;
 
 	private final Icon tableIcon;
+
+	private boolean labelByDependencyName;
 
 	/**
 	 * Create an update candidate.
@@ -130,6 +139,15 @@ class UpgradeCandidate implements HasArtifactId {
 		return declaredVersions;
 	}
 
+	/**
+	 * Return the format-specific assistant that can apply this candidate.
+	 *
+	 * @return the assistant identifying the candidate's build ecosystem.
+	 */
+	InterfaceAssistant getInterfaceAssistant() {
+		return interfaceAssistant;
+	}
+
 	@Override
 	public ArtifactId getArtifactId() {
 		return candidate.getArtifactId();
@@ -165,6 +183,32 @@ class UpgradeCandidate implements HasArtifactId {
 		return ruleResult;
 	}
 
+	/**
+	 * Return the label shown in the dialog's Dependency column: the artifactId, or
+	 * the rule's dependency name once {@link #labelByDependencyName()} was applied.
+	 *
+	 * @return the row label for the Dependency column.
+	 */
+	public String getRowLabel() {
+		return labelByDependencyName ? getDependencyName() : getArtifactId().artifactId();
+	}
+
+	/**
+	 * Label this row with the rule's dependency name instead of the artifactId.
+	 * Applied when the rule name is not claimed by any other row.
+	 */
+	void labelByDependencyName() {
+		this.labelByDependencyName = true;
+	}
+
+	/**
+	 * Return whether this row is labeled with the rule's dependency name rather
+	 * than the artifactId.
+	 */
+	boolean isLabeledByDependencyName() {
+		return labelByDependencyName;
+	}
+
 	public String getDependencyName() {
 		String name = getRule().getDependencyName();
 		if (StringUtils.isEmpty(name)) {
@@ -173,9 +217,64 @@ class UpgradeCandidate implements HasArtifactId {
 		return name;
 	}
 
+	/**
+	 * Return the bare property names backing this candidate's declared version.
+	 * Property identity deliberately ignores profile and module scoping.
+	 *
+	 * @return the bare version property names; empty for inline declarations.
+	 */
+	Set<String> getVersionPropertyNames() {
+
+		Set<String> names = new LinkedHashSet<>();
+		for (VersionSource source : getUpdateCandidate().getDependency().getVersionSources()) {
+			if (source instanceof VersionSource.VersionProperty property) {
+				names.add(property.getProperty());
+			}
+		}
+
+		return names;
+	}
+
+	/**
+	 * Create the updates to apply for the chosen target version. The update
+	 * coordinate renders the row's dependency name so notifications can show a
+	 * friendly label.
+	 *
+	 * @param target the confirmed target version.
+	 * @return one update for this candidate's coordinate.
+	 */
+	public List<DependencyUpdate> createUpdates(ArtifactVersion target) {
+
+		Dependency dependency = getUpdateCandidate().getDependency();
+		FriendlyArtifactId artifactId = new FriendlyArtifactId(dependency.getArtifactId(), getDependencyName());
+		return List.of(DependencyUpdate.from(artifactId, dependency, target));
+	}
+
 	@Override
 	public String toString() {
 		return getArtifactId() + "@" + getCurrentVersion();
+	}
+
+	/**
+	 * Artifact identity rendering a friendly dependency name for notifications.
+	 */
+	private record FriendlyArtifactId(ArtifactId id, String friendlyName) implements ArtifactId {
+
+		@Override
+		public String groupId() {
+			return id.groupId();
+		}
+
+		@Override
+		public String artifactId() {
+			return id.artifactId();
+		}
+
+		@Override
+		public String toString() {
+			return friendlyName;
+		}
+
 	}
 
 }

@@ -40,6 +40,11 @@ public class DependencyAssistantIcons {
 	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/icons/propertyNavigate.svg");
 
 	/**
+	 * Shared property.
+	 */
+	public static final Icon SHARED_PROPERTY = load("/META-INF/icons/sharedProperty.svg");
+
+	/**
 	 * Maven dependency upgrade icon.
 	 */
 	public static final Icon UPGRADE_MAVEN_ICON = load("/META-INF/icons/maven/upgrade-mavenProject.svg");

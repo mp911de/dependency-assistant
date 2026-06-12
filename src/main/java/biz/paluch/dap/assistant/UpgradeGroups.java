@@ -1,0 +1,179 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package biz.paluch.dap.assistant;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.util.StringUtils;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Post-processing step collapsing governed, version-agreeing upgrade candidates
+ * into {@link UpgradeGroup} rows.
+ *
+ * <p>Candidates group when they are governed by the same named
+ * {@link DependencyRule}, belong to the same build ecosystem, and agree on one
+ * effective current version. Per rule name only the largest agreeing cohort
+ * forms the group; equal cohort sizes tie-break to the higher version.
+ *
+ * @author Mark Paluch
+ * @see UpgradeGroup
+ */
+class UpgradeGroups {
+
+	private UpgradeGroups() {
+	}
+
+	/**
+	 * Collapse groupable candidates into {@link UpgradeGroup} rows, keeping all
+	 * other candidates as individual rows.
+	 *
+	 * @param candidates the aggregated candidates in display order.
+	 * @return the row list with each group replacing its members at the position of
+	 * the first member.
+	 */
+	static List<UpgradeCandidate> collapse(List<UpgradeCandidate> candidates) {
+
+		Map<GroupKey, List<UpgradeCandidate>> governed = new LinkedHashMap<>();
+		Map<String, List<UpgradeCandidate>> governedByName = new LinkedHashMap<>();
+		for (UpgradeCandidate candidate : candidates) {
+			GroupKey key = GroupKey.of(candidate);
+			if (key != null) {
+				governed.computeIfAbsent(key, it -> new ArrayList<>()).add(candidate);
+				governedByName.computeIfAbsent(key.dependencyName(), it -> new ArrayList<>()).add(candidate);
+			}
+		}
+
+		governedByName.values().forEach(named -> {
+			if (named.size() == 1) {
+				named.getFirst().labelByDependencyName();
+			}
+		});
+
+		Map<UpgradeCandidate, UpgradeGroup> firstMemberToGroup = new LinkedHashMap<>();
+		Set<UpgradeCandidate> grouped = new LinkedHashSet<>();
+
+		governed.values().forEach(bucket -> {
+
+			List<UpgradeCandidate> cohort = selectCohort(bucket);
+			if (cohort.size() < 2) {
+				return;
+			}
+
+			List<UpgradeCandidate> members = withPropertySharingDrifters(bucket, cohort);
+			firstMemberToGroup.put(members.getFirst(), UpgradeGroup.of(members));
+			grouped.addAll(members);
+		});
+
+		List<UpgradeCandidate> rows = new ArrayList<>(candidates.size());
+		for (UpgradeCandidate candidate : candidates) {
+
+			UpgradeGroup group = firstMemberToGroup.get(candidate);
+			if (group != null) {
+				rows.add(group);
+				continue;
+			}
+
+			if (!grouped.contains(candidate)) {
+				rows.add(candidate);
+			}
+		}
+
+		return rows;
+	}
+
+	/**
+	 * Select the largest version-agreeing cohort within the governed bucket,
+	 * tie-breaking equal sizes to the higher version. A drifting candidate agrees
+	 * with every version one of its occurrences is declared at.
+	 */
+	private static List<UpgradeCandidate> selectCohort(List<UpgradeCandidate> bucket) {
+
+		Map<ArtifactVersion, List<UpgradeCandidate>> cohorts = new LinkedHashMap<>();
+		for (UpgradeCandidate candidate : bucket) {
+			for (ArtifactVersion version : candidate.getDeclaredVersions().versions()) {
+				cohorts.computeIfAbsent(version, it -> new ArrayList<>()).add(candidate);
+			}
+		}
+
+		List<UpgradeCandidate> selected = List.of();
+		ArtifactVersion selectedVersion = null;
+		for (Map.Entry<ArtifactVersion, List<UpgradeCandidate>> cohort : cohorts.entrySet()) {
+
+			if (cohort.getValue().size() > selected.size()
+					|| (cohort.getValue().size() == selected.size() && selectedVersion != null
+							&& cohort.getKey().isNewer(selectedVersion))) {
+				selected = cohort.getValue();
+				selectedVersion = cohort.getKey();
+			}
+		}
+
+		return selected;
+	}
+
+	/**
+	 * Extend the cohort with drifting bucket candidates that share a version
+	 * property with a cohort member, preserving bucket order.
+	 */
+	private static List<UpgradeCandidate> withPropertySharingDrifters(List<UpgradeCandidate> bucket,
+			List<UpgradeCandidate> cohort) {
+
+		Set<String> memberProperties = new LinkedHashSet<>();
+		cohort.forEach(member -> memberProperties.addAll(member.getVersionPropertyNames()));
+
+		List<UpgradeCandidate> members = new ArrayList<>(bucket.size());
+		for (UpgradeCandidate candidate : bucket) {
+
+			if (cohort.contains(candidate) || (candidate.getDeclaredVersions().hasVersionDrift()
+					&& !Collections.disjoint(candidate.getVersionPropertyNames(), memberProperties))) {
+				members.add(candidate);
+			}
+		}
+
+		return members;
+	}
+
+	/**
+	 * Grouping identity: the rule's dependency name within one build ecosystem.
+	 */
+	private record GroupKey(String dependencyName, Class<?> ecosystem) {
+
+		/**
+		 * Return the group key for the candidate, or {@literal null} if the candidate
+		 * is not governed by a named rule.
+		 */
+		static @Nullable GroupKey of(UpgradeCandidate candidate) {
+
+			DependencyRule rule = candidate.getRule();
+			if (!rule.isPresent() || StringUtils.isEmpty(rule.getDependencyName())) {
+				return null;
+			}
+
+			return new GroupKey(rule.getDependencyName(), candidate.getInterfaceAssistant().getClass());
+		}
+
+	}
+
+}
