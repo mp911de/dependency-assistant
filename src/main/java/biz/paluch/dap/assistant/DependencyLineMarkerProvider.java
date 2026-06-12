@@ -26,7 +26,7 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.RuleService;
+import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
@@ -81,7 +81,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		}
 
 		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
-		RuleService ruleService = RuleService.getInstance(element.getProject());
+		DependencyfileService ruleService = DependencyfileService.getInstance(element.getProject());
 		ArtifactId artifactId = artifactReference.getArtifactId();
 		DependencyRule rule = ruleService.resolve(artifactId, element.getProject(), containingFile,
 				context.getProjectVersion());

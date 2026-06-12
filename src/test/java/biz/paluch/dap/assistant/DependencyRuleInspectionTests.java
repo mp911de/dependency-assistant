@@ -23,7 +23,7 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.maven.MavenFixtures;
 import biz.paluch.dap.rule.DependencyRules;
-import biz.paluch.dap.rule.RuleService;
+import biz.paluch.dap.rule.DependencyfileService;
 import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
@@ -58,7 +58,7 @@ class DependencyRuleInspectionTests {
 
 	@AfterEach
 	void tearDown() {
-		RuleService.getInstance(fixture.getProject()).setRules(null);
+		DependencyfileService.getInstance(fixture.getProject()).setRules(null);
 	}
 
 	@Test
@@ -293,7 +293,7 @@ class DependencyRuleInspectionTests {
 	}
 
 	private void install(DependencyRules rules) {
-		RuleService.getInstance(fixture.getProject()).setRules(rules);
+		DependencyfileService.getInstance(fixture.getProject()).setRules(rules);
 	}
 
 	private void applyFix(ProblemDescriptor problem) {

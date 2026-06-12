@@ -29,7 +29,7 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.RuleService;
+import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -49,9 +49,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * {@link LocalInspectionTool} that flags {@link DependencyRule} violations.
  *
- * <p>The governing rule is resolved through {@link RuleService}. The inspection
- * is advisory and warning-only: it stays silent for artifacts that no rule
- * governs and produces nothing when the project has no
+ * <p>The governing rule is resolved through {@link DependencyfileService}. The
+ * inspection is advisory and warning-only: it stays silent for artifacts that
+ * no rule governs and produces nothing when the project has no
  * {@code dependencyfile.json} descriptor. When the release cache holds a
  * version matching the governing generation, it offers a batchable quick fix
  * that realigns the declaration to the newest compliant release.
@@ -73,7 +73,7 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 
 		StateService stateService = StateService.getInstance(project);
 		Cache cache = stateService.getCache();
-		RuleService rules = RuleService.getInstance(project);
+		DependencyfileService rules = DependencyfileService.getInstance(project);
 		Versioned projectVersion = context.getProjectVersion();
 
 		return new ArtifactReferenceVisitor(context, file) {

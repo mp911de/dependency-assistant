@@ -60,13 +60,12 @@ import org.springframework.util.ClassUtils;
  *
  * @author Mark Paluch
  */
-// TODO: Rename to DependencyfileService
-public class RuleService implements Disposable, DependencyRuleResolver {
+public class DependencyfileService implements Disposable, DependencyRuleService {
 
 	static final String FILE_NAME = "dependencyfile.json";
 
 	static final boolean JSON_PRESENT = ClassUtils.isPresent("com.intellij.json.psi.JsonFile",
-			RuleService.class.getClassLoader());
+			DependencyfileService.class.getClassLoader());
 
 	private final Project project;
 
@@ -74,7 +73,7 @@ public class RuleService implements Disposable, DependencyRuleResolver {
 
 	private volatile @Nullable Rules ruleOverride;
 
-	RuleService(Project project) {
+	DependencyfileService(Project project) {
 		this.project = project;
 
 		if (JSON_PRESENT) {
@@ -90,8 +89,8 @@ public class RuleService implements Disposable, DependencyRuleResolver {
 	 * @param project the project; must not be {@literal null}.
 	 * @return the project rule service.
 	 */
-	public static RuleService getInstance(Project project) {
-		return project.getService(RuleService.class);
+	public static DependencyfileService getInstance(Project project) {
+		return project.getService(DependencyfileService.class);
 	}
 
 	@Override

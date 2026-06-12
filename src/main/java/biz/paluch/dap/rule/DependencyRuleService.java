@@ -27,10 +27,9 @@ import org.jspecify.annotations.Nullable;
  * Resolver for {@link DependencyRule}s.
  *
  * @author Mark Paluch
- * @see RuleService
+ * @see DependencyfileService
  */
-// Todo: rename to RuleService
-public interface DependencyRuleResolver {
+public interface DependencyRuleService {
 
 	/**
 	 * Return a resolver that resolves every artifact to
@@ -38,8 +37,8 @@ public interface DependencyRuleResolver {
 	 *
 	 * @return the absent rule resolver.
 	 */
-	static DependencyRuleResolver absent() {
-		return AbsentDependencyRuleResolver.INSTANCE;
+	static DependencyRuleService absent() {
+		return AbsentDependencyRuleService.INSTANCE;
 	}
 
 	/**

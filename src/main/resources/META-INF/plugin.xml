@@ -81,7 +81,7 @@
 		<projectService
 				serviceImplementation="biz.paluch.dap.state.StateService"/>
 		<projectService
-				serviceImplementation="biz.paluch.dap.rule.RuleService"/>
+				serviceImplementation="biz.paluch.dap.rule.DependencyfileService"/>
 		<severitiesProvider
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider

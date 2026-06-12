@@ -47,7 +47,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see BranchRule
  * @see ArtifactRule
- * @see RuleService
+ * @see DependencyfileService
  */
 public class DependencyRules implements Rules {
 

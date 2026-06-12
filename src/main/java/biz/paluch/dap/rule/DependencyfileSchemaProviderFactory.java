@@ -49,7 +49,7 @@ public class DependencyfileSchemaProviderFactory implements JsonSchemaProviderFa
 
 		@Override
 		public boolean isAvailable(VirtualFile file) {
-			return RuleService.FILE_NAME.equals(file.getName());
+			return DependencyfileService.FILE_NAME.equals(file.getName());
 		}
 
 		@Override

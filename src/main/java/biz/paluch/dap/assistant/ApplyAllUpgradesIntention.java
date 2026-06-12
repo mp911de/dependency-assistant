@@ -27,7 +27,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.RuleService;
+import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
@@ -139,7 +139,7 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 	private Map<PsiElement, DependencyUpdate> collectUpdates(PsiFile file) {
 
 		Map<PsiElement, DependencyUpdate> updates = new LinkedHashMap<>();
-		RuleService ruleService = RuleService.getInstance(file.getProject());
+		DependencyfileService ruleService = DependencyfileService.getInstance(file.getProject());
 		VirtualFile virtualFile = file.getVirtualFile();
 
 		file.accept(new PsiRecursiveElementWalkingVisitor() {

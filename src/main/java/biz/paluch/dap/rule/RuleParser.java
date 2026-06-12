@@ -35,18 +35,18 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Parsing is lenient: an artifact or branch entry that cannot be interpreted
  * is logged and skipped rather than failing the whole descriptor, so a
- * partially valid file still yields the rules it can express. Generation
- * values (a single string or an array of strings) are salvaged entry by entry:
- * invalid entries are logged and dropped, and a rule whose generations all
- * fail to parse stays present but unconstrained. Unknown upgrade strategies
- * are ignored. A descriptor whose top-level value is not a JSON object
- * resolves to {@link Rules#absent()}.
+ * partially valid file still yields the rules it can express. Generation values
+ * (a single string or an array of strings) are salvaged entry by entry: invalid
+ * entries are logged and dropped, and a rule whose generations all fail to
+ * parse stays present but unconstrained. Unknown upgrade strategies are
+ * ignored. A descriptor whose top-level value is not a JSON object resolves to
+ * {@link Rules#absent()}.
  *
  * <p>The parser reads PSI and must be invoked inside a read action.
  *
  * @author Mark Paluch
  * @see Rules
- * @see RuleService
+ * @see DependencyfileService
  */
 class RuleParser {
 

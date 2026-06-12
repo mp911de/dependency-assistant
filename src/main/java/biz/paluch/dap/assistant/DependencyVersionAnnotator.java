@@ -23,7 +23,7 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.RuleService;
+import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.AvailableUpgrades;
@@ -63,7 +63,7 @@ public class DependencyVersionAnnotator implements Annotator {
 		}
 
 		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
-		RuleService ruleService = RuleService.getInstance(element.getProject());
+		DependencyfileService ruleService = DependencyfileService.getInstance(element.getProject());
 		DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration()
 				.getArtifactId(), element.getProject(), containingFile, context.getProjectVersion());
 		upgrades = upgrades.filterSuggestions(rule::isEnabled);

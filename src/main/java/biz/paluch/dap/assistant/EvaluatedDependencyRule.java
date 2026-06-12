@@ -30,7 +30,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleResolver;
+import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -130,7 +130,7 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 	 * Evaluate the governing rule of the given candidate against its current
 	 * version.
 	 */
-	public static EvaluatedDependencyRule evaluate(DependencyRuleResolver rules, Project project,
+	public static EvaluatedDependencyRule evaluate(DependencyRuleService rules, Project project,
 			ArtifactDeclaration declaration, ProjectDependencyContext context, VirtualFile virtualFile,
 			Versioned projectVersion) {
 

@@ -24,11 +24,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link RuleService}.
+ * Unit tests for {@link DependencyfileService}.
  *
  * @author Mark Paluch
  */
-class RuleServiceUnitTests {
+class DependencyfileServiceUnitTests {
 
 	private static final Path ROOT = Path.of("/work/project");
 
@@ -37,7 +37,7 @@ class RuleServiceUnitTests {
 	@Test
 	void searchesInProjectLocationsForUntrustedProject() {
 
-		List<Path> candidates = RuleService.candidatePaths(ROOT, HOME, false);
+		List<Path> candidates = DependencyfileService.candidatePaths(ROOT, HOME, false);
 
 		assertThat(candidates).containsExactly(ROOT.resolve("dependencyfile.json"),
 				ROOT.resolve(".idea").resolve("dependencyfile.json"));
@@ -46,7 +46,7 @@ class RuleServiceUnitTests {
 	@Test
 	void searchesParentAndHomeOnlyForTrustedProject() {
 
-		List<Path> candidates = RuleService.candidatePaths(ROOT, HOME, true);
+		List<Path> candidates = DependencyfileService.candidatePaths(ROOT, HOME, true);
 
 		assertThat(candidates).containsExactly(ROOT.resolve("dependencyfile.json"),
 				ROOT.resolve(".idea").resolve("dependencyfile.json"),
@@ -56,7 +56,7 @@ class RuleServiceUnitTests {
 	@Test
 	void omitsParentWhenProjectRootHasNoParent() {
 
-		List<Path> candidates = RuleService.candidatePaths(Path.of("/"), HOME, true);
+		List<Path> candidates = DependencyfileService.candidatePaths(Path.of("/"), HOME, true);
 
 		assertThat(candidates).containsExactly(Path.of("/").resolve("dependencyfile.json"),
 				Path.of("/").resolve(".idea").resolve("dependencyfile.json"), HOME.resolve("dependencyfile.json"));

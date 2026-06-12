@@ -24,13 +24,13 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link DependencyRuleResolver} resolving every artifact to
+ * {@link DependencyRuleService} resolving every artifact to
  * {@link DependencyRule#absent()}.
  *
  * @author Mark Paluch
- * @see DependencyRuleResolver#absent()
+ * @see DependencyRuleService#absent()
  */
-enum AbsentDependencyRuleResolver implements DependencyRuleResolver {
+enum AbsentDependencyRuleService implements DependencyRuleService {
 
 	INSTANCE;
 

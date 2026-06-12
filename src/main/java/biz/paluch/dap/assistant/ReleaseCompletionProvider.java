@@ -32,7 +32,7 @@ import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.RuleService;
+import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
@@ -127,7 +127,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			return;
 		}
 
-		RuleService ruleService = RuleService.getInstance(project);
+		DependencyfileService ruleService = DependencyfileService.getInstance(project);
 		DependencyRule rule = ruleService.resolve(metadata.artifactId(), project, parameters.getEditor()
 				.getVirtualFile(), metadata.context.getProjectVersion());
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);

@@ -35,7 +35,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleResolver;
+import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -193,7 +193,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
 	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
-		return toDependencyCheckResult(releases, DependencyRuleResolver.absent());
+		return toDependencyCheckResult(releases, DependencyRuleService.absent());
 	}
 
 	/**
@@ -208,7 +208,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
 	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
-			DependencyRuleResolver evaluator) {
+			DependencyRuleService evaluator) {
 
 		List<UpgradeCandidate> candidates = new ArrayList<>();
 		List<String> errors = getErrors(releases);
