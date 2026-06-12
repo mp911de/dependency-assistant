@@ -33,7 +33,7 @@ import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link UpdateGitHubWorkflowFile}.
@@ -78,6 +78,49 @@ class UpdateGitHubWorkflowFileTests {
 
 		assertThat(workflowFile.getText())
 				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # here to stay");
+	}
+
+	@Test
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
+			jobs:
+			  build:
+			    steps:
+			      - name: Checkout source code
+			        uses: actions/checkout@7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1
+			        with:
+			          repository: 'spring-projects/spring-batch-extensions'
+			          ref: 'main'
+			""")
+	void addsVersionCommentBehindShaRefWhenStepHasNestedMapping(PsiFile workflowFile) {
+
+		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
+				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+
+		assertThat(workflowFile)
+				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
+				.containsText("ref: 'main'\n")
+				.doesNotContainText("ref: 'main'# v4.2.0");
+	}
+
+	@Test
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
+			jobs:
+			  build:
+			    steps:
+			      - name: Checkout source code
+			        uses: actions/checkout@7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1
+			        with:
+			          ref: 'main' # keep branch
+			""")
+	void leavesNestedMappingCommentsUnchangedWhenAddingVersionComment(PsiFile workflowFile) {
+
+		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
+				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+
+		assertThat(workflowFile)
+				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
+				.containsText("ref: 'main' # keep branch")
+				.doesNotContainText("ref: 'main' # v4.2.0");
 	}
 
 	@Test

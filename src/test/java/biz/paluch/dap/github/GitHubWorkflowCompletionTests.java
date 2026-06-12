@@ -70,6 +70,30 @@ class GitHubWorkflowCompletionTests {
 			jobs:
 			  build:
 			    steps:
+			      - name: Checkout source code
+			        uses: actions/checkout@<caret>
+			        with:
+			          repository: 'spring-projects/spring-batch-extensions'
+			          ref: 'main'
+			""")
+	void completesShaRefWithVersionCommentBeforeNestedMapping(PsiFile workflowFile) {
+
+		GitHubFixtures.analyze(workflowFile);
+
+		fixture.completeBasic();
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+
+		assertThat(workflowFile)
+				.containsText("uses: actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0")
+				.containsText("ref: 'main'\n")
+				.doesNotContainText("ref: 'main'# v4.2.0");
+	}
+
+	@Test
+	@EditorFile(name = ".github/workflows/ci.yml", content = """
+			jobs:
+			  build:
+			    steps:
 			      - uses: actions/checkout@<caret>4.1.0
 			""")
 	void completesVersionRefs(PsiFile workflowFile) {

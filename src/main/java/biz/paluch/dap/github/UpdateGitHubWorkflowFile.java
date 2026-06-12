@@ -26,14 +26,16 @@ import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.SyntaxTraverser;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.yaml.YAMLElementGenerator;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
-import org.jetbrains.yaml.psi.impl.YAMLBlockMappingImpl;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -136,40 +138,64 @@ class UpdateGitHubWorkflowFile {
 			return null;
 		}
 
-		if (!(site.keyValue().getParent() instanceof YAMLBlockMappingImpl mapping)) {
-			return null;
+		YAMLKeyValue replaced = site.replaceRawValue(value.substring(0, refSeparator + 1) + versionText.text(),
+				factory);
+		YAMLScalar updatedScalar = (YAMLScalar) replaced.getValue();
+		if (updatedScalar == null || !versionText.hasComment()) {
+			return updatedScalar;
 		}
 
-		String replacementValue = value.substring(0, refSeparator + 1) + versionText.text();
-		YAMLKeyValue replaced = site.replaceRawValue(replacementValue, factory);
-
-		if (versionText.hasComment()) {
-
-			String trailingContent = "";
-			PsiComment comment = SyntaxTraverser.psiTraverser(mapping).filter(PsiComment.class).first();
-			if (comment != null) {
-
-				String comments = comment.getText();
-				int firstComment = comments.indexOf("#");
-
-				if (firstComment != -1) {
-					int nextComment = comments.indexOf("#", firstComment + 1);
-					if (nextComment != -1) {
-						trailingContent += " " + comments.substring(nextComment);
-					}
-				}
-			}
-			PsiElement newComment = factory.createDummyYamlWithText("# " + versionText.comment() + trailingContent)
-					.getFirstChild();
-			if (comment != null) {
-				comment.replace(newComment);
-			} else {
-				PsiElement space = mapping.addAfter(factory.createSpace(), replaced);
-				mapping.addAfter(newComment, space);
-			}
+		PsiComment comment = findTrailingComment(updatedScalar);
+		if (comment != null) {
+			comment.replace(createManagedComment(versionText, comment.getText()));
+		} else {
+			insertManagedComment(replaced, versionText);
 		}
 
-		return (YAMLScalar) replaced.getValue();
+		return updatedScalar;
+	}
+
+	/**
+	 * Insert the managed version comment behind the given key-value, adding the
+	 * separating whitespace and the comment as a single sibling range.
+	 */
+	private void insertManagedComment(YAMLKeyValue keyValue, VersionText versionText) {
+
+		PsiFile dummy = factory.createDummyYamlWithText("key: value # " + versionText.comment());
+		PsiComment comment = PsiTreeUtil.findChildOfType(dummy, PsiComment.class);
+		if (comment == null) {
+			return;
+		}
+
+		PsiElement whitespace = comment.getPrevSibling();
+		PsiElement first = whitespace instanceof PsiWhiteSpace ? whitespace : comment;
+		keyValue.getParent().addRangeAfter(first, comment, keyValue);
+	}
+
+	/**
+	 * Render the managed version comment, retaining any second {@code #} segment of
+	 * the existing comment as unmanaged trailing content.
+	 */
+	private PsiElement createManagedComment(VersionText versionText, String existingComment) {
+
+		int trailingComment = existingComment.indexOf('#', 1);
+		String trailingContent = trailingComment != -1 ? " " + existingComment.substring(trailingComment) : "";
+
+		return factory.createDummyYamlWithText("# " + versionText.comment() + trailingContent).getFirstChild();
+	}
+
+	private static @Nullable PsiComment findTrailingComment(YAMLScalar scalar) {
+
+		int scalarEnd = scalar.getTextRange().getEndOffset();
+		CharSequence contents = scalar.getContainingFile().getViewProvider().getContents();
+		int newline = StringUtil.indexOf(contents, '\n', scalarEnd);
+		int lineEnd = newline == -1 ? contents.length() : newline;
+
+		return SyntaxTraverser.psiTraverser(scalar.getParent().getParent()).filter(PsiComment.class)
+				.filter(it -> {
+					int commentStart = it.getTextRange().getStartOffset();
+					return commentStart >= scalarEnd && commentStart < lineEnd;
+				}).first();
 	}
 
 }
