@@ -19,7 +19,6 @@ package biz.paluch.dap.rule;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Versioned;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
@@ -46,15 +45,13 @@ public interface DependencyRuleService {
 	 * and {@link Versioned} project version.
 	 *
 	 * @param artifactId the artifact to resolve a rule for.
-	 * @param project the current project.
 	 * @param file the file used to detect the active branch; can be
 	 * {@literal null} if no branch context is available.
 	 * @param projectVersion the project version used to select branch rules.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
 	 * when no rule applies; never {@literal null}.
 	 */
-	DependencyRule resolve(ArtifactId artifactId, Project project, @Nullable VirtualFile file,
-			Versioned projectVersion);
+	DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion);
 
 	/**
 	 * Resolve the dependency rule for the given artifact using an explicit branch
@@ -67,7 +64,7 @@ public interface DependencyRuleService {
 	 * provided.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
 	 * when no rule applies; never {@literal null}.
-	 * @see #resolve(ArtifactId, Project, VirtualFile, Versioned)
+	 * @see #resolve(ArtifactId, VirtualFile, Versioned)
 	 */
 	DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
 			@Nullable ArtifactVersion projectVersion);

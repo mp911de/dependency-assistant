@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import com.intellij.openapi.util.Predicates;
 
 /**
  * Value object representing the permitted {@link Generation generations} for
@@ -52,8 +53,8 @@ public class Generations implements Predicate<String> {
 		case 2 -> values.get(0) + " or " + values.get(1);
 		default -> String.join(", ", values.subList(0, values.size() - 1)) + ", or " + values.getLast();
 		};
-		this.versionPredicate = generations.isEmpty() ? version -> true
-				: version -> generations.stream().anyMatch(generation -> generation.asVersionPredicate().test(version));
+		this.versionPredicate = generations.isEmpty() ? Predicates.alwaysTrue()
+				: version -> test(Generation.innermost(version).toString());
 	}
 
 	/**
@@ -71,21 +72,17 @@ public class Generations implements Predicate<String> {
 	 * {@link Generation#of(String)}.
 	 * @see Generation#of(String)
 	 */
-	public static Generations of(String... generations) {
-
+	public static Generations from(String... generations) {
 		List<Generation> result = new ArrayList<>(generations.length);
 		for (String generation : generations) {
-
 			if ("*".equals(generation)) {
 				return UNCONSTRAINED;
 			}
-
 			Generation parsed = Generation.of(generation);
 			if (!result.contains(parsed)) {
 				result.add(parsed);
 			}
 		}
-
 		return result.isEmpty() ? UNCONSTRAINED : new Generations(List.copyOf(result));
 	}
 
@@ -115,7 +112,13 @@ public class Generations implements Predicate<String> {
 		if (!isConstrained()) {
 			return true;
 		}
-		return this.generations.stream().anyMatch(generation -> generation.test(version));
+
+		for (Generation generation : generations) {
+			if (generation.test(version)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -168,7 +171,7 @@ public class Generations implements Predicate<String> {
 
 	@Override
 	public String toString() {
-		return !isConstrained() ? "*" : rendered;
+		return !isConstrained() ? "*" : value();
 	}
 
 }

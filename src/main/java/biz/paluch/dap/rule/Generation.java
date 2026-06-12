@@ -20,7 +20,6 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.util.StringUtils;
 
 import org.springframework.util.Assert;
 
@@ -33,8 +32,11 @@ import org.springframework.util.Assert;
  * <li>major lines such as {@code 6}</li>
  * <li>minor lines such as {@code 6.0} or {@code 6.0.x}</li>
  * <li>exact versions such as {@code 6.0.1}</li>
- * <li>{@code *} to accept every version</li>
  * </ul>
+ *
+ * <p>The {@code *} wildcard is not a generation; it is handled by
+ * {@link Generations#from(String...)} collapsing to the
+ * {@linkplain Generations#unconstrained() unconstrained} instance.
  *
  * @author Mark Paluch
  */
@@ -44,11 +46,8 @@ public class Generation implements Predicate<String> {
 
 	private final String generation;
 
-	private final Predicate<ArtifactVersion> versionPredicate;
-
 	private Generation(String generation) {
 		this.generation = normalize(generation);
-		this.versionPredicate = version -> test(innermost(version).toString());
 	}
 
 	/**
@@ -64,7 +63,7 @@ public class Generation implements Predicate<String> {
 	 */
 	public static Generation of(String generation) {
 		Assert.hasText(generation, "Generation must not be empty");
-		if (!"*".equals(generation) && !GENERATION_PATTERN.matcher(generation).matches()) {
+		if (!GENERATION_PATTERN.matcher(generation).matches()) {
 			throw new IllegalArgumentException(
 					"Generation '%s' must be a numeric project generation such as '6', '6.0', '6.0.x', or '6.0.1'"
 							.formatted(generation));
@@ -74,9 +73,6 @@ public class Generation implements Predicate<String> {
 
 	@Override
 	public boolean test(String version) {
-		if (this.generation.equals("*")) {
-			return true;
-		}
 		return version.equals(this.generation) || version.startsWith(this.generation + ".");
 	}
 
@@ -89,7 +85,7 @@ public class Generation implements Predicate<String> {
 	 * @return an {@link ArtifactVersion} predicate backed by this generation.
 	 */
 	public Predicate<ArtifactVersion> asVersionPredicate() {
-		return this.versionPredicate;
+		return version -> test(innermost(version).toString());
 	}
 
 	/**
@@ -97,9 +93,6 @@ public class Generation implements Predicate<String> {
 	 * @return the normalized generation value.
 	 */
 	public String value() {
-		if (this.generation.equals("*") || StringUtils.isEmpty(this.generation)) {
-			return "";
-		}
 		return this.generation + ".x";
 	}
 
@@ -126,7 +119,10 @@ public class Generation implements Predicate<String> {
 		return value.endsWith(".x") ? value.substring(0, value.length() - 2) : value;
 	}
 
-	private static ArtifactVersion innermost(ArtifactVersion version) {
+	/**
+	 * Unwrap the innermost version of a wrapper chain.
+	 */
+	static ArtifactVersion innermost(ArtifactVersion version) {
 		ArtifactVersion candidate = version;
 		while (candidate.isWrapped()) {
 			candidate = candidate.getVersion();

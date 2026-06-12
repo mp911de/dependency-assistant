@@ -88,7 +88,7 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 				}
 
 				ArtifactVersion version = declaration.getVersion();
-				EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.evaluate(rules, project, declaration,
+				EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.evaluate(rules, declaration,
 						context, virtualFile, projectVersion);
 				if (evaluated.test(version)) {
 					return;

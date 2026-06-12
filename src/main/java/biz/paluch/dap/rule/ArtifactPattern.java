@@ -122,8 +122,10 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 		return 1;
 	}
 
-	private static Predicate<String> glob(String pattern) {
-
+	/**
+	 * Compile a {@code *} wildcard pattern into a whole-string match predicate.
+	 */
+	static Predicate<String> glob(String pattern) {
 		Pattern compiled = Pattern.compile(Pattern.quote(pattern).replace("*", "\\E.*\\Q"));
 		return compiled.asMatchPredicate();
 	}

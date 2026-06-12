@@ -144,18 +144,16 @@ public class DependencyRules implements Rules {
 
 		BranchRule branchRule = doResolveBranchRule(branchName, projectVersion);
 		if (branchRule == null) {
-			if (projectVersion != null) {
-				return BranchRule.semanticFallback(this.artifacts, upgradeStrategies(projectVersion));
-			}
-			return BranchRule.of(this.artifacts, Set.of());
+			return projectVersion != null ? BranchRule.fallback(this.artifacts, upgradeStrategies(projectVersion))
+					: BranchRule.of("*", this.artifacts, Set.of());
 		}
 
-		if (!branchRule.hasUpgradeStrategies()) {
-			if (projectVersion != null) {
-				return branchRule.withUpgradeStrategies(upgradeStrategies(projectVersion));
-			}
+		if (branchRule.hasUpgradeStrategies() || projectVersion == null) {
+			return branchRule;
 		}
-		return branchRule;
+
+		Set<UpgradeStrategy> upgradeStrategies = upgradeStrategies(projectVersion);
+		return upgradeStrategies.isEmpty() ? branchRule : branchRule.withUpgradeStrategies(upgradeStrategies);
 	}
 
 	private @Nullable BranchRule doResolveBranchRule(@Nullable String branchName,
@@ -172,7 +170,7 @@ public class DependencyRules implements Rules {
 		return null;
 	}
 
-	private @Nullable BranchRule selectBranchRule(@Nullable String value) {
+	private @Nullable BranchRule selectBranchRule(String value) {
 		return branches.stream().filter(it -> it.test(value)).max(BranchRule::compareTo).orElse(null);
 	}
 
@@ -195,11 +193,7 @@ public class DependencyRules implements Rules {
 		       '}';
 	}
 
-	private static Set<UpgradeStrategy> upgradeStrategies(@Nullable ArtifactVersion projectVersion) {
-
-		if (projectVersion == null) {
-			return Set.of();
-		}
+	private static Set<UpgradeStrategy> upgradeStrategies(ArtifactVersion projectVersion) {
 
 		ArtifactVersion candidate = Versioned.of(projectVersion).unwrap();
 		if (!(candidate instanceof NumericVersion numericVersion) || numericVersion.size() != 3) {
@@ -231,7 +225,7 @@ public class DependencyRules implements Rules {
 		 * @return this builder.
 		 */
 		public Builder artifact(String pattern, String... generations) {
-			this.artifacts.add(ArtifactRule.of(pattern, Generations.of(generations)));
+			this.artifacts.add(ArtifactRule.of(pattern, Generations.from(generations)));
 			return this;
 		}
 
@@ -298,7 +292,7 @@ public class DependencyRules implements Rules {
 		 * @return this builder.
 		 */
 		public BranchRuleBuilder artifact(String pattern, String... generations) {
-			this.artifacts.add(ArtifactRule.of(pattern, Generations.of(generations)));
+			this.artifacts.add(ArtifactRule.of(pattern, Generations.from(generations)));
 			return this;
 		}
 
@@ -370,7 +364,7 @@ public class DependencyRules implements Rules {
 		 * @return this builder.
 		 */
 		public ArtifactRuleBuilder generation(String... generations) {
-			return generation(Generations.of(generations));
+			return generation(Generations.from(generations));
 		}
 
 		/**

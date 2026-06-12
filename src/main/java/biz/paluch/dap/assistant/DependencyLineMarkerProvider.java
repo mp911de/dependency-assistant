@@ -83,8 +83,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
 		DependencyfileService ruleService = DependencyfileService.getInstance(element.getProject());
 		ArtifactId artifactId = artifactReference.getArtifactId();
-		DependencyRule rule = ruleService.resolve(artifactId, element.getProject(), containingFile,
-				context.getProjectVersion());
+		DependencyRule rule = ruleService.resolve(artifactId, containingFile, context.getProjectVersion());
 		EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.of(rule, artifactId,
 				artifactReference.getDeclaration().getVersion().getVersion(),
 				context.getInterfaceAssistant());

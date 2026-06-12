@@ -235,7 +235,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 				}
 			}
 
-			DependencyRule rule = evaluator.resolve(artifactId, project, entry.declarationSites()
+			DependencyRule rule = evaluator.resolve(artifactId, entry.declarationSites()
 					.iterator().next().file(), versioned);
 
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);

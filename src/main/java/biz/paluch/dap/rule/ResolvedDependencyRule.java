@@ -25,8 +25,9 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link DependencyRule} backed by a matched {@link ArtifactRule}, testing
- * versions against its {@link Generations}.
+ * Present {@link DependencyRule} testing versions against its
+ * {@link Generations}. Backs matched {@link ArtifactRule artifact rules} and,
+ * with unconstrained generations, the branch-level fallback rule.
  */
 class ResolvedDependencyRule implements DependencyRule {
 

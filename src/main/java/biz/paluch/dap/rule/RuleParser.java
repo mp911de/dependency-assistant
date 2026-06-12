@@ -150,7 +150,7 @@ class RuleParser {
 			addGeneration(entries, value);
 		}
 
-		return Generations.of(entries.toArray(String[]::new));
+		return Generations.from(entries.toArray(String[]::new));
 	}
 
 	private void addGeneration(List<String> entries, @Nullable JsonValue source) {
@@ -163,11 +163,15 @@ class RuleParser {
 			return;
 		}
 
-		try {
-			Generation.of(entry);
-		} catch (RuntimeException ex) {
-			LOG.warn("Ignoring invalid generation '%s' in %s".formatted(entry, file.getName()));
-			return;
+		// "*" is the Generations-level wildcard collapsing to unconstrained, not a
+		// single Generation
+		if (!"*".equals(entry)) {
+			try {
+				Generation.of(entry);
+			} catch (RuntimeException ex) {
+				LOG.warn("Ignoring invalid generation '%s' in %s".formatted(entry, file.getName()));
+				return;
+			}
 		}
 		entries.add(entry);
 	}

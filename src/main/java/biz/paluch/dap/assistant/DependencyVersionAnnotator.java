@@ -65,7 +65,7 @@ public class DependencyVersionAnnotator implements Annotator {
 		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
 		DependencyfileService ruleService = DependencyfileService.getInstance(element.getProject());
 		DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration()
-				.getArtifactId(), element.getProject(), containingFile, context.getProjectVersion());
+				.getArtifactId(), containingFile, context.getProjectVersion());
 		upgrades = upgrades.filterSuggestions(rule::isEnabled);
 
 		if (!upgrades.isPresent()) {

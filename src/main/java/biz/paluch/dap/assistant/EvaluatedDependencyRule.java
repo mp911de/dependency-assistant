@@ -35,7 +35,6 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -130,11 +129,10 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 	 * Evaluate the governing rule of the given candidate against its current
 	 * version.
 	 */
-	public static EvaluatedDependencyRule evaluate(DependencyRuleService rules, Project project,
-			ArtifactDeclaration declaration, ProjectDependencyContext context, VirtualFile virtualFile,
-			Versioned projectVersion) {
+	public static EvaluatedDependencyRule evaluate(DependencyRuleService rules, ArtifactDeclaration declaration,
+			ProjectDependencyContext context, VirtualFile virtualFile, Versioned projectVersion) {
 
-		DependencyRule rule = rules.resolve(declaration.getArtifactId(), project, virtualFile, projectVersion);
+		DependencyRule rule = rules.resolve(declaration.getArtifactId(), virtualFile, projectVersion);
 		InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
 		return EvaluatedDependencyRule.of(rule, declaration.getArtifactId(),
 				declaration.getVersion(), interfaceAssistant);

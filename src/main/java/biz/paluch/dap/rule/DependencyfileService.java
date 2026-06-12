@@ -94,8 +94,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	}
 
 	@Override
-	public DependencyRule resolve(ArtifactId artifactId, Project project, @Nullable VirtualFile file,
-			Versioned projectVersion) {
+	public DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion) {
 		return rules().resolve(artifactId, currentBranchName(this.project, file), projectVersion.orElseGet(() -> null));
 	}
 

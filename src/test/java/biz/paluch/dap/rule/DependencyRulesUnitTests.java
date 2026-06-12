@@ -17,6 +17,7 @@
 package biz.paluch.dap.rule;
 
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -122,6 +123,39 @@ class DependencyRulesUnitTests {
 	}
 
 	@Test
+	void branchInheritsDefaultRuleForUngovernedArtifactWithServiceReleaseVersion() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.junit:*", "5.13")
+				.branch("3.5.x", branch -> branch.artifact("org.springframework:*", "6.0"))
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "3.5.x",
+				ArtifactVersion.of("3.5.1"));
+		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
+
+		assertThat(rule.getGenerations()).hasToString("5.13.x");
+		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.RELEASE)
+				.rejects(UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
+	}
+
+	@Test
+	void branchInheritsDefaultRuleForUngovernedArtifactWithBaseProjectVersion() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.junit:*", "5.13")
+				.branch("3.5.x", branch -> branch.artifact("org.springframework:*", "6.0"))
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "3.5.x",
+				ArtifactVersion.of("3.5.0"));
+		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
+
+		assertThat(rule.getGenerations()).hasToString("5.13.x");
+		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
+	}
+
+	@Test
 	void branchUpgradeLimitsApplyToInheritedDefaultRule() {
 
 		DependencyRules rules = DependencyRules.builder()
@@ -203,9 +237,11 @@ class DependencyRulesUnitTests {
 	}
 
 	@Test
-	void absentBranchRuleMatchesEveryBranch() {
+	void fallbackBranchRuleMatchesEveryBranch() {
 
-		BranchRule rule = BranchRule.of(List.of(ArtifactRule.of("org.springframework:*", Generations.of("7.0"))));
+		BranchRule rule = BranchRule.fallback(
+				List.of(ArtifactRule.of("org.springframework:*", Generations.from("7.0"))),
+				Set.of());
 
 		assertThat((Predicate<String>) rule).accepts("main", "3.5.x", "v2.1.0");
 	}

@@ -31,7 +31,7 @@ class GenerationsUnitTests {
 	@Test
 	void matchesAnyListedGeneration() {
 
-		Generations generations = Generations.of("1.0.x", "1.1.x");
+		Generations generations = Generations.from("1.0.x", "1.1.x");
 
 		assertThat(generations).accepts("1.0.5").accepts("1.1.2");
 		assertThat(generations).rejects("1.2.0").rejects("0.9.1");
@@ -46,27 +46,27 @@ class GenerationsUnitTests {
 
 	@Test
 	void emptyInputIsUnconstrained() {
-		assertThat(Generations.of().isConstrained()).isFalse();
+		assertThat(Generations.from().isConstrained()).isFalse();
 	}
 
 	@Test
 	void listedGenerationsAreConstrained() {
-		assertThat(Generations.of("1.0.x").isConstrained()).isTrue();
+		assertThat(Generations.from("1.0.x").isConstrained()).isTrue();
 	}
 
 	@Test
 	void rendersSingleGenerationNormalized() {
-		assertThat(Generations.of("3.2")).hasToString("3.2.x");
+		assertThat(Generations.from("3.2")).hasToString("3.2.x");
 	}
 
 	@Test
 	void rendersTwoGenerationsWithOr() {
-		assertThat(Generations.of("3.2.x", "4")).hasToString("3.2.x or 4.x");
+		assertThat(Generations.from("3.2.x", "4")).hasToString("3.2.x or 4.x");
 	}
 
 	@Test
 	void rendersThreeGenerationsOxfordStyle() {
-		assertThat(Generations.of("3.1.x", "3.2.x", "4")).hasToString("3.1.x, 3.2.x, or 4.x");
+		assertThat(Generations.from("3.1.x", "3.2.x", "4")).hasToString("3.1.x, 3.2.x, or 4.x");
 	}
 
 	@Test
@@ -77,7 +77,7 @@ class GenerationsUnitTests {
 	@Test
 	void collapsesWildcardToUnconstrained() {
 
-		Generations generations = Generations.of("*", "1.0.x");
+		Generations generations = Generations.from("*", "1.0.x");
 
 		assertThat(generations.isConstrained()).isFalse();
 		assertThat(generations).accepts("9.9.9");
@@ -85,13 +85,13 @@ class GenerationsUnitTests {
 
 	@Test
 	void dropsDuplicatesPreservingDeclaredOrder() {
-		assertThat(Generations.of("1.1", "1.0.x", "1.0")).hasToString("1.1.x or 1.0.x");
+		assertThat(Generations.from("1.1", "1.0.x", "1.0")).hasToString("1.1.x or 1.0.x");
 	}
 
 	@Test
 	void testsInnerMostVersionAgainstAnyGeneration() {
 
-		Generations generations = Generations.of("1.2", "2.0");
+		Generations generations = Generations.from("1.2", "2.0");
 
 		assertThat(generations.asVersionPredicate())
 				.accepts(ArtifactVersion.of("v1.2.3"), ArtifactVersion.of("2.0.1"))

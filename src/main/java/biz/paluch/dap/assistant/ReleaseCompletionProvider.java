@@ -91,9 +91,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Add release completions for the artifact resolved at the current completion
 	 * position.
 	 *
-	 * <p>Subclasses that gate completion should usually call
-	 * {@code super.addCompletions(...)} once their format-specific preconditions
-	 * are satisfied.
 	 * @param parameters the IntelliJ completion parameters; must not be
 	 * {@literal null}.
 	 * @param context the processing context supplied by IntelliJ; must not be
@@ -128,7 +125,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		DependencyfileService ruleService = DependencyfileService.getInstance(project);
-		DependencyRule rule = ruleService.resolve(metadata.artifactId(), project, parameters.getEditor()
+		DependencyRule rule = ruleService.resolve(metadata.artifactId(), parameters.getEditor()
 				.getVirtualFile(), metadata.context.getProjectVersion());
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
@@ -139,7 +136,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		for (ArtifactRelease release : releases) {
 
 			ArtifactVersion completionVersion = release.getVersion();
-			LookupElementBuilder element = createLookupElement(release, completionVersion, position, refStyle)
+			LookupElementBuilder element = createLookupElement(release, completionVersion, refStyle)
 					.withRenderer(renderer);
 
 			if (metadata.versionLiteral() != null) {
@@ -157,7 +154,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	private LookupElementBuilder createLookupElement(ArtifactRelease release, ArtifactVersion completionVersion,
-			PsiElement position, RefStyle refStyle) {
+			RefStyle refStyle) {
 
 		String completion;
 		Set<String> lookupStrings = new LinkedHashSet<>();
@@ -165,8 +162,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		lookupStrings.add(completionVersion.getVersion().toString());
 		lookupStrings.add(completionVersion.getVersion().getVersion().toString());
 
-		if (completionVersion instanceof GitVersion gitVersion && supports(position, gitVersion)
-				&& StringUtils.hasText(gitVersion.getSha())
+		if (completionVersion instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())
 				&& refStyle == RefStyle.SHA) {
 			completion = gitVersion.getSha();
 			lookupStrings.add(gitVersion.getSha());
@@ -204,22 +200,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		return new CompletionMetadata(artifactReference.getArtifactId(), version,
 				artifactReference.getDeclaration().getVersionLiteral(), context);
-	}
-
-	/**
-	 * Return whether the given Git-backed version can be used for SHA insertion at
-	 * the current completion position.
-	 *
-	 * <p>The default accepts every {@link GitVersion}. Override when a contributor
-	 * can resolve Git-backed releases but a particular PSI location must still
-	 * insert the version text instead of the release SHA.
-	 * @param element the PSI element used to resolve completion metadata.
-	 * @param gitVersion the Git-backed release version under consideration.
-	 * @return {@literal true} if SHA insertion is supported for the given element;
-	 * {@literal false} otherwise.
-	 */
-	protected boolean supports(PsiElement element, GitVersion gitVersion) {
-		return true;
 	}
 
 	/**
@@ -366,14 +346,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 	private static @Nullable PsiElement replaceVersion(PsiElement versionLiteral, String version) {
 
-		/*
-		 * if (versionLiteral instanceof XmlTag tag) {
-		 *
-		 * XmlToken token =
-		 * SyntaxTraverser.psiTraverser(tag).filter(XmlToken.class).first(); if (token
-		 * != null) { tag.getValue().getTextRange().replace(token.getText(), version); }
-		 * else { tag.getValue().setText(version); } return tag; }
-		 */
 		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
 		if (manipulator == null) {
 			return null;
@@ -406,21 +378,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 */
 	public record CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
 			@Nullable PsiElement versionLiteral, ProjectDependencyContext context) {
-
-		/**
-		 * Create metadata without a default replacement literal.
-		 *
-		 * <p>Use this constructor when a subclass supplies its own insert handler or
-		 * when completion should only contribute lookup elements.
-		 * @param artifactId the resolved artifact whose releases should be suggested.
-		 * @param currentVersion the currently declared version, or {@literal null} if
-		 * no current version is available.
-		 * @param context the dependency context that resolved the artifact.
-		 */
-		public CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
-				ProjectDependencyContext context) {
-			this(artifactId, currentVersion, null, context);
-		}
 
 	}
 

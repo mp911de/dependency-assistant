@@ -20,12 +20,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -45,7 +42,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 
 	private final String pattern;
 
-	private final ArtifactPattern comparisonPattern;
+	private final int specificity;
 
 	private final Predicate<String> predicate;
 
@@ -55,103 +52,57 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 
 	private final Set<UpgradeStrategy> upgradeStrategies;
 
-	private BranchRule(boolean fallback, String pattern, Collection<ArtifactRule> artifacts, Set<UpgradeStrategy> upgradeStrategies) {
-		this(fallback, pattern, glob(pattern), artifacts, upgradeStrategies);
-	}
-
-	private BranchRule(boolean fallback, String pattern, Predicate<String> predicate, Collection<ArtifactRule> artifacts,
-			Set<UpgradeStrategy> upgradeStrategies) {
+	private BranchRule(boolean fallback, String pattern, Collection<ArtifactRule> artifacts,
+			Collection<ArtifactRule> defaultArtifacts, Set<UpgradeStrategy> upgradeStrategies) {
 
 		this.fallback = fallback;
 		this.pattern = pattern;
-		this.comparisonPattern = ArtifactPattern.of(pattern);
-		this.predicate = predicate;
+		this.specificity = specificity(pattern);
+		this.predicate = ArtifactPattern.glob(pattern);
 		this.artifacts = artifacts;
-		this.defaultArtifacts = List.of();
+		this.defaultArtifacts = defaultArtifacts;
 		this.upgradeStrategies = upgradeStrategies;
 	}
 
-	private BranchRule(BranchRule original, Collection<ArtifactRule> defaultArtifacts) {
-
-		this.fallback = original.fallback;
-		this.pattern = original.pattern;
-		this.comparisonPattern = original.comparisonPattern;
-		this.predicate = original.predicate;
-		this.artifacts = original.artifacts;
-		this.defaultArtifacts = defaultArtifacts;
-		this.upgradeStrategies = original.upgradeStrategies;
-	}
-
-	private static Predicate<String> glob(String pattern) {
-		Pattern compiled = Pattern.compile(Pattern.quote(pattern).replace("*", "\\E.*\\Q"));
-		return compiled.asMatchPredicate();
-	}
-
 	/**
-	 * Create a branch rule without upgrade-strategy limits.
+	 * Create a branch rule.
 	 *
 	 * @param pattern the branch or project-version pattern.
 	 * @param artifacts the artifact rules.
-	 * @return the branch rule.
-	 */
-	public static BranchRule of(String pattern, Collection<ArtifactRule> artifacts) {
-		return new BranchRule(false, pattern, artifacts, Set.of());
-	}
-
-	/**
-	 * Create an absent branch rule with default artifact dependency rules.
-	 * Artifacts without a matching artifact rule resolve to a present fallback
-	 * rule.
-	 *
-	 * @param artifacts the default artifact dependency rules.
-	 * @return the branch rule.
-	 * @see #of(Collection, Set)
-	 */
-	public static BranchRule of(Collection<ArtifactRule> artifacts) {
-		return new BranchRule(true, "*", it -> true, artifacts, Set.of());
-	}
-
-	/**
-	 * Create an absent branch rule with default artifact dependency rules and
-	 * upgrade-strategy limits. Artifacts without a matching artifact rule
-	 * resolve to {@link DependencyRule#absent()}.
-	 *
-	 * @param artifacts the default artifact dependency rules.
-	 * @param upgradeStrategies the supported upgrade strategies.
-	 * @return the branch rule.
-	 * @see #semanticFallback(Collection, Set)
-	 */
-	public static BranchRule of(Collection<ArtifactRule> artifacts, Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(false, "*", it -> true, artifacts, upgradeStrategies);
-	}
-
-	/**
-	 * Create a semantic versioning fallback rule with artifact dependency rules and
-	 * upgrade-strategy limits. This rule applies semantic version upgrade rules
-	 * (i.e. patch upgrades for patch releases, minor upgrades for minor releases).
-	 * Artifacts without a matching artifact rule resolve to a present fallback
-	 * rule enforcing the upgrade-strategy limits.
-	 *
-	 * @param artifacts the default artifact dependency rules.
-	 * @param upgradeStrategies the supported upgrade strategies.
-	 * @return the fallback branch rule.
-	 */
-	public static BranchRule semanticFallback(Collection<ArtifactRule> artifacts,
-			Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(true, "*", it -> true, artifacts, upgradeStrategies);
-	}
-
-	/**
-	 * Create a branch rule with upgrade-strategy limits.
-	 *
-	 * @param pattern the branch or project-version pattern.
-	 * @param artifacts the artifact rules.
-	 * @param upgradeStrategies the supported upgrade strategies.
+	 * @param upgradeStrategies the supported upgrade strategies; empty for no
+	 * limits.
 	 * @return the branch rule.
 	 */
 	public static BranchRule of(String pattern, Collection<ArtifactRule> artifacts,
 			Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(false, pattern, artifacts, upgradeStrategies);
+		return new BranchRule(false, pattern, artifacts, List.of(), upgradeStrategies);
+	}
+
+	/**
+	 * Create a fallback rule matching every branch, with default artifact
+	 * dependency rules and upgrade-strategy limits. Artifacts without a matching
+	 * artifact rule resolve to a present rule enforcing the upgrade-strategy
+	 * limits.
+	 *
+	 * @param artifacts the default artifact dependency rules.
+	 * @param upgradeStrategies the supported upgrade strategies; empty for no
+	 * limits.
+	 * @return the fallback branch rule.
+	 */
+	public static BranchRule fallback(Collection<ArtifactRule> artifacts, Set<UpgradeStrategy> upgradeStrategies) {
+		return new BranchRule(true, "*", artifacts, List.of(), upgradeStrategies);
+	}
+
+	/**
+	 * Rank pattern specificity: exact patterns order highest, then wildcard
+	 * patterns, then the match-all pattern.
+	 */
+	private static int specificity(String pattern) {
+
+		if ("*".equals(pattern)) {
+			return 0;
+		}
+		return pattern.contains("*") ? 1 : 2;
 	}
 
 	public boolean hasUpgradeStrategies() {
@@ -178,11 +129,12 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * @return the inheriting branch rule.
 	 */
 	BranchRule withDefaults(Collection<ArtifactRule> defaultArtifacts) {
-		return defaultArtifacts.isEmpty() ? this : new BranchRule(this, defaultArtifacts);
+		return defaultArtifacts.isEmpty() ? this
+				: new BranchRule(this.fallback, this.pattern, this.artifacts, defaultArtifacts, this.upgradeStrategies);
 	}
 
 	BranchRule withUpgradeStrategies(Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(this.fallback, this.pattern, this.predicate, this.artifacts, upgradeStrategies);
+		return new BranchRule(this.fallback, this.pattern, this.artifacts, this.defaultArtifacts, upgradeStrategies);
 	}
 
 	public Set<UpgradeStrategy> upgradeStrategies() {
@@ -220,9 +172,9 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 			return rule;
 		}
 
-		return this.fallback ? new FallbackDependencyRule() : DependencyRule.absent();
+		return this.fallback ? new ResolvedDependencyRule(Generations.unconstrained(), "", this::supports)
+				: DependencyRule.absent();
 	}
-
 
 	private @Nullable DependencyRule selectRule(Rules parentRules, Collection<ArtifactRule> artifacts,
 			ArtifactId artifactId, @Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
@@ -252,50 +204,16 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 
 	@Override
 	public int compareTo(BranchRule o) {
-		return this.comparisonPattern.compareTo(o.comparisonPattern);
+		return Integer.compare(this.specificity, o.specificity);
 	}
 
 	@Override
 	public String toString() {
 		return "BranchRule{" +
 				"pattern='" + pattern + '\'' +
-				", comparisonPattern=" + comparisonPattern +
-				", predicate=" + predicate +
 				", artifacts=" + artifacts +
 				", upgradeStrategies=" + upgradeStrategies +
 				'}';
 	}
 
-	class FallbackDependencyRule implements DependencyRule {
-
-		@Override
-		public boolean isPresent() {
-			return true;
-		}
-
-		@Override
-		public Generations getGenerations() {
-			return Generations.unconstrained();
-		}
-
-		@Override
-		public String getDependencyName() {
-			return "";
-		}
-
-		@Override
-		public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
-			return BranchRule.this.supports(upgradeStrategy);
-		}
-
-		@Override
-		public boolean test(ArtifactVersion artifactVersion) {
-			return true;
-		}
-
-		@Override
-		public @Nullable Release suggestRemediation(Releases releases) {
-			return null;
-		}
-	}
 }

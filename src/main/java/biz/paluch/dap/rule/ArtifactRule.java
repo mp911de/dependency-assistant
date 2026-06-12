@@ -39,7 +39,8 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 	 * Create an artifact rule.
 	 *
 	 * @param pattern the artifact pattern.
-	 * @param generations the required generations, see {@link Generations#of(String...)}.
+	 * @param generations the required generations, see
+	 * {@link Generations#from(String...)}.
 	 * @return the artifact rule.
 	 * @see #of(String, String, Generations)
 	 */
@@ -52,7 +53,8 @@ public class ArtifactRule implements Comparable<ArtifactRule> {
 	 *
 	 * @param pattern the artifact pattern.
 	 * @param name the friendly display name.
-	 * @param generations the required generations, see {@link Generations#of(String...)}.
+	 * @param generations the required generations, see
+	 * {@link Generations#from(String...)}.
 	 * @return the artifact rule.
 	 */
 	public static ArtifactRule of(String pattern, String name, Generations generations) {

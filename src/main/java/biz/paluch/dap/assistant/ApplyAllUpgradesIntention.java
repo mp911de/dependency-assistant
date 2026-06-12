@@ -155,7 +155,7 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 				}
 
 				DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration().getArtifactId(),
-						file.getProject(), virtualFile, dependencyContext.getProjectVersion());
+						virtualFile, dependencyContext.getProjectVersion());
 				UpgradeSuggestion suggestion = upgrades.filterSuggestions(rule::isEnabled).getUpgrades().get(strategy);
 				if (suggestion == null) {
 					return;

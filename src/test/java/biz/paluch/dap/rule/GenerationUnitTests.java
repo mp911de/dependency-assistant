@@ -31,14 +31,6 @@ import static org.assertj.core.api.Assertions.*;
 class GenerationUnitTests {
 
 	@Test
-	void matchesAnything() {
-
-		Generation generation = Generation.of("*");
-
-		assertThat(generation).accepts("6.1.0").accepts("foo");
-	}
-
-	@Test
 	void matchesMajorLine() {
 
 		Generation generation = Generation.of("6");
@@ -84,7 +76,7 @@ class GenerationUnitTests {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"", "x", "6.x.0", "6.0.RELEASE", "6-0", "v6.0", "6.0.beta"})
+	@ValueSource(strings = {"", "x", "*", "6.x.0", "6.0.RELEASE", "6-0", "v6.0", "6.0.beta"})
 	void rejectsNonNumericGeneration(String source) {
 
 		assertThatIllegalArgumentException().isThrownBy(() -> Generation.of(source))
