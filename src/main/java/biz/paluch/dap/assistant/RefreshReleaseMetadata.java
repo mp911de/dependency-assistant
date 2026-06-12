@@ -62,7 +62,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 		long startNs = System.nanoTime();
 		DependencyCheck dependencyCheck = new DependencyCheck(project);
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
-		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 2);
+		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 1 + assistants.size());
 		steps.setText(MessageBundle.message("action.index-dependencies.analyzing"));
 		steps.setIndeterminate(false);
 
@@ -76,14 +76,14 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 					return;
 				}
 				sources.addAll(dependencyCheck.collectDependencies(steps, assistant));
+				steps.nextStep();
 			}
 		}).inSmartMode(project).executeSynchronously();
 
+		steps.setText2("");
 		if (steps.isCanceled()) {
 			return;
 		}
-
-		steps.nextStep();
 
 		Map<ArtifactId, Releases> result = dependencyCheck.getReleases(steps, sources,
 				DependencyCheck.Consistency.NO_CACHE);

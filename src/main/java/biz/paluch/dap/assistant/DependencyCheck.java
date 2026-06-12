@@ -176,7 +176,12 @@ class DependencyCheck {
 		for (ReleaseSources artifactSource : artifactSources) {
 			futures.put(artifactSource.artifactId, executor.submit(() -> {
 				indicator.checkCanceled();
-				return fetchReleases(indicator, artifactSource, executor, cache, consistency);
+				String name = artifactSource.artifactId.toString();
+				indicator.setText(MessageBundle.message("action.check.dependency.loading", name));
+				ReleaseLookupResult result = fetchReleases(indicator, artifactSource, executor, cache, consistency);
+				indicator.setText(MessageBundle.message("action.check.dependency.checked", name));
+				steps.nextStep();
+				return result;
 			}));
 		}
 		steps.nextStep();
@@ -188,7 +193,6 @@ class DependencyCheck {
 			String name = artifactId.toString();
 
 			try {
-				indicator.setText(MessageBundle.message("action.check.dependency.loading", name));
 				indicator.checkCanceled();
 			} catch (ProcessCanceledException e) {
 				cancelRemainingFutures(futures);
@@ -222,7 +226,6 @@ class DependencyCheck {
 			}
 
 			results.put(artifactId, res);
-			steps.nextStep();
 
 			if (abort) {
 				break;

@@ -86,16 +86,8 @@ public class ProjectStateIndexer {
 		return project;
 	}
 
-	public ProgressIndicator getProgressIndicator() {
-		return indicator;
-	}
-
 	public StateService getService() {
 		return service;
-	}
-
-	public void checkCanceled() {
-		indicator.checkCanceled();
 	}
 
 	/**
