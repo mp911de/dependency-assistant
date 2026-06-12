@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.List;
+
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
@@ -27,29 +29,31 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
-import biz.paluch.dap.util.PsiElements;
-import com.intellij.codeInspection.LocalQuickFix;
-import com.intellij.codeInspection.ProblemDescriptor;
+import com.intellij.codeInsight.intention.FileModifier;
+import com.intellij.codeInsight.intention.IntentionAction;
+import com.intellij.codeInsight.intention.IntentionActionWithOptions;
+import com.intellij.codeInspection.LocalQuickFixOnPsiElement;
 import com.intellij.codeInspection.util.IntentionFamilyName;
-import com.intellij.modcommand.ActionContext;
-import com.intellij.modcommand.ModPsiUpdater;
-import com.intellij.modcommand.Presentation;
-import com.intellij.modcommand.PsiUpdateModCommandAction;
+import com.intellij.codeInspection.util.IntentionName;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.util.Iconable;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
+import com.intellij.util.IncorrectOperationException;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 /**
- * Dependency update action that rewrites the associated {@link PsiElement}
+ * Dependency update quick fix that rewrites the associated {@link PsiElement}
  * version literal to the target of a {@link DependencyUpdate}.
  *
- * <p>The presentation impact category (the gutter age icon) is derived from the
- * relationship between the {@link ArtifactDeclaration declaration}'s current
- * version and the update target, not from a preselected strategy.
- *
  * @author Mark Paluch
+ * @see UpdateDependencyAction
  */
-public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement> implements LocalQuickFix {
+public class UpdateDependencyVersionQuickFix extends LocalQuickFixOnPsiElement
+		implements Iconable, IntentionAction, IntentionActionWithOptions {
 
 	private final UpgradeStrategy strategy;
 
@@ -59,18 +63,19 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 
 	private final ArtifactDeclaration declaration;
 
-	protected UpdateDependencyAction(PsiElement element, ProjectDependencyContext dependencyContext,
-			UpgradeSuggestion suggestion, UpgradeStrategy strategy) {
-		this(element, strategy, dependencyContext, suggestion.toDependencyUpdate(),
+	protected UpdateDependencyVersionQuickFix(PsiElement element, ProjectDependencyContext dependencyContext,
+			UpgradeSuggestion suggestion) {
+		this(element, suggestion.getStrategy(), dependencyContext, suggestion.toDependencyUpdate(),
 				suggestion.getArtifactDeclaration());
 	}
 
-	protected UpdateDependencyAction(ArtifactDeclaration declaration, ProjectDependencyContext dependencyContext,
+	protected UpdateDependencyVersionQuickFix(ArtifactDeclaration declaration,
+			ProjectDependencyContext dependencyContext,
 			DependencyUpdate update, UpgradeStrategy strategy) {
 		this(declaration.getVersionLiteral(), strategy, dependencyContext, update, declaration);
 	}
 
-	protected UpdateDependencyAction(PsiElement element, UpgradeStrategy strategy,
+	protected UpdateDependencyVersionQuickFix(PsiElement element, UpgradeStrategy strategy,
 			ProjectDependencyContext dependencyContext,
 			DependencyUpdate update, ArtifactDeclaration declaration) {
 		super(element);
@@ -81,28 +86,19 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 	}
 
 	@Override
-	public void invoke(ActionContext context, PsiElement element, ModPsiUpdater updater) {
-
-		int caretOffset = context.offset();
-		String previousText = null;
-		PsiElement container = null;
-		if (element.getTextRange().containsOffset(caretOffset)) {
-			container = PsiElements.unleaf(element);
-			previousText = container.getText();
-		}
-		dependencyContext.applyUpdate(element, update);
-
-		if (container != null && updater != null) {
-			String currentText = container.getText();
-			int cpl = StringUtil.commonSuffixLength(previousText, currentText);
-			int newOffset = container.getTextRange().getEndOffset() - cpl;
-			updater.moveCaretTo(newOffset);
-		}
+	public @IntentionName String getText() {
+		return MessageBundle.message("UpgradeDependencyAction.name", update.versionAsString());
 	}
 
 	@Override
-	public void applyFix(Project project, ProblemDescriptor descriptor) {
-		super.perform(ActionContext.from(descriptor));
+	public boolean isAvailable(@NotNull Project project, Editor editor, PsiFile psiFile) {
+		return super.isAvailable() && getStartElement().getContainingFile()
+				.isEquivalentTo(psiFile);
+	}
+
+	@Override
+	public boolean startInWriteAction() {
+		return true;
 	}
 
 	@Override
@@ -111,9 +107,23 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 	}
 
 	@Override
-	protected Presentation getPresentation(ActionContext context, PsiElement element) {
-		String name = MessageBundle.message("UpgradeDependencyAction.name", update.versionAsString());
-		return Presentation.of(name).withIcon(getIcon());
+	public void invoke(Project project, PsiFile file, PsiElement startElement, PsiElement endElement) {
+		dependencyContext.applyUpdate(startElement, update);
+	}
+
+	@Override
+	public void invoke(@NotNull Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
+		dependencyContext.applyUpdates(psiFile, List.of(update));
+	}
+
+	@Override
+	public @Nullable FileModifier getFileModifierForPreview(@NotNull PsiFile target) {
+		return new UpdateDependencyIntention(dependencyContext, update, declaration, target);
+	}
+
+	@Override
+	public Icon getIcon(int flags) {
+		return getIcon();
 	}
 
 	protected Icon getIcon() {
@@ -133,6 +143,17 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 
 		ArtifactVersion current = declaration.getVersion();
 		return VersionAge.between(current, update.version());
+	}
+
+	@Override
+	public @NotNull @Unmodifiable List<@NotNull IntentionAction> getOptions() {
+		return List.of(new ApplyAllUpgradesIntention(dependencyContext, strategy, getIcon()),
+				UpgradeDependenciesIntention.INSTANCE);
+	}
+
+	@Override
+	public @NotNull CombiningPolicy getCombiningPolicy() {
+		return CombiningPolicy.IntentionOptionsOnly;
 	}
 
 }
