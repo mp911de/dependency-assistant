@@ -115,6 +115,10 @@ public class AvailableUpgrades {
 
 	public AvailableUpgrades filterSuggestions(Predicate<UpgradeStrategy> strategyFilter) {
 
+		if (!isPresent()) {
+			return this;
+		}
+
 		SequencedMap<UpgradeStrategy, UpgradeSuggestion> upgrades = new LinkedHashMap<>();
 
 		this.upgrades.forEach((strategy, suggestion) -> {

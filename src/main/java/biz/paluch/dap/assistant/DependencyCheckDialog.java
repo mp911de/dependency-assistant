@@ -127,7 +127,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private volatile @Nullable ProgressIndicator updateProgress;
 
-	public DependencyCheckDialog(Project project, DependencyCheckResult result, String title) {
+	public DependencyCheckDialog(Project project, DependencyUpgradeCandidates result, String title) {
 		super(project, false, IdeModalityType.MODELESS);
 		this.project = project;
 		this.files = result.files();

@@ -79,7 +79,7 @@ class DependencyCheck {
 	 * @param consistency the release-cache consistency to use.
 	 * @return the merged dependency check result.
 	 */
-	public DependencyCheckResult resolveScope(ProgressIndicator indicator, List<UpgradeScope.Entry> scope,
+	public DependencyUpgradeCandidates findDependencyUpgrades(ProgressIndicator indicator, UpgradeScope scope,
 			Consistency consistency) {
 		this.service.getState().setUsedOnce(true);
 		RuleService ruleService = RuleService.getInstance(project);
@@ -89,7 +89,7 @@ class DependencyCheck {
 		return aggregator.toDependencyCheckResult(releases, ruleService);
 	}
 
-	private DependencyCheckAggregator aggregate(ProgressIndicator indicator, List<UpgradeScope.Entry> scope) {
+	private DependencyCheckAggregator aggregate(ProgressIndicator indicator, UpgradeScope scope) {
 		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, service);
 		for (UpgradeScope.Entry entry : scope) {
 			indicator.checkCanceled();

@@ -16,19 +16,19 @@
 
 package biz.paluch.dap.npm;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.npm.NpmAssistant.NpmInterface;
 import biz.paluch.dap.support.MessageBundle;
 
 /**
  * Gutter configurable for NPM dependencies.
- * 
+ *
  * @author Mark Paluch
  */
-public class NpmLineMarkerProvider extends UpgradeAvailableLineMarkerProvider {
+public class NpmLineMarkerProvider extends DependencyLineMarkerProvider {
 
 	@Override
 	public String getName() {

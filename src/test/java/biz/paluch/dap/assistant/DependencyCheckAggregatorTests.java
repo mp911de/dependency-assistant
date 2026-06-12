@@ -109,7 +109,7 @@ class DependencyCheckAggregatorTests {
 
 		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), LETTUCE_CORE,
 				resolved(LETTUCE_UPDATE), BROKEN_ARTIFACT, lookupError(BROKEN_ARTIFACT_ERROR));
-		DependencyCheckResult result = aggregator.toDependencyCheckResult(releases);
+		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases);
 
 		assertThat(result.candidates()).extracting(candidate -> candidate.getArtifactId().artifactId())
 				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());

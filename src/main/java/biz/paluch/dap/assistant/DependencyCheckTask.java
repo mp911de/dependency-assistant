@@ -43,7 +43,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 	private volatile @Nullable UpgradeScope scope;
 
-	private volatile @Nullable DependencyCheckResult resultRef;
+	private volatile @Nullable DependencyUpgradeCandidates resultRef;
 
 	public DependencyCheckTask(Project project, UpgradeRequest request) {
 		super(project, MessageBundle.message("action.check.dependencies.progress"), true);
@@ -69,12 +69,8 @@ class DependencyCheckTask extends Task.Backgroundable {
 		}
 
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress"));
-		List<UpgradeScope.Entry> entries = scope.entries();
-		if (entries.isEmpty()) {
-			return;
-		}
-
-		resultRef = new DependencyCheck(project).resolveScope(indicator, entries, DependencyCheck.Consistency.CACHED);
+		resultRef = new DependencyCheck(project).findDependencyUpgrades(indicator, scope,
+				DependencyCheck.Consistency.CACHED);
 	}
 
 	@Override
@@ -93,7 +89,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 	private void showResult(UpgradeScope scope) {
 
-		DependencyCheckResult result = resultRef;
+		DependencyUpgradeCandidates result = resultRef;
 		if (result == null || result.candidates().isEmpty()) {
 			Notifications.info(project, MessageBundle.message("plugin.name"),
 					MessageBundle.message("action.check.dependencies.noUpdates"));
@@ -116,7 +112,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 		String message = switch (reason) {
 		case NO_BUILD_FILES -> MessageBundle.message("action.check.dependencies.notFound.noBuildFiles");
 		case NOT_IMPORTED -> MessageBundle.message("action.check.dependencies.notFound.notImported");
-		case SUCCESS -> "";
+		case SUCCESS, DISCOVERY -> "";
 		};
 
 		Notifications.info(project, MessageBundle.message("plugin.name"), message);

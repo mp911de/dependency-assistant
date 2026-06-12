@@ -28,6 +28,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.NumericVersion;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,12 +51,16 @@ import org.jspecify.annotations.Nullable;
  */
 public class DependencyRules implements Rules {
 
-	private final List<ArtifactRule> artifacts;
+	private final Rules parent;
 
-	private final List<BranchRule> branches;
+	private final Collection<ArtifactRule> artifacts;
 
-	private DependencyRules(Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
-		this.artifacts = List.copyOf(artifacts);
+	private final Collection<BranchRule> branches;
+
+	private DependencyRules(Rules parent, Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
+
+		this.parent = parent;
+		this.artifacts = artifacts;
 		this.branches = branches.stream().map(branch -> branch.withDefaults(this.artifacts)).toList();
 	}
 
@@ -91,7 +97,7 @@ public class DependencyRules implements Rules {
 	 * @return the dependency rules.
 	 */
 	public static DependencyRules of(Collection<ArtifactRule> artifacts) {
-		return new DependencyRules(artifacts, List.of());
+		return of(artifacts, List.of());
 	}
 
 	/**
@@ -102,7 +108,7 @@ public class DependencyRules implements Rules {
 	 * @return the dependency rules.
 	 */
 	public static DependencyRules of(Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
-		return new DependencyRules(artifacts, branches);
+		return new DependencyRules(new DependencyRules(Rules.absent(), artifacts, List.of()), artifacts, branches);
 	}
 
 	/**
@@ -117,7 +123,7 @@ public class DependencyRules implements Rules {
 			@Nullable ArtifactVersion projectVersion) {
 
 		BranchRule branchRule = resolveBranchRule(branchName, projectVersion);
-		return branchRule.select(artifactId);
+		return branchRule.select(parent, artifactId, branchName, projectVersion);
 	}
 
 	/**
@@ -136,40 +142,45 @@ public class DependencyRules implements Rules {
 	 */
 	public BranchRule resolveBranchRule(@Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
 
-		BranchRule branchRule = selectBranchRule(branchName);
-		if (branchRule != null) {
-			return branchRule;
+		BranchRule branchRule = doResolveBranchRule(branchName, projectVersion);
+		if (branchRule == null) {
+			if (projectVersion != null) {
+				return BranchRule.semanticFallback(this.artifacts, upgradeStrategies(projectVersion));
+			}
+			return BranchRule.of(this.artifacts, Set.of());
 		}
-		branchRule = selectBranchRule(projectVersion);
-		if (branchRule != null) {
-			return branchRule;
+
+		if (!branchRule.hasUpgradeStrategies()) {
+			if (projectVersion != null) {
+				return branchRule.withUpgradeStrategies(upgradeStrategies(projectVersion));
+			}
+		}
+		return branchRule;
+	}
+
+	private @Nullable BranchRule doResolveBranchRule(@Nullable String branchName,
+			@Nullable ArtifactVersion projectVersion) {
+		if (StringUtils.hasText(branchName)) {
+			BranchRule branchRule = selectBranchRule(branchName);
+			if (branchRule != null) {
+				return branchRule;
+			}
 		}
 		if (projectVersion != null) {
-			return BranchRule.semanticFallback(this.artifacts, upgradeStrategies(projectVersion));
+			return selectBranchRule(projectVersion);
 		}
-		return BranchRule.of(this.artifacts, upgradeStrategies(projectVersion));
+		return null;
 	}
 
 	private @Nullable BranchRule selectBranchRule(@Nullable String value) {
-
-		if (value == null) {
-			return null;
-		}
 		return branches.stream().filter(it -> it.test(value)).max(BranchRule::compareTo).orElse(null);
 	}
 
-	private @Nullable BranchRule selectBranchRule(@Nullable ArtifactVersion version) {
+	private @Nullable BranchRule selectBranchRule(ArtifactVersion version) {
 
-		if (version == null) {
-			return null;
-		}
-
-		ArtifactVersion candidate = version;
-		while (candidate.isWrapped()) {
-			candidate = candidate.getVersion();
-		}
+		ArtifactVersion unwrapped = Versioned.of(version).unwrap();
 		String displayVersion = version.toString();
-		String innerMostVersion = candidate.toString();
+		String innerMostVersion = unwrapped.toString();
 		return branches.stream()
 				.filter(it -> it.test(displayVersion) || it.test(innerMostVersion))
 				.max(BranchRule::compareTo)
@@ -189,10 +200,8 @@ public class DependencyRules implements Rules {
 		if (projectVersion == null) {
 			return Set.of();
 		}
-		ArtifactVersion candidate = projectVersion;
-		while (candidate.isWrapped()) {
-			candidate = candidate.getVersion();
-		}
+
+		ArtifactVersion candidate = Versioned.of(projectVersion).unwrap();
 		if (!(candidate instanceof NumericVersion numericVersion) || numericVersion.size() != 3) {
 			return Set.of();
 		}
@@ -200,8 +209,7 @@ public class DependencyRules implements Rules {
 		if (parts.length > 2 && parts[2] != 0) {
 			return EnumSet.of(UpgradeStrategy.PATCH, UpgradeStrategy.RELEASE);
 		}
-		return EnumSet.of(UpgradeStrategy.PATCH, UpgradeStrategy.RELEASE, UpgradeStrategy.PREVIEW,
-				UpgradeStrategy.MINOR);
+		return Set.of();
 	}
 
 	/**
@@ -260,7 +268,10 @@ public class DependencyRules implements Rules {
 		 * @return the dependency rules.
 		 */
 		public DependencyRules build() {
-			return new DependencyRules(this.artifacts, this.branches);
+			List<ArtifactRule> artifactRules = List.copyOf(this.artifacts);
+			List<BranchRule> branchRules = List.copyOf(this.branches);
+			return new DependencyRules(new DependencyRules(Rules.absent(), artifactRules, List.of()), artifactRules,
+					branchRules);
 		}
 
 	}
@@ -322,7 +333,8 @@ public class DependencyRules implements Rules {
 		 * @return the branch rule.
 		 */
 		public BranchRule build() {
-			return BranchRule.of(this.pattern, this.artifacts, this.upgradeStrategies);
+			return BranchRule.of(this.pattern, List.copyOf(this.artifacts),
+					this.upgradeStrategies.isEmpty() ? Set.of() : EnumSet.copyOf(this.upgradeStrategies));
 		}
 
 	}

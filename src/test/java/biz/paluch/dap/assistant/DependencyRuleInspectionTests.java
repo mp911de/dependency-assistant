@@ -25,19 +25,16 @@ import biz.paluch.dap.maven.MavenFixtures;
 import biz.paluch.dap.rule.DependencyRules;
 import biz.paluch.dap.rule.RuleService;
 import com.intellij.codeInspection.InspectionManager;
+import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.codeInspection.QuickFix;
-import com.intellij.modcommand.ActionContext;
-import com.intellij.modcommand.ModCommandAction;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.util.ReflectionUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -301,12 +298,9 @@ class DependencyRuleInspectionTests {
 
 	private void applyFix(ProblemDescriptor problem) {
 
-		QuickFix<?> fix = problem.getFixes()[0];
-		WriteCommandAction.runWriteCommandAction(fixture.getProject(), () -> {
-			UpdateDependencyAction action = (UpdateDependencyAction) ReflectionUtil.getField(fix.getClass(), fix,
-					ModCommandAction.class, "myAction");
-			action.invoke(ActionContext.from(problem), problem.getStartElement(), null);
-		});
+		LocalQuickFix fix = (LocalQuickFix) problem.getFixes()[0];
+		WriteCommandAction.runWriteCommandAction(fixture.getProject(),
+				() -> fix.applyFix(fixture.getProject(), problem));
 	}
 
 	private List<ProblemDescriptor> inspect(PsiFile file) {

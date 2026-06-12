@@ -3,7 +3,7 @@
 	<!-- TODO For eg. Gradle, the colors override syntax highlighting 😬-->
 	<option name="UPGRADE_AVAILABLE">
 		<value>
-			<option name="BACKGROUND" value="D8F6D867"/>
+			<option name="BACKGROUND" value="DAFFDA41"/>
 			<option name="ERROR_STRIPE_COLOR" value="CDFABFCF"/>
 		</value>
 	</option>

@@ -28,10 +28,8 @@ import java.util.function.Predicate;
  * @param declarationSources the declaration sources to update.
  * @param versionSources the version sources to update.
  */
-public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from,
-                               ArtifactVersion version,
-                               Collection<DeclarationSource> declarationSources,
-                               Collection<VersionSource> versionSources) {
+public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, ArtifactVersion version,
+		Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
 
 	/**
 	 * Create an update for a dependency and release.

@@ -89,7 +89,7 @@
 		<platform.backend.documentation.linkHandler
 				implementation="biz.paluch.dap.assistant.DependencyUpgradeLinkHandler"/>
 		<annotator language="Properties"
-		           implementationClass="biz.paluch.dap.assistant.NewerVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
 		<localInspection id="dap.version-drift"
 				bundle="messages.MessageBundle"
 				groupKey="plugin.name"

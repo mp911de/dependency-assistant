@@ -16,10 +16,10 @@
 
 package biz.paluch.dap.github;
 
-import javax.swing.*;
+import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.github.GitHubAssistant.GitHubInterface;
 import biz.paluch.dap.support.MessageBundle;
 
@@ -28,7 +28,7 @@ import biz.paluch.dap.support.MessageBundle;
  *
  * @author Mark Paluch
  */
-public class GitHubLineMarkerProvider extends UpgradeAvailableLineMarkerProvider {
+public class GitHubLineMarkerProvider extends DependencyLineMarkerProvider {
 
 	@Override
 	public String getName() {

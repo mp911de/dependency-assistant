@@ -20,17 +20,17 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.gradle.GradleAssistant.GradleInterface;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.psi.PsiElement;
 
 /**
  * Gutter configurable for Gradle.
- * 
+ *
  * @author Mark Paluch
  */
-public class GradleLineMarkerProvider extends UpgradeAvailableLineMarkerProvider {
+public class GradleLineMarkerProvider extends DependencyLineMarkerProvider {
 
 	@Override
 	public String getName() {

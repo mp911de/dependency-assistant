@@ -82,6 +82,11 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		this.upgradeStrategies = original.upgradeStrategies;
 	}
 
+	private static Predicate<String> glob(String pattern) {
+		Pattern compiled = Pattern.compile(Pattern.quote(pattern).replace("*", "\\E.*\\Q"));
+		return compiled.asMatchPredicate();
+	}
+
 	/**
 	 * Create a branch rule without upgrade-strategy limits.
 	 *
@@ -149,6 +154,10 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		return new BranchRule(false, pattern, artifacts, upgradeStrategies);
 	}
 
+	public boolean hasUpgradeStrategies() {
+		return !this.upgradeStrategies.isEmpty();
+	}
+
 	/**
 	 * Return whether this branch rule permits the given upgrade strategy. A rule
 	 * without upgrade-strategy limits permits every strategy.
@@ -172,8 +181,68 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 		return defaultArtifacts.isEmpty() ? this : new BranchRule(this, defaultArtifacts);
 	}
 
+	BranchRule withUpgradeStrategies(Set<UpgradeStrategy> upgradeStrategies) {
+		return new BranchRule(this.fallback, this.pattern, this.predicate, this.artifacts, upgradeStrategies);
+	}
+
 	public Set<UpgradeStrategy> upgradeStrategies() {
 		return this.upgradeStrategies;
+	}
+
+	/**
+	 * Select the {@link DependencyRule} that applies to the given
+	 * {@link ArtifactId}.
+	 *
+	 * <p>This rule's own artifact rules are consulted first, then the inherited
+	 * default artifact rules; within each, the most specific matching
+	 * {@link ArtifactRule} wins. Inherited rules remain subject to this rule's
+	 * upgrade-strategy limits. Without any match, a fallback rule yields a present
+	 * rule enforcing this branch's upgrade-strategy limits; otherwise
+	 * {@link DependencyRule#absent()} is returned.
+	 *
+	 * @param artifactId the artifact to select a dependency rule for.
+	 * @param branchName the current branch name, can be {@literal null} if the
+	 * project is not versioned.
+	 * @param projectVersion the project version, can be {@literal null} if not
+	 * provided.
+	 * @return the effective dependency rule; never {@literal null}.
+	 */
+	public DependencyRule select(Rules parentRules, ArtifactId artifactId, @Nullable String branchName,
+			@Nullable ArtifactVersion projectVersion) {
+
+		DependencyRule rule = selectRule(parentRules, this.artifacts, artifactId, branchName, projectVersion);
+		if (rule != null) {
+			return rule;
+		}
+
+		rule = selectRule(parentRules, this.defaultArtifacts, artifactId, branchName, projectVersion);
+		if (rule != null) {
+			return rule;
+		}
+
+		return this.fallback ? new FallbackDependencyRule() : DependencyRule.absent();
+	}
+
+
+	private @Nullable DependencyRule selectRule(Rules parentRules, Collection<ArtifactRule> artifacts,
+			ArtifactId artifactId, @Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
+
+		return artifacts.stream()
+				.filter(it -> it.pattern().test(artifactId))
+				.max(ArtifactRule::compareTo)
+				.<DependencyRule>map(it -> {
+
+					String name = it.name();
+					if (StringUtils.isEmpty(name)) {
+						DependencyRule dependencyRule = parentRules.resolve(artifactId, branchName, projectVersion);
+						if (dependencyRule.isPresent()) {
+							name = dependencyRule.getDependencyName();
+						}
+					}
+
+					return new ResolvedDependencyRule(it.generations(), name, this::supports);
+				})
+				.orElse(null);
 	}
 
 	@Override
@@ -189,66 +258,12 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	@Override
 	public String toString() {
 		return "BranchRule{" +
-		       "pattern='" + pattern + '\'' +
-		       ", comparisonPattern=" + comparisonPattern +
-		       ", predicate=" + predicate +
-		       ", artifacts=" + artifacts +
-		       ", upgradeStrategies=" + upgradeStrategies +
-		       '}';
-	}
-
-	private static Predicate<String> glob(String pattern) {
-
-		Pattern compiled = Pattern.compile(Pattern.quote(pattern).replace("*", "\\E.*\\Q"));
-		return compiled.asMatchPredicate();
-	}
-
-	/**
-	 * Select the {@link DependencyRule} that applies to the given {@link ArtifactId}.
-	 *
-	 * <p>This rule's own artifact rules are consulted first, then the inherited
-	 * default artifact rules; within each, the most specific matching
-	 * {@link ArtifactRule} wins. Inherited rules remain subject to this rule's
-	 * upgrade-strategy limits. Without any match, a fallback rule yields a present
-	 * rule enforcing this branch's upgrade-strategy limits; otherwise
-	 * {@link DependencyRule#absent()} is returned.
-	 *
-	 * @param artifactId the artifact to select a dependency rule for.
-	 * @return the effective dependency rule; never {@literal null}.
-	 */
-	public DependencyRule select(ArtifactId artifactId) {
-
-		DependencyRule rule = selectRule(this.artifacts, artifactId);
-		if (rule != null) {
-			return rule;
-		}
-
-		rule = selectRule(this.defaultArtifacts, artifactId);
-		if (rule != null) {
-			return rule;
-		}
-
-		return this.fallback ? new FallbackDependencyRule() : DependencyRule.absent();
-	}
-
-	private @Nullable DependencyRule selectRule(Collection<ArtifactRule> artifacts, ArtifactId artifactId) {
-
-		return artifacts.stream()
-				.filter(it -> it.pattern().test(artifactId))
-				.max(ArtifactRule::compareTo)
-				.<DependencyRule>map(it -> {
-
-					String name = it.name();
-					if (StringUtils.isEmpty(name) && artifacts != defaultArtifacts) {
-						DependencyRule dependencyRule = selectRule(defaultArtifacts, artifactId);
-						if (dependencyRule != null && dependencyRule.isPresent()) {
-							name = dependencyRule.getDependencyName();
-						}
-					}
-
-					return new ResolvedDependencyRule(it.generations(), name, this::supports);
-				})
-				.orElse(null);
+				"pattern='" + pattern + '\'' +
+				", comparisonPattern=" + comparisonPattern +
+				", predicate=" + predicate +
+				", artifacts=" + artifacts +
+				", upgradeStrategies=" + upgradeStrategies +
+				'}';
 	}
 
 	class FallbackDependencyRule implements DependencyRule {

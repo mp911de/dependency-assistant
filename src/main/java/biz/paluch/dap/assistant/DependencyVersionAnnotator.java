@@ -16,8 +16,12 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.RuleService;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
@@ -27,6 +31,10 @@ import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeAvailable;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.UpgradeSuggestionGroup;
+import com.intellij.codeInsight.daemon.HighlightDisplayKey;
+import com.intellij.codeInspection.LocalQuickFix;
+import com.intellij.codeInspection.ProblemDescriptorBase;
+import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
@@ -39,7 +47,7 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-public class NewerVersionAnnotator implements Annotator {
+public class DependencyVersionAnnotator implements Annotator {
 
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {
@@ -90,29 +98,37 @@ public class NewerVersionAnnotator implements Annotator {
 		AnnotationBuilder builder = holder
 				.newAnnotation(DependencyAssistantSeverities.UPGRADE_AVAILABLE,
 						declaration.getArtifactId() + ": " + message)
-
 				.range(context.getInterfaceAssistant().getHighlightRange(element));
 
 		if (rule.isPresent()) {
 			builder.problemGroup(UpgradeSuggestionGroup.problemGroup())
 					.textAttributes(DependencyAssistantSeverities.UPGRADE_SUGGESTION_KEY);
-		}
-		else {
+		} else {
 			builder.problemGroup(UpgradeAvailable.problemGroup())
-				.textAttributes(DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY);
+					.textAttributes(DependencyAssistantSeverities.UPGRADE_AVAILABLE_KEY);
 		}
 
+		HighlightDisplayKey key = HighlightDisplayKey.findOrRegister(MessageBundle.message("plugin.name"),
+				MessageBundle.message("plugin.name"));
 		if (sameFileDeclaration) {
 
-			builder = builder.newFix(new UpdateDependencyAction(versionLiteral, context, bestOption))
-					.registerFix();
+			Set<ArtifactVersion> seen = new HashSet<>();
+
+			UpdateDependencyVersionQuickFix fix = new UpdateDependencyVersionQuickFix(versionLiteral, context,
+					bestOption);
+			ProblemDescriptorBase d = new ProblemDescriptorBase(versionLiteral, versionLiteral, message,
+					new LocalQuickFix[] {fix}, ProblemHighlightType.INFORMATION, false, null, true, true, null);
+			builder = builder.newFix(fix).key(key).registerFix();
+			seen.add(bestOption.getRelease().getVersion());
 
 			for (UpgradeSuggestion suggestion : upgrades.getUpgrades().values()) {
-				if (suggestion == bestOption) {
+				if (suggestion == bestOption || seen.contains(suggestion.getRelease().getVersion())) {
 					continue;
 				}
-				builder = builder.newFix(new UpdateDependencyAction(versionLiteral, context, suggestion))
+				builder = builder.newFix(new UpdateDependencyVersionQuickFix(versionLiteral, context, suggestion))
+						.key(key)
 						.registerFix();
+				seen.add(bestOption.getRelease().getVersion());
 			}
 		}
 

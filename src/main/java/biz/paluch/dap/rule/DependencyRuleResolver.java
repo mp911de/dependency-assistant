@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see RuleService
  */
+// Todo: rename to RuleService
 public interface DependencyRuleResolver {
 
 	/**
@@ -57,12 +58,14 @@ public interface DependencyRuleResolver {
 			Versioned projectVersion);
 
 	/**
-	 * Resolve the dependency rule for the given artifact using an explicit
-	 * branch name instead of VCS branch detection.
+	 * Resolve the dependency rule for the given artifact using an explicit branch
+	 * name instead of VCS branch detection.
 	 *
 	 * @param artifactId the artifact to resolve a rule for.
-	 * @param branchName the branch name to match; can be {@literal null}.
-	 * @param projectVersion the project version; can be {@literal null}.
+	 * @param branchName the current branch name, can be {@literal null} if the
+	 * project is not versioned.
+	 * @param projectVersion the project version, can be {@literal null} if not
+	 * provided.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
 	 * when no rule applies; never {@literal null}.
 	 * @see #resolve(ArtifactId, Project, VirtualFile, Versioned)

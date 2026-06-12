@@ -35,8 +35,8 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Integration tests for the multi-context {@link DependencyCheck#resolveScope}
- * engine.
+ * Integration tests for the multi-context
+ * {@link DependencyCheck#findDependencyUpgrades} engine.
  *
  * @author Mark Paluch
  */
@@ -65,7 +65,7 @@ class DependencyCheckScopeTests {
 		GradleFixtures.analyze(a);
 		GradleFixtures.analyze(b);
 
-		DependencyCheckResult result = check(project, a, b);
+		DependencyUpgradeCandidates result = check(project, a, b);
 
 		assertThat(result.candidates()).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
@@ -83,7 +83,7 @@ class DependencyCheckScopeTests {
 
 		GradleFixtures.analyze(file);
 
-		DependencyCheckResult result = check(project, file);
+		DependencyUpgradeCandidates result = check(project, file);
 
 		assertThat(result.candidates()).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
@@ -93,13 +93,12 @@ class DependencyCheckScopeTests {
 		});
 	}
 
-	private static DependencyCheckResult check(Project project, PsiFile... selection) {
+	private static DependencyUpgradeCandidates check(Project project, PsiFile... selection) {
 
 		List<VirtualFile> files = Arrays.stream(selection).map(PsiFile::getVirtualFile).toList();
 		UpgradeScope scope = UpgradeScopeResolver.resolve(project, new UpgradeRequest(files, null));
-		List<UpgradeScope.Entry> entries = scope.entries();
 
-		return new DependencyCheck(project).resolveScope(new EmptyProgressIndicator(), entries,
+		return new DependencyCheck(project).findDependencyUpgrades(new EmptyProgressIndicator(), scope,
 				DependencyCheck.Consistency.CACHED);
 	}
 

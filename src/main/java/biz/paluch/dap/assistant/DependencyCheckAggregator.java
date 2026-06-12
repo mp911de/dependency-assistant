@@ -192,7 +192,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * @param releases the resolved releases keyed by artifact.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
-	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
+	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
 		return toDependencyCheckResult(releases, DependencyRuleResolver.absent());
 	}
 
@@ -207,7 +207,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * @param evaluator the rule evaluator.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
-	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
+	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
 			DependencyRuleResolver evaluator) {
 
 		List<UpgradeCandidate> candidates = new ArrayList<>();
@@ -248,7 +248,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 
 		candidates.sort(Comparator.comparing(UpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
-		return new DependencyCheckResult(candidates, files, errors);
+		return new DependencyUpgradeCandidates(candidates, files, errors);
 	}
 
 	private static List<String> getErrors(Map<?, ReleaseLookupResult> map) {

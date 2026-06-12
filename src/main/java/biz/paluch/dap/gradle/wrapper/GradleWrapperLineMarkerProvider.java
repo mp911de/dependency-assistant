@@ -20,7 +20,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperAssistant.GradleWrapperInterface;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.psi.PsiElement;
@@ -30,7 +30,7 @@ import com.intellij.psi.PsiElement;
  *
  * @author Mark Paluch
  */
-public class GradleWrapperLineMarkerProvider extends UpgradeAvailableLineMarkerProvider {
+public class GradleWrapperLineMarkerProvider extends DependencyLineMarkerProvider {
 
 	@Override
 	public String getName() {

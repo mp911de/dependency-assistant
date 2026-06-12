@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.RuleService;
@@ -37,9 +38,6 @@ import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.icons.AllIcons;
-import com.intellij.modcommand.ActionContext;
-import com.intellij.modcommand.ModCommandAction;
-import com.intellij.modcommand.Presentation;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -108,15 +106,14 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 					message += " " + MessageBundle.message("inspection.dependency-rule.remediation.message",
 							interfaceAssistant.getDocumentationText(remediation.getVersion()));
 				}
-				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference, evaluated,
+				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference,
 						context, remediation);
 
 				if (fix == null) {
 					holder.registerProblem(element, message);
 					return;
 				}
-				holder.problem(element, message).fix((ModCommandAction) fix)
-						.register();
+				holder.problem(element, message).fix(fix).register();
 			}
 
 		};
@@ -131,35 +128,21 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 	 * Quick fix that realigns a drifting version literal to the newest cached
 	 * release matching the governing generation.
 	 */
-	static class AlignGenerationQuickFix extends UpdateDependencyAction implements Iconable {
-
-		private final DependencyUpdate update;
-
-		private final EvaluatedDependencyRule evaluated;
+	static class AlignGenerationQuickFix extends UpdateDependencyVersionQuickFix implements Iconable {
 
 		AlignGenerationQuickFix(ArtifactDeclaration declaration, ProjectDependencyContext context,
-				DependencyUpdate update, EvaluatedDependencyRule evaluated) {
-			super(declaration, context, update);
-			this.update = update;
-			this.evaluated = evaluated;
+				DependencyUpdate update) {
+			super(declaration, context, update, UpgradeStrategy.RULE);
 		}
 
 		public static @Nullable AlignGenerationQuickFix findFix(ArtifactReference reference,
-				EvaluatedDependencyRule evaluated, ProjectDependencyContext context,
-				@Nullable Release remediation) {
+				ProjectDependencyContext context, @Nullable Release remediation) {
 
 			if (reference.getDeclaration().getVersionLiteral() == null || remediation == null) {
 				return null;
 			}
 			DependencyUpdate update = DependencyUpdate.from(reference.toDependency(), remediation);
-			return new AlignGenerationQuickFix(reference.getDeclaration(), context, update, evaluated);
-		}
-
-		@Override
-		protected Presentation getPresentation(ActionContext context, PsiElement element) {
-			String message = MessageBundle.message("inspection.dependency-rule.fix.name",
-					evaluated.getDependencyName(), update.versionAsString());
-			return Presentation.of(message).withIcon(AllIcons.General.GreenCheckmark);
+			return new AlignGenerationQuickFix(reference.getDeclaration(), context, update);
 		}
 
 		@Override

@@ -18,7 +18,7 @@ package biz.paluch.dap.assertions;
 
 import java.util.List;
 
-import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider.ActionNavigationHandler;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider.ActionNavigationHandler;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.GutterMark;

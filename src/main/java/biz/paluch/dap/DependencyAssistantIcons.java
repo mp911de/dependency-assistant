@@ -19,6 +19,8 @@ package biz.paluch.dap;
 import javax.swing.Icon;
 
 import com.intellij.openapi.util.IconLoader;
+import com.intellij.openapi.util.ScalableIcon;
+import com.intellij.ui.LayeredIcon;
 
 /**
  * Icon utility class for Dependency Assistant icons.
@@ -91,6 +93,24 @@ public class DependencyAssistantIcons {
 	 * Dependency is locked to a version/generation.
 	 */
 	public static final Icon DEPENDENCY_LOCK = load("/META-INF/icons/dependencyLock.svg");
+
+	/**
+	 * Compose a dependency upgrade icon: the assistant gutter icon scaled into the
+	 * lower-left corner with the version-age badge layered onto the lower-right
+	 * quadrant.
+	 * @param dependencyIcon the assistant gutter icon; must not be {@literal null}.
+	 * @param ageIcon the version-age badge icon; must not be {@literal null}.
+	 * @return the layered upgrade icon.
+	 */
+	public static Icon upgradeIcon(Icon dependencyIcon, Icon ageIcon) {
+
+		LayeredIcon icon = new LayeredIcon(2);
+		Icon scaled = ((ScalableIcon) dependencyIcon).scale(0.7f);
+		icon.setIcon(scaled, 0, dependencyIcon.getIconHeight() - scaled.getIconHeight(), 0);
+		icon.setIcon(((ScalableIcon) ageIcon).scale(0.7f), 1, dependencyIcon.getIconWidth() / 2,
+				dependencyIcon.getIconHeight() / 2);
+		return icon;
+	}
 
 	private static Icon load(String path) {
 		return IconLoader.getIcon(path, DependencyAssistantIcons.class.getClassLoader());

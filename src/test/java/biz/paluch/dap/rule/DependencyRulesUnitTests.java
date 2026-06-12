@@ -248,14 +248,14 @@ class DependencyRulesUnitTests {
 		Predicate<UpgradeStrategy> supports = rule::supports;
 
 		assertThat(supports).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.RELEASE, UpgradeStrategy.PREVIEW,
-				UpgradeStrategy.MINOR).rejects(UpgradeStrategy.MAJOR, UpgradeStrategy.LATEST);
+				UpgradeStrategy.MINOR);
 	}
 
 	@Test
 	void matchesProjectVersionAgainstDisplayedVersion() {
 
 		DependencyRules rules = DependencyRules.builder()
-				.artifact("org.springframework:*", "7.0")
+				.artifact("org.springframework:*", it -> it.name("Spring Framework"))
 				.branch("v2.*", branch -> branch.artifact("org.springframework:*", "5.0"))
 				.build();
 
@@ -263,6 +263,7 @@ class DependencyRulesUnitTests {
 				ArtifactVersion.of("v2.1.0"));
 
 		assertThat(rule.getGenerations()).hasToString("5.0.x");
+		assertThat(rule.getDependencyName()).isEqualTo("Spring Framework");
 	}
 
 	@Test

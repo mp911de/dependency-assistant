@@ -34,6 +34,6 @@ import com.intellij.openapi.vfs.VirtualFile;
  * @param errors non-fatal release lookup errors; empty when all lookups
  * succeeded.
  */
-public record DependencyCheckResult(List<UpgradeCandidate> candidates, Collection<VirtualFile> files,
+public record DependencyUpgradeCandidates(List<UpgradeCandidate> candidates, Collection<VirtualFile> files,
 		List<String> errors) {
 }

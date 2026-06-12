@@ -67,17 +67,16 @@ public class UpgradeSuggestion {
 	 * Return the localized gutter message for this suggestion.
 	 */
 	public String getMessage() {
-		String upgradeTarget = MessageBundle.message("upgrade-strategy." + strategy.name());
-		return MessageBundle.message("gutter.newer.tooltip", upgradeTarget, getRelease().version().toString());
+		return MessageBundle.message("gutter.newer.tooltip", MessageBundle.displayName(strategy),
+				getRelease().version().toString());
 	}
 
 	/**
 	 * Return the localized gutter message for this suggestion.
 	 */
 	public String getSuggestionMessage() {
-		String upgradeTarget = MessageBundle.message("upgrade-strategy." + strategy.name());
-		return MessageBundle.message("gutter.suggestion.tooltip", upgradeTarget, getRelease().version()
-				.toString());
+		return MessageBundle.message("gutter.suggestion.tooltip", MessageBundle.displayName(strategy),
+				getRelease().version().toString());
 	}
 
 	/**

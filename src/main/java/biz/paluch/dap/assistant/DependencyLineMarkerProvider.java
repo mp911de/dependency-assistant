@@ -42,6 +42,7 @@ import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
+import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -52,7 +53,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescriptor {
+public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 	@Override
 	public @GutterName String getName() {
@@ -68,7 +69,7 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
 		ProjectDependencyContext context = getContext(element);
-		if (context.isAbsent()) {
+		if ((context.isAbsent())) {
 			return null;
 		}
 
@@ -78,8 +79,6 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 		if (!artifactReference.isResolved() || !artifactReference.getDeclaration().isVersionDefined()) {
 			return null;
 		}
-
-		AvailableUpgrades upgrades = lookup.suggestUpgrades(artifactReference);
 
 		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
 		RuleService ruleService = RuleService.getInstance(element.getProject());
@@ -91,6 +90,7 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 				context.getInterfaceAssistant());
 		InterfaceAssistant ui = context.getInterfaceAssistant();
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
+		AvailableUpgrades upgrades = lookup.suggestUpgrades(artifactReference).filterSuggestions(rule::isEnabled);
 
 		if (!upgrades.isPresent()) {
 			if (evaluated.isPresent() && evaluated.isLocked()) {
@@ -107,13 +107,9 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 			return null;
 		}
 
-		upgrades = upgrades.filterSuggestions(rule::isEnabled);
-		if (!upgrades.isPresent()) {
-			return null;
-		}
-
 		String tooltip = rule.isPresent() ? suggestion.getSuggestionMessage() : suggestion.getMessage();
-		String accessibleName = rule.isPresent() ? MessageBundle.message("gutter.suggestion.accessible") : MessageBundle.message("gutter.newer.accessible");
+		String accessibleName = rule.isPresent() ? MessageBundle.message("gutter.suggestion.accessible")
+				: MessageBundle.message("gutter.newer.accessible");
 
 		if (evaluated.isPresent()) {
 			String evaluatedToolTip = evaluated.getToolTipText();
@@ -145,9 +141,16 @@ public class UpgradeAvailableLineMarkerProvider extends LineMarkerProviderDescri
 		}
 
 		String tooltipToUse = tooltip;
+		Icon icon;
+
+		if (evaluated.isPresent()) {
+			icon = evaluated.getIcon();
+		} else {
+			icon = IconLoader.getTransparentIcon(ui.getGutterIcon(declaration), 0.7f);
+		}
 
 		return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
-				evaluated.isPresent() ? evaluated.getIcon() : ui.getGutterIcon(declaration), e -> tooltipToUse,
+				icon, e -> tooltipToUse,
 				new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 	}

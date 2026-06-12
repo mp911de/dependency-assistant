@@ -19,7 +19,7 @@ package biz.paluch.dap.assertions;
 import java.util.ArrayList;
 import java.util.List;
 
-import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import com.intellij.codeInsight.daemon.GutterMark;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.openapi.util.Key;
@@ -32,10 +32,9 @@ import org.assertj.core.api.AssertProvider;
  * AssertJ {@link AssertProvider}.
  *
  * <p>This type is the bridge between PSI-based tests and
- * {@link GutterMarksAssert}. It invokes
- * {@link UpgradeAvailableLineMarkerProvider} directly so tests can assert the
- * line markers that Dependency Assistant would contribute without relying on
- * the full IDE daemon lifecycle.
+ * {@link GutterMarksAssert}. It invokes {@link DependencyLineMarkerProvider}
+ * directly so tests can assert the line markers that Dependency Assistant would
+ * contribute without relying on the full IDE daemon lifecycle.
  *
  * <p>Instances are cached in {@link PsiFile} user data so that repeated
  * assertions can reuse the same collected marker state for a given file
@@ -54,8 +53,8 @@ public class LineMarkers implements AssertProvider<GutterMarksAssert> {
 	}
 
 	/**
-	 * Returns the gutter marks exposed by
-	 * {@link UpgradeAvailableLineMarkerProvider} for the given file.
+	 * Returns the gutter marks exposed by {@link DependencyLineMarkerProvider} for
+	 * the given file.
 	 * <p>The resulting {@code LineMarkers} instance is cached in the file's user
 	 * data and reused by subsequent invocations. The collected list mirrors the
 	 * IDE's visible gutter model by deduplicating markers with the same anchor
@@ -73,7 +72,7 @@ public class LineMarkers implements AssertProvider<GutterMarksAssert> {
 
 		List<GutterMark> gutterMarks = new ArrayList<>();
 		java.util.Set<com.intellij.psi.PsiElement> seenAnchors = new java.util.HashSet<>();
-		UpgradeAvailableLineMarkerProvider provider = new UpgradeAvailableLineMarkerProvider();
+		DependencyLineMarkerProvider provider = new DependencyLineMarkerProvider();
 
 		SyntaxTraverser.psiTraverser(file).forEach(element -> {
 

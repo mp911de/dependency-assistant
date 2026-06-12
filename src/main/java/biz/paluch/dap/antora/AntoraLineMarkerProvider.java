@@ -20,7 +20,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.antora.AntoraAssistant.AntoraInterface;
-import biz.paluch.dap.assistant.UpgradeAvailableLineMarkerProvider;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.support.MessageBundle;
 
 /**
@@ -28,7 +28,7 @@ import biz.paluch.dap.support.MessageBundle;
  *
  * @author Mark Paluch
  */
-public class AntoraLineMarkerProvider extends UpgradeAvailableLineMarkerProvider {
+public class AntoraLineMarkerProvider extends DependencyLineMarkerProvider {
 
 	@Override
 	public String getName() {

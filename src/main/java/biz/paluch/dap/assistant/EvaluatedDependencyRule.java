@@ -110,9 +110,9 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 	 * Evaluate the governing rule of the given candidate against its current version.
 	 * @return the evaluation outcome for the candidate's current version.
 	 */
-	public static EvaluatedDependencyRule of(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version, InterfaceAssistant assistant) {
-		return new EvaluatedDependencyRule(rule, artifactId, version,
-				assistant);
+	public static EvaluatedDependencyRule of(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
+			InterfaceAssistant assistant) {
+		return new EvaluatedDependencyRule(rule, artifactId, version, assistant);
 	}
 
 	/**
@@ -126,6 +126,10 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 		return ABSENT;
 	}
 
+	/**
+	 * Evaluate the governing rule of the given candidate against its current
+	 * version.
+	 */
 	public static EvaluatedDependencyRule evaluate(DependencyRuleResolver rules, Project project,
 			ArtifactDeclaration declaration, ProjectDependencyContext context, VirtualFile virtualFile,
 			Versioned projectVersion) {
@@ -249,7 +253,7 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 		for (UpgradeStrategy strategy : STRATEGIES) {
 			if (rule.isEnabled(strategy)) {
 				strategyCount++;
-				names.add(MessageBundle.message("upgrade-strategy." + strategy.name()));
+				names.add(MessageBundle.displayName(strategy));
 			}
 		}
 

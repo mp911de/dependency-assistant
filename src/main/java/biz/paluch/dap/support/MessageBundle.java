@@ -18,6 +18,7 @@ package biz.paluch.dap.support;
 
 import java.util.function.Supplier;
 
+import biz.paluch.dap.artifact.UpgradeStrategy;
 import com.intellij.DynamicBundle;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NonNls;
@@ -47,6 +48,13 @@ public class MessageBundle {
 	 */
 	public static @Nls Supplier<String> lazyMessage(@PropertyKey(resourceBundle = BUNDLE) String key, Object... params) {
 		return INSTANCE.getLazyMessage(key, params);
+	}
+
+	/**
+	 * Return the localized display name of the given upgrade strategy.
+	 */
+	public static @Nls String displayName(UpgradeStrategy strategy) {
+		return INSTANCE.getMessage("upgrade-strategy." + strategy.name());
 	}
 
 }

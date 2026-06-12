@@ -60,6 +60,7 @@ import org.springframework.util.ClassUtils;
  *
  * @author Mark Paluch
  */
+// TODO: Rename to DependencyfileService
 public class RuleService implements Disposable, DependencyRuleResolver {
 
 	static final String FILE_NAME = "dependencyfile.json";

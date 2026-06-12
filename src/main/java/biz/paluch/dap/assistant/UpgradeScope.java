@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.Iterator;
 import java.util.List;
 
 import biz.paluch.dap.ProjectDependencyContext;
@@ -31,7 +32,14 @@ import com.intellij.psi.PsiFile;
  * @author Mark Paluch
  * @see UpgradeScopeResolver
  */
-public record UpgradeScope(List<Entry> entries, Reason reason) {
+public record UpgradeScope(List<Entry> entries, Reason reason) implements Iterable<UpgradeScope.Entry> {
+
+	/**
+	 * Create a resolved scope from the given entries.
+	 */
+	public static UpgradeScope discover(List<Entry> entries) {
+		return new UpgradeScope(entries, Reason.DISCOVERY);
+	}
 
 	/**
 	 * Create a resolved scope from the given entries.
@@ -56,11 +64,24 @@ public record UpgradeScope(List<Entry> entries, Reason reason) {
 		return entries.isEmpty();
 	}
 
+	@Override
+	public Iterator<Entry> iterator() {
+		return entries().iterator();
+	}
+
 	/**
 	 * Classification for an empty scope resolved from an explicit selection.
 	 */
 	public enum Reason {
 
+		/**
+		 * Initial discovery of build files.
+		 */
+		DISCOVERY,
+
+		/**
+		 * Upgrade scope resolved from an explicit selection.
+		 */
 		SUCCESS,
 
 		/**
