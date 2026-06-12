@@ -16,16 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
-import java.awt.AWTEvent;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Point;
-import java.awt.Toolkit;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
@@ -80,6 +71,7 @@ import com.intellij.openapi.actionSystem.ex.ActionButtonLook;
 import com.intellij.openapi.actionSystem.impl.ActionButton;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -149,6 +141,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 */
 	static class DependencyCheckComponents extends JPanel {
 
+		private final static int STATE_STRIP_HEIGHT = strategyStripHeight();
+
 		private final UpgradeReview review;
 
 		private final ListTableModel<UpgradeCandidate> tableModel;
@@ -206,18 +200,18 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			table.setAutoCreateRowSorter(true);
 			table.setShowGrid(true);
-			table.setRowHeight(table.getRowHeight() + 4);
+			table.setRowHeight(Math.max(table.getRowHeight(), STATE_STRIP_HEIGHT) + 4);
 			table.setIntercellSpacing(new Dimension(JBUI.scale(2), JBUI.scale(2)));
 			table.getTableHeader().setReorderingAllowed(false);
 
-			table.setPreferredScrollableViewportSize(new Dimension(JBUI.scale(800), JBUI.scale(420)));
+			table.setPreferredScrollableViewportSize(new Dimension(JBUI.scale(820), JBUI.scale(420)));
 
 			TableColumnModel columns = table.getColumnModel();
 
 			columns.getColumn(0).setPreferredWidth(JBUI.scale(300));
-			columns.getColumn(1).setPreferredWidth(JBUI.scale(90));
-			columns.getColumn(2).setPreferredWidth(JBUI.scale(100));
-			columns.getColumn(3).setPreferredWidth(JBUI.scale(160));
+			columns.getColumn(1).setPreferredWidth(JBUI.scale(110));
+			columns.getColumn(2).setPreferredWidth(JBUI.scale(90));
+			columns.getColumn(3).setPreferredWidth(JBUI.scale(140));
 			columns.getColumn(4).setPreferredWidth(JBUI.scale(40));
 
 			JCheckBox filterVersionsCheckBox = new JCheckBox(MessageBundle.message("dialog.filter.version.suggestions"),
@@ -388,7 +382,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 					context.applyUpdates(file, fileUpdates);
 
 					for (DependencyUpdate fileUpdate : fileUpdates) {
-						applied.add(new AppliedDependencyUpdate(fileUpdate.coordinate(), fileUpdate.from(), fileUpdate.version()));
+						applied.add(new AppliedDependencyUpdate(fileUpdate.coordinate(), fileUpdate.from(),
+								fileUpdate.version()));
 					}
 				}
 			}
@@ -585,6 +580,19 @@ public class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	/**
+	 * Row-height floor matching the upgrades column button strip so rows keep the
+	 * same height whether or not any row offers strategy buttons.
+	 */
+	private static int strategyStripHeight() {
+
+		int height = 0;
+		for (UpgradeStrategy strategy : UPGRADE_TARGET_STRATEGIES) {
+			height = Math.max(height, strategyIconSize(VersionAge.fromTarget(strategy).getIcon()).height);
+		}
+		return height;
+	}
+
+	/**
 	 * Shared editor for the upgrades column: one icon button per offered upgrade
 	 * strategy, re-targeted to the edited row when editing starts.
 	 */
@@ -620,10 +628,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 			String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
 
 			AnAction buttonAction = new AnAction(shortLabel, null, icon) {
+
 				@Override
 				public void actionPerformed(AnActionEvent e) {
 					action.run();
 				}
+
 			};
 
 			Dimension size = strategyIconSize(icon);
@@ -649,13 +659,18 @@ public class DependencyCheckDialog extends DialogWrapper {
 				ActionButton button = entry.getValue();
 				Release target = review.resolveTarget(candidate, strategy);
 
-				if (target != null) {
-					String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
-					button.setToolTipText(
-							MessageBundle.message("dialog.upgradeTarget.tooltip", shortLabel, target.version()));
-					button.getAccessibleContext().setAccessibleName(shortLabel + " " + target.version());
+				if (target == null) {
+					button.setVisible(false);
+					continue;
 				}
-				button.setVisible(target != null);
+
+				String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name()) + ": "
+						+ candidate.getInterfaceAssistant().getDocumentationText(target.getVersion());
+				button.getPresentation().setText(shortLabel);
+				button.setToolTipText(
+						MessageBundle.message("dialog.upgradeTarget.tooltip", shortLabel, target.version()));
+				button.getAccessibleContext().setAccessibleName(shortLabel);
+				button.setVisible(true);
 			}
 			return buttonPanel;
 		}
@@ -851,29 +866,48 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
 
+			private @Nullable Font cachedFont;
+
+			private int cachedFontSize = -1;
+
 			@Override
 			public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
 					boolean hasFocus, int row, int column) {
+				super.getTableCellRendererComponent(
+						table, value, isSelected, hasFocus, row, column);
 
-				Component component = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row,
-						column);
 				UpgradeCandidate candidate = ModelUtil.getRow(table, row);
 				DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
 				EvaluatedDependencyRule rule = candidate.getRuleResult();
 
 				if (declaredVersions.hasVersionDrift()) {
 					setIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
-				}
-				else if (rule.isPresent()) {
+				} else if (rule.isPresent()) {
 					setIcon(rule.getIcon());
+				} else {
+					setIcon(null);
 				}
+				setFont(getCachedEditorFont(getFont().getSize()));
+
 				if (declaredVersions.hasVersionDrift() || rule.isPresent()) {
 					setToolTipText(conflictTooltip(candidate, rule));
 				} else {
-					setIcon(null);
 					setToolTipText(null);
 				}
-				return component;
+
+				return this;
+			}
+
+			private Font getCachedEditorFont(int uiFontSize) {
+
+				if (cachedFont == null || cachedFontSize != uiFontSize) {
+					EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
+					String fontName = scheme.getEditorFontName();
+					cachedFontSize = uiFontSize;
+					cachedFont = new Font(fontName, Font.PLAIN, uiFontSize);
+				}
+
+				return cachedFont;
 			}
 
 		};
@@ -897,9 +931,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 			return ArtifactVersion.class;
 		}
 
-		private static String conflictTooltip(UpgradeCandidate candidate, EvaluatedDependencyRule rule) {
+		private static String conflictTooltip(
+				UpgradeCandidate candidate,
+				EvaluatedDependencyRule rule) {
 			StringBuilder tooltip = new StringBuilder();
 			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
+
 			if (declaredVersions.hasVersionDrift()) {
 				tooltip.append(declaredVersions.getToolTipText());
 			}
@@ -908,8 +945,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 			}
 
 			if (StringUtils.isEmpty(tooltip.toString())) {
-				return "";
+				return null;
 			}
+
 			return "<html>%s</html>".formatted(tooltip);
 		}
 
