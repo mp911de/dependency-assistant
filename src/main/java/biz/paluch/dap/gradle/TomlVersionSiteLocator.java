@@ -16,15 +16,10 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
-import biz.paluch.dap.gradle.GradleVersionSite.MapPropertyVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.CoordinateSite;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
@@ -82,25 +77,11 @@ class TomlVersionSiteLocator implements VersionSiteLocator<TomlLiteral> {
 			}
 
 			DependencySite site = declaration.toDependencySite(declarationKeyValue, literal);
-			return classifyTomlEntry(site, declarationKeyValue, literal);
+			return new CoordinateSite(site.getArtifactId(), site.getVersionSource(), site.getDeclarationSource(),
+					declarationKeyValue, literal, GradleVersionSite.versionOf(site));
 		}
 
 		return GradleVersionSite.absent();
-	}
-
-	private static GradleVersionSite classifyTomlEntry(DependencySite site, PsiElement declaration,
-			PsiElement versionElement) {
-
-		ArtifactId id = site.getArtifactId();
-		VersionSource source = site.getVersionSource();
-		ArtifactVersion version = GradleVersionSite.versionOf(site);
-
-		if (source instanceof VersionSource.VersionProperty property) {
-			return new MapPropertyVersion(id, property.getProperty(), source, site.getDeclarationSource(), declaration,
-					versionElement, version);
-		}
-
-		return new DirectCoordinate(id, source, site.getDeclarationSource(), declaration, versionElement, version);
 	}
 
 }

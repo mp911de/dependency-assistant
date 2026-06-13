@@ -29,11 +29,11 @@ import org.jspecify.annotations.Nullable;
  * Interface representing a Gradle version declaration site.
  *
  * <p>Produced by per-language locators (Groovy, Kotlin, TOML) for the PSI under
- * the caret and by the parsers when enumerating an entire build file. Variants
- * that carry a resolvable artifact identity also implement
- * {@link DependencySite}; {@link BackingProperty}, {@link TomlCatalogAlias},
- * and {@link Absent} do not because their artifact identity is either
- * established only through resolution or absent altogether.
+ * the caret and by the parsers when enumerating an entire build file. A
+ * {@link CoordinateSite} carries a resolvable artifact identity and therefore
+ * also implements {@link DependencySite}; {@link BackingProperty},
+ * {@link TomlCatalogAlias}, and {@link Absent} do not, because their artifact
+ * identity is either established only through resolution or absent altogether.
  *
  * <p>Gradle-internal abstraction.
  *
@@ -43,11 +43,8 @@ import org.jspecify.annotations.Nullable;
  * @see TomlVersionSiteLocator
  * @see GradleVersionSiteResolver
  */
-sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, GradleVersionSite.MapLiteralVersion,
-		GradleVersionSite.MapPropertyVersion, GradleVersionSite.VersionBlockPreferLiteral,
-		GradleVersionSite.VersionBlockPreferProperty, GradleVersionSite.VersionBlockStrictlyLiteral,
-		GradleVersionSite.VersionBlockStrictlyProperty, GradleVersionSite.PluginVersion,
-		GradleVersionSite.BackingProperty, GradleVersionSite.TomlCatalogAlias, GradleVersionSite.Absent {
+sealed interface GradleVersionSite permits GradleVersionSite.CoordinateSite, GradleVersionSite.BackingProperty,
+		GradleVersionSite.TomlCatalogAlias, GradleVersionSite.Absent {
 
 	/**
 	 * Return the artifact identifier for this site.
@@ -90,8 +87,8 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	}
 
 	/**
-	 * Marker exposing the resolved {@link ArtifactVersion} for variants that carry
-	 * one in addition to the raw {@link VersionSource}.
+	 * Marker exposing the resolved {@link ArtifactVersion} for sites that carry one
+	 * in addition to the raw {@link VersionSource}.
 	 */
 	interface VersionAware {
 
@@ -110,17 +107,18 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 	}
 
 	/**
-	 * Direct compact-string dependency notation such as {@code 'g:a:v'}.
+	 * A resolvable Gradle coordinate declaration, regardless of the surface
+	 * notation that produced it (direct {@code 'g:a:v'} strings, map-style named
+	 * arguments, {@code version { prefer/strictly }} blocks, or plugin
+	 * declarations).
+	 *
+	 * <p>The {@code versionAnchor} is the PSI element to which a version edit or
+	 * lookup applies; it may be a version literal or a property reference.
 	 */
-	record DirectCoordinate(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
-			PsiElement declarationElement, PsiElement versionLiteral, @Nullable ArtifactVersion version)
+	record CoordinateSite(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
+			PsiElement declarationElement, PsiElement versionAnchor, @Nullable ArtifactVersion version)
 			implements GradleVersionSite, DependencySite, VersionAware {
 
-		DirectCoordinate(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
-				PsiElement declarationElement, PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
-		}
-
 		@Override
 		public ArtifactId getArtifactId() {
 			return artifactId;
@@ -134,262 +132,6 @@ sealed interface GradleVersionSite permits GradleVersionSite.DirectCoordinate, G
 		@Override
 		public DeclarationSource getDeclarationSource() {
 			return declarationSource;
-		}
-
-		@Override
-		public PsiElement getDeclarationElement() {
-			return declarationElement;
-		}
-
-	}
-
-	/**
-	 * Map-style declaration with a literal version such as
-	 * {@code group: 'g', name: 'a', version: '1.0'}.
-	 */
-	record MapLiteralVersion(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
-			PsiElement declarationElement, PsiElement versionLiteral, @Nullable ArtifactVersion version)
-			implements GradleVersionSite, DependencySite, VersionAware {
-
-		MapLiteralVersion(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
-				PsiElement declarationElement, PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
-		}
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource;
-		}
-
-		@Override
-		public DeclarationSource getDeclarationSource() {
-			return declarationSource;
-		}
-
-		@Override
-		public PsiElement getDeclarationElement() {
-			return declarationElement;
-		}
-
-	}
-
-	/**
-	 * Map-style declaration with a property-backed version such as
-	 * {@code group: 'g', name: 'a', version: propVar}.
-	 */
-	record MapPropertyVersion(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionReferenceElement,
-			@Nullable ArtifactVersion version) implements GradleVersionSite, DependencySite, VersionAware {
-
-		MapPropertyVersion(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-				DeclarationSource declarationSource, PsiElement declarationElement,
-				PsiElement versionReferenceElement) {
-			this(artifactId, propertyName, versionSource, declarationSource, declarationElement,
-					versionReferenceElement, null);
-		}
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource;
-		}
-
-		@Override
-		public DeclarationSource getDeclarationSource() {
-			return declarationSource;
-		}
-
-		@Override
-		public PsiElement getDeclarationElement() {
-			return declarationElement;
-		}
-
-	}
-
-	/**
-	 * Version-block declaration with a literal preferred version such as
-	 * {@code version { prefer '1.2.3' }}.
-	 */
-	record VersionBlockPreferLiteral(ArtifactId artifactId, VersionSource versionSource,
-			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionLiteral,
-			@Nullable ArtifactVersion version)
-			implements GradleVersionSite, DependencySite, VersionAware {
-
-		VersionBlockPreferLiteral(ArtifactId artifactId, VersionSource versionSource,
-				DeclarationSource declarationSource, PsiElement declarationElement,
-				PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
-		}
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource;
-		}
-
-		@Override
-		public DeclarationSource getDeclarationSource() {
-			return declarationSource;
-		}
-
-		@Override
-		public PsiElement getDeclarationElement() {
-			return declarationElement;
-		}
-
-	}
-
-	/**
-	 * Version-block declaration with a property-backed preferred version such as
-	 * {@code version { prefer springVersion }}.
-	 */
-	record VersionBlockPreferProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionReferenceElement,
-			@Nullable ArtifactVersion version)
-			implements GradleVersionSite, DependencySite, VersionAware {
-
-		VersionBlockPreferProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-				DeclarationSource declarationSource, PsiElement declarationElement,
-				PsiElement versionReferenceElement) {
-			this(artifactId, propertyName, versionSource, declarationSource, declarationElement,
-					versionReferenceElement, null);
-		}
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource;
-		}
-
-		@Override
-		public DeclarationSource getDeclarationSource() {
-			return declarationSource;
-		}
-
-		@Override
-		public PsiElement getDeclarationElement() {
-			return declarationElement;
-		}
-
-	}
-
-	/**
-	 * Version-block declaration with a literal strict version such as
-	 * {@code version { strictly '1.2.3' }}.
-	 */
-	record VersionBlockStrictlyLiteral(ArtifactId artifactId, VersionSource versionSource,
-			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionLiteral,
-			@Nullable ArtifactVersion version) implements GradleVersionSite, DependencySite, VersionAware {
-
-		VersionBlockStrictlyLiteral(ArtifactId artifactId, VersionSource versionSource,
-				DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationSource, declarationElement, versionLiteral, null);
-		}
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource;
-		}
-
-		@Override
-		public DeclarationSource getDeclarationSource() {
-			return declarationSource;
-		}
-
-		@Override
-		public PsiElement getDeclarationElement() {
-			return declarationElement;
-		}
-
-	}
-
-	/**
-	 * Version-block declaration with a property-backed strict version such as
-	 * {@code version { strictly springVersion }}.
-	 */
-	record VersionBlockStrictlyProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionReferenceElement,
-			@Nullable ArtifactVersion version)
-			implements GradleVersionSite, DependencySite, VersionAware {
-
-		VersionBlockStrictlyProperty(ArtifactId artifactId, String propertyName, VersionSource versionSource,
-				DeclarationSource declarationSource, PsiElement declarationElement,
-				PsiElement versionReferenceElement) {
-			this(artifactId, propertyName, versionSource, declarationSource, declarationElement,
-					versionReferenceElement, null);
-		}
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource;
-		}
-
-		@Override
-		public DeclarationSource getDeclarationSource() {
-			return declarationSource;
-		}
-
-		@Override
-		public PsiElement getDeclarationElement() {
-			return declarationElement;
-		}
-
-	}
-
-	/**
-	 * Gradle plugin declaration such as {@code id 'p' version 'v'} or
-	 * {@code id("p") version "v"}. The plugin id is used as both group and artifact
-	 * id, matching the convention shared with the rest of the Gradle support code.
-	 */
-	record PluginVersion(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement,
-			PsiElement versionLiteral, @Nullable ArtifactVersion version)
-			implements GradleVersionSite, DependencySite, VersionAware {
-
-		PluginVersion(ArtifactId artifactId, VersionSource versionSource, PsiElement declarationElement,
-				PsiElement versionLiteral) {
-			this(artifactId, versionSource, declarationElement, versionLiteral, null);
-		}
-
-		@Override
-		public ArtifactId getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public VersionSource getVersionSource() {
-			return versionSource;
-		}
-
-		@Override
-		public DeclarationSource getDeclarationSource() {
-			return DeclarationSource.plugin();
 		}
 
 		@Override

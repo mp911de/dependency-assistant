@@ -16,9 +16,11 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -32,6 +34,7 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
@@ -171,7 +174,7 @@ class KotlinDslParser extends GradleParser {
 	static boolean isVersionBlockLiteral(KtStringTemplateExpression literal, String constraintName) {
 
 		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(literal, KtCallExpression.class);
-		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+		return constraintCall != null && constraintName.equals(KotlinDslUtils.getKotlinCallName(constraintCall))
 				&& isArgumentOfCall(literal, constraintCall)
 				&& findVersionBlockDependencyCall(constraintCall) != null;
 	}
@@ -183,7 +186,7 @@ class KotlinDslParser extends GradleParser {
 	static boolean isVersionBlockReference(KtNameReferenceExpression reference, String constraintName) {
 
 		KtCallExpression constraintCall = PsiTreeUtil.getParentOfType(reference, KtCallExpression.class);
-		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+		return constraintCall != null && constraintName.equals(KotlinDslUtils.getKotlinCallName(constraintCall))
 				&& isArgumentOfCall(reference, constraintCall)
 				&& findVersionBlockDependencyCall(constraintCall) != null;
 	}
@@ -306,39 +309,57 @@ class KotlinDslParser extends GradleParser {
 	}
 
 	private static boolean isReferencedBySupportedVersionSite(PsiFile file, String propertyName) {
+		return referencedVersionPropertyNames(file).contains(propertyName);
+	}
+
+	/**
+	 * Return the property names referenced by a supported version site anywhere in
+	 * the file. The result is cached and recomputed when the PSI changes, so the
+	 * repeated completion-position checks do not each re-traverse the file.
+	 */
+	private static Set<String> referencedVersionPropertyNames(PsiFile file) {
+		return CachedValuesManager.getProjectPsiDependentCache(file,
+				psiFile -> computeReferencedVersionPropertyNames(file));
+	}
+
+	private static Set<String> computeReferencedVersionPropertyNames(PsiFile file) {
+
+		Set<String> names = new HashSet<>();
 
 		for (KtNameReferenceExpression reference : SyntaxTraverser.psiTraverser(file)
 				.filter(KtNameReferenceExpression.class)) {
-			if (propertyName.equals(reference.getReferencedName()) && isVersionPropertyReference(reference)) {
-				return true;
+			if (isVersionPropertyReference(reference)) {
+				@Nullable
+				String name = reference.getReferencedName();
+				if (StringUtils.hasText(name)) {
+					names.add(name);
+				}
 			}
 		}
 
 		for (KtArrayAccessExpression arrayAccess : SyntaxTraverser.psiTraverser(file)
 				.filter(KtArrayAccessExpression.class)) {
-			if (propertyName.equals(getExtraPropertyKey(arrayAccess)) && isExtraPropertyReference(arrayAccess)) {
-				return true;
+			if (isReferenceInsideSupportedVersionLiteral(arrayAccess)) {
+				@Nullable
+				String name = getExtraPropertyKey(arrayAccess);
+				if (StringUtils.hasText(name)) {
+					names.add(name);
+				}
 			}
 		}
 
-		for (KtCallExpression call : SyntaxTraverser.psiTraverser(file)
-				.filter(KtCallExpression.class)) {
-			if (isPropertyCallReference(call, propertyName) && isReferenceInsideSupportedVersionLiteral(call)) {
-				return true;
+		for (KtCallExpression call : SyntaxTraverser.psiTraverser(file).filter(KtCallExpression.class)) {
+			if ("property".equals(KotlinDslUtils.getKotlinCallName(call))
+					&& isReferenceInsideSupportedVersionLiteral(call)) {
+				KtExpression argument = KotlinDslUtils.getFirstValueArgument(call);
+				String name = argument != null ? KtLiterals.getText(argument) : null;
+				if (StringUtils.hasText(name)) {
+					names.add(name);
+				}
 			}
 		}
 
-		return false;
-	}
-
-	private static boolean isPropertyCallReference(KtCallExpression call, String propertyName) {
-
-		if (!"property".equals(KotlinDslUtils.getKotlinCallName(call))) {
-			return false;
-		}
-
-		KtExpression argument = KotlinDslUtils.getFirstValueArgument(call);
-		return argument != null && propertyName.equals(KtLiterals.getText(argument));
+		return names;
 	}
 
 	private static boolean isVersionPropertyReference(KtNameReferenceExpression reference) {
@@ -352,10 +373,6 @@ class KotlinDslParser extends GradleParser {
 
 		KtStringTemplateExpression template = PsiTreeUtil.getParentOfType(reference, KtStringTemplateExpression.class);
 		return template != null && isSupportedVersionLiteral(template);
-	}
-
-	private static boolean isExtraPropertyReference(KtArrayAccessExpression arrayAccess) {
-		return isReferenceInsideSupportedVersionLiteral(arrayAccess);
 	}
 
 	private static boolean isSupportedVersionLiteral(KtStringTemplateExpression template) {
@@ -402,10 +419,6 @@ class KotlinDslParser extends GradleParser {
 
 		KtCallExpression call = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
 		return call != null && isDependencyOrPlatformCall(call);
-	}
-
-	private static boolean isVersionConstraintCall(KtCallExpression call, String constraintName) {
-		return constraintName.equals(KotlinDslUtils.getKotlinCallName(call));
 	}
 
 	private static boolean isDependencyOrPlatformCall(KtCallElement call) {

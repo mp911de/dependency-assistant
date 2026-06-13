@@ -16,9 +16,11 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -36,6 +38,7 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
@@ -114,9 +117,9 @@ class GradleParser extends GradleParserSupport {
 	static boolean isVersionNamedArgumentLiteral(GrLiteral literal) {
 
 		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(literal, GrNamedArgument.class);
-		return namedArgument != null && isVersionNamedArgument(namedArgument)
+		return namedArgument != null && GradleUtils.VERSION.equals(namedArgument.getLabelName())
 				&& isExpressionOfNamedArgument(literal, namedArgument)
-				&& isNamedArgumentOfDependencyCall(namedArgument);
+				&& findNamedArgumentDependencyCall(namedArgument) != null;
 	}
 
 	/**
@@ -126,9 +129,9 @@ class GradleParser extends GradleParserSupport {
 	static boolean isVersionNamedArgumentReference(GrReferenceExpression reference) {
 
 		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(reference, GrNamedArgument.class);
-		return namedArgument != null && isVersionNamedArgument(namedArgument)
+		return namedArgument != null && GradleUtils.VERSION.equals(namedArgument.getLabelName())
 				&& isExpressionOfNamedArgument(reference, namedArgument)
-				&& isNamedArgumentOfDependencyCall(namedArgument);
+				&& findNamedArgumentDependencyCall(namedArgument) != null;
 	}
 
 	/**
@@ -137,7 +140,7 @@ class GradleParser extends GradleParserSupport {
 	static boolean isVersionBlockLiteral(GrLiteral literal, String constraintName) {
 
 		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+		return constraintCall != null && constraintName.equals(GroovyDslUtils.getGroovyMethodName(constraintCall))
 				&& isArgumentOfCall(literal, constraintCall)
 				&& findVersionBlockDependencyCall(constraintCall) != null;
 	}
@@ -149,7 +152,7 @@ class GradleParser extends GradleParserSupport {
 	static boolean isVersionBlockReference(GrReferenceExpression reference, String constraintName) {
 
 		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(reference, GrMethodCall.class);
-		return constraintCall != null && isVersionConstraintCall(constraintCall, constraintName)
+		return constraintCall != null && constraintName.equals(GroovyDslUtils.getGroovyMethodName(constraintCall))
 				&& isArgumentOfCall(reference, constraintCall)
 				&& findVersionBlockDependencyCall(constraintCall) != null;
 	}
@@ -161,7 +164,7 @@ class GradleParser extends GradleParserSupport {
 	static boolean isPluginVersionLiteral(GrLiteral literal) {
 
 		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		return call != null && isPluginVersionCall(call) && isArgumentOfCall(literal, call);
+		return call != null && findPluginIdCallForVersionCall(call) != null && isArgumentOfCall(literal, call);
 	}
 
 	/**
@@ -176,18 +179,30 @@ class GradleParser extends GradleParserSupport {
 		}
 
 		PsiFile file = literal.getContainingFile();
-		if (file == null) {
-			return false;
-		}
+		return file != null && referencedVersionPropertyNames(file).contains(assignment.getKey());
+	}
 
-		for (GrReferenceExpression reference : SyntaxTraverser.psiTraverser(file)
-				.filter(GrReferenceExpression.class)) {
-			if (assignment.getKey().equals(reference.getReferenceName()) && isVersionPropertyReference(reference)) {
-				return true;
-			}
-		}
+	/**
+	 * Return the property names referenced by a supported version site anywhere in
+	 * the file. The result is cached and recomputed when the PSI changes, so the
+	 * repeated completion-position checks do not each re-traverse the file.
+	 */
+	private static Set<String> referencedVersionPropertyNames(PsiFile file) {
+		return CachedValuesManager.getProjectPsiDependentCache(file,
+				psiFile -> {
 
-		return false;
+					Set<String> names = new HashSet<>();
+
+					for (GrReferenceExpression reference : SyntaxTraverser.psiTraverser(psiFile)
+							.filter(GrReferenceExpression.class)) {
+						if (isVersionPropertyReference(reference)
+								&& StringUtils.hasText(reference.getReferenceName())) {
+							names.add(reference.getReferenceName());
+						}
+					}
+
+					return names;
+				});
 	}
 
 	/**
@@ -196,7 +211,7 @@ class GradleParser extends GradleParserSupport {
 	static @Nullable GrMethodCall findVersionNamedArgumentDependencyCall(PsiElement element) {
 
 		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(element, GrNamedArgument.class);
-		if (namedArgument == null || !isVersionNamedArgument(namedArgument)
+		if (namedArgument == null || !GradleUtils.VERSION.equals(namedArgument.getLabelName())
 				|| !isExpressionOfNamedArgument(element, namedArgument)) {
 			return null;
 		}
@@ -293,10 +308,6 @@ class GradleParser extends GradleParserSupport {
 		return idCall;
 	}
 
-	private static boolean isVersionNamedArgument(GrNamedArgument namedArgument) {
-		return GradleUtils.VERSION.equals(namedArgument.getLabelName());
-	}
-
 	private static boolean isExpressionOfNamedArgument(PsiElement element, GrNamedArgument namedArgument) {
 
 		PsiElement expression = namedArgument.getExpression();
@@ -307,18 +318,6 @@ class GradleParser extends GradleParserSupport {
 
 		GrMethodCall call = PsiTreeUtil.getParentOfType(namedArgument, GrMethodCall.class);
 		return call != null && isDependencyOrPlatformCall(call) ? call : null;
-	}
-
-	private static boolean isNamedArgumentOfDependencyCall(GrNamedArgument namedArgument) {
-		return findNamedArgumentDependencyCall(namedArgument) != null;
-	}
-
-	private static boolean isVersionConstraintCall(GrMethodCall call, String constraintName) {
-		return constraintName.equals(GroovyDslUtils.getGroovyMethodName(call));
-	}
-
-	private static boolean isPluginVersionCall(GrMethodCall call) {
-		return findPluginIdCallForVersionCall(call) != null;
 	}
 
 	private static boolean isVersionPropertyReference(GrReferenceExpression reference) {
@@ -747,11 +746,8 @@ class GradleParser extends GradleParserSupport {
 
 	private static @Nullable GrClosableBlock getFirstClosure(GrMethodCall call) {
 
-		for (GrClosableBlock closure : call.getClosureArguments()) {
-			return closure;
-		}
-
-		return null;
+		GrClosableBlock[] closures = call.getClosureArguments();
+		return closures.length > 0 ? closures[0] : null;
 	}
 
 	private static @Nullable GrMethodCall findNestedMethodCall(GrClosableBlock closure, String methodName) {

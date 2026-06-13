@@ -23,14 +23,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.VersionProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
-import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
-import biz.paluch.dap.gradle.GradleVersionSite.MapPropertyVersion;
-import biz.paluch.dap.gradle.GradleVersionSite.PluginVersion;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferLiteral;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyLiteral;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyProperty;
+import biz.paluch.dap.gradle.GradleVersionSite.CoordinateSite;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectProperty;
 import biz.paluch.dap.state.ProjectState;
@@ -128,17 +121,7 @@ class ArtifactReferenceUtils {
 	}
 
 	private static @Nullable PsiElement versionLiteralOf(DependencySite site) {
-		return switch (site) {
-		case DirectCoordinate direct -> direct.versionLiteral();
-		case MapLiteralVersion map -> map.versionLiteral();
-		case MapPropertyVersion mapProperty -> mapProperty.versionReferenceElement();
-		case VersionBlockPreferLiteral prefer -> prefer.versionLiteral();
-		case VersionBlockPreferProperty prefer -> prefer.versionReferenceElement();
-		case VersionBlockStrictlyLiteral strictly -> strictly.versionLiteral();
-		case VersionBlockStrictlyProperty strictly -> strictly.versionReferenceElement();
-		case PluginVersion plugin -> plugin.versionLiteral();
-		default -> null;
-		};
+		return site instanceof CoordinateSite coordinate ? coordinate.versionAnchor() : null;
 	}
 
 	private static @Nullable CachedArtifact getFirstArtifact(@Nullable ProjectProperty property) {

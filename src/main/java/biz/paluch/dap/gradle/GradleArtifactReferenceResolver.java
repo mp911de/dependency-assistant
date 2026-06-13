@@ -91,7 +91,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	 * Find the Gradle version site represented by the given element.
 	 * @param element the PSI element under inspection.
 	 */
-	public GradleVersionSite findVersionSite(PsiElement element) {
+	private GradleVersionSite findVersionSite(PsiElement element) {
 
 		PsiFile file = element.getContainingFile();
 		if (GradleUtils.isVersionCatalog(file) && element instanceof TomlLiteral literal) {

@@ -21,8 +21,7 @@ import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.gradle.GradleVersionSite.Absent;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
-import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.CoordinateSite;
 import biz.paluch.dap.gradle.GradleVersionSite.TomlCatalogAlias;
 import biz.paluch.dap.support.DependencySite;
 import com.intellij.openapi.project.Project;
@@ -81,11 +80,11 @@ class GradleVersionSiteTests {
 			    implementation 'org.springframework:spring-core:6.2.0'
 			}
 			""")
-	void groovyDirectCoordinateIsClassified(PsiFile file) {
+	void groovyDirectCoordinateProducesCoordinateSite(PsiFile file) {
 
 		GradleVersionSite site = locateGroovyLiteral(file, "'org.springframework:spring-core:6.2.0'");
 
-		assertThat(site).isInstanceOf(DirectCoordinate.class);
+		assertThat(site).isInstanceOf(CoordinateSite.class);
 	}
 
 	@Test
@@ -94,11 +93,11 @@ class GradleVersionSiteTests {
 			    implementation group: 'org.springframework', name: 'spring-core', version: '6.2.0'
 			}
 			""")
-	void groovyMapLiteralVersionIsClassified(PsiFile file) {
+	void groovyMapNotationProducesCoordinateSite(PsiFile file) {
 
 		GradleVersionSite site = locateGroovyLiteral(file, "'6.2.0'");
 
-		assertThat(site).isInstanceOf(MapLiteralVersion.class);
+		assertThat(site).isInstanceOf(CoordinateSite.class);
 	}
 
 	@Test
@@ -131,11 +130,11 @@ class GradleVersionSiteTests {
 			    implementation("org.springframework:spring-core:6.2.0")
 			}
 			""")
-	void kotlinDirectCoordinateIsClassified(PsiFile file) {
+	void kotlinDirectCoordinateProducesCoordinateSite(PsiFile file) {
 
 		GradleVersionSite site = locateKotlinLiteral(file, "\"org.springframework:spring-core:6.2.0\"");
 
-		assertThat(site).isInstanceOf(DirectCoordinate.class);
+		assertThat(site).isInstanceOf(CoordinateSite.class);
 	}
 
 	@Test

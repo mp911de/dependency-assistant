@@ -29,6 +29,7 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
@@ -114,6 +115,8 @@ public class BuildActionDelegate implements BuildFileUpdater {
 
 		try {
 			updateAction.accept(psiFile, updates);
+		} catch (ProcessCanceledException ex) {
+			throw ex;
 		} catch (Exception ex) {
 			LOG.warn("Build file update failed", ex);
 			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),

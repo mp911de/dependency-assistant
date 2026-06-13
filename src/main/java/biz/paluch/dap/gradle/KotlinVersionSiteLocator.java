@@ -16,19 +16,9 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.DirectCoordinate;
-import biz.paluch.dap.gradle.GradleVersionSite.MapLiteralVersion;
-import biz.paluch.dap.gradle.GradleVersionSite.MapPropertyVersion;
-import biz.paluch.dap.gradle.GradleVersionSite.PluginVersion;
+import biz.paluch.dap.gradle.GradleVersionSite.CoordinateSite;
 import biz.paluch.dap.gradle.GradleVersionSite.TomlCatalogAlias;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferLiteral;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockPreferProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyLiteral;
-import biz.paluch.dap.gradle.GradleVersionSite.VersionBlockStrictlyProperty;
 import biz.paluch.dap.gradle.KtVersion.Constraint;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
@@ -63,16 +53,18 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 	 * highlighting or annotation.
 	 */
 	public static boolean isVersionElement(PsiElement element) {
-		if (element instanceof KtStringTemplateEntry versionCandidate) {
-			if (versionCandidate.getParent() instanceof KtStringTemplateExpression expression) {
-				PsiElement[] children = expression.getChildren();
-				if (children.length > 1 && children[0] == element) {
-					return false;
-				}
-			}
-		}
+		return !isLeadingTemplateEntry(element);
+	}
 
-		return true;
+	/**
+	 * Return whether the element is the leading entry of a multi-entry string
+	 * template (e.g. the {@code "group:artifact:"} prefix before a {@code $version}
+	 * interpolation). Such an entry is the coordinate, not the version.
+	 */
+	private static boolean isLeadingTemplateEntry(PsiElement element) {
+		return element instanceof KtStringTemplateEntry
+				&& element.getParent() instanceof KtStringTemplateExpression expression
+				&& expression.getChildren().length > 1 && expression.getChildren()[0] == element;
 	}
 
 	/**
@@ -88,23 +80,21 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 
 		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class);
 		KtCallExpression call = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+		boolean dependencyCall = call != null && KotlinDslUtils.isDependencyCall(call);
 
-		if (call != null && KotlinDslUtils.isDependencyCall(call)) {
-
-			int lambdas = PsiTreeUtil.countChildrenOfType(call, KtLambdaExpression.class);
-			if (lambdas > 0) {
-				return null;
-			}
-
-			lambdas = PsiTreeUtil.countChildrenOfType(call, KtLambdaArgument.class);
-			if (lambdas > 0) {
-				return null;
-			}
+		// A version-block declaration carries a trailing lambda; its literal is reached
+		// through the
+		// version-block branch below, not as a direct argument of the dependency call.
+		if (dependencyCall && (PsiTreeUtil.countChildrenOfType(call, KtLambdaExpression.class) > 0
+				|| PsiTreeUtil.countChildrenOfType(call, KtLambdaArgument.class) > 0)) {
+			return null;
 		}
 
-		if (binary == null && call != null && KotlinDslUtils.isDependencyCall(call)) {
+		// Direct argument of a dependency call: compact notation or a `version = ...`
+		// named argument.
+		if (binary == null && dependencyCall) {
 
-			if (element.getNextSibling() instanceof KtBlockStringTemplateEntry entry) {
+			if (element.getNextSibling() instanceof KtBlockStringTemplateEntry) {
 				return null;
 			}
 
@@ -114,19 +104,15 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 
 			if (element.getParent().getParent() instanceof KtValueArgument valueArgument
 					&& valueArgument.getArgumentName() instanceof KtValueArgumentName argumentName) {
-
-				String name = argumentName.getAsName().asString();
-				if (GradleUtils.VERSION.equals(name)) {
-					return call;
-				}
-
-				return null;
+				return GradleUtils.VERSION.equals(argumentName.getAsName().asString()) ? call : null;
 			}
 
 			return call;
 		}
 
-		if (binary != null && call != null && KotlinDslUtils.isDependencyCall(call)) {
+		// `id("plugin") version "1.0"`: the literal lives in a binary that wraps the
+		// dependency call.
+		if (binary != null && dependencyCall) {
 			return null;
 		}
 
@@ -134,54 +120,49 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 			PsiElement previous = element.getPrevSibling();
 			while (previous != null && !(previous instanceof PsiFile)) {
 
-				if (previous instanceof KtOperationReferenceExpression ops) {
-					if (GradleUtils.VERSION.equals(ops.getReferencedName())) {
-						for (PsiElement child : binary.getChildren()) {
-							if (child instanceof KtCallExpression nested && KotlinDslUtils.isDependencyCall(nested)) {
-								return nested;
-							}
+				if (previous instanceof KtOperationReferenceExpression ops
+						&& GradleUtils.VERSION.equals(ops.getReferencedName())) {
+					for (PsiElement child : binary.getChildren()) {
+						if (child instanceof KtCallExpression nested && KotlinDslUtils.isDependencyCall(nested)) {
+							return nested;
 						}
 					}
 				}
 
-				if (previous.getPrevSibling() != null) {
-					previous = previous.getPrevSibling();
-				} else {
-					previous = previous.getParent();
-				}
+				previous = previous.getPrevSibling() != null ? previous.getPrevSibling() : previous.getParent();
 			}
 		}
 
-		KtCallExpression enclosingCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
-		KtCallExpression versionCall = null;
-		if (enclosingCall != null) {
-			if (GradleVersionConstraint.PREFER.equals(KotlinDslUtils.getKotlinCallName(enclosingCall))
-					|| GradleVersionConstraint.STRICTLY.equals(KotlinDslUtils.getKotlinCallName(enclosingCall))) {
-				Constraint constraint = Constraint.of(enclosingCall);
-				if (constraint.hasProperty() || constraint.hasText() && !constraint.isRange()) {
+		if (call == null) {
+			return null;
+		}
 
-					versionCall = (KtCallExpression) PsiTreeUtil.findFirstParent(element, it -> {
-						return it instanceof KtCallExpression candidate
-								&& GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(candidate));
-					});
-				}
-			} else {
-				versionCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
+		// version { prefer(...) / strictly(...) } block: resolve the version() call,
+		// then its dependency call.
+		String callName = KotlinDslUtils.getKotlinCallName(call);
+		KtCallExpression versionCall;
+		if (GradleVersionConstraint.PREFER.equals(callName) || GradleVersionConstraint.STRICTLY.equals(callName)) {
+			Constraint constraint = Constraint.of(call);
+			versionCall = constraint.hasProperty() || constraint.hasText() && !constraint.isRange()
+					? (KtCallExpression) PsiTreeUtil.findFirstParent(element,
+							it -> it instanceof KtCallExpression candidate
+									&& GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(candidate)))
+					: null;
+		} else {
+			versionCall = call;
+		}
+
+		if (versionCall != null && GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
+			KtCallExpression depCall = PsiTreeUtil.getParentOfType(versionCall, KtCallExpression.class);
+			if (depCall != null && KotlinDslUtils.isDependencyCall(depCall)) {
+				return depCall;
 			}
+		}
 
-			if (versionCall != null && GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
-
-				KtCallExpression depCall = PsiTreeUtil.getParentOfType(versionCall, KtCallExpression.class);
-				if (depCall != null && KotlinDslUtils.isDependencyCall(depCall)) {
-					return depCall;
-				}
-			}
-
-			if (element instanceof KtBlockStringTemplateEntry block) {
-				KtLiterals literals = KtLiterals.from(block);
-				if (literals.hasProperty() && GradleUtils.isDependencySection(KotlinDslUtils.getKotlinCallName(call))) {
-					return call;
-				}
+		if (element instanceof KtBlockStringTemplateEntry block) {
+			KtLiterals literals = KtLiterals.from(block);
+			if (literals.hasProperty() && GradleUtils.isDependencySection(callName)) {
+				return call;
 			}
 		}
 
@@ -193,7 +174,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 	 * <p>Used for literal entries nested within property initializers.
 	 */
 	public static @Nullable KtProperty findProperty(KtElement element) {
-		return element instanceof KtLiteralStringTemplateEntry entry
+		return element instanceof KtLiteralStringTemplateEntry
 				? PsiTreeUtil.getParentOfType(element, KtProperty.class)
 				: null;
 	}
@@ -204,7 +185,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 	 */
 	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
 
-		if (element.getParent() instanceof KtContainerNode node) {
+		if (element.getParent() instanceof KtContainerNode) {
 			return null;
 		}
 
@@ -267,12 +248,12 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 			if (dependencyExpression != null && literals.hasProperty()) {
 				DependencySite site = locatePropertyUsage(literals.getProperty(), dependencyExpression,
 						propertyCandidate);
-				return classifyDependencySite(site, propertyCandidate, dependencyExpression);
+				return coordinateSite(site, propertyCandidate);
 			}
 
 			if (dependencyExpression != null) {
 				DependencySite site = KotlinDslParser.parseDependencySite(dependencyExpression, propertyResolver);
-				return classifyDependencySite(site, propertyCandidate, dependencyExpression);
+				return coordinateSite(site, propertyCandidate);
 			}
 		}
 
@@ -283,18 +264,16 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 				return locatePropertyDeclaration(property.getName(), property);
 			}
 
-			if (versionCandidate.getParent() instanceof KtStringTemplateExpression expression) {
-				PsiElement[] children = expression.getChildren();
-				if (children.length > 1 && children[0] == element) {
+			if (isLeadingTemplateEntry(versionCandidate)) {
+				KtStringTemplateExpression expression = (KtStringTemplateExpression) versionCandidate.getParent();
 
-					KtCallExpression declaration = findDependencyExpression(expression);
-					if (declaration != null) {
-						DependencySite site = KotlinDslParser.parseDependencySite(declaration, propertyResolver);
-						return classifyDependencySite(site, expression, declaration);
-					}
-
-					return GradleVersionSite.absent();
+				KtCallExpression declaration = findDependencyExpression(expression);
+				if (declaration != null) {
+					DependencySite site = KotlinDslParser.parseDependencySite(declaration, propertyResolver);
+					return coordinateSite(site, expression);
 				}
+
+				return GradleVersionSite.absent();
 			}
 
 			KtBinaryExpression propertyExpression = findPropertyExpression(versionCandidate);
@@ -305,7 +284,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 			KtCallExpression declaration = findDependencyExpression(versionCandidate);
 			if (declaration != null) {
 				DependencySite site = KotlinDslParser.parseDependencySite(declaration, propertyResolver);
-				return classifyDependencySite(site, versionCandidate, declaration);
+				return coordinateSite(site, versionCandidate);
 			}
 		}
 
@@ -319,7 +298,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 			if (declaration != null) {
 				DependencySite site = locatePropertyUsage(propertyCandidate.getReferencedName(), declaration,
 						propertyCandidate);
-				return classifyDependencySite(site, propertyCandidate, declaration);
+				return coordinateSite(site, propertyCandidate);
 			}
 		}
 
@@ -387,73 +366,19 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 		return new TomlCatalogAlias(reference, catalogCall);
 	}
 
-	private GradleVersionSite classifyDependencySite(@Nullable DependencySite site, PsiElement versionElement,
-			KtCallExpression declaration) {
+	/**
+	 * Wrap a parser-derived {@link DependencySite} as a {@link CoordinateSite}
+	 * anchored at the given version element, or {@link GradleVersionSite#absent()}
+	 * when no site could be derived.
+	 */
+	private static GradleVersionSite coordinateSite(@Nullable DependencySite site, PsiElement versionElement) {
 
 		if (site == null) {
 			return GradleVersionSite.absent();
 		}
 
-		ArtifactId id = site.getArtifactId();
-		VersionSource source = site.getVersionSource();
-		PsiElement declarationElement = site.getDeclarationElement();
-		ArtifactVersion version = GradleVersionSite.versionOf(site);
-		boolean isProperty = source.isProperty();
-
-		if (KotlinDslUtils.isInsidePluginsBlock(declaration)) {
-			return new PluginVersion(id, source, declarationElement, versionElement, version);
-		}
-
-		String enclosingCallName = enclosingCallName(versionElement);
-		if (GradleVersionConstraint.PREFER.equals(enclosingCallName)) {
-			return isProperty
-					? new VersionBlockPreferProperty(id, propertyNameOf(source), source, site.getDeclarationSource(),
-							declarationElement, versionElement, version)
-					: new VersionBlockPreferLiteral(id, source, site.getDeclarationSource(), declarationElement,
-							versionElement, version);
-		}
-
-		if (GradleVersionConstraint.STRICTLY.equals(enclosingCallName)) {
-			return isProperty
-					? new VersionBlockStrictlyProperty(id, propertyNameOf(source), source, site.getDeclarationSource(),
-							declarationElement, versionElement, version)
-					: new VersionBlockStrictlyLiteral(id, source, site.getDeclarationSource(), declarationElement,
-							versionElement, version);
-		}
-
-		if (isNamedVersionArgument(versionElement)) {
-			return isProperty
-					? new MapPropertyVersion(id, propertyNameOf(source), source, site.getDeclarationSource(),
-							declarationElement, versionElement, version)
-					: new MapLiteralVersion(id, source, site.getDeclarationSource(), declarationElement, versionElement,
-							version);
-		}
-
-		return new DirectCoordinate(id, source, site.getDeclarationSource(), declarationElement, versionElement,
-				version);
-	}
-
-	private static String propertyNameOf(VersionSource source) {
-
-		if (source instanceof VersionSource.VersionProperty property) {
-			return property.getProperty();
-		}
-		return "";
-	}
-
-	private static @Nullable String enclosingCallName(PsiElement element) {
-
-		KtCallExpression enclosing = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
-		return enclosing != null ? KotlinDslUtils.getKotlinCallName(enclosing) : null;
-	}
-
-	private static boolean isNamedVersionArgument(PsiElement element) {
-
-		KtValueArgument valueArgument = PsiTreeUtil.getParentOfType(element, KtValueArgument.class);
-		if (valueArgument == null || valueArgument.getArgumentName() == null) {
-			return false;
-		}
-		return GradleUtils.VERSION.equals(valueArgument.getArgumentName().getAsName().asString());
+		return new CoordinateSite(site.getArtifactId(), site.getVersionSource(), site.getDeclarationSource(),
+				site.getDeclarationElement(), versionElement, GradleVersionSite.versionOf(site));
 	}
 
 }
