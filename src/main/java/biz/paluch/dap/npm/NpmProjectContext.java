@@ -18,11 +18,18 @@ package biz.paluch.dap.npm;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.github.GitHubReleaseSourceRouter;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
+import com.intellij.json.psi.JsonFile;
+import com.intellij.json.psi.JsonObject;
+import com.intellij.json.psi.JsonProperty;
+import com.intellij.json.psi.JsonStringLiteral;
+import com.intellij.json.psi.JsonValue;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -44,8 +51,11 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	 */
 	static final Key<NpmProjectContext> KEY = Key.create("NpmProjectContext");
 
-	NpmProjectContext(Project project, ProjectId projectId) {
+	private final Versioned projectVersion;
+
+	NpmProjectContext(Project project, ProjectId projectId, Versioned projectVersion) {
 		super(projectId, getReleaseSources(project));
+		this.projectVersion = projectVersion;
 	}
 
 	public static List<ReleaseSource> getReleaseSources(Project project) {
@@ -61,7 +71,7 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	 * @return the context to be used.
 	 */
 	public static NpmProjectContext of(PsiFile anchor) {
-		return of(anchor.getProject(), anchor.getVirtualFile());
+		return of(anchor.getProject(), anchor.getVirtualFile(), resolveProjectVersion(anchor));
 	}
 
 	/**
@@ -71,8 +81,36 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	 * @return the context to be used.
 	 */
 	public static NpmProjectContext of(Project project, VirtualFile anchor) {
+		return of(project, anchor, Versioned.unversioned());
+	}
+
+	private static NpmProjectContext of(Project project, VirtualFile anchor, Versioned projectVersion) {
 		ProjectId projectId = ProjectId.of("npm", anchor.getNameWithoutExtension(), anchor.getPath());
-		return new NpmProjectContext(project, projectId);
+		return new NpmProjectContext(project, projectId, projectVersion);
+	}
+
+	private static Versioned resolveProjectVersion(PsiFile file) {
+
+		if (!(file instanceof JsonFile jsonFile)) {
+			return Versioned.unversioned();
+		}
+
+		JsonValue topLevelValue = jsonFile.getTopLevelValue();
+		if (!(topLevelValue instanceof JsonObject root)) {
+			return Versioned.unversioned();
+		}
+
+		JsonProperty version = root.findProperty("version");
+		if (version == null || !(version.getValue() instanceof JsonStringLiteral literal)) {
+			return Versioned.unversioned();
+		}
+
+		return ArtifactVersion.from(literal.getValue().trim()).map(Versioned::of).orElseGet(Versioned::unversioned);
+	}
+
+	@Override
+	public Versioned getProjectVersion() {
+		return projectVersion;
 	}
 
 }

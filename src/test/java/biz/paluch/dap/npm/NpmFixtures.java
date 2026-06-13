@@ -18,7 +18,6 @@ package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -55,9 +54,7 @@ class NpmFixtures {
 		StateService service = StateService.getInstance(file.getProject());
 		DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(file);
 
-		ProjectId projectId = ProjectId.of("npm", file.getVirtualFile().getNameWithoutExtension(),
-				file.getVirtualFile().getPath());
-		NpmProjectContext context = new NpmProjectContext(file.getProject(), projectId);
+		NpmProjectContext context = NpmProjectContext.of(file);
 		file.putUserData(NpmProjectContext.KEY, context);
 
 		service.getProjectState(context.getProjectId()).setDependencies(collector);

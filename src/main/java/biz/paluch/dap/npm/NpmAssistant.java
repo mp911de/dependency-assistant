@@ -143,7 +143,7 @@ public class NpmAssistant implements DependencyAssistant {
 	private static ProjectDependencyContext buildCachedContext(NpmAssistant assistant, Project project,
 			PsiFile anchor) {
 
-		NpmProjectContext context = NpmProjectContext.of(project, anchor.getVirtualFile());
+		NpmProjectContext context = NpmProjectContext.of(anchor);
 		return new NpmDependencyContext(assistant, project, anchor.getVirtualFile(), context);
 	}
 
