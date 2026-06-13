@@ -174,8 +174,10 @@ class GradleUtils {
 	/** Name of the Gradle version catalog file. */
 	public static final String LIBS_VERSIONS_TOML = "libs.versions.toml";
 
+	public static final String GRADLE_DIR = "gradle";
+
 	/** Default relative path of the Gradle version catalog file. */
-	public static final String DEFAULT_TOML_LOCATION = "gradle/" + GradleUtils.LIBS_VERSIONS_TOML;
+	public static final String DEFAULT_TOML_LOCATION = GRADLE_DIR + "/" + GradleUtils.LIBS_VERSIONS_TOML;
 
 	/** File name suffixes of Gradle build/settings script files. */
 	public static final Set<String> GRADLE_SCRIPT_SUFFIXES = Set.of(".gradle", ".gradle.kts");
@@ -563,4 +565,8 @@ class GradleUtils {
 		return false;
 	}
 
+	@Contract("null -> false")
+	public static boolean isDirectory(@Nullable VirtualFile directory) {
+		return directory != null && directory.isDirectory() && directory.exists();
+	}
 }

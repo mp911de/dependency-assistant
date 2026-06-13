@@ -115,6 +115,7 @@ sealed interface GradleVersionSite permits GradleVersionSite.CoordinateSite, Gra
 	 * <p>The {@code versionAnchor} is the PSI element to which a version edit or
 	 * lookup applies; it may be a version literal or a property reference.
 	 */
+	// TODO: could this be directly ArtifactDeclaration?
 	record CoordinateSite(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
 			PsiElement declarationElement, PsiElement versionAnchor, @Nullable ArtifactVersion version)
 			implements GradleVersionSite, DependencySite, VersionAware {

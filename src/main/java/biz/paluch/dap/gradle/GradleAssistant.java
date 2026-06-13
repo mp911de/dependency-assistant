@@ -37,8 +37,16 @@ import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.VersionUpgradeLookup;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.externalSystem.model.DataNode;
+import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
+import com.intellij.openapi.externalSystem.model.ProjectKeys;
+import com.intellij.openapi.externalSystem.model.project.ModuleData;
+import com.intellij.openapi.externalSystem.model.project.ProjectData;
+import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
+import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
@@ -46,10 +54,10 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import icons.GradleIcons;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
+import org.jetbrains.plugins.gradle.util.GradleConstants;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlElement;
 
@@ -90,37 +98,46 @@ class GradleAssistant implements DependencyAssistant {
 	@Override
 	public List<PsiFile> enumerate(Project project) {
 
-		if (!GradleProjectContext.isGradleProject(project)) {
-			return List.of();
-		}
-
 		Collection<GradleProjectSettings> settings = GradleSettings.getInstance(project).getLinkedProjectsSettings();
-		PsiManager psiManager = PsiManager.getInstance(project);
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
+		ProjectDataManager pdm = ProjectDataManager.getInstance();
 		LocalFileSystem lfs = LocalFileSystem.getInstance();
-
-		List<VirtualFile> linkedDirectories = new ArrayList<>(settings.size());
-		for (GradleProjectSettings setting : settings) {
-			VirtualFile directory = resolveLinkedDirectory(setting, lfs);
-			if (directory != null) {
-				linkedDirectories.add(directory);
-			}
-		}
-
 		List<PsiFile> anchors = new ArrayList<>();
 
-		for (VirtualFile directory : linkedDirectories) {
-			for (VirtualFile script : GradleUtils.findGradleScripts(directory)) {
+		for (GradleProjectSettings setting : settings) {
 
-				PsiFile file = psiManager.findFile(script);
-				if (file != null) {
-					anchors.add(file);
-				}
+			ExternalProjectInfo projectInfo = pdm
+					.getExternalProjectData(project, GradleConstants.SYSTEM_ID, setting.getExternalProjectPath());
+
+			if (projectInfo == null || projectInfo.getExternalProjectStructure() == null) {
+				continue;
 			}
-			addAnchor(psiManager, directory, GradleUtils.LIBS_VERSIONS_TOML, anchors);
-		}
 
-		for (VirtualFile directory : linkedDirectories) {
-			addAnchor(psiManager, directory, GradleUtils.GRADLE_PROPERTIES, anchors);
+			DataNode<ProjectData> structure = projectInfo.getExternalProjectStructure();
+			for (DataNode<ModuleData> moduleNode : ExternalSystemApiUtil.findAll(structure, ProjectKeys.MODULE)) {
+				ModuleData moduleData = moduleNode.getData();
+				VirtualFile directory = resolveLinkedDirectory(moduleData.getLinkedExternalProjectPath(), lfs);
+
+				if (!GradleUtils.isDirectory(directory)) {
+					continue;
+				}
+
+				for (VirtualFile script : GradleUtils.findGradleScripts(directory)) {
+					psiManager.doWithFile(script, anchors::add);
+				}
+
+				VirtualFile gradle = directory.findFileByRelativePath(GradleUtils.GRADLE_DIR);
+				if (GradleUtils.isDirectory(gradle)) {
+					VirtualFile[] children = gradle.getChildren();
+					for (VirtualFile child : children) {
+						if (GradleUtils.isVersionCatalog(child)) {
+							psiManager.doWithFile(child, anchors::add);
+						}
+					}
+				}
+
+				addAnchor(psiManager, directory, GradleUtils.GRADLE_PROPERTIES, anchors);
+			}
 		}
 
 		return anchors;
@@ -131,21 +148,15 @@ class GradleAssistant implements DependencyAssistant {
 		new GradleDependencyCollector(anchor.getProject()).collect(anchor, collector);
 	}
 
-	private static @Nullable VirtualFile resolveLinkedDirectory(GradleProjectSettings setting, LocalFileSystem lfs) {
-
-		String path = setting.getExternalProjectPath();
+	private static @Nullable VirtualFile resolveLinkedDirectory(String path, LocalFileSystem lfs) {
 		if (StringUtils.isEmpty(path)) {
 			return null;
 		}
-
 		VirtualFile directory = lfs.findFileByPath(path);
-		if (directory == null || !directory.isDirectory()) {
-			return null;
-		}
-		return directory;
+		return GradleUtils.isDirectory(directory) ? directory : null;
 	}
 
-	private static void addAnchor(PsiManager psiManager, VirtualFile directory, String relativePath,
+	private static void addAnchor(BetterPsiManager psiManager, VirtualFile directory, String relativePath,
 			List<PsiFile> anchors) {
 
 		VirtualFile child = directory.findFileByRelativePath(relativePath);
@@ -153,10 +164,7 @@ class GradleAssistant implements DependencyAssistant {
 			return;
 		}
 
-		PsiFile file = psiManager.findFile(child);
-		if (file != null) {
-			anchors.add(file);
-		}
+		psiManager.doWithFile(child, anchors::add);
 	}
 
 	@Override
