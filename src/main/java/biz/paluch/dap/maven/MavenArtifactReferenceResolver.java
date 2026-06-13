@@ -16,22 +16,31 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.lookup.ArtifactReferenceResolver;
+import biz.paluch.dap.lookup.DependencySearchResults;
+import biz.paluch.dap.lookup.DependencySiteQuery;
+import biz.paluch.dap.lookup.DependencySiteSearchHit;
+import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.ArtifactReferenceResolver;
 import biz.paluch.dap.support.Expression;
-import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlText;
@@ -90,6 +99,83 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		return ArtifactReference.unresolved();
+	}
+
+	@Override
+	public DependencySearchResults search(DependencySiteQuery query) {
+
+		XmlFile pomFile = this.pom;
+		if (!candidate || pomFile == null) {
+			return DependencySearchResults.empty();
+		}
+
+		List<DependencySiteSearchHit> hits = new ArrayList<>(
+				findPropertyDefinitions(pomFile, query.versionProperties()));
+		hits.addAll(findVersionSites(pomFile, query));
+		return DependencySearchResults.of(hits);
+	}
+
+	/**
+	 * Collect every {@code <properties>} entry whose name is part of the query, as
+	 * a version-property definition.
+	 */
+	private List<DependencySiteSearchHit> findPropertyDefinitions(XmlFile pomFile, Set<String> properties) {
+
+		if (properties.isEmpty()) {
+			return List.of();
+		}
+
+		List<DependencySiteSearchHit> hits = new ArrayList<>();
+		Map<String, PropertyValue> defined = MavenParser.parseProperties(pomFile);
+		for (String property : properties) {
+
+			PropertyValue value = defined.get(property);
+			if (value != null) {
+				hits.add(DependencySiteSearchHit.declaration(value.getValueLiteral(), value.getValue()));
+			}
+		}
+
+		return hits;
+	}
+
+	/**
+	 * Collect every dependency or plugin {@code <version>} tag that contributes to
+	 * the query, as a {@code ${property}} usage or an inline definition.
+	 */
+	private List<DependencySiteSearchHit> findVersionSites(XmlFile pomFile, DependencySiteQuery query) {
+
+		List<DependencySiteSearchHit> hits = new ArrayList<>();
+		for (XmlTag versionTag : PsiTreeUtil.findChildrenOfType(pomFile, XmlTag.class)) {
+
+			if (!"version".equals(versionTag.getName()) || !isDependencyVersion(versionTag)) {
+				continue;
+			}
+
+			String versionText = versionTag.getValue().getText().trim();
+			Expression expression = Expression.from(versionText);
+			XmlTag pluginOrDependency = versionTag.getParentTag();
+			if (expression.isProperty()) {
+				if (query.versionProperties().contains(expression.getPropertyName())) {
+
+					hits.add(DependencySiteSearchHit.usage(pluginOrDependency != null ? pluginOrDependency : versionTag,
+							versionText));
+				}
+				continue;
+			}
+
+			ArtifactId artifactId = MavenParser.parseArtifactId(pluginOrDependency, propertyResolver);
+			if (artifactId != null && query.artifacts().contains(artifactId)) {
+				hits.add(DependencySiteSearchHit.declaration(pluginOrDependency, versionText));
+			}
+		}
+
+		return hits;
+	}
+
+	private static boolean isDependencyVersion(XmlTag versionTag) {
+
+		XmlTag parent = versionTag.getParentTag();
+		return parent != null && ("dependency".equals(parent.getName()) || "plugin".equals(parent.getName()));
 	}
 
 	private boolean canResolve() {

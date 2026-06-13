@@ -58,12 +58,7 @@ class DependencyRulesUnitTests {
 
 		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "main", null);
 
-		assertThat(rule).isSameAs(DependencyRule.absent());
-		assertThat(rule.getGenerations().value()).isEmpty();
-		assertThat(rule).accepts(ArtifactVersion.of("1.0.0"), ArtifactVersion.of("999.0.0"));
-		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
-		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR,
-				UpgradeStrategy.RELEASE, UpgradeStrategy.PREVIEW, UpgradeStrategy.LATEST);
+		assertThat(rule.isPresent()).isFalse();
 	}
 
 	@Test

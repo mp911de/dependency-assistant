@@ -32,6 +32,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
@@ -107,9 +108,6 @@ class UpgradeCandidate implements HasArtifactId {
 	private Icon createTableIcon() {
 
 		Icon base = interfaceAssistant.getTableIcon(getUpdateCandidate().getDependency());
-		if (base == null) {
-			return AllIcons.Nodes.Library;
-		}
 
 		if (getUpdateCandidate().hasPropertyVersion()) {
 
@@ -233,6 +231,18 @@ class UpgradeCandidate implements HasArtifactId {
 		}
 
 		return names;
+	}
+
+	/**
+	 * Derive the {@link DependencySiteQuery} this row is centered on for a
+	 * Dependency Site Find: its artifact and the bare version properties backing
+	 * its version.
+	 *
+	 * @return the query for this candidate; never {@literal null}.
+	 */
+	DependencySiteQuery toQuery() {
+		return DependencySiteQuery
+				.create(it -> it.artifact(getArtifactId()).versionProperties(getVersionPropertyNames()));
 	}
 
 	/**

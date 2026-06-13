@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
 
 import org.springframework.util.Assert;
@@ -110,6 +111,11 @@ class UpgradeGroup extends UpgradeCandidate {
 	 */
 	List<UpgradeCandidate> getMembers() {
 		return members;
+	}
+
+	@Override
+	DependencySiteQuery toQuery() {
+		return DependencySiteQuery.union(members.stream().map(UpgradeCandidate::toQuery).toList());
 	}
 
 	/**

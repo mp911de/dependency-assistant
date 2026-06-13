@@ -86,7 +86,7 @@ class DependencyCycleArchitectureTests {
 
 	@ArchTest
 	static final ArchRule root = packageDependencies("biz.paluch.dap",
-			"artifact", "state", "support");
+			"artifact", "state", "lookup", "support");
 
 	@ArchTest
 	static final ArchRule artifact = packageDependencies(
@@ -94,33 +94,33 @@ class DependencyCycleArchitectureTests {
 
 	@ArchTest
 	static final ArchRule assistantPackage = packageDependencies(
-			"assistant", "biz.paluch.dap", "artifact", "rule", "severity", "state", "support", "util");
+			"assistant", "biz.paluch.dap", "artifact", "rule", "severity", "state", "lookup", "support", "util");
 
 	@ArchTest
 	static final ArchRule antora = packageDependencies("antora",
-			"biz.paluch.dap", "artifact", "assistant", "state", "support", "support.yaml", "util", "github");
+			"biz.paluch.dap", "artifact", "assistant", "state", "lookup", "support", "support.yaml", "util", "github");
 
 	@ArchTest
 	static final ArchRule github = packageDependencies("github",
-			"biz.paluch.dap", "artifact", "assistant", "state", "support", "support.yaml", "util");
+			"biz.paluch.dap", "artifact", "assistant", "state", "lookup", "support", "support.yaml", "util");
 
 	@ArchTest
 	static final ArchRule gradle = packageDependencies("gradle",
-			"biz.paluch.dap", "artifact", "assistant", "state", "support", "util");
+			"biz.paluch.dap", "artifact", "assistant", "state", "lookup", "support", "util");
 
 	@ArchTest
 	static final ArchRule maven = packageDependencies("maven",
 			"biz.paluch.dap",
-			"artifact", "assistant", "state", "support", "util", "maven.wrapper");
+			"artifact", "assistant", "state", "lookup", "support", "util", "maven.wrapper");
 
 	@ArchTest
 	static final ArchRule mavenWrapper = packageDependencies("maven.wrapper",
 			"biz.paluch.dap",
-			"artifact", "assistant", "state", "support", "util");
+			"artifact", "assistant", "state", "lookup", "support", "util");
 
 	@ArchTest
 	static final ArchRule npm = packageDependencies("npm", "biz.paluch.dap",
-			"artifact", "assistant", "state", "support", "util", "github");
+			"artifact", "assistant", "state", "lookup", "support", "util", "github");
 
 	@ArchTest
 	static final ArchRule severity = packageDependencies("severity",

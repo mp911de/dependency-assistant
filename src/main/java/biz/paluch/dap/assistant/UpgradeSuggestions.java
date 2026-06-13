@@ -17,9 +17,9 @@
 package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
-import biz.paluch.dap.support.VersionUpgradeLookup;
 import com.intellij.psi.PsiElement;
 
 /**

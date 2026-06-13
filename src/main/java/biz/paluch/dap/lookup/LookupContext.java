@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.support;
+package biz.paluch.dap.lookup;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -24,6 +24,8 @@ import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
+import biz.paluch.dap.support.DependencyFileDelegate;
+import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 

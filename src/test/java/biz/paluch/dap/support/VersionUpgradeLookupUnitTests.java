@@ -30,6 +30,8 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.lookup.LookupContext;
+import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;

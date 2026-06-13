@@ -20,6 +20,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import javax.swing.*;
@@ -56,6 +58,7 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.EditorSchemes;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
@@ -69,8 +72,6 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.application.ReadAction;
-import com.intellij.openapi.editor.colors.EditorColorsManager;
-import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -80,6 +81,7 @@ import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.*;
+import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.table.TableView;
 import com.intellij.util.ui.ColumnInfo;
@@ -94,6 +96,8 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 public class DependencyCheckDialog extends DialogWrapper {
+
+	private static final int DEPENDENCY_COLUMN_INDEX = 0;
 
 	private static final int UPGRADE_TARGETS_COLUMN_INDEX = 2;
 
@@ -123,9 +127,18 @@ public class DependencyCheckDialog extends DialogWrapper {
 		this.project = project;
 		this.files = result.files();
 		this.review = new UpgradeReview(result.candidates(), result.errors());
-		this.components = new DependencyCheckComponents(this.review, getDisposable(), this::doCancelAction);
+		this.components = new DependencyCheckComponents(this.review, getDisposable(), this::doCancelAction,
+				this::navigateToSites);
 		setTitle(title);
 		init();
+	}
+
+	/**
+	 * Run a Dependency Site Find for the double-clicked row and present the result
+	 * for navigation.
+	 */
+	private void navigateToSites(UpgradeCandidate candidate, RelativePoint where) {
+		new DependencySitesPopup(project, getDisposable(), this::doCancelAction, files).navigate(candidate, where);
 	}
 
 	/**
@@ -148,14 +161,15 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final JCheckBox filterVersionsCheckBox;
 
-		DependencyCheckComponents(UpgradeReview review, Disposable parent, Runnable escapeHandler) {
+		DependencyCheckComponents(UpgradeReview review, Disposable parent, Runnable escapeHandler,
+				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate) {
 			super(new BorderLayout());
 			this.review = review;
 
 			this.tableModel = new ListTableModel<>(new DependencyCoordinateColumn(review),
 					new CurrentVersionColumn(), new UpgradeTargetsColumn(review), new UpdateToColumn(review),
 					new DoUpdateColumn(review));
-			this.table = new DependencyUpdateTable(tableModel, escapeHandler);
+			this.table = new DependencyUpdateTable(tableModel, escapeHandler, onNavigate);
 			this.strategyComboBox = new ComboBox<>(
 					UpgradeReview.UpgradeStrategies.values());
 			this.filterVersionsCheckBox = new JCheckBox(MessageBundle.message("dialog.filter.version.suggestions"),
@@ -478,9 +492,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final Runnable escapeHandler;
 
-		DependencyUpdateTable(ListTableModel<UpgradeCandidate> model, Runnable escapeHandler) {
+		private final BiConsumer<UpgradeCandidate, RelativePoint> onNavigate;
+
+		DependencyUpdateTable(ListTableModel<UpgradeCandidate> model, Runnable escapeHandler,
+				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate) {
 			super(model);
 			this.escapeHandler = escapeHandler;
+			this.onNavigate = onNavigate;
 			setToolTipText("");
 
 			getActionMap().put("cancel", new AbstractAction() {
@@ -504,6 +522,31 @@ public class DependencyCheckDialog extends DialogWrapper {
 				}
 
 			});
+
+			addMouseListener(new MouseAdapter() {
+
+				@Override
+				public void mouseClicked(MouseEvent e) {
+					navigateOnDoubleClick(e);
+				}
+
+			});
+		}
+
+		private void navigateOnDoubleClick(MouseEvent e) {
+
+			if (e.getClickCount() != 2) {
+				return;
+			}
+
+			Point p = e.getPoint();
+			int row = rowAtPoint(p);
+			int col = columnAtPoint(p);
+			if (row < 0 || convertColumnIndexToModel(col) != DEPENDENCY_COLUMN_INDEX) {
+				return;
+			}
+
+			onNavigate.accept(ModelUtil.getRow(this, row), new RelativePoint(this, p));
 		}
 
 		@Override
@@ -555,14 +598,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	}
 
-
-
 	static class DependencyCoordinateColumn extends ColumnInfo<UpgradeCandidate, ArtifactId> {
 
 		static final TextAttributesKey WEAK_WARNING_KEY = HighlightInfoType.WEAK_WARNING.getAttributesKey();
 
-		static final TextAttributes WEAK_WARNING_ATTRIBUTES = EditorColorsManager.getInstance()
-				.getGlobalScheme().getAttributes(WEAK_WARNING_KEY);
+		static final TextAttributes WEAK_WARNING_ATTRIBUTES = EditorSchemes.attributes(WEAK_WARNING_KEY,
+				new TextAttributes());
 
 		/**
 		 * Weak-warning wave underline for rows coupled through a Shared Version
@@ -665,17 +706,20 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private static String sharedPropertyToolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
 
 			Set<String> names = candidate.getVersionPropertyNames();
-			StringBuilder tooltip = new StringBuilder("<ul>");
-
+			Set<String> shared = new LinkedHashSet<>();
 			for (UpgradeCandidate peer : peers) {
+				Set<String> peerShared = new LinkedHashSet<>(peer.getVersionPropertyNames());
+				peerShared.retainAll(names);
+				shared.addAll(peerShared);
+			}
 
-				Set<String> shared = new LinkedHashSet<>(peer.getVersionPropertyNames());
-				shared.retainAll(names);
-				tooltip.append("<li>")
-						.append(MessageBundle.message("dialog.tooltip.sharedProperty",
-								"<code>" + String.join(", ", shared) + "</code>",
-								"<code>" + peer.getRowLabel() + "</code>"))
-						.append("</li>");
+			StringBuilder tooltip = new StringBuilder("<br>");
+			tooltip.append(MessageBundle.message("dialog.tooltip.sharedProperty",
+					"<code>" + String.join(", ", shared) + "</code>"));
+
+			tooltip.append("<ul>");
+			for (UpgradeCandidate peer : peers) {
+				tooltip.append("<li><code>").append(peer.getRowLabel()).append("</code></li>");
 			}
 
 			return tooltip.append("</ul>").toString();
@@ -737,10 +781,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 			private Font getCachedEditorFont(int uiFontSize) {
 
 				if (cachedFont == null || cachedFontSize != uiFontSize) {
-					EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
-					String fontName = scheme.getEditorFontName();
 					cachedFontSize = uiFontSize;
-					cachedFont = new Font(fontName, Font.PLAIN, uiFontSize);
+					cachedFont = EditorSchemes.editorFont(Font.PLAIN, uiFontSize);
 				}
 
 				return cachedFont;

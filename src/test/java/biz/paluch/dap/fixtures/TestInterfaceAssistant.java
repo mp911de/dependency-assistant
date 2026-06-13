@@ -18,6 +18,7 @@ package biz.paluch.dap.fixtures;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -42,12 +43,12 @@ public class TestInterfaceAssistant implements InterfaceAssistant {
 
 	@Override
 	public Icon getNavigateIcon(ArtifactDeclaration declaration) {
-		return null;
+		return DependencyAssistantIcons.ICON;
 	}
 
 	@Override
 	public Icon getTableIcon(Dependency dependency) {
-		return null;
+		return DependencyAssistantIcons.ICON;
 	}
 
 }

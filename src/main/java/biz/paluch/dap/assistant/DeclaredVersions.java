@@ -137,17 +137,38 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 		});
 	}
 
+	/**
+	 * Return the prefix shared by all locations, trimmed back to the last path
+	 * ({@code /}) or coordinate ({@code :}) separator so a partial segment is never
+	 * cut, or {@literal null} when the locations share no leading segment.
+	 */
 	private @Nullable String extractSharedPrefix(List<String> locations) {
-		boolean allHaveSingleColon = locations.stream()
-				.allMatch(loc -> loc.chars().filter(c -> c == ':').count() == 1);
 
-		if (!allHaveSingleColon || locations.isEmpty()) {
+		if (locations.size() < 2) {
 			return null;
 		}
 
-		String firstPrefix = locations.getFirst().substring(0, locations.getFirst().indexOf(':') + 1);
-		boolean allHaveSamePrefix = locations.stream().allMatch(loc -> loc.startsWith(firstPrefix));
-		return allHaveSamePrefix ? firstPrefix : null;
+		String prefix = locations.getFirst();
+		for (String location : locations) {
+			prefix = commonPrefix(prefix, location);
+			if (prefix.isEmpty()) {
+				return null;
+			}
+		}
+
+		int separator = Math.max(prefix.lastIndexOf('/'), prefix.lastIndexOf(':'));
+		return separator >= 0 ? prefix.substring(0, separator + 1) : null;
+	}
+
+	private static String commonPrefix(String left, String right) {
+
+		int max = Math.min(left.length(), right.length());
+		int shared = 0;
+		while (shared < max && left.charAt(shared) == right.charAt(shared)) {
+			shared++;
+		}
+
+		return left.substring(0, shared);
 	}
 
 	/**
@@ -203,7 +224,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 		forEachDrift((version, file) -> {
 			tooltip.append("<li>")
 					.append(MessageBundle.message("dialog.version-drift.tooltip.entry", "<code>" + version + "</code>",
-							file))
+							"<code>" + file + "</code>"))
 					.append("</li>");
 		});
 		tooltip.append("</ul>");
@@ -232,7 +253,11 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 		/**
 		 * Return the project or file location shown to users.
 		 *
-		 * @return the Maven coordinate when available, or the build file name
+		 * <p>The file path is the full path; {@link #forEachDrift(BiConsumer)} strips
+		 * the directory shared by all drift entries so the displayed location is
+		 * relative to their common ancestor.
+		 *
+		 * @return the Maven coordinate when available, or the build file path
 		 * otherwise.
 		 */
 		public String getDeclarationLocation() {
@@ -242,7 +267,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 				return "%s:%s".formatted(projectId.groupId(), projectId.artifactId());
 			}
 
-			return file.getPresentableName();
+			return file.getPath();
 		}
 
 		/**

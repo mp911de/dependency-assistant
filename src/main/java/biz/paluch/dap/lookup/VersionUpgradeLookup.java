@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.support;
+package biz.paluch.dap.lookup;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,6 +30,10 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.VersionProperty;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.AvailableUpgrades;
+import biz.paluch.dap.support.UpgradeSuggestion;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
@@ -84,6 +88,18 @@ public class VersionUpgradeLookup {
 	 */
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 		return resolver.resolveArtifactReference(element);
+	}
+
+	/**
+	 * Locate every site in this lookup's file that participates in the given
+	 * query's version, for a Dependency Site Find.
+	 * @param query the version this find is centered on; must not be
+	 * {@literal null}.
+	 * @return the hits in this lookup's file, never {@literal null}, possibly
+	 * empty.
+	 */
+	public DependencySearchResults search(DependencySiteQuery query) {
+		return resolver.search(query);
 	}
 
 	/**

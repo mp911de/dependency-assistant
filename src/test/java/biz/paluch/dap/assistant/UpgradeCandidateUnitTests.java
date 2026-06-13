@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -23,9 +25,13 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRules;
+import biz.paluch.dap.state.ProjectId;
+import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -50,6 +56,49 @@ class UpgradeCandidateUnitTests {
 
 		assertThat(candidate.getUpdateCandidate().getTargets().get(UpgradeStrategy.RULE))
 				.isEqualTo(Release.of("2.0.1"));
+	}
+
+	@Test
+	void derivesQueryFromPropertyBackedCandidate() {
+
+		Dependency dependency = new Dependency(ArtifactId.of("org.springframework", "spring-core"),
+				ArtifactVersion.of("6.1.0"));
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.property("springVersion"));
+		UpgradeCandidate candidate = new UpgradeCandidate(
+				new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0"))),
+				new TestInterfaceAssistant(), DeclaredVersions.none(), DependencyRule.absent());
+
+		DependencySiteQuery query = candidate.toQuery();
+
+		assertThat(query.artifacts()).containsExactly(ArtifactId.of("org.springframework", "spring-core"));
+		assertThat(query.versionProperties()).containsExactly("springVersion");
+	}
+
+	@Test
+	void groupQueryUnionsMemberArtifacts() {
+
+		ArtifactId core = ArtifactId.of("org.springframework", "spring-core");
+		ArtifactId web = ArtifactId.of("org.springframework", "spring-web");
+		UpgradeGroup group = UpgradeGroup.of(List.of(member(core), member(web)));
+
+		DependencySiteQuery query = group.toQuery();
+
+		assertThat(query.artifacts()).containsExactlyInAnyOrder(core, web);
+		assertThat(query.versionProperties()).containsExactly("spring.version");
+	}
+
+	private static UpgradeCandidate member(ArtifactId artifactId) {
+
+		ArtifactVersion version = ArtifactVersion.of("6.1.0");
+		Dependency dependency = new Dependency(artifactId, version);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.property("spring.version"));
+		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of("com.acme", "app"),
+				new Dependency(artifactId, version));
+		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0"))),
+				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null),
+				DependencyRule.absent());
 	}
 
 	private static UpgradeCandidate candidate(String currentVersion, DependencyRule rule, Release... releases) {

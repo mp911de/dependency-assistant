@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import com.intellij.mock.MockPsiElement;
 import org.junit.jupiter.api.Test;
 

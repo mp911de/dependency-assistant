@@ -18,7 +18,9 @@ package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.swing.Icon;
 
@@ -31,12 +33,12 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.lookup.LookupContext;
+import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
-import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
-import biz.paluch.dap.support.VersionUpgradeLookup;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
@@ -103,6 +105,7 @@ class GradleAssistant implements DependencyAssistant {
 		ProjectDataManager pdm = ProjectDataManager.getInstance();
 		LocalFileSystem lfs = LocalFileSystem.getInstance();
 		List<PsiFile> anchors = new ArrayList<>();
+		Set<String> seenDirectories = new HashSet<>();
 
 		for (GradleProjectSettings setting : settings) {
 
@@ -118,9 +121,11 @@ class GradleAssistant implements DependencyAssistant {
 				ModuleData moduleData = moduleNode.getData();
 				VirtualFile directory = resolveLinkedDirectory(moduleData.getLinkedExternalProjectPath(), lfs);
 
-				if (!GradleUtils.isDirectory(directory)) {
+				if (!GradleUtils.isDirectory(directory) || seenDirectories.contains(directory.getPath())) {
 					continue;
 				}
+
+				seenDirectories.add(directory.getPath());
 
 				for (VirtualFile script : GradleUtils.findGradleScripts(directory)) {
 					psiManager.doWithFile(script, anchors::add);

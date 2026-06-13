@@ -21,7 +21,6 @@ import com.intellij.codeInsight.lookup.LookupElementPresentation;
 import com.intellij.codeInsight.lookup.LookupElementRenderer;
 import com.intellij.lang.properties.PropertiesHighlighter;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.util.PlatformIcons;
 
@@ -44,8 +43,8 @@ public class PropertyRenderer extends LookupElementRenderer<LookupElement> {
 		presentation.setIcon(PlatformIcons.PROPERTY_ICON);
 		presentation.setItemText(element.getLookupString());
 
-		TextAttributes attrs = EditorColorsManager.getInstance().getGlobalScheme()
-				.getAttributes(PropertiesHighlighter.PropertiesComponent.PROPERTY_VALUE.getTextAttributesKey());
+		TextAttributes attrs = EditorSchemes.attributes(
+				PropertiesHighlighter.PropertiesComponent.PROPERTY_VALUE.getTextAttributesKey(), new TextAttributes());
 
 		presentation.setTailText(property.getValue(), attrs.getForegroundColor());
 	}

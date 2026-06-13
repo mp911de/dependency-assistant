@@ -84,6 +84,22 @@ class DeclaredVersionsTests {
 		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@app", "7.5.0.RELEASE@lib");
 	}
 
+	@Test
+	void showsPathRelativeToCommonDirectoryForFileLocations() {
+
+		VirtualFile a = new MockVirtualFile("moduleA/build.gradle", "// test");
+		VirtualFile b = new MockVirtualFile("moduleB/build.gradle", "// test");
+		DeclaredVersions declaredVersions = DeclaredVersions.from(
+				List.of(site(a, ArtifactVersion.of("7.4.1.RELEASE")), site(b, ArtifactVersion.of("7.5.0.RELEASE"))),
+				ref -> null);
+		List<String> conflicts = new ArrayList<>();
+
+		declaredVersions.forEachDrift((version, location) -> conflicts.add(version + "@" + location));
+
+		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@moduleA/build.gradle",
+				"7.5.0.RELEASE@moduleB/build.gradle");
+	}
+
 	private static DeclarationSite site(VirtualFile file, String groupId, String artifactId, String version) {
 		return new DeclarationSite(file, ProjectId.of(groupId, artifactId), dependency(ArtifactVersion.of(version)));
 	}

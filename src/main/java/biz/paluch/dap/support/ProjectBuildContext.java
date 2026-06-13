@@ -83,7 +83,7 @@ public interface ProjectBuildContext {
 	 * {@link Versioned#unversioned()}.
 	 *
 	 * @return the project version, or {@link Versioned#unversioned()} when the
-	 * version can not be determined.
+	 * version cannot be determined.
 	 */
 	default Versioned getProjectVersion() {
 		return Versioned.unversioned();

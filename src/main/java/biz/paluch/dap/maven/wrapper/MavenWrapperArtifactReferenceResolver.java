@@ -17,8 +17,8 @@
 package biz.paluch.dap.maven.wrapper;
 
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.ArtifactReferenceResolver;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.psi.PsiElement;

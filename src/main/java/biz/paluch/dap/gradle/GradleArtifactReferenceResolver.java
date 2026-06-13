@@ -16,14 +16,26 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.lookup.ArtifactReferenceResolver;
+import biz.paluch.dap.lookup.DependencySearchResults;
+import biz.paluch.dap.lookup.DependencySiteQuery;
+import biz.paluch.dap.lookup.DependencySiteSearchHit;
+import biz.paluch.dap.lookup.LookupContext;
+import biz.paluch.dap.lookup.SiteRole;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.ArtifactReferenceResolver;
-import biz.paluch.dap.support.LookupContext;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.toml.lang.psi.TomlLiteral;
@@ -40,6 +52,8 @@ import org.toml.lang.psi.TomlLiteral;
 class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final boolean candidate;
+
+	private final PsiFile file;
 
 	private final TomlArtifactResolver tomlResolver;
 
@@ -65,6 +79,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		Project project = context.project();
 
+		this.file = file;
 		this.candidate = GradleUtils.isGradleFile(file);
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
@@ -85,6 +100,75 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		GradleVersionSite versionSite = findVersionSite(element);
 		return versionSite.isPresent() ? lookupSiteResolver.resolve(versionSite) : ArtifactReference.unresolved();
+	}
+
+	@Override
+	public DependencySearchResults search(DependencySiteQuery query) {
+
+		if (!candidate) {
+			return DependencySearchResults.empty();
+		}
+
+		GradleArtifactReferenceVisitor visitor = new GradleArtifactReferenceVisitor(this);
+		file.accept(visitor);
+
+		List<DependencySiteSearchHit> findings = new ArrayList<>();
+		Set<PsiElement> seen = new HashSet<>();
+		for (GradleArtifactReferenceVisitor.Match match : visitor.getMatches()) {
+
+			ArtifactDeclaration declaration = match.reference().getDeclaration();
+			if (!matches(declaration, query) || !seen.add(declaration.getDeclarationElement())) {
+				continue;
+			}
+
+			SiteRole role = roleOf(match.element(), declaration);
+			String label = labelOf(role, match.element(), declaration);
+			findings.add(role == SiteRole.DECLARATION ? DependencySiteSearchHit.declaration(match.element(), label)
+					: DependencySiteSearchHit.usage(match.element(), label));
+		}
+
+		return DependencySearchResults.of(findings);
+	}
+
+	/**
+	 * Whether the resolved declaration contributes to the query, by artifact id or
+	 * by a version property the query names.
+	 */
+	private static boolean matches(ArtifactDeclaration declaration, DependencySiteQuery query) {
+
+		if (query.artifacts().contains(declaration.getArtifactId())) {
+			return true;
+		}
+
+		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property
+				&& query.versionProperties().contains(property.getProperty());
+	}
+
+	/**
+	 * A site is a definition when the resolving element is the version literal
+	 * itself; otherwise it references the version from elsewhere.
+	 */
+	private static SiteRole roleOf(PsiElement element, ArtifactDeclaration declaration) {
+
+		PsiElement versionLiteral = declaration.getVersionLiteral();
+		boolean definition = versionLiteral != null && (versionLiteral == element
+				|| PsiTreeUtil.isAncestor(versionLiteral, element, false)
+				|| PsiTreeUtil.isAncestor(element, versionLiteral, false));
+		return definition ? SiteRole.DECLARATION : SiteRole.VERSION_USAGE;
+	}
+
+	/**
+	 * The concise display label: the version for a definition, the version property
+	 * name for a usage.
+	 */
+	private static String labelOf(SiteRole role, PsiElement element, ArtifactDeclaration declaration) {
+
+		if (role == SiteRole.DECLARATION) {
+			return declaration.getVersion() != null ? declaration.getVersion().toString() : element.getText();
+		}
+
+		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property ? property.getProperty()
+				: element.getText();
 	}
 
 	/**
