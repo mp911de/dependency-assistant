@@ -71,6 +71,8 @@ import com.intellij.openapi.actionSystem.ActionToolbar;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.ex.ActionButtonLook;
+import com.intellij.openapi.actionSystem.impl.ActionButton;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
@@ -906,7 +908,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final UpgradeReview review;
 
-		private final Map<UpgradeStrategy, InplaceButton> buttons = new EnumMap<>(UpgradeStrategy.class);
+		private final Map<UpgradeStrategy, ActionButton> buttons = new EnumMap<>(UpgradeStrategy.class);
 
 		private final JPanel buttonPanel;
 
@@ -928,17 +930,27 @@ public class DependencyCheckDialog extends DialogWrapper {
 			}
 		}
 
-		private static InplaceButton createButton(UpgradeStrategy strategy, Runnable action) {
+		private static ActionButton createButton(UpgradeStrategy strategy, Runnable action) {
 
 			Icon icon = VersionAge.fromTarget(strategy).getIcon();
 			String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
 
+			AnAction buttonAction = new AnAction(shortLabel, null, icon) {
+
+				@Override
+				public void actionPerformed(AnActionEvent e) {
+					action.run();
+				}
+
+			};
+
 			Dimension size = strategyIconSize(icon);
-			InplaceButton button = new InplaceButton(shortLabel, icon, e -> action.run());
+			ActionButton button = new ActionButton(buttonAction, null, "DependencyAssistant.UpgradeTarget", size);
 			button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 			button.setPreferredSize(size);
 			button.setMinimumSize(size);
 			button.setMaximumSize(size);
+			button.setLook(ActionButtonLook.SYSTEM_LOOK);
 			return button;
 		}
 
@@ -949,10 +961,10 @@ public class DependencyCheckDialog extends DialogWrapper {
 			UpgradeCandidate candidate = ModelUtil.getRow(table, row);
 			this.candidate = candidate;
 
-			for (Map.Entry<UpgradeStrategy, InplaceButton> entry : buttons.entrySet()) {
+			for (Map.Entry<UpgradeStrategy, ActionButton> entry : buttons.entrySet()) {
 
 				UpgradeStrategy strategy = entry.getKey();
-				InplaceButton button = entry.getValue();
+				ActionButton button = entry.getValue();
 				Release target = review.resolveTarget(candidate, strategy);
 
 				if (target == null) {
@@ -962,6 +974,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name()) + ": "
 						+ candidate.getInterfaceAssistant().getDocumentationText(target.getVersion());
+				button.getPresentation().setText(shortLabel);
 				button.setToolTipText(
 						MessageBundle.message("dialog.upgradeTarget.tooltip", shortLabel, target.version()));
 				button.getAccessibleContext().setAccessibleName(shortLabel);

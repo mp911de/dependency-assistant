@@ -74,7 +74,7 @@ class SuggestedVersionComboBoxEditorTests {
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency,
 				Releases.just(Release.of(current)));
-		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.none(),
+		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.empty(),
 				DependencyRule.absent());
 	}
 

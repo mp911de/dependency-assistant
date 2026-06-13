@@ -29,6 +29,7 @@ import java.util.function.Function;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -58,7 +59,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	 *
 	 * @return a result with no versions and no declaration entries.
 	 */
-	public static DeclaredVersions none() {
+	public static DeclaredVersions empty() {
 		return new DeclaredVersions(Set.of(), Set.of());
 	}
 
@@ -79,7 +80,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 			Function<String, @Nullable ArtifactVersion> gitRefResolver) {
 
 		if (declarationSites.isEmpty()) {
-			return none();
+			return empty();
 		}
 
 		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
@@ -96,6 +97,15 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 
 				versions.add(version);
 				entries.add(new VersionDrift(site.projectId(), site.file(), version));
+
+				for (VersionSource versionSource : dependency.getVersionSources()) {
+					if (versionSource instanceof VersionSource.DeclaredVersion declared) {
+						ArtifactVersion.from(declared.getVersion()).ifPresent(declaredVersion -> {
+							versions.add(declaredVersion);
+							entries.add(new VersionDrift(site.projectId(), site.file(), declaredVersion));
+						});
+					}
+				}
 			}
 		}
 		return new DeclaredVersions(versions, entries);

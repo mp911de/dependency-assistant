@@ -67,7 +67,7 @@ class UpgradeCandidateUnitTests {
 		dependency.addVersionSource(VersionSource.property("springVersion"));
 		UpgradeCandidate candidate = new UpgradeCandidate(
 				new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0"))),
-				new TestInterfaceAssistant(), DeclaredVersions.none(), DependencyRule.absent());
+				new TestInterfaceAssistant(), DeclaredVersions.empty(), DependencyRule.absent());
 
 		DependencySiteQuery query = candidate.toQuery();
 
@@ -107,7 +107,7 @@ class UpgradeCandidateUnitTests {
 				ArtifactVersion.of(currentVersion));
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, Releases.of(releases));
-		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.none(), rule);
+		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.empty(), rule);
 	}
 
 }

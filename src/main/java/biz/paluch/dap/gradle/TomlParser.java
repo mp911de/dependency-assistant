@@ -476,7 +476,7 @@ class TomlParser extends GradleParserSupport {
 		private static VersionSource getVersionSource(Expression versionExpression) {
 			return versionExpression.isProperty()
 					? VersionSource.versionCatalogProperty(versionExpression.getPropertyName())
-					: VersionSource.versionCatalog();
+					: VersionSource.versionCatalog(versionExpression.toString());
 		}
 
 		private static GradleDependency of(ArtifactId artifactId, Expression versionExpression) {
@@ -487,7 +487,7 @@ class TomlParser extends GradleParserSupport {
 						DeclarationSource.managed());
 			}
 			return new SimpleDependency(artifactId, versionExpression.toString(),
-					VersionSource.versionCatalog(), DeclarationSource.managed());
+					VersionSource.versionCatalog(versionExpression.toString()), DeclarationSource.managed());
 		}
 
 		/**

@@ -39,7 +39,7 @@ public abstract class VersionSource {
 
 	private static final NoVersionSource NONE = new NoVersionSource();
 
-	private static final VersionCatalog CATALOG = new VersionCatalog();
+	private static final VersionSource CATALOG = new DefaultVersionCatalog();
 
 	/**
 	 * Return whether a version is defined.
@@ -118,10 +118,22 @@ public abstract class VersionSource {
 
 	/**
 	 * Return a source representing a version resolved from a TOML version catalog
-	 * entry.
+	 * entry whose concrete version is not captured inline.
 	 */
 	public static VersionSource versionCatalog() {
 		return CATALOG;
+	}
+
+	/**
+	 * Return a source representing a resolvable version declared inline in a TOML
+	 * version catalog entry.
+	 * <p>The literal version is retained so callers can recover the declared value,
+	 * for example to detect version drift across catalog aliases that point at the
+	 * same module.
+	 * @param version the literal version string declared in the catalog entry.
+	 */
+	public static VersionSource versionCatalog(String version) {
+		return new VersionCatalogVersion(version);
 	}
 
 	/**
@@ -281,13 +293,24 @@ public abstract class VersionSource {
 	}
 
 	/**
-	 * Version source for a version resolved from a TOML version catalog entry.
+	 * Marker interface for version sources that originate from a TOML version
+	 * catalog entry, whether the concrete version is captured inline
+	 * ({@link VersionCatalogVersion}) or referenced through a {@code [versions]}
+	 * property ({@link VersionCatalogProperty}).
 	 */
-	public static class VersionCatalog extends VersionSource {
+	public interface VersionCatalog {
+
+	}
+
+	/**
+	 * Version source for a TOML version catalog entry whose concrete version is not
+	 * captured inline. Used as a fallback when no literal version is available.
+	 */
+	private static class DefaultVersionCatalog extends VersionSource implements VersionCatalog {
 
 		@Override
 		public boolean equals(Object o) {
-			if (!(o instanceof VersionCatalog that)) {
+			if (!(o instanceof DefaultVersionCatalog that)) {
 				return false;
 			}
 			return Objects.equals(getClass(), that.getClass());
@@ -301,10 +324,29 @@ public abstract class VersionSource {
 	}
 
 	/**
+	 * Version source for a resolvable version declared inline in a TOML version
+	 * catalog entry.
+	 * <p>Extends {@link DeclaredVersion} so the literal version participates in
+	 * version-drift detection alongside inline declarations, while
+	 * {@link VersionCatalog} marks it as catalog-sourced for navigation.
+	 */
+	public static class VersionCatalogVersion extends DeclaredVersion implements VersionCatalog {
+
+		/**
+		 * Create a new {@code VersionCatalogVersion}.
+		 * @param version the literal version string declared in the catalog entry.
+		 */
+		public VersionCatalogVersion(String version) {
+			super(version);
+		}
+
+	}
+
+	/**
 	 * Version source for a version held in a named {@code [versions]} entry of a
 	 * TOML version catalog.
 	 */
-	public static class VersionCatalogProperty extends VersionSource implements VersionProperty {
+	public static class VersionCatalogProperty extends VersionSource implements VersionProperty, VersionCatalog {
 
 		private final String property;
 

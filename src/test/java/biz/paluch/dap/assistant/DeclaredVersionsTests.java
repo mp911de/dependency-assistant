@@ -38,9 +38,9 @@ import static org.assertj.core.api.Assertions.*;
 class DeclaredVersionsTests {
 
 	@Test
-	void noneHasNoConflictAndNoVersion() {
+	void emptyHasNoConflictAndNoVersion() {
 
-		DeclaredVersions declaredVersions = DeclaredVersions.none();
+		DeclaredVersions declaredVersions = DeclaredVersions.empty();
 
 		assertThat(declaredVersions.hasVersionDrift()).isFalse();
 		assertThat(declaredVersions.hasVersion()).isFalse();
