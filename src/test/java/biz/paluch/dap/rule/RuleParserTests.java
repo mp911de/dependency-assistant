@@ -331,6 +331,41 @@ class RuleParserTests {
 				.getGenerations()).hasToString("5.0.x");
 	}
 
+	@Test
+	@ProjectFile(name = "dependencyfile.json", content = """
+			{
+			  "semver": false,
+			  "artifacts": {
+			    "org.springframework:*": "7.0"
+			  }
+			}
+			""")
+	void semverFalseDisablesUpgradeStrategyDerivation(PsiFile file) {
+
+		DependencyRule rule = parse(file).resolve(SPRING_CORE, null, ArtifactVersion.of("2.1.1"));
+		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
+
+		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
+	}
+
+	@Test
+	@ProjectFile(name = "dependencyfile.json", content = """
+			{
+			  "semver": true,
+			  "artifacts": {
+			    "org.springframework:*": "7.0"
+			  }
+			}
+			""")
+	void semverTrueEnablesUpgradeStrategyDerivation(PsiFile file) {
+
+		DependencyRule rule = parse(file).resolve(SPRING_CORE, null, ArtifactVersion.of("2.1.1"));
+		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
+
+		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.RELEASE)
+				.rejects(UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
+	}
+
 	private static Rules parse(PsiFile file) {
 		return new RuleParser((JsonFile) file).parse();
 	}

@@ -21,6 +21,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import com.intellij.json.psi.JsonArray;
+import com.intellij.json.psi.JsonBooleanLiteral;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
@@ -77,10 +78,24 @@ class RuleParser {
 		}
 
 		DependencyRules.Builder builder = DependencyRules.builder();
+		builder.semVerUpdating(semVerUpdating(root));
 
 		object(root.findProperty("artifacts")).forEach(artifact -> addArtifact(builder, artifact));
 		object(root.findProperty("branches")).forEach(branch -> addBranch(builder, branch));
 		return builder.build();
+	}
+
+	private SemVerUpdating semVerUpdating(JsonObject root) {
+
+		JsonProperty property = root.findProperty("semver");
+		if (property == null) {
+			return SemVerUpdating.INFERRED;
+		}
+		if (property.getValue() instanceof JsonBooleanLiteral bool) {
+			return bool.getValue() ? SemVerUpdating.ENABLED : SemVerUpdating.DISABLED;
+		}
+		LOG.warn("Ignoring non-boolean 'semver' in %s".formatted(file.getName()));
+		return SemVerUpdating.INFERRED;
 	}
 
 	private void addArtifact(DependencyRules.Builder builder, JsonProperty artifact) {

@@ -326,4 +326,48 @@ class DependencyRulesUnitTests {
 		assertThat(rule.getGenerations()).hasToString("5.1.x");
 	}
 
+	@Test
+	void semVerDisabledSkipsUpgradeStrategyDerivationForPatchVersion() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.semVerUpdating(SemVerUpdating.DISABLED)
+				.artifact("org.springframework:*", "7.0")
+				.build();
+		BranchRule rule = rules.resolveBranchRule(null, ArtifactVersion.of("2.1.1"));
+		Predicate<UpgradeStrategy> supports = rule::supports;
+
+		assertThat(supports).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR,
+				UpgradeStrategy.PREVIEW, UpgradeStrategy.LATEST);
+	}
+
+	@Test
+	void semVerDisabledSkipsUpgradeStrategyDerivationOnMatchedBranchRule() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.semVerUpdating(SemVerUpdating.DISABLED)
+				.artifact("org.junit:*", "5.13")
+				.branch("3.5.x", branch -> branch.artifact("org.springframework:*", "6.0"))
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.junit", "junit-bom"), "3.5.x",
+				ArtifactVersion.of("3.5.1"));
+		Predicate<UpgradeStrategy> isEnabled = rule::isEnabled;
+
+		assertThat(isEnabled).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
+	}
+
+	@Test
+	void semVerEnabledBehavesLikeInferred() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.semVerUpdating(SemVerUpdating.ENABLED)
+				.artifact("org.springframework:*", "7.0")
+				.build();
+		BranchRule rule = rules.resolveBranchRule(null, ArtifactVersion.of("2.1.1"));
+		Predicate<UpgradeStrategy> supports = rule::supports;
+
+		assertThat(supports).accepts(UpgradeStrategy.PATCH, UpgradeStrategy.RELEASE)
+				.rejects(UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR, UpgradeStrategy.PREVIEW, UpgradeStrategy.LATEST);
+	}
+
 }

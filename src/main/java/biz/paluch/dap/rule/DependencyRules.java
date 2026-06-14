@@ -57,11 +57,19 @@ public class DependencyRules implements Rules {
 
 	private final Collection<BranchRule> branches;
 
+	private final SemVerUpdating semVerUpdating;
+
 	private DependencyRules(Rules parent, Collection<ArtifactRule> artifacts, Collection<BranchRule> branches) {
+		this(parent, artifacts, branches, SemVerUpdating.INFERRED);
+	}
+
+	private DependencyRules(Rules parent, Collection<ArtifactRule> artifacts, Collection<BranchRule> branches,
+			SemVerUpdating semVerUpdating) {
 
 		this.parent = parent;
 		this.artifacts = artifacts;
 		this.branches = branches.stream().map(branch -> branch.withDefaults(this.artifacts)).toList();
+		this.semVerUpdating = semVerUpdating;
 	}
 
 	/**
@@ -144,11 +152,14 @@ public class DependencyRules implements Rules {
 
 		BranchRule branchRule = doResolveBranchRule(branchName, projectVersion);
 		if (branchRule == null) {
-			return projectVersion != null ? BranchRule.fallback(this.artifacts, upgradeStrategies(projectVersion))
-					: BranchRule.of("*", this.artifacts, Set.of());
+			if (projectVersion != null && this.semVerUpdating != SemVerUpdating.DISABLED) {
+				return BranchRule.fallback(this.artifacts, upgradeStrategies(projectVersion));
+			}
+			return BranchRule.of("*", this.artifacts, Set.of());
 		}
 
-		if (branchRule.hasUpgradeStrategies() || projectVersion == null) {
+		if (this.semVerUpdating == SemVerUpdating.DISABLED || branchRule.hasUpgradeStrategies()
+				|| projectVersion == null) {
 			return branchRule;
 		}
 
@@ -215,6 +226,8 @@ public class DependencyRules implements Rules {
 
 		private final List<BranchRule> branches = new ArrayList<>();
 
+		private SemVerUpdating semVerUpdating = SemVerUpdating.INFERRED;
+
 		private Builder() {
 		}
 
@@ -258,6 +271,17 @@ public class DependencyRules implements Rules {
 		}
 
 		/**
+		 * Set the semver updating mode that controls whether upgrade strategy limits
+		 * are derived from the project version.
+		 * @param semVerUpdating the semver updating mode.
+		 * @return this builder.
+		 */
+		public Builder semVerUpdating(SemVerUpdating semVerUpdating) {
+			this.semVerUpdating = semVerUpdating;
+			return this;
+		}
+
+		/**
 		 * Build the {@code DependencyRules}.
 		 * @return the dependency rules.
 		 */
@@ -265,7 +289,7 @@ public class DependencyRules implements Rules {
 			List<ArtifactRule> artifactRules = List.copyOf(this.artifacts);
 			List<BranchRule> branchRules = List.copyOf(this.branches);
 			return new DependencyRules(new DependencyRules(Rules.absent(), artifactRules, List.of()), artifactRules,
-					branchRules);
+					branchRules, this.semVerUpdating);
 		}
 
 	}

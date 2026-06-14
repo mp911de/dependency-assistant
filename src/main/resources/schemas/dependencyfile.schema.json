@@ -6,6 +6,10 @@
 	"type": "object",
 	"additionalProperties": false,
 	"properties": {
+      "semver": {
+        "type": "boolean",
+        "description": "Controls semver-based upgrade strategy derivation from the project version. When true, upgrade-strategy limits are explicitly enabled. When false, they are disabled. When omitted, limits are inferred from the project version."
+      },
 		"artifacts": {
 			"type": "object",
 			"description": "Default artifact rules. Branch rules inherit them for artifacts they do not declare themselves. Keys are artifact patterns such as 'org.springframework:*', 'spring-*', or '*'.",
