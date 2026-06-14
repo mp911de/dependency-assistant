@@ -625,7 +625,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 						waved ? SHARED_PROPERTY_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
 
 				if (candidate instanceof UpgradeGroup group) {
-					append("  (%d)".formatted(group.getMembers().size()), SimpleTextAttributes.GRAYED_ATTRIBUTES);
+					append("  (%s)".formatted(group.getMemberLabel()), SimpleTextAttributes.GRAYED_ATTRIBUTES);
 				} else if (review.isAmbiguous(candidate)) {
 					append("  (%s)".formatted(candidate.getArtifactId().groupId()),
 							SimpleTextAttributes.GRAYED_ATTRIBUTES);
@@ -677,13 +677,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 				VersionSource.VersionProperty versionProperty = option.getPropertyVersion();
 				tooltip = MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
 				if (versionProperty instanceof VersionSource.Profile pps) {
-					tooltip += MessageBundle.message("dialog.tooltip.profile",
+					tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.profile",
 							"<code>" + pps.getProfileId() + "</code>");
 				}
 			}
 
 			if (option.getDeclarationSource() instanceof DeclarationSource.Plugin) {
-				tooltip += MessageBundle.message("dialog.tooltip.plugin", artifactId);
+				tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.plugin", artifactId);
 			}
 
 			if (option.getDeclarationSource() instanceof DeclarationSource.Profile profile) {

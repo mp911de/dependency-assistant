@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -46,6 +47,8 @@ import org.springframework.util.Assert;
  * @see UpgradeGroups
  */
 class UpgradeGroup extends UpgradeCandidate {
+
+	private static final int MEMBER_LABEL_LIMIT = 25;
 
 	private final List<UpgradeCandidate> members;
 
@@ -113,6 +116,116 @@ class UpgradeGroup extends UpgradeCandidate {
 	 */
 	List<UpgradeCandidate> getMembers() {
 		return members;
+	}
+
+	/**
+	 * Return the compact member label used beside the group row label.
+	 *
+	 * @return the member label or the member count if the artifact ids do not share
+	 * a concise display prefix.
+	 */
+	String getMemberLabel() {
+
+		List<String> artifactIds = members.stream().map(m -> m.getArtifactId().artifactId()).toList();
+		List<String> parts = basePrefixLabelParts(artifactIds);
+		if (parts.isEmpty()) {
+			parts = commonSeparatorPrefixLabelParts(artifactIds);
+		}
+
+		String label = String.join(", ", parts);
+		return !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label : String.valueOf(members.size());
+	}
+
+	private static List<String> basePrefixLabelParts(List<String> artifactIds) {
+
+		List<String> bases = new ArrayList<>(artifactIds);
+		bases.sort(Comparator.comparingInt(String::length).thenComparing(Comparator.naturalOrder()));
+
+		for (String base : bases) {
+			List<String> parts = basePrefixLabelParts(artifactIds, base);
+			if (!parts.isEmpty()) {
+				return parts;
+			}
+		}
+
+		return List.of();
+	}
+
+	private static List<String> basePrefixLabelParts(List<String> artifactIds, String base) {
+
+		List<String> suffixes = new ArrayList<>(artifactIds.size() - 1);
+		boolean hasBase = false;
+		for (String artifactId : artifactIds) {
+			if (artifactId.equals(base)) {
+				hasBase = true;
+				continue;
+			}
+
+			String suffix = suffixAfterBase(artifactId, base);
+			if (suffix.isEmpty()) {
+				return List.of();
+			}
+			suffixes.add(suffix);
+		}
+
+		if (!hasBase) {
+			return List.of();
+		}
+
+		Collections.sort(suffixes);
+
+		List<String> parts = new ArrayList<>(artifactIds.size());
+		parts.add(base);
+		parts.addAll(suffixes);
+		return parts;
+	}
+
+	private static String suffixAfterBase(String artifactId, String base) {
+
+		if (!artifactId.startsWith(base) || artifactId.length() <= base.length()) {
+			return "";
+		}
+
+		char separator = artifactId.charAt(base.length());
+		if (separator != '-' && separator != '.') {
+			return "";
+		}
+
+		return artifactId.substring(base.length() + 1);
+	}
+
+	private static List<String> commonSeparatorPrefixLabelParts(List<String> artifactIds) {
+
+		String lcp = longestCommonPrefix(artifactIds);
+		int separator = Math.max(lcp.lastIndexOf('-'), lcp.lastIndexOf('.'));
+		if (separator < 0) {
+			return List.of();
+		}
+
+		String prefix = lcp.substring(0, separator + 1);
+		List<String> suffixes = artifactIds.stream()
+				.map(id -> id.substring(prefix.length()))
+				.filter(s -> !s.isEmpty())
+				.sorted()
+				.toList();
+
+		return suffixes.size() == artifactIds.size() ? suffixes : List.of();
+	}
+
+	private static String longestCommonPrefix(List<String> strings) {
+
+		String first = strings.getFirst();
+		int len = first.length();
+		for (String s : strings) {
+			len = Math.min(len, s.length());
+			for (int i = 0; i < len; i++) {
+				if (first.charAt(i) != s.charAt(i)) {
+					len = i;
+					break;
+				}
+			}
+		}
+		return first.substring(0, len);
 	}
 
 	@Override

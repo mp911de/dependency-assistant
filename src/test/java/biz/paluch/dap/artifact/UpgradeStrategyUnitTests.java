@@ -16,6 +16,9 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.Arrays;
+import java.util.List;
+
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.state.CachedArtifact;
 import org.junit.jupiter.api.Test;
@@ -56,6 +59,42 @@ class UpgradeStrategyUnitTests {
 		Release release = select(UpgradeStrategy.PATCH, "2.0.4", Releases.SPRING_MODULITH_BOM);
 
 		assertThat(release.version()).hasToString("2.0.5");
+	}
+
+	@Test
+	void patchSelectsServiceReleaseWithinSameTrainFromRelease() {
+
+		Release release = select(UpgradeStrategy.PATCH, "Dysprosium-RELEASE", "Dysprosium-RELEASE", "Dysprosium-SR1",
+				"Dysprosium-SR25");
+
+		assertThat(release.version()).hasToString("Dysprosium-SR25");
+	}
+
+	@Test
+	void patchSelectsHighestLaterServiceReleaseWithinSameTrain() {
+
+		Release release = select(UpgradeStrategy.PATCH, "Dysprosium-SR1", "Dysprosium-SR1", "Dysprosium-SR2",
+				"Dysprosium-SR25");
+
+		assertThat(release.version()).hasToString("Dysprosium-SR25");
+	}
+
+	@Test
+	void patchDoesNotCrossReleaseTrainBoundary() {
+
+		Release release = select(UpgradeStrategy.PATCH, "Dysprosium-RELEASE", "Dysprosium-RELEASE", "Europium-SR1",
+				"Europium-RELEASE");
+
+		assertThat(release).isNull();
+	}
+
+	@Test
+	void patchReturnsNullForNewestServiceReleaseInTrain() {
+
+		Release release = select(UpgradeStrategy.PATCH, "Dysprosium-SR25", "Dysprosium-RELEASE", "Dysprosium-SR1",
+				"Dysprosium-SR25");
+
+		assertThat(release).isNull();
 	}
 
 	// -------------------------------------------------------------------------
@@ -212,6 +251,14 @@ class UpgradeStrategyUnitTests {
 	private static Release select(UpgradeStrategy strategy, String currentVersion, CachedArtifact artifact) {
 		return strategy.select(ArtifactVersion.of(currentVersion),
 				biz.paluch.dap.artifact.Releases.of(artifact.getVersionOptions()));
+	}
+
+	private static Release select(UpgradeStrategy strategy, String currentVersion, String... versions) {
+
+		List<Release> releases = Arrays.stream(versions).map(Release::of).toList();
+
+		return strategy.select(ArtifactVersion.of(currentVersion),
+				biz.paluch.dap.artifact.Releases.of(releases));
 	}
 
 }
