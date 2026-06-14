@@ -1,4 +1,7 @@
 <idea-plugin>
+
+	<depends config-file="npm.xml">com.intellij.modules.json</depends>
+
 	<extensions defaultExtensionNs="JavaScript.JsonSchema">
 		<ProviderFactory implementation="biz.paluch.dap.rule.DependencyfileSchemaProviderFactory"/>
 	</extensions>
