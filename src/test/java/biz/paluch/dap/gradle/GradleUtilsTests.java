@@ -102,6 +102,30 @@ class GradleUtilsTests {
 	}
 
 	@Test
+	void updateGavVersionReplacesVersionInCompactGav() {
+		assertThat(GradleUtils.updateGavVersion("org.springframework:spring-core:5.3.0", "6.0.0"))
+				.isEqualTo("org.springframework:spring-core:6.0.0");
+	}
+
+	@Test
+	void updateGavVersionPreservesClassifier() {
+		assertThat(GradleUtils.updateGavVersion("com.example:lib:1.0:classifier", "2.0"))
+				.isEqualTo("com.example:lib:2.0:classifier");
+	}
+
+	@Test
+	void updateGavVersionPreservesExtension() {
+		assertThat(GradleUtils.updateGavVersion("com.example:lib:1.0@jar", "2.0"))
+				.isEqualTo("com.example:lib:2.0@jar");
+	}
+
+	@Test
+	void updateGavVersionPreservesClassifierAndExtension() {
+		assertThat(GradleUtils.updateGavVersion("com.example:lib:1.0:natives-linux@jar", "2.0"))
+				.isEqualTo("com.example:lib:2.0:natives-linux@jar");
+	}
+
+	@Test
 	void findsGradleScriptsSortedByName() {
 
 		MockVirtualFile directory = MockVirtualFile.dir("project",

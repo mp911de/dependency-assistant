@@ -723,6 +723,10 @@ class KotlinDslParser extends GradleParser {
 		}
 
 		String gavText = KtLiterals.from(gavTemplate).toString(propertyResolver);
+		if (StringUtils.isEmpty(gavText) || !GradleArtifactId.isValid(gavText)) {
+			return null;
+		}
+
 		ArtifactId artifactId = GradleArtifactId.from(gavText);
 
 		return new NamedDependencyDeclaration(call.getContainingFile(), null, artifactId.groupId(),

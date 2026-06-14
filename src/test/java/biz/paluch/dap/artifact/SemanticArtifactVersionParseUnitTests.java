@@ -16,6 +16,9 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -318,6 +321,88 @@ class SemanticArtifactVersionParseUnitTests {
 		assertThat(v.getNextDevelopmentVersion().isMilestoneVersion()).isFalse();
 		assertThat(v.getNextDevelopmentVersion().isReleaseVersion()).isFalse();
 		assertThat(v.getNextDevelopmentVersion()).isEqualTo(version("1.6.0-SNAPSHOT"));
+	}
+
+	@Test
+	void releaseSpellingsAreOrderingEquivalentButNotEqual() {
+
+		assertThat(version("1.0.0").compareTo(version("1.0.0.RELEASE"))).isZero();
+		assertThat(version("1.0.0").compareTo(version("1.0.0.Final"))).isZero();
+		assertThat(version("1.0.0.RELEASE").compareTo(version("1.0.0.Final"))).isZero();
+
+		assertThat(version("1.0.0")).isNotEqualTo(version("1.0.0.RELEASE"));
+		assertThat(version("1.0.0")).isNotEqualTo(version("1.0.0.Final"));
+		assertThat(version("1.0.0.RELEASE")).isNotEqualTo(version("1.0.0.Final"));
+	}
+
+	@Test
+	void equalVersionsShareHashCode() {
+
+		assertThat(version("1.0.0")).isEqualTo(version("1.0.0")).hasSameHashCodeAs(version("1.0.0"));
+		assertThat(version("1.0.0.RELEASE")).isEqualTo(version("1.0.0.RELEASE"))
+				.hasSameHashCodeAs(version("1.0.0.RELEASE"));
+		assertThat(version("1.0.0-M1")).isEqualTo(version("1.0.0-M1")).hasSameHashCodeAs(version("1.0.0-M1"));
+	}
+
+	@Test
+	void hashSetFindsElementEqualToOneItContains() {
+
+		Set<SemanticArtifactVersion> versions = new HashSet<>();
+		versions.add(version("1.0.0"));
+		versions.add(version("1.0.0.RELEASE"));
+		versions.add(version("1.0.0.Final"));
+
+		assertThat(versions).hasSize(3);
+		assertThat(versions).contains(version("1.0.0"), version("1.0.0.RELEASE"), version("1.0.0.Final"));
+		assertThat(versions).doesNotContain(version("1.0.1"));
+	}
+
+	@Test
+	void parsesAndOrdersLargeMilestoneCounters() {
+
+		assertThat(SemanticArtifactVersion.isVersion("1.0.0-M99999999999")).isTrue();
+		assertThat(version("1.0.0-M99999999999")).hasToString("1.0.0-M99999999999");
+
+		assertThat(version("1.0.0-M9")).isLessThan(version("1.0.0-M10"))
+				.isLessThan(version("1.0.0-M99999999999"));
+	}
+
+	@ParameterizedTest(name = "{0}")
+	@ValueSource(strings = {"1.0.0-RC99999999999", "1.0.0-SR99999999999", "1.0.0.M99999999999"})
+	void parsesLargeReleaseCandidateAndServiceReleaseCounters(String version) {
+
+		assertThat(SemanticArtifactVersion.isVersion(version)).isTrue();
+		assertThat(version(version)).hasToString(version);
+	}
+
+	@Test
+	void prefixedVersionEqualsUnprefixedVersionWithSameComponents() {
+
+		ArtifactVersion prefixed = ArtifactVersion.of("v1.2.3");
+		ArtifactVersion plain = ArtifactVersion.of("1.2.3");
+
+		assertThat(prefixed).isEqualTo(plain);
+		assertThat(plain).isEqualTo(prefixed);
+		assertThat(prefixed.hashCode()).isEqualTo(plain.hashCode());
+	}
+
+	@Test
+	void isNewerMinorReturnsTrueWhenOtherHasHigherMinorInSameMajor() {
+
+		ArtifactVersion current = version("1.1.0");
+
+		assertThat(current.isNewerMinor(version("1.2.0"))).isTrue();
+		assertThat(current.isNewerMinor(version("1.2.5"))).isTrue();
+	}
+
+	@Test
+	void isNewerMinorReturnsFalseForDifferentMajorOrOlderMinor() {
+
+		ArtifactVersion current = version("1.2.0");
+
+		assertThat(current.isNewerMinor(version("1.1.0"))).isFalse();
+		assertThat(current.isNewerMinor(version("2.0.0"))).isFalse();
+		assertThat(current.isNewerMinor(version("1.2.0"))).isFalse();
 	}
 
 }

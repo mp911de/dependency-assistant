@@ -265,8 +265,11 @@ class GradlePropertyResolver implements PropertyResolver {
 	@Override
 	public @Nullable PropertyValue getPropertyValue(String key) {
 		Property property = propertyElements.get(key);
-		return property != null ? new PropertyValue(property.getKey(), property.getValue(), property.getValueLiteral())
-				: null;
+		if (property == null) {
+			return null;
+		}
+		PsiElement literal = property.getValueLiteral();
+		return literal != null ? new PropertyValue(property.getKey(), property.getValue(), literal) : null;
 	}
 
 	/**

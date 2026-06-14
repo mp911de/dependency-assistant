@@ -179,11 +179,33 @@ class GradleRichVersion {
 			}
 
 			if (this.start == '[' && StringUtils.hasText(this.lowerBound)) {
-				return this.prefix + this.start + replaceTrimmed(this.lowerBound, newVersion) + "," + this.upperBound
-						+ this.end + this.suffix;
+				String updatedLower = replaceTrimmed(this.lowerBound, newVersion);
+				if (crossesUpperBound(newVersion)) {
+					return this.prefix + this.start + updatedLower + ","
+							+ replaceTrimmed(this.upperBound, newVersion) + ']' + this.suffix;
+				}
+				return this.prefix + this.start + updatedLower + "," + this.upperBound + this.end + this.suffix;
 			}
 
 			return toString();
+		}
+
+		/**
+		 * Whether {@code newVersion} reaches or exceeds the exclusive upper bound,
+		 * which would invert the range if only the lower bound were replaced.
+		 */
+		private boolean crossesUpperBound(String newVersion) {
+			if (this.end == ']' || !StringUtils.hasText(this.upperBound)) {
+				return false;
+			}
+
+			Optional<ArtifactVersion> upper = ArtifactVersion.from(this.upperBound.trim());
+			Optional<ArtifactVersion> target = ArtifactVersion.from(newVersion.trim());
+			if (upper.isEmpty() || target.isEmpty() || !target.get().canCompare(upper.get())) {
+				return false;
+			}
+
+			return !target.get().isOlder(upper.get());
 		}
 
 		@Override

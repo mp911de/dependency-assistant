@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -51,6 +52,8 @@ class SemanticArtifactVersion implements NumericVersion {
 
 	private final Suffix suffix;
 
+	private final String canonicalSuffix;
+
 	/**
 	 * Creates a new {@link SemanticArtifactVersion} from the given logical
 	 * {@link NumericVersionComponents}.
@@ -85,6 +88,7 @@ class SemanticArtifactVersion implements NumericVersion {
 		this.components = components;
 		this.modifierFormat = modifierFormat;
 		this.suffix = suffix;
+		this.canonicalSuffix = suffix.canonical().toLowerCase(Locale.ROOT);
 	}
 
 	/**
@@ -228,13 +232,10 @@ class SemanticArtifactVersion implements NumericVersion {
 
 	@Override
 	public boolean isNewerMinor(ArtifactVersion other) {
-
 		if (other.getVersion() instanceof SemanticArtifactVersion sav) {
 			return components.getMajor() == sav.components.getMajor()
-					&& sav.components.getMinor() > components.getMinor()
-					&& isNewer(sav);
+					&& sav.components.getMinor() > components.getMinor();
 		}
-
 		return false;
 	}
 
@@ -288,7 +289,7 @@ class SemanticArtifactVersion implements NumericVersion {
 			return true;
 		}
 
-		String canonical = suffix.canonical().toLowerCase();
+		String canonical = suffix.canonical().toLowerCase(Locale.ROOT);
 		return canonical.contains("alpha") || canonical.contains("beta");
 	}
 
@@ -304,7 +305,7 @@ class SemanticArtifactVersion implements NumericVersion {
 			return true;
 		}
 
-		return suffix.canonical().toLowerCase().contains("rc");
+		return suffix.canonical().toLowerCase(Locale.ROOT).contains("rc");
 	}
 
 	/**
@@ -386,11 +387,6 @@ class SemanticArtifactVersion implements NumericVersion {
 		return versionsEqual != 0 ? versionsEqual : this.suffix.compareTo(that.suffix);
 	}
 
-	@Override
-	public String toString() {
-		return version;
-	}
-
 	private String getSnapshotSuffix() {
 		return modifierFormat ? Suffix.SNAPSHOT_MODIFIER : Suffix.BUILD_SNAPSHOT_SUFFIX;
 	}
@@ -409,15 +405,26 @@ class SemanticArtifactVersion implements NumericVersion {
 		if (this == obj) {
 			return true;
 		}
-		if (!(obj instanceof SemanticArtifactVersion other)) {
+		if (!(obj instanceof ArtifactVersion av)) {
 			return false;
 		}
-		return components.compareTo(other.components) == 0 && suffix.compareTo(other.suffix) == 0;
+		if (av.isWrapped()) {
+			return equals(av.getVersion());
+		}
+		if (!(av instanceof SemanticArtifactVersion other)) {
+			return false;
+		}
+		return components.compareTo(other.components) == 0 && canonicalSuffix.equals(other.canonicalSuffix);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(components, suffix.canonical());
+		return Objects.hash(components, canonicalSuffix);
+	}
+
+	@Override
+	public String toString() {
+		return version;
 	}
 
 }

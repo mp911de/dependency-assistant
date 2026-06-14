@@ -82,4 +82,44 @@ class GradleRichVersionUnitTests {
 				.hasValueSatisfying(version -> assertThat(version).hasToString("6.0.0"));
 	}
 
+	@Test
+	void updatesHalfOpenRangeWithinBounds() {
+
+		assertThat(GradleRichVersion.update("[1.0, 2.0)", "1.5")).isEqualTo("[1.5, 2.0)");
+	}
+
+	@Test
+	void updatesHalfOpenRangeAcrossUpperBoundWithoutInverting() {
+
+		assertThat(GradleRichVersion.update("[1.0, 2.0)", "3.0")).isEqualTo("[3.0, 3.0]");
+		assertThat(GradleRichVersion.update("[1.0, 2.0)", "2.0")).isEqualTo("[2.0, 2.0]");
+	}
+
+	@Test
+	void updatesInclusiveUpperRange() {
+
+		assertThat(GradleRichVersion.update("[1.0, 2.0]", "1.5")).isEqualTo("[1.0, 1.5]");
+		assertThat(GradleRichVersion.update("[1.0, 2.0]", "3.0")).isEqualTo("[1.0, 3.0]");
+	}
+
+	@Test
+	void leavesExclusiveLowerRangeUnchanged() {
+
+		assertThat(GradleRichVersion.update("(1.0, 2.0)", "1.5")).isEqualTo("(1.0, 2.0)");
+		assertThat(GradleRichVersion.update("(1.0, 2.0)", "3.0")).isEqualTo("(1.0, 2.0)");
+	}
+
+	@Test
+	void updatesOpenEndedRange() {
+
+		assertThat(GradleRichVersion.update("[1.0,)", "1.5")).isEqualTo("[1.5,)");
+		assertThat(GradleRichVersion.update("[1.0,)", "3.0")).isEqualTo("[3.0,)");
+	}
+
+	@Test
+	void preservesWhitespaceAcrossUpperBound() {
+
+		assertThat(GradleRichVersion.update("  [1.0, 2.0)  ", "3.0")).isEqualTo("  [3.0, 3.0]  ");
+	}
+
 }

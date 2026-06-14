@@ -570,7 +570,7 @@ class GradleParser extends GradleParserSupport {
 		}
 
 		String gavText = GroovyDslUtils.getText(gavLiteral);
-		if (StringUtils.isEmpty(gavText)) {
+		if (StringUtils.isEmpty(gavText) || !GradleArtifactId.isValid(gavText)) {
 			return null;
 		}
 

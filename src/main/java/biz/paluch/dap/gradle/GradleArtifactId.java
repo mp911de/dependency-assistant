@@ -113,7 +113,10 @@ interface GradleArtifactId extends ArtifactId {
 	 */
 	static GradleArtifactId from(String gav) {
 		Assert.hasLength(gav, "GAV must not be empty");
-		String[] parts = gav.split(":");
+		String[] parts = gav.split(":", -1);
+		if (parts.length < 2 || parts[0].isEmpty() || parts[1].isEmpty()) {
+			throw new IllegalArgumentException("Invalid Gradle coordinate '%s'".formatted(gav));
+		}
 		return new DefaultGradleArtifactId(parts[0], parts[1], parts.length > 2 ? parts[2] : "");
 	}
 
@@ -142,7 +145,11 @@ interface GradleArtifactId extends ArtifactId {
 	 * parsing.
 	 */
 	static boolean isValid(@Nullable String gav) {
-		return StringUtils.hasText(gav) && gav.contains(":");
+		if (!StringUtils.hasText(gav)) {
+			return false;
+		}
+		String[] parts = gav.split(":", -1);
+		return parts.length >= 2 && !parts[0].isEmpty() && !parts[1].isEmpty();
 	}
 
 	record DefaultGradleArtifactId(String groupId, String artifactId, String version)

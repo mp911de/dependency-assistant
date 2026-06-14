@@ -438,8 +438,19 @@ class GradleUtils {
 			return GradleRichVersion.update(gav, newVersion);
 		}
 
-		String version = gav.substring(secondColon + 1);
-		return gav.substring(0, secondColon + 1) + GradleRichVersion.update(version, newVersion);
+		String versionAndSuffix = gav.substring(secondColon + 1);
+		int classifierColon = versionAndSuffix.indexOf(':');
+		int extAt = versionAndSuffix.indexOf('@');
+		int suffixStart = classifierColon == -1 ? extAt
+				: extAt == -1 ? classifierColon
+						: Math.min(classifierColon, extAt);
+
+		if (suffixStart != -1) {
+			String version = versionAndSuffix.substring(0, suffixStart);
+			String suffix = versionAndSuffix.substring(suffixStart);
+			return gav.substring(0, secondColon + 1) + GradleRichVersion.update(version, newVersion) + suffix;
+		}
+		return gav.substring(0, secondColon + 1) + GradleRichVersion.update(versionAndSuffix, newVersion);
 	}
 
 	/**

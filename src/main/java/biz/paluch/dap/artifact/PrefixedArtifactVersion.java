@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.artifact;
 
-import java.util.Objects;
-
 /**
  * {@link ArtifactVersion} that wraps an inner version with a string prefix such
  * as {@code v}.
@@ -43,15 +41,15 @@ class PrefixedArtifactVersion extends ArtifactVersionWrapper implements Artifact
 		if (this == obj) {
 			return true;
 		}
-		if (!(obj instanceof PrefixedArtifactVersion other)) {
+		if (!(obj instanceof ArtifactVersion other)) {
 			return false;
 		}
-		return prefix.equals(other.prefix) && getVersion().equals(other.getVersion());
+		return getVersion().equals(other.getVersion());
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(prefix, getVersion());
+		return getVersion().hashCode();
 	}
 
 	@Override

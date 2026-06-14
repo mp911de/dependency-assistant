@@ -419,4 +419,17 @@ class UpdateGradleFileTests {
 		assertThat(buildFile).containsText("strictly '[5.0, 7.0['");
 	}
 
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation 'com.example:lib:1'
+			}
+			""")
+	void groovySingleCharVersionIsUpdated(PsiFile buildFile) {
+
+		UpdatedBuildFile updated = applyUpdate(buildFile, "com.example", "lib", "2");
+
+		assertThat(updated).hasDependency("lib", "2");
+	}
+
 }

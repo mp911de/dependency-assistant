@@ -180,7 +180,7 @@ interface Suffix extends Comparable<Suffix> {
 
 		String type = milestoneMatcher.group(1);
 		String digits = milestoneMatcher.group(2);
-		return new SemVerSuffix(type, Integer.parseInt(digits), "", digits);
+		return new SemVerSuffix(type, new BigInteger(digits), "", digits);
 	}
 
 	private static @Nullable Suffix parseSingleSegment(String suffix) {
@@ -197,9 +197,9 @@ interface Suffix extends Comparable<Suffix> {
 			return Snapshot.INSTANCE;
 		}
 		if (StringUtils.isEmpty(counter)) {
-			return new SemVerSuffix(type, -1, separator, "");
+			return new SemVerSuffix(type, null, separator, "");
 		}
-		return new SemVerSuffix(type, Integer.parseInt(counter), separator, counter);
+		return new SemVerSuffix(type, new BigInteger(counter), separator, counter);
 	}
 
 	private static @Nullable Suffix parseMultiSegment(String suffix) {
@@ -492,7 +492,7 @@ interface Suffix extends Comparable<Suffix> {
 	 * @param separator the qualifier separator.
 	 * @param raw the original counter value.
 	 */
-	record SemVerSuffix(String type, int counter, @Nullable String separator, @Nullable String raw)
+	record SemVerSuffix(String type, @Nullable BigInteger counter, @Nullable String separator, @Nullable String raw)
 			implements PreReleaseSuffix {
 
 		public String getCanonicalType() {
@@ -501,7 +501,7 @@ interface Suffix extends Comparable<Suffix> {
 
 		@Override
 		public List<Identifier> identifiers() {
-			return counter == -1 ? List.of() : List.of(new Identifier(raw != null ? raw : Integer.toString(counter)));
+			return counter == null ? List.of() : List.of(new Identifier(raw != null ? raw : counter.toString()));
 		}
 
 		@Override
@@ -515,20 +515,20 @@ interface Suffix extends Comparable<Suffix> {
 		@Override
 		public String canonical() {
 
-			if (counter == -1) {
+			if (counter == null) {
 				return type;
 			}
 
 			if (separator == null) {
-				return "%s%d".formatted(type, counter);
+				return "%s%s".formatted(type, counter);
 			}
-			return "%s%s%d".formatted(type, separator, counter);
+			return "%s%s%s".formatted(type, separator, counter);
 		}
 
 		@Override
 		public String toString() {
 
-			if (counter == -1) {
+			if (counter == null) {
 				return type;
 			}
 

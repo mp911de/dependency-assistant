@@ -17,6 +17,7 @@
 package biz.paluch.dap.support;
 
 import com.intellij.psi.PsiElement;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Descriptor for a resolved build property declaration.
@@ -42,8 +43,10 @@ public interface Property {
 	String getValue();
 
 	/**
-	 * Return the PSI element that holds the declared value.
+	 * Return the PSI element that holds the declared value, or {@literal null} if
+	 * the element is no longer valid.
 	 */
+	@Nullable
 	PsiElement getValueLiteral();
 
 }

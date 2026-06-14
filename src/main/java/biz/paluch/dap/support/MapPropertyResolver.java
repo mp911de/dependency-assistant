@@ -18,6 +18,7 @@ package biz.paluch.dap.support;
 
 import java.util.Map;
 
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -30,8 +31,11 @@ record MapPropertyResolver(Map<String, ? extends Property> properties) implement
 	@Override
 	public @Nullable PropertyValue getPropertyValue(String key) {
 		Property property = properties.get(key);
-		return property != null ? new PropertyValue(property.getKey(), property.getValue(), property.getValueLiteral())
-				: null;
+		if (property == null) {
+			return null;
+		}
+		PsiElement literal = property.getValueLiteral();
+		return literal != null ? new PropertyValue(property.getKey(), property.getValue(), literal) : null;
 	}
 
 	@Override

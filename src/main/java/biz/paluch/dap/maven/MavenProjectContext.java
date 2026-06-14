@@ -153,7 +153,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 				return Versioned.unversioned();
 			}
 
-			MavenProjectMetadataPropertyResolver resolver = new MavenProjectMetadataPropertyResolver(xmlFile);
+			MavenProjectMetadataPropertyResolver resolver = MavenProjectMetadataPropertyResolver.from(xmlFile);
 			PropertyValue version = resolver.getVersion() != null ? resolver.getVersion() : resolver.getParentVersion();
 			if (version == null) {
 				return Versioned.unversioned();

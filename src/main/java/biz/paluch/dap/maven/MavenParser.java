@@ -196,7 +196,7 @@ class MavenParser {
 		Map<String, PropertyValue> properties = parseProperties(pomFile);
 		collector.addProperties(properties.keySet());
 
-		PropertyResolver resolver = new MavenProjectMetadataPropertyResolver(pomFile)
+		PropertyResolver resolver = MavenProjectMetadataPropertyResolver.from(pomFile)
 				.withFallback(PropertyResolver.fromMap(properties))
 				.withFallback(this.propertyResolver);
 
@@ -348,7 +348,7 @@ class MavenParser {
 		doWithPluginsAndDependencies(resolver, callback, root);
 		doWithProfiles(root, profile -> {
 			String id = profile.getSubTagText("id");
-			if (StringUtils.isEmpty(id)) {
+			if (!StringUtils.hasText(id)) {
 				return;
 			}
 			doWithPluginsAndDependencies(resolver, callback, profile);

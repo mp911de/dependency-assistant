@@ -53,6 +53,9 @@ public enum UpgradeStrategy {
 	 * Select the newest non-preview release within the same major and minor version
 	 * as {@code current}, limited to general-availability releases (including
 	 * bug-fix releases).
+	 * <p>For release-train versions the same major.minor line is the same train, so
+	 * service releases of that train (e.g. {@code Dysprosium-SR25}) qualify as
+	 * patch-level upgrades while releases of a different train do not.
 	 * <p>Return {@literal null} when the current version is already the latest
 	 * within its major.minor line, or no qualifying release exists.
 	 */
@@ -65,7 +68,7 @@ public enum UpgradeStrategy {
 			return options.stream() //
 					.filter(Predicate.not(Release::isPreview)) //
 					.filter(opt -> opt.version().hasSameMajorMinor(current) && opt.isNewer(current)) //
-					.filter(Release::isReleaseVersion) //
+					.filter(opt -> opt.isReleaseVersion() || opt.isBugFixVersion()) //
 					.findFirst().orElse(null);
 		}
 

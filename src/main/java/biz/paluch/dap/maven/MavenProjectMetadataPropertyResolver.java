@@ -21,6 +21,7 @@ import java.util.Map;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlTagValue;
@@ -44,7 +45,7 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 	 * Create a new {@code PropertyResolver} for {@link XmlFile}
 	 * @param pom the POM file providing project coordinates.
 	 */
-	public MavenProjectMetadataPropertyResolver(XmlFile pom) {
+	MavenProjectMetadataPropertyResolver(XmlFile pom) {
 
 		XmlTag rootTag = pom.getDocument().getRootTag();
 		if (rootTag == null) {
@@ -55,14 +56,12 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 
 		PropertyValue artifactId = find(rootTag, "artifactId");
 		if (artifactId != null) {
-			properties.put("artifactId", artifactId);
-			properties.put("project.artifactId", artifactId);
+			register(artifactId, "artifactId");
 		}
 
 		PropertyValue groupId = find(rootTag, "groupId");
 		if (groupId != null) {
-			properties.put("groupId", groupId);
-			properties.put("project.groupId", groupId);
+			register(groupId, "groupId");
 		}
 
 		this.version = findDirect(rootTag, "version");
@@ -70,9 +69,48 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 
 		PropertyValue effectiveVersion = this.version != null ? this.version : this.parentVersion;
 		if (effectiveVersion != null) {
-			properties.put("version", effectiveVersion);
-			properties.put("project.version", effectiveVersion);
+			register(effectiveVersion, "version");
 		}
+
+		PropertyValue parentArtifactId = findParent(rootTag, "artifactId");
+		if (parentArtifactId != null) {
+			registerParent(parentArtifactId, "artifactId");
+		}
+
+		PropertyValue parentGroupId = findParent(rootTag, "groupId");
+		if (parentGroupId != null) {
+			registerParent(parentGroupId, "groupId");
+		}
+
+		if (this.parentVersion != null) {
+			registerParent(this.parentVersion, "version");
+		}
+	}
+
+	public static MavenProjectMetadataPropertyResolver from(XmlFile pom) {
+		return CachedValuesManager.getProjectPsiDependentCache(pom,
+				MavenProjectMetadataPropertyResolver::new);
+	}
+
+	/**
+	 * Register a project coordinate under its plain name, the {@code project.}
+	 * prefix, and the legacy {@code pom.} alias that Maven treats as equivalent.
+	 */
+	private void register(PropertyValue value, String coordinate) {
+
+		properties.put(coordinate, value);
+		properties.put("project." + coordinate, value);
+		properties.put("pom." + coordinate, value);
+	}
+
+	/**
+	 * Register a parent coordinate under the {@code project.parent.} placeholder
+	 * and the legacy {@code pom.parent.} alias.
+	 */
+	private void registerParent(PropertyValue value, String coordinate) {
+
+		properties.put("project.parent." + coordinate, value);
+		properties.put("pom.parent." + coordinate, value);
 	}
 
 	/**

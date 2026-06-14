@@ -17,6 +17,9 @@
 package biz.paluch.dap.support;
 
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Location of a property value inside {@code gradle.properties} or a
@@ -24,7 +27,33 @@ import com.intellij.psi.PsiElement;
  *
  * @author Mark Paluch
  */
-public record PropertyValue(String getKey, String getValue, PsiElement getValueLiteral) implements Property {
+public class PropertyValue implements Property {
 
+	private final String key;
+
+	private final String value;
+
+	private final SmartPsiElementPointer<PsiElement> pointer;
+
+	public PropertyValue(String key, String value, PsiElement element) {
+		this.key = key;
+		this.value = value;
+		this.pointer = SmartPointerManager.createPointer(element);
+	}
+
+	@Override
+	public String getKey() {
+		return this.key;
+	}
+
+	@Override
+	public String getValue() {
+		return this.value;
+	}
+
+	@Override
+	public @Nullable PsiElement getValueLiteral() {
+		return this.pointer.getElement();
+	}
 
 }

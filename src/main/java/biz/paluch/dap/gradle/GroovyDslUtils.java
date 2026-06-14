@@ -247,7 +247,7 @@ class GroovyDslUtils {
 
 		String content = literal.getText();
 
-		if (!StringUtils.hasText(text) || text.length() < 2) {
+		if (!StringUtils.hasText(text)) {
 			return;
 		}
 

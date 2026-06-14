@@ -26,6 +26,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.model.MavenId;
 import org.jetbrains.idea.maven.project.MavenProject;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Maven-specific {@link PropertyResolver} that resolves properties from Maven
@@ -35,14 +36,10 @@ import org.jetbrains.idea.maven.project.MavenProject;
  */
 class MavenPropertyResolver extends MavenProperties {
 
-	private final MavenProjectContext context;
+	private static final MavenPropertyResolver EMPTY = new MavenPropertyResolver(null, PropertyResolver.empty());
 
-	private static final MavenPropertyResolver EMPTY = new MavenPropertyResolver(null, null, PropertyResolver.empty());
-
-	private MavenPropertyResolver(MavenProjectContext context, PsiFile root,
-			PropertyResolver compositePropertyResolver) {
-		super(root, compositePropertyResolver);
-		this.context = context;
+	private MavenPropertyResolver(@Nullable PsiFile pomFile, PropertyResolver compositePropertyResolver) {
+		super(pomFile, compositePropertyResolver);
 	}
 
 	/**
@@ -55,7 +52,7 @@ class MavenPropertyResolver extends MavenProperties {
 			return EMPTY;
 		}
 
-		PropertyResolver propertyResolver = new MavenProjectMetadataPropertyResolver(xmlFile);
+		PropertyResolver propertyResolver = MavenProjectMetadataPropertyResolver.from(xmlFile);
 
 		List<MavenProject> hierarchy = getProjects(context);
 
@@ -68,7 +65,7 @@ class MavenPropertyResolver extends MavenProperties {
 			}
 		}
 
-		return new MavenPropertyResolver(context, pomFile, propertyResolver);
+		return new MavenPropertyResolver(pomFile, propertyResolver);
 	}
 
 	private static List<MavenProject> getProjects(MavenProjectContext context) {

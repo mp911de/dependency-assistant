@@ -18,6 +18,7 @@ package biz.paluch.dap.maven;
 
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.xml.XmlFile;
@@ -31,12 +32,13 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenProperties implements PropertyResolver {
 
-	private final PsiFile pomFile;
+	private final String pomFile;
 
 	private final PropertyResolver propertyResolver;
 
-	MavenProperties(PsiFile pomFile, PropertyResolver propertyResolver) {
-		this.pomFile = pomFile;
+	MavenProperties(@Nullable PsiFile pomFile, PropertyResolver propertyResolver) {
+		VirtualFile file = pomFile != null ? pomFile.getVirtualFile() : null;
+		this.pomFile = file != null ? file.getPath() : (pomFile != null ? pomFile.getName() : "unknown");
 		this.propertyResolver = propertyResolver;
 	}
 
@@ -73,6 +75,11 @@ class MavenProperties implements PropertyResolver {
 		return propertyResolver.getPropertyValue(key);
 	}
 
-
+	@Override
+	public String toString() {
+		return "MavenProperties{" +
+				"pomFile='" + pomFile + '\'' +
+				'}';
+	}
 
 }
