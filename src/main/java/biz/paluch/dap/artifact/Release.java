@@ -19,6 +19,7 @@ package biz.paluch.dap.artifact;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 
 import biz.paluch.dap.util.StringUtils;
@@ -72,7 +73,7 @@ public record Release(ArtifactVersion version,
 	 * date.
 	 */
 	public static Release from(ArtifactVersion version, @Nullable String date) {
-		return new Release(version, getReleaseDate(date));
+		return new Release(version, parseReleaseDate(date));
 	}
 
 	/**
@@ -102,11 +103,22 @@ public record Release(ArtifactVersion version,
 
 	/**
 	 * Parse the release date from an ISO string.
+	 * <p>Accepts both ISO-8601 local date-time strings (e.g.
+	 * {@code "2024-01-15T10:30"}) and legacy ISO-8601 local date strings (e.g.
+	 * {@code "2024-01-15"}). Legacy date-only strings are interpreted as midnight.
 	 *
-	 * @see LocalDateTime#parse
+	 * @param date the ISO-8601 date or date-time string, or {@literal null}.
+	 * @return the parsed date-time, or {@literal null} if {@code date} is blank.
 	 */
-	public static @Nullable LocalDateTime getReleaseDate(@Nullable String date) {
-		return StringUtils.hasText(date) ? LocalDateTime.of(LocalDate.parse(date), LocalTime.MIDNIGHT) : null;
+	public static @Nullable LocalDateTime parseReleaseDate(@Nullable String date) {
+		if (!StringUtils.hasText(date)) {
+			return null;
+		}
+		try {
+			return LocalDateTime.parse(date);
+		} catch (DateTimeParseException e) {
+			return LocalDateTime.of(LocalDate.parse(date), LocalTime.MIDNIGHT);
+		}
 	}
 
 	/**

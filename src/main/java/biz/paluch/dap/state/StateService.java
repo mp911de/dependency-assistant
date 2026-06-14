@@ -272,7 +272,7 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		@Override
 		public void setDependencies(DependencyCollector collector) {
 			dependencies.put(identity, collector);
-			getCache().getProject(identity).setProperties(collector);
+			getCache().getProject(identity).setProperties(collector, Cache.CLOCK.millis());
 		}
 
 		@Override

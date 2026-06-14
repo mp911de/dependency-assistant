@@ -621,7 +621,7 @@ class MavenParserTests {
 		DependencyCollector propertyCollector = new DependencyCollector();
 		MavenParser parser = new MavenParser(propertyCollector);
 		parser.parsePomFile(cache, child);
-		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector);
+		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector, 0);
 
 		DependencyCollector collector = new DependencyCollector();
 		parser = new MavenParser(collector);

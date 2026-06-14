@@ -21,7 +21,10 @@ import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
@@ -43,6 +46,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.CollectionUtils;
 
 /**
  * Release source that fetches releases from a remote Maven repository.
@@ -109,15 +114,15 @@ public class MavenRepository implements ReleaseSource {
 		URI metadataUri = repositoryBaseUri.resolve(metadataPath);
 		URI directoryUri = repositoryBaseUri.resolve(path);
 		indicator.checkCanceled();
-		String directoryListing = fetchUrl(artifactId, directoryUri, repository.credentials(), false,
-				repositoryBaseUri);
+		DirectoryResponse directoryResponse = fetchDirectoryListing(artifactId, directoryUri,
+				repository.credentials(), repositoryBaseUri);
 		String xml;
 		try {
 			xml = fetchUrl(artifactId, metadataUri, repository.credentials(), true, repositoryBaseUri);
 		} catch (ArtifactNotFoundException e) {
-			if (StringUtils.hasText(directoryListing)) {
+			if (StringUtils.hasText(directoryResponse.body())) {
 				Set<Release> releases = new TreeSet<>(Comparator.reverseOrder());
-				Map<String, LocalDateTime> releaseDates = parseDirectoryListingDates(directoryListing);
+				Map<String, LocalDateTime> releaseDates = directoryResponse.parse();
 				if (!releaseDates.isEmpty()) {
 					releaseDates.forEach((version, date) -> {
 						Release.tryFrom(version, date, null).ifPresent(releases::add);
@@ -133,7 +138,7 @@ public class MavenRepository implements ReleaseSource {
 			return List.of();
 		}
 
-		Map<String, LocalDateTime> releaseDates = parseDirectoryListingDates(directoryListing);
+		Map<String, LocalDateTime> releaseDates = directoryResponse.parse();
 		Set<Release> releases = new TreeSet<>(Comparator.reverseOrder());
 		for (String rawVersion : parseReleaseVersions(xml)) {
 			Release.tryFrom(rawVersion, releaseDates.get(rawVersion), null).ifPresent(releases::add);
@@ -148,7 +153,7 @@ public class MavenRepository implements ReleaseSource {
 				MavenMetadataProjection.class);
 
 		List<String> versions = projection.getVersions();
-		if (versions == null) {
+		if (CollectionUtils.isEmpty(versions)) {
 			return List.of();
 		}
 
@@ -167,50 +172,28 @@ public class MavenRepository implements ReleaseSource {
 		return result;
 	}
 
-	private static Map<String, LocalDateTime> parseDirectoryListingDates(@Nullable String html) {
+	private DirectoryResponse fetchDirectoryListing(ArtifactId artifactId, URI uri,
+			@Nullable RepositoryCredentials credentials, URI repositoryBaseUri) {
 
-		Map<String, LocalDateTime> result = new HashMap<>();
-
-		if (StringUtils.isEmpty(html)) {
-			return result;
+		try {
+			DirectoryResponse response = HttpClientUtil.fetchUrl(uri,
+					requestBuilder -> requestBuilder.tuner(connection -> {
+						if (credentials != null
+								&& hasSameBaseUri(repositoryBaseUri, URI.create(connection.getURL().toString()))) {
+							connection.addRequestProperty("Authorization", basicAuthHeader(credentials));
+						}
+					}), request -> {
+						String dateHeader = request.getConnection().getHeaderField("Date");
+						String body = HttpClientUtil.readUtf8StreamCapped(request);
+						return new DirectoryResponse(body, dateHeader);
+					});
+			return response != null ? response : new DirectoryResponse(null, null);
+		} catch (HttpRequests.HttpStatusException e) {
+			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, e.getStatusCode(), uri), e);
+			return new DirectoryResponse(null, null);
+		} catch (IOException e) {
+			throw new UncheckedIOException("%s: Failed to fetch %s: %s".formatted(artifactId, uri, e.getMessage()), e);
 		}
-
-		for (String line : html.lines().toList()) {
-
-			Matcher match = DIRECTORY_LISTING_PATTERN.matcher(line);
-
-			if (match.find()) {
-				String version = match.group(1) != null ? match.group(1).trim() : null;
-				String dateStr = match.group(2) != null ? match.group(2).trim() : null;
-				if (version != null && dateStr != null) {
-					try {
-						result.put(version, LocalDateTime.from(DIRECTORY_LISTING_DATE_FORMATTER.parse(dateStr)));
-					} catch (Exception e) {
-						LOG.debug("Could not parse directory listing date for version " + version, e);
-					}
-				}
-				continue;
-			}
-
-			match = ARTIFACTORY_DIRECTORY_LISTING_PATTERN.matcher(line);
-
-			if (match.find()) {
-
-				String version = match.group(1) != null ? match.group(1).trim() : null;
-				String dateStr = match.group(2) != null ? match.group(2).trim() : null;
-
-				if (version != null && dateStr != null) {
-					try {
-						result.put(version,
-								LocalDateTime.from(DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER.parse(dateStr)));
-					} catch (Exception e) {
-						LOG.debug("Could not parse directory listing date for version %s".formatted(version), e);
-					}
-				}
-			}
-		}
-
-		return result;
 	}
 
 	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
@@ -260,4 +243,83 @@ public class MavenRepository implements ReleaseSource {
 	public String toString() {
 		return "MavenRepository " + repository.id() + " [" + repository.url() + "]";
 	}
+
+	record DirectoryResponse(@Nullable String body, @Nullable String dateHeader) {
+
+		public Map<String, LocalDateTime> parse() {
+
+			Map<String, LocalDateTime> result = new HashMap<>();
+			if (StringUtils.isEmpty(body)) {
+				return result;
+			}
+
+			ZoneOffset serverOffset = getServerZoneOffset();
+
+			for (String line : body.lines().toList()) {
+
+				Matcher match = DIRECTORY_LISTING_PATTERN.matcher(line);
+
+				if (match.find()) {
+					String version = match.group(1) != null ? match.group(1).trim() : null;
+					String dateStr = match.group(2) != null ? match.group(2).trim() : null;
+					if (version != null && dateStr != null) {
+						try {
+							result.put(version, parseTimestamp(dateStr, serverOffset));
+						} catch (Exception e) {
+							LOG.debug("Could not parse directory listing date for version " + version, e);
+						}
+					}
+					continue;
+				}
+
+				match = ARTIFACTORY_DIRECTORY_LISTING_PATTERN.matcher(line);
+
+				if (match.find()) {
+
+					String version = match.group(1) != null ? match.group(1).trim() : null;
+					String dateStr = match.group(2) != null ? match.group(2).trim() : null;
+
+					if (version != null && dateStr != null) {
+						try {
+							LocalDateTime localDateTime = parseArtifactoryTimestamp(dateStr, serverOffset);
+							result.put(version, localDateTime);
+						} catch (Exception e) {
+							LOG.debug("Could not parse directory listing date for version %s".formatted(version), e);
+						}
+					}
+				}
+			}
+
+			return result;
+		}
+
+		private LocalDateTime parseArtifactoryTimestamp(String dateStr, ZoneOffset serverOffset) {
+			LocalDateTime local = LocalDateTime
+					.from(DIRECTORY_LISTING_ARTIFACTORY_DATE_FORMATTER.parse(dateStr));
+			return local.atOffset(serverOffset)
+					.withOffsetSameInstant(ZoneOffset.UTC)
+					.toLocalDateTime();
+		}
+
+		private LocalDateTime parseTimestamp(String timestamp, ZoneOffset serverOffset) {
+			LocalDateTime local = LocalDateTime.from(DIRECTORY_LISTING_DATE_FORMATTER.parse(timestamp));
+			return local.atOffset(serverOffset).withOffsetSameInstant(ZoneOffset.UTC)
+					.toLocalDateTime();
+		}
+
+		private ZoneOffset getServerZoneOffset() {
+			if (!StringUtils.hasText(dateHeader)) {
+				return ZoneOffset.UTC;
+			}
+			try {
+				ZonedDateTime serverTime = ZonedDateTime.parse(dateHeader, DateTimeFormatter.RFC_1123_DATE_TIME);
+				return serverTime.getOffset();
+			} catch (DateTimeParseException e) {
+				LOG.debug("Could not parse HTTP Date header '%s', assuming UTC".formatted(dateHeader), e);
+				return ZoneOffset.UTC;
+			}
+		}
+
+	}
+
 }

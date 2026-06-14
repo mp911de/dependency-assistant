@@ -189,7 +189,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	 * used.
 	 */
 	@Transient
-	public void setProperties(DependencyCollector collector) {
+	public void setProperties(DependencyCollector collector, long timestamp) {
 
 		synchronized (this) {
 
@@ -218,7 +218,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 				}).setDeclared(true);
 			}
 
-			this.lastSeen = Cache.CLOCK.millis();
+			this.lastSeen = timestamp;
 		}
 	}
 

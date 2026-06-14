@@ -41,7 +41,7 @@ import org.jspecify.annotations.Nullable;
 public class CachedRelease {
 
 	@Attribute
-	private String version;
+	private @Nullable String version;
 
 	@Attribute
 	private @Nullable String date;
@@ -66,7 +66,7 @@ public class CachedRelease {
 	 * Create a release entry with the given serialized values.
 	 *
 	 * @param version the release version.
-	 * @param date the optional release date in ISO-8601 local-date form.
+	 * @param date the optional release date in ISO-8601 local date-time form.
 	 */
 	public CachedRelease(String version, @Nullable String date) {
 		this.version = version;
@@ -78,7 +78,7 @@ public class CachedRelease {
 	 * hash.
 	 *
 	 * @param version the release version.
-	 * @param date the optional release date in ISO-8601 local-date form.
+	 * @param date the optional release date in ISO-8601 local date-time form.
 	 * @param sha the opaque content hash, or {@literal null}.
 	 */
 	public CachedRelease(String version, @Nullable String date, @Nullable String sha) {
@@ -109,7 +109,7 @@ public class CachedRelease {
 	 */
 	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate) {
 		if (releaseDate != null) {
-			return new CachedRelease(version.toString(), releaseDate.toLocalDate().toString());
+			return new CachedRelease(version.toString(), releaseDate.toString());
 		}
 		return new CachedRelease(version.toString(), null);
 	}
@@ -125,7 +125,7 @@ public class CachedRelease {
 	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate,
 			@Nullable String sha) {
 		if (releaseDate != null) {
-			return new CachedRelease(version.toString(), releaseDate.toLocalDate().toString(), sha);
+			return new CachedRelease(version.toString(), releaseDate.toString(), sha);
 		}
 		return new CachedRelease(version.toString(), null, sha);
 	}
@@ -167,7 +167,7 @@ public class CachedRelease {
 	/**
 	 * Return the serialized release date.
 	 *
-	 * @return the optional ISO-8601 local-date string.
+	 * @return the optional ISO-8601 local date-time string.
 	 */
 	@Attribute
 	public @Nullable String date() {

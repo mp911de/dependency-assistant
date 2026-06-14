@@ -65,6 +65,11 @@ public class HttpClientUtil {
 
 	public static @Nullable String fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction)
 			throws IOException {
+		return fetchUrl(uri, requestFunction, HttpClientUtil::readUtf8StreamCapped);
+	}
+
+	public static <T> @Nullable T fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction,
+			HttpRequests.RequestProcessor<T> responseProcessor) throws IOException {
 
 		try {
 			semaphore.acquire();
@@ -78,7 +83,7 @@ public class HttpClientUtil {
 					.userAgent(HttpClientUtil.getUserAgent()) //
 					.connectTimeout(HttpClientUtil.CONNECT_TIMEOUT_MS) //
 					.readTimeout(HttpClientUtil.READ_TIMEOUT_MS);
-			return requestFunction.apply(requestBuilder).connect(HttpClientUtil::readUtf8StreamCapped);
+			return requestFunction.apply(requestBuilder).connect(responseProcessor);
 		} finally {
 			semaphore.release();
 		}
