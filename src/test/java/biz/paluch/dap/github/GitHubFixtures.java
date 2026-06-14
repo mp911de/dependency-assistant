@@ -40,9 +40,9 @@ class GitHubFixtures {
 
 	static final String SHA_V3 = "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1";
 
-	static final String SHA_V4 = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
+		static final String SHA_V4 = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
 
-	static final ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
+		static final ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
 
 	/**
 	 * Set up a cache with GitHub Actions releases and register contexts for the

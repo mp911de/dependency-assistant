@@ -37,7 +37,21 @@ import com.intellij.psi.PsiFile;
  */
 class UpdateTestSupport {
 
-	public static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
+	/**
+	 * Apply a plain dependency update without referencing the current version. The
+	 * {@code fromVersion} is defaulted to {@code toVersion} as an inert
+	 * placeholder; use the explicit {@code fromVersion} overload when assertions
+	 * depend on the declared version (ranges, comparator pairs, dynamic
+	 * constraints).
+	 */
+	static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
+			String toVersion) {
+
+		return applyUpdate(targetFile, groupId, artifactId, toVersion, DeclarationSource.dependency(),
+				VersionSource.declared(toVersion), toVersion);
+	}
+
+	static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
 			String fromVersion,
 			String toVersion) {
 
@@ -45,7 +59,21 @@ class UpdateTestSupport {
 				VersionSource.declared(fromVersion), toVersion);
 	}
 
-	public static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
+	static UpdatedBuildFile applyPluginUpdate(PsiFile targetFile, String pluginId, String fromVersion,
+			String toVersion) {
+
+		return applyUpdate(targetFile, pluginId, pluginId, fromVersion, DeclarationSource.plugin(),
+				VersionSource.declared(fromVersion), toVersion);
+	}
+
+	static UpdatedBuildFile applyPropertyUpdate(PsiFile targetFile, String groupId, String artifactId,
+			String propertyName, String fromVersion, String toVersion) {
+
+		return applyUpdate(targetFile, groupId, artifactId, fromVersion, DeclarationSource.dependency(),
+				VersionSource.property(propertyName), toVersion);
+	}
+
+	static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
 			String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 

@@ -53,7 +53,7 @@ class TomlCompletionTests {
 		GradleFixtures.analyze(tomlFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(tomlFile).containsText("version = \"6.0.3\" }");
@@ -69,7 +69,7 @@ class TomlCompletionTests {
 		GradleFixtures.analyze(tomlFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(tomlFile).containsText("version = \"6.1.0-M1\" }").caretBetween("6.1.0-M1", "\"");
@@ -88,7 +88,7 @@ class TomlCompletionTests {
 		GradleFixtures.analyze(tomlFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(tomlFile).containsText("junit = \"6.0.3\"").caretBetween("6.0.3", "\"");

@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class NpmRegistryTests {
 
-	private static final NpmRegistry SOURCE = NpmRegistry.NPM_REGISTRY;
+	private NpmRegistry SOURCE = NpmRegistry.NPM_REGISTRY;
 
 	@Test
 	void parsesAxiosLikePayload() throws IOException {

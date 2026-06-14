@@ -39,7 +39,7 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @IdeaProjectTests
 class UpdateGradleWrapperPropertiesTests {
 
-	private static final ArtifactId GRADLE = ArtifactId.of("org.gradle", "gradle");
+	private ArtifactId GRADLE = ArtifactId.of("org.gradle", "gradle");
 
 	@BeforeEach
 	void setUp(Project project) {

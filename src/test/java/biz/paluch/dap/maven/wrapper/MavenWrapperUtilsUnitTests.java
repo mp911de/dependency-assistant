@@ -26,6 +26,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.*;
 
 /**
+ * Unit tests for {@link MavenWrapperUtils}.
+ *
  * @author Mark Paluch
  */
 class MavenWrapperUtilsUnitTests {
@@ -43,9 +45,9 @@ class MavenWrapperUtilsUnitTests {
 			// Maven path.
 			"https://repository.apache.org/content/repositories/snapshots/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip"
 	})
-	void parseVersions(String string) {
+	void parseVersions(String url) {
 
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -62,9 +64,9 @@ class MavenWrapperUtilsUnitTests {
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3./maven-wrapper-distribution-3.9.6-script.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3./maven-wrapper-distribution-3.9.6-only-script.zip"
 	})
-	void firstVersionIncomplete(String string) {
+	void firstVersionIncomplete(String url) {
 
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -81,9 +83,9 @@ class MavenWrapperUtilsUnitTests {
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.-script.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.-only-script.zip"
 	})
-	void secondVersionIncomplete(String string) {
+	void secondVersionIncomplete(String url) {
 
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -100,9 +102,9 @@ class MavenWrapperUtilsUnitTests {
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution--script.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution--only-script.zip"
 	})
-	void secondVersionEmpty(String string) {
+	void secondVersionEmpty(String url) {
 
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -116,9 +118,9 @@ class MavenWrapperUtilsUnitTests {
 			"https://repository.apache.org/content/repositories/snapshots/org/apache/maven/apache-maven/4.1.0-SNAPSHOT/apache-maven-4.1.0-SNAPSHOT-bin.zip",
 			"https://repository.apache.org/content/repositories/snapshots/org/apache/maven/apache-maven/4.1.0-SNAPSHOT/apache-maven-4.1.0-20250710.120440-1-bin.zip"
 	})
-	void parseQualifiedAndSnapshotVersions(String string) {
+	void parseQualifiedAndSnapshotVersions(String url) {
 
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");
@@ -143,9 +145,9 @@ class MavenWrapperUtilsUnitTests {
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.9.6-script.zip",
 			"/org/apache/maven/wrapper/maven-wrapper-distribution/3.9.6/maven-wrapper-distribution-3.9.6-only-script.zip"
 	})
-	void excludesClassifierFromVersion2(String string) {
+	void excludesClassifierFromVersion2(String url) {
 
-		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(string);
+		Matcher matcher = MavenWrapperUtils.MAVEN_ARTIFACT_PATTERN.matcher(url);
 
 		assertThat(matcher.find()).isTrue();
 		assertThat(matcher.group("groupId")).contains("org/apache/maven");

@@ -21,7 +21,6 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitArtifactId;
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
@@ -37,7 +36,7 @@ import com.intellij.psi.PsiFile;
  */
 class AntoraFixtures {
 
-	static final ArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
+	ArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
 
 	/**
 	 * Set up a cache pre-populated with Antora UI releases for the given project.
@@ -59,7 +58,7 @@ class AntoraFixtures {
 		DependencyCollector collector = new AntoraDependencyCollector().collect(file);
 
 		AntoraProjectContext projectContext = new AntoraProjectContext(
-				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()), List.<ReleaseSource>of());
+				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()), List.of());
 		file.putUserData(AntoraProjectContext.KEY, projectContext);
 
 		service.getProjectState(projectContext.getProjectId()).setDependencies(collector);

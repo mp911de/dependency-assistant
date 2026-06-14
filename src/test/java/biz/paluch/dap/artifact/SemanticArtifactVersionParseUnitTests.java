@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for {@link SemanticArtifactVersion}.
+ *
+ * @author Mark Paluch
  */
 class SemanticArtifactVersionParseUnitTests {
 
@@ -266,7 +268,7 @@ class SemanticArtifactVersionParseUnitTests {
 	}
 
 	@Test
-	void odersBetasAndRcAndReleases() {
+	void ordersBetasAndRcAndReleases() {
 
 		assertThat(version("1.0.0-beta.11")).isGreaterThan(version("1.0.0-beta.2"));
 

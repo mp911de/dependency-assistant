@@ -18,6 +18,7 @@ package biz.paluch.dap.extension;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.xml.XmlTag;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -50,7 +51,9 @@ class ProjectExtensionTests {
 	void injectsProjectFileParameter(XmlFile file) {
 
 		assertThat(file.getName()).isEqualTo("pom.xml");
-		assertThat(file.getDocument().getRootTag().getName()).isEqualTo("project");
+
+		XmlTag rootTag = file.getDocument().getRootTag();
+		assertThat(rootTag.getName()).isEqualTo("project");
 	}
 
 }

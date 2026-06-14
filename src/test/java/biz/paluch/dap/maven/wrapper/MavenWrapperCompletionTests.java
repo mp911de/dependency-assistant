@@ -61,7 +61,7 @@ class MavenWrapperCompletionTests {
 	void completesEmptyDistributionUrlWithDefaultUrlFromCache(PsiFile file) {
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains(
+		assertThat(fixture).completionSuggests(
 				"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.zip");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
@@ -78,7 +78,7 @@ class MavenWrapperCompletionTests {
 	void completesEmptyWrapperUrlWithDefaultUrlFromCache(PsiFile file) {
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains(
+		assertThat(fixture).completionSuggests(
 				"wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.3/maven-wrapper-3.3.3.jar");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
@@ -97,7 +97,7 @@ class MavenWrapperCompletionTests {
 		StateService.getInstance(fixture.getProject()).setCache(new Cache());
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains(
+		assertThat(fixture).completionSuggests(
 				"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.15/apache-maven-3.9.15-bin.zip");
 	}
 
@@ -110,7 +110,7 @@ class MavenWrapperCompletionTests {
 		StateService.getInstance(fixture.getProject()).setCache(new Cache());
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains(
+		assertThat(fixture).completionSuggests(
 				"wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.4/maven-wrapper-3.3.4.jar");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
@@ -130,7 +130,7 @@ class MavenWrapperCompletionTests {
 		StateService.getInstance(fixture.getProject()).setCache(cache);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains(
+		assertThat(fixture).completionSuggests(
 				"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.15/apache-maven-3.9.15-bin.zip");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
@@ -165,7 +165,7 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9");
+		assertThat(fixture).completionSuggests("3.9.9");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(file).containsText("maven/3.9.9/apache");
@@ -181,7 +181,7 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.10.0");
+		assertThat(fixture).completionSuggests("3.10.0");
 
 		fixture.finishLookup(finishChar);
 		assertThat(file).containsText("maven/3.10.0/apache");
@@ -213,7 +213,7 @@ class MavenWrapperCompletionTests {
 		MavenWrapperFixtures.analyze(file);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("3.9.9").doesNotContain("3.10.0");
+		assertThat(fixture).completionSuggests("3.9.9").completionExcludes("3.10.0");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(file).containsText("maven/3.9.9/apache");
@@ -346,7 +346,7 @@ class MavenWrapperCompletionTests {
 	void offersLineCompletionEvenWhenDistributionUrlAlreadyExists() {
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("distributionUrl");
+		assertThat(fixture).completionSuggests("distributionUrl");
 	}
 
 	private List<String> lookupElementsOrEmpty() {

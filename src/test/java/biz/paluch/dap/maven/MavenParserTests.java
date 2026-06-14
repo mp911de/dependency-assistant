@@ -200,7 +200,7 @@ class MavenParserTests {
 				<artifactId>module</artifactId>
 			</project>
 			""")
-	void shouldParseParent(XmlFile pomFile) {
+	void parsesParentAsDependency(XmlFile pomFile) {
 
 		DependencyCollector collector = new DependencyCollector();
 		MavenParser parser = new MavenParser(collector);
@@ -655,7 +655,6 @@ class MavenParserTests {
 
 		DependencyCollector collector = MavenFixtures.analyze(file);
 
-		// TODO: Record as usage for upgrade suggestions in the parent
 		assertThat(collector).isEmpty();
 	}
 

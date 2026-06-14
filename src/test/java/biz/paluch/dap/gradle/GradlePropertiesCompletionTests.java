@@ -27,7 +27,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for Gradle properties completion.
@@ -61,7 +61,7 @@ class GradlePropertiesCompletionTests {
 		fixture.type('6');
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	@Test
@@ -80,7 +80,7 @@ class GradlePropertiesCompletionTests {
 
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	@Test

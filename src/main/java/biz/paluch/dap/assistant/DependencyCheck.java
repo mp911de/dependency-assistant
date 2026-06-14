@@ -216,13 +216,13 @@ class DependencyCheck {
 
 				entry.getValue().cancel(true);
 				Throwable cause = e.getCause() != null ? e.getCause() : e;
-				res = new ReleaseLookupResult("%s: %s".formatted(name, cause.getMessage()), Releases.empty());
+				res = ReleaseLookupResult.failed("%s: %s".formatted(name, cause.getMessage()));
 			} catch (InterruptedException e) {
 				res = cancelAndRecord(artifactId, futures, e);
 				Thread.currentThread().interrupt();
 				abort = true;
 			} catch (TimeoutException e) {
-				res = new ReleaseLookupResult("%s: %s".formatted(name, e.getMessage()), Releases.empty());
+				res = ReleaseLookupResult.failed("%s: %s".formatted(name, e.getMessage()));
 			}
 
 			results.put(artifactId, res);
@@ -263,18 +263,18 @@ class DependencyCheck {
 					cache.putVersionOptions(artifactSource.artifactId(), releases);
 				}
 			}
-			return new ReleaseLookupResult(null, releases);
+			return ReleaseLookupResult.of(releases);
 		} catch (ProcessCanceledException e) {
 			throw e;
 		} catch (Exception e) {
-			return new ReleaseLookupResult(artifactSource.artifactId() + ": " + e.getMessage(), Releases.empty());
+			return ReleaseLookupResult.failed(artifactSource.artifactId() + ": " + e.getMessage());
 		}
 	}
 
 	private static ReleaseLookupResult cancelAndRecord(ArtifactId artifactId,
 			Map<ArtifactId, Future<ReleaseLookupResult>> futures, Throwable cause) {
 		cancelRemainingFutures(futures);
-		return new ReleaseLookupResult("%s: %s".formatted(artifactId, cause.getMessage()), Releases.empty());
+		return ReleaseLookupResult.failed("%s: %s".formatted(artifactId, cause.getMessage()));
 	}
 
 	/**

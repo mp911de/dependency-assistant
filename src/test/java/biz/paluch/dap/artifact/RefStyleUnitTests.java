@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class RefStyleUnitTests {
 
-	private static final String FULL_SHA = "be666c2fcd27ec809703dec50e508c2fdc7f6654";
+	private String FULL_SHA = "be666c2fcd27ec809703dec50e508c2fdc7f6654";
 
 	@Test
 	void classifiesFullSha() {

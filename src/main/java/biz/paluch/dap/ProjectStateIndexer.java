@@ -126,23 +126,35 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Run an aggregate scan and return one combined collector enriched with release
-	 * sources and post-scan completion.
+	 * Run a full scan: enumerate, collect, complete, and deliver one collector per
+	 * anchor file to the consumer.
 	 * <p>The aggregate result is not stored in the {@link ProjectState} and does
 	 * not invoke the cache update.
 	 * @param assistant the assistant to run; must not be {@literal null}.
-	 * @return the aggregated collector.
+	 * @param consumer the per-file callback; must not be {@literal null}.
 	 */
 	public void forEach(DependencyAssistant assistant, BiConsumer<VirtualFile, DependencyCollector> consumer) {
 
+		record Entry(VirtualFile file, DependencyCollector collector) {
+		}
+
+		IntrospectedDependencies introspected = assistant.introspect(project);
+		List<Entry> active = new ArrayList<>();
+
 		forEachAvailableEntry(assistant, (anchor, context) -> {
-
 			DependencyCollector collector = new DependencyCollector();
-			assistant.collect(anchor, collector);
-			consumer.accept(anchor.getVirtualFile(), collector);
-
+			assistant.collect(anchor, collector, introspected);
 			collector.addAllReleaseSources(context.getReleaseSources());
+			active.add(new Entry(anchor.getVirtualFile(), collector));
 		});
+
+		for (Entry entry : active) {
+			introspected.complete(entry.collector());
+		}
+
+		for (Entry entry : active) {
+			consumer.accept(entry.file(), entry.collector());
+		}
 	}
 
 	/**

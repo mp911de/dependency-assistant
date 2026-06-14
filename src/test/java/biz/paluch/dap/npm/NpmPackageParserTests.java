@@ -123,7 +123,7 @@ class NpmPackageParserTests {
 		List<NpmDependency> dependencies = parser.parse(packageJson);
 
 		assertThat(dependencies).hasSize(1);
-		assertThat(dependencies.getFirst().artifactId().artifactId()).isEqualTo("good");
+		assertThat(dependencies.getFirst().artifactId()).isEqualTo(ArtifactId.of("good", "good"));
 	}
 
 	@Test

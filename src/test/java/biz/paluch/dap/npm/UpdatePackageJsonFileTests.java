@@ -16,21 +16,17 @@
 
 package biz.paluch.dap.npm;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.BuildActionDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.fixtures.BuildFileUpdates;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Platform-harness tests for {@link UpdatePackageJsonFile}.
@@ -50,9 +46,9 @@ class UpdatePackageJsonFileTests {
 			""")
 	void updatesExactVersion(PsiFile packageJson) {
 
-		applyUpdate(packageJson, ArtifactId.of("axios", "axios"), ArtifactVersion.of("1.7.0"));
+		applyUpdate(packageJson, "axios", "1.7.0");
 
-		assertThat(packageJson.getText()).contains("\"axios\": \"1.7.0\"");
+		assertThat(packageJson).containsText("\"axios\": \"1.7.0\"");
 	}
 
 	@Test
@@ -65,9 +61,9 @@ class UpdatePackageJsonFileTests {
 			""")
 	void preservesCaretModifier(PsiFile packageJson) {
 
-		applyUpdate(packageJson, ArtifactId.of("axios", "axios"), ArtifactVersion.of("3.4.0"));
+		applyUpdate(packageJson, "axios", "3.4.0");
 
-		assertThat(packageJson.getText()).contains("\"axios\": \"^3.4.0\"");
+		assertThat(packageJson).containsText("\"axios\": \"^3.4.0\"");
 	}
 
 	@Test
@@ -80,9 +76,9 @@ class UpdatePackageJsonFileTests {
 			""")
 	void updatesHyphenRangeUpperBound(PsiFile packageJson) {
 
-		applyUpdate(packageJson, ArtifactId.of("axios", "axios"), ArtifactVersion.of("3.0.0"));
+		applyUpdate(packageJson, "axios", "3.0.0");
 
-		assertThat(packageJson.getText()).contains("\"axios\": \"1.0.0 - 3.0.0\"");
+		assertThat(packageJson).containsText("\"axios\": \"1.0.0 - 3.0.0\"");
 	}
 
 	@Test
@@ -95,9 +91,9 @@ class UpdatePackageJsonFileTests {
 			""")
 	void updatesComparatorPairUpperBound(PsiFile packageJson) {
 
-		applyUpdate(packageJson, ArtifactId.of("axios", "axios"), ArtifactVersion.of("2.4.0"));
+		applyUpdate(packageJson, "axios", "2.4.0");
 
-		assertThat(packageJson.getText()).contains("\"axios\": \">=1.0.2 <2.4.0\"");
+		assertThat(packageJson).containsText("\"axios\": \">=1.0.2 <2.4.0\"");
 	}
 
 	@Test
@@ -110,9 +106,9 @@ class UpdatePackageJsonFileTests {
 			""")
 	void doesNotRewritePrefixRange(PsiFile packageJson) {
 
-		applyUpdate(packageJson, ArtifactId.of("react", "react"), ArtifactVersion.of("3.0.0"));
+		applyUpdate(packageJson, "react", "3.0.0");
 
-		assertThat(packageJson.getText()).contains("\"react\": \"2.x\"");
+		assertThat(packageJson).containsText("\"react\": \"2.x\"");
 	}
 
 	@Test
@@ -125,9 +121,9 @@ class UpdatePackageJsonFileTests {
 			""")
 	void updatesAliasInner(PsiFile packageJson) {
 
-		applyUpdate(packageJson, ArtifactId.of("alias", "alias"), ArtifactVersion.of("3.1.0"));
+		applyUpdate(packageJson, "alias", "3.1.0");
 
-		assertThat(packageJson.getText()).contains("\"alias\": \"npm:@ankurk91/bootstrap-vue@^3.1.0\"");
+		assertThat(packageJson).containsText("\"alias\": \"npm:@ankurk91/bootstrap-vue@^3.1.0\"");
 	}
 
 	@Test
@@ -141,11 +137,11 @@ class UpdatePackageJsonFileTests {
 	void updatesGitTagCommittish(PsiFile packageJson) {
 
 		GitVersion target = GitVersion.of("d1185ce59f7757407fe6a5febb1e03e3dba2a530", ArtifactVersion.of("v1.0.28"));
-		applyUpdate(packageJson, ArtifactId.of("cli", "cli"), target);
+		applyUpdate(packageJson, "cli", target);
 
-		assertThat(packageJson.getText()).contains("#v1.0.28");
-		assertThat(packageJson.getText()).doesNotContain("#v1.0.27");
-		assertThat(packageJson.getText()).doesNotContain("# ");
+		assertThat(packageJson).containsText("#v1.0.28")
+				.doesNotContainText("#v1.0.27")
+				.doesNotContainText("# ");
 	}
 
 	@Test
@@ -161,20 +157,25 @@ class UpdatePackageJsonFileTests {
 		GitVersion target = GitVersion.of("d1185ce59f7757407fe6a5febb1e03e3dba2a530", ArtifactVersion.of("v1.0.28"));
 		applyUpdate(packageJson, ArtifactId.of("cli", "cli"), target);
 
-		assertThat(packageJson.getText()).contains("#d1185ce");
-		assertThat(packageJson.getText()).doesNotContain("#abcdef0");
-		assertThat(packageJson.getText()).doesNotContain("# ");
+		assertThat(packageJson).containsText("#d1185ce")
+				.doesNotContainText("#abcdef0")
+				.doesNotContainText("# ");
+	}
+
+	private void applyUpdate(PsiFile file, String id, String targetVersion) {
+		applyUpdate(file, id, ArtifactVersion.of(targetVersion));
+	}
+
+	private void applyUpdate(PsiFile file, String id, ArtifactVersion targetVersion) {
+		applyUpdate(file, ArtifactId.of(id, id), targetVersion);
 	}
 
 	private void applyUpdate(PsiFile file, ArtifactId id, ArtifactVersion targetVersion) {
 
-		DependencyUpdate update = new DependencyUpdate(id, targetVersion, targetVersion,
-				List.of(DeclarationSource.dependency()),
-				List.of(VersionSource.declared(targetVersion.toString())));
-
+		DependencyUpdate update = DependencyUpdate.create(id, targetVersion);
 		UpdatePackageJsonFile updater = new UpdatePackageJsonFile(file.getProject());
-		new BuildActionDelegate(file.getProject(), updater::applyUpdates)
-				.updateBuildFile(file.getVirtualFile(), List.of(update));
+
+		BuildFileUpdates.applyUpdate(file, update, updater::applyUpdates);
 	}
 
 }

@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.*;
 @IdeaProjectTests
 class UpgradeScopeResolverTests {
 
-	private static final String BUILD_GRADLE = """
+	static final String BUILD_GRADLE = """
 			dependencies {
 			    implementation 'org.apache.commons:commons-lang3:3.19.0'
 			}

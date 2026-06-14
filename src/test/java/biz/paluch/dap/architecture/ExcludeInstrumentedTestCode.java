@@ -29,7 +29,7 @@ import com.tngtech.archunit.core.importer.Location;
  */
 class ExcludeInstrumentedTestCode implements ImportOption {
 
-	private static final String INSTRUMENTED_TEST_CODE = "/build/instrumented/instrumentTestCode/";
+	private String INSTRUMENTED_TEST_CODE = "/build/instrumented/instrumentTestCode/";
 
 	@Override
 	public boolean includes(Location location) {

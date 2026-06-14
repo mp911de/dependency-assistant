@@ -39,7 +39,7 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @CodeInsightFixtureTests
 class YamlVersionSiteTests {
 
-	private static final Predicate<YAMLKeyValue> IS_USES = kv -> "uses".equals(kv.getKeyText());
+	private Predicate<YAMLKeyValue> IS_USES = kv -> "uses".equals(kv.getKeyText());
 
 	private @TestFixture CodeInsightTestFixture fixture;
 

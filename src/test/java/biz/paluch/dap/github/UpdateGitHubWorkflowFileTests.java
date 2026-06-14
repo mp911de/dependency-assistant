@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.github;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -25,9 +23,9 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.BuildActionDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.fixtures.BuildFileUpdates;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,11 +55,10 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void updatesVersionRefWithoutVPrefix(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", "4.1.0",
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", "4.1.0", "4.2.0");
 
-		assertThat(workflowFile.getText()).contains("actions/checkout@4.2.0 # here to stay");
-		assertThat(workflowFile.getText()).doesNotContain("@v");
+		assertThat(workflowFile).containsText("actions/checkout@4.2.0 # here to stay")
+				.doesNotContainText("@v");
 	}
 
 	@Test
@@ -73,11 +70,10 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void updatesShaRefAndAddsVersionComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
 
-		assertThat(workflowFile.getText())
-				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # here to stay");
+		assertThat(workflowFile)
+				.containsText("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # here to stay");
 	}
 
 	@Test
@@ -93,8 +89,7 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void addsVersionCommentBehindShaRefWhenStepHasNestedMapping(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
 
 		assertThat(workflowFile)
 				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
@@ -114,8 +109,7 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void leavesNestedMappingCommentsUnchangedWhenAddingVersionComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
 
 		assertThat(workflowFile)
 				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
@@ -132,11 +126,10 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void refreshesExistingManagedComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
 
-		assertThat(workflowFile.getText()).contains("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # foo");
-		assertThat(workflowFile.getText()).doesNotContain("v3.6.0");
+		assertThat(workflowFile).containsText("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # foo")
+				.doesNotContainText("v3.6.0");
 	}
 
 	@Test
@@ -148,12 +141,11 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void preservesUnmanagedTrailingComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3,
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
 
-		assertThat(workflowFile.getText())
-				.contains("actions/checkout@" + GitHubFixtures.SHA_V4 + "   # v4.2.0");
-		assertThat(workflowFile.getText()).doesNotContain("# custom note");
+		assertThat(workflowFile)
+				.containsText("actions/checkout@" + GitHubFixtures.SHA_V4 + "   # v4.2.0")
+				.doesNotContainText("# custom note");
 	}
 
 	@Test
@@ -182,8 +174,7 @@ class UpdateGitHubWorkflowFileTests {
 
 		String originalText = workflowFile.getText();
 
-		applyUpdate(workflowFile, "actions", "checkout", "v4.1.0",
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", "v4.1.0", "v4.2.0");
 
 		String updatedText = workflowFile.getText();
 
@@ -209,16 +200,15 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void updatesQuotedScalarPreservingQuotes(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", "v4.1.0",
-				GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of("v4.2.0")));
+		applyUpdate(workflowFile, "actions", "checkout", "v4.1.0", "v4.2.0");
 
-		assertThat(workflowFile.getText()).contains("\"actions/checkout@v4.2.0\"");
+		assertThat(workflowFile).containsText("\"actions/checkout@v4.2.0\"");
 	}
 
-	private void applyUpdate(PsiFile file, String groupId, String artifactId, String fromRef,
-			GitVersion targetVersion) {
+	private void applyUpdate(PsiFile file, String groupId, String artifactId, String fromRef, String toTag) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
+		GitVersion targetVersion = GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of(toTag));
 
 		Dependency dependency = new Dependency(id, targetVersion);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
@@ -227,8 +217,7 @@ class UpdateGitHubWorkflowFileTests {
 		DependencyUpdate update = DependencyUpdate.from(dependency, targetVersion);
 		UpdateGitHubWorkflowFile updater = new UpdateGitHubWorkflowFile(file.getProject());
 
-		new BuildActionDelegate(file.getProject(), updater::applyUpdates)
-				.updateBuildFile(file.getVirtualFile(), List.of(update));
+		BuildFileUpdates.applyUpdate(file, update, updater::applyUpdates);
 	}
 
 }

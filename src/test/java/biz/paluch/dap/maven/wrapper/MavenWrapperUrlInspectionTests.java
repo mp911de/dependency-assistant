@@ -61,9 +61,9 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @CodeInsightFixtureTests
 class MavenWrapperUrlInspectionTests {
 
-	private static final String FIX_REMOVE_CREDENTIALS = "Remove credentials";
+	private String FIX_REMOVE_CREDENTIALS = "Remove credentials";
 
-	private static final String FIX_USE_DEFAULT_URL = "Use default URL";
+	private String FIX_USE_DEFAULT_URL = "Use default URL";
 
 	private @TestFixture CodeInsightTestFixture fixture;
 

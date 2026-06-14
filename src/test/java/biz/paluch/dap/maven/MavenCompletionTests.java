@@ -34,7 +34,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for Maven version completion.
@@ -68,7 +68,7 @@ class MavenCompletionTests {
 		MavenFixtures.analyze(pomFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	@Test
@@ -114,7 +114,7 @@ class MavenCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(pomFile.getText()).contains("<version>6.1.0-M1</version>");
+		assertThat(pomFile).containsText("<version>6.1.0-M1</version>");
 	}
 
 	@Test
@@ -137,7 +137,7 @@ class MavenCompletionTests {
 		MavenFixtures.analyze(pomFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	@Test
@@ -162,7 +162,7 @@ class MavenCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(pomFile.getText()).contains("<junit>6.1.0-M1</junit>");
+		assertThat(pomFile).containsText("<junit>6.1.0-M1</junit>");
 	}
 
 	@Test
@@ -189,7 +189,7 @@ class MavenCompletionTests {
 		projectState.setDependencies(collector);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("5.14.1");
+		assertThat(fixture).completionSuggests("5.14.1");
 	}
 
 	@Test
@@ -213,7 +213,7 @@ class MavenCompletionTests {
 		MavenFixtures.analyze(pomFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("2.0.5");
+		assertThat(fixture).completionSuggests("2.0.5");
 	}
 
 	@Test
@@ -235,7 +235,7 @@ class MavenCompletionTests {
 		MavenFixtures.analyze(pomFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	@Test
@@ -257,7 +257,7 @@ class MavenCompletionTests {
 		MavenFixtures.analyze(pomFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("2.0.5");
+		assertThat(fixture).completionSuggests("2.0.5");
 	}
 
 }

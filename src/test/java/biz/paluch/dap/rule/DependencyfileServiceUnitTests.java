@@ -30,9 +30,9 @@ import static org.assertj.core.api.Assertions.*;
  */
 class DependencyfileServiceUnitTests {
 
-	private static final Path ROOT = Path.of("/work/project");
+	private Path ROOT = Path.of("/work/project");
 
-	private static final Path HOME = Path.of("/home/dev");
+	private Path HOME = Path.of("/home/dev");
 
 	@Test
 	void searchesInProjectLocationsForUntrustedProject() {

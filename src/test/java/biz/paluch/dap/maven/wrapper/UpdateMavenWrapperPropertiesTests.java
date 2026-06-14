@@ -44,9 +44,9 @@ class UpdateMavenWrapperPropertiesTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
-	private static final ArtifactId MAVEN = ArtifactId.of("org.apache.maven", "apache-maven");
+	private ArtifactId MAVEN = ArtifactId.of("org.apache.maven", "apache-maven");
 
-	private static final ArtifactId WRAPPER = ArtifactId.of("org.apache.maven.wrapper", "maven-wrapper");
+	private ArtifactId WRAPPER = ArtifactId.of("org.apache.maven.wrapper", "maven-wrapper");
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
@@ -55,7 +55,7 @@ class UpdateMavenWrapperPropertiesTests {
 			                      c123
 			wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
 			""")
-	void shouldUpdateDistribution(PsiFile file) {
+	void updatesDistribution(PsiFile file) {
 
 		applyUpdate(file, MAVEN, "3.9.6", "3.9.9");
 
@@ -69,7 +69,7 @@ class UpdateMavenWrapperPropertiesTests {
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """
 			d\\u0069stribution\\u0055rl=\\u0068ttps\\://repo1\\u002emaven\\u002eorg/maven2/org/apache/maven/apache-maven/3\\u002e9\\u002e6/apache-maven-3\\u002e9\\u002e6-bin\\u002ezip
 			""")
-	void shouldEscapedDistribution(PsiFile file) {
+	void updatesEscapedDistribution(PsiFile file) {
 
 		applyUpdate(file, MAVEN, "3.9.6", "3.9.9");
 
@@ -142,7 +142,7 @@ class UpdateMavenWrapperPropertiesTests {
 			wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
 			wrapperSha256Sum=def456
 			""")
-	void shouldUpdateWrapper(PsiFile file) {
+	void updatesWrapper(PsiFile file) {
 
 		applyUpdate(file, WRAPPER, "3.3.2", "3.3.3");
 
@@ -153,7 +153,7 @@ class UpdateMavenWrapperPropertiesTests {
 
 	private void applyUpdate(PsiFile targetFile, ArtifactId artifactId, String fromVersion, String toVersion) {
 		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdateMavenWrapperProperties().applyUpdates(file, updates))
+				UpdateMavenWrapperProperties::applyUpdates)
 						.updateBuildFile(targetFile.getVirtualFile(), List.of(update(artifactId, toVersion)));
 	}
 

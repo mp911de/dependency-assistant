@@ -31,46 +31,46 @@ import static org.assertj.core.api.Assertions.*;
 class PropertyResolverUtilUnitTests {
 
 	@Test
-	void resolveInterpolated_singlePlaceholder() {
+	void resolvesSinglePlaceholder() {
 		assertThat(
 				PropertyResolverUtil.resolveInterpolated("${a}", wrap(Map.of("a", "org.foo"))))
 						.isEqualTo("org.foo");
 	}
 
 	@Test
-	void resolveInterpolated_mixedString() {
+	void resolvesPlaceholderInsideMixedString() {
 		assertThat(
 				PropertyResolverUtil.resolveInterpolated("com.${a}", wrap(Map.of("a", "foo"))))
 						.isEqualTo("com.foo");
 	}
 
 	@Test
-	void resolveInterpolated_unbracedPlaceholder() {
+	void resolvesUnbracedPlaceholder() {
 		assertThat(
 				PropertyResolverUtil.resolveInterpolated("$a", wrap(Map.of("a", "org.foo"))))
 						.isEqualTo("org.foo");
 	}
 
 	@Test
-	void resolveInterpolated_mixedBracedAndUnbraced() {
+	void resolvesMixedBracedAndUnbracedPlaceholders() {
 		assertThat(PropertyResolverUtil.resolveInterpolated("$a.${b}",
 				wrap(Map.of("a", "com", "b", "foo")))).isEqualTo("com.foo");
 	}
 
 	@Test
-	void resolveInterpolated_unknownPlaceholderLeftInPlace() {
+	void leavesUnknownPlaceholderInPlace() {
 		assertThat(PropertyResolverUtil.resolveInterpolated("${missing}", wrap(Map.of())))
 				.isEqualTo("${missing}");
 	}
 
 	@Test
-	void resolveInterpolated_unbracedUnknownLeftInPlace() {
+	void leavesUnbracedUnknownPlaceholderInPlace() {
 		assertThat(PropertyResolverUtil.resolveInterpolated("$missing", wrap(Map.of())))
 				.isEqualTo("$missing");
 	}
 
 	@Test
-	void resolveInterpolated_emptyValueLeftAsEmpty() {
+	void resolvesEmptyValueToEmptyString() {
 		assertThat(PropertyResolverUtil.resolveInterpolated("${a}", wrap(Map.of("a", ""))))
 				.isEmpty();
 	}
@@ -86,34 +86,34 @@ class PropertyResolverUtilUnitTests {
 	}
 
 	@Test
-	void resolveChained_twoHops() {
+	void resolvesTwoHopChain() {
 		Map<String, String> props = Map.of("a", "${b}", "b", "org.foo");
 		assertThat(PropertyResolverUtil.resolvePlaceholders("${a}", wrap(props)))
 				.isEqualTo("org.foo");
 	}
 
 	@Test
-	void resolveChained_threeHops() {
+	void resolvesThreeHopChain() {
 		Map<String, String> props = Map.of("a", "${b}", "b", "${c}", "c", "org.foo");
 		assertThat(PropertyResolverUtil.resolvePlaceholders("${a}", wrap(props)))
 				.isEqualTo("org.foo");
 	}
 
 	@Test
-	void resolveChained_cycle() {
+	void detectsCyclicChainAsUnresolved() {
 		Map<String, String> props = Map.of("a", "${b}", "b", "${a}");
 		String result = PropertyResolverUtil.resolvePlaceholders("${a}", wrap(props));
 		assertThat(PropertyResolverUtil.hasUnresolvedPlaceholder(result)).isTrue();
 	}
 
 	@Test
-	void resolveChained_missingSecondHop() {
+	void leavesChainWithMissingSecondHopUnresolved() {
 		Map<String, String> props = Map.of("a", "${b}");
 		assertThat(PropertyResolverUtil.resolvePlaceholders("${a}", wrap(props))).isEqualTo("${b}");
 	}
 
 	@Test
-	void resolveChained_depthCapReached() {
+	void stopsResolvingWhenDepthCapReached() {
 		Map<String, String> props = new LinkedHashMap<>();
 		props.put("p12", "org.foo");
 		for (int i = 11; i >= 1; i--) {
@@ -127,7 +127,7 @@ class PropertyResolverUtilUnitTests {
 	 * Returns a {@link PropertyResolver} backed by a fixed snapshot of
 	 * {@code properties} (e.g. tests or parser seed maps).
 	 */
-	public static PropertyResolver wrap(Map<String, String> properties) {
+	static PropertyResolver wrap(Map<String, String> properties) {
 
 		Map<String, String> frozen = Map.copyOf(properties);
 		return frozen::get;

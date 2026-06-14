@@ -38,7 +38,7 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @IdeaProjectTests
 class MavenWrapperParserTests {
 
-	private static final ArtifactId APACHE_MAVEN = ArtifactId.of("org.apache.maven", "apache-maven");
+	private ArtifactId APACHE_MAVEN = ArtifactId.of("org.apache.maven", "apache-maven");
 
 	@Test
 	@ProjectFile(name = ".mvn/wrapper/maven-wrapper.properties", content = """

@@ -35,9 +35,9 @@ import static org.assertj.core.api.Assertions.*;
  */
 class StateServiceUnitTests {
 
-	private static final ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
+	private ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
 
-	private static final ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
+	private ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
 	@Test
 	void collectsDistinctDeclaredVersionsAcrossModules() {

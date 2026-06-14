@@ -35,7 +35,7 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @CodeInsightFixtureTests
 class ChecksumIntentionTests {
 
-	private static final String SHA = "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9";
+	private String SHA = "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9";
 
 	private @TestFixture CodeInsightTestFixture fixture;
 

@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.*;
 @IdeaProjectTests
 class RuleParserTests {
 
-	private static final ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
+	private ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
 
 	@Test
 	@ProjectFile(name = "dependencyfile.json", content = """

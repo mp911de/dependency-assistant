@@ -54,23 +54,23 @@ class DependencyCheckAggregatorTests {
 
 	ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
 
-	ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
+		ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
-	ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
+		ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
 
-	ProjectId ACME_APP = ProjectId.of("com.acme", "app");
+		ProjectId ACME_APP = ProjectId.of("com.acme", "app");
 
-	ProjectId ACME_LIB = ProjectId.of("com.acme", "lib");
+		ProjectId ACME_LIB = ProjectId.of("com.acme", "lib");
 
-	ArtifactVersion LETTUCE_CURRENT = ArtifactVersion.of("7.4.1.RELEASE");
+		ArtifactVersion LETTUCE_CURRENT = ArtifactVersion.of("7.4.1.RELEASE");
 
-	ArtifactVersion LETTUCE_UPDATE = ArtifactVersion.of("7.5.0.RELEASE");
+		ArtifactVersion LETTUCE_UPDATE = ArtifactVersion.of("7.5.0.RELEASE");
 
-	ArtifactVersion SPRING_CURRENT = ArtifactVersion.of("6.2.0");
+		ArtifactVersion SPRING_CURRENT = ArtifactVersion.of("6.2.0");
 
-	ArtifactVersion SPRING_UPDATE = ArtifactVersion.of("6.2.1");
+		ArtifactVersion SPRING_UPDATE = ArtifactVersion.of("6.2.1");
 
-	String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
+		String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
 
 	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(new MockProjectEx(() -> {
 	}), new StateService());
@@ -107,7 +107,7 @@ class DependencyCheckAggregatorTests {
 		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), context(ACME_LIB), b, List.of());
 
 		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), LETTUCE_CORE,
-				resolved(LETTUCE_UPDATE), BROKEN_ARTIFACT, lookupError(BROKEN_ARTIFACT_ERROR));
+				resolved(LETTUCE_UPDATE), BROKEN_ARTIFACT, ReleaseLookupResult.failed(BROKEN_ARTIFACT_ERROR));
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases);
 
 		assertThat(result.candidates()).extracting(candidate -> candidate.getArtifactId().artifactId())
@@ -453,7 +453,7 @@ class DependencyCheckAggregatorTests {
 	}
 
 	private static ReleaseLookupResult resolved(ArtifactVersion... versions) {
-		return new ReleaseLookupResult(null, Releases.of(Arrays.stream(versions).map(Release::of).toList()));
+		return ReleaseLookupResult.of(Releases.of(Arrays.stream(versions).map(Release::of).toList()));
 	}
 
 	private static DependencyRuleService rules(Map<ArtifactId, DependencyRule> rules) {
@@ -474,11 +474,7 @@ class DependencyCheckAggregatorTests {
 		};
 	}
 
-	private static ReleaseLookupResult lookupError(String error) {
-		return new ReleaseLookupResult(error, Releases.empty());
-	}
-
-	private static class OtherEcosystemAssistant extends TestInterfaceAssistant {
+	static class OtherEcosystemAssistant extends TestInterfaceAssistant {
 
 	}
 

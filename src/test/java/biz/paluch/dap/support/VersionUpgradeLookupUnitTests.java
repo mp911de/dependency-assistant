@@ -244,13 +244,6 @@ class VersionUpgradeLookupUnitTests {
 				.version(ArtifactVersion.of(version)).declarationElement(element));
 	}
 
-	private ArtifactReference versionUndefinedReference() {
-		return ArtifactReference.from(it -> it.artifact(artifactId)
-				.versionSource(VersionSource.declared("1.0.0"))
-				.declarationSource(DeclarationSource.dependency())
-				.declarationElement(element));
-	}
-
 	private static ProjectBuildContext availableContext() {
 		return new ProjectBuildContext() {
 
@@ -274,7 +267,7 @@ class VersionUpgradeLookupUnitTests {
 
 	private UpgradeSuggestion determineUpgrade(ArtifactReference reference, ArtifactVersion version,
 			List<Release> releases) {
-		AvailableUpgrades availableUpgrades = VersionUpgradeLookup.determineUpgrades(reference, version,
+		AvailableUpgrades availableUpgrades = AvailableUpgrades.determineUpgrades(reference, version,
 				Releases.of(releases));
 		return availableUpgrades.isPresent() ? availableUpgrades.getUpgradeSuggestion() : UpgradeSuggestion.none();
 	}

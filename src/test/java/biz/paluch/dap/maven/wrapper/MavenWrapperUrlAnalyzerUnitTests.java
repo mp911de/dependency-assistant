@@ -36,10 +36,6 @@ import static org.assertj.core.api.Assertions.*;
  */
 class MavenWrapperUrlAnalyzerUnitTests {
 
-	private static final String CANONICAL_DISTRIBUTION = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
-
-	private static final String CANONICAL_WRAPPER = "https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-3.9.6.jar";
-
 	@StringTest("https://user:pass@repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
 	void emitsCredentialsInUrl(String url) {
 		assertThat(analyzeDistribution(url)).containsExactly(new CredentialsInUrl());
@@ -197,12 +193,12 @@ class MavenWrapperUrlAnalyzerUnitTests {
 		assertThat(analyzeDistribution(url)).containsExactly(new InvalidUrl());
 	}
 
-	@StringTest(CANONICAL_DISTRIBUTION)
+	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
 	void canonicalDistributionUrlProducesNoProblems(String url) {
 		assertThat(analyzeDistribution(url)).isEmpty();
 	}
 
-	@StringTest(CANONICAL_WRAPPER)
+	@StringTest("https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.9.6/maven-wrapper-3.9.6.jar")
 	void canonicalWrapperUrlProducesNoProblems(String url) {
 		assertThat(analyzeWrapper(url)).isEmpty();
 	}

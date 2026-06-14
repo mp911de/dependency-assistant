@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.CachedRelease;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Test fixture providing curated {@link CachedArtifact} samples.
@@ -151,38 +149,9 @@ public class Releases {
 
 	private static CachedArtifact create(String groupId, String artifactId, Consumer<ReleaseBuilder> configurer) {
 
-		CachedArtifact artifact = new CachedArtifact(groupId, artifactId);
-		configurer.accept(new ReleaseBuilder(artifact.getReleases()));
+		CachedArtifact artifact = ReleaseBuilder.cachedArtifact(groupId, artifactId, configurer);
 		ALL.add(artifact);
 		return artifact;
-	}
-
-	/**
-	 * Fluent collector for {@link CachedRelease} entries on a single
-	 * {@link CachedArtifact}.
-	 */
-	static class ReleaseBuilder {
-
-		private final List<CachedRelease> releases;
-
-		private ReleaseBuilder(List<CachedRelease> releases) {
-			this.releases = releases;
-		}
-
-		ReleaseBuilder add(String version) {
-			return add(version, null);
-		}
-
-		ReleaseBuilder add(String version, @Nullable String date) {
-			releases.add(new CachedRelease(version, date));
-			return this;
-		}
-
-		ReleaseBuilder add(String version, @Nullable String date, @Nullable String sha) {
-			releases.add(new CachedRelease(version, date, sha));
-			return this;
-		}
-
 	}
 
 }

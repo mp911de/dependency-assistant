@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class MavenWrapperUrlRewriterUnitTests {
 
-	private static final String CANONICAL_DISTRIBUTION = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
+	private String CANONICAL_DISTRIBUTION = "https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip";
 
 	@ParameterizedTest
 	@CsvSource(textBlock = """

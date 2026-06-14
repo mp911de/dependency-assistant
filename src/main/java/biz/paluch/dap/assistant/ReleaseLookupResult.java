@@ -32,4 +32,12 @@ import org.jspecify.annotations.Nullable;
  */
 record ReleaseLookupResult(@Nullable String error, Releases releases) {
 
+	public static ReleaseLookupResult of(Releases releases) {
+		return new ReleaseLookupResult(null, releases);
+	}
+
+	public static ReleaseLookupResult failed(String error) {
+		return new ReleaseLookupResult(error, Releases.empty());
+	}
+
 }

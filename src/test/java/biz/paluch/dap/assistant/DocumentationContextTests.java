@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class DocumentationContextTests {
 
-	static InterfaceAssistant ASSISTANT = new TestInterfaceAssistant();
+	static final InterfaceAssistant ASSISTANT = TestInterfaceAssistant.INSTANCE;
 
 	@Test
 	void propertyDocumentationCollapsesArtifactsWithSameReleaseVersions() {

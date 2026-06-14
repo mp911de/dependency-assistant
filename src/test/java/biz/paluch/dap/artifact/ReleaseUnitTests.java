@@ -32,10 +32,10 @@ import static org.assertj.core.api.Assertions.*;
  */
 class ReleaseUnitTests {
 
-	private static final LocalDateTime DATE = LocalDateTime.parse("2024-05-01T12:00:00");
+	private LocalDateTime DATE = LocalDateTime.parse("2024-05-01T12:00:00");
 
 	@Test
-	void shouldCompareVersions() {
+	void comparesVersionsAcrossSchemes() {
 
 		Release train = new Release(ArtifactVersion.of("Aluminium-SR1"),
 				LocalDateTime.parse("2017-01-01T00:00:00"));

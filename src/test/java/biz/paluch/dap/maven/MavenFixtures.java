@@ -41,7 +41,7 @@ public class MavenFixtures {
 
 	static final MavenId MAVEN_ID = new MavenId("com.example", "demo", "");
 
-	static final ProjectId PROJECT_ID = ProjectId.of("com.example", "demo");
+		static final ProjectId PROJECT_ID = ProjectId.of("com.example", "demo");
 
 	/**
 	 * Set up Dependency Assistant for the given project.

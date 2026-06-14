@@ -44,11 +44,11 @@ class UpgradeReviewTests {
 
 	ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
 
-	ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
+		ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
-	ArtifactVersion CURRENT = ArtifactVersion.of("6.2.0");
+		ArtifactVersion CURRENT = ArtifactVersion.of("6.2.0");
 
-	ArtifactVersion TARGET = ArtifactVersion.of("6.2.1");
+		ArtifactVersion TARGET = ArtifactVersion.of("6.2.1");
 
 	@Test
 	void groupApplyFansOutToOneUpdatePerMemberCoordinate() {

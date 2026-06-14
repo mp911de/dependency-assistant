@@ -153,7 +153,7 @@ class TomlParserTests {
 			[plugins]
 			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
 			""")
-	void shouldContainOnlyDeclaredDependencies(PsiFile buildFile) {
+	void collectsOnlyDeclaredDependencies(PsiFile buildFile) {
 
 		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 

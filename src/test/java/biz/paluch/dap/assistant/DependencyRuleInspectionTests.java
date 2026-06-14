@@ -21,19 +21,15 @@ import java.util.List;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.fixtures.Inspections;
 import biz.paluch.dap.maven.MavenFixtures;
 import biz.paluch.dap.rule.DependencyRules;
 import biz.paluch.dap.rule.DependencyfileService;
-import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
-import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
-import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -304,15 +300,7 @@ class DependencyRuleInspectionTests {
 	}
 
 	private List<ProblemDescriptor> inspect(PsiFile file) {
-
-		DependencyRuleInspection inspection = new DependencyRuleInspection();
-		return ReadAction.compute(() -> {
-			InspectionManager manager = InspectionManager.getInstance(fixture.getProject());
-			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
-			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
-			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
-			return holder.getResults();
-		});
+		return Inspections.inspect(fixture.getProject(), file, new DependencyRuleInspection());
 	}
 
 }

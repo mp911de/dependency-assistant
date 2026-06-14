@@ -110,7 +110,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("[6.1.0-M1, 6.0.0]").caretBetween("M1", ", 6");
@@ -127,7 +127,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("[6.0.3, 6.0.0]").caretBetween("6.0.3", ", 6");
@@ -144,7 +144,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3", "6.1.0-M1");
+		assertThat(fixture).completionSuggests("6.0.3", "6.1.0-M1");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("[5.2.0, 6.1.0-M1]").caretBetween(" 6.1.0-M1", "]");
@@ -161,7 +161,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("[6.0.0, 6.0.3]").caretBetween("6.0.3", "]");
@@ -182,7 +182,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("4.0.5");
+		assertThat(fixture).completionSuggests("4.0.5");
 	}
 
 	// -------------------------------------------------------------------------
@@ -212,7 +212,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile)
@@ -257,7 +257,7 @@ class KotlinDslCompletionTests {
 		assertThat(invokeAutoPopup('3')).isTrue();
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("strictly(\"6.0.3\")");
@@ -279,7 +279,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	@Test
@@ -294,7 +294,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	// -------------------------------------------------------------------------
@@ -314,7 +314,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("\"6.1.0-M1\".also { extra[\"junit\"] = it }");
@@ -333,7 +333,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("org.junit:junit-bom:6.1.0-M1${property(\"junit\")}")
@@ -353,7 +353,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
 		assertThat(buildFile).containsText("org.junit:junit-bom:6.1.0-M1\"").caretBetween("6.1.0-M1", "\"");
@@ -372,7 +372,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("\"6.1.0-M1\".also { extra[\"junit\"] = it }");
@@ -391,7 +391,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("extra[\"junit\"] = \"6.1.0-M1\"");
@@ -410,7 +410,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("extra[\"junit\"] = \"\"\"6.1.0-M1\"\"\"");
@@ -431,7 +431,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(buildFile).containsText("append(\"6.1.0-M1\")");
@@ -449,7 +449,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).doesNotContain("6.0.3");
+		assertThat(fixture).completionExcludes("6.0.3");
 	}
 
 	@Test
@@ -464,7 +464,7 @@ class KotlinDslCompletionTests {
 		GradleFixtures.analyze(buildFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("6.0.3");
+		assertThat(fixture).completionSuggests("6.0.3");
 	}
 
 	@Test

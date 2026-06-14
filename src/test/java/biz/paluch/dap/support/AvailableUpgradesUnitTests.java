@@ -26,7 +26,6 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import com.intellij.mock.MockPsiElement;
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +38,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class AvailableUpgradesUnitTests {
 
-	private static final ArtifactReference REF = ArtifactReference.from(it -> it
+	private ArtifactReference REF = ArtifactReference.from(it -> it
 			.artifact(ArtifactId.of("foo", "bar"))
 			.versionSource(VersionSource.none())
 			.declarationSource(DeclarationSource.dependency())
@@ -53,7 +52,7 @@ class AvailableUpgradesUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		List<Release> releases = releasesNewestFirst("3.0.0", "1.5.0", "1.0.5", "1.0.0");
 
-		AvailableUpgrades upgrades = VersionUpgradeLookup.determineUpgrades(REF, current, Releases.of(releases));
+		AvailableUpgrades upgrades = AvailableUpgrades.determineUpgrades(REF, current, Releases.of(releases));
 
 		assertThat(upgrades.getUpgrades().sequencedKeySet()).containsExactly(
 				UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);

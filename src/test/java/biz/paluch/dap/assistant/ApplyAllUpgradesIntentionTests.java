@@ -38,7 +38,7 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @CodeInsightFixtureTests
 class ApplyAllUpgradesIntentionTests {
 
-	private static final String POM = """
+	static final String POM = """
 			<project>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>

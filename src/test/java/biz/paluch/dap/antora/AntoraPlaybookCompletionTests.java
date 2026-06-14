@@ -53,7 +53,7 @@ class AntoraPlaybookCompletionTests {
 		AntoraFixtures.analyze(playbookFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("v0.4.26", "v0.4.25", "v0.3.0");
+		assertThat(fixture).completionSuggests("v0.4.26", "v0.4.25", "v0.3.0");
 
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
@@ -72,7 +72,7 @@ class AntoraPlaybookCompletionTests {
 		AntoraFixtures.analyze(playbookFile);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).contains("v0.4.26", "v0.4.25", "v0.3.0");
+		assertThat(fixture).completionSuggests("v0.4.26", "v0.4.25", "v0.3.0");
 
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
@@ -92,7 +92,7 @@ class AntoraPlaybookCompletionTests {
 
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).doesNotContain("v0.4.26");
+		assertThat(fixture).completionExcludes("v0.4.26");
 	}
 
 	@Test
@@ -107,7 +107,7 @@ class AntoraPlaybookCompletionTests {
 
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).doesNotContain("v0.4.26");
+		assertThat(fixture).completionExcludes("v0.4.26");
 	}
 
 	@Test

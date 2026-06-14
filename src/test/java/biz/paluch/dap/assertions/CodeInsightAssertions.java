@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.assertions;
 
+import java.util.List;
+
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.AssertProvider;
@@ -36,6 +38,7 @@ import org.assertj.core.api.AssertProvider;
  * assertThat(fixture).hasSingleGutter().hasPsiElementText("4.0.3");
  * assertThat(fixture).hasSingleGutter().hasPsiElementTextContaining("4.0");
  * assertThat(fixture).hasSingleGutter().tooltipContains("4.0.5").highlights("4.0.3");
+ * assertThat(fixture).completionSuggests("6.0.3").completionExcludes("6.0.0-RC1");
  * </pre>
  *
  * @author Mark Paluch
@@ -123,6 +126,40 @@ public class CodeInsightAssertions {
 		 */
 		public GutterMarksAssert hasNoGutterMarks() {
 			return gutters().isEmpty();
+		}
+
+		/**
+		 * Verifies that the current completion lookup offers all of the given elements.
+		 *
+		 * <p>Invoke completion (for example {@code fixture.completeBasic()}) before
+		 * calling this verb. An absent lookup is treated as an empty suggestion list.
+		 * @param expected the lookup strings expected to be offered.
+		 * @return this assertion object.
+		 */
+		public CodeInsightFixtureAssert completionSuggests(String... expected) {
+			isNotNull();
+			org.assertj.core.api.Assertions.assertThat(lookupStrings()).contains(expected);
+			return this;
+		}
+
+		/**
+		 * Verifies that the current completion lookup offers none of the given
+		 * elements.
+		 *
+		 * <p>Invoke completion (for example {@code fixture.completeBasic()}) before
+		 * calling this verb. An absent lookup is treated as an empty suggestion list.
+		 * @param unexpected the lookup strings expected to be absent.
+		 * @return this assertion object.
+		 */
+		public CodeInsightFixtureAssert completionExcludes(String... unexpected) {
+			isNotNull();
+			org.assertj.core.api.Assertions.assertThat(lookupStrings()).doesNotContain(unexpected);
+			return this;
+		}
+
+		private List<String> lookupStrings() {
+			List<String> strings = this.actual.getLookupElementStrings();
+			return strings == null ? List.of() : strings;
 		}
 
 	}

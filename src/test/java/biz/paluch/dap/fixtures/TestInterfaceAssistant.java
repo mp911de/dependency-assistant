@@ -26,6 +26,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 
 public class TestInterfaceAssistant implements InterfaceAssistant {
 
+	public static TestInterfaceAssistant INSTANCE = new TestInterfaceAssistant();
+
 	@Override
 	public String getDisplayName() {
 		return "Test";

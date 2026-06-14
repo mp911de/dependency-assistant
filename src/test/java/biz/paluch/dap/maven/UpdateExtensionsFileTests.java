@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -25,9 +23,9 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
-import biz.paluch.dap.assistant.BuildActionDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.fixtures.BuildFileUpdates;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +56,7 @@ class UpdateExtensionsFileTests {
 		assertThat(updated).hasDependency("commons-lang3", "3.20.0");
 	}
 
-	public static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
+	static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
 			String fromVersion, String toVersion) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
@@ -70,10 +68,9 @@ class UpdateExtensionsFileTests {
 		dependency.addVersionSource(VersionSource.declared(fromVersion));
 
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
+		UpdateExtensionsFile updater = new UpdateExtensionsFile();
 
-		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdateExtensionsFile().applyUpdates(targetFile, updates))
-						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
+		BuildFileUpdates.applyUpdate(targetFile, update, (file, updates) -> updater.applyUpdates(file, updates));
 		return UpdateTestSupport.of(targetFile);
 	}
 

@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class GitVersionUnitTests {
 
-	private static final String SHA = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
+	private String SHA = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
 
 	@Test
 	void rendersTagForVersionStyle() {

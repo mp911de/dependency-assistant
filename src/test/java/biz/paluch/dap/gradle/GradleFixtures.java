@@ -49,7 +49,7 @@ public class GradleFixtures {
 	/**
 	 * Analyze the given file and return the dependency collector.
 	 */
-	public static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
+	static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
 
 		GradleDependencyCollector parser = new GradleDependencyCollector(file.getProject(), properties);
 		DependencyCollector collector = parser.collect(file);

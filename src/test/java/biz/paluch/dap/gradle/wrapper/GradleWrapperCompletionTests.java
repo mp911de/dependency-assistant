@@ -52,8 +52,8 @@ class GradleWrapperCompletionTests {
 	void completesEmptyDistributionUrlWithDefaultUrlFromCache(PsiFile file) {
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings())
-				.contains("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
+		assertThat(fixture)
+				.completionSuggests("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(file)
@@ -71,8 +71,8 @@ class GradleWrapperCompletionTests {
 		StateService.getInstance(fixture.getProject()).setCache(new Cache());
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings())
-				.contains("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
+		assertThat(fixture)
+				.completionSuggests("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
 	}
 
 	@Test
@@ -113,7 +113,7 @@ class GradleWrapperCompletionTests {
 	void doesNotOfferLineCompletionInNonWrapperPropertiesFile() {
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings()).doesNotContain("distributionUrl");
+		assertThat(fixture).completionExcludes("distributionUrl");
 	}
 
 	@Test

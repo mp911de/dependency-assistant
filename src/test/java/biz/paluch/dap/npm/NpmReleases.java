@@ -35,11 +35,11 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class NpmReleases {
+class NpmReleases {
 
 	private static final List<CachedArtifact> ALL = new ArrayList<>();
 
-	public static final CachedArtifact ANTORA_XREF_EXTENSION = create("@springio", "antora-xref-extension",
+	static final CachedArtifact ANTORA_XREF_EXTENSION = create("@springio", "antora-xref-extension",
 			releases -> releases
 					.add("1.0.0-alpha.5", "2025-11-08", "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1")
 					.add("1.0.0-alpha.4", "2024-11-05", "d1185ce59f7757407fe6a5febb1e03e3dba2a530")
@@ -47,7 +47,7 @@ public class NpmReleases {
 					.add("1.0.0-alpha.2", "2024-03-19")
 					.add("1.0.0-alpha.1", "2024-03-19"));
 
-	public static final CachedArtifact GH_ANTORA_XREF_EXTENSION = create("spring-io", "antora-xref-extension",
+	static final CachedArtifact GH_ANTORA_XREF_EXTENSION = create("spring-io", "antora-xref-extension",
 			releases -> releases
 					.add("1.0.0-alpha.5", "2025-11-08", "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1")
 					.add("1.0.0-alpha.4", "2024-11-05", "d1185ce59f7757407fe6a5febb1e03e3dba2a530")
@@ -55,7 +55,7 @@ public class NpmReleases {
 					.add("1.0.0-alpha.2", "2024-03-19")
 					.add("1.0.0-alpha.1", "2024-03-19"));
 
-	public static final CachedArtifact AXIOS = create("axios", "axios",
+	static final CachedArtifact AXIOS = create("axios", "axios",
 			releases -> releases
 					.add("6.0.0", "2025-11-08", "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1")
 					.add("5.4.0", "2024-11-05", "d1185ce59f7757407fe6a5febb1e03e3dba2a530")
@@ -68,7 +68,7 @@ public class NpmReleases {
 	/**
 	 * @return all NPM artifacts registered in this fixture, in declaration order.
 	 */
-	public static List<CachedArtifact> all() {
+	static List<CachedArtifact> all() {
 		return List.copyOf(ALL);
 	}
 

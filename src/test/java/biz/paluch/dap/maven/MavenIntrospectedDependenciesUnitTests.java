@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class MavenIntrospectedDependenciesUnitTests {
 
-	private static final ArtifactId COMMONS_LANG = ArtifactId.of("org.apache.commons", "commons-lang3");
+	private ArtifactId COMMONS_LANG = ArtifactId.of("org.apache.commons", "commons-lang3");
 
 	@Test
 	void completePromotesDeclarationWhenCollectorHasMatchingPropertyValue() {

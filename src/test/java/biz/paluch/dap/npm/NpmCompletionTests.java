@@ -56,8 +56,9 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
+						"1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
 		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
@@ -76,8 +77,9 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
+						"1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
 		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
@@ -96,8 +98,9 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
+						"1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
 		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
@@ -120,7 +123,7 @@ class NpmCompletionTests {
 				.containsOnly("5.3.1", "5.3.0");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
-		assertThat(packageJson.getText()).contains("\"axios\": \"5.3.1\"");
+		assertThat(packageJson).containsText("\"axios\": \"5.3.1\"");
 	}
 
 	@Test
@@ -136,11 +139,12 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
+						"1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
-		assertThat(packageJson.getText()).contains("\"@springio/antora-xref-extension\": \"1.0.0-alpha.5\"");
+		assertThat(packageJson).containsText("\"@springio/antora-xref-extension\": \"1.0.0-alpha.5\"");
 	}
 
 	@Test
@@ -156,8 +160,9 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
+						"1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson).containsText("\"@springio/antora-xref-extension\": \"1.0.0-alpha.5\"")
@@ -177,8 +182,9 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2", "1.0.0-alpha.1");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
+						"1.0.0-alpha.1");
 
 		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
 		assertThat(packageJson).containsText("\"@springio/antora-xref-extension\": \"1.0.0-alpha.5\"");
@@ -197,8 +203,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 
 		fixture.completeBasic();
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -214,8 +220,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson).containsText("\"1.0.0-alpha.5")
@@ -235,8 +241,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson).containsText("\"^1.0.0-alpha.5")
@@ -256,8 +262,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -273,8 +279,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -290,8 +296,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -307,12 +313,12 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(packageJson.getText())
-				.contains("@springio/antora-xref-extension\": \"1.0.0-alpha.1 - 1.0.0-alpha.5\"");
+		assertThat(packageJson)
+				.containsText("@springio/antora-xref-extension\": \"1.0.0-alpha.1 - 1.0.0-alpha.5\"");
 	}
 
 	@Test
@@ -328,8 +334,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -345,8 +351,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -362,11 +368,11 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(packageJson.getText()).contains("@springio/antora-xref-extension\": \">=1.0.0-alpha.5\"");
+		assertThat(packageJson).containsText("@springio/antora-xref-extension\": \">=1.0.0-alpha.5\"");
 	}
 
 	@Test
@@ -382,12 +388,12 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(packageJson.getText())
-				.contains("\">=1.0.0-alpha.1 <1.0.0-alpha.5\"");
+		assertThat(packageJson)
+				.containsText("\">=1.0.0-alpha.1 <1.0.0-alpha.5\"");
 	}
 
 	@Test
@@ -403,8 +409,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -422,8 +428,8 @@ class NpmCompletionTests {
 
 		// Prefix entries are non-updatable but the contributor still surfaces
 		// suggestions so the user can act manually.
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -439,8 +445,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -456,8 +462,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -473,8 +479,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -490,8 +496,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -507,8 +513,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 	}
 
 	@Test
@@ -540,8 +546,8 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(packageJson).containsText(
@@ -562,12 +568,12 @@ class NpmCompletionTests {
 		NpmFixtures.analyze(packageJson);
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings())
-				.contains("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
+		assertThat(fixture)
+				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(packageJson.getText())
-				.contains("\"@springio/antora-xref-extension\": \"spring-io/antora-xref-extension#1.0.0-alpha.5\"");
+		assertThat(packageJson)
+				.containsText("\"@springio/antora-xref-extension\": \"spring-io/antora-xref-extension#1.0.0-alpha.5\"");
 	}
 
 	@Test

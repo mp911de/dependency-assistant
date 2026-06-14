@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.antora;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -26,15 +24,15 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.BuildActionDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.fixtures.BuildFileUpdates;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * PSI-level integration tests for {@link UpdateAntoraPlaybookFile}.
@@ -57,10 +55,10 @@ class UpdateAntoraPlaybookFileTests {
 			""")
 	void updatesVersionSegment(PsiFile playbookFile) {
 
-		applyUpdate(playbookFile, GitVersion.of(ArtifactVersion.of("v0.4.26")));
+		applyUpdate(playbookFile, "v0.4.26");
 
-		assertThat(playbookFile.getText())
-				.contains("https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip");
+		assertThat(playbookFile)
+				.containsText("https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip");
 	}
 
 	@Test
@@ -71,10 +69,11 @@ class UpdateAntoraPlaybookFileTests {
 			""")
 	void preservesSingleQuotes(PsiFile playbookFile) {
 
-		applyUpdate(playbookFile, GitVersion.of(ArtifactVersion.of("v0.4.26")));
+		applyUpdate(playbookFile, "v0.4.26");
 
-		assertThat(playbookFile.getText())
-				.contains("'https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip'");
+		assertThat(playbookFile)
+				.containsText(
+						"'https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip'");
 	}
 
 	@Test
@@ -85,10 +84,11 @@ class UpdateAntoraPlaybookFileTests {
 			""")
 	void preservesDoubleQuotes(PsiFile playbookFile) {
 
-		applyUpdate(playbookFile, GitVersion.of(ArtifactVersion.of("v0.4.26")));
+		applyUpdate(playbookFile, "v0.4.26");
 
-		assertThat(playbookFile.getText())
-				.contains("\"https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip\"");
+		assertThat(playbookFile)
+				.containsText(
+						"\"https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip\"");
 	}
 
 	@Test
@@ -99,11 +99,11 @@ class UpdateAntoraPlaybookFileTests {
 			""")
 	void preservesTrailingComment(PsiFile playbookFile) {
 
-		applyUpdate(playbookFile, GitVersion.of(ArtifactVersion.of("v0.4.26")));
+		applyUpdate(playbookFile, "v0.4.26");
 
-		assertThat(playbookFile.getText())
-				.contains("https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip")
-				.contains("# keep me");
+		assertThat(playbookFile)
+				.containsText("https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip")
+				.containsText("# keep me");
 	}
 
 	@Test
@@ -122,7 +122,7 @@ class UpdateAntoraPlaybookFileTests {
 
 		String originalText = playbookFile.getText();
 
-		applyUpdate(playbookFile, GitVersion.of(ArtifactVersion.of("v0.4.26")));
+		applyUpdate(playbookFile, "v0.4.26");
 
 		String updatedText = playbookFile.getText();
 
@@ -132,20 +132,19 @@ class UpdateAntoraPlaybookFileTests {
 		assertThat(updatedText).isEqualTo(originalText.replace("/v0.4.25/", "/v0.4.26/"));
 	}
 
-	private void applyUpdate(PsiFile file, GitVersion targetVersion) {
+	private void applyUpdate(PsiFile file, String toTag) {
 
 		ArtifactId id = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
+		GitVersion targetVersion = GitVersion.of(ArtifactVersion.of(toTag));
 
 		Dependency dependency = new Dependency(id, targetVersion);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(VersionSource.declared("v0.4.25"));
 
 		DependencyUpdate update = DependencyUpdate.from(dependency, targetVersion);
-
 		UpdateAntoraPlaybookFile updater = new UpdateAntoraPlaybookFile(file.getProject());
 
-		new BuildActionDelegate(file.getProject(), updater::applyUpdates)
-				.updateBuildFile(file.getVirtualFile(), List.of(update));
+		BuildFileUpdates.applyUpdate(file, update, updater::applyUpdates);
 	}
 
 }

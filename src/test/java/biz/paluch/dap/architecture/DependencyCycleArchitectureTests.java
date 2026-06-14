@@ -44,7 +44,7 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 		ExcludeInstrumentedTestCode.class})
 class DependencyCycleArchitectureTests {
 
-	private static final CycleExclusions EXCLUSIONS = CycleExclusions.none()
+	private CycleExclusions EXCLUSIONS = CycleExclusions.none()
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
 					"Gradle catalog caching still depends on settings parsers")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
@@ -55,7 +55,7 @@ class DependencyCycleArchitectureTests {
 	 * nested marker types, nested implementations, and imported subtypes become one
 	 * class slice.
 	 */
-	private static final SliceAssignment CLASSES_AND_HIERARCHIES = SliceRules.classes(
+	private SliceAssignment CLASSES_AND_HIERARCHIES = SliceRules.classes(
 			it -> {
 				it.withClosedHierarchy(ArtifactVersion.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
@@ -72,73 +72,73 @@ class DependencyCycleArchitectureTests {
 			});
 
 	@ArchTest
-	static final ArchRule packagesShouldBeFreeOfCycles = slices().assignedFrom(SliceRules.allPackages())
+	ArchRule packagesShouldBeFreeOfCycles = slices().assignedFrom(SliceRules.allPackages())
 			.should()
 			.beFreeOfCycles()
 			.as("Packages should be free of cyclic dependencies");
 
 	@ArchTest
-	static final ArchRule classesShouldBeFreeOfCycles = slices()
+	ArchRule classesShouldBeFreeOfCycles = slices()
 			.assignedFrom(EXCLUSIONS.apply(CLASSES_AND_HIERARCHIES))
 			.should()
 			.beFreeOfCycles()
 			.as("Classes should be free of cyclic dependencies");
 
 	@ArchTest
-	static final ArchRule root = packageDependencies("biz.paluch.dap",
+	ArchRule root = packageDependencies("biz.paluch.dap",
 			"artifact", "state", "lookup", "support");
 
 	@ArchTest
-	static final ArchRule artifact = packageDependencies(
+	ArchRule artifact = packageDependencies(
 			"artifact", "util", "xml");
 
 	@ArchTest
-	static final ArchRule assistantPackage = packageDependencies(
+	ArchRule assistantPackage = packageDependencies(
 			"assistant", "biz.paluch.dap", "artifact", "rule", "severity", "state", "lookup", "support", "util");
 
 	@ArchTest
-	static final ArchRule antora = packageDependencies("antora",
+	ArchRule antora = packageDependencies("antora",
 			"biz.paluch.dap", "artifact", "assistant", "state", "lookup", "support", "support.yaml", "util", "github");
 
 	@ArchTest
-	static final ArchRule github = packageDependencies("github",
+	ArchRule github = packageDependencies("github",
 			"biz.paluch.dap", "artifact", "assistant", "state", "lookup", "support", "support.yaml", "util");
 
 	@ArchTest
-	static final ArchRule gradle = packageDependencies("gradle",
+	ArchRule gradle = packageDependencies("gradle",
 			"biz.paluch.dap", "artifact", "assistant", "state", "lookup", "support", "util");
 
 	@ArchTest
-	static final ArchRule maven = packageDependencies("maven",
+	ArchRule maven = packageDependencies("maven",
 			"biz.paluch.dap",
 			"artifact", "assistant", "state", "lookup", "support", "util", "maven.wrapper");
 
 	@ArchTest
-	static final ArchRule mavenWrapper = packageDependencies("maven.wrapper",
+	ArchRule mavenWrapper = packageDependencies("maven.wrapper",
 			"biz.paluch.dap",
 			"artifact", "assistant", "state", "lookup", "support", "util");
 
 	@ArchTest
-	static final ArchRule npm = packageDependencies("npm", "biz.paluch.dap",
+	ArchRule npm = packageDependencies("npm", "biz.paluch.dap",
 			"artifact", "assistant", "state", "lookup", "support", "util", "github");
 
 	@ArchTest
-	static final ArchRule severity = packageDependencies("severity",
+	ArchRule severity = packageDependencies("severity",
 			"biz.paluch.dap", "support");
 
 	@ArchTest
-	static final ArchRule state = packageDependencies("state", "artifact",
+	ArchRule state = packageDependencies("state", "artifact",
 			"util");
 
 	@ArchTest
-	static final ArchRule support = packageDependencies("support", "artifact",
+	ArchRule support = packageDependencies("support", "artifact",
 			"state", "util");
 
 	@ArchTest
-	static final ArchRule util = packageDependencies("util");
+	ArchRule util = packageDependencies("util");
 
 	@ArchTest
-	static final ArchRule xml = packageDependencies("xml");
+	ArchRule xml = packageDependencies("xml");
 
 	private static ArchRule packageDependencies(String packageUnderTest, String... allowedPackages) {
 
@@ -146,7 +146,7 @@ class DependencyCycleArchitectureTests {
 				.resideInAPackage(ArchRules.expandPackage(packageUnderTest))
 				.should()
 				.onlyDependOnClassesThat(ArchRules.residesInAnyPackage(packageUnderTest, allowedPackages))
-				.as(String.format("Package '%s' should only depend on classes in %s", packageUnderTest,
+				.as("Package '%s' should only depend on classes in %s".formatted(packageUnderTest,
 						Arrays.asList(allowedPackages)));
 	}
 

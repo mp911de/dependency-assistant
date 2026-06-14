@@ -30,9 +30,9 @@ import static org.assertj.core.api.Assertions.*;
  */
 class DependencyCollectorUnitTests {
 
-	private static final ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
+	private ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
 
-	private static final ArtifactId SETUP_JAVA = ArtifactId.of("actions", "setup-java");
+	private ArtifactId SETUP_JAVA = ArtifactId.of("actions", "setup-java");
 
 	@Test
 	void promoteResolvedDeclarationsRegistersUsageWhenResolverReturnsDependency() {

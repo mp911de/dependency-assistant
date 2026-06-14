@@ -18,29 +18,17 @@ package biz.paluch.dap.gradle;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.DependencyVersionDriftInspection;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.StateService;
-import com.intellij.codeInspection.InspectionManager;
-import com.intellij.codeInspection.ProblemDescriptor;
-import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.openapi.application.ReadAction;
-import com.intellij.psi.PsiElementVisitor;
+import biz.paluch.dap.fixtures.Inspections;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Highlighting integration tests for {@link DependencyVersionDriftInspection}
@@ -70,35 +58,13 @@ class TomlVersionDriftInspectionTests {
 	void reportsDriftOnTheAliasNotTheSharedVersionsEntry(PsiFile toml) {
 
 		GradleFixtures.analyze(toml);
-		storeModule("other", "org.jooq", "jooq", "3.99.0");
+		Inspections.registerDependency(fixture.getProject(), "other", "org.jooq", "jooq", "3.99.0");
 
-		List<String> highlighted = inspect(toml).stream()
+		List<String> highlighted = Inspections.inspect(fixture.getProject(), toml).stream()
 				.map(problem -> problem.getPsiElement().getText())
 				.toList();
 
 		assertThat(highlighted).containsExactlyInAnyOrder("\"3.14.16\"", "\"jooqNew\"");
-	}
-
-	private void storeModule(String moduleId, String groupId, String artifactId, String version) {
-
-		DependencyCollector collector = new DependencyCollector();
-		collector.registerUsage(ArtifactId.of(groupId, artifactId), ArtifactVersion.of(version),
-				DeclarationSource.dependency(), VersionSource.declared(version));
-		StateService.getInstance(fixture.getProject())
-				.getProjectState(ProjectId.of("com.example", moduleId))
-				.setDependencies(collector);
-	}
-
-	private List<ProblemDescriptor> inspect(PsiFile file) {
-
-		DependencyVersionDriftInspection inspection = new DependencyVersionDriftInspection();
-		return ReadAction.compute(() -> {
-			InspectionManager manager = InspectionManager.getInstance(fixture.getProject());
-			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
-			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
-			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
-			return holder.getResults();
-		});
 	}
 
 }

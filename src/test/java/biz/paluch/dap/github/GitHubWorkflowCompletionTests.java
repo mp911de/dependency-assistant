@@ -58,7 +58,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		// Empty ref after `@` is SHA-style per `RefStyle.from(...)`, so SHA-aware
 		// releases insert their SHA. v4.1.0 has no SHA metadata and falls through.
-		assertThat(fixture.getLookupElementStrings()).contains(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
+		assertThat(fixture).completionSuggests(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(workflowFile).caretAfter("d1185ce59f7757407fe6a5febb1e03e3dba2a530");
@@ -102,7 +102,7 @@ class GitHubWorkflowCompletionTests {
 
 		fixture.completeBasic();
 
-		assertThat(fixture.getLookupElementStrings()).contains("v4.2.0", "v4.1.0", "v3.6.0");
+		assertThat(fixture).completionSuggests("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 
 	@Test
@@ -119,7 +119,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 
 		// Full-SHA ref selects SHA insertion for SHA-aware releases.
-		assertThat(fixture.getLookupElementStrings()).contains(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
+		assertThat(fixture).completionSuggests(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
 	}
 
 	@Test
@@ -136,7 +136,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 
 		// Full-SHA ref selects SHA insertion for SHA-aware releases.
-		assertThat(fixture.getLookupElementStrings()).contains(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
+		assertThat(fixture).completionSuggests(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
 	}
 
 	@Test
@@ -171,8 +171,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0 # here to stay");
+		assertThat(workflowFile)
+				.containsText("checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0 # here to stay");
 	}
 
 	@Test
@@ -189,8 +189,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("\"actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530\" # v4.2.0");
+		assertThat(workflowFile)
+				.containsText("\"actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530\" # v4.2.0");
 	}
 
 	@Test
@@ -207,8 +207,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("actions/checkout@v4.2.0 # keep me");
+		assertThat(workflowFile)
+				.containsText("actions/checkout@v4.2.0 # keep me");
 	}
 
 	@Test
@@ -225,8 +225,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("\"actions/checkout@v4.2.0\" # keep me");
+		assertThat(workflowFile)
+				.containsText("\"actions/checkout@v4.2.0\" # keep me");
 	}
 
 	@Test
@@ -243,9 +243,9 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(fixture.getEditor().getDocument().getText())
-				.contains("\"actions/checkout@v4.2.0\"")
-				.contains("# keep me");
+		assertThat(workflowFile)
+				.containsText("\"actions/checkout@v4.2.0\"")
+				.containsText("# keep me");
 	}
 
 }

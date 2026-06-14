@@ -25,25 +25,25 @@ import static org.assertj.core.api.Assertions.*;
  *
  * @author Mark Paluch
  */
-public class GradlePluginIdUnitTests {
+class GradlePluginIdUnitTests {
 
 	@Test
-	void isValidPluginId_acceptsNormalId() {
+	void acceptsNormalPluginId() {
 		assertThat(GradlePluginId.isValidPluginId("org.springframework.boot")).isTrue();
 	}
 
 	@Test
-	void isValidPluginId_rejectsPathTraversal() {
+	void rejectsPathTraversal() {
 		assertThat(GradlePluginId.isValidPluginId("../evil")).isFalse();
 	}
 
 	@Test
-	void isValidPluginId_rejectsEmpty() {
+	void rejectsEmptyId() {
 		assertThat(GradlePluginId.isValidPluginId("")).isFalse();
 	}
 
 	@Test
-	void isValidPluginId_rejectsUrlSpecial() {
+	void rejectsUrlSpecialCharacters() {
 		assertThat(GradlePluginId.isValidPluginId("org@attacker.com/x")).isFalse();
 	}
 
