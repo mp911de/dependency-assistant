@@ -265,6 +265,10 @@ class UpgradeCandidate implements HasArtifactId {
 		return getArtifactId() + "@" + getCurrentVersion();
 	}
 
+	public EvaluatedDependencyRule evaluate(ArtifactVersion version) {
+		return EvaluatedDependencyRule.of(getRule(), getArtifactId(), version, interfaceAssistant);
+	}
+
 	/**
 	 * Artifact identity rendering a friendly dependency name for notifications.
 	 */

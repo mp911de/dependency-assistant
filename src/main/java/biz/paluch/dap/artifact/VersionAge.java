@@ -19,6 +19,7 @@ package biz.paluch.dap.artifact;
 import javax.swing.Icon;
 
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.util.ScalableIcon;
 
 /**
  * Coarse presentation category for a candidate artifact version.
@@ -80,7 +81,13 @@ public enum VersionAge {
 	 */
 	RELEASE,
 
+	/**
+	 * Align with dependency rule.
+	 */
 	RULE;
+
+
+	public static final Icon RULE_COMPLIANT = ((ScalableIcon) AllIcons.Actions.InlaySecuredShield).scale(1.3f);
 
 	/**
 	 * Return the presentation category for the given upgrade strategy.
@@ -99,7 +106,7 @@ public enum VersionAge {
 		case MAJOR, LATEST -> NEWER_MAJOR;
 		case PREVIEW -> PREVIEW;
 		case RELEASE -> RELEASE;
-			case RULE -> RULE;
+		case RULE -> RULE;
 		};
 	}
 
@@ -167,7 +174,7 @@ public enum VersionAge {
 		case NEWER_MAJOR -> AllIcons.Actions.RunAll;
 		case PREVIEW -> AllIcons.Debugger.DebuggerSync;
 		case SAME_OR_UNKNOWN -> AllIcons.Nodes.PpLibFolder;
-			case RULE -> AllIcons.Actions.QuickfixBulb;
+		case RULE -> RULE_COMPLIANT;
 		};
 	}
 
@@ -183,7 +190,7 @@ public enum VersionAge {
 		case NEWER_MAJOR -> "AllIcons.Actions.RunAll";
 		case PREVIEW -> "AllIcons.Debugger.DebuggerSync";
 		case SAME_OR_UNKNOWN -> "AllIcons.Nodes.PpLibFolder";
-			case RULE -> "AllIcons.Actions.QuickfixBulb";
+		case RULE -> "AllIcons.Actions.InlaySecuredShield";
 		};
 	}
 

@@ -16,9 +16,14 @@
 
 package biz.paluch.dap.assistant;
 
+import javax.swing.Icon;
 import javax.swing.JTable;
 
+import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.VersionAge;
 import com.intellij.util.ui.SortableColumnModel;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utility methods for working with table models.
@@ -35,5 +40,43 @@ class ModelUtil {
 	static UpgradeCandidate getRow(JTable table, int viewRow) {
 		int modelRow = table.convertRowIndexToModel(viewRow);
 		return (UpgradeCandidate) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);
+	}
+
+	/**
+	 * Obtain the icon for the version option (dialog or completion.
+	 * @param rule the evaluated rule.
+	 * @param currentVersion current artifact version.
+	 * @param candidate candidate version.
+	 * @return the icon to use.
+	 */
+	public static Icon getIcon(EvaluatedDependencyRule rule, @Nullable ArtifactVersion currentVersion,
+			ArtifactVersion candidate) {
+
+		if (!rule.test(candidate)) {
+			return DependencyAssistantIcons.DEPENDENCY_RULE_WARN;
+		}
+
+		if (currentVersion == null) {
+			if (rule.isPresent() && rule.isLocked()) {
+				return VersionAge.RULE_COMPLIANT;
+			}
+
+			if (candidate.isPreview()) {
+				return VersionAge.PREVIEW.getIcon();
+			}
+			return VersionAge.OLDER.getIcon();
+		}
+
+		VersionAge age = VersionAge.between(currentVersion, candidate.getVersion());
+		if (rule.isPresent() && age == VersionAge.OLDER && rule.isLocked()) {
+			return VersionAge.RULE_COMPLIANT;
+		}
+
+		if (candidate.isPreview()) {
+			return VersionAge.PREVIEW.getIcon();
+		}
+
+		VersionAge versionAge = VersionAge.between(currentVersion, candidate);
+		return versionAge.getIcon();
 	}
 }

@@ -131,6 +131,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
 				.getInterfaceAssistant(), metadata.currentVersion(), rule);
 
+		for (ArtifactRelease release : releases) {
+			renderer.withVersion(release);
+		}
+
 		List<LookupElement> elements = new ArrayList<>();
 		double priority = releases.size();
 		for (ArtifactRelease release : releases) {

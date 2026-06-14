@@ -48,6 +48,7 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.BetterPsiManager;
@@ -1218,10 +1219,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 				text += " (" + formatter.format(value.releaseDate()) + ")";
 			}
 
-			boolean valid = candidate.getRule().test(value.getVersion());
+			DependencyRule rule = candidate.getRule();
+			boolean valid = rule.test(value.getVersion());
 			append(text, valid ? SimpleTextAttributes.REGULAR_ATTRIBUTES : SimpleTextAttributes.GRAYED_ATTRIBUTES);
-			setIcon(valid ? VersionAge.between(candidate.getCurrentVersion(), value.getVersion()).getIcon()
-					: DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
+			EvaluatedDependencyRule evaluated = candidate.evaluate(value.getVersion());
+
+			setIcon(ModelUtil.getIcon(evaluated, candidate.getCurrentVersion(), value.getVersion()));
 		}
 
 	}

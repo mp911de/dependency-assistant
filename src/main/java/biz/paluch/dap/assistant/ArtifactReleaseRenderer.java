@@ -21,16 +21,12 @@ import java.time.LocalDateTime;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.artifact.VersionAware;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.StringUtils;
@@ -46,6 +42,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 
+	private static final int MAX_VERSION_LENGTH_PADDING = 15;
+
 	private final ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 
 	private final InterfaceAssistant assistant;
@@ -53,6 +51,8 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 	private final @Nullable ArtifactVersion currentVersion;
 
 	private final DependencyRule rule;
+
+	private int versionLength = 0;
 
 	public ArtifactReleaseRenderer(InterfaceAssistant assistant, @Nullable ArtifactVersion currentVersion, DependencyRule rule) {
 		this.assistant = assistant;
@@ -72,8 +72,22 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 			return;
 		}
 
-		ArtifactVersion version = VersionAware.getVersion(release);
-		presentation.setItemText(release.getVersion().toString());
+		ArtifactVersion version = Versioned.of(release).unwrap();
+		String itemText = version.toString();
+		presentation.setItemText(itemText);
+
+		EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.of(rule, release.artifactId(), version, assistant);
+		String dependencyName = evaluated.getDependencyName();
+
+		String tailText;
+		if (itemText.length() < MAX_VERSION_LENGTH_PADDING) {
+			int padding = this.versionLength - itemText.length();
+			tailText = " ".repeat(padding) + " " + dependencyName;
+		} else {
+			tailText = " " + dependencyName;
+		}
+
+		presentation.setTailText(tailText);
 
 		String typeText = "";
 		LocalDateTime releaseDate = release.getReleaseDate();
@@ -99,24 +113,19 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 			}
 		}
 
-		if (rule.isPresent() && !rule.test(release.getVersion())) {
-			presentation.setIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
+		boolean valid = !rule.isPresent() || rule.test(release.getVersion());
+
+		if (!valid) {
 			presentation.setStrikeout(true);
 		}
-		else {
-			presentation.setIcon(getIcon(release.artifactId(), version));
-		}
+
+		Icon icon = ModelUtil.getIcon(evaluated, currentVersion, release.getVersion());
+		presentation.setIcon(icon);
 	}
 
-	private Icon getIcon(ArtifactId artifactId, ArtifactVersion version) {
-		if (version.isPreview()) {
-			return VersionAge.PREVIEW.getIcon();
-		}
-		if (currentVersion != null) {
-			VersionAge versionAge = VersionAge.between(currentVersion, version);
-			return versionAge.getIcon();
-		}
-		return assistant.getTableIcon(new Dependency(artifactId, currentVersion));
-	}
+	public void withVersion(ArtifactRelease release) {
 
+		ArtifactVersion version = Versioned.of(release).unwrap();
+		this.versionLength = Math.max(version.toString().length(), versionLength);
+	}
 }

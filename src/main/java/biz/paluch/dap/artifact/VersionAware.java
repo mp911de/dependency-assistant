@@ -38,23 +38,4 @@ public interface VersionAware {
 	 */
 	ArtifactVersion getVersion();
 
-	/**
-	 * Return the normalized artifact version exposed by the given object.
-	 *
-	 * <p>
-	 * The returned version follows {@link ArtifactVersion#getVersion()} through
-	 * the wrapper layers used by this package, such as {@link GitVersion} or
-	 * prefixed versions. Use the normalized value when comparing or grouping the
-	 * underlying version and wrapper metadata such as prefixes or SHAs should be
-	 * ignored.
-	 *
-	 * @param hasVersion the object that carries the version; must not be
-	 * {@literal null}.
-	 * @return the normalized artifact version; guaranteed to be not
-	 * {@literal null}.
-	 */
-	public static ArtifactVersion getVersion(VersionAware hasVersion) {
-		return hasVersion.getVersion().getVersion().getVersion();
-	}
-
 }

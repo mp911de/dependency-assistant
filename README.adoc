@@ -12,10 +12,13 @@ Dependency Assistant resolves available releases from the relevant repositories,
 == Features
 
 * Scans supported build files, including `pom.xml`, Gradle build files, Gradle version catalogs, GitHub Actions workflows, `package.json`, Antora playbooks, and wrapper properties.
+* Interactive dependency upgrade review.
 * Resolves versions from literals, Maven and Gradle properties, Maven profile-specific properties, Gradle version catalogs, Git refs, and wrapper URLs where possible.
 * Suggests update candidates and lets you pick target versions.
 * Uses ecosystem-specific release metadata sources, including Maven repositories, the Gradle Plugin Portal, Gradle distribution metadata, GitHub, Git tags, and npmjs.
 * Supports Maven repository credentials declared in Maven `settings.xml` when they can be resolved by the active Maven installation.
+* Inspections for Maven and Gradle wrappers.
+* Inspection for Version and Declaration drift.
 
 .Screenshot: dependency version check dialog
 image::images/screenshot.png[Maven dependency check dialog,width=800]

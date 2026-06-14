@@ -46,6 +46,18 @@ import org.springframework.util.Assert;
 public interface Versioned extends VersionAware {
 
 	/**
+	 * Create a versioned container for the given {@link VersionAware}.
+	 *
+	 * @param aware the version-aware object; must not be {@literal null}.
+	 * @return a {@link Versioned} instance whose {@link #isVersioned()} returns
+	 * {@literal true}.
+	 */
+	static Versioned of(VersionAware aware) {
+		Assert.notNull(aware, "VersionAware must not be null");
+		return of(aware.getVersion());
+	}
+
+	/**
 	 * Create a versioned container for the given artifact version.
 	 *
 	 * @param artifactVersion the version to wrap; must not be {@literal null}.
