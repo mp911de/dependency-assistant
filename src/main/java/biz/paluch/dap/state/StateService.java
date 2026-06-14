@@ -16,20 +16,24 @@
 
 package biz.paluch.dap.state;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Predicates;
 import com.intellij.util.xmlb.XmlSerializerUtil;
 import org.jspecify.annotations.Nullable;
 
@@ -153,17 +157,80 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 	public Set<ArtifactVersion> getDeclaredVersions(ArtifactId artifactId, @Nullable ProjectId excludedModule) {
 
 		Set<ArtifactVersion> versions = new TreeSet<>();
-		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
-			if (entry.getKey().equals(excludedModule)) {
-				continue;
-			}
-
-			Dependency dependency = entry.getValue().getUsage(artifactId);
-			if (dependency != null) {
+		doWithDependencies(projectId -> !projectId.equals(excludedModule), dependency -> {
+			if (dependency.getArtifactId().equals(artifactId)) {
 				versions.add(dependency.getCurrentVersion());
 			}
-		}
+		});
 		return versions;
+	}
+
+	/**
+	 * Return the version sources the given artifact is declared through across
+	 * every module currently held in runtime dependency state.
+	 *
+	 * @param artifactId the artifact coordinates to look up; must not be
+	 * {@literal null}.
+	 * @return the version sources; empty when no module declares the artifact.
+	 */
+	public Set<VersionSource> getVersionSources(ArtifactId artifactId) {
+		return getVersionSources(Predicates.alwaysTrue(), artifactId);
+	}
+
+	/**
+	 * Return the version sources the given artifact is declared through across the
+	 * modules accepted by {@code projectFilter}.
+	 *
+	 * @param projectFilter selects which modules contribute version sources; must
+	 * not be {@literal null}.
+	 * @param artifactId the artifact coordinates to look up; must not be
+	 * {@literal null}.
+	 * @return the version sources; empty when no accepted module declares the
+	 * artifact.
+	 */
+	public Set<VersionSource> getVersionSources(Predicate<ProjectId> projectFilter, ArtifactId artifactId) {
+
+		Set<VersionSource> versionSources = new LinkedHashSet<>();
+		doWithDependencies(projectFilter, dependency -> {
+			if (dependency.getArtifactId().equals(artifactId)) {
+				versionSources.addAll(dependency.getVersionSources());
+			}
+		});
+		return versionSources;
+	}
+
+	/**
+	 * Perform the given action for every dependency declared across all modules
+	 * currently held in runtime dependency state.
+	 *
+	 * @param consumer the action invoked with each dependency declaration; must not
+	 * be {@literal null}.
+	 */
+	public void doWithDependencies(Consumer<Dependency> consumer) {
+		doWithDependencies(Predicates.alwaysTrue(), consumer);
+	}
+
+	/**
+	 * Perform the given action for every dependency declared across the modules
+	 * accepted by {@code projectFilter}.
+	 * <p>The consumer is invoked once for each dependency in each accepted module,
+	 * so an artifact declared by several modules is visited several times. Only the
+	 * in-memory runtime dependency state is traversed; the persisted cache is not
+	 * consulted.
+	 *
+	 * @param projectFilter selects which modules are traversed; must not be
+	 * {@literal null}.
+	 * @param consumer the action invoked with each dependency declaration; must not
+	 * be {@literal null}.
+	 */
+	public void doWithDependencies(Predicate<ProjectId> projectFilter, Consumer<Dependency> consumer) {
+		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
+			if (projectFilter.test(entry.getKey())) {
+				for (Dependency dependency : entry.getValue().getUsages()) {
+					consumer.accept(dependency);
+				}
+			}
+		}
 	}
 
 	/**

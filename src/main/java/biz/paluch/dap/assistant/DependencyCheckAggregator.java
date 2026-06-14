@@ -221,7 +221,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 			}
 
 			DeclaredVersions declaredVersions = DeclaredVersions.from(entry.declarationSites(),
-					it -> GitVersionResolver.resolveVersion(it, lookup.releases()));
+					it -> GitVersionResolver.resolveVersion(it, lookup.releases()), project);
 			if (!declaredVersions.hasVersion()) {
 				return;
 			}

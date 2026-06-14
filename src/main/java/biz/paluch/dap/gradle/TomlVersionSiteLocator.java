@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
 import biz.paluch.dap.gradle.GradleVersionSite.CoordinateSite;
 import biz.paluch.dap.support.DependencySite;
@@ -24,6 +25,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.toml.lang.psi.TomlInlineTable;
 import org.toml.lang.psi.TomlKeyValue;
 import org.toml.lang.psi.TomlLiteral;
+import org.toml.lang.psi.TomlValue;
 
 /**
  * TOML PSI locator for version-catalog declaration sites.
@@ -52,12 +54,13 @@ class TomlVersionSiteLocator implements VersionSiteLocator<TomlLiteral> {
 		if (TomlParser.isInsideTable(literal, it -> TomlParser.LIBRARIES.equals(it) || TomlParser.PLUGINS.equals(it))) {
 
 			String keyName = TomlParser.getTomlKeyName(keyValue.getKey());
+			boolean referencedVersion = TomlParser.VERSION_REF.equals(keyName);
 			if (keyValue.getValue() != literal && !TomlParser.VERSION.equals(keyName)) {
 				return GradleVersionSite.absent();
 			}
 
 			TomlKeyValue declarationKeyValue = keyValue;
-			if (TomlParser.VERSION.equals(keyName)) {
+			if (TomlParser.VERSION.equals(keyName) || referencedVersion) {
 				TomlInlineTable inlineTable = PsiTreeUtil.getParentOfType(literal, TomlInlineTable.class);
 				if (inlineTable == null) {
 					return GradleVersionSite.absent();
@@ -72,7 +75,26 @@ class TomlVersionSiteLocator implements VersionSiteLocator<TomlLiteral> {
 					.forFile(declarationKeyValue.getContainingFile());
 			TomlParser.TomlDependencyDeclaration declaration = TomlParser.parseTomlEntry(declarationKeyValue,
 					propertyResolver);
-			if (!declaration.isComplete() || declaration.versionLiteral() != literal) {
+			if (!declaration.isComplete()) {
+				return GradleVersionSite.absent();
+			}
+
+			// A version.ref alias points at a [versions] entry; anchor the version on the
+			// resolved [versions] literal so the alias is reported as a usage of that
+			// property while still carrying its resolved coordinate and version.
+			if (referencedVersion) {
+				TomlValue resolvedLiteral = declaration.getRequiredVersionLiteral();
+				ArtifactVersion resolvedVersion = ArtifactVersion.from(TomlParser.getText(resolvedLiteral))
+						.orElse(null);
+				if (resolvedVersion == null) {
+					return GradleVersionSite.absent();
+				}
+				DependencySite site = declaration.toDependencySite(declarationKeyValue, resolvedLiteral);
+				return new CoordinateSite(site.getArtifactId(), site.getVersionSource(), site.getDeclarationSource(),
+						declarationKeyValue, resolvedLiteral, resolvedVersion);
+			}
+
+			if (declaration.versionLiteral() != literal) {
 				return GradleVersionSite.absent();
 			}
 

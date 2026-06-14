@@ -59,7 +59,7 @@ public class Cache {
 	 */
 	public static final Clock CLOCK = Clock.systemUTC();
 
-	private static final Duration CACHE_EXPIRATION = Duration.ofHours(4);
+	private static final Duration CACHE_EXPIRATION = Duration.ofHours(8);
 
 	/**
 	 * Epoch-millisecond timestamp of the last successful update, or {@code 0} if no

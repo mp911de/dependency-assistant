@@ -86,12 +86,14 @@ class UpgradeGroup extends UpgradeCandidate {
 
 		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
 		Set<DeclaredVersions.VersionDrift> entries = new TreeSet<>();
+		Set<DeclaredVersions.DeclarationDrift> declarationEntries = new TreeSet<>();
 		for (UpgradeCandidate member : members) {
 			versions.addAll(member.getDeclaredVersions().versions());
 			entries.addAll(member.getDeclaredVersions().entries());
+			declarationEntries.addAll(member.getDeclaredVersions().declarationEntries());
 		}
 
-		return new DeclaredVersions(versions, entries);
+		return new DeclaredVersions(versions, entries, declarationEntries);
 	}
 
 	private static Releases intersectReleases(List<UpgradeCandidate> members) {

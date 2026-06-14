@@ -147,7 +147,7 @@ public class UpdateDependencyVersionQuickFix extends LocalQuickFixOnPsiElement
 
 	@Override
 	public @NotNull @Unmodifiable List<@NotNull IntentionAction> getOptions() {
-		return List.of(new ApplyAllUpgradesIntention(dependencyContext, strategy, getIcon()),
+		return List.of(new ApplyAllUpgradesIntention(dependencyContext, strategy),
 				UpgradeDependenciesIntention.INSTANCE);
 	}
 

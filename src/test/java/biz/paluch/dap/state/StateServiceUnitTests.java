@@ -16,6 +16,9 @@
 
 package biz.paluch.dap.state;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -33,6 +36,8 @@ import static org.assertj.core.api.Assertions.*;
 class StateServiceUnitTests {
 
 	private static final ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
+
+	private static final ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
 	@Test
 	void collectsDistinctDeclaredVersionsAcrossModules() {
@@ -61,12 +66,53 @@ class StateServiceUnitTests {
 		assertThat(new StateService().getDeclaredVersions(SPRING_CORE)).isEmpty();
 	}
 
+	@Test
+	void visitsRuntimeDependencies() {
+
+		StateService service = new StateService();
+		store(service, "com.acme", "app", SPRING_CORE, "6.1.0");
+		store(service, "com.acme", "lib", SPRING_TEST, "6.1.0");
+
+		List<ArtifactId> visited = new ArrayList<>();
+		service.doWithDependencies(dependency -> visited.add(dependency.getArtifactId()));
+		assertThat(visited).containsExactlyInAnyOrder(SPRING_CORE, SPRING_TEST);
+	}
+
+	@Test
+	void collectsVersionSourcesAcrossModules() {
+
+		StateService service = new StateService();
+		store(service, "com.acme", "app", SPRING_CORE, "6.1.0", VersionSource.property("spring.version"));
+		store(service, "com.acme", "lib", SPRING_CORE, "6.1.0", VersionSource.declared("6.1.0"));
+
+		assertThat(service.getVersionSources(SPRING_CORE)).hasSize(2)
+				.anyMatch(VersionSource.VersionProperty.class::isInstance)
+				.anyMatch(VersionSource.DeclaredVersion.class::isInstance);
+	}
+
+	@Test
+	void excludesModuleFromVersionSourceLookup() {
+
+		StateService service = new StateService();
+		store(service, "com.acme", "app", SPRING_CORE, "6.1.0", VersionSource.property("spring.version"));
+		store(service, "com.acme", "lib", SPRING_CORE, "6.1.0", VersionSource.declared("6.1.0"));
+
+		assertThat(service.getVersionSources(it -> !it.equals(ProjectId.of("com.acme", "app")), SPRING_CORE))
+				.singleElement()
+				.isInstanceOf(VersionSource.DeclaredVersion.class);
+	}
+
 	private static void store(StateService service, String groupId, String artifactId, ArtifactId dependency,
 			String version) {
+		store(service, groupId, artifactId, dependency, version, VersionSource.declared(version));
+	}
+
+	private static void store(StateService service, String groupId, String artifactId, ArtifactId dependency,
+			String version, VersionSource versionSource) {
 
 		DependencyCollector collector = new DependencyCollector();
 		collector.registerUsage(dependency, ArtifactVersion.of(version), DeclarationSource.dependency(),
-				VersionSource.declared(version));
+				versionSource);
 		service.getProjectState(ProjectId.of(groupId, artifactId))
 				.setDependencies(collector);
 	}

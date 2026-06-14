@@ -19,7 +19,9 @@ package biz.paluch.dap.assistant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.SequencedCollection;
 import java.util.Set;
 import java.util.TreeSet;
@@ -33,6 +35,8 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
@@ -45,14 +49,24 @@ import org.springframework.util.Assert;
  * <p>The set drives both the upgrade baseline
  * ({@link #getHighestDeclaredVersion()}) and drift reporting: drift exists when
  * the sites declare the artifact at more than one distinct version, whether
- * across files or twice within one file.
+ * across files or twice within one file. Declaration drift exists when the
+ * sites mix inline versions and version properties.
  *
  * @author Mark Paluch
  * @param versions the distinct parsed versions found in the declaration sites.
  * @param entries the sortable declaration entries used for conflict display.
+ * @param declarationEntries the sortable declaration-style entries used for
+ * drift display.
  * @see UpgradeCandidate
  */
-record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries) {
+record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries,
+		Set<DeclarationDrift> declarationEntries) {
+
+	/** Maximum number of version groups listed in the version-drift tool tip. */
+	private static final int MAX_DISPLAYED_VERSIONS = 5;
+
+	/** Maximum number of locations listed per drift group before overflow. */
+	private static final int MAX_DISPLAYED_FILES = 3;
 
 	/**
 	 * Return an empty result with no declared versions.
@@ -60,7 +74,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	 * @return a result with no versions and no declaration entries.
 	 */
 	public static DeclaredVersions empty() {
-		return new DeclaredVersions(Set.of(), Set.of());
+		return new DeclaredVersions(Set.of(), Set.of(), Set.of());
 	}
 
 	/**
@@ -73,11 +87,13 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	 * @param declarationSites the declaration sites to inspect.
 	 * @param gitRefResolver the resolver used to translate Git refs into known
 	 * artifact versions.
+	 * @param project the project used to render declaration locations relative to
+	 * the project base path; can be {@literal null}.
 	 * @return the declared versions; empty when no site carries a concrete
 	 * dependency version.
 	 */
 	public static DeclaredVersions from(Collection<DeclarationSite> declarationSites,
-			Function<String, @Nullable ArtifactVersion> gitRefResolver) {
+			Function<String, @Nullable ArtifactVersion> gitRefResolver, @Nullable Project project) {
 
 		if (declarationSites.isEmpty()) {
 			return empty();
@@ -85,8 +101,11 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 
 		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
 		Set<VersionDrift> entries = new TreeSet<>();
+		Set<DeclarationDrift> declarationEntries = new TreeSet<>();
 		for (DeclarationSite site : declarationSites) {
 			if (site.dependency() instanceof Dependency dependency) {
+
+				String location = getDisplayLocation(site.projectId(), site.file(), project);
 				ArtifactVersion version = dependency.getCurrentVersion();
 				if (version instanceof GitRef gitRef) {
 					ArtifactVersion resolved = gitRefResolver.apply(gitRef.getRef());
@@ -96,19 +115,22 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 				}
 
 				versions.add(version);
-				entries.add(new VersionDrift(site.projectId(), site.file(), version));
+				entries.add(new VersionDrift(version, location));
 
 				for (VersionSource versionSource : dependency.getVersionSources()) {
 					if (versionSource instanceof VersionSource.DeclaredVersion declared) {
+						declarationEntries.add(new DeclarationDrift(DeclarationStyle.INLINE, location));
 						ArtifactVersion.from(declared.getVersion()).ifPresent(declaredVersion -> {
 							versions.add(declaredVersion);
-							entries.add(new VersionDrift(site.projectId(), site.file(), declaredVersion));
+							entries.add(new VersionDrift(declaredVersion, location));
 						});
+					} else if (versionSource instanceof VersionSource.VersionProperty) {
+						declarationEntries.add(new DeclarationDrift(DeclarationStyle.PROPERTY, location));
 					}
 				}
 			}
 		}
-		return new DeclaredVersions(versions, entries);
+		return new DeclaredVersions(versions, entries, declarationEntries);
 	}
 
 	/**
@@ -122,63 +144,59 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	}
 
 	/**
+	 * Return whether the declaration styles disagree.
+	 *
+	 * @return {@literal true} when the declaration sites mix inline versions and
+	 * version properties; {@literal false} otherwise.
+	 */
+	boolean hasDeclarationDrift() {
+
+		boolean inline = false;
+		boolean property = false;
+		for (DeclarationDrift entry : declarationEntries) {
+			if (entry.style == DeclarationStyle.INLINE) {
+				inline = true;
+			}
+			if (entry.style == DeclarationStyle.PROPERTY) {
+				property = true;
+			}
+
+			if (property && inline) {
+				break;
+			}
+		}
+		return inline && property;
+	}
+
+	/**
+	 * Return whether either version values or declaration styles drift.
+	 */
+	boolean hasDrift() {
+		return hasVersionDrift() || hasDeclarationDrift();
+	}
+
+	/**
 	 * Visit each conflicting declaration in display order.
 	 *
-	 * <p>When all display locations share the same project prefix, the prefix is
-	 * omitted from the location passed to the consumer.
+	 * <p>File locations are rendered relative to the project base path when a
+	 * project is available.
 	 *
 	 * @param consumer the consumer receiving version strings and display locations.
 	 */
 	public void forEachDrift(BiConsumer<String, String> consumer) {
-
-		List<String> locations = new ArrayList<>();
-		for (VersionDrift entry : entries) {
-			locations.add(entry.getDeclarationLocation());
-		}
-
-		String sharedPrefix = extractSharedPrefix(locations);
-
-		entries.forEach(it -> {
-			String location = it.getDeclarationLocation();
-			if (sharedPrefix != null && location.startsWith(sharedPrefix)) {
-				location = location.substring(sharedPrefix.length());
-			}
-			consumer.accept(it.version.toString(), location);
-		});
+		entries.forEach(it -> consumer.accept(it.version().toString(), it.location()));
 	}
 
 	/**
-	 * Return the prefix shared by all locations, trimmed back to the last path
-	 * ({@code /}) or coordinate ({@code :}) separator so a partial segment is never
-	 * cut, or {@literal null} when the locations share no leading segment.
+	 * Visit each declaration-style drift entry in display order.
+	 *
+	 * <p>File locations are rendered relative to the project base path when a
+	 * project is available.
+	 *
+	 * @param consumer the consumer receiving style labels and display locations.
 	 */
-	private @Nullable String extractSharedPrefix(List<String> locations) {
-
-		if (locations.size() < 2) {
-			return null;
-		}
-
-		String prefix = locations.getFirst();
-		for (String location : locations) {
-			prefix = commonPrefix(prefix, location);
-			if (prefix.isEmpty()) {
-				return null;
-			}
-		}
-
-		int separator = Math.max(prefix.lastIndexOf('/'), prefix.lastIndexOf(':'));
-		return separator >= 0 ? prefix.substring(0, separator + 1) : null;
-	}
-
-	private static String commonPrefix(String left, String right) {
-
-		int max = Math.min(left.length(), right.length());
-		int shared = 0;
-		while (shared < max && left.charAt(shared) == right.charAt(shared)) {
-			shared++;
-		}
-
-		return left.substring(0, shared);
+	public void forEachDeclarationDrift(BiConsumer<String, String> consumer) {
+		declarationEntries.forEach(it -> consumer.accept(MessageBundle.message(it.style().messageKey), it.location()));
 	}
 
 	/**
@@ -219,74 +237,192 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 		return new ArrayList<>(versions).getLast();
 	}
 
+
 	/**
-	 * Render the tool tip text.
+	 * Render the version-drift tool tip text.
+	 *
+	 * <p>Declarations are grouped by their declared version, ordered by version. Up
+	 * to {@link #MAX_DISPLAYED_VERSIONS} version groups are listed, each naming up
+	 * to {@link #MAX_DISPLAYED_FILES} locations before collapsing the remainder
+	 * into an overflow count. The {@code currentVersion} group is omitted because
+	 * it is already shown in the current-version column.
+	 *
+	 * @param currentVersion the version shown in the current-version column,
+	 * excluded from the listed groups.
+	 * @return the version-drift tool tip markup; an empty string when no version
+	 * drift exists.
 	 */
-	public String getToolTipText() {
+	public String getVersionDriftToolTipText(ArtifactVersion currentVersion) {
 
-		StringBuilder tooltip = new StringBuilder();
+		if (!hasVersionDrift()) {
+			return "";
+		}
 
-		tooltip.append("<b>")
-				.append(MessageBundle.message("dialog.version-drift.tooltip.header"))
-				.append("</b>");
-		tooltip.append("<ul>");
-
+		String current = currentVersion.toString();
+		Map<String, List<String>> locationsByVersion = new LinkedHashMap<>();
 		forEachDrift((version, file) -> {
-			tooltip.append("<li>")
-					.append(MessageBundle.message("dialog.version-drift.tooltip.entry", "<code>" + version + "</code>",
-							"<code>" + file + "</code>"))
-					.append("</li>");
+			if (!current.equals(version)) {
+				locationsByVersion.computeIfAbsent(version, key -> new ArrayList<>()).add(file);
+			}
 		});
-		tooltip.append("</ul>");
 
-		return tooltip.toString();
+		StringBuilder tooltip = new StringBuilder("<b>")
+				.append(MessageBundle.message("dialog.version-drift.tooltip.header"))
+				.append("</b><ul>");
+
+		int shown = 0;
+		for (Map.Entry<String, List<String>> group : locationsByVersion.entrySet()) {
+			if (shown == MAX_DISPLAYED_VERSIONS) {
+				break;
+			}
+			tooltip.append("<li>")
+					.append(MessageBundle.message("dialog.version-drift.tooltip.entry",
+							"<code>" + group.getKey() + "</code>", renderLocations(group.getValue())))
+					.append("</li>");
+			shown++;
+		}
+
+		int overflow = locationsByVersion.size() - MAX_DISPLAYED_VERSIONS;
+		if (overflow > 0) {
+			tooltip.append("<li>")
+					.append(MessageBundle.message("dialog.version-drift.tooltip.more.versions", overflow))
+					.append("</li>");
+		}
+
+		return tooltip.append("</ul>").toString();
+	}
+
+	/**
+	 * Render the declaration-drift tool tip text.
+	 *
+	 * <p>Declarations are grouped by their declaration style. Both styles are
+	 * always listed, each naming up to {@link #MAX_DISPLAYED_FILES} locations
+	 * before collapsing the remainder into an overflow count.
+	 *
+	 * @return the declaration-drift tool tip markup; an empty string when no
+	 * declaration drift exists.
+	 */
+	public String getDeclarationDriftToolTipText() {
+
+		if (!hasDeclarationDrift()) {
+			return "";
+		}
+
+		Map<String, List<String>> locationsByStyle = new LinkedHashMap<>();
+		forEachDeclarationDrift(
+				(style, file) -> locationsByStyle.computeIfAbsent(style, key -> new ArrayList<>()).add(file));
+
+		StringBuilder tooltip = new StringBuilder()
+				.append(MessageBundle.message("dialog.declaration-drift.tooltip.header"))
+				.append("<ul>");
+
+		locationsByStyle.forEach((style, locations) -> tooltip.append("<li>")
+				.append(MessageBundle.message("dialog.declaration-drift.tooltip.entry", style,
+						renderLocations(locations)))
+				.append("</li>"));
+
+		return tooltip.append("</ul>").toString();
+	}
+
+	/**
+	 * Render a comma-separated list of up to {@link #MAX_DISPLAYED_FILES}
+	 * declaration locations, collapsing any remaining locations into an overflow
+	 * count.
+	 *
+	 * @param locations the locations to render, in display order.
+	 * @return the rendered location markup.
+	 */
+	private static String renderLocations(List<String> locations) {
+
+		int shown = Math.min(locations.size(), MAX_DISPLAYED_FILES);
+		StringBuilder rendered = new StringBuilder();
+		for (int i = 0; i < shown; i++) {
+			if (i > 0) {
+				rendered.append(", ");
+			}
+			rendered.append("<code>").append(locations.get(i)).append("</code>");
+		}
+
+		int overflow = locations.size() - MAX_DISPLAYED_FILES;
+		if (overflow > 0) {
+			rendered.append(" ").append(MessageBundle.message("dialog.drift.tooltip.other.files", overflow));
+		}
+
+		return rendered.toString();
+	}
+
+	/**
+	 * Compute the declaration location.
+	 *
+	 * <p>Resolved eagerly at construction because rendering a path relative to the
+	 * project base path is a slow operation that must not run on the EDT. Maven
+	 * coordinates take precedence; otherwise the file path is rendered relative to
+	 * the project base path, or as an absolute path when no project is available.
+	 *
+	 * @param projectId the project identity associated with the declaration.
+	 * @param file the file containing the declaration.
+	 * @param project the project used for base-path resolution; can be
+	 * {@literal null}.
+	 * @return the declaration location, never {@literal null}.
+	 */
+	private static String getDisplayLocation(ProjectId projectId, VirtualFile file, @Nullable Project project) {
+
+		if (StringUtils.hasText(projectId.groupId()) && StringUtils.hasText(projectId.artifactId())
+				&& StringUtils.isEmpty(projectId.buildFile())) {
+			return "%s:%s".formatted(projectId.groupId(), projectId.artifactId());
+		}
+
+		return project != null ? ProjectUtil.calcRelativeToProjectPath(file, project) : file.getPath();
 	}
 
 	/**
 	 * Display entry for one drift declaration.
 	 *
-	 * @param projectId the project identity associated with the declaration.
-	 * @param file the file containing the declaration.
 	 * @param version the parsed or resolved declared version.
+	 * @param location the declaration location shown to users, resolved at
+	 * construction.
 	 */
-	record VersionDrift(ProjectId projectId, VirtualFile file, ArtifactVersion version)
-			implements Comparable<VersionDrift> {
+	record VersionDrift(ArtifactVersion version, String location) implements Comparable<VersionDrift> {
 
 		static Comparator<VersionDrift> COMPARATOR = Comparator.comparing(VersionDrift::version)
-				.thenComparing(VersionDrift::getDeclarationLocation, String.CASE_INSENSITIVE_ORDER);
+				.thenComparing(VersionDrift::location, String.CASE_INSENSITIVE_ORDER);
 
 		@Override
 		public int compareTo(VersionDrift o) {
 			return COMPARATOR.compare(this, o);
 		}
 
-		/**
-		 * Return the project or file location shown to users.
-		 *
-		 * <p>The file path is the full path; {@link #forEachDrift(BiConsumer)} strips
-		 * the directory shared by all drift entries so the displayed location is
-		 * relative to their common ancestor.
-		 *
-		 * @return the Maven coordinate when available, or the build file path
-		 * otherwise.
-		 */
-		public String getDeclarationLocation() {
+	}
 
-			if (StringUtils.hasText(projectId.groupId()) && StringUtils.hasText(projectId.artifactId())
-					&& StringUtils.isEmpty(projectId.buildFile())) {
-				return "%s:%s".formatted(projectId.groupId(), projectId.artifactId());
-			}
+	/**
+	 * Display entry for one declaration-style drift location.
+	 *
+	 * @param style the declaration style seen at the location.
+	 * @param location the declaration location shown to users, resolved at
+	 * construction.
+	 */
+	record DeclarationDrift(DeclarationStyle style, String location) implements Comparable<DeclarationDrift> {
 
-			return file.getPath();
+		static Comparator<DeclarationDrift> COMPARATOR = Comparator.comparing(DeclarationDrift::style)
+				.thenComparing(DeclarationDrift::location, String.CASE_INSENSITIVE_ORDER);
+
+		@Override
+		public int compareTo(DeclarationDrift o) {
+			return COMPARATOR.compare(this, o);
 		}
 
-		/**
-		 * Return the display label for this drift entry.
-		 *
-		 * @return the declaration location followed by the version.
-		 */
-		public String toDisplayString() {
-			return "%s: %s".formatted(getDeclarationLocation(), version);
+	}
+
+	private enum DeclarationStyle {
+
+		INLINE("dialog.declaration-drift.tooltip.inline"),
+
+		PROPERTY("dialog.declaration-drift.tooltip.property");
+
+		private final String messageKey;
+
+		DeclarationStyle(String messageKey) {
+			this.messageKey = messageKey;
 		}
 
 	}

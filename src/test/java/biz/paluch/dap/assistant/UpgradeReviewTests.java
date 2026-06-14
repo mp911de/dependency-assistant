@@ -228,7 +228,7 @@ class UpgradeReviewTests {
 		Dependency dependency = new Dependency(artifactId, version);
 		dependency.addVersionSource(VersionSource.declared(version.toString()));
 		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, releases), new TestInterfaceAssistant(),
-				DeclaredVersions.from(List.of(site(artifactId, version, "review/pom.xml")), it -> null),
+				DeclaredVersions.from(List.of(site(artifactId, version, "review/pom.xml")), it -> null, null),
 				new TestDependencyRule("Spring Framework"));
 	}
 
@@ -239,7 +239,7 @@ class UpgradeReviewTests {
 		dependency.addVersionSource(versionSource);
 		Releases releases = Releases.of(Release.of(version), Release.of("6.2.1"));
 		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, releases), new TestInterfaceAssistant(),
-				DeclaredVersions.from(List.of(sites), it -> null), new TestDependencyRule("Spring Framework"));
+				DeclaredVersions.from(List.of(sites), it -> null, null), new TestDependencyRule("Spring Framework"));
 	}
 
 	private static DeclarationSite site(ArtifactId artifactId, ArtifactVersion version, String path) {

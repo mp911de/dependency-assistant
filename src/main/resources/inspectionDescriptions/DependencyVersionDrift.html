@@ -1,19 +1,20 @@
 <html>
 <body>
-Reports dependency version drift: a dependency declared using different versions across
-the project's build files.
+Reports dependency drift: a dependency declared using different versions or mixed
+version declaration styles across the project's build files.
 <p>
     Drift is measured against the project's own other declarations, not against released
-    versions, so a dependency can be the newest released version and still drift. Only
-    declarations that resolve to a concrete inline or property-managed version are
-    flagged.
+    versions, so a dependency can be the newest released version and still drift. A
+    dependency also drifts when some declaration sites use a version property and other
+    sites use inline version literals, even if they currently resolve to the same
+    version.
 </p>
 <p>
-    Quick-fixes reconcile every declaration of the artifact in the file to a single
-    version:
-    the highest declared version (an upgrade) or the lowest declared version (a deliberate
-    downgrade of the higher modules). Running the inspection over the whole project lets a
-    single direction be applied to every drifting declaration at once.
+    Only declarations that resolve to a concrete inline or property-managed version are
+    flagged. Quick-fixes are available for version drift and reconcile every declaration
+    of the artifact in the file to a single version: the highest declared version (an
+    upgrade) or the lowest declared version (a deliberate downgrade of the higher
+    modules). Pure declaration drift is reported without an automated quick-fix.
 </p>
 <!-- tooltip end -->
 </body>

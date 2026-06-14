@@ -30,12 +30,14 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
+import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.modcommand.ModCommand;
@@ -47,18 +49,21 @@ import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 
 /**
- * {@link LocalInspectionTool} that flags dependency version drift: an artifact
- * declared at more than one distinct version across the project's modules.
+ * {@link LocalInspectionTool} that flags dependency drift: an artifact declared
+ * at more than one distinct version or through mixed declaration styles across
+ * the project's modules.
  *
- * <p>The open file contributes its live, in-editor version straight from PSI,
- * while versions from other modules are read from the in-memory
+ * <p>The open file contributes its live, in-editor version and version source
+ * straight from PSI, while versions and version sources from other modules are
+ * read from the in-memory
  * {@link StateService#getDeclaredVersions(ArtifactId, biz.paluch.dap.state.ProjectId)
  * project state}. Reading the current file live keeps the inspection consistent
  * with unsaved edits, whose module state is only re-indexed on save, while
  * still reusing the cheap cached cross-module set. Only declarations that
  * resolve to a concrete version are flagged; ranges and dynamic versions are
- * out of scope. Each drifting version literal in the open file is highlighted
- * and can be reconciled to the highest or lowest declared version.
+ * out of scope. Version drift can be reconciled to the highest or lowest
+ * declared version; pure declaration drift is reported without an automated
+ * quick fix.
  *
  * @author Mark Paluch
  */
@@ -89,14 +94,41 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 					return;
 				}
 
-				if (!reported.add(versionLiteral)) {
+				VersionSource versionSource = declaration.getVersionSource();
+				boolean catalogProperty = versionSource instanceof VersionSource.VersionCatalog
+						&& versionSource instanceof VersionSource.VersionProperty;
+
+				// A version-catalog [versions] entry is a shared version definition, not a
+				// declaration site. Skip the definition itself and report drift on the
+				// library aliases that reference it through version.ref, whose version
+				// literal points back into the [versions] table.
+				if (catalogProperty && element == versionLiteral) {
+					return;
+				}
+
+				PsiElement anchor = catalogProperty ? element : versionLiteral;
+				if (!reported.add(anchor)) {
 					return;
 				}
 
 				Set<ArtifactVersion> declaredVersions = state.getDeclaredVersions(declaration.getArtifactId(),
 						context.getProjectId());
 				declaredVersions.add(declaration.getVersion());
-				if (declaredVersions.size() <= 1) {
+
+				Set<VersionSource> versionSources = state.getVersionSources(
+						project -> !context.getProjectId().equals(project), declaration.getArtifactId());
+				versionSources.add(versionSource);
+
+				boolean versionDrift = declaredVersions.size() > 1;
+				boolean declarationDrift = hasDeclarationDrift(versionSources);
+				if (!versionDrift && !declarationDrift) {
+					return;
+				}
+
+				if (!versionDrift) {
+					String message = MessageBundle.message("inspection.version-drift.declaration.problem",
+							declaration.getArtifactId());
+					holder.registerProblem(anchor, message, ProblemHighlightType.WEAK_WARNING);
 					return;
 				}
 
@@ -105,10 +137,11 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 				String versions = declaredVersions.stream().map(Object::toString)
 						.collect(Collectors.joining(", "));
 
-				String message = MessageBundle.message("inspection.version-drift.problem",
-						declaration.getArtifactId(), versions);
+				String message = MessageBundle.message(declarationDrift
+						? "inspection.version-drift.version-and-declaration.problem"
+						: "inspection.version-drift.problem", declaration.getArtifactId(), versions);
 
-				holder.registerProblem(versionLiteral, message,
+				holder.registerProblem(anchor, message,
 						new AlignVersionAction(context, toUpdate(declaration, highest), true),
 						new AlignVersionAction(context, toUpdate(declaration, lowest), false));
 			}
@@ -119,6 +152,21 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 			}
 
 		};
+	}
+
+	private static boolean hasDeclarationDrift(Iterable<VersionSource> versionSources) {
+
+		boolean inline = false;
+		boolean property = false;
+		for (VersionSource versionSource : versionSources) {
+			if (versionSource instanceof VersionSource.DeclaredVersion) {
+				inline = true;
+			}
+			if (versionSource instanceof VersionSource.VersionProperty) {
+				property = true;
+			}
+		}
+		return inline && property;
 	}
 
 	@Override

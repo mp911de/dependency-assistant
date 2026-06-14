@@ -79,8 +79,8 @@ class DependencyCheck {
 	 * @param consistency the release-cache consistency to use.
 	 * @return the merged dependency check result.
 	 */
-	public DependencyUpgradeCandidates findDependencyUpgrades(ProgressIndicator indicator, UpgradeScope scope,
-			Consistency consistency) {
+	public DependencyUpgradeCandidates findDependencyUpgrades(ProgressIndicator indicator,
+			UpgradeScope scope, Consistency consistency) {
 		this.service.getState().setUsedOnce(true);
 		DependencyfileService ruleService = DependencyfileService.getInstance(project);
 		DependencyCheckAggregator aggregator = aggregate(indicator, scope);

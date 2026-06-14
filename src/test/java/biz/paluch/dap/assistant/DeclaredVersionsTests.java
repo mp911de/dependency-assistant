@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -43,6 +44,8 @@ class DeclaredVersionsTests {
 		DeclaredVersions declaredVersions = DeclaredVersions.empty();
 
 		assertThat(declaredVersions.hasVersionDrift()).isFalse();
+		assertThat(declaredVersions.hasDeclarationDrift()).isFalse();
+		assertThat(declaredVersions.hasDrift()).isFalse();
 		assertThat(declaredVersions.hasVersion()).isFalse();
 	}
 
@@ -52,7 +55,7 @@ class DeclaredVersionsTests {
 		VirtualFile a = new MockVirtualFile("conflict-a/build.gradle", "// test");
 		VirtualFile b = new MockVirtualFile("conflict-b/build.gradle", "// test");
 		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(site(a, "com.acme", "app", "7.4.1.RELEASE"),
-				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null);
+				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null, null);
 
 		assertThat(declaredVersions.hasVersionDrift()).isTrue();
 		assertThat(declaredVersions.versions()).extracting(Object::toString)
@@ -60,44 +63,59 @@ class DeclaredVersionsTests {
 	}
 
 	@Test
+	void flagsDeclarationDriftWhenInlineAndPropertyVersionsAgree() {
+
+		VirtualFile a = new MockVirtualFile("drift-a/build.gradle", "// test");
+		VirtualFile b = new MockVirtualFile("drift-b/build.gradle", "// test");
+		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(
+				site(a, ArtifactVersion.of("7.4.1.RELEASE"), VersionSource.property("lettuce.version")),
+				site(b, ArtifactVersion.of("7.4.1.RELEASE"), VersionSource.declared("7.4.1.RELEASE"))),
+				ref -> null, null);
+
+		assertThat(declaredVersions.hasVersionDrift()).isFalse();
+		assertThat(declaredVersions.hasDeclarationDrift()).isTrue();
+		assertThat(declaredVersions.hasDrift()).isTrue();
+	}
+
+	@Test
 	void resolvesGitRefsBeforeComparison() {
 
 		VirtualFile file = new MockVirtualFile("git-ref/build.gradle", "// test");
 		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(site(file, new GitRef("main"))),
-				ref -> ArtifactVersion.of("7.5.0.RELEASE"));
+				ref -> ArtifactVersion.of("7.5.0.RELEASE"), null);
 
 		assertThat(declaredVersions.versions()).extracting(Object::toString).containsExactly("7.5.0.RELEASE");
 		assertThat(declaredVersions.getHighestDeclaredVersion()).isEqualTo(ArtifactVersion.of("7.5.0.RELEASE"));
 	}
 
 	@Test
-	void stripsSharedProjectPrefixFromConflictLocations() {
+	void showsCoordinateForConflictLocations() {
 
 		VirtualFile a = new MockVirtualFile("prefix-a/build.gradle", "// test");
 		VirtualFile b = new MockVirtualFile("prefix-b/build.gradle", "// test");
 		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(site(a, "com.acme", "app", "7.4.1.RELEASE"),
-				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null);
+				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null, null);
 		List<String> conflicts = new ArrayList<>();
 
 		declaredVersions.forEachDrift((version, location) -> conflicts.add(version + "@" + location));
 
-		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@app", "7.5.0.RELEASE@lib");
+		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@com.acme:app", "7.5.0.RELEASE@com.acme:lib");
 	}
 
 	@Test
-	void showsPathRelativeToCommonDirectoryForFileLocations() {
+	void showsFilePathWhenProjectAbsent() {
 
 		VirtualFile a = new MockVirtualFile("moduleA/build.gradle", "// test");
 		VirtualFile b = new MockVirtualFile("moduleB/build.gradle", "// test");
 		DeclaredVersions declaredVersions = DeclaredVersions.from(
 				List.of(site(a, ArtifactVersion.of("7.4.1.RELEASE")), site(b, ArtifactVersion.of("7.5.0.RELEASE"))),
-				ref -> null);
+				ref -> null, null);
 		List<String> conflicts = new ArrayList<>();
 
 		declaredVersions.forEachDrift((version, location) -> conflicts.add(version + "@" + location));
 
-		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@moduleA/build.gradle",
-				"7.5.0.RELEASE@moduleB/build.gradle");
+		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@" + a.getPath(),
+				"7.5.0.RELEASE@" + b.getPath());
 	}
 
 	private static DeclarationSite site(VirtualFile file, String groupId, String artifactId, String version) {
@@ -108,8 +126,19 @@ class DeclaredVersionsTests {
 		return new DeclarationSite(file, ProjectId.of(file), dependency(version));
 	}
 
+	private static DeclarationSite site(VirtualFile file, ArtifactVersion version, VersionSource versionSource) {
+		return new DeclarationSite(file, ProjectId.of(file), dependency(version, versionSource));
+	}
+
 	private static Dependency dependency(ArtifactVersion version) {
 		return new Dependency(ArtifactId.of("io.lettuce", "lettuce-core"), version);
+	}
+
+	private static Dependency dependency(ArtifactVersion version, VersionSource versionSource) {
+
+		Dependency dependency = dependency(version);
+		dependency.addVersionSource(versionSource);
+		return dependency;
 	}
 
 }

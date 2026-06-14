@@ -30,6 +30,7 @@ import org.springframework.util.StringUtils;
  * managed declaration, or absent.
  *
  * @author Mark Paluch
+ * @see DeclaredVersion
  * @see VersionProperty
  * @see Profile
  * @see DeclarationSource
@@ -95,7 +96,7 @@ public abstract class VersionSource {
 	 * @param version the literal version string.
 	 */
 	public static VersionSource declared(String version) {
-		return new DeclaredVersion(version);
+		return new InlineVersion(version);
 	}
 
 	/**
@@ -209,7 +210,7 @@ public abstract class VersionSource {
 	/**
 	 * Version source for a version string declared inline at the dependency site.
 	 */
-	public static class DeclaredVersion extends VersionSource {
+	private static class InlineVersion extends VersionSource implements DeclaredVersion {
 
 		private final String version;
 
@@ -217,7 +218,7 @@ public abstract class VersionSource {
 		 * Create a new {@code DeclaredVersion}.
 		 * @param version the literal version string.
 		 */
-		public DeclaredVersion(String version) {
+		public InlineVersion(String version) {
 			Assert.hasText(version, "Version must not be null or empty!");
 			this.version = version;
 		}
@@ -236,7 +237,7 @@ public abstract class VersionSource {
 
 		@Override
 		public boolean equals(Object o) {
-			if (!(o instanceof DeclaredVersion that)) {
+			if (!(o instanceof InlineVersion that)) {
 				return false;
 			}
 			return Objects.equals(version, that.version);
@@ -326,11 +327,11 @@ public abstract class VersionSource {
 	/**
 	 * Version source for a resolvable version declared inline in a TOML version
 	 * catalog entry.
-	 * <p>Extends {@link DeclaredVersion} so the literal version participates in
-	 * version-drift detection alongside inline declarations, while
+	 * <p>Extends {@link InlineVersion} so the literal version participates in
+	 * version-drift detection through {@link DeclaredVersion}, while
 	 * {@link VersionCatalog} marks it as catalog-sourced for navigation.
 	 */
-	public static class VersionCatalogVersion extends DeclaredVersion implements VersionCatalog {
+	public static class VersionCatalogVersion extends InlineVersion implements VersionCatalog {
 
 		/**
 		 * Create a new {@code VersionCatalogVersion}.
@@ -460,6 +461,19 @@ public abstract class VersionSource {
 		public int hashCode() {
 			return super.hashCode() * 31 + Objects.hashCode(profileId);
 		}
+
+	}
+
+	/**
+	 * Marker interface for version sources that hold a concrete version inline at
+	 * the dependency site or equivalent catalog entry.
+	 */
+	public interface DeclaredVersion {
+
+		/**
+		 * Return the inline version text.
+		 */
+		String getVersion();
 
 	}
 

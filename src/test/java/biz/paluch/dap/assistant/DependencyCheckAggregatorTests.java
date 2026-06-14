@@ -119,6 +119,26 @@ class DependencyCheckAggregatorTests {
 	}
 
 	@Test
+	void carriesDeclarationDriftForInlineAndPropertyDeclarationsAtSameVersion() {
+
+		VirtualFile a = buildFile("declaration-a/build.gradle");
+		VirtualFile b = buildFile("declaration-b/build.gradle");
+
+		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT, VersionSource.property("spring.version")),
+				context(ACME_APP), a, List.of());
+		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_LIB), b, List.of());
+
+		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(Map.of(SPRING_CORE,
+				resolved(SPRING_UPDATE)));
+
+		assertThat(result.candidates()).singleElement().satisfies(candidate -> {
+			assertThat(candidate.getDeclaredVersions().hasVersionDrift()).isFalse();
+			assertThat(candidate.getDeclaredVersions().hasDeclarationDrift()).isTrue();
+			assertThat(candidate.getDeclaredVersions().hasDrift()).isTrue();
+		});
+	}
+
+	@Test
 	void collapsesGovernedAgreeingCandidatesIntoUpgradeGroup() {
 
 		VirtualFile file = buildFile("group/pom.xml");

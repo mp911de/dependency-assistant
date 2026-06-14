@@ -97,7 +97,7 @@ class UpgradeCandidateUnitTests {
 		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of("com.acme", "app"),
 				new Dependency(artifactId, version));
 		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0"))),
-				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null),
+				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null),
 				DependencyRule.absent());
 	}
 

@@ -23,15 +23,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.LinkedHashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -617,6 +610,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final UpgradeReview review;
 
+		private final Map<UpgradeCandidate, String> tooltips = Collections.synchronizedMap(new HashMap<>());
+
 		private final ColoredTableCellRenderer renderer = new ColoredTableCellRenderer() {
 
 			@Override
@@ -625,8 +620,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				UpgradeCandidate candidate = ModelUtil.getRow(table, row);
 				List<UpgradeCandidate> peers = review.getSharedPropertyPeers(candidate);
+				boolean waved = !peers.isEmpty() || candidate.getDeclaredVersions().hasDeclarationDrift();
 				append(candidate.getRowLabel(),
-						peers.isEmpty() ? SimpleTextAttributes.REGULAR_ATTRIBUTES : SHARED_PROPERTY_ATTRIBUTES);
+						waved ? SHARED_PROPERTY_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
 
 				if (candidate instanceof UpgradeGroup group) {
 					append("  (%d)".formatted(group.getMembers().size()), SimpleTextAttributes.GRAYED_ATTRIBUTES);
@@ -636,7 +632,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 				}
 
 				setIcon(peers.isEmpty() ? candidate.getTableIcon() : DependencyAssistantIcons.SHARED_PROPERTY);
-				setToolTipText(toolTip(candidate, peers));
+
+				String tooltip = tooltips.computeIfAbsent(candidate, c -> toolTip(c, peers));
+				setToolTipText(tooltip);
 			}
 
 		};
@@ -647,16 +645,26 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		private static String toolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
-
-			StringBuilder tooltip = new StringBuilder("<html>");
+			StringBuilder tooltip = new StringBuilder();
 			tooltip.append(candidate instanceof UpgradeGroup group ? memberToolTip(group)
 					: coordinateToolTip(candidate));
 
 			if (!peers.isEmpty()) {
+				if (!tooltip.isEmpty()) {
+					tooltip.append("<br>");
+				}
 				tooltip.append(sharedPropertyToolTip(candidate, peers));
 			}
 
-			return tooltip.append("</html>").toString();
+			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
+			if (declaredVersions.hasDeclarationDrift()) {
+				if (!tooltip.isEmpty()) {
+					tooltip.append("<br>");
+				}
+				tooltip.append(declaredVersions.getDeclarationDriftToolTipText());
+			}
+
+			return "<html>" + tooltip + "</html>";
 		}
 
 		private static String coordinateToolTip(UpgradeCandidate candidate) {
@@ -667,9 +675,10 @@ public class DependencyCheckDialog extends DialogWrapper {
 			String tooltip = artifactId;
 			if (option.hasPropertyVersion()) {
 				VersionSource.VersionProperty versionProperty = option.getPropertyVersion();
-				tooltip = MessageBundle.message("dialog.tooltip.property", versionProperty);
+				tooltip = MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
 				if (versionProperty instanceof VersionSource.Profile pps) {
-					tooltip += MessageBundle.message("dialog.tooltip.profile", pps.getProfileId());
+					tooltip += MessageBundle.message("dialog.tooltip.profile",
+							"<code>" + pps.getProfileId() + "</code>");
 				}
 			}
 
@@ -678,7 +687,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 			}
 
 			if (option.getDeclarationSource() instanceof DeclarationSource.Profile profile) {
-				tooltip += MessageBundle.message("dialog.tooltip.profile", profile.getProfileId());
+				tooltip += MessageBundle.message("dialog.tooltip.profile",
+						"<code>" + profile.getProfileId() + "</code>");
 			}
 
 			return tooltip;
@@ -811,14 +821,14 @@ public class DependencyCheckDialog extends DialogWrapper {
 			return ArtifactVersion.class;
 		}
 
-		private static String conflictTooltip(
+		private static @Nullable String conflictTooltip(
 				UpgradeCandidate candidate,
 				EvaluatedDependencyRule rule) {
 			StringBuilder tooltip = new StringBuilder();
 			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
 
 			if (declaredVersions.hasVersionDrift()) {
-				tooltip.append(declaredVersions.getToolTipText());
+				tooltip.append(declaredVersions.getVersionDriftToolTipText(candidate.getCurrentVersion()));
 			}
 			if (rule.isPresent()) {
 				tooltip.append(rule.getToolTipText());

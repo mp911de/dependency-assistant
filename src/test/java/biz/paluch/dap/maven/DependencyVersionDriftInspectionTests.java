@@ -149,6 +149,35 @@ class DependencyVersionDriftInspectionTests {
 					<dependency>
 						<groupId>biz.paluch.drift</groupId>
 						<artifactId>drift-bom</artifactId>
+						<version>6.0.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void highlightsDeclarationDriftWhenInlineAndPropertyDeclarationsAgree(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+		storeModule("other", "biz.paluch.drift", "drift-bom", "6.0.0",
+				VersionSource.property("drift.version"));
+
+		List<ProblemDescriptor> problems = inspect(pomFile);
+
+		assertThat(problems).singleElement().satisfies(problem -> {
+			assertThat(problem.getDescriptionTemplate()).contains("drift-bom")
+					.contains("declaration drift");
+		});
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>biz.paluch.drift</groupId>
+						<artifactId>drift-bom</artifactId>
 						<version>6.0.3</version>
 					</dependency>
 				</dependencies>
@@ -203,9 +232,15 @@ class DependencyVersionDriftInspectionTests {
 
 	private void storeModule(String moduleId, String groupId, String artifactId, String version) {
 
+		storeModule(moduleId, groupId, artifactId, version, VersionSource.declared(version));
+	}
+
+	private void storeModule(String moduleId, String groupId, String artifactId, String version,
+			VersionSource versionSource) {
+
 		DependencyCollector collector = new DependencyCollector();
 		collector.registerUsage(ArtifactId.of(groupId, artifactId), ArtifactVersion.of(version),
-				DeclarationSource.dependency(), VersionSource.declared(version));
+				DeclarationSource.dependency(), versionSource);
 		StateService.getInstance(fixture.getProject())
 				.getProjectState(ProjectId.of("com.example", moduleId))
 				.setDependencies(collector);
