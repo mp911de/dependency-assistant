@@ -49,10 +49,10 @@ import org.springframework.util.ClassUtils;
  * Project-level service that discovers and resolves rules from a
  * {@code dependencyfile.json} descriptor.
  *
- * <p>Descriptors are discovered in a fixed order: the project root,
- * {@code .github/}, and, for trusted projects only, the immediate parent
- * directory and the user home directory. The first descriptor wins; descriptors
- * are never merged.
+ * <p>Descriptors are discovered in a fixed order: the project root, the
+ * project's {@code .idea/} directory, and, for trusted projects only, the
+ * immediate parent directory and the user home directory. The first descriptor
+ * wins; descriptors are never merged.
  *
  * <p>Rules are loaded lazily and cached. Changes to in-project descriptors
  * invalidate the cache and restart highlighting. Descriptors outside the
@@ -62,7 +62,7 @@ import org.springframework.util.ClassUtils;
  */
 public class DependencyfileService implements Disposable, DependencyRuleService {
 
-	static final String FILE_NAME = "dependencyfile.json";
+	public static final String FILE_NAME = "dependencyfile.json";
 
 	static final boolean JSON_PRESENT = ClassUtils.isPresent("com.intellij.json.psi.JsonFile",
 			DependencyfileService.class.getClassLoader());

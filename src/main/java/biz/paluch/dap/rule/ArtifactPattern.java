@@ -73,6 +73,21 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 		return new ArtifactPattern(value);
 	}
 
+	/**
+	 * Return the narrowest pattern key identifying the given coordinates: the bare
+	 * artifactId when groupId and artifactId are equal (as for npm-style
+	 * single-name packages), otherwise {@code groupId:artifactId}.
+	 *
+	 * @param artifactId the coordinates to render; must not be {@literal null}.
+	 * @return the pattern key; never {@literal null}.
+	 */
+	public static String keyFor(ArtifactId artifactId) {
+
+		String groupId = artifactId.groupId();
+		String artifact = artifactId.artifactId();
+		return groupId.equals(artifact) ? artifact : groupId + ":" + artifact;
+	}
+
 	@Override
 	public boolean test(ArtifactId artifactId) {
 		return this.groupIdPredicate.test(artifactId.groupId())

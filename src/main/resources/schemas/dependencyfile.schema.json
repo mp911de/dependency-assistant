@@ -27,7 +27,7 @@
 	},
 	"definitions": {
 		"artifactRule": {
-			"description": "An artifact rule: a generation string ('7.0.x'), an array of generations (['6.5.x', '7.0.x']), or an object carrying a display name and generations.",
+          "description": "An artifact rule: a generation string ('7.0.x'), an array of generations (['6.5.x', '7.0.x']), or an object carrying an optional display name and optional generation. An object with only a name and no generation is treated as unconstrained.",
 			"oneOf": [
 				{
 					"$ref": "#/definitions/generation"
@@ -50,6 +50,40 @@
 								},
 								{
 									"$ref": "#/definitions/generationArray"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+      "branchArtifactRule": {
+        "description": "A branch artifact rule: a generation string ('7.0.x'), an array of generations (['6.5.x', '7.0.x']), or an object carrying an optional display name and a required generation.",
+        "oneOf": [
+          {
+            "$ref": "#/definitions/generation"
+          },
+          {
+            "$ref": "#/definitions/generationArray"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "generation"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Friendly display name used in inspection messages instead of the artifact pattern."
+              },
+              "generation": {
+                "oneOf": [
+                  {
+                    "$ref": "#/definitions/generation"
+                  },
+                  {
+                    "$ref": "#/definitions/generationArray"
 								}
 							]
 						}
@@ -101,7 +135,7 @@
 					"type": "object",
 					"description": "Artifact rules for branches matching this pattern. They take precedence over the default artifact rules; artifacts without a branch-level rule inherit the defaults. Keys represent artifact patterns such as 'org.springframework:*'.",
 					"additionalProperties": {
-						"$ref": "#/definitions/artifactRule"
+                      "$ref": "#/definitions/branchArtifactRule"
 					}
 				}
 			}

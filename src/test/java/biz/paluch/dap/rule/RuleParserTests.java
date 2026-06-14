@@ -93,6 +93,23 @@ class RuleParserTests {
 	@ProjectFile(name = "dependencyfile.json", content = """
 			{
 			  "artifacts": {
+			    "org.springframework:*": { "name": "Spring Framework" }
+			  }
+			}
+			""")
+	void parsesNameOnlyObjectArtifactAsUnconstrained(PsiFile file) {
+
+		DependencyRule rule = parse(file).resolve(SPRING_CORE, "main", null);
+
+		assertThat(rule.isPresent()).isTrue();
+		assertThat(rule.getGenerations().isConstrained()).isFalse();
+		assertThat(rule).accepts(ArtifactVersion.of("7.0.1"), ArtifactVersion.of("999.0.0"));
+	}
+
+	@Test
+	@ProjectFile(name = "dependencyfile.json", content = """
+			{
+			  "artifacts": {
 			    "org.springframework:*": "*"
 			  }
 			}

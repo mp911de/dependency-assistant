@@ -2,4 +2,16 @@
 	<extensions defaultExtensionNs="JavaScript.JsonSchema">
 		<ProviderFactory implementation="biz.paluch.dap.rule.DependencyfileSchemaProviderFactory"/>
 	</extensions>
+	<extensions defaultExtensionNs="com.intellij">
+		<completion.contributor language="JSON"
+		                        implementationClass="biz.paluch.dap.rule.DependencyfileCompletionContributor"/>
+	</extensions>
+
+	<actions>
+		<action id="biz.paluch.dap.CreateDependencyfile"
+		        class="biz.paluch.dap.assistant.CreateDependencyfileAction"
+		        text="Create dependencyfile.json">
+			<add-to-group group-id="biz.paluch.dap.DependencyAssistant" anchor="last"/>
+		</action>
+	</actions>
 </idea-plugin>
