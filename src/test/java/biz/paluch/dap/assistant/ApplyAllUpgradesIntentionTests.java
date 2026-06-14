@@ -17,7 +17,6 @@
 package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
@@ -109,8 +108,7 @@ class ApplyAllUpgradesIntentionTests {
 	}
 
 	private ApplyAllUpgradesIntention intention(PsiFile file, UpgradeStrategy strategy) {
-		return new ApplyAllUpgradesIntention(DependencyAssistantDispatcher.findFirstContext(file), strategy,
-				DependencyAssistantIcons.ICON);
+		return new ApplyAllUpgradesIntention(DependencyAssistantDispatcher.findFirstContext(file), strategy);
 	}
 
 }
