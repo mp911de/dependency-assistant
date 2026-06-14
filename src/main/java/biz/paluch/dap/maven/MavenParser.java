@@ -230,7 +230,7 @@ class MavenParser {
 				ArtifactVersion.from(declared.getVersion()).ifPresent(it -> {
 					collector.registerUsage(coordinate, it, usage.declaration(), usage.version());
 				});
-				collector.registerDeclaration(coordinate, usage.declaration(), declared);
+				collector.registerDeclaration(coordinate, usage.declaration(), usage.version());
 			}
 		});
 
@@ -269,7 +269,7 @@ class MavenParser {
 							ArtifactVersion.from(declared.getVersion()).ifPresent(it -> {
 								collector.registerUsage(artifactId, it, usage.declaration(), usage.version());
 							});
-							collector.registerDeclaration(artifactId, usage.declaration(), declared);
+							collector.registerDeclaration(artifactId, usage.declaration(), usage.version());
 						}
 					});
 		}
@@ -380,7 +380,7 @@ class MavenParser {
 	/**
 	 * Return the {@link DeclarationSource} for the given dependency or plugin
 	 * declaration tag.
-	 * 
+	 *
 	 * @param owner the dependency, plugin, or extension tag to classify.
 	 * @return the declaration source describing where the artifact is declared.
 	 */

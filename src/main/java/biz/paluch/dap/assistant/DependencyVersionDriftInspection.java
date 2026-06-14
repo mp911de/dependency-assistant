@@ -30,7 +30,6 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
-import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
@@ -51,12 +50,15 @@ import com.intellij.psi.PsiFile;
  * {@link LocalInspectionTool} that flags dependency version drift: an artifact
  * declared at more than one distinct version across the project's modules.
  *
- * <p>The project-wide declared-version set is read from the in-memory
- * {@link StateService#getDeclaredVersions(ArtifactId) project state}; only
- * declarations that resolve cleanly through the per-ecosystem
- * {@link VersionUpgradeLookup} are flagged. Each drifting version literal in
- * the open file is highlighted and can be reconciled to the highest or lowest
- * declared version.
+ * <p>The open file contributes its live, in-editor version straight from PSI,
+ * while versions from other modules are read from the in-memory
+ * {@link StateService#getDeclaredVersions(ArtifactId, biz.paluch.dap.state.ProjectId)
+ * project state}. Reading the current file live keeps the inspection consistent
+ * with unsaved edits, whose module state is only re-indexed on save, while
+ * still reusing the cheap cached cross-module set. Only declarations that
+ * resolve to a concrete version are flagged; ranges and dynamic versions are
+ * out of scope. Each drifting version literal in the open file is highlighted
+ * and can be reconciled to the highest or lowest declared version.
  *
  * @author Mark Paluch
  */
@@ -82,7 +84,8 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 
 				ArtifactDeclaration declaration = reference.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();
-				if (versionLiteral == null || !declaration.isVersionDefinedInSameFile()) {
+				if (versionLiteral == null || !declaration.isVersionDefinedInSameFile()
+						|| !declaration.isVersionDefined()) {
 					return;
 				}
 
@@ -90,7 +93,9 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 					return;
 				}
 
-				Set<ArtifactVersion> declaredVersions = state.getDeclaredVersions(declaration.getArtifactId());
+				Set<ArtifactVersion> declaredVersions = state.getDeclaredVersions(declaration.getArtifactId(),
+						context.getProjectId());
+				declaredVersions.add(declaration.getVersion());
 				if (declaredVersions.size() <= 1) {
 					return;
 				}

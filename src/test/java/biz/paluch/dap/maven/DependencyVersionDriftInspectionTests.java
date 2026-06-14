@@ -164,6 +164,34 @@ class DependencyVersionDriftInspectionTests {
 		assertThat(pomFile).containsText("<version>6.0.0</version>");
 	}
 
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>biz.paluch.drift</groupId>
+						<artifactId>drift-bom</artifactId>
+						<version>6.0.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void clearsDriftAfterAligningCurrentFile(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+		storeModule("other", "biz.paluch.drift", "drift-bom", "6.0.3");
+
+		applyFix(pomFile, "Update to highest used version '6.0.3'");
+
+		// the current file's runtime state is still stale at 6.0.0; the inspection
+		// must read the open file live and no longer report drift
+		assertThat(pomFile).containsText("<version>6.0.3</version>");
+		assertThat(inspect(pomFile)).isEmpty();
+	}
+
 	private void applyFix(PsiFile file, String name) {
 
 		ProblemDescriptor problem = inspect(file).get(0);

@@ -133,10 +133,32 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 	 * artifact.
 	 */
 	public Set<ArtifactVersion> getDeclaredVersions(ArtifactId artifactId) {
+		return getDeclaredVersions(artifactId, null);
+	}
+
+	/**
+	 * Return the distinct versions the given artifact is declared at across every
+	 * module except {@code excludedModule}.
+	 * <p>Callers inspecting a build file can exclude that file's module and supply
+	 * the live, in-editor version instead, avoiding a stale result for the module
+	 * whose runtime state has not yet been re-indexed after an edit.
+	 *
+	 * @param artifactId the artifact coordinates to look up; must not be
+	 * {@literal null}.
+	 * @param excludedModule the module to omit, or {@literal null} to include every
+	 * module.
+	 * @return the distinct declared versions; empty when no included module
+	 * declares the artifact.
+	 */
+	public Set<ArtifactVersion> getDeclaredVersions(ArtifactId artifactId, @Nullable ProjectId excludedModule) {
 
 		Set<ArtifactVersion> versions = new TreeSet<>();
-		for (DependencyCollector collector : dependencies.values()) {
-			Dependency dependency = collector.getUsage(artifactId);
+		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
+			if (entry.getKey().equals(excludedModule)) {
+				continue;
+			}
+
+			Dependency dependency = entry.getValue().getUsage(artifactId);
 			if (dependency != null) {
 				versions.add(dependency.getCurrentVersion());
 			}
