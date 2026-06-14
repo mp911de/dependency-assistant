@@ -61,6 +61,8 @@ public class Cache {
 
 	private static final Duration CACHE_EXPIRATION = Duration.ofHours(8);
 
+	private static final long STALE_THRESHOLD_MILLIS = Duration.ofDays(30).toMillis();
+
 	/**
 	 * Epoch-millisecond timestamp of the last successful update, or {@code 0} if no
 	 * update has been applied yet.
@@ -83,7 +85,6 @@ public class Cache {
 		long timestamp = lastUpdateTimestamp;
 		return timestamp == 0L ? null : Instant.ofEpochMilli(timestamp);
 	}
-
 
 	/**
 	 * Return a snapshot of the known project cache entries.
@@ -184,7 +185,7 @@ public class Cache {
 				artifactToUse = new CachedArtifact(artifactId);
 				artifacts.add(artifactToUse);
 			}
-			artifactToUse.replaceCachedReleases(converted);
+			artifactToUse.replaceCachedReleases(converted, CLOCK.millis());
 		}
 	}
 
@@ -328,20 +329,26 @@ public class Cache {
 
 		Cache copy = new Cache();
 		copy.lastUpdateTimestamp = this.lastUpdateTimestamp;
+		long threshold = CLOCK.millis() - STALE_THRESHOLD_MILLIS;
 
 		synchronized (artifacts) {
 			for (CachedArtifact artifact : artifacts) {
-				CachedArtifact artifactCopy = new CachedArtifact(artifact.getGroupId(), artifact.getArtifactId());
-				artifactCopy.replaceCachedReleases(new ArrayList<>(artifact.getReleases()));
-				copy.artifacts.add(artifactCopy);
+				if (artifact.getLastSeen() > 0 && artifact.getLastSeen() < threshold) {
+					continue;
+				}
+				copy.artifacts.add(artifact.snapshot());
 			}
 		}
 
 		synchronized (projects) {
 			for (ProjectCache project : projects) {
-				if (project != null) {
-					copy.projects.add(project.snapshot());
+				if (project == null) {
+					continue;
 				}
+				if (project.getLastSeen() > 0 && project.getLastSeen() < threshold) {
+					continue;
+				}
+				copy.projects.add(project.snapshot());
 			}
 		}
 

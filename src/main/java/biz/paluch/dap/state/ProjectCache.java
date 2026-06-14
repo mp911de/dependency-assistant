@@ -50,6 +50,13 @@ public class ProjectCache implements Comparator<ProjectCache> {
 
 	private @Attribute @Nullable String descriptor;
 
+	/**
+	 * Epoch-millisecond timestamp of the last write to this entry, or {@code 0} if
+	 * the entry pre-dates expiry tracking and should never be expired.
+	 */
+	@Attribute
+	private long lastSeen = 0L;
+
 	private final @Tag @XCollection(propertyElementName = "properties", elementName = "property", style = XCollection.Style.v2) List<VersionProperty> properties = new ArrayList<>();
 
 	@Transient
@@ -163,6 +170,10 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		return List.copyOf(properties);
 	}
 
+	public long getLastSeen() {
+		return lastSeen;
+	}
+
 	/**
 	 * Set this project's property correlations from the given dependency collector.
 	 * <p>
@@ -206,6 +217,8 @@ public class ProjectCache implements Comparator<ProjectCache> {
 					return property;
 				}).setDeclared(true);
 			}
+
+			this.lastSeen = Cache.CLOCK.millis();
 		}
 	}
 
@@ -279,6 +292,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		copy.artifactId = this.artifactId;
 		copy.groupId = this.groupId;
 		copy.descriptor = this.descriptor;
+		copy.lastSeen = this.lastSeen;
 		for (VersionProperty property : this.properties) {
 			copy.properties.add(property.snapshot());
 		}

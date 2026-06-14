@@ -41,6 +41,13 @@ public class CachedArtifact {
 
 	private @Attribute String artifactId;
 
+	/**
+	 * Epoch-millisecond timestamp of the last write to this entry, or {@code 0} if
+	 * the entry pre-dates expiry tracking and should never be expired.
+	 */
+	@Attribute
+	private long lastSeen = 0L;
+
 	private final @XCollection(propertyElementName = "releases", elementName = "release", style = XCollection.Style.v2) List<CachedRelease> releases = new ArrayList<>();
 
 	/**
@@ -98,6 +105,10 @@ public class CachedArtifact {
 		return releases;
 	}
 
+	public long getLastSeen() {
+		return lastSeen;
+	}
+
 	/**
 	 * Return whether this cache entry refers to the given artifact.
 	 *
@@ -148,12 +159,32 @@ public class CachedArtifact {
 	}
 
 	/**
+	 * Replace the cached releases of this entry with already-converted entries,
+	 * preserving any source-specific metadata such as the commit SHA stored by the
+	 * GitHub release source and record the last seen timestamp.
+	 *
+	 * @param releases the cached release entries to store.
+	 */
+	public void replaceCachedReleases(List<CachedRelease> releases, long timestamp) {
+		this.releases.clear();
+		this.releases.addAll(releases);
+		this.lastSeen = timestamp;
+	}
+
+	/**
 	 * Return the artifact coordinates represented by this cache entry.
 	 *
 	 * @return the artifact identifier.
 	 */
 	public ArtifactId toArtifactId() {
 		return ArtifactId.of(getGroupId(), getArtifactId());
+	}
+
+	public CachedArtifact snapshot() {
+		CachedArtifact copy = new CachedArtifact(groupId, artifactId);
+		copy.lastSeen = lastSeen;
+		copy.releases.addAll(releases);
+		return copy;
 	}
 
 	@Override
