@@ -25,6 +25,7 @@ import javax.swing.Icon;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.HasArtifactId;
@@ -34,6 +35,7 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.ui.LayeredIcon;
@@ -60,6 +62,8 @@ public class UpgradeCandidate implements HasArtifactId {
 	private final Icon tableIcon;
 
 	private boolean labelByDependencyName;
+
+	private final String toolTipText;
 
 	/**
 	 * Create an update candidate.
@@ -92,6 +96,36 @@ public class UpgradeCandidate implements HasArtifactId {
 
 		this.ruleResult = EvaluatedDependencyRule.of(rule, getArtifactId(), getCurrentVersion(), assistant);
 		this.tableIcon = createTableIcon();
+		this.toolTipText = createToolTipText();
+	}
+
+	private String createToolTipText() {
+
+		String artifactId = getArtifactId().toString();
+		String tooltip = artifactId;
+		DependencyUpdateCandidate updateCandidate = getUpdateCandidate();
+		Dependency dependency = candidate.getDependency();
+		if (updateCandidate.hasPropertyVersion()) {
+			VersionSource.VersionProperty versionProperty = updateCandidate.getPropertyVersion();
+			tooltip = MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
+			if (versionProperty instanceof VersionSource.Profile pps) {
+				tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.profile",
+						"<code>" + pps.getProfileId() + "</code>");
+			}
+		}
+
+		if (!dependency.getDeclarationSources().isEmpty()
+				&& candidate.getDeclarationSource() instanceof DeclarationSource.Plugin) {
+			tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.plugin", artifactId);
+		}
+
+		if (!dependency.getDeclarationSources().isEmpty()
+				&& candidate.getDeclarationSource() instanceof DeclarationSource.Profile profile) {
+			tooltip += MessageBundle.message("dialog.tooltip.profile",
+					"<code>" + profile.getProfileId() + "</code>");
+		}
+
+		return tooltip;
 	}
 
 	private void filterUpgrades() {
@@ -213,6 +247,10 @@ public class UpgradeCandidate implements HasArtifactId {
 			name = interfaceAssistant.getDisplayName(getArtifactId());
 		}
 		return name;
+	}
+
+	public String getToolTipText() {
+		return this.toolTipText;
 	}
 
 	/**

@@ -41,12 +41,10 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.MessageBundle;
@@ -601,9 +599,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private void navigateOnDoubleClick(MouseEvent e) {
 
-			if (e.getClickCount() != 2) {
+			if (e.getClickCount() != 2 || !SwingUtilities.isLeftMouseButton(e) || e.getModifiersEx() != 0) {
 				return;
 			}
+
+			e.consume();
 
 			UpgradeCandidate candidate = coordinateRowAt(e);
 			if (candidate != null) {
@@ -728,7 +728,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				setIcon(peers.isEmpty() ? candidate.getTableIcon() : DependencyAssistantIcons.SHARED_PROPERTY);
 
-				String tooltip = tooltips.computeIfAbsent(candidate, c -> toolTip(c, peers));
+				String tooltip = toolTip(candidate, peers);
 				setToolTipText(tooltip);
 			}
 
@@ -741,73 +741,23 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private static String toolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
 			StringBuilder tooltip = new StringBuilder();
-			tooltip.append(candidate instanceof UpgradeGroup group ? memberToolTip(group)
-					: coordinateToolTip(candidate));
+			String toolTipText = candidate.getToolTipText();
+			tooltip.append(toolTipText);
 
 			if (!peers.isEmpty()) {
-				if (!tooltip.isEmpty()) {
-					tooltip.append("<br>");
-				}
+				tooltip.append("<p>");
 				tooltip.append(sharedPropertyToolTip(candidate, peers));
+				tooltip.append("</p>");
 			}
 
 			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
 			if (declaredVersions.hasDeclarationDrift()) {
-				if (!tooltip.isEmpty()) {
-					tooltip.append("<br>");
-				}
+				tooltip.append("<p>");
 				tooltip.append(declaredVersions.getDeclarationDriftToolTipText());
+				tooltip.append("</p>");
 			}
 
 			return "<html>" + tooltip + "</html>";
-		}
-
-		private static String coordinateToolTip(UpgradeCandidate candidate) {
-
-			DependencyUpdateCandidate option = candidate.getUpdateCandidate();
-
-			String artifactId = option.getArtifactId().toString();
-			String tooltip = artifactId;
-			if (option.hasPropertyVersion()) {
-				VersionSource.VersionProperty versionProperty = option.getPropertyVersion();
-				tooltip = MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
-				if (versionProperty instanceof VersionSource.Profile pps) {
-					tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.profile",
-							"<code>" + pps.getProfileId() + "</code>");
-				}
-			}
-
-			if (option.getDeclarationSource() instanceof DeclarationSource.Plugin) {
-				tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.plugin", artifactId);
-			}
-
-			if (option.getDeclarationSource() instanceof DeclarationSource.Profile profile) {
-				tooltip += MessageBundle.message("dialog.tooltip.profile",
-						"<code>" + profile.getProfileId() + "</code>");
-			}
-
-			return tooltip;
-		}
-
-		private static String memberToolTip(UpgradeGroup group) {
-
-			StringBuilder tooltip = new StringBuilder();
-			tooltip.append("<b>")
-					.append(MessageBundle.message("dialog.tooltip.group.header", group.getDependencyName()))
-					.append("</b><ul>");
-
-			for (UpgradeCandidate member : group.getMembers()) {
-
-				DependencyUpdateCandidate option = member.getUpdateCandidate();
-				String versionSource = option.hasPropertyVersion() ? "<code>" + option.getPropertyVersion() + "</code>"
-						: MessageBundle.message("dialog.tooltip.group.member.inline");
-				tooltip.append("<li>")
-						.append(MessageBundle.message("dialog.tooltip.group.member", member.getArtifactId(),
-								versionSource))
-						.append("</li>");
-			}
-
-			return tooltip.append("</ul>").toString();
 		}
 
 		private static String sharedPropertyToolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
@@ -820,9 +770,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 				shared.addAll(peerShared);
 			}
 
-			StringBuilder tooltip = new StringBuilder("<br>");
-			tooltip.append(MessageBundle.message("dialog.tooltip.sharedProperty",
-					"<code>" + String.join(", ", shared) + "</code>"));
+			StringBuilder tooltip = new StringBuilder();
+			tooltip.append("<b>").append(MessageBundle.message("dialog.tooltip.sharedProperty",
+					"<code>" + String.join(", ", shared) + "</code>")).append("</b>");
 
 			tooltip.append("<ul>");
 			for (UpgradeCandidate peer : peers) {

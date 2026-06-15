@@ -31,6 +31,8 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.support.MessageBundle;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -52,22 +54,66 @@ class UpgradeGroup extends UpgradeCandidate {
 
 	private final List<UpgradeCandidate> members;
 
+	private final @Nullable String derivedLabel;
+
+	private final String toolTipText;
+
 	private UpgradeGroup(DependencyUpdateCandidate candidate, InterfaceAssistant assistant,
-			DeclaredVersions declaredVersions, DependencyRule rule, List<UpgradeCandidate> members) {
+			DeclaredVersions declaredVersions, DependencyRule rule, List<UpgradeCandidate> members,
+			@Nullable String derivedLabel) {
 
 		super(candidate, assistant, declaredVersions, rule);
 		this.members = List.copyOf(members);
-		labelByDependencyName();
+		this.derivedLabel = derivedLabel;
+		if (derivedLabel == null) {
+			labelByDependencyName();
+		}
+		this.toolTipText = createToolTipText();
+	}
+
+	private String createToolTipText() {
+
+		StringBuilder tooltip = new StringBuilder();
+		tooltip.append("<b>")
+				.append(MessageBundle.message("dialog.tooltip.group.header", getRowLabel()))
+				.append("</b><ul>");
+
+		for (UpgradeCandidate member : getMembers()) {
+
+			tooltip.append("<li><code>")
+					.append(member.getArtifactId())
+					.append("</code></li>");
+		}
+
+		return tooltip.append("</ul>").toString();
 	}
 
 	/**
-	 * Create an upgrade group from the given members.
+	 * Create a governed upgrade group from the given members, labeled by the rule's
+	 * dependency name.
 	 *
 	 * @param members the agreeing candidates governed by the same named rule; must
 	 * contain at least two members.
 	 * @return the group row aggregating the members.
 	 */
 	static UpgradeGroup of(List<UpgradeCandidate> members) {
+		return create(members, null);
+	}
+
+	/**
+	 * Create an inferred upgrade group from the given ungoverned members, labeled
+	 * by the derived group name.
+	 *
+	 * @param members the version-agreeing ungoverned candidates sharing a
+	 * coordinate shape; must contain at least two members.
+	 * @param displayName the derived group name shown as the row label.
+	 * @return the group row aggregating the members.
+	 */
+	static UpgradeGroup inferred(List<UpgradeCandidate> members, String displayName) {
+		return create(members, displayName);
+	}
+
+	private static UpgradeGroup create(List<UpgradeCandidate> members, @Nullable String derivedLabel) {
 
 		Assert.isTrue(members.size() >= 2, "Upgrade group requires at least two members");
 
@@ -82,8 +128,50 @@ class UpgradeGroup extends UpgradeCandidate {
 		}
 
 		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(merged, intersectReleases(members));
-		return new UpgradeGroup(candidate, first.getInterfaceAssistant(), declaredVersions, first.getRule(), members);
+		return new UpgradeGroup(candidate, first.getInterfaceAssistant(), declaredVersions, first.getRule(), members,
+				derivedLabel);
 	}
+
+	@Override
+	public String getRowLabel() {
+		return derivedLabel != null ? derivedLabel : super.getRowLabel();
+	}
+
+	@Override
+	public String getToolTipText() {
+		return toolTipText;
+	}
+
+	/**
+	 * Return the member candidates collapsed into this group.
+	 *
+	 * @return the members in row order.
+	 */
+	public List<UpgradeCandidate> getMembers() {
+		return members;
+	}
+
+	/**
+	 * Return the compact member label used beside the group row label.
+	 *
+	 * @return the member label or the member count if the artifact ids do not share
+	 * a concise display prefix.
+	 */
+	public String getMemberLabel() {
+
+		List<String> artifactIds = members.stream().map(m -> m.getArtifactId().artifactId()).toList();
+		List<String> parts = basePrefixLabelParts(artifactIds);
+		if (parts.isEmpty()) {
+			parts = commonSeparatorPrefixLabelParts(artifactIds);
+		}
+		if (parts.isEmpty()) {
+			parts = commonSeparatorSuffixLabelParts(artifactIds);
+		}
+
+		String label = String.join(", ", parts);
+		return !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label : String.valueOf(members.size());
+	}
+
 
 	private static DeclaredVersions mergeDeclaredVersions(List<UpgradeCandidate> members) {
 
@@ -107,36 +195,6 @@ class UpgradeGroup extends UpgradeCandidate {
 				.toList();
 
 		return Releases.of(common);
-	}
-
-	/**
-	 * Return the member candidates collapsed into this group.
-	 *
-	 * @return the members in row order.
-	 */
-	List<UpgradeCandidate> getMembers() {
-		return members;
-	}
-
-	/**
-	 * Return the compact member label used beside the group row label.
-	 *
-	 * @return the member label or the member count if the artifact ids do not share
-	 * a concise display prefix.
-	 */
-	String getMemberLabel() {
-
-		List<String> artifactIds = members.stream().map(m -> m.getArtifactId().artifactId()).toList();
-		List<String> parts = basePrefixLabelParts(artifactIds);
-		if (parts.isEmpty()) {
-			parts = commonSeparatorPrefixLabelParts(artifactIds);
-		}
-		if (parts.isEmpty()) {
-			parts = commonSeparatorSuffixLabelParts(artifactIds);
-		}
-
-		String label = String.join(", ", parts);
-		return !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label : String.valueOf(members.size());
 	}
 
 	private static List<String> basePrefixLabelParts(List<String> artifactIds) {

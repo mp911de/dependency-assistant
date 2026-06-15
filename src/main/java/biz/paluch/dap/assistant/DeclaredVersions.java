@@ -304,24 +304,21 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	 */
 	public String getDeclarationDriftToolTipText() {
 
-		if (!hasDeclarationDrift()) {
-			return "";
-		}
+		Set<String> styles = new TreeSet<>();
+		Set<String> files = new TreeSet<>();
+		forEachDeclarationDrift((style, file) -> {
+			styles.add(style);
+			files.add(file);
+		});
 
-		Map<String, List<String>> locationsByStyle = new LinkedHashMap<>();
-		forEachDeclarationDrift(
-				(style, file) -> locationsByStyle.computeIfAbsent(style, key -> new ArrayList<>()).add(file));
-
-		StringBuilder tooltip = new StringBuilder()
+		StringBuilder builder = new StringBuilder("<b>")
 				.append(MessageBundle.message("dialog.declaration-drift.tooltip.header"))
-				.append("<ul>");
+				.append(": </b> ")
+				.append(org.springframework.util.StringUtils.collectionToDelimitedString(styles, ", "));
 
-		locationsByStyle.forEach((style, locations) -> tooltip.append("<li>")
-				.append(MessageBundle.message("dialog.declaration-drift.tooltip.entry", style,
-						renderLocations(locations)))
-				.append("</li>"));
+		builder.append(renderLocations(files));
 
-		return tooltip.append("</ul>").toString();
+		return builder.toString();
 	}
 
 	/**
@@ -332,22 +329,29 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	 * @param locations the locations to render, in display order.
 	 * @return the rendered location markup.
 	 */
-	private static String renderLocations(List<String> locations) {
+	private static String renderLocations(Collection<String> locations) {
 
 		int shown = Math.min(locations.size(), MAX_DISPLAYED_FILES);
 		StringBuilder rendered = new StringBuilder();
-		for (int i = 0; i < shown; i++) {
-			if (i > 0) {
-				rendered.append(", ");
+
+		rendered.append("<ul>");
+		int count = 0;
+		for (String location : locations) {
+			if (count++ > shown) {
+				break;
 			}
-			rendered.append("<code>").append(locations.get(i)).append("</code>");
+			rendered.append("<li>");
+			rendered.append("<code>").append(location).append("</code>");
+			rendered.append("</li>");
 		}
 
 		int overflow = locations.size() - MAX_DISPLAYED_FILES;
 		if (overflow > 0) {
-			rendered.append(" ").append(MessageBundle.message("dialog.drift.tooltip.other.files", overflow));
+			rendered.append("<li>").append(MessageBundle.message("dialog.drift.tooltip.other.files", overflow))
+					.append("</li>");
 		}
 
+		rendered.append("</ul>");
 		return rendered.toString();
 	}
 

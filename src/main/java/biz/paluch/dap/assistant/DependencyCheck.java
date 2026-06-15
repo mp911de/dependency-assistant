@@ -202,7 +202,7 @@ class DependencyCheck {
 			ReleaseLookupResult res;
 			boolean abort = false;
 			try {
-				res = entry.getValue().get(10, TimeUnit.SECONDS);
+				res = entry.getValue().get(60, TimeUnit.SECONDS);
 			} catch (ProcessCanceledException e) {
 				entry.getValue().cancel(true);
 				cancelRemainingFutures(futures);
