@@ -248,7 +248,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 
 		candidates.sort(Comparator.comparing(UpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
-		return new DependencyUpgradeCandidates(UpgradeGroups.collapse(candidates), files, errors);
+		return new DependencyUpgradeCandidates(UpgradeGroups.of(candidates), files, errors);
 	}
 
 	private static List<String> getErrors(Map<?, ReleaseLookupResult> map) {

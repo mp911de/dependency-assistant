@@ -90,7 +90,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 	private void showResult(UpgradeScope scope) {
 
 		DependencyUpgradeCandidates result = resultRef;
-		if (result == null || result.candidates().isEmpty()) {
+		if (result == null || result.isEmpty()) {
 			Notifications.info(project, MessageBundle.message("plugin.name"),
 					MessageBundle.message("action.check.dependencies.noUpdates"));
 			return;

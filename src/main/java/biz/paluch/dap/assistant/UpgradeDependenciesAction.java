@@ -18,6 +18,8 @@ package biz.paluch.dap.assistant;
 
 import java.util.List;
 
+import javax.swing.Icon;
+
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.support.MessageBundle;
@@ -29,6 +31,7 @@ import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
@@ -42,11 +45,37 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-public class UpgradeDependenciesAction extends AnAction implements DumbAware {
+public class UpgradeDependenciesAction extends AnAction implements DumbAware, Iconable {
 
 	@Override
 	public ActionUpdateThread getActionUpdateThread() {
 		return ActionUpdateThread.BGT;
+	}
+
+	@Override
+	public Icon getIcon(int flags) {
+		return DependencyAssistantIcons.ICON;
+	}
+
+	@Override
+	public void update(AnActionEvent event) {
+
+		Project project = event.getProject();
+		Presentation presentation = event.getPresentation();
+
+		presentation.setText(MessageBundle.message("intention.UpgradeDependencies.text"));
+		presentation.setDescription(MessageBundle.message("action.description"));
+		presentation.setIcon(getIcon(0));
+
+		if (project == null) {
+			presentation.setEnabled(false);
+			presentation.setVisible(false);
+			return;
+		}
+
+		boolean supports = DependencyAssistantDispatcher.supports(project);
+		presentation.setVisible(supports);
+		presentation.setEnabled(supports);
 	}
 
 	@Override
@@ -63,27 +92,6 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware {
 		PsiFile editorFile = event.getData(CommonDataKeys.PSI_FILE);
 
 		ProgressManager.getInstance().run(new DependencyCheckTask(project, new UpgradeRequest(selection, editorFile)));
-	}
-
-	@Override
-	public void update(AnActionEvent event) {
-
-		Project project = event.getProject();
-		Presentation presentation = event.getPresentation();
-
-		presentation.setText(MessageBundle.message("intention.UpgradeDependencies.text"));
-		presentation.setDescription(MessageBundle.message("action.description"));
-		presentation.setIcon(DependencyAssistantIcons.ICON);
-
-		if (project == null) {
-			presentation.setEnabled(false);
-			presentation.setVisible(false);
-			return;
-		}
-
-		boolean supports = DependencyAssistantDispatcher.supports(project);
-		presentation.setVisible(supports);
-		presentation.setEnabled(supports);
 	}
 
 }

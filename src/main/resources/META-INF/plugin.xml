@@ -116,17 +116,16 @@
 		<group id="biz.paluch.dap.DependencyAssistant"
 		       text="Dependency Assistant" popup="true"	icon="biz.paluch.dap.DependencyAssistantIcons.ICON">
 			<add-to-group group-id="ToolsMenu"/>
+			<action id="biz.paluch.dap.UpgradeDependencies"
+			        class="biz.paluch.dap.assistant.UpgradeDependenciesAction"
+			        text="Update Dependencies…">
+				<add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+			</action>
+			<action id="biz.paluch.dap.RefreshReleasesMetadataAction"
+			        class="biz.paluch.dap.assistant.RefreshReleasesMetadataAction"
+			        text="Refresh Dependency Release Metadata">
+			</action>
+			<separator/>
 		</group>
-		<action id="biz.paluch.dap.UpgradeDependencies"
-		        class="biz.paluch.dap.assistant.UpgradeDependenciesAction"
-		        text="Update Dependencies…">
-			<add-to-group group-id="biz.paluch.dap.DependencyAssistant" anchor="first"/>
-			<add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
-		</action>
-		<action id="biz.paluch.dap.RefreshReleasesMetadataAction"
-		        class="biz.paluch.dap.assistant.RefreshReleasesMetadataAction"
-		        text="Refresh Dependency Release Metadata">
-			<add-to-group group-id="biz.paluch.dap.DependencyAssistant" anchor="last"/>
-		</action>
 	</actions>
 </idea-plugin>

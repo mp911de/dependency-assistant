@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -78,7 +77,16 @@ class DependencyUpdateCandidate implements HasArtifactId {
 
 		for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
 			Release option = strategy.select(getCurrentVersion(), this.releases);
-			if (option != null && !option.version().equals(getCurrentVersion())) {
+			if (option == null) {
+				continue;
+			}
+
+			if (option.getVersion().canCompare(getCurrentVersion())
+					&& option.getVersion().compareTo(getCurrentVersion()) == 0) {
+				continue;
+			}
+
+			if (!option.version().equals(getCurrentVersion())) {
 				targets.put(strategy, option);
 			}
 		}
@@ -196,8 +204,8 @@ class DependencyUpdateCandidate implements HasArtifactId {
 
 	@Override
 	public String toString() {
-		return dependency.getArtifactId() + ": " + getCurrentVersion() + " -> ["
-				+ filtered.stream().map(Release::version).map(Object::toString).collect(Collectors.joining(", ")) + "]";
+		return dependency.getArtifactId() + "@" + getCurrentVersion() + " -> ["
+				+ filtered + "]";
 	}
 
 }
