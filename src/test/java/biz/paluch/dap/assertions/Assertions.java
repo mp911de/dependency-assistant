@@ -17,6 +17,8 @@
 package biz.paluch.dap.assertions;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assertions.CodeInsightAssertions.CodeInsightFixtureAssert;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -59,6 +61,24 @@ public class Assertions extends org.assertj.core.api.Assertions {
 	 */
 	public static DependencyCollectorAssert assertThat(DependencyCollector collector) {
 		return new DependencyCollectorAssert(collector);
+	}
+
+	/**
+	 * Creates a new assertion for the given releases.
+	 * @param releases the releases under test.
+	 * @return the created assertion object.
+	 */
+	public static ReleasesAssert assertThat(Releases releases) {
+		return new ReleasesAssert(releases);
+	}
+
+	/**
+	 * Creates a new assertion for the given release.
+	 * @param release the release under test.
+	 * @return the created assertion object.
+	 */
+	public static ReleaseAssert assertThat(Release release) {
+		return new ReleaseAssert(release);
 	}
 
 	/**

@@ -41,7 +41,7 @@ import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link DependencyCheckAggregator}.
@@ -54,23 +54,23 @@ class DependencyCheckAggregatorTests {
 
 	ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
 
-		ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
+	ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
-		ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
+	ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
 
-		ProjectId ACME_APP = ProjectId.of("com.acme", "app");
+	ProjectId ACME_APP = ProjectId.of("com.acme", "app");
 
-		ProjectId ACME_LIB = ProjectId.of("com.acme", "lib");
+	ProjectId ACME_LIB = ProjectId.of("com.acme", "lib");
 
-		ArtifactVersion LETTUCE_CURRENT = ArtifactVersion.of("7.4.1.RELEASE");
+	ArtifactVersion LETTUCE_CURRENT = ArtifactVersion.of("7.4.1.RELEASE");
 
-		ArtifactVersion LETTUCE_UPDATE = ArtifactVersion.of("7.5.0.RELEASE");
+	ArtifactVersion LETTUCE_UPDATE = ArtifactVersion.of("7.5.0.RELEASE");
 
-		ArtifactVersion SPRING_CURRENT = ArtifactVersion.of("6.2.0");
+	ArtifactVersion SPRING_CURRENT = ArtifactVersion.of("6.2.0");
 
-		ArtifactVersion SPRING_UPDATE = ArtifactVersion.of("6.2.1");
+	ArtifactVersion SPRING_UPDATE = ArtifactVersion.of("6.2.1");
 
-		String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
+	String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
 
 	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(new MockProjectEx(() -> {
 	}), new StateService());
@@ -179,10 +179,10 @@ class DependencyCheckAggregatorTests {
 						new TestDependencyRule("Spring Framework"))));
 
 		assertThat(result.candidates()).hasSize(2);
-		assertThat(result.candidates().getFirst()).isInstanceOfSatisfying(UpgradeGroup.class,
+		assertThat(result.getFirst()).isInstanceOfSatisfying(UpgradeGroup.class,
 				group -> assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
 						.containsExactly(SPRING_CORE, SPRING_TEST));
-		assertThat(result.candidates().getLast()).isNotInstanceOf(UpgradeGroup.class)
+		assertThat(result.getLast()).isNotInstanceOf(UpgradeGroup.class)
 				.extracting(UpgradeCandidate::getArtifactId).isEqualTo(springJdbc);
 	}
 
@@ -259,8 +259,8 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
 
-		assertThat(result.candidates()).hasSize(2);
-		assertThat(result.candidates().getLast()).isNotInstanceOf(UpgradeGroup.class)
+		assertThat(result).hasSize(2);
+		assertThat(result.getLast()).isNotInstanceOf(UpgradeGroup.class)
 				.satisfies(candidate -> {
 					assertThat(candidate.getArtifactId()).isEqualTo(springJdbc);
 					assertThat(candidate.getDeclaredVersions().hasVersionDrift()).isTrue();
@@ -320,8 +320,8 @@ class DependencyCheckAggregatorTests {
 
 		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
 			Releases offered = group.getUpdateCandidate().getReleases();
-			assertThat(offered.getRelease(SPRING_UPDATE)).isNotNull();
-			assertThat(offered.getRelease(next)).isNull();
+			assertThat(offered).containsRelease(SPRING_UPDATE);
+			assertThat(offered).doesNotContainRelease(next);
 		});
 	}
 

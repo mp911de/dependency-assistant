@@ -20,7 +20,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link Releases}.
@@ -39,8 +39,8 @@ class ReleasesUnitTests {
 				Release.from("Dysprosium-RELEASE", "2019-09-24"),
 				Release.from("2024.0.18", "2026-06-08"));
 
-		assertThat(releases.toList()).extracting(release -> release.version().toString())
-				.containsExactly("2025.0.6", "2024.0.18", "2020.0.0", "Dysprosium-SR25", "Dysprosium-RELEASE");
+		assertThat(releases)
+				.containsExactlyVersions("2025.0.6", "2024.0.18", "2020.0.0", "Dysprosium-SR25", "Dysprosium-RELEASE");
 	}
 
 	@Test
@@ -51,9 +51,9 @@ class ReleasesUnitTests {
 				Release.from("2020.0.0", "2020-10-26"),
 				Release.from("Zirconium-RELEASE", "2026-01-01"));
 
-		assertThat(releases.successorScheme()).isEqualTo(VersioningScheme.RELEASE_TRAIN);
-		assertThat(releases.toList()).extracting(release -> release.version().toString())
-				.containsExactly("Zirconium-RELEASE", "Aluminium-RELEASE", "2020.0.0");
+		assertThat(releases)
+				.hasSuccessorScheme(VersioningScheme.RELEASE_TRAIN)
+				.containsExactlyVersions("Zirconium-RELEASE", "Aluminium-RELEASE", "2020.0.0");
 	}
 
 	@Test
@@ -64,9 +64,9 @@ class ReleasesUnitTests {
 				Release.from("Dysprosium-SR25", "2021-11-09"),
 				Release.from("2025.0.6", "2026-06-08"));
 
-		assertThat(releases.inScheme(VersioningScheme.NUMERIC)).extracting(release -> release.version().toString())
-				.containsExactly("2025.0.6", "2020.0.0");
-		assertThat(releases.inScheme(VersioningScheme.OPAQUE)).isEmpty();
+		assertThat(releases)
+				.containsExactlyVersionsInScheme(VersioningScheme.NUMERIC, "2025.0.6", "2020.0.0")
+				.containsExactlyVersionsInScheme(VersioningScheme.OPAQUE);
 	}
 
 	@Test
@@ -77,9 +77,9 @@ class ReleasesUnitTests {
 				Release.of("3.10.0"),
 				Release.of("3.9.9"));
 
-		assertThat(releases.successorScheme()).isEqualTo(VersioningScheme.NUMERIC);
-		assertThat(releases.toList()).extracting(release -> release.version().toString())
-				.containsExactly("3.10.0", "3.9.9", "3.9.6");
+		assertThat(releases)
+				.hasSuccessorScheme(VersioningScheme.NUMERIC)
+				.containsExactlyVersions("3.10.0", "3.9.9", "3.9.6");
 	}
 
 	@Test
@@ -87,8 +87,9 @@ class ReleasesUnitTests {
 
 		Releases releases = Releases.of(List.of());
 
-		assertThat(releases.successorScheme()).isNull();
-		assertThat(releases.toList()).isEmpty();
+		assertThat(releases)
+				.hasNoSuccessorScheme()
+				.isEmpty();
 	}
 
 }
