@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.util.StringUtils;
@@ -78,11 +79,15 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 
 		Map<GroupKey, List<UpgradeCandidate>> governed = new LinkedHashMap<>();
 		Map<String, List<UpgradeCandidate>> governedByName = new LinkedHashMap<>();
+		List<UpgradeCandidate> ungoverned = new ArrayList<>();
 		for (UpgradeCandidate candidate : candidates) {
 			GroupKey key = GroupKey.of(candidate);
 			if (key != null) {
 				governed.computeIfAbsent(key, it -> new ArrayList<>()).add(candidate);
 				governedByName.computeIfAbsent(key.dependencyName(), it -> new ArrayList<>()).add(candidate);
+			}
+			else {
+				ungoverned.add(candidate);
 			}
 		}
 
@@ -106,6 +111,8 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 			firstMemberToGroup.put(members.getFirst(), UpgradeGroup.of(members));
 			grouped.addAll(members);
 		});
+
+		collapseInferred(ungoverned, firstMemberToGroup, grouped);
 
 		List<UpgradeCandidate> rows = new ArrayList<>(candidates.size());
 		for (UpgradeCandidate candidate : candidates) {
@@ -199,6 +206,40 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 		return members;
 	}
 
+	/**
+	 * Collapse ungoverned candidates into {@link UpgradeGroup} rows by coordinate
+	 * shape. Candidates bucket by group id plus their leading word-boundary token;
+	 * within a bucket the largest version-agreeing cohort forms an inferred group
+	 * when it has at least two members and a {@link DerivedGroupName} can be
+	 * derived. Drifting members join by version match only; a shared version
+	 * property never pulls a member in.
+	 */
+	private static void collapseInferred(List<UpgradeCandidate> ungoverned,
+			Map<UpgradeCandidate, UpgradeGroup> firstMemberToGroup, Set<UpgradeCandidate> grouped) {
+
+		Map<InferredKey, List<UpgradeCandidate>> families = new LinkedHashMap<>();
+		for (UpgradeCandidate candidate : ungoverned) {
+			families.computeIfAbsent(InferredKey.of(candidate), it -> new ArrayList<>()).add(candidate);
+		}
+
+		families.forEach((key, family) -> {
+
+			List<UpgradeCandidate> cohort = selectCohort(family);
+			if (cohort.size() < 2) {
+				return;
+			}
+
+			List<String> artifactIds = cohort.stream().map(it -> it.getArtifactId().artifactId()).toList();
+			DerivedGroupName name = DerivedGroupName.of(key.groupId(), artifactIds);
+			if (name == null) {
+				return;
+			}
+
+			firstMemberToGroup.put(cohort.getFirst(), UpgradeGroup.inferred(cohort, name.displayName()));
+			grouped.addAll(cohort);
+		});
+	}
+
 	public boolean isEmpty() {
 		return groups.isEmpty();
 	}
@@ -220,6 +261,35 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 			}
 
 			return new GroupKey(rule.getDependencyName(), candidate.getInterfaceAssistant().getClass());
+		}
+
+	}
+
+	/**
+	 * Grouping identity for an ungoverned candidate: its group id and leading
+	 * word-boundary token within one build ecosystem.
+	 */
+	private record InferredKey(String groupId, String leadingToken, Class<?> ecosystem) {
+
+		static InferredKey of(UpgradeCandidate candidate) {
+
+			ArtifactId id = candidate.getArtifactId();
+			String artifactId = id.artifactId();
+			int boundary = firstBoundary(artifactId);
+			String token = boundary < 0 ? artifactId : artifactId.substring(0, boundary);
+
+			return new InferredKey(id.groupId(), token, candidate.getInterfaceAssistant().getClass());
+		}
+
+		private static int firstBoundary(String artifactId) {
+
+			for (int i = 0; i < artifactId.length(); i++) {
+				char c = artifactId.charAt(i);
+				if (c == '-' || c == '.') {
+					return i;
+				}
+			}
+			return -1;
 		}
 
 	}

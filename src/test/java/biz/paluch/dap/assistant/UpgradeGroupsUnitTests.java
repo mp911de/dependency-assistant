@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.fixtures.TestDependencyRule;
@@ -180,25 +181,27 @@ class UpgradeGroupsUnitTests {
 	}
 
 	@Test
-	void unnamedRuleNeverGroups() {
+	void unnamedRuleFallsThroughToInferredGroup() {
 
 		UpgradeGroups rows = UpgradeGroups.builder()
 				.add(member(VAVR, "1.0.0", new TestDependencyRule("")))
 				.add(member(VAVR_MATCH, "1.0.0", new TestDependencyRule("")))
 				.build();
 
-		assertThat(rows).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
+		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
+				group -> assertThat(group.getRowLabel()).isEqualTo("vavr"));
 	}
 
 	@Test
-	void absentRuleNeverGroups() {
+	void absentRuleFallsThroughToInferredGroup() {
 
 		UpgradeGroups rows = UpgradeGroups.builder()
 				.add(member(VAVR, "1.0.0", DependencyRule.absent()))
 				.add(member(VAVR_MATCH, "1.0.0", DependencyRule.absent()))
 				.build();
 
-		assertThat(rows).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
+		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
+				group -> assertThat(group.getRowLabel()).isEqualTo("vavr"));
 	}
 
 	@Test
@@ -240,6 +243,132 @@ class UpgradeGroupsUnitTests {
 		UpgradeGroups rows = UpgradeGroups.builder().add(slf4j).add(guava).build();
 
 		assertThat(rows).containsExactly(slf4j, guava);
+	}
+
+	@Test
+	void collapsesUngovernedPrefixFamilyWithDerivedLabel() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(ungoverned("org.springframework.data", "spring-data-commons", "3.4.0"))
+				.add(ungoverned("org.springframework.data", "spring-data-jpa", "3.4.0"))
+				.build();
+
+		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+			assertThat(group.getRowLabel()).isEqualTo("spring-data");
+			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(
+					ArtifactId.of("org.springframework.data", "spring-data-commons"),
+					ArtifactId.of("org.springframework.data", "spring-data-jpa"));
+		});
+	}
+
+	@Test
+	void separatesSamePrefixAcrossDifferentGroupIds() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(ungoverned("org.junit.jupiter", "junit-jupiter-api", "5.11.0"))
+				.add(ungoverned("org.junit.jupiter", "junit-jupiter-engine", "5.11.0"))
+				.add(ungoverned("org.junit.platform", "junit-platform-launcher", "1.11.0"))
+				.add(ungoverned("org.junit.platform", "junit-platform-runner", "1.11.0"))
+				.build();
+
+		assertThat(rows).hasSize(2).allMatch(UpgradeGroup.class::isInstance);
+		assertThat(rows).extracting(UpgradeCandidate::getRowLabel)
+				.containsExactly("junit-jupiter", "junit-platform");
+	}
+
+	@Test
+	void inferredGroupSelectsLargestVersionAgreeingCohort() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(ungoverned("org.springframework.data", "spring-data-commons", "3.4.0"))
+				.add(ungoverned("org.springframework.data", "spring-data-jpa", "3.4.0"))
+				.add(ungoverned("org.springframework.data", "spring-data-mongodb", "3.3.0"))
+				.build();
+
+		assertThat(rows).hasSize(2);
+		assertThat(rows).filteredOn(UpgradeGroup.class::isInstance).singleElement()
+				.isInstanceOfSatisfying(UpgradeGroup.class, group -> assertThat(group.getMembers())
+						.extracting(UpgradeCandidate::getArtifactId)
+						.containsExactly(ArtifactId.of("org.springframework.data", "spring-data-commons"),
+								ArtifactId.of("org.springframework.data", "spring-data-jpa")));
+	}
+
+	@Test
+	void doesNotGroupSuffixOnlyFamily() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(ungoverned("com.autodesk.aps", "authentication-sdk", "1.0.0"))
+				.add(ungoverned("com.autodesk.aps", "datamanagement-sdk", "1.0.0"))
+				.build();
+
+		assertThat(rows).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
+	}
+
+	@Test
+	void singleUngovernedCandidateStaysIndividualRow() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(ungoverned("org.springframework.data", "spring-data-commons", "3.4.0"))
+				.build();
+
+		assertThat(rows).singleElement().isNotInstanceOf(UpgradeGroup.class);
+	}
+
+	@Test
+	void governedAndInferredGroupsCoexist() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(member(VAVR, "1.0.0", VAVR_RULE))
+				.add(member(VAVR_MATCH, "1.0.0", VAVR_RULE))
+				.add(ungoverned("org.springframework.data", "spring-data-commons", "3.4.0"))
+				.add(ungoverned("org.springframework.data", "spring-data-jpa", "3.4.0"))
+				.build();
+
+		assertThat(rows).hasSize(2).allMatch(UpgradeGroup.class::isInstance);
+		assertThat(rows).extracting(UpgradeCandidate::getRowLabel).containsExactly("Vavr", "spring-data");
+	}
+
+	@Test
+	void sharedVersionPropertyDoesNotPullDrifterIntoInferredGroup() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(ungoverned("org.springframework.data", "spring-data-commons", "boot.version", "3.4.0"))
+				.add(ungoverned("org.springframework.data", "spring-data-jpa", "boot.version", "3.4.0"))
+				.add(ungoverned("org.springframework.data", "spring-data-mongodb", "boot.version", "3.3.0", "3.5.0"))
+				.build();
+
+		assertThat(rows).hasSize(2);
+		assertThat(rows).filteredOn(UpgradeGroup.class::isInstance).singleElement()
+				.isInstanceOfSatisfying(UpgradeGroup.class, group -> assertThat(group.getMembers())
+						.extracting(UpgradeCandidate::getArtifactId)
+						.containsExactly(ArtifactId.of("org.springframework.data", "spring-data-commons"),
+								ArtifactId.of("org.springframework.data", "spring-data-jpa")));
+	}
+
+	private static UpgradeCandidate ungoverned(String groupId, String artifactId, String version) {
+		return ungoverned(groupId, artifactId, null, version);
+	}
+
+	private static UpgradeCandidate ungoverned(String groupId, String artifactId, @Nullable String property,
+			String... versions) {
+
+		ArtifactId id = ArtifactId.of(groupId, artifactId);
+		ArtifactVersion current = ArtifactVersion.of(versions[0]);
+
+		Dependency dependency = new Dependency(id, current);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(property != null ? VersionSource.property(property)
+				: VersionSource.declared(versions[0]));
+
+		List<DeclarationSite> sites = new ArrayList<>();
+		for (String version : versions) {
+			sites.add(new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of(groupId, artifactId),
+					new Dependency(id, ArtifactVersion.of(version))));
+		}
+
+		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of(versions[0]))),
+				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(sites, it -> null, null),
+				DependencyRule.absent());
 	}
 
 	private static UpgradeCandidate member(CachedArtifact artifact, String version, DependencyRule rule) {

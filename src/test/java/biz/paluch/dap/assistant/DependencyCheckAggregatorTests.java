@@ -268,7 +268,7 @@ class DependencyCheckAggregatorTests {
 	}
 
 	@Test
-	void unnamedRuleNeverGroups() {
+	void unnamedRuleFallsThroughToInferredGroup() {
 
 		VirtualFile file = buildFile("group/pom.xml");
 		TestDependencyRule unnamed = new TestDependencyRule("");
@@ -281,7 +281,8 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, unnamed, SPRING_TEST, unnamed)));
 
-		assertThat(result.candidates()).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
+		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
+				group -> assertThat(group.getRowLabel()).isEqualTo("spring"));
 	}
 
 	@Test
