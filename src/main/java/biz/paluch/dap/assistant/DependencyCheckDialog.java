@@ -57,13 +57,16 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.DataManager;
 import com.intellij.ide.IdeEventQueue;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.ActionToolbar;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.ex.ActionButtonLook;
 import com.intellij.openapi.actionSystem.impl.ActionButton;
@@ -75,6 +78,7 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.DialogWrapper;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.*;
 import com.intellij.ui.awt.RelativePoint;
@@ -122,9 +126,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 		super(project, false, IdeModalityType.MODELESS);
 		this.project = project;
 		this.files = result.files();
-		this.review = new UpgradeReview(result.candidates(), result.errors());
+		this.review = new UpgradeReview(result.candidates().toList(), result.errors());
 		this.components = new DependencyCheckComponents(this.review, getDisposable(), this::doCancelAction,
-				this::navigateToSites);
+				this::navigateToSites, this::showContextMenu);
 		setTitle(title);
 		init();
 	}
@@ -135,6 +139,57 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 */
 	private void navigateToSites(UpgradeCandidate candidate, RelativePoint where) {
 		new DependencySitesPopup(project, getDisposable(), this::doCancelAction, files).navigate(candidate, where);
+	}
+
+	/**
+	 * Show the coordinate-column context menu for the right-clicked row: add the
+	 * artifact to {@code dependencyfile.json}, or open the Dependency Sites popup.
+	 */
+	private void showContextMenu(UpgradeCandidate candidate, RelativePoint where) {
+
+		DependencyfileArtifactWriter writer = new DependencyfileArtifactWriter(project);
+
+		DefaultActionGroup group = new DefaultActionGroup();
+		group.add(new AnAction(MessageBundle.message("dialog.action.addToDependencyfile"),
+				MessageBundle.message("dialog.action.addToDependencyfile.description"), AllIcons.FileTypes.Json) {
+
+			@Override
+			public void update(AnActionEvent e) {
+				e.getPresentation().setEnabled(writer.canAdd(candidate));
+			}
+
+			@Override
+			public ActionUpdateThread getActionUpdateThread() {
+				return ActionUpdateThread.BGT;
+			}
+
+			@Override
+			public void actionPerformed(AnActionEvent e) {
+				doCancelAction();
+				writer.add(candidate);
+			}
+
+		});
+		group.add(new AnAction(MessageBundle.message("dialog.action.openSites"),
+				MessageBundle.message("dialog.action.openSites.description"), AllIcons.Actions.DependencyAnalyzer) {
+
+			@Override
+			public ActionUpdateThread getActionUpdateThread() {
+				return ActionUpdateThread.BGT;
+			}
+
+			@Override
+			public void actionPerformed(AnActionEvent e) {
+				navigateToSites(candidate, where);
+			}
+
+		});
+
+		DataContext dataContext = DataManager.getInstance().getDataContext(this.components);
+		JBPopupFactory.getInstance()
+				.createActionGroupPopup(candidate.getRowLabel(), group, dataContext,
+						JBPopupFactory.ActionSelectionAid.MNEMONICS, true)
+				.show(where);
 	}
 
 	/**
@@ -158,14 +213,15 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private final JCheckBox filterVersionsCheckBox;
 
 		DependencyCheckComponents(UpgradeReview review, Disposable parent, Runnable escapeHandler,
-				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate) {
+				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate,
+				BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu) {
 			super(new BorderLayout());
 			this.review = review;
 
 			this.tableModel = new ListTableModel<>(new DependencyCoordinateColumn(review),
 					new CurrentVersionColumn(), new UpgradeTargetsColumn(review), new UpdateToColumn(review),
 					new DoUpdateColumn(review));
-			this.table = new DependencyUpdateTable(tableModel, escapeHandler, onNavigate);
+			this.table = new DependencyUpdateTable(tableModel, escapeHandler, onNavigate, onContextMenu);
 			this.strategyComboBox = new ComboBox<>(
 					UpgradeReview.UpgradeStrategies.values());
 			this.filterVersionsCheckBox = new JCheckBox(MessageBundle.message("dialog.filter.version.suggestions"),
@@ -490,11 +546,15 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final BiConsumer<UpgradeCandidate, RelativePoint> onNavigate;
 
+		private final BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu;
+
 		DependencyUpdateTable(ListTableModel<UpgradeCandidate> model, Runnable escapeHandler,
-				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate) {
+				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate,
+				BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu) {
 			super(model);
 			this.escapeHandler = escapeHandler;
 			this.onNavigate = onNavigate;
+			this.onContextMenu = onContextMenu;
 			setToolTipText("");
 
 			getActionMap().put("cancel", new AbstractAction() {
@@ -526,6 +586,16 @@ public class DependencyCheckDialog extends DialogWrapper {
 					navigateOnDoubleClick(e);
 				}
 
+				@Override
+				public void mousePressed(MouseEvent e) {
+					showContextMenuOnPopupTrigger(e);
+				}
+
+				@Override
+				public void mouseReleased(MouseEvent e) {
+					showContextMenuOnPopupTrigger(e);
+				}
+
 			});
 		}
 
@@ -535,14 +605,38 @@ public class DependencyCheckDialog extends DialogWrapper {
 				return;
 			}
 
+			UpgradeCandidate candidate = coordinateRowAt(e);
+			if (candidate != null) {
+				onNavigate.accept(candidate, new RelativePoint(this, e.getPoint()));
+			}
+		}
+
+		private void showContextMenuOnPopupTrigger(MouseEvent e) {
+
+			if (!e.isPopupTrigger()) {
+				return;
+			}
+
+			UpgradeCandidate candidate = coordinateRowAt(e);
+			if (candidate != null) {
+				onContextMenu.accept(candidate, new RelativePoint(this, e.getPoint()));
+			}
+		}
+
+		/**
+		 * Return the candidate under the mouse when it hovers the Dependency coordinate
+		 * column, or {@literal null} for any other column or no row.
+		 */
+		private @Nullable UpgradeCandidate coordinateRowAt(MouseEvent e) {
+
 			Point p = e.getPoint();
 			int row = rowAtPoint(p);
 			int col = columnAtPoint(p);
 			if (row < 0 || convertColumnIndexToModel(col) != DEPENDENCY_COLUMN_INDEX) {
-				return;
+				return null;
 			}
 
-			onNavigate.accept(ModelUtil.getRow(this, row), new RelativePoint(this, p));
+			return ModelUtil.getRow(this, row);
 		}
 
 		@Override

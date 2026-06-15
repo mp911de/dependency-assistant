@@ -93,6 +93,17 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		return project.getService(DependencyfileService.class);
 	}
 
+	/**
+	 * Return the active {@code dependencyfile.json} descriptor, the one rules are
+	 * resolved from, or {@literal null} when none is discovered (or JSON support is
+	 * absent).
+	 *
+	 * @return the discovered descriptor file, or {@literal null} if none exists.
+	 */
+	public @Nullable VirtualFile getDescriptor() {
+		return JSON_PRESENT ? findDescriptor() : null;
+	}
+
 	@Override
 	public DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion) {
 		return rules().resolve(artifactId, currentBranchName(this.project, file), projectVersion.orElseGet(() -> null));
