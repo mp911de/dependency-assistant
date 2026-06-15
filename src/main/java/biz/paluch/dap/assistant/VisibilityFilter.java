@@ -69,11 +69,22 @@ record VisibilityFilter(boolean hideUpToDate) {
 
 		Map<UpgradeStrategy, Release> targets = option.getTargets();
 		if (option.getDependency().getCurrentVersion().isPreview()) {
-			if (targets.containsKey(UpgradeStrategy.PREVIEW)) {
-				return true;
+			Release release = targets.get(UpgradeStrategy.PREVIEW);
+			if (release != null) {
+				return release.isNewer(option.getDependency().getCurrentVersion());
 			}
 		}
-		return !(targets.size() == 1 && targets.containsKey(UpgradeStrategy.PREVIEW));
+		if (targets.size() == 2 && targets.containsKey(UpgradeStrategy.LATEST)
+				&& targets.containsKey(UpgradeStrategy.PREVIEW)) {
+			return false;
+		}
+
+		if (targets.size() == 1 && (targets.containsKey(UpgradeStrategy.PREVIEW)
+				|| targets.containsKey(UpgradeStrategy.LATEST))) {
+			return false;
+		}
+
+		return !targets.isEmpty();
 	}
 
 }

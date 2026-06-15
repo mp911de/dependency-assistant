@@ -18,6 +18,7 @@ package biz.paluch.dap.artifact;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
@@ -253,6 +254,11 @@ public class Releases implements Iterable<Release> {
 	 */
 	public List<Release> toList() {
 		return ordered;
+	}
+
+	@Override
+	public String toString() {
+		return stream().map(Release::version).map(Object::toString).collect(Collectors.joining(", "));
 	}
 
 }
