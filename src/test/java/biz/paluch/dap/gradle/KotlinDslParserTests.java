@@ -855,6 +855,71 @@ class KotlinDslParserTests {
 	}
 
 	// -------------------------------------------------------------------------
+	// Version Catalog
+	// -------------------------------------------------------------------------
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-dependency-management = "1.1.1"
+
+			[plugins]
+			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+			""")
+	@ProjectFile(name = "build.gradle.kts", content = """
+			plugins {
+			    alias(libs.plugins.spring.dependency.management)
+			}
+			""")
+	void collectsVersionCatalogPluginUsage(@ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyDeclaration("io.spring.dependency-management");
+		assertThat(collector).hasUsageCount(0);
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-dependency-management = "1.1.1"
+
+			[plugins]
+			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+			""")
+	@ProjectFile(name = "build.gradle.kts", content = """
+			plugins {
+			}
+			""")
+	void groovyBuildScriptDoesNotDiscoverUnusedPlugin(@ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).isEmpty();
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring = "6.1.0"
+
+			[libraries]
+			spring-core = { module = "org.springframework:spring-core", version.ref = "spring" }
+			""")
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation(libs.spring.core)
+			}
+			""")
+	void collectsVersionCatalogDependencyUsage(@ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyDeclaration("org.springframework", "spring-core");
+		assertThat(collector).hasUsageCount(0);
+	}
+
+	// -------------------------------------------------------------------------
 	// Full build file
 	// -------------------------------------------------------------------------
 

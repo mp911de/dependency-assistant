@@ -25,6 +25,7 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
@@ -48,10 +49,11 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
+// TODO: DDD Refactoring
 class KotlinDslParser extends GradleParser {
 
-	KotlinDslParser(DependencyCollector collector, PropertyResolver propertyResolver) {
-		super(collector, propertyResolver);
+	KotlinDslParser(DependencyCollector collector, PropertyResolver propertyResolver, VersionCatalogRegistry registry) {
+		super(collector, propertyResolver, registry);
 	}
 
 	// -------------------------------------------------------------------------
@@ -124,7 +126,69 @@ class KotlinDslParser extends GradleParser {
 		if (!isDependencyConfig && !isPlatform && !isPlugin) {
 			return null;
 		}
-		return parseDependencySite(call, isPlugin, isPlatform, propertyResolver);
+		return parseDeclaredSite(call, isPlugin, isPlatform, propertyResolver);
+	}
+
+	/**
+	 * Parse a Kotlin DSL dependency or plugin call, resolving version-catalog
+	 * accessors (such as {@code implementation(libs.spring.core)} or
+	 * {@code alias(libs.plugins.foo)}) against the catalog TOML before falling back
+	 * to declared {@code group:artifact:version} notation.
+	 */
+	private @Nullable DependencySite parseDependencySite(KtCallElement call, boolean isPlugin,
+			boolean isPlatform, PropertyResolver propertyResolver) {
+
+		if (call instanceof KtCallExpression callExpression &&
+				KotlinDslUtils.isCatalogConsumerCall(callExpression)) {
+			DependencySite catalogSite = parseCatalogReference(call);
+			if (catalogSite != null) {
+				return catalogSite;
+			}
+		}
+
+		return parseDeclaredSite(call, isPlugin, isPlatform, propertyResolver);
+	}
+
+	/**
+	 * Resolve a version-catalog accessor argument (e.g. {@code libs.spring.core})
+	 * of the given call against the catalog TOML, returning a resolved
+	 * {@link DependencySite} or {@literal null} when the call does not reference a
+	 * known catalog alias.
+	 *
+	 * @param call the catalog-consuming call to inspect.
+	 * @return the resolved dependency site, or {@literal null} if the call carries
+	 * no resolvable catalog accessor.
+	 */
+	private @Nullable DependencySite parseCatalogReference(KtCallElement call) {
+
+		KtDotQualifiedExpression accessor = findCatalogAccessor(call);
+		if (accessor == null) {
+			return null;
+		}
+
+		TomlReference reference = TomlReference.from(getSegments(accessor), getRegistry().catalogPaths().keySet());
+		if (reference == null) {
+			return null;
+		}
+
+		ArtifactReference artifactReference = resolveCatalogReference(reference, call);
+		if (!artifactReference.isResolved()) {
+			return null;
+		}
+
+		return toCatalogSite(artifactReference.getDeclaration(),
+				artifactReference.getDeclaration().getDeclarationSource());
+	}
+
+	private static @Nullable KtDotQualifiedExpression findCatalogAccessor(KtCallElement call) {
+
+		for (ValueArgument argument : call.getValueArguments()) {
+			if (argument.getArgumentExpression() instanceof KtDotQualifiedExpression accessor) {
+				return accessor;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -329,7 +393,6 @@ class KotlinDslParser extends GradleParser {
 		for (KtNameReferenceExpression reference : SyntaxTraverser.psiTraverser(file)
 				.filter(KtNameReferenceExpression.class)) {
 			if (isVersionPropertyReference(reference)) {
-				@Nullable
 				String name = reference.getReferencedName();
 				if (StringUtils.hasText(name)) {
 					names.add(name);
@@ -340,7 +403,6 @@ class KotlinDslParser extends GradleParser {
 		for (KtArrayAccessExpression arrayAccess : SyntaxTraverser.psiTraverser(file)
 				.filter(KtArrayAccessExpression.class)) {
 			if (isReferenceInsideSupportedVersionLiteral(arrayAccess)) {
-				@Nullable
 				String name = getExtraPropertyKey(arrayAccess);
 				if (StringUtils.hasText(name)) {
 					names.add(name);
@@ -445,7 +507,7 @@ class KotlinDslParser extends GradleParser {
 		return right != null && (right == element || PsiTreeUtil.isAncestor(right, element, false));
 	}
 
-	private static @Nullable DependencySite parseDependencySite(KtCallElement call, boolean isPlugin,
+	private static @Nullable DependencySite parseDeclaredSite(KtCallElement call, boolean isPlugin,
 			boolean isPlatform, PropertyResolver propertyResolver) {
 
 		if (isMapStyleDeclarationCandidate(call)) {
@@ -783,11 +845,7 @@ class KotlinDslParser extends GradleParser {
 	public static boolean isMapStyleDeclarationCandidate(KtCallElement call) {
 
 		KtValueArgumentList valueArgumentList = call.getValueArgumentList();
-		if (valueArgumentList != null) {
-			return valueArgumentList.getArguments().size() > 1;
-		}
-
-		return false;
+		return valueArgumentList != null && valueArgumentList.getArguments().size() > 1;
 	}
 
 	/**

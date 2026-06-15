@@ -29,6 +29,8 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
@@ -42,6 +44,7 @@ import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
@@ -58,18 +61,23 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
+// TODO: DDD Refactoring
 class GradleParser extends GradleParserSupport {
 
 	private final PropertyResolver global;
 
+	private final VersionCatalogRegistry registry;
+
 	GradleParser(DependencyCollector collector, Map<String, String> properties) {
 		super(collector);
 		this.global = properties::get;
+		this.registry = VersionCatalogRegistry.defaults();
 	}
 
-	GradleParser(DependencyCollector collector, PropertyResolver propertyResolver) {
+	GradleParser(DependencyCollector collector, PropertyResolver propertyResolver, VersionCatalogRegistry registry) {
 		super(collector);
 		this.global = propertyResolver;
+		this.registry = registry;
 	}
 
 	/**
@@ -365,6 +373,13 @@ class GradleParser extends GradleParserSupport {
 		return global;
 	}
 
+	/**
+	 * Return the version-catalog registry used to resolve {@code libs.…} accessors.
+	 */
+	protected VersionCatalogRegistry getRegistry() {
+		return registry;
+	}
+
 	// -------------------------------------------------------------------------
 	// Groovy DSL
 	// -------------------------------------------------------------------------
@@ -389,7 +404,54 @@ class GradleParser extends GradleParserSupport {
 				.forEach(call -> handleGroovyCall(call, propertyResolver));
 	}
 
+	protected static DependencySite toCatalogSite(ArtifactDeclaration declaration,
+			DeclarationSource declarationSource) {
+
+		return DependencySite.of(declaration.getArtifactId(), declaration.getVersionSource(), declarationSource,
+				declaration.getDeclarationElement());
+	}
+
+	/**
+	 * Resolve a version-catalog accessor argument (such as {@code libs.spring.core}
+	 * or {@code alias(libs.plugins.foo)}) of the given call against the catalog
+	 * TOML, returning a resolved {@link DependencySite} or {@literal null} when the
+	 * call does not reference a known catalog alias.
+	 *
+	 * @param call the catalog-consuming call to inspect.
+	 * @return the resolved dependency site, or {@literal null} if the call carries
+	 * no resolvable catalog accessor.
+	 */
+	private @Nullable DependencySite parseCatalogReference(GrMethodCall call) {
+
+		GrExpression accessor = GroovyDslUtils.getFirstGroovyCatalogArgumentExpression(call);
+		if (accessor == null) {
+			return null;
+		}
+
+		TomlReference reference = TomlReference.from(GroovyDslUtils.getVersionCatalogSegments(accessor),
+				getRegistry().catalogPaths().keySet());
+		if (reference == null) {
+			return null;
+		}
+
+		ArtifactReference artifactReference = resolveCatalogReference(reference, call);
+		if (!artifactReference.isResolved()) {
+			return null;
+		}
+
+		return toCatalogSite(artifactReference.getDeclaration(),
+				artifactReference.getDeclaration().getDeclarationSource());
+	}
+
 	private void handleGroovyCall(GrMethodCall call, PropertyResolver propertyResolver) {
+
+		if (GroovyDslUtils.isGroovyCatalogConsumerCall(call)) {
+			DependencySite catalogSite = parseCatalogReference(call);
+			if (catalogSite != null) {
+				register(catalogSite, propertyResolver);
+				return;
+			}
+		}
 
 		String methodName = GroovyDslUtils.getGroovyMethodName(call);
 		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
@@ -422,6 +484,15 @@ class GradleParser extends GradleParserSupport {
 		if (site != null) {
 			register(site, propertyResolver);
 		}
+	}
+
+	/**
+	 * Resolve a {@link TomlReference} against the version-catalog TOML, replicating
+	 * the lookup the locator-based resolver performs: parse the catalog versions
+	 * and entries, then match the reference key.
+	 */
+	protected ArtifactReference resolveCatalogReference(TomlReference reference, PsiElement usage) {
+		return new TomlArtifactResolver(usage.getContainingFile(), getRegistry()).resolveReference(reference, usage);
 	}
 
 	/**
@@ -843,6 +914,86 @@ class GradleParser extends GradleParserSupport {
 				});
 			}
 		});
+	}
+
+	static abstract class DependencySection {
+
+		abstract DeclarationSource getDeclarationSource();
+
+		abstract boolean isSupported();
+
+		public DependencySection of(String methodName, boolean isPlugin) {
+			if (isPlugin) {
+				return new PlatformSection();
+			}
+
+			if (GradleUtils.isPlatformSection(methodName)) {
+				return new PlatformSection();
+			}
+
+			if (GradleUtils.isDependencySection(methodName)) {
+				return new TheDependencySection();
+			}
+
+			return new Unknown();
+		}
+
+		static class Unknown extends DependencySection {
+
+			@Override
+			DeclarationSource getDeclarationSource() {
+				throw new IllegalStateException("Unknown dependency section");
+			}
+
+			@Override
+			boolean isSupported() {
+				return false;
+			}
+
+		}
+
+		static class PluginSection extends DependencySection {
+
+			@Override
+			DeclarationSource getDeclarationSource() {
+				return DeclarationSource.plugin();
+			}
+
+			@Override
+			boolean isSupported() {
+				return true;
+			}
+
+		}
+
+		static class PlatformSection extends DependencySection {
+
+			@Override
+			DeclarationSource getDeclarationSource() {
+				return DeclarationSource.managed();
+			}
+
+			@Override
+			boolean isSupported() {
+				return true;
+			}
+
+		}
+
+		static class TheDependencySection extends DependencySection {
+
+			@Override
+			DeclarationSource getDeclarationSource() {
+				return DeclarationSource.dependency();
+			}
+
+			@Override
+			boolean isSupported() {
+				return true;
+			}
+
+		}
+
 	}
 
 }

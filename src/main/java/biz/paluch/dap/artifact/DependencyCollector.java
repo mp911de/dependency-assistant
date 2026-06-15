@@ -44,6 +44,7 @@ import org.jspecify.annotations.Nullable;
  * @see Dependency
  * @see DeclaredDependency
  */
+// TODO: DDD review usage vs. declaration
 public class DependencyCollector {
 
 	private final Map<ArtifactId, DeclaredDependency> declarations = new TreeMap<>();
@@ -203,6 +204,15 @@ public class DependencyCollector {
 	 */
 	public @Nullable Dependency getUsage(ArtifactId artifactId) {
 		return usages.get(artifactId);
+	}
+
+	/**
+	 * Return the registered declaration for the given artifact, or {@literal null}
+	 * if no usage has been registered.
+	 * @param artifactId the artifact coordinates to look up.
+	 */
+	public @Nullable DeclaredDependency getDeclaration(ArtifactId artifactId) {
+		return declarations.get(artifactId);
 	}
 
 	/**

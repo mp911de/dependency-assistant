@@ -22,34 +22,25 @@ import java.util.Map;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Collects dependency coordinates from a Gradle file using the appropriate
  * parser for Groovy DSL, Kotlin DSL, {@code gradle.properties}, or
  * {@code *.versions.toml} version catalogs.
- * <p>
- * When the anchor file is a Gradle build or settings script, the collector
- * additionally parses sibling {@code gradle.properties} and
- * {@code gradle/libs.versions.toml} files located at the project root (if
- * present) so accessor expressions referencing properties or catalog aliases
- * resolve consistently.
+ * <p>When the anchor file is a Gradle build or settings script, the collector
+ * resolves visible Gradle properties and version-catalog accessors through the
+ * project root so only actual script usages are collected.
  *
  * @author Mark Paluch
  */
 class GradleDependencyCollector {
 
-	private final Project project;
-
 	private final Map<String, String> properties;
 
 	private final StateService service;
-
-	private final BetterPsiManager psiManager;
 
 	/**
 	 * Create a collector with no predefined Gradle properties.
@@ -62,20 +53,15 @@ class GradleDependencyCollector {
 	 * Create a collector using properties already known for the project.
 	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
-		this.project = project;
 		this.service = StateService.getInstance(project);
 		this.properties = properties;
-		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
 	/**
 	 * Collect artifact declarations from {@code buildFile}.
-	 * <p>
-	 * When {@code buildFile} is a Gradle build or settings script, the collector
-	 * also parses, in order, the project-root {@code gradle.properties} and
-	 * {@code gradle/libs.versions.toml} files before the anchor itself. A sibling
-	 * that is identical to the anchor is skipped to avoid double-parsing. Missing
-	 * files or unresolvable PSI silently skip.
+	 * <p>When {@code buildFile} is a Gradle build or settings script, the parser
+	 * resolves visible Gradle properties and version-catalog accessors through the
+	 * project root.
 	 *
 	 * @param buildFile the Gradle file, must not be {@literal null}.
 	 * @return a populated {@link DependencyCollector}, guaranteed to be not
@@ -91,47 +77,15 @@ class GradleDependencyCollector {
 	/**
 	 * Collect artifact declarations from {@code buildFile} into the provided
 	 * {@code collector}.
-	 * <p>
-	 * Sibling-file handling matches {@link #collect(PsiFile)}: script anchors
-	 * additionally parse the project-root {@code gradle.properties} and
-	 * {@code gradle/libs.versions.toml} files.
+	 * <p>Script anchors resolve project-root Gradle properties and version-catalog
+	 * accessors without treating unused catalog entries as dependency usages.
 	 *
 	 * @param buildFile the Gradle file, must not be {@literal null}.
 	 * @param collector the collector to populate in place, must not be
 	 * {@literal null}.
 	 */
 	public void collect(PsiFile buildFile, DependencyCollector collector) {
-
-
-		if (GradleUtils.isGradleScript(buildFile)) {
-			VirtualFile root = GradleUtils.findProjectRoot(buildFile);
-			VirtualFile anchorFile = buildFile.getVirtualFile();
-
-			collectSibling(root, GradleUtils.GRADLE_PROPERTIES, anchorFile, collector);
-			collectSibling(root, GradleUtils.DEFAULT_TOML_LOCATION, anchorFile, collector);
-		}
-
 		doCollect(buildFile, collector);
-	}
-
-	private void collectSibling(@Nullable VirtualFile root, String relativePath, @Nullable VirtualFile anchor,
-			DependencyCollector collector) {
-
-		if (root == null) {
-			return;
-		}
-
-		VirtualFile sibling = root.findFileByRelativePath(relativePath);
-		if (sibling == null || sibling.equals(anchor)) {
-			return;
-		}
-
-		PsiFile psiFile = psiManager.findFile(sibling);
-		if (psiFile == null) {
-			return;
-		}
-
-		doCollect(psiFile, collector);
 	}
 
 	/**
@@ -148,12 +102,14 @@ class GradleDependencyCollector {
 			GradleParser parser = new GradleParser(collector, new LinkedHashMap<>(properties));
 			parser.parseGradleProperties(service.getCache(), psiFile);
 		} else if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
+			VersionCatalogRegistry registry = VersionCatalogRegistry.from(psiFile);
 			PropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile).withFallback(properties::get);
-			KotlinDslParser parser = new KotlinDslParser(collector, propertyResolver);
+			KotlinDslParser parser = new KotlinDslParser(collector, propertyResolver, registry);
 			parser.parseKotlinScript(psiFile);
 		} else {
+			VersionCatalogRegistry registry = VersionCatalogRegistry.from(psiFile);
 			PropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile).withFallback(properties::get);
-			GradleParser parser = new GradleParser(collector, propertyResolver);
+			GradleParser parser = new GradleParser(collector, propertyResolver, registry);
 			parser.parseGroovyDsl(psiFile);
 		}
 	}

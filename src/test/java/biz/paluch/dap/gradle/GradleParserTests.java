@@ -977,6 +977,71 @@ class GradleParserTests {
 	}
 
 	// -------------------------------------------------------------------------
+	// Version Catalog
+	// -------------------------------------------------------------------------
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-dependency-management = "1.1.1"
+
+			[plugins]
+			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+			""")
+	@ProjectFile(name = "build.gradle", content = """
+			plugins {
+			    alias(libs.plugins.spring.dependency.management)
+			}
+			""")
+	void collectsVersionCatalogPluginUsage(@ProjectFile("build.gradle") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyDeclaration("io.spring.dependency-management");
+		assertThat(collector).hasUsageCount(0);
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-dependency-management = "1.1.1"
+
+			[plugins]
+			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+			""")
+	@ProjectFile(name = "build.gradle", content = """
+			plugins {
+			}
+			""")
+	void groovyBuildScriptDoesNotDiscoverUnusedPlugin(@ProjectFile("build.gradle") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).isEmpty();
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring = "6.1.0"
+
+			[libraries]
+			spring-core = { module = "org.springframework:spring-core", version.ref = "spring" }
+			""")
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation(libs.spring.core)
+			}
+			""")
+	void collectsVersionCatalogDependencyUsage(@ProjectFile("build.gradle") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyDeclaration("org.springframework", "spring-core");
+		assertThat(collector).hasUsageCount(0);
+	}
+
+	// -------------------------------------------------------------------------
 	// Full build file
 	// -------------------------------------------------------------------------
 
@@ -1024,42 +1089,6 @@ class GradleParserTests {
 				.hasDependencyUsage("org.springframework.modulith", "spring-modulith-bom")
 				.hasVersion("2.0.4")
 				.hasPropertyVersion("springModulithVersion");
-	}
-
-	@Test
-	@ProjectFile(name = "gradle/libs.versions.toml", content = """
-			[libraries]
-			guava = "com.google.guava:guava:32.1.3-jre"
-			""")
-	@ProjectFile(name = "build.gradle.kts", content = """
-			dependencies {
-			    implementation("org.junit:junit-bom:6.0.0")
-			}
-			""")
-	void kotlinBuildScriptDiscoversCatalogFromGradleDir(@ProjectFile("build.gradle.kts") PsiFile buildFile) {
-
-		DependencyCollector collector = GradleFixtures.analyze(buildFile);
-
-		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
-		assertThat(collector).hasDependencyUsage("com.google.guava", "guava").hasVersion("32.1.3-jre");
-	}
-
-	@Test
-	@ProjectFile(name = "gradle/libs.versions.toml", content = """
-			[libraries]
-			guava = "com.google.guava:guava:32.1.3-jre"
-			""")
-	@ProjectFile(name = "build.gradle", content = """
-			dependencies {
-			    implementation 'org.junit:junit-bom:6.0.0'
-			}
-			""")
-	void groovyBuildScriptDiscoversCatalogFromGradleDir(@ProjectFile("build.gradle") PsiFile buildFile) {
-
-		DependencyCollector collector = GradleFixtures.analyze(buildFile);
-
-		assertThat(collector).hasDependencyUsage("org.junit", "junit-bom").hasVersion("6.0.0");
-		assertThat(collector).hasDependencyUsage("com.google.guava", "guava").hasVersion("32.1.3-jre");
 	}
 
 	@Test

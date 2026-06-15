@@ -50,6 +50,21 @@ class TomlArtifactResolver {
 
 	private final BetterPsiManager psiManager;
 
+	/**
+	 *
+	 * @param file the contextual Gradle file from which the reference is resolved.
+	 * @param registry
+	 */
+	TomlArtifactResolver(PsiFile file, @Nullable VersionCatalogRegistry registry) {
+		this(file.getProject(), file, registry);
+	}
+
+	/**
+	 *
+	 * @param project
+	 * @param file the contextual Gradle file from which the reference is resolved.
+	 * @param registry
+	 */
 	TomlArtifactResolver(Project project, PsiFile file, @Nullable VersionCatalogRegistry registry) {
 		this.project = project;
 		this.file = file;
