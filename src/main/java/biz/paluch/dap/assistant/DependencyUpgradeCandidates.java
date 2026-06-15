@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import com.intellij.openapi.vfs.VirtualFile;
@@ -34,6 +35,24 @@ import com.intellij.openapi.vfs.VirtualFile;
  * @param errors non-fatal release lookup errors; empty when all lookups
  * succeeded.
  */
-public record DependencyUpgradeCandidates(List<UpgradeCandidate> candidates, Collection<VirtualFile> files,
-		List<String> errors) {
+public record DependencyUpgradeCandidates(UpgradeGroups candidates, Collection<VirtualFile> files,
+		List<String> errors) implements Iterable<UpgradeCandidate> {
+
+	public UpgradeCandidate getFirst() {
+		return candidates.toList().getFirst();
+	}
+
+	public UpgradeCandidate getLast() {
+		return candidates.toList().getLast();
+	}
+
+	@Override
+	public Iterator<UpgradeCandidate> iterator() {
+		return candidates.iterator();
+	}
+
+	public boolean isEmpty() {
+		return candidates.isEmpty();
+	}
+
 }

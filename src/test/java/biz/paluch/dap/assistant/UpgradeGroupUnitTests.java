@@ -81,6 +81,22 @@ class UpgradeGroupUnitTests {
 	}
 
 	@Test
+	void memberLabelUsesCommonSeparatorSuffix() {
+
+		UpgradeGroup group = group("bcpg-jdk18on", "bcpkix-jdk18on", "bcprov-jdk18on");
+
+		assertThat(group.getMemberLabel()).isEqualTo("bcpg, bcpkix, bcprov");
+	}
+
+	@Test
+	void memberLabelRejectsCommonSuffixWithoutSeparatorBoundary() {
+
+		UpgradeGroup group = group("bcpgjdk18on", "bcpkixjdk18on");
+
+		assertThat(group.getMemberLabel()).isEqualTo("2");
+	}
+
+	@Test
 	void memberLabelFallsBackToCountWhenTooLong() {
 
 		UpgradeGroup group = group("library", "library-one-really-long-feature-name",

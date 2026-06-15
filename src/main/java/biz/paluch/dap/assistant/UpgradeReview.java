@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,8 +68,9 @@ class UpgradeReview {
 	 * @param candidates the update candidates to display.
 	 * @param errors release-fetch errors collected while resolving.
 	 */
-	UpgradeReview(List<UpgradeCandidate> candidates, List<String> errors) {
-		this.candidates = candidates;
+	UpgradeReview(Collection<UpgradeCandidate> candidates, List<String> errors) {
+
+		this.candidates = List.copyOf(candidates);
 		this.errors = errors;
 
 		boolean hasRule = false;

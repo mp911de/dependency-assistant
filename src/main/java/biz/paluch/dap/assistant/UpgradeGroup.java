@@ -131,6 +131,9 @@ class UpgradeGroup extends UpgradeCandidate {
 		if (parts.isEmpty()) {
 			parts = commonSeparatorPrefixLabelParts(artifactIds);
 		}
+		if (parts.isEmpty()) {
+			parts = commonSeparatorSuffixLabelParts(artifactIds);
+		}
 
 		String label = String.join(", ", parts);
 		return !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label : String.valueOf(members.size());
@@ -212,6 +215,22 @@ class UpgradeGroup extends UpgradeCandidate {
 		return suffixes.size() == artifactIds.size() ? suffixes : List.of();
 	}
 
+	private static List<String> commonSeparatorSuffixLabelParts(List<String> artifactIds) {
+
+		String lcs = longestCommonSuffix(artifactIds);
+		if (lcs.isEmpty() || (lcs.charAt(0) != '-' && lcs.charAt(0) != '.')) {
+			return List.of();
+		}
+
+		List<String> prefixes = artifactIds.stream()
+				.map(id -> id.substring(0, id.length() - lcs.length()))
+				.filter(s -> !s.isEmpty())
+				.sorted()
+				.toList();
+
+		return prefixes.size() == artifactIds.size() ? prefixes : List.of();
+	}
+
 	private static String longestCommonPrefix(List<String> strings) {
 
 		String first = strings.getFirst();
@@ -226,6 +245,22 @@ class UpgradeGroup extends UpgradeCandidate {
 			}
 		}
 		return first.substring(0, len);
+	}
+
+	private static String longestCommonSuffix(List<String> strings) {
+
+		String first = strings.getFirst();
+		int len = first.length();
+		for (String s : strings) {
+			len = Math.min(len, s.length());
+			for (int i = 0; i < len; i++) {
+				if (first.charAt(first.length() - 1 - i) != s.charAt(s.length() - 1 - i)) {
+					len = i;
+					break;
+				}
+			}
+		}
+		return first.substring(first.length() - len);
 	}
 
 	@Override

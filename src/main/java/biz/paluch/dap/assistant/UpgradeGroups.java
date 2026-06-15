@@ -18,11 +18,13 @@ package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.rule.DependencyRule;
@@ -30,20 +32,38 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Post-processing step collapsing governed, version-agreeing upgrade candidates
- * into {@link UpgradeGroup} rows.
+ * The dependency-check rows after collapsing governed, version-agreeing upgrade
+ * candidates into {@link UpgradeGroup} rows.
  *
  * <p>Candidates group when they are governed by the same named
  * {@link DependencyRule}, belong to the same build ecosystem, and agree on one
  * effective current version. Per rule name only the largest agreeing cohort
- * forms the group; equal cohort sizes tie-break to the higher version.
+ * forms the group; equal cohort sizes tie-break to the higher version. Each
+ * group replaces its members at the position of the first member; all other
+ * candidates remain individual rows in their original order.
+ *
+ * <p>Iterate the result to obtain the rows in display order. Build it either
+ * from a complete candidate list through {@link #of(List)} or incrementally
+ * through {@link #builder()}.
  *
  * @author Mark Paluch
  * @see UpgradeGroup
  */
-class UpgradeGroups {
+public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 
-	private UpgradeGroups() {
+	private final List<UpgradeCandidate> groups;
+
+	private UpgradeGroups(List<UpgradeCandidate> groups) {
+		this.groups = List.copyOf(groups);
+	}
+
+	/**
+	 * Return a builder collecting candidates before collapsing them.
+	 *
+	 * @return a new builder.
+	 */
+	static Builder builder() {
+		return new Builder();
 	}
 
 	/**
@@ -51,10 +71,10 @@ class UpgradeGroups {
 	 * other candidates as individual rows.
 	 *
 	 * @param candidates the aggregated candidates in display order.
-	 * @return the row list with each group replacing its members at the position of
-	 * the first member.
+	 * @return the rows with each group replacing its members at the position of the
+	 * first member.
 	 */
-	static List<UpgradeCandidate> collapse(List<UpgradeCandidate> candidates) {
+	static UpgradeGroups of(List<UpgradeCandidate> candidates) {
 
 		Map<GroupKey, List<UpgradeCandidate>> governed = new LinkedHashMap<>();
 		Map<String, List<UpgradeCandidate>> governedByName = new LinkedHashMap<>();
@@ -101,7 +121,31 @@ class UpgradeGroups {
 			}
 		}
 
-		return rows;
+		return new UpgradeGroups(rows);
+	}
+
+	@Override
+	public Iterator<UpgradeCandidate> iterator() {
+		return groups.iterator();
+	}
+
+	/**
+	 * Return the collapsed rows in display order.
+	 *
+	 * @return the rows; never {@literal null}.
+	 */
+	public List<UpgradeCandidate> toList() {
+		return groups;
+	}
+
+	@Override
+	public String toString() {
+
+		String toString = "UpgradeGroups: " + System.lineSeparator();
+		toString += groups.stream()
+				.map(it -> " * " + it.getDependencyName() + "@" + it.getCurrentVersion())
+				.collect(Collectors.joining(System.lineSeparator()));
+		return toString;
 	}
 
 	/**
@@ -155,6 +199,10 @@ class UpgradeGroups {
 		return members;
 	}
 
+	public boolean isEmpty() {
+		return groups.isEmpty();
+	}
+
 	/**
 	 * Grouping identity: the rule's dependency name within one build ecosystem.
 	 */
@@ -172,6 +220,39 @@ class UpgradeGroups {
 			}
 
 			return new GroupKey(rule.getDependencyName(), candidate.getInterfaceAssistant().getClass());
+		}
+
+	}
+
+	/**
+	 * Collects candidates and collapses them into {@link UpgradeGroups} on
+	 * {@link #build()}.
+	 */
+	static class Builder {
+
+		private final List<UpgradeCandidate> candidates = new ArrayList<>();
+
+		private Builder() {
+		}
+
+		/**
+		 * Add a candidate to be collapsed.
+		 *
+		 * @param candidate the candidate to add.
+		 * @return this builder.
+		 */
+		public Builder add(UpgradeCandidate candidate) {
+			candidates.add(candidate);
+			return this;
+		}
+
+		/**
+		 * Collapse the added candidates into upgrade groups.
+		 *
+		 * @return the collapsed rows.
+		 */
+		public UpgradeGroups build() {
+			return of(candidates);
 		}
 
 	}

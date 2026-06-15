@@ -45,7 +45,7 @@ import com.intellij.util.IconUtil;
  *
  * @author Mark Paluch
  */
-class UpgradeCandidate implements HasArtifactId {
+public class UpgradeCandidate implements HasArtifactId {
 
 	private final DependencyUpdateCandidate candidate;
 
@@ -260,13 +260,19 @@ class UpgradeCandidate implements HasArtifactId {
 		return List.of(DependencyUpdate.from(artifactId, dependency, target));
 	}
 
-	@Override
-	public String toString() {
-		return getArtifactId() + "@" + getCurrentVersion();
-	}
-
+	/**
+	 * Evaluate the rule associated with this candidate against the given version.
+	 * @param version the version to evaluate.
+	 * @return the evaluation outcome.
+	 */
 	public EvaluatedDependencyRule evaluate(ArtifactVersion version) {
 		return EvaluatedDependencyRule.of(getRule(), getArtifactId(), version, interfaceAssistant);
+	}
+
+	@Override
+	public String toString() {
+		return (labelByDependencyName ? getDependencyName() : getArtifactId()) + "@" + getCurrentVersion() + " -> ["
+				+ getUpdateCandidate().getFilteredReleases() + "]";
 	}
 
 	/**
