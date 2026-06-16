@@ -28,7 +28,6 @@ import java.util.function.Supplier;
 
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
 import org.jspecify.annotations.Nullable;
 
@@ -361,7 +360,7 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	@Override
 	public void checkCanceled() throws ProcessCanceledException {
 		try {
-			if (isCanceled() && ProgressManager.getInstanceOrNull() == null) {
+			if (isCanceled()) {
 				throw new ProcessCanceledException();
 			}
 			super.checkCanceled();

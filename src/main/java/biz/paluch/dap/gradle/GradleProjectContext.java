@@ -56,7 +56,6 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 	Key<GradleProjectContext> KEY = Key.create("GradleProjectContext");
 
-
 	/**
 	 * Looks up the {@link GradleProjectContext} for the given PSI file.
 	 */

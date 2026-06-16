@@ -73,11 +73,13 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 				steps.setText2(MessageBundle.message("action.index-dependencies.analyzing.assistant",
 						assistant.getDisplayName()));
 				if (steps.isCanceled()) {
-					return;
+					return null;
 				}
 				sources.addAll(dependencyCheck.collectDependencies(steps, assistant));
 				steps.nextStep();
 			}
+
+			return null;
 		}).inSmartMode(project).executeSynchronously();
 
 		steps.setText2("");

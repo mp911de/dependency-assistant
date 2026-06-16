@@ -210,7 +210,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	}
 
 	private void restartAnalyzer() {
-		DaemonCodeAnalyzer.getInstance(this.project).restart();
+		DaemonCodeAnalyzer.getInstance(this.project).restart("Dependencyfile  changed");
 	}
 
 	@Override

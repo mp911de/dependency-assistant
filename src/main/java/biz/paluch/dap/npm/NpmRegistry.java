@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -145,12 +144,9 @@ public class NpmRegistry implements ReleaseSource {
 		}
 
 		List<Release> result = new ArrayList<>();
-		Iterator<Map.Entry<String, JsonNode>> entries = versions.fields();
-		while (entries.hasNext()) {
-
-			Map.Entry<String, JsonNode> entry = entries.next();
-			String versionString = entry.getKey();
-			JsonNode version = entry.getValue();
+		for (Map.Entry<String, JsonNode> property : versions.properties()) {
+			String versionString = property.getKey();
+			JsonNode version = property.getValue();
 			JsonNode gitHead = version.get("gitHead");
 			String sha = gitHead != null ? gitHead.asText(null) : null;
 			LocalDateTime releaseDate = parseReleaseDate(time.path(versionString).asText(null));
