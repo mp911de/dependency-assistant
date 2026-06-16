@@ -151,7 +151,6 @@ public class DependencyAssistantDispatcher {
 			return ProjectDependencyContext.absent();
 		}
 
-		// TODO: review caching. Depends on integration, dumb mode, …
 		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
 			if (!integration.supports(file)) {
 				continue;

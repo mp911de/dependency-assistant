@@ -53,24 +53,24 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 	@Override
 	public void run(ProgressIndicator indicator) {
-		indicator.setIndeterminate(true);
-		if (!request.hasSingleSource()) {
-			indicator.setText(MessageBundle.message("action.check.dependencies.resolvingScope"));
-		}
 
-		UpgradeScope scope = ReadAction.nonBlocking(() -> UpgradeScopeResolver.resolve(project, request))
-				.inSmartMode(project)
-				.executeSynchronously();
+		UpgradeScope scope = ReadAction.nonBlocking(() -> {
+			if (!request.hasSingleSource()) {
+				indicator.setText(MessageBundle.message("action.check.dependencies.resolvingScope"));
+			}
+			return UpgradeScopeResolver.resolve(project, request);
+		}).inSmartMode(project).executeSynchronously();
 
 		this.scope = scope;
+
 		if (scope.isEmpty()) {
 			indicator.stop();
 			return;
 		}
 
+		DependencyCheck dependencyCheck = new DependencyCheck(project);
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress"));
-		resultRef = new DependencyCheck(project).findDependencyUpgrades(indicator, scope,
-				ReleaseResolver.cached());
+		this.resultRef = dependencyCheck.findDependencyUpgrades(indicator, scope);
 	}
 
 	@Override

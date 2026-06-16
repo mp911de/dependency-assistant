@@ -37,13 +37,14 @@ import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.StepsProgressIndicator;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.google.common.base.Supplier;
 import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.util.progress.StepsProgressIndicator;
 
 /**
  * Package service that collects declared dependencies and resolves available
@@ -78,35 +79,39 @@ class DependencyCheck {
 	 *
 	 * @param indicator the progress indicator.
 	 * @param scope the in-scope build files with their contexts.
-	 * @param consistency the release-cache consistency to use.
 	 * @return the merged dependency check result.
 	 */
 	public DependencyUpgradeCandidates findDependencyUpgrades(ProgressIndicator indicator,
-			UpgradeScope scope, ReleaseResolver.Consistency consistency) {
+			UpgradeScope scope) {
 		this.service.getState().setUsedOnce(true);
+		indicator.setIndeterminate(false);
 
-		// TODO: Performance for Gradle build file collection , 700ms?!
-		WeightedStepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, 0.1, 0.9);
+		// 🦄🔢
+		double scanWeight = scope.entries().size() > 50 ? 0.3 : 0.1;
+		WeightedStepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, scanWeight, 0.9);
 		DependencyfileService ruleService = DependencyfileService.getInstance(project);
-
-		DependencyCheckAggregator aggregator = aggregate(steps, scope);
+		DependencyCheckAggregator aggregator = ReadAction.nonBlocking(() -> {
+			return aggregate(StepsProgressIndicator
+					.forSteps(indicator, scope.size()), scope);
+		}).inSmartMode(project).executeSynchronously();
 		steps.nextStep();
-		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(steps, getArtifactSources(aggregator),
-				consistency);
 
+		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(steps, getArtifactSources(aggregator),
+				ReleaseResolver.cached());
 		return aggregator.toDependencyCheckResult(releases, ruleService);
 	}
 
-	private DependencyCheckAggregator aggregate(WeightedStepsProgressIndicator indicator, UpgradeScope scope) {
+	private DependencyCheckAggregator aggregate(StepsProgressIndicator steps, UpgradeScope scope) {
 		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, service);
-		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, scope.size());
-		for (UpgradeScope.Entry entry : scope) {
-			indicator.checkCanceled();
-			indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting",
-					entry.buildFile().getName()));
-			aggregator.add(entry, indicator);
+		steps.setText(MessageBundle.message("action.check.dependencies.progress.collecting"));
+		scope.forEach(entry -> {
+			steps.checkCanceled();
+			steps.setText2(entry.buildFile().getName());
+			aggregator.add(entry, steps);
 			steps.nextStep();
-		}
+		});
+
+		steps.setText2("");
 		return aggregator;
 	}
 
@@ -189,7 +194,7 @@ class DependencyCheck {
 			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency,
 			ExecutorService resolverExecutor, ExecutorService executor) {
 
-		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, artifactSources.size() + 1);
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, artifactSources.size() + 1);
 		steps.setIndeterminate(false);
 
 		Cache cache = service.getCache();

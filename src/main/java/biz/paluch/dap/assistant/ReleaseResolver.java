@@ -133,14 +133,14 @@ class ReleaseResolver {
 	private ReleaseLookupResult fetchAndCache(ReleaseSources sources, Consistency consistency) {
 
 		FetchPlan fetchPlan;
-		if (consistency == Consistency.REFRESH) {
+		if (consistency == Consistency.RESET) {
+			fetchPlan = FetchPlan.fullFetch();
+		} else {
 			fetchPlan = cache.createFetchPlan(sources);
 			if (fetchPlan.isSkip()) {
 				return ReleaseLookupResult.empty();
 			}
 			sources = sources.filter(it -> fetchPlan.test(it.getId()));
-		} else {
-			fetchPlan = FetchPlan.fullFetch();
 		}
 
 		FetchResult result = fetch(sources);

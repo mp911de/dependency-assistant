@@ -113,8 +113,7 @@ class DependencyCheckScopeTests {
 
 		};
 
-		return dependencyCheck.findDependencyUpgrades(new EmptyProgressIndicator(), scope,
-				ReleaseResolver.Consistency.CACHED);
+		return dependencyCheck.findDependencyUpgrades(new EmptyProgressIndicator(), scope);
 	}
 
 }

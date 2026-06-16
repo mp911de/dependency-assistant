@@ -39,7 +39,6 @@ import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -163,11 +162,9 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	public void add(VirtualFile buildFile, ProjectDependencyContext context, ProgressIndicator indicator) {
 
 		ProjectState projectState = service.getProjectState(context.getProjectId());
-		DependencyCollector collector = ReadAction.nonBlocking(() -> {
-			DependencyCollector c = context.scanDependencies(indicator);
-			projectState.setDependencies(c);
-			return c;
-		}).inSmartMode(project).executeSynchronously();
+
+		DependencyCollector collector = context.scanDependencies(indicator);
+		projectState.setDependencies(collector);
 
 		Collection<ReleaseSource> sources = collector.getReleaseSources();
 
