@@ -23,12 +23,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
@@ -57,11 +59,19 @@ public class Cache {
 	/**
 	 * Clock used for cache age calculations.
 	 */
-	public static final Clock CLOCK = Clock.systemUTC();
+	public final Clock clock;
 
 	private static final Duration CACHE_EXPIRATION = Duration.ofHours(8);
 
 	private static final long STALE_THRESHOLD_MILLIS = Duration.ofDays(30).toMillis();
+
+	/**
+	 * Number of fetch attempts before considering a cached artifact to be
+	 * constantly absent meaning that its release source does not provide any
+	 * releases. In that case, we pause for {@link #STALE_THRESHOLD_MILLIS} before
+	 * attempting to fetch again.
+	 */
+	private static final int EMPTY_THRESHOLD = 3;
 
 	/**
 	 * Epoch-millisecond timestamp of the last successful update, or {@code 0} if no
@@ -74,6 +84,23 @@ public class Cache {
 
 	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project", style = XCollection.Style.v2) List<ProjectCache> projects = Collections
 			.synchronizedList(new ArrayList<>());
+
+
+	/**
+	 * Create a new {@code Cache} using the current UTC clock for XML
+	 * deserialization.
+	 */
+	public Cache() {
+		this(Clock.systemUTC());
+	}
+
+	/**
+	 * Create a new {@code Cache} given a {@link Clock}.
+	 * @param clock the clock to use.
+	 */
+	public Cache(Clock clock) {
+		this.clock = clock;
+	}
 
 	/**
 	 * Return the {@link Instant} of the last recorded cache update.
@@ -159,19 +186,15 @@ public class Cache {
 	}
 
 	/**
-	 * Replace the cached releases for the given artifact.
-	 * <p>
-	 * If no cache entry exists yet, one is created first.
+	 * Replace the cached releases for the given artifact update their last seen
+	 * timestamps.
+	 * <p>If no cache entry exists yet, one is created first.
 	 *
 	 * @param artifactId the artifact whose releases should be stored.
 	 * @param releases the releases to cache.
 	 */
 	public void putVersionOptions(ArtifactId artifactId, Iterable<? extends Release> releases) {
 
-		List<CachedRelease> converted = new ArrayList<>();
-		for (Release release : releases) {
-			converted.add(CachedRelease.from(release));
-		}
 
 		synchronized (artifacts) {
 			CachedArtifact artifactToUse = null;
@@ -185,7 +208,32 @@ public class Cache {
 				artifactToUse = new CachedArtifact(artifactId);
 				artifacts.add(artifactToUse);
 			}
-			artifactToUse.replaceCachedReleases(converted, CLOCK.millis());
+			artifactToUse.setCachedReleases(FetchedReleases.convert(releases), clock.millis());
+		}
+	}
+
+	/**
+	 * Update the cached releases using the given {@link FetchedReleases}
+	 */
+	public void updateVersionOptions(FetchedReleases releases) {
+
+		ArtifactId artifactId = releases.getArtifactId();
+
+		synchronized (artifacts) {
+			CachedArtifact artifactToUse = null;
+			for (CachedArtifact artifact : artifacts) {
+
+				if (artifact.matches(artifactId)) {
+					artifactToUse = artifact;
+					break;
+				}
+			}
+			if (artifactToUse == null) {
+				artifactToUse = new CachedArtifact(artifactId);
+				artifacts.add(artifactToUse);
+			}
+
+			artifactToUse.updateCachedReleases(releases, clock.millis());
 		}
 	}
 
@@ -193,7 +241,7 @@ public class Cache {
 	 * Record a successful cache update using the current UTC clock.
 	 */
 	public void recordUpdate() {
-		this.lastUpdateTimestamp = CLOCK.millis();
+		this.lastUpdateTimestamp = clock.millis();
 	}
 
 	/**
@@ -274,15 +322,73 @@ public class Cache {
 	 * @return the cached release entries, or an empty list if no entry is present.
 	 */
 	public List<CachedRelease> getCachedReleases(ArtifactId artifactId) {
+		synchronized (artifacts) {
+			CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
+			return cachedArtifact != null ? List.copyOf(cachedArtifact.getReleases()) : Collections.emptyList();
+		}
+	}
 
+	/**
+	 * Find a cached artifact.
+	 * @param artifactId the artifact to look up.
+	 * @return the cached aartifact or {@literal null} if none found.
+	 */
+	public @Nullable CachedArtifact findCachedArtifact(ArtifactId artifactId) {
 		synchronized (artifacts) {
 			for (CachedArtifact artifact : artifacts) {
+				// TODO: more performant lookup? Use Comparator and a tree set?
 				if (artifact.matches(artifactId)) {
-					return List.copyOf(artifact.getReleases());
+					return artifact;
 				}
 			}
 		}
-		return List.of();
+		return null;
+	}
+
+	/**
+	 * Decide how the given artifact should be fetched from its release sources,
+	 * given empty-lookup back-off to avoid constantly re-querying a source assumed
+	 * to remain empty.
+	 *
+	 * @param sources the release sources. configured for the artifact.
+	 * @return the fetch plan to apply.
+	 */
+	public FetchPlan createFetchPlan(ReleaseSources sources) {
+
+		CachedArtifact cached = findCachedArtifact(sources.artifactId());
+
+		if (cached == null) {
+			return FetchPlan.fullFetch();
+		}
+
+		String preferred = preferredSourceIn(cached, sources.sourceIds());
+		long staleThreshold = clock.millis() - STALE_THRESHOLD_MILLIS;
+		Set<String> knownEmpty = cached.getEmptyReleaseSources();
+		boolean isAllKnownEmpty = sources.containsOnlyReleaseSourceIds(knownEmpty);
+
+		if (!cached.getReleases().isEmpty()) {
+			if (knownEmpty.isEmpty() || staleThreshold > cached.getSourcesCheckedSince()
+					|| isAllKnownEmpty) {
+				return FetchPlan.fetch(true, preferred, Set.of());
+			}
+			return FetchPlan.fetch(false, preferred, knownEmpty);
+		}
+
+		if (cached.getEmptyLookups() <= EMPTY_THRESHOLD || staleThreshold > cached.getSourcesCheckedSince()) {
+			return FetchPlan.fetch(true, preferred, Set.of());
+		}
+
+		if (isAllKnownEmpty) {
+			return FetchPlan.skip();
+		}
+
+		return FetchPlan.partial(preferred, knownEmpty);
+	}
+
+	private static @Nullable String preferredSourceIn(CachedArtifact artifact, Collection<String> currentSources) {
+
+		String preferred = artifact.getPreferredSource();
+		return preferred != null && currentSources.contains(preferred) ? preferred : null;
 	}
 
 	/**
@@ -316,7 +422,7 @@ public class Cache {
 		if (lastUpdate == null) {
 			return null;
 		}
-		return Duration.between(lastUpdate, CLOCK.instant());
+		return Duration.between(lastUpdate, clock.instant());
 	}
 
 	/**
@@ -329,7 +435,7 @@ public class Cache {
 
 		Cache copy = new Cache();
 		copy.lastUpdateTimestamp = this.lastUpdateTimestamp;
-		long threshold = CLOCK.millis() - STALE_THRESHOLD_MILLIS;
+		long threshold = clock.millis() - STALE_THRESHOLD_MILLIS;
 
 		synchronized (artifacts) {
 			for (CachedArtifact artifact : artifacts) {

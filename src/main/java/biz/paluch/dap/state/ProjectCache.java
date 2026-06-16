@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -60,7 +61,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	private final @Tag @XCollection(propertyElementName = "properties", elementName = "property", style = XCollection.Style.v2) List<VersionProperty> properties = new ArrayList<>();
 
 	@Transient
-	private final Map<String, VersionProperty> propertyMap = new java.util.TreeMap<>();
+	private final Map<String, VersionProperty> propertyMap = new TreeMap<>();
 
 	/**
 	 * Create an empty cache entry for XML serialization.

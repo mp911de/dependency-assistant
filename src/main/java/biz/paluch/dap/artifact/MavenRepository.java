@@ -90,6 +90,11 @@ public class MavenRepository implements ReleaseSource {
 	}
 
 	@Override
+	public String getId() {
+		return repository.id();
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (!(o instanceof MavenRepository that)) {
 			return false;

@@ -116,6 +116,11 @@ public class GitHubReleases implements ReleaseSource {
 		return Objects.hashCode(server);
 	}
 
+	@Override
+	public String getId() {
+		return "github:" + server.getHost();
+	}
+
 	/**
 	 * Create a release source for the given project.
 	 */

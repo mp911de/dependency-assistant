@@ -24,16 +24,13 @@ import org.jspecify.annotations.Nullable;
 /**
  * Determines which release to select as the upgrade target from a list of
  * available releases.
- * <p>
- * Each constant represents a boundary within the version space.
+ * <p>Each constant represents a boundary within the version space.
  * {@link #select} filters the provided releases according to that boundary and
  * returns the best match, or {@literal null} if no suitable release exists.
- * <p>
- * Note: The {@code options} list passed to {@link #select} must be sorted
- * newest-first (as produced by {@link ReleaseResolver}).
+ * <p>Note: The {@code options} list passed to {@link #select} must be sorted
+ * newest-first.
  *
  * @author Mark Paluch
- * @see ReleaseResolver
  * @see Release
  */
 public enum UpgradeStrategy {

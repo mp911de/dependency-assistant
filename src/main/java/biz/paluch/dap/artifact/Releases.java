@@ -45,7 +45,6 @@ import org.jspecify.annotations.Nullable;
  * @see Release
  * @see VersioningScheme
  * @see UpgradeStrategy
- * @see ReleaseResolver
  */
 public class Releases implements Iterable<Release> {
 
@@ -229,6 +228,15 @@ public class Releases implements Iterable<Release> {
 	}
 
 	/**
+	 * Return whether this {@code Releases} instance contains all the given release.
+	 * @return {@literal true} if all releases are contained; {@literal false}
+	 * otherwise.
+	 */
+	public boolean containsAll(Collection<Release> releases) {
+		return unique.containsAll(releases);
+	}
+
+	/**
 	 * Iterate over the releases in the same order as {@link #toList()}.
 	 */
 	@Override
@@ -254,6 +262,10 @@ public class Releases implements Iterable<Release> {
 	 */
 	public List<Release> toList() {
 		return ordered;
+	}
+
+	public int size() {
+		return ordered.size();
 	}
 
 	@Override

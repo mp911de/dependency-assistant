@@ -17,30 +17,32 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ReleaseResolver;
-import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.WeightedStepsProgressIndicator;
+import com.google.common.base.Supplier;
+import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.progress.StepsProgressIndicator;
 
 /**
@@ -49,8 +51,8 @@ import com.intellij.util.progress.StepsProgressIndicator;
  *
  * <p>A check first scans the selected build files, then resolves release
  * metadata for the collected artifacts. Release resolution uses the project
- * cache according to the requested {@link Consistency}; cancellation is
- * propagated through the supplied progress indicator.
+ * cache according to the requested {@link ReleaseResolver.Consistency};
+ * cancellation is propagated through the supplied progress indicator.
  *
  * @author Mark Paluch
  */
@@ -80,22 +82,30 @@ class DependencyCheck {
 	 * @return the merged dependency check result.
 	 */
 	public DependencyUpgradeCandidates findDependencyUpgrades(ProgressIndicator indicator,
-			UpgradeScope scope, Consistency consistency) {
+			UpgradeScope scope, ReleaseResolver.Consistency consistency) {
 		this.service.getState().setUsedOnce(true);
+
+		// TODO: Performance for Gradle build file collection , 700ms?!
+		WeightedStepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, 0.1, 0.9);
 		DependencyfileService ruleService = DependencyfileService.getInstance(project);
-		DependencyCheckAggregator aggregator = aggregate(indicator, scope);
-		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(indicator, getArtifactSources(aggregator),
+
+		DependencyCheckAggregator aggregator = aggregate(steps, scope);
+		steps.nextStep();
+		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(steps, getArtifactSources(aggregator),
 				consistency);
+
 		return aggregator.toDependencyCheckResult(releases, ruleService);
 	}
 
-	private DependencyCheckAggregator aggregate(ProgressIndicator indicator, UpgradeScope scope) {
+	private DependencyCheckAggregator aggregate(WeightedStepsProgressIndicator indicator, UpgradeScope scope) {
 		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, service);
+		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, scope.size());
 		for (UpgradeScope.Entry entry : scope) {
 			indicator.checkCanceled();
 			indicator.setText(MessageBundle.message("action.check.dependencies.progress.collecting",
 					entry.buildFile().getName()));
 			aggregator.add(entry, indicator);
+			steps.nextStep();
 		}
 		return aggregator;
 	}
@@ -140,7 +150,7 @@ class DependencyCheck {
 	 * @return successfully resolved releases keyed by artifact, in encounter order.
 	 */
 	public Map<ArtifactId, Releases> getReleases(ProgressIndicator indicator,
-			List<ReleaseSources> candidates, Consistency consistency) {
+			List<ReleaseSources> candidates, ReleaseResolver.Consistency consistency) {
 		indicator.setText(MessageBundle.message("action.check.dependency.loading.remote"));
 		Map<ArtifactId, ReleaseLookupResult> resultMap = resolveReleases(indicator, candidates, consistency);
 		Map<ArtifactId, Releases> releases = new LinkedHashMap<>();
@@ -163,27 +173,45 @@ class DependencyCheck {
 	 * @return the resolver result per artifact, in encounter order; a run aborted
 	 * by timeout or interruption yields a partial map.
 	 */
-	private Map<ArtifactId, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
-			List<ReleaseSources> artifactSources, Consistency consistency) {
+	protected Map<ArtifactId, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
+			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {
+
+		ThreadFactory threadFactory = IntelliJVirtualThreads.ofVirtual().name("DependencyAssistant").factory();
+		ThreadFactory resolverFactory = IntelliJVirtualThreads.ofVirtual().name("DependencyAssistant-ReleaseResolver")
+				.factory();
+		try (ExecutorService executor = Executors.newThreadPerTaskExecutor(threadFactory);
+				ExecutorService resolverExecutor = Executors.newThreadPerTaskExecutor(resolverFactory)) {
+			return resolveReleases(indicator, artifactSources, consistency, resolverExecutor, executor);
+		}
+	}
+
+	protected Map<ArtifactId, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
+			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency,
+			ExecutorService resolverExecutor, ExecutorService executor) {
 
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, artifactSources.size() + 1);
 		steps.setIndeterminate(false);
 
 		Cache cache = service.getCache();
-		ExecutorService executor = AppExecutorUtil.getAppExecutorService();
+		ReleaseResolver resolver = new ReleaseResolver(resolverExecutor, indicator, cache);
 		Map<ArtifactId, Future<ReleaseLookupResult>> futures = new LinkedHashMap<>();
 
 		for (ReleaseSources artifactSource : artifactSources) {
-			futures.put(artifactSource.artifactId, executor.submit(() -> {
+
+			Supplier<ReleaseLookupResult> lookupReleaseSupplier = () -> {
 				indicator.checkCanceled();
-				String name = artifactSource.artifactId.toString();
+				String name = artifactSource.artifactId().toString();
 				indicator.setText(MessageBundle.message("action.check.dependency.loading", name));
-				ReleaseLookupResult result = fetchReleases(indicator, artifactSource, executor, cache, consistency);
+				ReleaseLookupResult result = resolver.getReleases(artifactSource, consistency);
 				indicator.setText(MessageBundle.message("action.check.dependency.checked", name));
 				steps.nextStep();
 				return result;
-			}));
+			};
+
+			futures.put(artifactSource.artifactId(), executor.submit(() -> lookupReleaseSupplier.get()));
 		}
+
+
 		steps.nextStep();
 
 		Map<ArtifactId, ReleaseLookupResult> results = new LinkedHashMap<>();
@@ -244,64 +272,10 @@ class DependencyCheck {
 		}
 	}
 
-	private ReleaseLookupResult fetchReleases(ProgressIndicator indicator, ReleaseSources artifactSource,
-			ExecutorService executor, Cache cache, Consistency consistency) {
-		indicator.checkCanceled();
-
-		try {
-
-			ReleaseResolver resolver = new ReleaseResolver(artifactSource.sources(), executor);
-			Releases releases;
-			if (consistency == Consistency.NO_CACHE) {
-				releases = resolver.getReleases(artifactSource.artifactId(), indicator);
-				cache.putVersionOptions(artifactSource.artifactId(), releases);
-			} else {
-
-				releases = cache.getReleases(artifactSource.artifactId(), consistency == Consistency.CACHED);
-				if (releases.isEmpty()) {
-					releases = resolver.getReleases(artifactSource.artifactId(), indicator);
-					cache.putVersionOptions(artifactSource.artifactId(), releases);
-				}
-			}
-			return ReleaseLookupResult.of(releases);
-		} catch (ProcessCanceledException e) {
-			throw e;
-		} catch (Exception e) {
-			return ReleaseLookupResult.failed(artifactSource.artifactId() + ": " + e.getMessage());
-		}
-	}
-
 	private static ReleaseLookupResult cancelAndRecord(ArtifactId artifactId,
 			Map<ArtifactId, Future<ReleaseLookupResult>> futures, Throwable cause) {
 		cancelRemainingFutures(futures);
 		return ReleaseLookupResult.failed("%s: %s".formatted(artifactId, cause.getMessage()));
-	}
-
-	/**
-	 * Release-cache consistency mode used while resolving update candidates.
-	 */
-	public enum Consistency {
-
-		/**
-		 * Allow cached versions to be used.
-		 */
-		CACHED,
-
-		/**
-		 * Bypass the cache completely.
-		 */
-		NO_CACHE,
-	}
-
-	/**
-	 * Release lookup inputs for one artifact.
-	 *
-	 * @param artifactId the artifact whose releases should be resolved.
-	 * @param sources the release sources that can provide versions for the
-	 * artifact.
-	 */
-	public record ReleaseSources(ArtifactId artifactId, Collection<ReleaseSource> sources) {
-
 	}
 
 }

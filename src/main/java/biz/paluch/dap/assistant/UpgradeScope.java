@@ -64,6 +64,14 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Iterab
 		return entries.isEmpty();
 	}
 
+	/**
+	 * Return the number of build files in scope.
+	 * @return the number of build files in scope.
+	 */
+	public int size() {
+		return entries.size();
+	}
+
 	@Override
 	public Iterator<Entry> iterator() {
 		return entries().iterator();

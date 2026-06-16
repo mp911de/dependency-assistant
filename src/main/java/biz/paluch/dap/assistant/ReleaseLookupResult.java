@@ -40,4 +40,8 @@ record ReleaseLookupResult(@Nullable String error, Releases releases) {
 		return new ReleaseLookupResult(error, Releases.empty());
 	}
 
+	public static ReleaseLookupResult empty() {
+		return of(Releases.empty());
+	}
+
 }

@@ -70,7 +70,7 @@ class DependencyCheckTask extends Task.Backgroundable {
 
 		indicator.setText(MessageBundle.message("action.check.dependencies.progress"));
 		resultRef = new DependencyCheck(project).findDependencyUpgrades(indicator, scope,
-				DependencyCheck.Consistency.CACHED);
+				ReleaseResolver.cached());
 	}
 
 	@Override

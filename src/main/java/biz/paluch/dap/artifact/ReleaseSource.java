@@ -24,21 +24,24 @@ import com.intellij.openapi.progress.ProgressIndicator;
 /**
  * Strategy interface for obtaining known releases for an artifact.
  *
- * <p>
- * Implementations typically adapt one registry, such as a remote Maven
- * repository or the Gradle Plugin Portal. They may
- * be called concurrently by {@link ReleaseResolver}.
+ * <p>Implementations typically adapt one registry, such as a remote Maven
+ * repository or the Gradle Plugin Portal.
  *
- * <p>
- * Throw {@link ArtifactNotFoundException} only for a definitive absence at
+ * <p>Throw {@link ArtifactNotFoundException} only for a definitive absence at
  * this source. Return an empty list when release data is simply unavailable.
  *
  * @author Mark Paluch
- * @see ReleaseResolver
  * @see MavenRepository
  * @see GradlePluginPortalReleaseSource
  */
 public interface ReleaseSource {
+
+	/**
+	 * Return the unique identifier of this source.
+	 */
+	default String getId() {
+		return getClass().getSimpleName();
+	}
 
 	/**
 	 * Return all known releases for the given artifact at this source.
