@@ -17,9 +17,8 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
@@ -32,10 +31,10 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
  */
 class UpdateGroovyDsl {
 
-	private final GroovyVersionSiteLocator siteLocator;
+	private final GroovyArtifactReferenceLocator artifactLocator;
 
 	UpdateGroovyDsl(PropertyResolver propertyResolver) {
-		this.siteLocator = new GroovyVersionSiteLocator(propertyResolver);
+		this.artifactLocator = new GroovyArtifactReferenceLocator(propertyResolver);
 	}
 
 	/**
@@ -74,14 +73,13 @@ class UpdateGroovyDsl {
 
 		file.accept(PsiElements.visitTreeUntil(GrMethodCall.class, call -> {
 
-			DependencySite site = siteLocator.locateDeclaration(call);
+			ArtifactDeclaration declaration = artifactLocator.locateDeclaration(call);
 
-			if (!(site instanceof VersionedDependencySite versioned) || !site.getArtifactId()
-					.equals(artifactId)) {
+			if (declaration == null || !declaration.getArtifactId().equals(artifactId)) {
 				return false;
 			}
 
-			if (versioned.getVersionElement() instanceof GrLiteral literal) {
+			if (declaration.getVersionLiteral() instanceof GrLiteral literal) {
 				updateVersion(literal, newVersion);
 				return true;
 			}

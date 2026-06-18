@@ -195,7 +195,6 @@ public class Cache {
 	 */
 	public void putVersionOptions(ArtifactId artifactId, Iterable<? extends Release> releases) {
 
-
 		synchronized (artifacts) {
 			CachedArtifact artifactToUse = null;
 			for (CachedArtifact artifact : artifacts) {

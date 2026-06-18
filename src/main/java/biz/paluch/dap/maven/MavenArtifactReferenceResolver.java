@@ -34,6 +34,7 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.Expression;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
@@ -240,7 +241,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	@Nullable
 	private ResolvedProperty resolveProperty(Expression expression) {
 
-		PropertyValue propertyValue = null;
+		Property propertyValue = null;
 		while (expression.isProperty()) {
 
 			String propertyName = expression.getPropertyName();
@@ -314,7 +315,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return context.findCurrentVersion(artifactId);
 	}
 
-	private record ResolvedProperty(String value, PropertyValue propertyValue) {
+	private record ResolvedProperty(String value, Property propertyValue) {
 	}
 
 }

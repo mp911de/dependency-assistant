@@ -300,8 +300,7 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 	 * </pre>
 	 */
 	record BuildStringAssignment(String getKey, KtStringTemplateExpression getValueLiteral,
-			KtBinaryExpression getDeclaration,
-			KtCallExpression buildStringCall) implements KotlinExtraAssignment {
+			KtBinaryExpression getDeclaration, KtCallExpression buildStringCall) implements KotlinExtraAssignment {
 
 		static @Nullable BuildStringAssignment from(KtBinaryExpression expression, String key) {
 			if (!(expression.getRight() instanceof KtCallExpression call)) {

@@ -57,7 +57,7 @@ public interface PropertyResolver {
 	 * @param key the property name.
 	 * @return the declaration metadata, or {@literal null}.
 	 */
-	default @Nullable PropertyValue getPropertyValue(String key) {
+	default @Nullable Property getPropertyValue(String key) {
 		return null;
 	}
 

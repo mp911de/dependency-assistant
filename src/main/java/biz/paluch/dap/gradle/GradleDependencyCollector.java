@@ -16,11 +16,13 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.VersionSource.DeclaredVersion;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -96,22 +98,48 @@ class GradleDependencyCollector {
 
 		VirtualFile file = psiFile.getVirtualFile();
 		if (GradleUtils.isVersionCatalog(file)) {
-			TomlParser parser = new TomlParser(collector, new LinkedHashMap<>(properties));
-			parser.parseVersionCatalog(psiFile);
+			TomlParser.parseVersionCatalog(psiFile).forEach(declaration -> registerCatalog(collector, declaration));
 		} else if (GradleUtils.isGradlePropertiesFile(file)) {
-			GradleParser parser = new GradleParser(collector, new LinkedHashMap<>(properties));
-			parser.parseGradleProperties(service.getCache(), psiFile);
+			GradlePropertiesParser.collectGradleProperties(service.getCache(), psiFile, collector);
 		} else if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
-			VersionCatalogRegistry registry = VersionCatalogRegistry.from(psiFile);
 			PropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile).withFallback(properties::get);
-			KotlinDslParser parser = new KotlinDslParser(collector, propertyResolver, registry);
-			parser.parseKotlinScript(psiFile);
+			KotlinDslFileParser parser = new KotlinDslFileParser(psiFile, propertyResolver);
+			collector.addProperties(parser.getExtraPropertyNames());
+			parser.parseDeclarations().forEach(declaration -> register(collector, declaration));
 		} else {
-			VersionCatalogRegistry registry = VersionCatalogRegistry.from(psiFile);
 			PropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile).withFallback(properties::get);
-			GradleParser parser = new GradleParser(collector, propertyResolver, registry);
-			parser.parseGroovyDsl(psiFile);
+			GroovyDslFileParser parser = new GroovyDslFileParser(psiFile, propertyResolver);
+			collector.addProperties(parser.getDeclaredPropertyNames());
+			parser.parseDeclarations().forEach(declaration -> register(collector, declaration));
 		}
+	}
+
+	/**
+	 * Register the given artifact declaration with the dependency collector.
+	 */
+	static void register(DependencyCollector collector, ArtifactDeclaration declaration) {
+
+		VersionSource versionSource = declaration.getVersionSource();
+		boolean concreteDeclaration = !(versionSource instanceof DeclaredVersion declared)
+				|| GradleRichVersion.parse(declared.getVersion()).isPresent();
+		if (declaration.isVersionDefined() && concreteDeclaration && !versionSource.isPrefix()
+				&& !(versionSource instanceof VersionSource.VersionCatalog)) {
+			collector.registerUsage(declaration.getArtifactId(), declaration.getVersion(),
+					declaration.getDeclarationSource(), versionSource);
+		}
+
+		collector.registerDeclaration(declaration.getArtifactId(), declaration.getDeclarationSource(),
+				versionSource);
+	}
+
+	private static void registerCatalog(DependencyCollector collector, ArtifactDeclaration declaration) {
+
+		if (declaration.isVersionDefined()) {
+			collector.registerUsage(declaration.getArtifactId(), declaration.getVersion(),
+					declaration.getDeclarationSource(), declaration.getVersionSource());
+		}
+		collector.registerDeclaration(declaration.getArtifactId(), declaration.getDeclarationSource(),
+				declaration.getVersionSource());
 	}
 
 }

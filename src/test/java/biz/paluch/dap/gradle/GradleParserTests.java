@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * PSI-level integration tests for {@link GradleParser} and
+ * PSI-level integration tests for {@link GroovyDslParser} and
  * {@link DependencyCollector} (property maps, ext parsing, injected project
  * properties).
  *

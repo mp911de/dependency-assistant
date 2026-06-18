@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.util.containers.JBIterable;
@@ -35,10 +36,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Value object for version information in a Kotlin DSL dependency declaration.
  *
- * <p>
- * Supports direct version expressions and constraints declared in a nested
+ * <p>Supports direct version expressions and constraints declared in a nested
  * {@code version { ... }} block. It extracts only the PSI needed for navigation
- * and upgrade logic.
+ * and upgrade logic, and exposes the effective version as a single
+ * {@link Expression} via {@link #getVersionExpression()}.
  *
  * @author Mark Paluch
  */
@@ -50,11 +51,14 @@ class KtVersion {
 
 	private final Map<String, Constraint> constraints;
 
+	private final @Nullable EffectiveVersion effectiveVersion;
+
 	private KtVersion(@Nullable KtExpression versionLiteral,
 			Map<String, Constraint> constraints) {
 		this.versionLiteral = versionLiteral;
 		this.versionLiterals = versionLiteral != null ? KtLiterals.from(versionLiteral) : null;
 		this.constraints = constraints;
+		this.effectiveVersion = computeEffectiveVersion();
 	}
 
 	/**
@@ -135,89 +139,57 @@ class KtVersion {
 	}
 
 	/**
-	 * Return whether this declaration resolves to a property reference.
-	 * <p>
-	 * A direct version/property expression declared on the dependency takes
-	 * precedence. Otherwise, constraints are consulted in declaration order.
-	 *
-	 * @return {@literal true} if a property-backed version is available.
+	 * Resolve the effective version under a single precedence rule: a directly
+	 * declared version/property expression takes precedence; otherwise the first
+	 * non-range constraint in declaration order is used.
 	 */
-	public boolean hasProperty() {
+	private @Nullable EffectiveVersion computeEffectiveVersion() {
 
-		if (versionLiteral instanceof KtReferenceExpression ref) {
-			return StringUtils.hasText(ref.getText());
-		}
+		if (versionLiteral != null && versionLiterals != null) {
 
-		if (versionLiterals != null) {
-			return versionLiterals.hasProperty();
-		}
-
-		for (Constraint value : constraints.values()) {
-			if (value.hasProperty()) {
-				return true;
+			if (versionLiteral instanceof KtReferenceExpression ref && StringUtils.hasText(ref.getText())) {
+				return new EffectiveVersion(Expression.property(ref.getText()), versionLiteral);
 			}
-		}
-		return false;
-	}
 
-	/**
-	 * Return the referenced property name.
-	 * <p>
-	 * A direct version/property expression declared on the dependency takes
-	 * precedence. Otherwise, constraints are consulted in declaration order.
-	 *
-	 * @return the property name without decoration.
-	 * @throws IllegalStateException if {@link #hasProperty()} is {@literal false}.
-	 */
-	public String getProperty() {
+			if (versionLiterals.hasProperty()) {
+				return new EffectiveVersion(Expression.property(versionLiterals.getProperty()), versionLiteral);
+			}
 
-		if (versionLiteral instanceof KtReferenceExpression ref) {
-			return ref.getText();
-		}
-
-		if (versionLiterals != null && versionLiterals.hasProperty()) {
-			return versionLiterals.getProperty();
-		}
-
-		for (Constraint value : constraints.values()) {
-			if (value.hasProperty()) {
-				return value.literals.getProperty();
+			String text = versionLiterals.getText();
+			if (StringUtils.hasText(text)) {
+				return new EffectiveVersion(Expression.from(text), versionLiteral);
 			}
 		}
 
-		throw new IllegalStateException("No property found");
-	}
+		for (Constraint constraint : constraints.values()) {
 
-	/**
-	 * Return the concrete version text, if available.
-	 * <p>
-	 * A direct version/property expression declared on the dependency takes
-	 * precedence. If no direct version is present, constraints are inspected in
-	 * declaration order. Range constraints are intentionally ignored because
-	 * callers need a single upgradeable version value.
-	 *
-	 * @return the version text, or {@literal null} if no concrete non-range version
-	 * can be obtained.
-	 */
-	public @Nullable String getVersion() {
-
-		if (versionLiteral != null) {
-			String version = KtLiterals.getText(versionLiteral);
-			if (StringUtils.hasText(version)) {
-				return version;
+			if (constraint.hasProperty()) {
+				return new EffectiveVersion(Expression.property(constraint.literals().getProperty()),
+						constraint.version());
 			}
-		}
 
-		for (Constraint value : constraints.values()) {
-			if (value.hasText() && !value.isRange()) {
-				String version = KtLiterals.getText(value.version());
-				if (StringUtils.hasText(version)) {
-					return version;
-				}
+			if (constraint.hasText() && !constraint.isRange()) {
+				return new EffectiveVersion(Expression.from(KtLiterals.getText(constraint.version())),
+						constraint.version());
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * Return the effective version as an {@link Expression}: a property reference
+	 * or a concrete literal value.
+	 * <p>A directly declared version/property expression takes precedence.
+	 * Otherwise, the first non-range constraint is used in declaration order. Range
+	 * constraints are intentionally ignored because callers need a single
+	 * upgradeable version value.
+	 *
+	 * @return the version expression, or {@literal null} if no usable version is
+	 * present.
+	 */
+	public @Nullable Expression getVersionExpression() {
+		return effectiveVersion != null ? effectiveVersion.expression() : null;
 	}
 
 	/**
@@ -231,48 +203,26 @@ class KtVersion {
 	 * version is available.
 	 */
 	public @Nullable KtExpression getVersionElement() {
-
-		if (versionLiteral != null) {
-			return versionLiteral;
-		}
-
-		for (Constraint value : constraints.values()) {
-			if (value.literals.hasProperty()) {
-				return value.version();
-			}
-			if (value.hasText() && !value.isRange()) {
-				return value.version();
-			}
-		}
-
-		return null;
+		return effectiveVersion != null ? effectiveVersion.element() : null;
 	}
 
 	/**
 	 * Return whether the declaration contains any usable version information.
-	 * <p>
-	 * This includes a direct version/property expression or a constraint-backed
+	 * <p>This includes a direct version/property expression or a constraint-backed
 	 * version/property.
 	 *
-	 * @return {@literal true} if callers can resolve either a property or a
-	 * concrete version value.
+	 * @return {@literal true} if {@link #getVersionExpression()} resolves to a
+	 * property or a concrete version value.
 	 */
 	public boolean containsVersion() {
+		return effectiveVersion != null;
+	}
 
-		if (versionLiterals != null) {
-			return versionLiterals.hasText();
-		}
-
-		for (Constraint value : constraints.values()) {
-			if (value.literals.hasProperty()) {
-				return true;
-			}
-			if (value.hasText() && !value.isRange()) {
-				return true;
-			}
-		}
-
-		return false;
+	/**
+	 * The resolved version of a {@link KtVersion}: the {@link Expression} value
+	 * paired with the PSI element that contributes it.
+	 */
+	private record EffectiveVersion(Expression expression, KtExpression element) {
 	}
 
 	/**

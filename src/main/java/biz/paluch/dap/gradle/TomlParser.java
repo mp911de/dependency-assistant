@@ -16,7 +16,9 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -24,18 +26,18 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
-import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
-import biz.paluch.dap.support.VersionedDependencySite;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -62,7 +64,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-class TomlParser extends GradleParserSupport {
+class TomlParser {
 
 	/**
 	 * TOML table name for plugin aliases.
@@ -99,65 +101,33 @@ class TomlParser extends GradleParserSupport {
 	 */
 	public static final String LIBRARIES = GradleUtils.LIBRARIES;
 
-	private final Map<String, String> properties;
-
 	/**
-	 * Create a new {@code TomlParser}.
-	 * @param collector the dependency collector to populate.
+	 * Parse a {@code libs.versions.toml} version catalog into artifact
+	 * declarations.
+	 * @param file the version catalog file.
+	 * @return the artifact declarations in catalog order.
 	 */
-	public TomlParser(DependencyCollector collector) {
-		this(collector, Map.of());
-	}
-
-	/**
-	 * Create a new {@code TomlParser}.
-	 * @param collector the dependency collector to populate.
-	 * @param properties known version properties.
-	 */
-	public TomlParser(DependencyCollector collector, Map<String, String> properties) {
-		super(collector);
-		this.properties = properties;
-	}
-
-	/**
-	 * Parses a {@code libs.versions.toml} version catalog and populates
-	 * {@code collector} with all libraries that have a resolvable version.
-	 */
-	public void parseVersionCatalog(PsiFile file) {
+	public static List<ArtifactDeclaration> parseVersionCatalog(PsiFile file) {
 
 		if (!(file instanceof TomlFile tomlFile)) {
-			return;
+			return List.of();
 		}
 
 		Map<String, Property> properties = parseTomlVersions(tomlFile);
-		properties.forEach((key, value) -> {
-			this.properties.put(key, value.getValue());
-		});
-
-		parseToml(tomlFile, PropertyResolver.fromMap(properties));
-	}
-
-	private void parseToml(TomlFile tomlFile, PropertyResolver propertyResolver) {
+		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties);
+		List<ArtifactDeclaration> declarations = new ArrayList<>();
 
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
 
 			String tableName = getTomlTableName(table);
-			if (LIBRARIES.equals(tableName)) {
-				parseEntries(table, propertyResolver, (it) -> {
-					if (it.isComplete()) {
-						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()), propertyResolver);
-					}
-				});
-			}
-
-			if (PLUGINS.equals(tableName)) {
-				parseEntries(table, propertyResolver, (it) -> {
-					if (it.isComplete()) {
-						register(it.toDependencySite(it.element, it.getRequiredVersionLiteral()), propertyResolver);
-					}
-				});
+			if (LIBRARIES.equals(tableName) || PLUGINS.equals(tableName)) {
+				parseEntries(table, propertyResolver, declaration -> declarations
+						.add(declaration.toArtifactDeclaration(declaration.getElement(),
+								declaration.getRequiredVersionLiteral())));
 			}
 		}
+
+		return List.copyOf(declarations);
 	}
 
 	/**
@@ -177,6 +147,51 @@ class TomlParser extends GradleParserSupport {
 			return null;
 		}
 		return PsiManager.getInstance(project).findFile(toml);
+	}
+
+	/**
+	 * Locate the version-catalog TOML file registered at {@code relativePath}
+	 * relative to {@code projectRoot}.
+	 * <p>Rejects unsafe paths (absolute, or containing a {@code ..} parent segment)
+	 * and files that resolve outside {@code projectRoot}, so a catalog path taken
+	 * from project configuration cannot escape the project sandbox.
+	 *
+	 * @param psiManager the PSI manager used to materialize the catalog file.
+	 * @param projectRoot the Gradle project root the path is resolved against.
+	 * @param relativePath the catalog path relative to {@code projectRoot}.
+	 * @return the catalog {@link PsiFile}, or {@literal null} when the path is
+	 * unsafe, absent, or escapes {@code projectRoot}.
+	 */
+	static @Nullable PsiFile findCatalogFile(BetterPsiManager psiManager, VirtualFile projectRoot,
+			String relativePath) {
+
+		if (!isSafeCatalogRelativePath(relativePath)) {
+			return null;
+		}
+
+		VirtualFile catalogFile = projectRoot.findFileByRelativePath(relativePath);
+		if (catalogFile != null && VfsUtil.isAncestor(projectRoot, catalogFile, false)) {
+			return psiManager.findFile(catalogFile);
+		}
+
+		return null;
+	}
+
+	private static boolean isSafeCatalogRelativePath(String path) {
+
+		if (path.isBlank()) {
+			return false;
+		}
+		String normalized = path.replace('\\', '/');
+		if (normalized.startsWith("/")) {
+			return false;
+		}
+		for (String segment : normalized.split("/")) {
+			if ("..".equals(segment)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -232,16 +247,16 @@ class TomlParser extends GradleParserSupport {
 	 * @param action callback invoked for each complete declaration.
 	 */
 	public static void parseEntries(TomlTable table,
-			PropertyResolver propertyResolver, Consumer<TomlDependencyDeclaration> action) {
+			PropertyResolver propertyResolver, Consumer<TomlCatalogDeclaration> action) {
 		for (TomlKeyValue child : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
-			TomlDependencyDeclaration declaration = parseTomlEntry(child, propertyResolver);
+			TomlCatalogDeclaration declaration = parseTomlEntry(child, propertyResolver);
 			if (declaration.isComplete()) {
 				action.accept(declaration);
 			}
 		}
 	}
 
-	static TomlDependencyDeclaration parseTomlEntry(TomlKeyValue keyValue,
+	static TomlCatalogDeclaration parseTomlEntry(TomlKeyValue keyValue,
 			PropertyResolver propertyResolver) {
 
 		String key = getTomlKeyName(keyValue.getKey());
@@ -251,11 +266,11 @@ class TomlParser extends GradleParserSupport {
 			return parseTomlEntry(key, literal);
 		}
 
-		return new TomlDependencyDeclaration(keyValue, key, null, null, null, null,
+		return new TomlCatalogDeclaration(keyValue, key, null, null, null, null,
 				null);
 	}
 
-	static TomlDependencyDeclaration parseTomlEntry(String entry, TomlInlineTable inlineTable,
+	static TomlCatalogDeclaration parseTomlEntry(String entry, TomlInlineTable inlineTable,
 			PropertyResolver propertyResolver) {
 
 		String id = null;
@@ -287,34 +302,34 @@ class TomlParser extends GradleParserSupport {
 		}
 
 		if (versionRef != null && versionLiteral == null && propertyResolver.containsProperty(versionRef)) {
-			PropertyValue p = propertyResolver.getPropertyValue(versionRef);
+			Property p = propertyResolver.getPropertyValue(versionRef);
 			versionLiteral = (TomlValue) p.getValueLiteral();
 		}
 
-		return new TomlDependencyDeclaration(inlineTable, entry, id, module, versionRef,
+		return new TomlCatalogDeclaration(inlineTable, entry, id, module, versionRef,
 				version, versionLiteral);
 	}
 
-	static TomlDependencyDeclaration parseTomlEntry(String entry, TomlLiteral literal) {
+	static TomlCatalogDeclaration parseTomlEntry(String entry, TomlLiteral literal) {
 
 		String text = getText(literal);
 		if (StringUtils.hasText(text)) {
 			GradleDependency dependency = GradleDependency.parse(text, DeclarationSource.managed());
 			// plugin
 			if (dependency instanceof GradleDependency.DependencyReference reference) {
-				return new TomlDependencyDeclaration(literal, entry,
+				return new TomlCatalogDeclaration(literal, entry,
 						reference.id().groupId(), null, null,
 						reference.id().artifactId(), literal);
 			}
 
 			if (dependency instanceof SimpleDependency simple) {
-				return new TomlDependencyDeclaration(literal, entry, null,
+				return new TomlCatalogDeclaration(literal, entry, null,
 						simple.id().toString(), null,
 						simple.version(), literal);
 			}
 		}
 
-		return new TomlDependencyDeclaration(literal, entry, text, text, null,
+		return new TomlCatalogDeclaration(literal, entry, text, text, null,
 				null, literal);
 	}
 
@@ -379,8 +394,46 @@ class TomlParser extends GradleParserSupport {
 		return element.getText();
 	}
 
-	record TomlDependencyDeclaration(TomlElement element, String key, @Nullable String id, @Nullable String module,
-			@Nullable String versionRef, @Nullable String version, @Nullable TomlValue versionLiteral) {
+	static class TomlCatalogDeclaration {
+
+		private final TomlElement element;
+
+		private final String key;
+
+		private final @Nullable String id;
+
+		private final @Nullable String module;
+
+		private final @Nullable String versionRef;
+
+		private final @Nullable String version;
+
+		private final @Nullable TomlValue versionLiteral;
+
+		TomlCatalogDeclaration(TomlElement element, String key, @Nullable String id, @Nullable String module,
+				@Nullable String versionRef, @Nullable String version, @Nullable TomlValue versionLiteral) {
+			this.element = element;
+			this.key = key;
+			this.id = id;
+			this.module = module;
+			this.versionRef = versionRef;
+			this.version = version;
+			this.versionLiteral = versionLiteral;
+		}
+
+		TomlElement getElement() {
+			return element;
+		}
+
+		@Nullable
+		String getVersion() {
+			return version;
+		}
+
+		@Nullable
+		TomlValue getVersionLiteral() {
+			return versionLiteral;
+		}
 
 		/**
 		 * Check whether the declaration is complete (having id and version information
@@ -444,13 +497,13 @@ class TomlParser extends GradleParserSupport {
 		}
 
 		/**
-		 * Resolve a {@link DependencySite} from this declaration.
+		 * Resolve an {@link ArtifactDeclaration} from this catalog entry.
 		 * <p>As declarations can be incomplete (e.g. missing version information), make
 		 * sure to check {@link #isComplete()} before calling it.
 		 *
-		 * @return the resolved dependency site.
+		 * @return the resolved artifact declaration.
 		 */
-		public DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
+		public ArtifactDeclaration toArtifactDeclaration(PsiElement declaration, PsiElement version) {
 
 			Assert.state(StringUtils.hasText(id) || StringUtils.hasText(module), "No identifier or module set");
 
@@ -458,19 +511,20 @@ class TomlParser extends GradleParserSupport {
 					? Expression.from(this.version)
 					: Expression.property(versionRef);
 
-
 			DeclarationSource declarationSource = StringUtils.hasText(id) ? DeclarationSource.plugin()
 					: DeclarationSource.managed();
 			ArtifactId artifactId = StringUtils.hasText(id) ? GradlePluginId.of(id)
 					: GradleDependency.parse(module, declarationSource).getId();
 
-			return ArtifactVersion.from(this.version)
-					.map(it -> (DependencySite) VersionedDependencySite.of(artifactId, it,
-							getVersionSource(versionExpression), declarationSource, declaration, version))
-					.orElseGet(() -> {
-						return DependencySite.of(artifactId, getVersionSource(versionExpression), declarationSource,
-								declaration);
-					});
+			ArtifactDeclaration.Builder builder = ArtifactDeclaration.builder()
+					.artifact(artifactId)
+					.versionSource(getVersionSource(versionExpression))
+					.declarationSource(declarationSource)
+					.declarationElement(declaration)
+					.versionLiteral(version);
+			String resolvedVersion = StringUtils.hasText(this.version) ? this.version : TomlParser.getText(version);
+			ArtifactVersion.from(resolvedVersion).ifPresent(builder::version);
+			return builder.build();
 		}
 
 		private static VersionSource getVersionSource(Expression versionExpression) {

@@ -67,7 +67,6 @@ class DependencyCycleArchitectureTests {
 						.withClosedHierarchy(Properties.class)
 						.withStrictClosedHierarchy("biz.paluch.dap.util.StepsProgressIndicator")
 						.withStrictClosedHierarchy("biz.paluch.dap.npm.NpmVersionExpression")
-						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradleVersionSite")
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradlePluginId")
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradleArtifactId");
 			});

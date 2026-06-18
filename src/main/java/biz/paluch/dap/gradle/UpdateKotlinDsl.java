@@ -17,10 +17,9 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
-import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtCallElement;
@@ -54,15 +53,16 @@ class UpdateKotlinDsl {
 	 */
 	void updateDeclaration(PsiFile file, ArtifactId artifactId, String newVersion) {
 
+		KotlinDslFileParser parser = new KotlinDslFileParser(file, propertyResolver);
+
 		file.accept(PsiElements.visitTreeUntil(KtCallElement.class, call -> {
 
-			DependencySite site = KotlinDslParser.parseDependencySite(call, propertyResolver);
-			if (!(site instanceof VersionedDependencySite versioned) || !site.getArtifactId()
-					.equals(artifactId)) {
+			ArtifactDeclaration declaration = parser.parse(call);
+			if (declaration == null || !declaration.getArtifactId().equals(artifactId)) {
 				return false;
 			}
 
-			if (versioned.getVersionElement() instanceof KtStringTemplateExpression template) {
+			if (declaration.getVersionLiteral() instanceof KtStringTemplateExpression template) {
 				updateVersion(template, newVersion);
 				return true;
 			}
@@ -84,7 +84,7 @@ class UpdateKotlinDsl {
 	 */
 	public static boolean updateExtraProperty(PsiFile file, String propertyKey, String newVersion) {
 
-		PropertyValue element = KotlinDslExtraParser.findExtraPropertyLocation(file, propertyKey);
+		Property element = KotlinDslExtraParser.findExtraPropertyLocation(file, propertyKey);
 		if (element == null) {
 			return updateValProperty(file, propertyKey, newVersion);
 		}

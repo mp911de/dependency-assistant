@@ -19,6 +19,8 @@ package biz.paluch.dap.gradle;
 import java.util.Map;
 import java.util.Objects;
 
+import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -29,7 +31,10 @@ import com.intellij.psi.util.CachedValue;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
+import org.toml.lang.psi.TomlFile;
+import org.toml.lang.psi.TomlTable;
 
 /**
  * Registry mapping version-catalog alias names to their TOML file paths
@@ -49,9 +54,20 @@ class VersionCatalogRegistry {
 
 	private final String defaultAlias;
 
+	private final @Nullable VirtualFile projectRoot;
+
+	private final @Nullable BetterPsiManager psiManager;
+
 	VersionCatalogRegistry(Map<String, String> catalogPaths, String defaultAlias) {
+		this(catalogPaths, defaultAlias, null, null);
+	}
+
+	private VersionCatalogRegistry(Map<String, String> catalogPaths, String defaultAlias, @Nullable Project project,
+			@Nullable VirtualFile projectRoot) {
 		this.catalogPaths = catalogPaths;
 		this.defaultAlias = defaultAlias;
+		this.projectRoot = projectRoot;
+		this.psiManager = project != null ? BetterPsiManager.getInstance(project) : null;
 	}
 
 	/**
@@ -61,32 +77,39 @@ class VersionCatalogRegistry {
 	 */
 	public static VersionCatalogRegistry from(PsiFile file) {
 
-		Project project = file.getProject();
-		VirtualFile virtualFile = file.getVirtualFile();
-		BetterPsiManager psiManager = BetterPsiManager.getInstance(file.getProject());
-		if (virtualFile == null) {
-			return ABSENT;
-		}
+		return CachedValuesManager.getProjectPsiDependentCache(file, it -> {
 
-		VirtualFile projectRoot = GradleUtils.findProjectRoot(file);
-		VirtualFile kotlin = projectRoot.findChild(GradleUtils.KOTLIN_SETTINGS);
-		VirtualFile groovy = projectRoot.findChild(GradleUtils.GROOVY_SETTINGS);
-
-		if (kotlin != null && GradleUtils.KOTLIN_AVAILABLE) {
-			PsiFile settings = psiManager.findFile(kotlin);
-			if (settings != null) {
-				return getCachedValue(project, settings);
+			Project project = it.getProject();
+			VirtualFile virtualFile = it.getVirtualFile();
+			BetterPsiManager psiManager = BetterPsiManager.getInstance(it.getProject());
+			if (virtualFile == null) {
+				return ABSENT;
 			}
-		}
 
-		if (groovy != null) {
-			PsiFile settings = psiManager.findFile(groovy);
-			if (settings != null) {
-				return getCachedValue(project, settings);
+			VirtualFile projectRoot = GradleUtils.findProjectRoot(it);
+			VirtualFile kotlin = projectRoot.findChild(GradleUtils.KOTLIN_SETTINGS);
+			VirtualFile groovy = projectRoot.findChild(GradleUtils.GROOVY_SETTINGS);
+
+			if (kotlin != null && GradleUtils.KOTLIN_AVAILABLE) {
+				PsiFile settings = psiManager.findFile(kotlin);
+				if (settings != null) {
+					return getCachedValue(project, settings).withContext(project, projectRoot);
+				}
 			}
-		}
 
-		return ABSENT;
+			if (groovy != null) {
+				PsiFile settings = psiManager.findFile(groovy);
+				if (settings != null) {
+					return getCachedValue(project, settings).withContext(project, projectRoot);
+				}
+			}
+
+			return defaults().withContext(project, projectRoot);
+		});
+	}
+
+	private VersionCatalogRegistry withContext(Project project, VirtualFile projectRoot) {
+		return new VersionCatalogRegistry(catalogPaths, defaultAlias, project, projectRoot);
 	}
 
 	private static VersionCatalogRegistry getCachedValue(Project project, PsiFile settings) {
@@ -165,6 +188,63 @@ class VersionCatalogRegistry {
 	 */
 	boolean containsAlias(String alias) {
 		return catalogPaths.containsKey(alias);
+	}
+
+	/**
+	 * Resolve the given TOML reference to the catalog artifact declaration. The
+	 * returned reference is anchored at the TOML catalog entry, not at a Gradle DSL
+	 * usage site.
+	 */
+	ArtifactReference resolve(TomlReference reference) {
+
+		PsiFile catalogPsi = findCatalogForReference(reference);
+		if (!(catalogPsi instanceof TomlFile tomlFile)) {
+			return ArtifactReference.unresolved();
+		}
+
+		PropertyResolver propertyResolver = PropertyResolver.fromMap(TomlParser.parseTomlVersions(tomlFile));
+
+		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(tomlFile, TomlTable.class)) {
+			if (!reference.getTableName().equals(TomlParser.getTomlTableName(table))) {
+				continue;
+			}
+			ArtifactReference resolved = resolveFromTable(reference, table, propertyResolver);
+			if (resolved.isResolved()) {
+				return resolved;
+			}
+		}
+
+		return ArtifactReference.unresolved();
+	}
+
+	private ArtifactReference resolveFromTable(TomlReference reference, TomlTable table,
+			PropertyResolver propertyResolver) {
+
+		ArtifactReference[] resolved = {ArtifactReference.unresolved()};
+		TomlParser.parseEntries(table, propertyResolver, declaration -> {
+			if (resolved[0].isResolved() || !declaration.hasKeyMatching(reference)) {
+				return;
+			}
+			resolved[0] = ArtifactReference.from(
+					declaration.toArtifactDeclaration(declaration.getElement(),
+							declaration.getRequiredVersionLiteral()));
+		});
+
+		return resolved[0];
+	}
+
+	private @Nullable PsiFile findCatalogForReference(TomlReference reference) {
+
+		if (projectRoot == null || psiManager == null) {
+			return null;
+		}
+
+		String path = pathForAlias(reference.getCatalogAlias());
+		if (path == null) {
+			return null;
+		}
+
+		return TomlParser.findCatalogFile(psiManager, projectRoot, path);
 	}
 
 	/**

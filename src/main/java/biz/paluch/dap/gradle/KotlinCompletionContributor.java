@@ -111,12 +111,14 @@ public class KotlinCompletionContributor extends CompletionContributor {
 	// Version blocks with preferred property references such as `prefer(junit)`.
 	private static final PatternCondition<KtNameReferenceExpression> PREFER_VERSION_BLOCK_REFERENCE = PatternConditions
 			.conditional("preferVersionBlockReference",
-					reference -> KotlinDslParser.isVersionBlockReference(reference, GradleVersionConstraint.PREFER));
+					reference -> KotlinDslParser.isVersionBlockReference(reference,
+							GradleVersionConstraint.PREFER));
 
 	// Version blocks with strict property references such as `strictly(junit)`.
 	private static final PatternCondition<KtNameReferenceExpression> STRICTLY_VERSION_BLOCK_REFERENCE = PatternConditions
 			.conditional("strictlyVersionBlockReference",
-					reference -> KotlinDslParser.isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY));
+					reference -> KotlinDslParser.isVersionBlockReference(reference,
+							GradleVersionConstraint.STRICTLY));
 
 	// Plugin DSL version clauses such as `id("plugin.id") version "1.0.0"`.
 	private static final PatternCondition<PsiElement> PLUGIN_VERSION_POSITION = literalPosition(

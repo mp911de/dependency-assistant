@@ -135,15 +135,13 @@ class KotlinDslExtraParser {
 	 * Locates the PSI element whose text should be updated or highlighted as the
 	 * declared value for {@code propertyKey}.
 	 */
-	public static @Nullable PropertyValue findExtraPropertyLocation(PsiFile file, String propertyKey) {
+	public static @Nullable Property findExtraPropertyLocation(PsiFile file, String propertyKey) {
 
-		KotlinExtraAssignment assignment = SyntaxTraverser.psiTraverser(file)
+		return SyntaxTraverser.psiTraverser(file)
 				.filter(KtBinaryExpression.class)
 				.filterMap(KotlinExtraAssignment::from)
 				.filter(it -> propertyKey.equals(it.getKey()))
 				.first();
-
-		return assignment != null ? toPropertyValue(assignment) : null;
 	}
 
 	/**

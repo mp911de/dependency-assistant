@@ -45,10 +45,6 @@ import com.intellij.psi.SyntaxTraverser;
  * unsupported locations, incomplete PSI, unavailable project state, and
  * unresolved property or catalog indirection rather than throwing.
  *
- * <p>Not to be confused with the Gradle-internal {@code VersionSiteLocator},
- * which locates a {@code GradleVersionSite}; this component resolves a fully
- * formed {@link ArtifactReference} across all ecosystems.
- *
  * @author Mark Paluch
  * @see VersionUpgradeLookup
  * @see LookupContext

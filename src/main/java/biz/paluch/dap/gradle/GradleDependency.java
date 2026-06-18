@@ -173,6 +173,33 @@ interface GradleDependency {
 	}
 
 	/**
+	 * Create a dependency descriptor from separately parsed named declaration
+	 * fields.
+	 * @param group artifact group.
+	 * @param artifact artifact name.
+	 * @param versionProperty optional version property name.
+	 * @param version optional resolved or literal version.
+	 * @param declarationSource structural origin of the declaration.
+	 * @param resolver property resolver used for coordinate placeholders.
+	 * @return the dependency descriptor, or {@literal null} when the declaration is
+	 * incomplete.
+	 */
+	static @Nullable GradleDependency fromNamed(@Nullable String group, @Nullable String artifact,
+			@Nullable String versionProperty, @Nullable String version, DeclarationSource declarationSource,
+			PropertyResolver resolver) {
+
+		if (!StringUtils.hasText(group) || !StringUtils.hasText(artifact)
+				|| !StringUtils.hasText(versionProperty) && !StringUtils.hasText(version)) {
+			return null;
+		}
+
+		ArtifactId artifactId = GradleArtifactId.from(ArtifactId.of(group, artifact), "").resolve(resolver);
+		Expression expression = StringUtils.hasText(versionProperty) ? Expression.property(versionProperty)
+				: Expression.from(version);
+		return of(artifactId, expression, declarationSource);
+	}
+
+	/**
 	 * Return a dependency descriptor for the same artifact with a version obtained
 	 * from a separately parsed declaration component.
 	 * <p>Use this when a parser first discovers the module identity and later

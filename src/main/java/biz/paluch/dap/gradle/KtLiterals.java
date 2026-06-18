@@ -38,10 +38,11 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Canonical representation of Kotlin DSL literal fragments.
+ * Canonical representation of a Kotlin DSL string-template value, decomposed
+ * into ordered {@link Segment fragments} of literal text and {@code $property}
+ * references.
  *
- * <p>
- * Supported inputs include plain string literals, interpolated fragments,
+ * <p>Supported inputs include plain string literals, interpolated fragments,
  * direct property references, {@code property(...)} lookups, and
  * {@code extra["..."]} access. Unsupported PSI shapes are represented as an
  * empty instance.
@@ -52,26 +53,26 @@ class KtLiterals {
 
 	private static final KtLiterals EMPTY = new KtLiterals(List.of());
 
-	private final List<KtLiteral> literals;
+	private final List<Segment> segments;
 
-	private final @Nullable KtLiteral property;
+	private final @Nullable PropertySegment property;
 
 	private final String text;
 
-	private KtLiterals(KtLiteral literal) {
-		this(List.of(literal));
+	private KtLiterals(Segment segment) {
+		this(List.of(segment));
 	}
 
-	private KtLiterals(List<KtLiteral> literals) {
-		this.literals = literals;
+	private KtLiterals(List<Segment> segments) {
+		this.segments = segments;
 
-		KtLiteral property = null;
+		PropertySegment property = null;
 		StringBuilder builder = new StringBuilder();
-		for (KtLiteral literal : literals) {
-			if (property == null && literal.isProperty()) {
-				property = literal;
+		for (Segment segment : segments) {
+			if (property == null && segment instanceof PropertySegment propertySegment) {
+				property = propertySegment;
 			}
-			builder.append(literal);
+			builder.append(segment.render());
 		}
 
 		this.property = property;
@@ -102,26 +103,26 @@ class KtLiterals {
 		}
 		case KtStringTemplateExpression expression -> {
 
-			List<KtLiteral> literals = JBIterable.of(expression.getEntries())
+			List<Segment> segments = JBIterable.of(expression.getEntries())
 					.map(KtLiterals::fromPropertyCandidate)
-					.flatMap(KtLiterals::getLiterals).toList();
-			return new KtLiterals(literals);
+					.flatMap(KtLiterals::getSegments).toList();
+			return new KtLiterals(segments);
 		}
 		case KtBlockStringTemplateEntry block -> {
-			List<KtLiteral> literals = JBIterable.from(block.getExpressions())
+			List<Segment> segments = JBIterable.from(block.getExpressions())
 					.map(KtLiterals::fromPropertyCandidate)
-					.flatMap(KtLiterals::getLiterals).toList();
-			return new KtLiterals(literals);
+					.flatMap(KtLiterals::getSegments).toList();
+			return new KtLiterals(segments);
 		}
 		case KtLiteralStringTemplateEntry entry -> {
-			return new KtLiterals(new KtLiteral(entry.getText(), null, entry));
+			return new KtLiterals(new TextSegment(entry.getText(), entry));
 		}
 		case KtNameReferenceExpression nameRef -> {
 			if (StringUtils.isEmpty(nameRef.getReferencedName())) {
 				return KtLiterals.empty();
 			}
 
-			return new KtLiterals(new KtLiteral(nameRef.getReferencedName(), null, nameRef));
+			return new KtLiterals(new TextSegment(nameRef.getReferencedName(), nameRef));
 		}
 		case KtArrayAccessExpression arrayAccess when arrayAccess.getArrayExpression() != null
 				&& "extra".equals(arrayAccess.getArrayExpression().getText()) -> {
@@ -151,7 +152,7 @@ class KtLiterals {
 			return KtLiterals.from(selectorCall);
 		}
 
-		List<KtLiteral> literals = SyntaxTraverser.psiTraverser(element)
+		List<Segment> segments = SyntaxTraverser.psiTraverser(element)
 				.expand(it -> !(it instanceof KtStringTemplateExpression
 						|| it instanceof KtNameReferenceExpression))
 				.filter(KtElement.class)
@@ -160,12 +161,12 @@ class KtLiterals {
 					if (it instanceof KtNameReferenceExpression referenceExpression) {
 						if (StringUtils.hasText(referenceExpression.getReferencedName())) {
 							return KtLiterals.property(referenceExpression.getReferencedName(),
-									referenceExpression).getLiterals();
+									referenceExpression).getSegments();
 						}
 
 						if (StringUtils.hasText(referenceExpression.getName())) {
 							return KtLiterals.property(referenceExpression.getName(), referenceExpression)
-									.getLiterals();
+									.getSegments();
 						}
 					}
 
@@ -174,7 +175,7 @@ class KtLiterals {
 						KtStringTemplateExpression parentOfType = PsiTreeUtil.getParentOfType(it,
 								KtStringTemplateExpression.class);
 						if (parentOfType == null) {
-							return from(kse).getLiterals();
+							return from(kse).getSegments();
 						}
 						return JBIterable.empty();
 					}
@@ -182,7 +183,7 @@ class KtLiterals {
 					return JBIterable.empty();
 				}).toList();
 
-		return new KtLiterals(literals);
+		return new KtLiterals(segments);
 	}
 
 	private static KtLiterals fromPropertyCandidate(KtElement it) {
@@ -227,7 +228,7 @@ class KtLiterals {
 	 * @return a {@link KtLiterals} containing one property fragment.
 	 */
 	public static KtLiterals property(String propertyName, KtElement element) {
-		return new KtLiterals(new KtLiteral(null, propertyName, element));
+		return new KtLiterals(new PropertySegment(propertyName, element));
 	}
 
 	/**
@@ -243,8 +244,8 @@ class KtLiterals {
 		return KtLiterals.property(name, ref);
 	}
 
-	private List<KtLiteral> getLiterals() {
-		return literals;
+	private List<Segment> getSegments() {
+		return segments;
 	}
 
 	/**
@@ -253,26 +254,21 @@ class KtLiterals {
 	 * @return {@literal true} if at least one fragment is property-backed.
 	 */
 	public boolean hasProperty() {
-		return property != null && property.isProperty();
+		return property != null;
 	}
 
 	/**
 	 * Return whether this instance contains any renderable content.
-	 * <p>
-	 * VersionProperty references count as content because they participate in
-	 * the rendered form returned by {@link #toString()}.
+	 * <p>Property references count as content because they participate in the
+	 * rendered form returned by {@link #toString()}.
 	 *
 	 * @return {@literal true} if at least one fragment contributes text or a
 	 * property placeholder.
 	 */
 	public boolean hasText() {
 
-		if (literals.isEmpty()) {
-			return false;
-		}
-
-		for (KtLiteral literal : literals) {
-			if (literal.hasText()) {
+		for (Segment segment : segments) {
+			if (segment.hasText()) {
 				return true;
 			}
 		}
@@ -291,13 +287,15 @@ class KtLiterals {
 	 */
 	public String getProperty() {
 		if (property != null) {
-			return property.getProperty();
+			return property.name();
 		}
 		throw new IllegalStateException("No property found");
 	}
 
 	/**
-	 * Return the first concrete text fragment represented by this instance.
+	 * Return the rendered content of all fragments in encounter order, with
+	 * property references rendered as {@code ${name}}. Equivalent to
+	 * {@link #toString()}.
 	 */
 	public String getText() {
 		return text;
@@ -307,30 +305,23 @@ class KtLiterals {
 	 * Create a {@link KtLiterals} instance that represents a single property.
 	 */
 	public KtLiterals asProperty() {
-		if (property != null && property.isProperty()) {
+		if (property != null) {
 			return new KtLiterals(property);
 		}
-		if (literals.isEmpty()) {
+		if (segments.isEmpty()) {
 			return EMPTY;
 		}
-		KtLiteral first = literals.getFirst();
-		return new KtLiterals(new KtLiteral(null, first.value(), first.expression()));
-	}
-
-	/**
-	 * Return the number of normalized fragments contributing to this instance.
-	 *
-	 * @return the fragment count; {@code 0} for an empty instance.
-	 */
-	public int size() {
-		return literals.size();
+		Segment first = segments.getFirst();
+		if (first instanceof TextSegment text) {
+			return new KtLiterals(new PropertySegment(text.text(), text.element()));
+		}
+		return new KtLiterals(first);
 	}
 
 	/**
 	 * Render the collected fragments in encounter order.
-	 * <p>
-	 * Plain literals are concatenated as-is. VersionProperty fragments are
-	 * rendered as {@code ${property}}.
+	 * <p>Plain literals are concatenated as-is. Property fragments are rendered as
+	 * {@code ${property}}.
 	 *
 	 * @return the rendered literal content, or the empty string if no fragments are
 	 * present.
@@ -350,17 +341,13 @@ class KtLiterals {
 
 		StringBuilder builder = new StringBuilder();
 
-		for (KtLiteral literal : literals) {
+		for (Segment segment : segments) {
 
-			if (literal.isProperty()) {
-				String value = propertyResolver.getProperty(literal.getProperty());
-				if (value != null) {
-					builder.append(value);
-				} else {
-					builder.append(literal);
-				}
+			if (segment instanceof PropertySegment property) {
+				String value = propertyResolver.getProperty(property.name());
+				builder.append(value != null ? value : property.render());
 			} else {
-				builder.append(literal);
+				builder.append(segment.render());
 			}
 		}
 
@@ -368,50 +355,53 @@ class KtLiterals {
 	}
 
 	/**
-	 * Single normalized literal fragment.
-	 * <p>
-	 * A fragment represents either concrete text or a property placeholder
-	 * together with its source PSI element.
+	 * Single normalized fragment of a Kotlin DSL string-template value: either
+	 * concrete {@link TextSegment text} or a {@link PropertySegment property
+	 * reference}, together with its source PSI element.
 	 */
-	private record KtLiteral(@Nullable String value, @Nullable String property, KtElement expression) {
+	private sealed interface Segment permits TextSegment, PropertySegment {
 
 		/**
-		 * Return whether this fragment represents a property placeholder.
-		 *
-		 * @return {@literal true} if the fragment is property-backed.
+		 * The PSI element this fragment was derived from.
 		 */
-		public boolean isProperty() {
-			return StringUtils.hasText(property);
-		}
+		KtElement element();
 
 		/**
 		 * Return whether this fragment contributes any renderable content.
-		 *
-		 * @return {@literal true} if text or a property name is present.
 		 */
-		public boolean hasText() {
-			return StringUtils.hasText(value) || StringUtils.hasText(property);
-		}
+		boolean hasText();
 
 		/**
-		 * Return the property name for this fragment.
-		 *
-		 * @return the referenced property name.
-		 * @throws IllegalArgumentException if this fragment is not property-backed.
+		 * Render this fragment as concrete text or a {@code ${property}} placeholder.
 		 */
-		public String getProperty() {
-			Assert.isTrue(StringUtils.hasText(property), "VersionProperty must be set");
-			return property;
-		}
+		String render();
 
-		/**
-		 * Render this fragment as concrete text or a property placeholder.
-		 *
-		 * @return the rendered fragment.
-		 */
+	}
+
+	private record TextSegment(String text, KtElement element) implements Segment {
+
 		@Override
-		public String toString() {
-			return property != null ? "${" + property + "}" : value;
+		public boolean hasText() {
+			return StringUtils.hasText(text);
+		}
+
+		@Override
+		public String render() {
+			return text;
+		}
+
+	}
+
+	private record PropertySegment(String name, KtElement element) implements Segment {
+
+		@Override
+		public boolean hasText() {
+			return StringUtils.hasText(name);
+		}
+
+		@Override
+		public String render() {
+			return "${" + name + "}";
 		}
 
 	}

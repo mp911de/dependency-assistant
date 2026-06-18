@@ -80,10 +80,7 @@ class GradlePropertyResolver implements PropertyResolver {
 	 * Return a resolver containing only properties from the given file.
 	 */
 	public static GradlePropertyResolver forFile(PsiFile file) {
-
-		Project project = file.getProject();
-		return CachedValuesManager.getManager(project).getCachedValue(file, FILE,
-				new FileProvider(project, file), false);
+		return CachedValuesManager.getProjectPsiDependentCache(file, GradlePropertyResolver::parseFile);
 	}
 
 	private static GradlePropertyResolver parseTree(PsiFile file) {
@@ -199,47 +196,6 @@ class GradlePropertyResolver implements PropertyResolver {
 				return true;
 			}
 			if (!(o instanceof TreeProvider that)) {
-				return false;
-			}
-			return project.equals(that.project) && virtualFile.equals(that.virtualFile);
-		}
-
-		@Override
-		public int hashCode() {
-			return 31 * project.hashCode() + virtualFile.hashCode();
-		}
-
-	}
-
-	static class FileProvider implements CachedValueProvider<GradlePropertyResolver> {
-
-		private final Project project;
-
-		private final VirtualFile virtualFile;
-
-		private final PsiManager psiManager;
-
-		FileProvider(Project project, PsiFile psiFile) {
-			this.project = project;
-			this.virtualFile = psiFile.getVirtualFile();
-			this.psiManager = PsiManager.getInstance(project);
-		}
-
-		@Override
-		public CachedValueProvider.@Nullable Result<GradlePropertyResolver> compute() {
-			PsiFile psiFile = psiManager.findFile(virtualFile);
-			if (psiFile == null) {
-				return CachedValueProvider.Result.create(ABSENT, PsiModificationTracker.MODIFICATION_COUNT);
-			}
-			return CachedValueProvider.Result.create(parseFile(psiFile), PsiModificationTracker.MODIFICATION_COUNT);
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) {
-				return true;
-			}
-			if (!(o instanceof FileProvider that)) {
 				return false;
 			}
 			return project.equals(that.project) && virtualFile.equals(that.virtualFile);

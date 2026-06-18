@@ -16,8 +16,8 @@
 
 package biz.paluch.dap.maven;
 
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
@@ -71,7 +71,7 @@ class MavenProperties implements PropertyResolver {
 	}
 
 	@Override
-	public @Nullable PropertyValue getPropertyValue(String key) {
+	public @Nullable Property getPropertyValue(String key) {
 		return propertyResolver.getPropertyValue(key);
 	}
 

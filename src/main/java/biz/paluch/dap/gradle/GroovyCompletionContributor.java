@@ -38,6 +38,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Completion contributor for Gradle Groovy DSL.
@@ -58,7 +59,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 
 			GrLiteral literal = getLiteral(parameters.getPosition());
 			PsiElement versionElement = literal != null ? literal
-					: GradleParser.findCommandPlatformString(parameters.getPosition());
+					: GroovyDslParser.findCommandPlatformString(parameters.getPosition());
 			if (versionElement == null) {
 				return result;
 			}
@@ -71,8 +72,8 @@ public class GroovyCompletionContributor extends CompletionContributor {
 				PsiElement element, ArtifactRelease option) {
 
 			GrLiteral literal = getLiteral(element);
-			if ((literal == null || !GradleParser.isDirectDependencyNotationLiteral(literal))
-					&& GradleParser.findCommandPlatformString(element) == null) {
+			if ((literal == null || !GroovyDslParser.isDirectDependencyNotationLiteral(literal))
+					&& GroovyDslParser.findCommandPlatformString(element) == null) {
 				return builder;
 			}
 
@@ -86,39 +87,39 @@ public class GroovyCompletionContributor extends CompletionContributor {
 			"isGradleGroovyDslFile", GradleUtils::isGroovyDsl);
 
 	private static final PatternCondition<PsiElement> DIRECT_DEPENDENCY_NOTATION_POSITION = literalPosition(
-			"directDependencyNotationPosition", GradleParser::isDirectDependencyNotationLiteral);
+			"directDependencyNotationPosition", GroovyDslParser::isDirectDependencyNotationLiteral);
 
 	private static final PatternCondition<PsiElement> COMMAND_PLATFORM_STRING_POSITION = PatternConditions
 			.conditional("commandPlatformStringPosition",
-					position -> GradleParser.findCommandPlatformString(position) != null);
+					position -> GroovyDslParser.findCommandPlatformString(position) != null);
 
 	private static final PatternCondition<PsiElement> VERSION_NAMED_ARGUMENT_LITERAL_POSITION = literalPosition(
-			"versionNamedArgumentLiteralPosition", GradleParser::isVersionNamedArgumentLiteral);
+			"versionNamedArgumentLiteralPosition", GroovyDslParser::isVersionNamedArgumentLiteral);
 
 	private static final PatternCondition<GrReferenceExpression> VERSION_NAMED_ARGUMENT_REFERENCE = PatternConditions
-			.conditional("versionNamedArgumentReference", GradleParser::isVersionNamedArgumentReference);
+			.conditional("versionNamedArgumentReference", GroovyDslParser::isVersionNamedArgumentReference);
 
 	private static final PatternCondition<PsiElement> PREFER_VERSION_BLOCK_POSITION = literalPosition(
 			"preferVersionBlockPosition",
-			literal -> GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER));
+			literal -> GroovyDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER));
 
 	private static final PatternCondition<PsiElement> STRICTLY_VERSION_BLOCK_POSITION = literalPosition(
 			"strictlyVersionBlockPosition",
-			literal -> GradleParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY));
+			literal -> GroovyDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY));
 
 	private static final PatternCondition<GrReferenceExpression> PREFER_VERSION_BLOCK_REFERENCE = PatternConditions
 			.conditional("preferVersionBlockReference",
-					reference -> GradleParser.isVersionBlockReference(reference, GradleVersionConstraint.PREFER));
+					reference -> GroovyDslParser.isVersionBlockReference(reference, GradleVersionConstraint.PREFER));
 
 	private static final PatternCondition<GrReferenceExpression> STRICTLY_VERSION_BLOCK_REFERENCE = PatternConditions
 			.conditional("strictlyVersionBlockReference",
-					reference -> GradleParser.isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY));
+					reference -> GroovyDslParser.isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY));
 
 	private static final PatternCondition<PsiElement> PLUGIN_VERSION_POSITION = literalPosition(
-			"pluginVersionPosition", GradleParser::isPluginVersionLiteral);
+			"pluginVersionPosition", GroovyDslParser::isPluginVersionLiteral);
 
 	private static final PatternCondition<PsiElement> BACKING_VERSION_PROPERTY_POSITION = literalPosition(
-			"backingVersionPropertyPosition", GradleParser::isBackingVersionPropertyLiteral);
+			"backingVersionPropertyPosition", GroovyDslParser::isBackingVersionPropertyLiteral);
 
 	private static final PsiElementPattern.Capture<PsiElement> INLINE_DEPENDENCY_NOTATION = inGradleGroovyFile(
 			DIRECT_DEPENDENCY_NOTATION_POSITION);
@@ -215,7 +216,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 
 		return PatternConditions.conditional(name, position -> {
 			GrLiteral literal = getLiteral(position);
-			return literal != null && GradleParser.isStringLiteral(literal) && predicate.test(literal);
+			return GroovyDslParser.isStringLiteral(literal) && predicate.test(literal);
 		});
 	}
 
@@ -250,7 +251,7 @@ public class GroovyCompletionContributor extends CompletionContributor {
 				&& !existingText.contains(" ");
 	}
 
-	private static GrLiteral getLiteral(PsiElement element) {
+	private static @Nullable GrLiteral getLiteral(PsiElement element) {
 		return element instanceof GrLiteral literal ? literal
 				: PsiTreeUtil.getParentOfType(element, GrLiteral.class, false);
 	}

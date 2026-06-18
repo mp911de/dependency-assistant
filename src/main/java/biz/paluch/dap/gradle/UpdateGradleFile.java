@@ -23,7 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
-import biz.paluch.dap.gradle.TomlParser.TomlDependencyDeclaration;
+import biz.paluch.dap.gradle.TomlParser.TomlCatalogDeclaration;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.lang.properties.IProperty;
@@ -239,7 +239,7 @@ class UpdateGradleFile {
 
 			for (TomlKeyValue kv : PsiTreeUtil.getChildrenOfTypeAsList(table, TomlKeyValue.class)) {
 
-				TomlDependencyDeclaration entry = TomlParser.parseTomlEntry(kv, propertyResolver);
+				TomlCatalogDeclaration entry = TomlParser.parseTomlEntry(kv, propertyResolver);
 				if (!entry.isComplete()) {
 					continue;
 				}
@@ -247,19 +247,19 @@ class UpdateGradleFile {
 				GradleDependency dependency = entry.toDependency();
 
 				if (!(dependency instanceof SimpleDependency sd) || !sd.id().equals(artifactId)
-						|| entry.versionLiteral() == null) {
+						|| entry.getVersionLiteral() == null) {
 					continue;
 				}
 
 				String replacementText = newVersion;
 				if (kv.getValue() instanceof TomlLiteral) {
 					String text = TomlParser.getRequiredText(kv.getValue());
-					replacementText = text.replace(entry.version(), newVersion);
+					replacementText = text.replace(entry.getVersion(), newVersion);
 				}
 
 				TomlLiteral newLiteral = new TomlPsiFactory(project, false)
 						.createLiteral("\"%s\"".formatted(replacementText));
-				entry.versionLiteral().replace(newLiteral);
+				entry.getVersionLiteral().replace(newLiteral);
 			}
 		}
 	}

@@ -28,16 +28,17 @@ import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.SiteRole;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.Property;
-import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
+import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlLiteral;
 
 /**
@@ -55,19 +56,17 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final PsiFile file;
 
-	private final TomlArtifactResolver tomlResolver;
-
 	private final GradlePropertyResolver propertyResolver;
 
 	private final VersionCatalogRegistry registry;
 
-	private final GroovyVersionSiteLocator groovySiteLocator;
+	private final GroovyArtifactReferenceLocator groovyLocator;
 
-	private final KotlinVersionSiteLocator kotlinSiteLocator;
+	private final KotlinArtifactReferenceLocator kotlinLocator;
 
-	private final TomlVersionSiteLocator tomlSiteLocator;
+	private final TomlArtifactReferenceLocator tomlLocator;
 
-	private final GradleVersionSiteResolver lookupSiteResolver;
+	private final @Nullable ProjectState projectState;
 
 	/**
 	 * Create a resolver for the given context and build context.
@@ -77,18 +76,16 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	 */
 	GradleArtifactReferenceResolver(LookupContext context, PsiFile file) {
 
-		Project project = context.project();
-
 		this.file = file;
 		this.candidate = GradleUtils.isGradleFile(file);
+		this.projectState = context.projectState();
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
-		this.tomlResolver = new TomlArtifactResolver(project, file, this.registry);
-		this.groovySiteLocator = new GroovyVersionSiteLocator(this.propertyResolver, this.registry);
-		this.kotlinSiteLocator = new KotlinVersionSiteLocator(this.propertyResolver, this.registry);
-		this.tomlSiteLocator = new TomlVersionSiteLocator();
-		this.lookupSiteResolver = new GradleVersionSiteResolver(this.propertyResolver, context.projectState(),
-				this.tomlResolver);
+		this.groovyLocator = new GroovyArtifactReferenceLocator(this.propertyResolver, this.registry,
+				context.projectState());
+		this.kotlinLocator = new KotlinArtifactReferenceLocator(this.propertyResolver, this.registry,
+				context.projectState());
+		this.tomlLocator = new TomlArtifactReferenceLocator(context.projectState());
 	}
 
 	@Override
@@ -98,8 +95,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		GradleVersionSite versionSite = findVersionSite(element);
-		return versionSite.isPresent() ? lookupSiteResolver.resolve(versionSite) : ArtifactReference.unresolved();
+		return findArtifactReference(element);
 	}
 
 	@Override
@@ -172,14 +168,14 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	}
 
 	/**
-	 * Find the Gradle version site represented by the given element.
+	 * Find the Gradle artifact reference represented by the given element.
 	 * @param element the PSI element under inspection.
 	 */
-	private GradleVersionSite findVersionSite(PsiElement element) {
+	private ArtifactReference findArtifactReference(PsiElement element) {
 
 		PsiFile file = element.getContainingFile();
 		if (GradleUtils.isVersionCatalog(file) && element instanceof TomlLiteral literal) {
-			return tomlSiteLocator.locate(literal);
+			return tomlLocator.locate(literal);
 		}
 
 		if (GradleUtils.isGradlePropertiesFile(file)) {
@@ -189,42 +185,42 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 			if (element instanceof Property property) {
 				return locateGradlePropertySite(property);
 			}
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
 		if (GradleUtils.isGroovyDsl(file) && element instanceof GroovyPsiElement groovyElement) {
-			return groovySiteLocator.locate(groovyElement);
+			return groovyLocator.locate(groovyElement);
 		}
 
 		if (GradleUtils.KOTLIN_AVAILABLE && element instanceof KtElement ktElement) {
-			return kotlinSiteLocator.locate(ktElement);
+			return kotlinLocator.locate(ktElement);
 		}
 
-		return GradleVersionSite.absent();
+		return ArtifactReference.unresolved();
 	}
 
-	private GradleVersionSite locateGradlePropertySite(PsiElement element) {
+	private ArtifactReference locateGradlePropertySite(PsiElement element) {
 
 		Property property = GradlePropertiesParser.getProperty(element);
 		if (property == null || StringUtils.isEmpty(property.getUnescapedKey())) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
 		return locateGradlePropertySite(property);
 	}
 
-	private GradleVersionSite locateGradlePropertySite(Property property) {
+	private ArtifactReference locateGradlePropertySite(Property property) {
 
 		if (StringUtils.isEmpty(property.getUnescapedKey())) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
 		if (StringUtils.hasText(property.getName())) {
-			return new GradleVersionSite.BackingProperty(property.getName(), property.getUnescapedValue(), property,
-					property);
+			return ArtifactReferenceUtils.resolve(property.getName(), property.getUnescapedValue(), property, property,
+					projectState);
 		}
 
-		return GradleVersionSite.absent();
+		return ArtifactReference.unresolved();
 	}
 
 }

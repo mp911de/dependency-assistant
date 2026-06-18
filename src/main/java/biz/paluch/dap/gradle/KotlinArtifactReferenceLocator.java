@@ -16,13 +16,12 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.gradle.GradleVersionSite.BackingProperty;
-import biz.paluch.dap.gradle.GradleVersionSite.CoordinateSite;
-import biz.paluch.dap.gradle.GradleVersionSite.TomlCatalogAlias;
 import biz.paluch.dap.gradle.KtVersion.Constraint;
-import biz.paluch.dap.support.DependencySite;
+import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -32,20 +31,27 @@ import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Kotlin DSL PSI locator for {@link GradleVersionSite version sites} and
- * parser-backed dependency declarations.
+ * Kotlin DSL PSI locator for parser-backed artifact declarations.
  *
  * @author Mark Paluch
  */
-class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
+class KotlinArtifactReferenceLocator {
 
 	private final PropertyResolver propertyResolver;
 
-	private final @Nullable VersionCatalogRegistry registry;
+	private final VersionCatalogRegistry registry;
 
-	KotlinVersionSiteLocator(PropertyResolver propertyResolver, @Nullable VersionCatalogRegistry registry) {
+	private final @Nullable ProjectState projectState;
+
+	private @Nullable PsiFile cachedFile;
+
+	private @Nullable KotlinDslFileParser cachedParser;
+
+	KotlinArtifactReferenceLocator(PropertyResolver propertyResolver, VersionCatalogRegistry registry,
+			@Nullable ProjectState projectState) {
 		this.propertyResolver = propertyResolver;
 		this.registry = registry;
+		this.projectState = projectState;
 	}
 
 	/**
@@ -213,7 +219,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 	}
 
 	/**
-	 * Locate the {@link GradleVersionSite} owning the given Kotlin PSI element.
+	 * Resolve the artifact reference owning the given Kotlin PSI element.
 	 * <p>Supports direct dependency literals, property-backed declarations,
 	 * {@code extra} assignments, and version catalog references such as:
 	 * <pre class="code">
@@ -224,14 +230,13 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 	 * </pre>
 	 *
 	 * @param element the PSI element to inspect.
-	 * @return the resolved version site, or {@link GradleVersionSite#absent()} if
-	 * no supported declaration can be derived.
+	 * @return the artifact reference, or an unresolved reference if no supported
+	 * declaration can be derived.
 	 */
-	@Override
-	public GradleVersionSite locate(KtElement element) {
+	public ArtifactReference locate(KtElement element) {
 
-		GradleVersionSite catalogReference = locateCatalogReference(element);
-		if (catalogReference.isPresent()) {
+		ArtifactReference catalogReference = locateCatalogReference(element);
+		if (catalogReference.isResolved()) {
 			return catalogReference;
 		}
 
@@ -246,14 +251,11 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 			KtCallExpression dependencyExpression = findDependencyExpression(propertyCandidate);
 			KtLiterals literals = KtLiterals.from(propertyCandidate);
 			if (dependencyExpression != null && literals.hasProperty()) {
-				DependencySite site = locatePropertyUsage(literals.getProperty(), dependencyExpression,
-						propertyCandidate);
-				return coordinateSite(site, propertyCandidate);
+				return locatePropertyUsage(literals.getProperty(), dependencyExpression);
 			}
 
 			if (dependencyExpression != null) {
-				DependencySite site = KotlinDslParser.parseDependencySite(dependencyExpression, propertyResolver);
-				return coordinateSite(site, propertyCandidate);
+				return locateDeclaration(dependencyExpression);
 			}
 		}
 
@@ -268,12 +270,7 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 				KtStringTemplateExpression expression = (KtStringTemplateExpression) versionCandidate.getParent();
 
 				KtCallExpression declaration = findDependencyExpression(expression);
-				if (declaration != null) {
-					DependencySite site = KotlinDslParser.parseDependencySite(declaration, propertyResolver);
-					return coordinateSite(site, expression);
-				}
-
-				return GradleVersionSite.absent();
+				return declaration != null ? locateDeclaration(declaration) : ArtifactReference.unresolved();
 			}
 
 			KtBinaryExpression propertyExpression = findPropertyExpression(versionCandidate);
@@ -281,104 +278,110 @@ class KotlinVersionSiteLocator implements VersionSiteLocator<KtElement> {
 				return locateExtraProperty(propertyExpression, versionCandidate);
 			}
 
-			KtCallExpression declaration = findDependencyExpression(versionCandidate);
-			if (declaration != null) {
-				DependencySite site = KotlinDslParser.parseDependencySite(declaration, propertyResolver);
-				return coordinateSite(site, versionCandidate);
+			// Block-template entries already resolved their dependency call in the
+			// KtBlockStringTemplateEntry branch above; only simple entries reach here.
+			if (!(versionCandidate instanceof KtBlockStringTemplateEntry)) {
+				KtCallExpression declaration = findDependencyExpression(versionCandidate);
+				if (declaration != null) {
+					return locateDeclaration(declaration);
+				}
 			}
 		}
 
 		if (element instanceof KtNameReferenceExpression propertyCandidate
 				&& element.getParent() instanceof ValueArgument) {
 			if (GradleUtils.isDependencySection(propertyCandidate.getReferencedName())) {
-				return GradleVersionSite.absent();
+				return ArtifactReference.unresolved();
 			}
 
 			KtCallExpression declaration = findDependencyExpression(propertyCandidate);
 			if (declaration != null) {
-				DependencySite site = locatePropertyUsage(propertyCandidate.getReferencedName(), declaration,
-						propertyCandidate);
-				return coordinateSite(site, propertyCandidate);
+				return locatePropertyUsage(propertyCandidate.getReferencedName(), declaration);
 			}
 		}
 
-		return GradleVersionSite.absent();
+		return ArtifactReference.unresolved();
 	}
 
-	private GradleVersionSite locateExtraProperty(@Nullable KtBinaryExpression propertyExpression,
+	private ArtifactReference locateExtraProperty(@Nullable KtBinaryExpression propertyExpression,
 			KtElement versionEntry) {
 
 		if (propertyExpression == null) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
 		String propertyName = findProperty(propertyExpression);
 		if (!StringUtils.hasText(propertyName)) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
-		return new BackingProperty(propertyName, versionEntry.getText(), propertyExpression, versionEntry);
+		return ArtifactReferenceUtils.resolve(propertyName, versionEntry.getText(), propertyExpression, versionEntry,
+				projectState);
 	}
 
-	private GradleVersionSite locatePropertyDeclaration(String propertyName, KtElement declaration) {
+	private ArtifactReference locatePropertyDeclaration(String propertyName, KtElement declaration) {
 
-		PropertyValue propertyValue = propertyResolver.getPropertyValue(propertyName);
+		Property propertyValue = parserFor(declaration).getPropertyValue(propertyName);
 		if (propertyValue == null) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
-		return new BackingProperty(propertyValue.getKey(), propertyValue.getValue(), declaration,
-				propertyValue.getValueLiteral());
+		return ArtifactReferenceUtils.resolve(propertyValue.getKey(), propertyValue.getValue(), declaration,
+				propertyValue.getValueLiteral(), projectState);
 	}
 
-	private @Nullable DependencySite locatePropertyUsage(String propertyName, KtCallExpression declaration,
-			PsiElement declarationElement) {
+	private ArtifactReference locatePropertyUsage(String propertyName, KtCallExpression declaration) {
 
-		if (StringUtils.isEmpty(propertyName) || !propertyResolver.containsProperty(propertyName)) {
-			return null;
+		KotlinDslFileParser parser = parserFor(declaration);
+		if (StringUtils.isEmpty(propertyName) || !parser.containsProperty(propertyName)) {
+			return ArtifactReference.unresolved();
 		}
 
-		return KotlinDslParser.parseDependencySite(declaration, propertyResolver);
+		return reference(parser.parse(declaration));
 	}
 
-	private GradleVersionSite locateCatalogReference(KtElement element) {
-
-		if (registry == null) {
-			return GradleVersionSite.absent();
-		}
+	private ArtifactReference locateCatalogReference(KtElement element) {
 
 		if (!(element instanceof KtDotQualifiedExpression dots)
 				|| !(element.getParent() instanceof KtValueArgument arg)) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
 		KtCallExpression catalogCall = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
 		if (!KotlinDslUtils.isCatalogConsumerCall(catalogCall)) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
-		TomlReference reference = TomlReference.from(KotlinDslParser.getSegments(dots),
-				registry.catalogPaths().keySet());
+		KotlinDslFileParser parser = parserFor(element);
+		TomlReference reference = parser.findCatalogReference(catalogCall);
 		if (reference == null) {
-			return GradleVersionSite.absent();
+			return ArtifactReference.unresolved();
 		}
 
-		return new TomlCatalogAlias(reference, catalogCall);
+		return reference(parser.parse(catalogCall));
 	}
 
 	/**
-	 * Wrap a parser-derived {@link DependencySite} as a {@link CoordinateSite}
-	 * anchored at the given version element, or {@link GradleVersionSite#absent()}
-	 * when no site could be derived.
+	 * Resolve a dependency call to its reference by delegating to the forward
+	 * parser, so reverse lookup and dependency collection share one declaration
+	 * model.
 	 */
-	private static GradleVersionSite coordinateSite(@Nullable DependencySite site, PsiElement versionElement) {
+	private ArtifactReference locateDeclaration(KtCallExpression declaration) {
+		return reference(parserFor(declaration).parse(declaration));
+	}
 
-		if (site == null) {
-			return GradleVersionSite.absent();
+	private static ArtifactReference reference(@Nullable ArtifactDeclaration declaration) {
+		return declaration != null ? ArtifactReference.from(declaration) : ArtifactReference.unresolved();
+	}
+
+	private KotlinDslFileParser parserFor(PsiElement element) {
+
+		PsiFile file = element.getContainingFile();
+		if (cachedParser == null || cachedFile != file) {
+			cachedFile = file;
+			cachedParser = new KotlinDslFileParser(file, propertyResolver, registry);
 		}
-
-		return new CoordinateSite(site.getArtifactId(), site.getVersionSource(), site.getDeclarationSource(),
-				site.getDeclarationElement(), versionElement, GradleVersionSite.versionOf(site));
+		return cachedParser;
 	}
 
 }

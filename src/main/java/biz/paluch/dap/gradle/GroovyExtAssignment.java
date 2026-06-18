@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.support.Property;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -47,25 +45,6 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 sealed interface GroovyExtAssignment extends ExtraDeclaration {
-
-	/**
-	 * Return a {@link PropertyValue} when {@code element} is the <em>value</em>
-	 * literal of a Groovy {@code ext} property declaration, or {@literal null}
-	 * otherwise.
-	 * <p>
-	 * The supported declaration forms are detected via
-	 * {@link GroovyExtAssignment#from(PsiElement)}.
-	 */
-	static @Nullable Property findGroovyExtPropertyVersionElement(PsiElement element) {
-
-		GroovyExtAssignment assignment = from(element);
-		if (assignment == null) {
-			return null;
-		}
-
-		String value = GroovyDslUtils.getText(assignment.getValueLiteral());
-		return new PropertyValue(assignment.getKey(), value, assignment.getValueLiteral());
-	}
 
 	/**
 	 * @return the literal expression holding the value.

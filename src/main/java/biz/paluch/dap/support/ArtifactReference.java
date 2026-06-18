@@ -72,6 +72,15 @@ public class ArtifactReference {
 	}
 
 	/**
+	 * Create an artifact reference from the given artifact declaration.
+	 * @param declaration the resolved artifact declaration.
+	 * @return the artifact reference.
+	 */
+	public static ArtifactReference from(ArtifactDeclaration declaration) {
+		return new ArtifactReference(declaration);
+	}
+
+	/**
 	 * Return whether the artifact reference is present and resolved.
 	 */
 	public boolean isResolved() {

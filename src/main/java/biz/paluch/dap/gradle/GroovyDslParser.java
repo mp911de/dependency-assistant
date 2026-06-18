@@ -17,24 +17,21 @@
 package biz.paluch.dap.gradle;
 
 import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.Expression;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
@@ -53,50 +50,246 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals
 import org.jspecify.annotations.Nullable;
 
 /**
- * Parser that extracts Gradle dependency declarations from Groovy DSL
- * ({@code build.gradle}) files.
- * <p>Results are accumulated into a {@link DependencyCollector} using the same
- * coordinate model as the Maven parser, making the version-resolution and UI
- * layers build-tool-agnostic.
+ * Parser for individual dependency declarations in a Groovy DSL Gradle file.
+ * Resolution collaborators and declaration-form strategies share the lifecycle
+ * of one {@link GroovyDslFileParser}.
  *
  * @author Mark Paluch
+ * @see ArtifactDeclaration
  */
-// TODO: DDD Refactoring
-class GradleParser extends GradleParserSupport {
+class GroovyDslParser {
 
-	private final PropertyResolver global;
+	private final PropertyResolver propertyResolver;
 
 	private final VersionCatalogRegistry registry;
 
-	GradleParser(DependencyCollector collector, Map<String, String> properties) {
-		super(collector);
-		this.global = properties::get;
-		this.registry = VersionCatalogRegistry.defaults();
-	}
+	private final List<ParsingStrategy<GroovyDeclarationCall, GrMethodCall>> strategies;
 
-	GradleParser(DependencyCollector collector, PropertyResolver propertyResolver, VersionCatalogRegistry registry) {
-		super(collector);
-		this.global = propertyResolver;
+	GroovyDslParser(PropertyResolver propertyResolver, VersionCatalogRegistry registry) {
+		this.propertyResolver = propertyResolver;
 		this.registry = registry;
+		this.strategies = List.of(new VersionCatalogStrategy(), new PluginStrategy(), new MapStyleStrategy(),
+				new DependencyNotationStrategy());
 	}
 
 	/**
-	 * Return whether the call can contain a supported dependency or plugin
-	 * declaration.
+	 * Parse a Groovy DSL declaration from the given call.
+	 * <p>Supports declarations such as: <pre class="code">
+	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
+	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
+	 * implementation('org.junit.jupiter:junit-jupiter') { version { prefer '5.11.0' } }
+	 * id 'org.springframework.boot' version '3.3.2'
+	 * implementation libs.spring.core
+	 * </pre>
+	 * @param call the configuration call to parse.
+	 * @return the parsed declaration, or {@literal null} when the call is not
+	 * supported.
 	 */
-	public static boolean isDependencyCallCandidate(GrMethodCall call) {
+	@Nullable
+	ArtifactDeclaration parse(GrMethodCall call) {
 
-		String methodName = GroovyDslUtils.getGroovyMethodName(call);
+		GroovyDeclarationCall declarationCall = GroovyDeclarationCall.from(call);
+		if (declarationCall == null) {
+			return null;
+		}
 
-		return GradleUtils.isPlatformSection(methodName) || GradleUtils.isDependencySection(methodName)
-				|| GroovyDslUtils.isInsidePluginsBlock(call);
+		for (ParsingStrategy<GroovyDeclarationCall, GrMethodCall> strategy : strategies) {
+			if (strategy.supports(declarationCall)) {
+				ArtifactDeclaration declaration = declarationCall.parse(strategy::parse);
+				if (declaration != null) {
+					return declaration;
+				}
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Return whether the call is a recognized Gradle dependency, platform, plugin,
+	 * or version-catalog declaration, that is whether {@link #parse(GrMethodCall)}
+	 * can classify it. Used by reverse element lookup to find the construct that
+	 * owns an element.
+	 */
+	static boolean isDeclarationCall(GrMethodCall call) {
+		return GroovyDeclarationCall.from(call) != null;
+	}
+
+	@Nullable
+	TomlReference findCatalogReference(GrMethodCall call) {
+
+		GrExpression accessor = GroovyDslUtils.getFirstGroovyCatalogArgumentExpression(call);
+		if (accessor == null) {
+			return null;
+		}
+
+		return TomlReference.from(GroovyDslUtils.getVersionCatalogSegments(accessor), registry.catalogPaths().keySet());
+	}
+
+	private ArtifactDeclaration dependency(DependencySite site) {
+		ArtifactReference artifactReference = ArtifactReferenceUtils.resolve(site, () -> propertyResolver);
+		return artifactReference.getDeclaration();
+	}
+
+	/**
+	 * Groovy DSL configuration call classified for declaration parsing.
+	 */
+	static class GroovyDeclarationCall implements ConfigurationContext {
+
+		private final GrMethodCall call;
+
+		private final DeclarationSource source;
+
+		private final String configurationName;
+
+		private final boolean catalogConsumer;
+
+		private GroovyDeclarationCall(GrMethodCall call, DeclarationSource source, String configurationName,
+				boolean catalogConsumer) {
+			this.call = call;
+			this.source = source;
+			this.configurationName = configurationName;
+			this.catalogConsumer = catalogConsumer;
+		}
+
+		static @Nullable GroovyDeclarationCall from(@Nullable GrMethodCall call) {
+
+			if (call == null) {
+				return null;
+			}
+
+			String configurationName = GroovyDslUtils.getGroovyMethodName(call);
+			if (StringUtils.isEmpty(configurationName)) {
+				return null;
+			}
+
+			boolean catalogConsumer = GroovyDslUtils.isGroovyCatalogConsumerCall(call);
+			DeclarationSource source = declarationSource(call, configurationName);
+			if (source == null && !catalogConsumer) {
+				return null;
+			}
+
+			return new GroovyDeclarationCall(call, source != null ? source : DeclarationSource.dependency(),
+					configurationName, catalogConsumer);
+		}
+
+		private static @Nullable DeclarationSource declarationSource(GrMethodCall call, String configurationName) {
+
+			boolean platform = GradleUtils.isPlatformSection(configurationName);
+			boolean dependency = GradleUtils.isDependencySection(configurationName);
+			boolean plugin = GradleUtils.isPlugin(configurationName) && GroovyDslUtils.isInsidePluginsBlock(call);
+
+			if (plugin) {
+				return DeclarationSource.plugin();
+			}
+
+			if (platform || dependency) {
+				return platform ? DeclarationSource.managed() : DeclarationSource.dependency();
+			}
+
+			return null;
+		}
+
+		GrMethodCall getCall() {
+			return call;
+		}
+
+		boolean isCatalogConsumer() {
+			return catalogConsumer;
+		}
+
+		@Override
+		public DeclarationSource getDeclarationSource() {
+			return source;
+		}
+
+		@Override
+		public String getConfigurationName() {
+			return configurationName;
+		}
+
+		@Nullable
+		ArtifactDeclaration parse(
+				BiFunction<GrMethodCall, DeclarationSource, @Nullable ArtifactDeclaration> parser) {
+			return parser.apply(call, source);
+		}
+
+	}
+
+	private class VersionCatalogStrategy implements ParsingStrategy<GroovyDeclarationCall, GrMethodCall> {
+
+		@Override
+		public boolean supports(GroovyDeclarationCall call) {
+			return call.isCatalogConsumer();
+		}
+
+		@Override
+		public @Nullable ArtifactDeclaration parse(GrMethodCall call, DeclarationSource declarationSource) {
+
+			TomlReference reference = findCatalogReference(call);
+			if (reference == null) {
+				return null;
+			}
+
+			ArtifactReference resolved = registry.resolve(reference);
+			return resolved.isResolved() ? resolved.getDeclaration().at(call) : null;
+		}
+
+	}
+
+	private class PluginStrategy implements ParsingStrategy<GroovyDeclarationCall, GrMethodCall> {
+
+		@Override
+		public boolean supports(GroovyDeclarationCall call) {
+			return call.isPlugin();
+		}
+
+		@Override
+		public @Nullable ArtifactDeclaration parse(GrMethodCall call, DeclarationSource declarationSource) {
+
+			DependencySite site = GroovyPluginDependencySite.fromMethodCall(call, propertyResolver);
+			return site != null ? dependency(site) : null;
+		}
+
+	}
+
+	private class MapStyleStrategy implements ParsingStrategy<GroovyDeclarationCall, GrMethodCall> {
+
+		@Override
+		public boolean supports(GroovyDeclarationCall call) {
+			return call.isDependency() && isMapStyleDeclarationCandidate(call.getCall());
+		}
+
+		@Override
+		public @Nullable ArtifactDeclaration parse(GrMethodCall call, DeclarationSource declarationSource) {
+
+			DependencySite site = parseMapDeclaration(call, declarationSource, propertyResolver);
+			return site != null ? dependency(site) : null;
+		}
+
+	}
+
+	private class DependencyNotationStrategy implements ParsingStrategy<GroovyDeclarationCall, GrMethodCall> {
+
+		@Override
+		public boolean supports(GroovyDeclarationCall call) {
+			return call.isDependency();
+		}
+
+		@Override
+		public @Nullable ArtifactDeclaration parse(GrMethodCall call, DeclarationSource declarationSource) {
+
+			DependencySite site = parseDependency(call, declarationSource, propertyResolver);
+			return site != null ? dependency(site) : null;
+		}
+
 	}
 
 	/**
 	 * Return whether the literal can represent a Groovy string value.
 	 */
-	static boolean isStringLiteral(GrLiteral literal) {
-		return literal.getValue() instanceof String;
+	static boolean isStringLiteral(@Nullable GrLiteral literal) {
+		return literal != null && literal.getValue() instanceof String;
 	}
 
 	/**
@@ -166,6 +359,35 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
+	 * Return whether the literal is an argument to any supported version-block
+	 * constraint call ({@code prefer} or {@code strictly}).
+	 * <p>Consolidates the per-constraint checks into a single ancestor walk so
+	 * per-element reverse resolution does not recompute the enclosing dependency
+	 * call once per constraint name.
+	 */
+	private static boolean isVersionBlockLiteral(GrLiteral literal) {
+
+		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
+		return constraintCall != null
+				&& GradleVersionConstraint.isConstraint(GroovyDslUtils.getGroovyMethodName(constraintCall))
+				&& isArgumentOfCall(literal, constraintCall)
+				&& findVersionBlockDependencyCall(constraintCall) != null;
+	}
+
+	/**
+	 * Return whether the reference is an argument to any supported version-block
+	 * constraint call ({@code prefer} or {@code strictly}).
+	 */
+	private static boolean isVersionBlockReference(GrReferenceExpression reference) {
+
+		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(reference, GrMethodCall.class);
+		return constraintCall != null
+				&& GradleVersionConstraint.isConstraint(GroovyDslUtils.getGroovyMethodName(constraintCall))
+				&& isArgumentOfCall(reference, constraintCall)
+				&& findVersionBlockDependencyCall(constraintCall) != null;
+	}
+
+	/**
 	 * Return whether the literal is the version argument in a Groovy plugin
 	 * declaration.
 	 */
@@ -191,7 +413,7 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Return the property names referenced by a supported version site anywhere in
+	 * Return the property names referenced by a supported declaration anywhere in
 	 * the file. The result is cached and recomputed when the PSI changes, so the
 	 * repeated completion-position checks do not each re-traverse the file.
 	 */
@@ -211,20 +433,6 @@ class GradleParser extends GradleParserSupport {
 
 					return names;
 				});
-	}
-
-	/**
-	 * Return the dependency call that owns a version named-argument value.
-	 */
-	static @Nullable GrMethodCall findVersionNamedArgumentDependencyCall(PsiElement element) {
-
-		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(element, GrNamedArgument.class);
-		if (namedArgument == null || !GradleUtils.VERSION.equals(namedArgument.getLabelName())
-				|| !isExpressionOfNamedArgument(element, namedArgument)) {
-			return null;
-		}
-
-		return findNamedArgumentDependencyCall(namedArgument);
 	}
 
 	/**
@@ -330,8 +538,7 @@ class GradleParser extends GradleParserSupport {
 
 	private static boolean isVersionPropertyReference(GrReferenceExpression reference) {
 		return isVersionNamedArgumentReference(reference)
-				|| isVersionBlockReference(reference, GradleVersionConstraint.PREFER)
-				|| isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY)
+				|| isVersionBlockReference(reference)
 				|| isReferenceInsideSupportedVersionLiteral(reference);
 	}
 
@@ -344,9 +551,30 @@ class GradleParser extends GradleParserSupport {
 	private static boolean isSupportedVersionLiteral(GrLiteral literal) {
 		return isDirectDependencyNotationLiteral(literal)
 				|| isVersionNamedArgumentLiteral(literal)
-				|| isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER)
-				|| isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY)
+				|| isVersionBlockLiteral(literal)
 				|| isPluginVersionLiteral(literal);
+	}
+
+	/**
+	 * Return whether the element occupies a recognized version position, either a
+	 * version-definition literal or a property reference used as a version, that a
+	 * reverse lookup can resolve to a declaration.
+	 * @param element the PSI element under inspection.
+	 * @return {@literal true} if the element is a supported version position;
+	 * {@literal false} otherwise.
+	 */
+	static boolean isVersionPosition(PsiElement element) {
+
+		if (element instanceof GrLiteral literal) {
+			return isSupportedVersionLiteral(literal);
+		}
+
+		if (element instanceof GrReferenceExpression reference) {
+			return isVersionNamedArgumentReference(reference)
+					|| isVersionBlockReference(reference);
+		}
+
+		return false;
 	}
 
 	private static boolean isDependencyOrPlatformCall(GrMethodCall call) {
@@ -367,135 +595,6 @@ class GradleParser extends GradleParserSupport {
 	}
 
 	/**
-	 * Return the property resolver used as the parser fallback.
-	 */
-	protected PropertyResolver getPropertyResolver() {
-		return global;
-	}
-
-	/**
-	 * Return the version-catalog registry used to resolve {@code libs.…} accessors.
-	 */
-	protected VersionCatalogRegistry getRegistry() {
-		return registry;
-	}
-
-	// -------------------------------------------------------------------------
-	// Groovy DSL
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Parses a Groovy {@code build.gradle} or {@code settings.gradle} file and
-	 * accumulates all resolvable dependency and plugin declarations into
-	 * {@code collector}.
-	 */
-	public void parseGroovyDsl(PsiFile file) {
-
-		Map<String, PropertyValue> extProperties = GroovyDslExtParser.parseExtProperties(file);
-		Map<String, PropertyValue> properties = new LinkedHashMap<>(extProperties);
-		properties.putAll(GroovyDslExtParser.parseLocalVariables(file));
-
-		PropertyResolver propertyResolver = PropertyResolver.fromMap(properties)
-				.withFallback(global);
-
-		getCollector().addProperties(properties.keySet());
-
-		SyntaxTraverser.psiTraverser(file).filter(GrMethodCall.class)
-				.forEach(call -> handleGroovyCall(call, propertyResolver));
-	}
-
-	protected static DependencySite toCatalogSite(ArtifactDeclaration declaration,
-			DeclarationSource declarationSource) {
-
-		return DependencySite.of(declaration.getArtifactId(), declaration.getVersionSource(), declarationSource,
-				declaration.getDeclarationElement());
-	}
-
-	/**
-	 * Resolve a version-catalog accessor argument (such as {@code libs.spring.core}
-	 * or {@code alias(libs.plugins.foo)}) of the given call against the catalog
-	 * TOML, returning a resolved {@link DependencySite} or {@literal null} when the
-	 * call does not reference a known catalog alias.
-	 *
-	 * @param call the catalog-consuming call to inspect.
-	 * @return the resolved dependency site, or {@literal null} if the call carries
-	 * no resolvable catalog accessor.
-	 */
-	private @Nullable DependencySite parseCatalogReference(GrMethodCall call) {
-
-		GrExpression accessor = GroovyDslUtils.getFirstGroovyCatalogArgumentExpression(call);
-		if (accessor == null) {
-			return null;
-		}
-
-		TomlReference reference = TomlReference.from(GroovyDslUtils.getVersionCatalogSegments(accessor),
-				getRegistry().catalogPaths().keySet());
-		if (reference == null) {
-			return null;
-		}
-
-		ArtifactReference artifactReference = resolveCatalogReference(reference, call);
-		if (!artifactReference.isResolved()) {
-			return null;
-		}
-
-		return toCatalogSite(artifactReference.getDeclaration(),
-				artifactReference.getDeclaration().getDeclarationSource());
-	}
-
-	private void handleGroovyCall(GrMethodCall call, PropertyResolver propertyResolver) {
-
-		if (GroovyDslUtils.isGroovyCatalogConsumerCall(call)) {
-			DependencySite catalogSite = parseCatalogReference(call);
-			if (catalogSite != null) {
-				register(catalogSite, propertyResolver);
-				return;
-			}
-		}
-
-		String methodName = GroovyDslUtils.getGroovyMethodName(call);
-		boolean isPlatform = GradleUtils.isPlatformSection(methodName);
-		boolean isDependencyConfig = GradleUtils.isDependencySection(methodName);
-		boolean isPlugin = GradleUtils.isPlugin(methodName) && GroovyDslUtils.isInsidePluginsBlock(call);
-
-		if (isPlugin) {
-			DependencySite pluginSite = GroovyPluginDependencySite.fromMethodCall(call, propertyResolver);
-			if (pluginSite != null) {
-				register(pluginSite, propertyResolver);
-			}
-			return;
-		}
-
-		if (!isDependencyConfig && !isPlatform) {
-			return;
-		}
-
-		DeclarationSource declarationSource = isPlatform ? DeclarationSource.managed()
-				: DeclarationSource.dependency();
-		DependencySite site = null;
-		if (isMapStyleDeclarationCandidate(call)) {
-			site = parseMapDeclaration(call, declarationSource, propertyResolver);
-		}
-
-		if (site == null) {
-			site = parseDependency(call, declarationSource, propertyResolver);
-		}
-
-		if (site != null) {
-			register(site, propertyResolver);
-		}
-	}
-
-	/**
-	 * Resolve a {@link TomlReference} against the version-catalog TOML, replicating
-	 * the lookup the locator-based resolver performs: parse the catalog versions
-	 * and entries, then match the reference key.
-	 */
-	protected ArtifactReference resolveCatalogReference(TomlReference reference, PsiElement usage) {
-		return new TomlArtifactResolver(usage.getContainingFile(), getRegistry()).resolveReference(reference, usage);
-	}
-
-	/**
 	 * Parse a direct Groovy string-notation dependency declaration.
 	 * <pre class="code">
 	 * implementation 'org.junit.jupiter:junit-jupiter:5.11.0'
@@ -509,7 +608,7 @@ class GradleParser extends GradleParserSupport {
 	 * @return the parsed dependency, or {@literal null} if the call does not
 	 * contain a supported direct declaration.
 	 */
-	public static @Nullable DependencySite parseDependency(GrMethodCall call, DeclarationSource declarationSource,
+	private static @Nullable DependencySite parseDependency(GrMethodCall call, DeclarationSource declarationSource,
 			PropertyResolver propertyResolver) {
 
 		PsiElement[] args = call.getArgumentList().getAllArguments();
@@ -558,7 +657,7 @@ class GradleParser extends GradleParserSupport {
 	 * implementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: '5.11.0'
 	 * </pre>
 	 */
-	public static boolean isMapStyleDeclarationCandidate(GrMethodCall call) {
+	private static boolean isMapStyleDeclarationCandidate(GrMethodCall call) {
 		GrNamedArgument[] namedArguments = call.getNamedArguments();
 		return namedArguments.length > 1;
 	}
@@ -577,11 +676,9 @@ class GradleParser extends GradleParserSupport {
 	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed declaration, possibly incomplete.
 	 */
-	static @Nullable DependencySite parseMapDeclaration(GrMethodCall call, DeclarationSource declarationSource,
+	private static @Nullable DependencySite parseMapDeclaration(GrMethodCall call, DeclarationSource declarationSource,
 			PropertyResolver propertyResolver) {
-		NamedDependencyDeclaration declaration = parseMapDependency(call, call.getNamedArguments(), declarationSource,
-				propertyResolver);
-		return declaration.isComplete() ? declaration.toDependencySite(propertyResolver) : null;
+		return parseMapDependency(call, call.getNamedArguments(), declarationSource, propertyResolver);
 	}
 
 	/**
@@ -660,7 +757,7 @@ class GradleParser extends GradleParserSupport {
 		DependencySite dependencySite = DependencySite.of(artifactId, versionSource, DeclarationSource.dependency(),
 				call);
 		if (versionSource.isProperty()) {
-			PropertyValue propertyValue = propertyResolver
+			Property propertyValue = propertyResolver
 					.getPropertyValue(((VersionSource.VersionProperty) versionSource).getProperty());
 
 			if (propertyValue != null) {
@@ -694,7 +791,7 @@ class GradleParser extends GradleParserSupport {
 	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed declaration, possibly incomplete.
 	 */
-	static NamedDependencyDeclaration parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
+	static @Nullable DependencySite parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
 			DeclarationSource declarationSource, PropertyResolver propertyResolver) {
 
 		String group = null;
@@ -718,7 +815,7 @@ class GradleParser extends GradleParserSupport {
 					String refName = GroovyDslUtils.getRequiredText(ref);
 					versionProperty = refName;
 					if (StringUtils.hasText(refName)) {
-						PropertyValue element = propertyResolver.getPropertyValue(refName);
+						Property element = propertyResolver.getPropertyValue(refName);
 						if (element != null) {
 							version = element.getValue();
 							versionLiteral = element.getValueLiteral();
@@ -732,7 +829,7 @@ class GradleParser extends GradleParserSupport {
 						if (ref != null) {
 							String refName = ref.getReferenceName();
 							versionProperty = refName;
-							PropertyValue element = propertyResolver.getPropertyValue(refName);
+							Property element = propertyResolver.getPropertyValue(refName);
 							if (element != null) {
 								version = element.getValue();
 								versionLiteral = element.getValueLiteral();
@@ -746,8 +843,9 @@ class GradleParser extends GradleParserSupport {
 			}
 		}
 
-		return new NamedDependencyDeclaration(call.getContainingFile(), null, group, artifact,
-				versionProperty, version, call, versionLiteral, declarationSource);
+		GradleDependency dependency = GradleDependency.fromNamed(group, artifact, versionProperty, version,
+				declarationSource, propertyResolver);
+		return dependency != null && versionLiteral != null ? dependency.toDependencySite(call, versionLiteral) : null;
 	}
 
 	private static @Nullable GrLiteral findCoordinateLiteral(GrMethodCall call) {
@@ -769,7 +867,7 @@ class GradleParser extends GradleParserSupport {
 	private static @Nullable PsiElement findCommandPlatformString(GrMethodCall call) {
 
 		if (!GradleUtils.isDependencySection(GroovyDslUtils.getGroovyMethodName(call))
-				|| !hasPlatformCommandArgument(call)) {
+				|| !hasPlatformArgument(call)) {
 			return null;
 		}
 
@@ -781,7 +879,7 @@ class GradleParser extends GradleParserSupport {
 		return null;
 	}
 
-	private static boolean hasPlatformCommandArgument(GrMethodCall call) {
+	private static boolean hasPlatformArgument(GrMethodCall call) {
 
 		for (GrReferenceExpression reference : SyntaxTraverser.psiTraverser(call)
 				.filter(GrReferenceExpression.class)) {
@@ -856,7 +954,7 @@ class GradleParser extends GradleParserSupport {
 				return GroovyVersionValue.absent();
 			}
 
-			PropertyValue resolved = propertyResolver.getPropertyValue(propertyName);
+			Property resolved = propertyResolver.getPropertyValue(propertyName);
 			if (resolved == null || !StringUtils.hasText(resolved.getValue())) {
 				return GroovyVersionValue.absent();
 			}
@@ -882,116 +980,6 @@ class GradleParser extends GradleParserSupport {
 
 		boolean isPresent() {
 			return StringUtils.hasText(version) && versionElement != null;
-		}
-
-	}
-
-	// -------------------------------------------------------------------------
-	// Gradle Properties
-	// -------------------------------------------------------------------------
-	/**
-	 * Parse a {@code gradle.properties} file for project properties that back known
-	 * dependency versions.
-	 */
-	public void parseGradleProperties(Cache cache, PsiFile file) {
-
-		Map<String, String> properties = GradlePropertiesParser.getGradleProperties(file);
-		getCollector().addProperties(properties.keySet());
-
-		cache.doWithProperties(property -> {
-			if (property.hasArtifacts()) {
-				String value = properties.get(property.name());
-				if (StringUtils.isEmpty(value)) {
-					return;
-				}
-
-				ArtifactVersion.from(value).ifPresent(version -> {
-					for (CachedArtifact artifact : property.artifacts()) {
-						getCollector().registerUsage(artifact.toArtifactId(), version,
-								DeclarationSource.managed(),
-								VersionSource.property(property.name()));
-					}
-				});
-			}
-		});
-	}
-
-	static abstract class DependencySection {
-
-		abstract DeclarationSource getDeclarationSource();
-
-		abstract boolean isSupported();
-
-		public DependencySection of(String methodName, boolean isPlugin) {
-			if (isPlugin) {
-				return new PlatformSection();
-			}
-
-			if (GradleUtils.isPlatformSection(methodName)) {
-				return new PlatformSection();
-			}
-
-			if (GradleUtils.isDependencySection(methodName)) {
-				return new TheDependencySection();
-			}
-
-			return new Unknown();
-		}
-
-		static class Unknown extends DependencySection {
-
-			@Override
-			DeclarationSource getDeclarationSource() {
-				throw new IllegalStateException("Unknown dependency section");
-			}
-
-			@Override
-			boolean isSupported() {
-				return false;
-			}
-
-		}
-
-		static class PluginSection extends DependencySection {
-
-			@Override
-			DeclarationSource getDeclarationSource() {
-				return DeclarationSource.plugin();
-			}
-
-			@Override
-			boolean isSupported() {
-				return true;
-			}
-
-		}
-
-		static class PlatformSection extends DependencySection {
-
-			@Override
-			DeclarationSource getDeclarationSource() {
-				return DeclarationSource.managed();
-			}
-
-			@Override
-			boolean isSupported() {
-				return true;
-			}
-
-		}
-
-		static class TheDependencySection extends DependencySection {
-
-			@Override
-			DeclarationSource getDeclarationSource() {
-				return DeclarationSource.dependency();
-			}
-
-			@Override
-			boolean isSupported() {
-				return true;
-			}
-
 		}
 
 	}

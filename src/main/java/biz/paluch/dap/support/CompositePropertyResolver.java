@@ -59,8 +59,8 @@ class CompositePropertyResolver implements PropertyResolver {
 	}
 
 	@Override
-	public @Nullable PropertyValue getPropertyValue(String key) {
-		PropertyValue element = primary.getPropertyValue(key);
+	public @Nullable Property getPropertyValue(String key) {
+		Property element = primary.getPropertyValue(key);
 		return element != null ? element : fallback.getPropertyValue(key);
 	}
 

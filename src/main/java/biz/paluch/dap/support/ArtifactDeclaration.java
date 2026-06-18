@@ -70,6 +70,28 @@ public class ArtifactDeclaration implements DependencySite {
 	}
 
 	/**
+	 * Return this declaration re-anchored at the given declaration element.
+	 * <p>The artifact, version, and version literal remain unchanged. This is used
+	 * when a Gradle script consumes an artifact defined in a version catalog.
+	 * @param declarationElement the consuming declaration element.
+	 * @return the re-anchored artifact declaration.
+	 */
+	public ArtifactDeclaration at(PsiElement declarationElement) {
+
+		Builder builder = builder().artifact(artifactId)
+				.versionSource(versionSource)
+				.declarationSource(declarationSource)
+				.declarationElement(declarationElement);
+		if (version != null) {
+			builder.version(version);
+		}
+		if (versionLiteral != null) {
+			builder.versionLiteral(versionLiteral);
+		}
+		return builder.build();
+	}
+
+	/**
 	 * Return the artifact identifier.
 	 *
 	 * @return the artifact identifier.
@@ -288,8 +310,7 @@ public class ArtifactDeclaration implements DependencySite {
 			Assert.notNull(declarationElement, "Declaration element must not be null");
 
 			return new ArtifactDeclaration(id, versionSource, declarationSource, versionDefinedInSameFile, version,
-					declarationElement,
-					versionLiteral);
+					declarationElement, versionLiteral);
 		}
 
 	}
