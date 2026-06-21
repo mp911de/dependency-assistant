@@ -27,14 +27,12 @@ import org.jspecify.annotations.Nullable;
  * Repository-backed GitHub Actions dependency declared by a workflow
  * {@code uses:} value.
  *
- * <p>
- * This record is the boundary between YAML syntax and dependency metadata.
+ * <p>This record is the boundary between YAML syntax and dependency metadata.
  * It retains the repository coordinates that identify the action release source
  * and the raw ref that determines how updates should be rendered back into the
  * source file.
  *
- * <p>
- * Any path segment after the repository name is intentionally not part of
+ * <p>Any path segment after the repository name is intentionally not part of
  * this contract. GitHub action releases are resolved at repository level, so
  * {@code owner/repository/path/to/action@ref} and {@code owner/repository@ref}
  * share the same dependency identity. The ref is kept as written, without
@@ -45,9 +43,9 @@ import org.jspecify.annotations.Nullable;
  * @param owner the GitHub repository owner, used as the dependency group.
  * @param repository the GitHub repository name, used as the dependency
  * artifact.
- * @param version the version ref portion of the declaration, or {@literal null} if
- * the declaration has no usable version reference.
- * 
+ * @param version the version ref portion of the declaration, or {@literal null}
+ * if the declaration has no usable version reference.
+ *
  * @author Mark Paluch
  * @see GitHubWorkflowParser
  * @see RefStyle
@@ -118,6 +116,16 @@ record UsesRepositoryAction(String owner, String repository, @Nullable String ve
 	 * is intentionally kept separate from the scalar replacement text.
 	 */
 	record VersionText(String text, String comment) {
+
+		/**
+		 * Create a replacement that pins to the immutable commit SHA, regardless of the
+		 * declared ref style.
+		 * @return the SHA replacement text with the version as managed comment.
+		 * @throws IllegalStateException if {@code gitVersion} carries no SHA.
+		 */
+		static VersionText create(GitVersion gitVersion) {
+			return new VersionText(gitVersion.getRequiredSha(), gitVersion.toString());
+		}
 
 		boolean hasComment() {
 			return StringUtils.hasText(comment);

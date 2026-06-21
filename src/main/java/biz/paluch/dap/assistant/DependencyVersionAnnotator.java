@@ -32,9 +32,6 @@ import biz.paluch.dap.support.UpgradeAvailable;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import biz.paluch.dap.support.UpgradeSuggestionGroup;
 import com.intellij.codeInsight.daemon.HighlightDisplayKey;
-import com.intellij.codeInspection.LocalQuickFix;
-import com.intellij.codeInspection.ProblemDescriptorBase;
-import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
@@ -116,8 +113,6 @@ public class DependencyVersionAnnotator implements Annotator {
 
 			UpdateDependencyVersionQuickFix fix = new UpdateDependencyVersionQuickFix(versionLiteral, context,
 					bestOption);
-			ProblemDescriptorBase d = new ProblemDescriptorBase(versionLiteral, versionLiteral, message,
-					new LocalQuickFix[] {fix}, ProblemHighlightType.INFORMATION, false, null, true, true, null);
 			builder = builder.newFix(fix).key(key).registerFix();
 			seen.add(bestOption.getRelease().getVersion());
 

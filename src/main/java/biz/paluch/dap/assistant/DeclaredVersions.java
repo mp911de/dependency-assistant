@@ -31,6 +31,7 @@ import java.util.function.Function;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.MessageBundle;
@@ -102,35 +103,60 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
 		Set<VersionDrift> entries = new TreeSet<>();
 		Set<DeclarationDrift> declarationEntries = new TreeSet<>();
+
+		boolean containsGitVersion = hasGitVersion(declarationSites);
 		for (DeclarationSite site : declarationSites) {
-			if (site.dependency() instanceof Dependency dependency) {
+			if (!(site.dependency() instanceof Dependency dependency)) {
+				continue;
+			}
 
-				String location = getDisplayLocation(site.projectId(), site.file(), project);
-				ArtifactVersion version = dependency.getCurrentVersion();
-				if (version instanceof GitRef gitRef) {
-					ArtifactVersion resolved = gitRefResolver.apply(gitRef.getRef());
-					if (resolved != null) {
-						version = resolved;
-					}
+			String location = getDisplayLocation(site.projectId(), site.file(), project);
+			ArtifactVersion version = dependency.getCurrentVersion();
+			if (version instanceof GitRef gitRef) {
+				ArtifactVersion resolved = gitRefResolver.apply(gitRef.getRef());
+				if (resolved != null) {
+					version = resolved;
 				}
+			}
 
-				versions.add(version);
-				entries.add(new VersionDrift(version, location));
+			versions.add(version);
+			entries.add(new VersionDrift(version, location));
 
-				for (VersionSource versionSource : dependency.getVersionSources()) {
-					if (versionSource instanceof VersionSource.DeclaredVersion declared) {
-						declarationEntries.add(new DeclarationDrift(DeclarationStyle.INLINE, location));
-						ArtifactVersion.from(declared.getVersion()).ifPresent(declaredVersion -> {
-							versions.add(declaredVersion);
-							entries.add(new VersionDrift(declaredVersion, location));
-						});
-					} else if (versionSource instanceof VersionSource.VersionProperty) {
-						declarationEntries.add(new DeclarationDrift(DeclarationStyle.PROPERTY, location));
+			for (VersionSource versionSource : dependency.getVersionSources()) {
+				if (versionSource instanceof VersionSource.DeclaredVersion declared) {
+					declarationEntries.add(new DeclarationDrift(DeclarationStyle.INLINE, location));
+
+					if (containsGitVersion) {
+						ArtifactVersion resolved = gitRefResolver.apply(declared.getVersion());
+						if (resolved != null) {
+							versions.add(resolved);
+							entries.add(new VersionDrift(resolved, location));
+							continue;
+						}
 					}
+					ArtifactVersion.from(declared.getVersion()).ifPresent(declaredVersion -> {
+						versions.add(declaredVersion);
+						entries.add(new VersionDrift(declaredVersion, location));
+					});
+				} else if (versionSource instanceof VersionSource.VersionProperty) {
+					declarationEntries.add(new DeclarationDrift(DeclarationStyle.PROPERTY, location));
 				}
 			}
 		}
 		return new DeclaredVersions(versions, entries, declarationEntries);
+	}
+
+	private static boolean hasGitVersion(Collection<DeclarationSite> declarationSites) {
+		boolean hasGitRefs = false;
+		for (DeclarationSite site : declarationSites) {
+			if (site.dependency() instanceof Dependency dependency
+					&& (dependency.getCurrentVersion() instanceof GitRef
+							|| dependency.getCurrentVersion() instanceof GitVersion)) {
+				hasGitRefs = true;
+				break;
+			}
+		}
+		return hasGitRefs;
 	}
 
 	/**

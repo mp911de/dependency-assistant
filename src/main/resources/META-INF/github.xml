@@ -3,4 +3,15 @@
 		<assistant implementation="biz.paluch.dap.antora.AntoraAssistant"/>
 		<assistant implementation="biz.paluch.dap.github.GitHubAssistant"/>
 	</extensions>
+
+	<extensions defaultExtensionNs="com.intellij">
+		<localInspection id="dap.github.unpinned-action"
+				language="yaml"
+				bundle="messages.MessageBundle"
+				groupKey="plugin.name"
+				key="inspection.github.unpinned-action.display-name"
+				level="WARNING"
+				enabledByDefault="true"
+				implementationClass="biz.paluch.dap.github.UnpinnedGitHubActionInspection"/>
+	</extensions>
 </idea-plugin>

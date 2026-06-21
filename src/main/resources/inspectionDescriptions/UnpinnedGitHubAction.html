@@ -1,0 +1,25 @@
+<html>
+<body>
+Reports a GitHub Actions <code>uses:</code> reference pinned to a mutable symbolic ref (a
+tag or version) when an immutable commit SHA is already known for that exact ref.
+<p>
+    Pinning a third-party action to a tag is a supply-chain risk: a tag can be moved to
+    point at different code after it has been reviewed, so the workflow silently runs
+    something other than what was vetted. Pinning to a full commit SHA makes the reference
+    immutable and reproducible.
+</p>
+<p>
+    A reference is reported only when the project's release cache already holds a commit
+    SHA for that exact ref, so every finding is directly fixable without a network lookup.
+    The exact ref is pinned as written: <code>@v4</code> pins to the SHA of
+    <code>v4</code>, never to a newer <code>v4.2.0</code>. References that already use a
+    commit SHA, including short SHAs, and branch references are not reported.
+</p>
+<p>
+    The quick-fix replaces the ref after <code>@</code> with the full commit SHA and adds a
+    managed trailing comment showing the human-readable version. Because findings depend on
+    cached release metadata, run "Refresh releases metadata" when nothing is flagged.
+</p>
+<!-- tooltip end -->
+</body>
+</html>

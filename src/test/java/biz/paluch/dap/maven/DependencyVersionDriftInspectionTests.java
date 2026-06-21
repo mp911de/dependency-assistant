@@ -101,7 +101,7 @@ class DependencyVersionDriftInspectionTests {
 		MavenFixtures.analyze(pomFile);
 		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.3");
 
-		applyFix(pomFile, "Update to highest used version '6.0.3'");
+		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 
 		assertThat(pomFile).containsText("<version>6.0.3</version>");
 	}
@@ -203,7 +203,7 @@ class DependencyVersionDriftInspectionTests {
 		MavenFixtures.analyze(pomFile);
 		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.3");
 
-		applyFix(pomFile, "Update to highest used version '6.0.3'");
+		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 
 		// the current file's runtime state is still stale at 6.0.0; the inspection
 		// must read the open file live and no longer report drift
