@@ -534,7 +534,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		ReadAction.run(() -> {
 			DaemonCodeAnalyzer analyzer = DaemonCodeAnalyzer.getInstance(project);
 			BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-			psiManager.stream(files).forEach(analyzer::restart);
+			psiManager.stream(files).forEach(psiFile -> analyzer.restart(psiFile, "Dependency Check"));
 		});
 	}
 

@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
+
 plugins {
 	id("java")
 	id("org.jetbrains.intellij.platform") version "2.16.0"
@@ -61,6 +63,18 @@ intellijPlatform {
 	}
 
 	pluginVerification {
+
+		// fail only on hard compatibility problems, ignore warnings/experimental
+		failureLevel = listOf(
+			VerifyPluginTask.FailureLevel.COMPATIBILITY_PROBLEMS,
+			VerifyPluginTask.FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
+			VerifyPluginTask.FailureLevel.OVERRIDE_ONLY_API_USAGES,
+			VerifyPluginTask.FailureLevel.NON_EXTENDABLE_API_USAGES,
+			VerifyPluginTask.FailureLevel.PLUGIN_STRUCTURE_WARNINGS,
+			VerifyPluginTask.FailureLevel.MISSING_DEPENDENCIES,
+			VerifyPluginTask.FailureLevel.INVALID_PLUGIN,
+		)
+
 		ides {
 			recommended()
 		}
