@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.support.BuildFileUpdater;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.command.WriteCommandAction;

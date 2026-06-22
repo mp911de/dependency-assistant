@@ -24,12 +24,12 @@ import java.util.Map;
 import javax.swing.Icon;
 
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.support.AvailableUpgrades;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
 import com.intellij.codeInsight.intention.IntentionAction;

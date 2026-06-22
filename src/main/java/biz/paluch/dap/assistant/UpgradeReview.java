@@ -29,11 +29,11 @@ import java.util.Set;
 import javax.swing.Icon;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.openapi.Disposable;
 import com.intellij.util.EventDispatcher;
 import org.jspecify.annotations.Nullable;

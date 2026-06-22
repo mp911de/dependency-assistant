@@ -42,7 +42,7 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
  */
 @AnalyzeClasses(packages = "biz.paluch.dap", importOptions = {DoNotIncludeTests.class,
 		ExcludeInstrumentedTestCode.class})
-class DependencyCycleArchitectureTests {
+class ArchitectureTests {
 
 	private CycleExclusions EXCLUSIONS = CycleExclusions.none()
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",

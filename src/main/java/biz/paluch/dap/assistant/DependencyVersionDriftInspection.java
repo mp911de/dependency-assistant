@@ -29,11 +29,11 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
@@ -142,13 +142,8 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 						: "inspection.version-drift.problem", declaration.getArtifactId(), versions);
 
 				holder.registerProblem(anchor, message,
-						new AlignVersionAction(context, toUpdate(declaration, highest), true),
-						new AlignVersionAction(context, toUpdate(declaration, lowest), false));
-			}
-
-			private DependencyUpdate toUpdate(ArtifactDeclaration declaration, ArtifactVersion target) {
-				return DependencyUpdate.create(declaration.getArtifactId(), target,
-						declaration.getDeclarationSource(), declaration.getVersionSource());
+						new AlignVersionAction(context, DependencyUpdate.from(reference, highest), true),
+						new AlignVersionAction(context, DependencyUpdate.from(reference, lowest), false));
 			}
 
 		};

@@ -23,13 +23,13 @@ import java.util.TreeSet;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 

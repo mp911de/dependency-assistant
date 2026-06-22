@@ -18,10 +18,10 @@ package biz.paluch.dap.gradle.wrapper;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;

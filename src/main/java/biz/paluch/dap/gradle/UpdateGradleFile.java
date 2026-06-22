@@ -20,10 +20,10 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.gradle.TomlParser.TomlCatalogDeclaration;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.lang.properties.IProperty;

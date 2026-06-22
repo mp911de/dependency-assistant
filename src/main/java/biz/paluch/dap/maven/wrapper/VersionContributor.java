@@ -18,8 +18,8 @@ package biz.paluch.dap.maven.wrapper;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.assistant.VersionContributorSupport;
+import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PlatformPatterns;

@@ -21,7 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.lang.ASTNode;

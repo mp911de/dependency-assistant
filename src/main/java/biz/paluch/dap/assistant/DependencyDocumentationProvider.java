@@ -24,7 +24,6 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
@@ -32,6 +31,7 @@ import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.model.Pointer;
 import com.intellij.openapi.project.Project;
@@ -163,7 +163,7 @@ public class DependencyDocumentationProvider
 			}
 
 			Release release = DocumentationContext.findRelease(lookup.getCache(), reference.getArtifactId(), version);
-			context.applyUpdate(versionLiteral, DependencyUpdate.from(reference.toDependency(), release));
+			context.applyUpdate(versionLiteral, DependencyUpdate.from(reference, release));
 		}
 
 		/**

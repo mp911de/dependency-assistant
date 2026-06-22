@@ -23,7 +23,6 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
@@ -34,6 +33,7 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
@@ -141,7 +141,7 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 			if (reference.getDeclaration().getVersionLiteral() == null || remediation == null) {
 				return null;
 			}
-			DependencyUpdate update = DependencyUpdate.from(reference.toDependency(), remediation);
+			DependencyUpdate update = DependencyUpdate.from(reference, remediation);
 			return new AlignGenerationQuickFix(reference.getDeclaration(), context, update);
 		}
 

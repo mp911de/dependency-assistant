@@ -19,8 +19,8 @@ package biz.paluch.dap.assistant;
 import java.util.List;
 
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInsight.intention.FileModifier;
 import com.intellij.codeInsight.intention.IntentionAction;

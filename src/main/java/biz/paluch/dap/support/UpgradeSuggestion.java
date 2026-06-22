@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.support;
 
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
@@ -122,9 +120,7 @@ public class UpgradeSuggestion {
 	 * Create a {@link DependencyUpdate} from this suggestion.
 	 */
 	public DependencyUpdate toDependencyUpdate() {
-
-		Dependency dependency = artifactReference.toDependency();
-		return DependencyUpdate.from(dependency, getRelease());
+		return DependencyUpdate.from(artifactReference, getRelease());
 	}
 
 }

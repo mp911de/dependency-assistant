@@ -19,7 +19,6 @@ package biz.paluch.dap.support;
 import java.util.Collection;
 import java.util.List;
 
-import biz.paluch.dap.artifact.DependencyUpdate;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**

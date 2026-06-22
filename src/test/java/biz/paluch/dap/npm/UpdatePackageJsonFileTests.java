@@ -18,11 +18,11 @@ package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.fixtures.BuildFileUpdates;
+import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 

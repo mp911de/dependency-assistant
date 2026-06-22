@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.artifact;
+package biz.paluch.dap.support;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Predicate;
+
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.VersionAware;
+import biz.paluch.dap.artifact.VersionSource;
 
 /**
  * Value object to represent a dependency update.
@@ -31,21 +38,51 @@ import java.util.function.Predicate;
 public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, ArtifactVersion version,
 		Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
 
+	public DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, ArtifactVersion version,
+			DeclarationSource declarationSource, VersionSource versionSource) {
+		this(coordinate, from, version, List.of(declarationSource), List.of(versionSource));
+	}
+
+	/**
+	 * Create an update for a dependency and release.
+	 *
+	 * @param reference the artifact reference to update.
+	 * @param version the selected version.
+	 * @return the dependency update to apply.
+	 */
+	public static DependencyUpdate from(ArtifactReference reference, VersionAware version) {
+		return from(reference, version.getVersion());
+	}
+
+	/**
+	 * Create an update for a dependency and release.
+	 *
+	 * @param reference the artifact reference to update.
+	 * @param version the selected version.
+	 * @return the dependency update to apply.
+	 */
+	public static DependencyUpdate from(ArtifactReference reference, ArtifactVersion version) {
+		ArtifactDeclaration declaration = reference.getDeclaration();
+		return new DependencyUpdate(declaration.getArtifactId(), declaration.getVersion(), version,
+				declaration.getDeclarationSource(), declaration.getVersionSource());
+	}
+
+
 	/**
 	 * Create an update for a dependency and release.
 	 * @param dependency the dependency to update.
 	 * @param release the selected release.
 	 * @return the dependency update to apply.
 	 */
-	public static DependencyUpdate from(Dependency dependency, Release release) {
-		return from(dependency, release.version());
+	public static DependencyUpdate from(Dependency dependency, VersionAware release) {
+		return from(dependency, release.getVersion());
 	}
 
 	/**
 	 * Create an update for a dependency and release.
 	 *
 	 * @param dependency the dependency to update.
-	 * @param version  the selected version.
+	 * @param version the selected version.
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(Dependency dependency, ArtifactVersion version) {
@@ -64,15 +101,6 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 	public static DependencyUpdate from(ArtifactId artifactId, Dependency dependency, ArtifactVersion version) {
 		return new DependencyUpdate(artifactId, dependency.getCurrentVersion(), version,
 				dependency.getDeclarationSources(), dependency.getVersionSources());
-	}
-
-	/**
-	 * Create an update from a {@link ArtifactRelease}.
-	 * @param release the artifact release.
-	 * @return the dependency update to apply.
-	 */
-	public static DependencyUpdate from(ArtifactRelease release) {
-		return create(release.artifactId(), release.getVersion());
 	}
 
 	/**
@@ -123,7 +151,4 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 		return version.toString();
 	}
 
-	public String getArtifactName() {
-		return null;
-	}
 }

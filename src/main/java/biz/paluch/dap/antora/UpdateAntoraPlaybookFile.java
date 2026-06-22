@@ -19,9 +19,9 @@ package biz.paluch.dap.antora;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;

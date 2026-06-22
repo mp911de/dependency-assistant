@@ -19,8 +19,8 @@ package biz.paluch.dap.fixtures;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.assistant.BuildActionDelegate;
+import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.psi.PsiFile;
 
 /**

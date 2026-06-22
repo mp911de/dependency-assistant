@@ -20,10 +20,10 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.assistant.BuildActionDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.BeforeEach;

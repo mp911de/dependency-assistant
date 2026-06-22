@@ -22,7 +22,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
-import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionParameters;
