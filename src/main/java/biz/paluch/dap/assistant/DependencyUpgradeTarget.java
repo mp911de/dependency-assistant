@@ -45,7 +45,7 @@ interface DependencyUpgradeTarget {
 	 * own write action. Resolution that no longer matches a live declaration is a
 	 * no-op.
 	 * @param version the target version to apply, as rendered in the documentation
-	 * table; must not be {@literal null}.
+	 * table.
 	 */
 	void applyVersion(String version);
 

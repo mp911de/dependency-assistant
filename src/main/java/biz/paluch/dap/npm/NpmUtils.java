@@ -52,7 +52,7 @@ class NpmUtils {
 	/**
 	 * Return whether the given file is a {@code package.json} that the integration
 	 * should manage.
-	 * @param file the PSI file to test; must not be {@literal null}.
+	 * @param file the PSI file to test.
 	 * @return {@literal true} when the file qualifies.
 	 */
 	static boolean isPackageJson(PsiFile file) {

@@ -72,7 +72,7 @@ class NpmPsiUtils {
 	 * Return whether the given JSON string literal is properly terminated with an
 	 * unescaped double-quote character. An unterminated literal arises when the
 	 * user is mid-typing and the parser has not yet observed the closing quote.
-	 * @param literal the literal to inspect; must not be {@literal null}.
+	 * @param literal the literal to inspect.
 	 * @return {@literal true} if the literal text ends with an unescaped {@code "};
 	 * {@literal false} otherwise.
 	 */

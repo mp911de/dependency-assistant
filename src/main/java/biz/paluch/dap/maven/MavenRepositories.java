@@ -44,9 +44,8 @@ class MavenRepositories {
 	 * project, decorated with credentials where available.
 	 * <p>Repositories are deduplicated by URL.
 	 *
-	 * @param settings Maven settings; must not be
-	 * {@literal null}.
-	 * @param project the Maven project to inspect; must not be {@literal null}.
+	 * @param settings Maven settings; must not be {@literal null}.
+	 * @param project the Maven project to inspect.
 	 * @return the deduplicated set of remote repositories; guaranteed to be not
 	 * {@literal null} but may be empty.
 	 */
@@ -97,7 +96,7 @@ class MavenRepositories {
 	 * repositories across every project known to {@link MavenProjectsManager},
 	 * deduplicates them, and wraps each as a {@link ReleaseSource}.
 	 *
-	 * @param project the IntelliJ project; must not be {@literal null}.
+	 * @param project the IntelliJ project.
 	 * @return the aggregated release sources; guaranteed to be not {@literal null}
 	 * but may be empty.
 	 */

@@ -62,7 +62,7 @@ public abstract class EditorSchemes {
 	/**
 	 * Return the {@link TextAttributes} the global scheme assigns to the given key.
 	 *
-	 * @param key the attributes key to resolve; must not be {@literal null}.
+	 * @param key the attributes key to resolve.
 	 * @param fallback the value to return when no scheme attributes are available.
 	 * @return the scheme attributes for the key, or {@code fallback} when the
 	 * scheme is unavailable or defines no attributes for the key.
@@ -79,7 +79,7 @@ public abstract class EditorSchemes {
 	 *
 	 * @param style the AWT font style, for example {@link Font#PLAIN}.
 	 * @param size the font size in points.
-	 * @return a font using the editor font family; never {@literal null}.
+	 * @return a font using the editor font family.
 	 */
 	public static Font editorFont(int style, int size) {
 		return new Font(SCHEME.getEditorFontName(), style, size);

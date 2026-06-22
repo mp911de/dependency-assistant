@@ -50,7 +50,7 @@ public class DependencySearchResults implements Iterable<DependencySiteSearchHit
 	/**
 	 * Return the shared empty results instance.
 	 *
-	 * @return the empty results (shared, immutable); never {@literal null}.
+	 * @return the empty results (shared, immutable).
 	 */
 	public static DependencySearchResults empty() {
 		return EMPTY;
@@ -79,7 +79,7 @@ public class DependencySearchResults implements Iterable<DependencySiteSearchHit
 	 *
 	 * @param results the per-file results to aggregate; must not be
 	 * {@literal null}.
-	 * @return the deduplicated union of all hits; never {@literal null}.
+	 * @return the deduplicated union of all hits.
 	 */
 	public static DependencySearchResults concat(Iterable<DependencySearchResults> results) {
 
@@ -108,7 +108,7 @@ public class DependencySearchResults implements Iterable<DependencySiteSearchHit
 	/**
 	 * Return a stream of the hits in iteration order.
 	 *
-	 * @return a stream over the hits; never {@literal null}.
+	 * @return a stream over the hits.
 	 */
 	public Stream<DependencySiteSearchHit> stream() {
 		return hits.stream();

@@ -59,7 +59,7 @@ public class ProjectStateIndexer {
 	/**
 	 * Create an indexer for the given project, using the project-scoped
 	 * {@link StateService}.
-	 * @param project the IntelliJ project; must not be {@literal null}.
+	 * @param project the IntelliJ project.
 	 * @param indicator the progress indicator to report to; must not be
 	 * {@literal null}.
 	 */
@@ -70,7 +70,7 @@ public class ProjectStateIndexer {
 	/**
 	 * Create an indexer for the given project, state service, and progress
 	 * indicator.
-	 * @param project the IntelliJ project; must not be {@literal null}.
+	 * @param project the IntelliJ project.
 	 * @param service the state service backing this run; must not be
 	 * {@literal null}.
 	 * @param indicator the progress indicator to report to; must not be
@@ -92,7 +92,7 @@ public class ProjectStateIndexer {
 
 	/**
 	 * Run a full population pass wrapped in a read action.
-	 * @param assistant the assistant to run; must not be {@literal null}.
+	 * @param assistant the assistant to run.
 	 */
 	public void readAndUpdateAll(DependencyAssistant assistant) {
 
@@ -107,7 +107,7 @@ public class ProjectStateIndexer {
 	/**
 	 * Run a full population pass: enumerate, collect, complete, invalidate, and
 	 * store.
-	 * @param assistant the assistant to run; must not be {@literal null}.
+	 * @param assistant the assistant to run.
 	 */
 	public void updateAll(DependencyAssistant assistant) {
 
@@ -130,8 +130,8 @@ public class ProjectStateIndexer {
 	 * anchor file to the consumer.
 	 * <p>The aggregate result is not stored in the {@link ProjectState} and does
 	 * not invoke the cache update.
-	 * @param assistant the assistant to run; must not be {@literal null}.
-	 * @param consumer the per-file callback; must not be {@literal null}.
+	 * @param assistant the assistant to run.
+	 * @param consumer the per-file callback.
 	 */
 	public void forEach(DependencyAssistant assistant, BiConsumer<VirtualFile, DependencyCollector> consumer) {
 
@@ -162,7 +162,7 @@ public class ProjectStateIndexer {
 	 * and route it through the same complete-store flow.
 	 * @param assistant the assistant that owns the file; must not be
 	 * {@literal null}.
-	 * @param file the saved PSI file; must not be {@literal null}.
+	 * @param file the saved PSI file.
 	 */
 	public void invalidate(DependencyAssistant assistant, PsiFile file) {
 

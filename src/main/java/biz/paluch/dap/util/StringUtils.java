@@ -100,7 +100,7 @@ public abstract class StringUtils {
 	/**
 	 * Remove quotes from a String if it is quoted with either single or double
 	 * quotes.
-	 * @param str the String to unquote; must not be {@literal null}.
+	 * @param str the String to unquote.
 	 * @return the unquoted String.
 	 */
 	public static String unquote(String str) {

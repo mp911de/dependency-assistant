@@ -55,7 +55,7 @@ public interface ArtifactReferenceResolver {
 	/**
 	 * Resolve the given PSI element into artifact declaration metadata, including
 	 * its current version.
-	 * @param element the PSI element under inspection; must not be {@literal null}.
+	 * @param element the PSI element under inspection.
 	 * @return a resolved artifact reference, or
 	 * {@link ArtifactReference#unresolved()}.
 	 */
@@ -92,7 +92,7 @@ public interface ArtifactReferenceResolver {
 	 * {@link #search(DependencySiteQuery)}. Hits are deduplicated by target
 	 * element.
 	 *
-	 * @param root the file (or subtree) to scan; must not be {@literal null}.
+	 * @param root the file (or subtree) to scan.
 	 * @param query the version this find is centered on; must not be
 	 * {@literal null}.
 	 * @param resolve resolves an element into an {@link ArtifactReference}; must

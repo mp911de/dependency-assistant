@@ -62,8 +62,8 @@ class UpdateExtensionsFile {
 	/**
 	 * Apply a single update at the given version literal. The literal must be the
 	 * {@code <version>} XML tag.
-	 * @param versionLiteral the version PSI element; must not be {@literal null}.
-	 * @param update the update to apply; must not be {@literal null}.
+	 * @param versionLiteral the version PSI element.
+	 * @param update the update to apply.
 	 */
 	public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 

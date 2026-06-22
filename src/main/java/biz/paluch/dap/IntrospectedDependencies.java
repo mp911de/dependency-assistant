@@ -44,7 +44,7 @@ public interface IntrospectedDependencies {
 	 * during phase one.
 	 * <p>Implementations must use the very instance produced by the indexer during
 	 * phase one and must not return a substitute.
-	 * @param collector the collector to enrich; must not be {@literal null}.
+	 * @param collector the collector to enrich.
 	 */
 	void complete(DependencyCollector collector);
 

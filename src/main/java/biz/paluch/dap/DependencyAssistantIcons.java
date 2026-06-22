@@ -103,8 +103,8 @@ public class DependencyAssistantIcons {
 	 * Compose a dependency upgrade icon: the assistant gutter icon scaled into the
 	 * lower-left corner with the version-age badge layered onto the lower-right
 	 * quadrant.
-	 * @param dependencyIcon the assistant gutter icon; must not be {@literal null}.
-	 * @param ageIcon the version-age badge icon; must not be {@literal null}.
+	 * @param dependencyIcon the assistant gutter icon.
+	 * @param ageIcon the version-age badge icon.
 	 * @return the layered upgrade icon.
 	 */
 	public static Icon upgradeIcon(Icon dependencyIcon, Icon ageIcon) {

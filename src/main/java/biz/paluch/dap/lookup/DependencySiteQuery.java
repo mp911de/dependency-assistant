@@ -57,8 +57,8 @@ public class DependencySiteQuery {
 	 * Create a query from the given builder consumer. The consumer populates a
 	 * fresh {@link Builder}.
 	 *
-	 * @param builderConsumer configures the builder; must not be {@literal null}.
-	 * @return the configured query; never {@literal null}.
+	 * @param builderConsumer configures the builder.
+	 * @return the configured query.
 	 */
 	public static DependencySiteQuery create(Consumer<Builder> builderConsumer) {
 		Builder builder = new Builder();
@@ -81,8 +81,8 @@ public class DependencySiteQuery {
 	 * Create an inline query centered on a single artifact, with no version
 	 * property.
 	 *
-	 * @param groupId the artifact group Id; must not be {@literal null}.
-	 * @param artifactId the artifact Id; must not be {@literal null}.
+	 * @param groupId the artifact group Id.
+	 * @param artifactId the artifact Id.
 	 * @return a query with the given artifact and no version property.
 	 */
 	public static DependencySiteQuery ofArtifact(String groupId, String artifactId) {
@@ -93,7 +93,7 @@ public class DependencySiteQuery {
 	 * Combine several queries into one, unioning their artifacts and version
 	 * properties in encounter order.
 	 *
-	 * @param queries the queries to combine; must not be {@literal null}.
+	 * @param queries the queries to combine.
 	 * @return a query covering every artifact and version property of the inputs;
 	 * never {@literal null}.
 	 */
@@ -161,7 +161,7 @@ public class DependencySiteQuery {
 		/**
 		 * Add an artifact of interest.
 		 *
-		 * @param artifact the artifact coordinates; must not be {@literal null}.
+		 * @param artifact the artifact coordinates.
 		 * @return {@code this} builder.
 		 */
 		public Builder artifact(ArtifactId artifact) {
@@ -172,7 +172,7 @@ public class DependencySiteQuery {
 		/**
 		 * Add several artifacts of interest.
 		 *
-		 * @param artifacts the artifact coordinates; must not be {@literal null}.
+		 * @param artifacts the artifact coordinates.
 		 * @return {@code this} builder.
 		 */
 		public Builder artifacts(Iterable<ArtifactId> artifacts) {
@@ -183,7 +183,7 @@ public class DependencySiteQuery {
 		/**
 		 * Add a bare version-property name backing the version.
 		 *
-		 * @param propertyName the property name; must not be {@literal null}.
+		 * @param propertyName the property name.
 		 * @return {@code this} builder.
 		 */
 		public Builder versionProperty(String propertyName) {
@@ -194,7 +194,7 @@ public class DependencySiteQuery {
 		/**
 		 * Add several bare version-property names backing the version.
 		 *
-		 * @param propertyNames the property names; must not be {@literal null}.
+		 * @param propertyNames the property names.
 		 * @return {@code this} builder.
 		 */
 		public Builder versionProperties(Iterable<String> propertyNames) {
@@ -205,7 +205,7 @@ public class DependencySiteQuery {
 		/**
 		 * Build a new immutable {@link DependencySiteQuery}.
 		 *
-		 * @return the configured query; never {@literal null}.
+		 * @return the configured query.
 		 */
 		public DependencySiteQuery build() {
 			return new DependencySiteQuery(Collections.unmodifiableSet(new LinkedHashSet<>(artifacts)),

@@ -75,7 +75,7 @@ class MavenUtils {
 	/**
 	 * Return whether the given XML file is a Maven POM by root element structure.
 	 *
-	 * @param xmlFile the XML file to inspect; must not be {@literal null}.
+	 * @param xmlFile the XML file to inspect.
 	 * @return {@literal true} if the root element identifies the file as a Maven
 	 * POM; {@literal false} otherwise.
 	 */

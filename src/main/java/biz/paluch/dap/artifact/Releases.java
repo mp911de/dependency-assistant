@@ -88,7 +88,7 @@ public class Releases implements Iterable<Release> {
 	/**
 	 * Create {@code Releases} for a single release.
 	 *
-	 * @param release the release to include; must not be {@literal null}.
+	 * @param release the release to include.
 	 * @return a single-element {@code Releases} instance containing the given
 	 * release.
 	 */
@@ -162,7 +162,7 @@ public class Releases implements Iterable<Release> {
 	 * <p>The release is ordered into its {@link VersioningScheme} partition rather
 	 * than appended; an already-contained release is not deduplicated.
 	 *
-	 * @param release the release to include; must not be {@literal null}.
+	 * @param release the release to include.
 	 * @return a new {@code Releases} instance containing all existing releases and
 	 * the given release.
 	 */
@@ -178,7 +178,7 @@ public class Releases implements Iterable<Release> {
 	 * <p>Upgrade strategies can use this view when the current version already
 	 * identifies the scheme to compare against.
 	 *
-	 * @param scheme the versioning scheme to select; must not be {@literal null}.
+	 * @param scheme the versioning scheme to select.
 	 * @return the releases in the given scheme, newest first, or an empty list when
 	 * none are known.
 	 */
@@ -219,7 +219,7 @@ public class Releases implements Iterable<Release> {
 	/**
 	 * Return whether this {@code Releases} instance contains the given release.
 	 *
-	 * @param release the release to look up; must not be {@literal null}.
+	 * @param release the release to look up.
 	 * @return {@literal true} if the release is contained; {@literal false}
 	 * otherwise.
 	 */

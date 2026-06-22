@@ -47,7 +47,7 @@ class NpmDependencyCollector {
 
 	/**
 	 * Collect NPM dependencies from the given {@code package.json} file.
-	 * @param file the JSON PSI file to scan; must not be {@literal null}.
+	 * @param file the JSON PSI file to scan.
 	 * @return the populated dependency collector.
 	 */
 	DependencyCollector collect(PsiFile file) {

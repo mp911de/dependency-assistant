@@ -267,12 +267,11 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Render this expression with the given target version.
-	 * <p>
-	 * The returned value represents the complete expression text for this
+	 * <p>The returned value represents the complete expression text for this
 	 * variant, preserving syntax owned by the variant. Updaters that replace only
 	 * {@link #replaceableRange(String)} may use variant-specific tails instead of
 	 * this complete rendering.
-	 * @param version the target artifact version; must not be {@literal null}.
+	 * @param version the target artifact version.
 	 * @return the rendered expression text; guaranteed to be not {@literal null}.
 	 */
 	String renderUpdate(ArtifactVersion version);
@@ -850,7 +849,7 @@ sealed interface NpmVersionExpression
 		 * Render this Git reference with the given target version while preserving the
 		 * original URL or shorthand prefix.
 		 *
-		 * @param version the target artifact version; must not be {@literal null}.
+		 * @param version the target artifact version.
 		 * @return the rendered Git dependency value.
 		 */
 		public String renderUpdate(ArtifactVersion version) {

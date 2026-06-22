@@ -55,7 +55,7 @@ public class Generation implements Predicate<String> {
 	 *
 	 * <p>The supplied value is retained as a normalized prefix.
 	 *
-	 * @param generation the project development line; must not be {@literal null}.
+	 * @param generation the project development line.
 	 * @return a generation for the project development line.
 	 * @throws IllegalArgumentException if the value is empty or not a numeric
 	 * project generation such as {@code 6}, {@code 6.0}, {@code 6.0.x}, or

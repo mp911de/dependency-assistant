@@ -39,13 +39,12 @@ public interface MatchFunction {
 	/**
 	 * Find the next match at or after the supplied decoded-text index.
 	 *
-	 * <p>
-	 * The returned {@link MatchResult#start()} and {@link MatchResult#end()}
+	 * <p>The returned {@link MatchResult#start()} and {@link MatchResult#end()}
 	 * values must be offsets into {@code text}. A caller advances subsequent
 	 * searches to {@code end()}, so implementations that expose zero-length matches
 	 * must ensure repeated invocations do not return the same match indefinitely.
 	 *
-	 * @param text the decoded text to search; must not be {@literal null}.
+	 * @param text the decoded text to search.
 	 * @param startIndex the decoded-text index at which scanning should resume.
 	 * @return a matching result whose {@link MatchResult#hasMatch()} returns
 	 * {@literal true}, or {@link #noMatch()} if no further match is available.
@@ -114,7 +113,7 @@ public interface MatchFunction {
 	 * Return a match result for an already known decoded-text range.
 	 *
 	 * @param text the text returned from {@link MatchResult#group()}, not the full
-	 * source text; must not be {@literal null}.
+	 * source text.
 	 * @param start the decoded-text start offset, inclusive.
 	 * @param end the decoded-text end offset, exclusive.
 	 * @return a match result exposing the supplied group text and offsets.

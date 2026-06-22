@@ -225,7 +225,7 @@ public enum UpgradeStrategy {
 	 * Prefer {@link #select(ArtifactVersion, Releases)} which scopes the candidates
 	 * to the current version's scheme.
 	 *
-	 * @param current the version currently in use; must not be {@literal null}.
+	 * @param current the version currently in use.
 	 * @param options the available releases sorted newest-first; must not be
 	 * {@literal null}.
 	 * @return the selected release, or {@literal null} if no release satisfies this
@@ -241,8 +241,8 @@ public enum UpgradeStrategy {
 	 * one {@link Releases} per operation and pass it to all strategies to avoid
 	 * repeating the scheme analysis.
 	 *
-	 * @param current the version currently in use; must not be {@literal null}.
-	 * @param releases the analyzed release history; must not be {@literal null}.
+	 * @param current the version currently in use.
+	 * @param releases the analyzed release history.
 	 * @return the selected release, or {@literal null} if no release satisfies this
 	 * strategy's criteria within the current version's scheme.
 	 */

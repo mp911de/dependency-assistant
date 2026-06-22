@@ -36,10 +36,10 @@ import org.jspecify.annotations.Nullable;
  * {@literal null}.
  * @param buildContext the build context for the anchored file; must not be
  * {@literal null}.
- * @param cache the shared release cache; must not be {@literal null}.
- * @param projectState the cached project state; must not be {@literal null}.
+ * @param cache the shared release cache.
+ * @param projectState the cached project state.
  * @param versionResolver the Git-ref resolver bound to {@code cache} and
- * {@code projectState}; must not be {@literal null}.
+ * {@code projectState}.
  * @author Mark Paluch
  * @see VersionUpgradeLookup
  * @see ArtifactReferenceResolver
@@ -50,8 +50,8 @@ public record LookupContext(Project project, ProjectBuildContext buildContext, C
 	/**
 	 * Create a {@code LookupContext} for the given project and build context,
 	 * resolving the shared cache and project state from the {@link StateService}.
-	 * @param project the IntelliJ project; must not be {@literal null}.
-	 * @param buildContext the build context; must not be {@literal null}.
+	 * @param project the IntelliJ project.
+	 * @param buildContext the build context.
 	 * @return a context bound to the project's shared cache and, when the context
 	 * is available, its project state.
 	 */
@@ -69,7 +69,7 @@ public record LookupContext(Project project, ProjectBuildContext buildContext, C
 	 * {@link DependencyFileDelegate} and build context.
 	 * @param delegate the delegate whose project owns the lookup; must not be
 	 * {@literal null}.
-	 * @param buildContext the build context; must not be {@literal null}.
+	 * @param buildContext the build context.
 	 * @return a context bound to the project's shared cache and, when the context
 	 * is available, its project state.
 	 * @see #create(Project, ProjectBuildContext)

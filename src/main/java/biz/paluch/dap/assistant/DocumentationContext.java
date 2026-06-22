@@ -70,10 +70,10 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 	/**
 	 * Render the documentation body for a single concrete artifact.
 	 *
-	 * @param artifactId the artifact to document; must not be {@literal null}.
+	 * @param artifactId the artifact to document.
 	 * @param iconImages sink for the {@link VersionAge} icons referenced by the
-	 *                   HTML, or {@literal null} to render plain HTML without icons or links (hover
-	 *                   hint).
+	 * HTML, or {@literal null} to render plain HTML without icons or links (hover
+	 * hint).
 	 * @return the HTML body.
 	 */
 	String render(ArtifactId artifactId, @Nullable Map<String, Image> iconImages) {
@@ -145,11 +145,11 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 	 * Locate the release matching the given version string, falling back to a
 	 * version-only release when the cache holds no matching entry.
 	 *
-	 * @param cache      the release cache to search; must not be {@literal null}.
+	 * @param cache the release cache to search.
 	 * @param artifactId the artifact whose releases to search; must not be
-	 *                   {@literal null}.
-	 * @param version    the canonical version string to match; must not be
-	 *                   {@literal null}.
+	 * {@literal null}.
+	 * @param version the canonical version string to match; must not be
+	 * {@literal null}.
 	 * @return the matching release, never {@literal null}.
 	 */
 	static Release findRelease(Cache cache, ArtifactId artifactId, String version) {

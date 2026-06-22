@@ -429,8 +429,8 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	 * <p>The segment is recorded even when the action throws; a failed segment is
 	 * flagged through {@link Segment#failed()} and the exception, including
 	 * {@link ProcessCanceledException}, is rethrown unchanged.
-	 * @param label the segment label; must not be {@literal null}.
-	 * @param action the work to time; must not be {@literal null}.
+	 * @param label the segment label.
+	 * @param action the work to time.
 	 */
 	public void run(String label, Runnable action) {
 		call(label, () -> {
@@ -447,8 +447,8 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 	 * flagged through {@link Segment#failed()} and the exception, including
 	 * {@link ProcessCanceledException}, is rethrown unchanged.
 	 * @param <T> the result type.
-	 * @param label the segment label; must not be {@literal null}.
-	 * @param action the work to time; must not be {@literal null}.
+	 * @param label the segment label.
+	 * @param action the work to time.
 	 * @return the value returned by the action.
 	 */
 	public <T> T call(String label, Supplier<T> action) {

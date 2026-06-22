@@ -78,7 +78,7 @@ public class GitVersionResolver {
 	 * <li>Otherwise return {@link ArtifactVersion#from(String)} of the raw
 	 * ref.</li>
 	 * </ol>
-	 * @param artifactId the artifact to resolve; must not be {@literal null}.
+	 * @param artifactId the artifact to resolve.
 	 * @param rawRef the raw Git ref (tag, SHA, branch); must not be
 	 * {@literal null}.
 	 * @return the resolved current version, or {@link Optional#empty()} when none
@@ -104,7 +104,7 @@ public class GitVersionResolver {
 	 * implementation only needs cache matching.
 	 * @param declaredDependency the declared dependency to resolve; must not be
 	 * {@literal null}.
-	 * @param releases the releases to inspect; must not be {@literal null}.
+	 * @param releases the releases to inspect.
 	 * @return the resolved dependency, or {@literal null} when the first version
 	 * source is empty or the cache yields no unique match.
 	 */

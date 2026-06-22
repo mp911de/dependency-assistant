@@ -69,7 +69,7 @@ class RuleParser {
 	 * that cannot be interpreted.
 	 *
 	 * @return the parsed rules, or {@link Rules#absent()} when the descriptor has
-	 * no JSON object root; never {@literal null}.
+	 * no JSON object root.
 	 */
 	Rules parse() {
 

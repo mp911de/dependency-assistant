@@ -139,7 +139,7 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 	/**
 	 * Return the collapsed rows in display order.
 	 *
-	 * @return the rows; never {@literal null}.
+	 * @return the rows.
 	 */
 	public List<UpgradeCandidate> toList() {
 		return groups;

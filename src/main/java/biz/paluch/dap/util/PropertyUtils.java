@@ -113,7 +113,7 @@ public class PropertyUtils {
 	 * when it is already a value element.
 	 *
 	 * @param element the property element to descend into, or a value element to
-	 * return directly; must not be {@literal null}.
+	 * return directly.
 	 * @return the property value element, or {@literal null} when {@code element}
 	 * is neither a property nor a value.
 	 */
@@ -135,7 +135,7 @@ public class PropertyUtils {
 	 * {@literal null} when the property does not have a value (e.g. a bare key line
 	 * such as {@code foo=}).
 	 *
-	 * @param property the property to inspect; must not be {@literal null}.
+	 * @param property the property to inspect.
 	 * @return the value range relative to the property element, or {@literal null}
 	 * when no value node exists.
 	 */
@@ -197,7 +197,7 @@ public class PropertyUtils {
 	 * @param property the property whose value should be searched; must not be
 	 * {@literal null}.
 	 * @param fallbackElement the element whose range is returned when no match maps
-	 * cleanly; must not be {@literal null}.
+	 * cleanly.
 	 * @param matchFunction the match function evaluated against the decoded value;
 	 * must not be {@literal null}.
 	 * @return the first matching range, or {@code fallbackElement}'s range when no
@@ -216,7 +216,7 @@ public class PropertyUtils {
 	 * @param property the property whose value should be searched; must not be
 	 * {@literal null}.
 	 * @param fallbackElement the element whose range is returned when no match maps
-	 * cleanly; must not be {@literal null}.
+	 * cleanly.
 	 * @param matchFunction the match function evaluated against the decoded value;
 	 * must not be {@literal null}.
 	 * @return file-absolute ranges in match order; never empty, falling back to a
@@ -342,7 +342,7 @@ public class PropertyUtils {
 	 * property, preserving multi-line declarations with continuation backslashes.
 	 * The edit mutates the PSI tree and must run inside a write action.
 	 *
-	 * @param property the property to comment out; must not be {@literal null}.
+	 * @param property the property to comment out.
 	 */
 	public static void commentOut(PropertyImpl property) {
 

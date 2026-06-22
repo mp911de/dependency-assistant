@@ -250,7 +250,7 @@ class ReleaseResolver {
 
 		/**
 		 * Return the merged releases across all sources, newest first.
-		 * @return the merged releases; never {@literal null}.
+		 * @return the merged releases.
 		 */
 		public Releases toReleases() {
 			return releases;

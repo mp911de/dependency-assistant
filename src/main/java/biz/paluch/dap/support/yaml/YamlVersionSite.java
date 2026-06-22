@@ -75,7 +75,7 @@ public record YamlVersionSite(YAMLScalar scalar, YAMLKeyValue keyValue, QuoteSty
 	 * @param newRawValue the unwrapped replacement value; must not be
 	 * {@literal null}.
 	 * @param generator the YAML element generator used to build the replacement
-	 * key/value pair; must not be {@literal null}.
+	 * key/value pair.
 	 * @return the replacement {@link YAMLKeyValue}.
 	 */
 	public YAMLKeyValue replaceRawValue(String newRawValue, YAMLElementGenerator generator) {

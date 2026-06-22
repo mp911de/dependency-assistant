@@ -289,7 +289,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * placeholder PSI. If no original position is available, the live completion
 	 * position is used.
 	 * @param parameters the IntelliJ completion parameters.
-	 * @return the version-token prefix before the caret; never {@literal null}.
+	 * @return the version-token prefix before the caret.
 	 */
 	protected static String getPrefix(CompletionParameters parameters) {
 
@@ -310,7 +310,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * the token start and the caret offset.
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param literal the PSI element whose text contains the version token.
-	 * @return the version-token prefix before the caret; never {@literal null}.
+	 * @return the version-token prefix before the caret.
 	 */
 	protected static String getPrefix(CompletionParameters parameters, PsiElement literal) {
 

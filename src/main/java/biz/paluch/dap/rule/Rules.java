@@ -52,7 +52,7 @@ interface Rules {
 	 * @param projectVersion the project version, used to select a branch rule when
 	 * no branch name matches; can be {@literal null}.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
-	 * when no rule applies; never {@literal null}.
+	 * when no rule applies.
 	 */
 	DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
 			@Nullable ArtifactVersion projectVersion);

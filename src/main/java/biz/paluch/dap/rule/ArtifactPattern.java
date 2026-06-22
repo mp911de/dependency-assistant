@@ -78,8 +78,8 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 	 * artifactId when groupId and artifactId are equal (as for npm-style
 	 * single-name packages), otherwise {@code groupId:artifactId}.
 	 *
-	 * @param artifactId the coordinates to render; must not be {@literal null}.
-	 * @return the pattern key; never {@literal null}.
+	 * @param artifactId the coordinates to render.
+	 * @return the pattern key.
 	 */
 	public static String keyFor(ArtifactId artifactId) {
 

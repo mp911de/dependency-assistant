@@ -51,7 +51,7 @@ public interface StepsProgressIndicator extends ProgressIndicator {
 	 * thread. Use
 	 * {@link WeightedStepsProgressIndicator#forTasks(ProgressIndicator, int)} for a
 	 * thread-safe equal-step indicator.
-	 * @param indicator the indicator to forward to; must not be {@literal null}.
+	 * @param indicator the indicator to forward to.
 	 * @param totalSteps the number of equally sized steps.
 	 * @return a steps indicator backed by the platform implementation.
 	 */

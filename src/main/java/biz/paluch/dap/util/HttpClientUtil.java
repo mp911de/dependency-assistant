@@ -115,7 +115,7 @@ public class HttpClientUtil {
 	 * an {@link IOException} before the full body is materialised, preventing a
 	 * hostile or oversized response from being fully allocated in memory.
 	 *
-	 * @param request the HTTP request to read; must not be {@literal null}.
+	 * @param request the HTTP request to read.
 	 * @return the response body decoded as UTF-8.
 	 * @throws IOException if the response exceeds {@link #MAX_RESPONSE_BODY_BYTES}
 	 * or the underlying stream fails.

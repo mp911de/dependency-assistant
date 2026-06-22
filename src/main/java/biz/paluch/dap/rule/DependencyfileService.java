@@ -86,7 +86,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 
 	/**
 	 * Return the rule service for the given project.
-	 * @param project the project; must not be {@literal null}.
+	 * @param project the project.
 	 * @return the project rule service.
 	 */
 	public static DependencyfileService getInstance(Project project) {

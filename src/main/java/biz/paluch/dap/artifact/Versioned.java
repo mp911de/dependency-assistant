@@ -48,7 +48,7 @@ public interface Versioned extends VersionAware {
 	/**
 	 * Create a versioned container for the given {@link VersionAware}.
 	 *
-	 * @param aware the version-aware object; must not be {@literal null}.
+	 * @param aware the version-aware object.
 	 * @return a {@link Versioned} instance whose {@link #isVersioned()} returns
 	 * {@literal true}.
 	 */
@@ -60,7 +60,7 @@ public interface Versioned extends VersionAware {
 	/**
 	 * Create a versioned container for the given artifact version.
 	 *
-	 * @param artifactVersion the version to wrap; must not be {@literal null}.
+	 * @param artifactVersion the version to wrap.
 	 * @return a {@link Versioned} instance whose {@link #isVersioned()} returns
 	 * {@literal true}.
 	 */
@@ -103,7 +103,7 @@ public interface Versioned extends VersionAware {
 	 * <p>Delegates to {@link ArtifactVersion#getVersion()} until
 	 * {@link ArtifactVersion#isWrapped()} returns {@literal false}.
 	 *
-	 * @return the unwrapped artifact version; never {@literal null}.
+	 * @return the unwrapped artifact version.
 	 * @throws IllegalStateException if no version is present.
 	 */
 	default ArtifactVersion unwrap() {
@@ -187,7 +187,7 @@ public interface Versioned extends VersionAware {
 		/**
 		 * Create a versioned container.
 		 *
-		 * @param version the artifact version to wrap; must not be {@literal null}.
+		 * @param version the artifact version to wrap.
 		 */
 		public DefaultVersioned {
 			Assert.notNull(version, "ArtifactVersion must not be null");

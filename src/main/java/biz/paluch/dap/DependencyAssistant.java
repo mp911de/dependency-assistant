@@ -62,20 +62,20 @@ public interface DependencyAssistant {
 	/**
 	 * Return whether this integration applies to the given project.
 	 * <p>This conditional must not trigger I/O or PSI access.
-	 * @param project the IntelliJ project to inspect; must not be {@literal null}.
+	 * @param project the IntelliJ project to inspect.
 	 */
 	boolean supports(Project project);
 
 	/**
 	 * Return whether this integration owns the given file.
 	 * <p>This conditional must not trigger I/O or PSI access.
-	 * @param file the file to inspect; must not be {@literal null}.
+	 * @param file the file to inspect.
 	 */
 	boolean supports(PsiFile file);
 
 	/**
 	 * Initialization hook after project startup.
-	 * @param project the IntelliJ project; must not be {@literal null}.
+	 * @param project the IntelliJ project.
 	 */
 	default void prepare(Project project) {
 	}
@@ -96,7 +96,7 @@ public interface DependencyAssistant {
 	 * {@link IntrospectedDependencies#complete(DependencyCollector)} and stores in
 	 * the {@link biz.paluch.dap.state.ProjectState}. Implementations must mutate
 	 * the provided collector directly and must not replace it with a new instance.
-	 * @param anchor the anchor file to collect for; must not be {@literal null}.
+	 * @param anchor the anchor file to collect for.
 	 * @param collector the collector to populate in place; must not be
 	 * {@literal null}.
 	 */
@@ -110,7 +110,7 @@ public interface DependencyAssistant {
 	 * and is suitable for integrations that do not accumulate per-entry
 	 * introspection state. Integrations that need to feed phase-one state into
 	 * their {@link IntrospectedDependencies} should override this method.
-	 * @param anchor the anchor file to collect for; must not be {@literal null}.
+	 * @param anchor the anchor file to collect for.
 	 * @param collector the collector to populate in place; must not be
 	 * {@literal null}.
 	 * @param introspected the introspection handle for the current indexer run;
@@ -125,7 +125,7 @@ public interface DependencyAssistant {
 	 * indexer run.
 	 * <p>The default returns the empty instance, suitable for integrations that do
 	 * not derive scan-wide metadata.
-	 * @param project the IntelliJ project; must not be {@literal null}.
+	 * @param project the IntelliJ project.
 	 */
 	default IntrospectedDependencies introspect(Project project) {
 		return IntrospectedDependencies.empty();
@@ -146,7 +146,7 @@ public interface DependencyAssistant {
 	/**
 	 * Create the file-scoped dependency context for the given anchor file.
 	 * <p>Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
-	 * @param project the IntelliJ project; must not be {@literal null}.
+	 * @param project the IntelliJ project.
 	 * @param anchor the build file or catalog file that anchors the operation; must
 	 * not be {@literal null}.
 	 * @return a file-scoped context.

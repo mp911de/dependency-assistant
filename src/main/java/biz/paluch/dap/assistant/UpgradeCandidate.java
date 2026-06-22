@@ -276,7 +276,7 @@ public class UpgradeCandidate implements HasArtifactId {
 	 * Dependency Site Find: its artifact and the bare version properties backing
 	 * its version.
 	 *
-	 * @return the query for this candidate; never {@literal null}.
+	 * @return the query for this candidate.
 	 */
 	DependencySiteQuery toQuery() {
 		return DependencySiteQuery

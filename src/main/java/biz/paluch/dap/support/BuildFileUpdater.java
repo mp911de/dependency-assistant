@@ -32,7 +32,7 @@ public interface BuildFileUpdater {
 	/**
 	 * Apply the given updates to a single build file inside one undoable command.
 	 *
-	 * @param file the build file to write; must not be {@literal null}.
+	 * @param file the build file to write.
 	 * @param updates the updates to apply; an empty list is a no-op.
 	 */
 	void updateBuildFile(VirtualFile file, List<DependencyUpdate> updates);

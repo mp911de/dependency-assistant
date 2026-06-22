@@ -45,11 +45,11 @@ public interface DependencyRuleService {
 	 * and {@link Versioned} project version.
 	 *
 	 * @param artifactId the artifact to resolve a rule for.
-	 * @param file the file used to detect the active branch; can be
-	 * {@literal null} if no branch context is available.
+	 * @param file the file used to detect the active branch; can be {@literal null}
+	 * if no branch context is available.
 	 * @param projectVersion the project version used to select branch rules.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
-	 * when no rule applies; never {@literal null}.
+	 * when no rule applies.
 	 */
 	DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion);
 
@@ -63,7 +63,7 @@ public interface DependencyRuleService {
 	 * @param projectVersion the project version, can be {@literal null} if not
 	 * provided.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
-	 * when no rule applies; never {@literal null}.
+	 * when no rule applies.
 	 * @see #resolve(ArtifactId, VirtualFile, Versioned)
 	 */
 	DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,

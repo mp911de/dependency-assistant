@@ -112,9 +112,9 @@ class DependencySitesPopup {
 	/**
 	 * @param onTransferToFindWindow invoked when the user hands the results to the
 	 * Find tool window, letting the host (the dependency upgrade dialog) close
-	 * itself; must not be {@literal null}.
+	 * itself.
 	 * @param files the build files to search, the same set the upgrade scan
-	 * produced; must not be {@literal null}.
+	 * produced.
 	 */
 	DependencySitesPopup(Project project, Disposable parentDisposable, Runnable onTransferToFindWindow,
 			Collection<VirtualFile> files) {
@@ -135,7 +135,7 @@ class DependencySitesPopup {
 	 * lightweight notice anchored at {@code where} and returns. The read expires
 	 * with {@code parentDisposable} so a closed dialog aborts a pending find.
 	 *
-	 * @param candidate the double-clicked row; must not be {@literal null}.
+	 * @param candidate the double-clicked row.
 	 * @param where the screen anchor for the popup or notice; must not be
 	 * {@literal null}.
 	 */

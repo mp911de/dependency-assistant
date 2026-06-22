@@ -157,7 +157,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * project is not versioned.
 	 * @param projectVersion the project version, can be {@literal null} if not
 	 * provided.
-	 * @return the effective dependency rule; never {@literal null}.
+	 * @return the effective dependency rule.
 	 */
 	public DependencyRule select(Rules parentRules, ArtifactId artifactId, @Nullable String branchName,
 			@Nullable ArtifactVersion projectVersion) {

@@ -45,7 +45,7 @@ class UpdateMavenWrapperProperties {
 	 * Apply a single update at the given wrapper version literal.
 	 * @param versionLiteral the {@link PropertyValueImpl} that owns the URL value;
 	 * must not be {@literal null}.
-	 * @param update the update to apply; must not be {@literal null}.
+	 * @param update the update to apply.
 	 */
 	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
@@ -65,8 +65,8 @@ class UpdateMavenWrapperProperties {
 
 	/**
 	 * Apply updates to the given wrapper PSI file.
-	 * @param psiFile the wrapper PSI file; must not be {@literal null}.
-	 * @param updates the updates to apply; must not be {@literal null}.
+	 * @param psiFile the wrapper PSI file.
+	 * @param updates the updates to apply.
 	 */
 	public static void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 

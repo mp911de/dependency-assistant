@@ -51,7 +51,7 @@ class MavenWrapperUrlAnalyzer {
 	 * @param decodedValue the Java-properties-unescaped property value; must not be
 	 * {@literal null}.
 	 * @param rawText the raw property text used for completion-placeholder
-	 * detection; must not be {@literal null}.
+	 * detection.
 	 * @return an immutable list of detected problems; empty when the value
 	 * classifies cleanly or is skipped.
 	 */
@@ -140,7 +140,7 @@ class MavenWrapperUrlAnalyzer {
 	 * analyzer flags the same set of inputs that
 	 * {@link WrapperProperty#parseProperty} would parse as credentials, including
 	 * opaque and scheme-less URIs.
-	 * @param decodedValue the decoded property value; must not be {@literal null}.
+	 * @param decodedValue the decoded property value.
 	 * @return {@literal true} if credentials are detected; {@literal false}
 	 * otherwise.
 	 */

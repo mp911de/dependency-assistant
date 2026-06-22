@@ -51,7 +51,7 @@ public class DependencyAssistantDispatcher {
 	 * <p>Return {@literal true} immediately if the project-scoped
 	 * {@link StateService} already holds dependency or release data, avoiding
 	 * repeated project applicability checks during UI updates.
-	 * @param project the project to inspect; must not be {@literal null}.
+	 * @param project the project to inspect.
 	 */
 	public static boolean supports(Project project) {
 		if (StateService.getInstance(project).hasDependenciesOrReleases()) {
@@ -70,7 +70,7 @@ public class DependencyAssistantDispatcher {
 	 * <p>Return {@literal true} immediately if the project-scoped
 	 * {@link StateService} already holds dependency or release data, avoiding
 	 * repeated project applicability checks during UI updates.
-	 * @param file the PSI file to test; must not be {@literal null}.
+	 * @param file the PSI file to test.
 	 * @return {@literal true} if some integration supports the file;
 	 * {@literal false} otherwise.
 	 */
@@ -91,7 +91,7 @@ public class DependencyAssistantDispatcher {
 	 * integration recognizes the file type. Use this method when an actual context
 	 * is required (resolving declarations, writing upgrades), and {@code supports}
 	 * when only file-type recognition matters (for example completion confidence).
-	 * @param file the PSI file to test; must not be {@literal null}.
+	 * @param file the PSI file to test.
 	 * @return {@literal true} if an available context exists for the file;
 	 * {@literal false} otherwise.
 	 * @see #supports(PsiFile)

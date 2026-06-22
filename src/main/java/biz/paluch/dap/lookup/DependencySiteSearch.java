@@ -48,8 +48,8 @@ public class DependencySiteSearch {
 	 *
 	 * @param query the version this find is centered on; must not be
 	 * {@literal null}.
-	 * @param files the files to search; must not be {@literal null}.
-	 * @return the deduplicated results in file order; never {@literal null}.
+	 * @param files the files to search.
+	 * @return the deduplicated results in file order.
 	 */
 	public DependencySearchResults find(DependencySiteQuery query, Collection<VirtualFile> files) {
 

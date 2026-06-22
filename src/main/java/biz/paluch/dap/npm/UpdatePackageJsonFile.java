@@ -84,8 +84,8 @@ class UpdatePackageJsonFile {
 	/**
 	 * Apply a single update at the given JSON string-literal anchor.
 	 * @param literal the JSON string literal of a {@code dependencies} or
-	 * {@code devDependencies} entry value; must not be {@literal null}.
-	 * @param update the update to apply; must not be {@literal null}.
+	 * {@code devDependencies} entry value.
+	 * @param update the update to apply.
 	 * @return {@literal true} if the rewrite was applied; {@literal false} on stale
 	 * PSI without error.
 	 * @throws IllegalStateException when the anchor resolves to an unexpected

@@ -69,7 +69,7 @@ public class WeightedStepsProgressIndicator extends DelegatingProgressIndicator 
 
 	/**
 	 * Create a stepped indicator over the given parent.
-	 * @param indicator the indicator to forward to; must not be {@literal null}.
+	 * @param indicator the indicator to forward to.
 	 * @param weights the relative weight of each step in encounter order; must
 	 * contain at least one entry and every weight must be greater than {@code 0}.
 	 * Relative weights are not required to sum to {@code 1}. {@code (0.1, 0.9)} and
@@ -103,7 +103,7 @@ public class WeightedStepsProgressIndicator extends DelegatingProgressIndicator 
 	 * <p>This is the thread-safe counterpart to the platform
 	 * {@code StepsProgressIndicator}: each {@link #nextStep()} advances the parent
 	 * fraction by {@code 1 / taskCount}.
-	 * @param indicator the indicator to forward to; must not be {@literal null}.
+	 * @param indicator the indicator to forward to.
 	 * @param taskCount the number of equally weighted steps; must be greater than
 	 * {@code 0}.
 	 * @return a stepped indicator over {@code taskCount} equally weighted steps.

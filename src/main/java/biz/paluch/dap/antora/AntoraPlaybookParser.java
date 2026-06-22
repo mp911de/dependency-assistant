@@ -65,7 +65,7 @@ class AntoraPlaybookParser {
 
 	/**
 	 * Parse a single {@code url} key-value pair into an {@link AntoraBundleUrl}.
-	 * @param keyValue the YAML key-value PSI element; must not be {@literal null}.
+	 * @param keyValue the YAML key-value PSI element.
 	 * @return the parsed bundle URL, or {@literal null} if the scalar value cannot
 	 * be parsed.
 	 */

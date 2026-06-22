@@ -69,7 +69,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * the current list of releases.
 	 * @param declaredDependency the declared dependency to resolve; must not be
 	 * {@literal null}.
-	 * @param releases current list of releases; must not be {@literal null}.
+	 * @param releases current list of releases.
 	 * @return the resolved dependency or {@literal null} if the dependency could
 	 * not be resolved.
 	 */
@@ -83,7 +83,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 
 	/**
 	 * Return whether the given element represents an editable dependency version.
-	 * @param element the PSI element to inspect; must not be {@literal null}.
+	 * @param element the PSI element to inspect.
 	 */
 	boolean isVersionElement(PsiElement element);
 
@@ -92,19 +92,18 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 *
 	 * @param element the PSI element at the cursor position; must not be
 	 * {@literal null}.
-	 * @param file the containing file; must not be {@literal null}.
+	 * @param file the containing file.
 	 * @return the lookup for the element.
 	 */
 	VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file);
 
 	/**
 	 * Apply a single dependency update at the given PSI element.
-	 * <p>
-	 * The method rewrites only that literal in place and never re-traverses the
+	 * <p>The method rewrites only that literal in place and never re-traverses the
 	 * containing file.
 	 * @param versionLiteral the version PSI element that triggered the update; must
 	 * not be {@literal null}.
-	 * @param update the update to apply; must not be {@literal null}.
+	 * @param update the update to apply.
 	 * @throws IllegalStateException when the anchor resolves to an unexpected
 	 * element kind.
 	 */
@@ -114,7 +113,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * Apply the given dependency updates to the appropriate build files.
 	 * @param psiFile the anchor PSI file used for the write action; must not be
 	 * {@literal null}.
-	 * @param updates the updates to apply; must not be {@literal null}.
+	 * @param updates the updates to apply.
 	 */
 	void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates);
 

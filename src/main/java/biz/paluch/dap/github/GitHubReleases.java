@@ -90,8 +90,8 @@ public class GitHubReleases implements ReleaseSource {
 	 * Create a release source backed by the given executor.
 	 *
 	 * @param server the GitHub server (e.g.
-	 * {@link GithubServerPath#DEFAULT_SERVER}); must not be {@literal null}.
-	 * @param executor the API request executor; must not be {@literal null}.
+	 * {@link GithubServerPath#DEFAULT_SERVER}).
+	 * @param executor the API request executor.
 	 */
 	GitHubReleases(GithubServerPath server, GithubApiRequestExecutor executor) {
 		this(server, new ExecutorBackedClient(executor), DEFAULT_TAGS_PAGE_SIZE);

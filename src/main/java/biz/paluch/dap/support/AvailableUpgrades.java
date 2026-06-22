@@ -68,7 +68,7 @@ public class AvailableUpgrades {
 	 * @param bestOption the preferred upgrade suggestion; must not be
 	 * {@literal null}.
 	 * @param upgrades the available tier-keyed upgrade suggestions in MAJOR &rarr;
-	 * MINOR &rarr; PATCH &rarr; PREVIEW order; must not be {@literal null}.
+	 * MINOR &rarr; PATCH &rarr; PREVIEW order.
 	 * @param latest the latest non-preview release across the candidate options, or
 	 * {@literal null} if no such release exists.
 	 */

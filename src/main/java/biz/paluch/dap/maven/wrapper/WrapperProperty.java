@@ -146,7 +146,7 @@ enum WrapperProperty {
 	 *
 	 * <p>If {@code preservedExtension} is one of the supported extensions for this
 	 * property, it is honored; otherwise the default extension is used.
-	 * @param version the canonical version; must not be {@literal null}.
+	 * @param version the canonical version.
 	 * @param preservedExtension the extension to preserve, can be {@literal null}.
 	 * @return the canonical file name.
 	 */
@@ -160,8 +160,8 @@ enum WrapperProperty {
 	/**
 	 * Return whether {@code fileName} is one of the canonical file names for this
 	 * wrapper property at the given version.
-	 * @param fileName the file name to check; must not be {@literal null}.
-	 * @param version the canonical version; must not be {@literal null}.
+	 * @param fileName the file name to check.
+	 * @param version the canonical version.
 	 * @return {@literal true} if the file name is canonical.
 	 */
 	public boolean isCanonicalFileName(String fileName, String version) {

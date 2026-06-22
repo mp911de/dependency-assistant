@@ -56,10 +56,10 @@ record DependencySitePresentation(DependencySiteSearchHit finding, String label,
 	 *
 	 * <p>Must be called inside a read action.
 	 *
-	 * @param hit the located site; must not be {@literal null}.
+	 * @param hit the located site.
 	 * @param project the project owning the hit's file; must not be
 	 * {@literal null}.
-	 * @return the assembled presentation; never {@literal null}.
+	 * @return the assembled presentation.
 	 */
 	static DependencySitePresentation from(DependencySiteSearchHit hit, Project project) {
 

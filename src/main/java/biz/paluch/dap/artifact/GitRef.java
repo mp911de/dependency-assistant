@@ -35,7 +35,7 @@ public class GitRef implements ArtifactVersion {
 	/**
 	 * Create a Git reference version.
 	 *
-	 * @param ref the declared Git reference string; must not be {@literal null}.
+	 * @param ref the declared Git reference string.
 	 */
 	public GitRef(String ref) {
 		this.ref = ref;

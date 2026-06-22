@@ -44,8 +44,8 @@ public class DependencyFileDelegate {
 	/**
 	 * Create a delegate bound to the given project and build file.
 	 *
-	 * @param project the owning project; must not be {@literal null}.
-	 * @param file the build file to inspect; must not be {@literal null}.
+	 * @param project the owning project.
+	 * @param file the build file to inspect.
 	 * @return a new delegate instance; guaranteed to be not {@literal null}.
 	 */
 	public static DependencyFileDelegate of(Project project, VirtualFile file) {
@@ -91,7 +91,7 @@ public class DependencyFileDelegate {
 	 * invoked. Must be called inside a read action.
 	 *
 	 * @param collectorFunction the format-specific collector applied to the
-	 * resolved {@link PsiFile}; must not be {@literal null}.
+	 * resolved {@link PsiFile}.
 	 * @return the collected dependencies, or an empty {@link DependencyCollector}
 	 * when the file cannot be resolved; guaranteed to be not {@literal null}.
 	 */

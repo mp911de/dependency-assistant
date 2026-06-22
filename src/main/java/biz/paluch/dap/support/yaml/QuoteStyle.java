@@ -65,8 +65,8 @@ public enum QuoteStyle {
 
 	/**
 	 * Detect the quoting style of a YAML scalar.
-	 * @param scalar the scalar to inspect; must not be {@literal null}.
-	 * @return the detected style; never {@literal null}.
+	 * @param scalar the scalar to inspect.
+	 * @return the detected style.
 	 */
 	public static QuoteStyle of(YAMLScalar scalar) {
 
@@ -79,7 +79,7 @@ public enum QuoteStyle {
 	/**
 	 * Wrap a raw value in the quoting characters for this style, escaping any
 	 * occurrences of the wrapping quote character per YAML rules.
-	 * @param rawValue the unwrapped value; must not be {@literal null}.
+	 * @param rawValue the unwrapped value.
 	 * @return the value formatted for direct insertion into a YAML scalar.
 	 */
 	public abstract String wrap(String rawValue);

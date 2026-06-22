@@ -89,7 +89,7 @@ class DependencyfileArtifactWriter {
 	 * no descriptor exists yet, or when at least one computed entry key is not
 	 * already declared in the active descriptor.
 	 *
-	 * @param candidate the right-clicked row; must not be {@literal null}.
+	 * @param candidate the right-clicked row.
 	 * @return {@literal true} if the add action has something to write;
 	 * {@literal false} otherwise.
 	 */
@@ -109,7 +109,7 @@ class DependencyfileArtifactWriter {
 	 * then open it in the editor with the caret selecting the first new entry's
 	 * {@code name} value.
 	 *
-	 * @param candidate the right-clicked row; must not be {@literal null}.
+	 * @param candidate the right-clicked row.
 	 */
 	void add(UpgradeCandidate candidate) {
 
@@ -265,7 +265,7 @@ class DependencyfileArtifactWriter {
 	 * ids as unconstrained rules. Backs the "Create Dependencyfile" action.
 	 *
 	 * @param artifactIds the project's known artifact ids to seed the descriptor
-	 * with; must not be {@literal null}.
+	 * with.
 	 * @throws IOException when the descriptor cannot be created.
 	 */
 	void createOrOpen(Collection<? extends ArtifactId> artifactIds) throws IOException {

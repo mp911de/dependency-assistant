@@ -56,7 +56,7 @@ class MavenWrapperUrlFixes {
 	/**
 	 * Create a fix that rewrites both version segments of the wrapper URL to the
 	 * given version.
-	 * @param version the canonical version to apply; must not be {@literal null}.
+	 * @param version the canonical version to apply.
 	 * @return a fresh fix instance.
 	 */
 	static PsiUpdateModCommandAction<PropertyImpl> replaceVersion(String version) {
@@ -69,7 +69,7 @@ class MavenWrapperUrlFixes {
 	/**
 	 * Create a fix that rewrites both artifact-id segments of the wrapper URL to
 	 * the canonical artifact for the given property.
-	 * @param property the wrapper property; must not be {@literal null}.
+	 * @param property the wrapper property.
 	 * @return a fresh fix instance.
 	 */
 	static PsiUpdateModCommandAction<PropertyImpl> replaceArtifact(WrapperProperty property) {
@@ -85,7 +85,7 @@ class MavenWrapperUrlFixes {
 	 * Create a fix that rewrites the trailing segments of the captured group path
 	 * to the canonical group-path tail for the given property, preserving any
 	 * mirror prefix.
-	 * @param property the wrapper property; must not be {@literal null}.
+	 * @param property the wrapper property.
 	 * @return a fresh fix instance.
 	 */
 	static PsiUpdateModCommandAction<PropertyImpl> replaceGroupPath(WrapperProperty property) {
@@ -100,8 +100,8 @@ class MavenWrapperUrlFixes {
 	/**
 	 * Create a fix that rewrites the file-name segment of the wrapper URL to the
 	 * canonical name for the given property and version.
-	 * @param property the wrapper property; must not be {@literal null}.
-	 * @param version the canonical version; must not be {@literal null}.
+	 * @param property the wrapper property.
+	 * @param version the canonical version.
 	 * @return a fresh fix instance.
 	 */
 	static PsiUpdateModCommandAction<PropertyImpl> replaceFileName(WrapperProperty property, String version) {
@@ -114,8 +114,8 @@ class MavenWrapperUrlFixes {
 	/**
 	 * Create a fix that replaces the wrapper URL with the canonical Maven Central
 	 * URL for the given property and version.
-	 * @param property the wrapper property; must not be {@literal null}.
-	 * @param version the canonical version; must not be {@literal null}.
+	 * @param property the wrapper property.
+	 * @param version the canonical version.
 	 * @return a fresh fix instance.
 	 */
 	static PsiUpdateModCommandAction<PropertyImpl> useDefaultUrl(WrapperProperty property, String version) {

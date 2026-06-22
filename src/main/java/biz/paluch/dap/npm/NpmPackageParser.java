@@ -55,7 +55,7 @@ class NpmPackageParser {
 	 * Parse the {@code dependencies} and {@code devDependencies} entries from the
 	 * given JSON file. Files that are not {@link JsonFile JSON files} or whose root
 	 * is not a JSON object produce an empty result.
-	 * @param file the PSI file to scan; must not be {@literal null}.
+	 * @param file the PSI file to scan.
 	 * @return the discovered NPM dependencies, possibly empty.
 	 */
 	public List<NpmDependency> parse(PsiFile file) {

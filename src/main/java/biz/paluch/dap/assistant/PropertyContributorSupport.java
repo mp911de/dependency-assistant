@@ -127,12 +127,12 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	 * {@code release} so {@link ArtifactReleaseAccessor} can recover the release
 	 * during lookup rendering.
 	 *
-	 * @param result the completion result set; must not be {@literal null}.
+	 * @param result the completion result set.
 	 * @param factory the file factory used to materialise the synthetic property;
 	 * must not be {@literal null}.
 	 * @param propertyPosition the property element at the caret; must not be
 	 * {@literal null}.
-	 * @param key the wrapper property key; must not be {@literal null}.
+	 * @param key the wrapper property key.
 	 * @param release the artifact release associated with {@code url}; must not be
 	 * {@literal null}.
 	 * @param url the canonical download URL for {@code release}; must not be

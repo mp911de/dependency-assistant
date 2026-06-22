@@ -52,7 +52,7 @@ public class DependencySiteSearchHit {
 	 *
 	 * @param element the PSI element to navigate to and preview; must not be
 	 * {@literal null}.
-	 * @return the definition hit; never {@literal null}.
+	 * @return the definition hit.
 	 */
 	public static DependencySiteSearchHit declaration(PsiElement element) {
 		return declaration(element, element.getText());
@@ -66,7 +66,7 @@ public class DependencySiteSearchHit {
 	 * {@literal null}.
 	 * @param label the concise display text (the version); must not be
 	 * {@literal null}.
-	 * @return the definition hit; never {@literal null}.
+	 * @return the definition hit.
 	 */
 	public static DependencySiteSearchHit declaration(PsiElement element, String label) {
 		return new DependencySiteSearchHit(element, SiteRole.DECLARATION, label);
@@ -78,7 +78,7 @@ public class DependencySiteSearchHit {
 	 *
 	 * @param element the PSI element to navigate to and preview; must not be
 	 * {@literal null}.
-	 * @return the version-usage hit; never {@literal null}.
+	 * @return the version-usage hit.
 	 */
 	public static DependencySiteSearchHit usage(PsiElement element) {
 		return usage(element, element.getText());
@@ -92,7 +92,7 @@ public class DependencySiteSearchHit {
 	 * {@literal null}.
 	 * @param label the concise display text (the version-property expression); must
 	 * not be {@literal null}.
-	 * @return the version-usage hit; never {@literal null}.
+	 * @return the version-usage hit.
 	 */
 	public static DependencySiteSearchHit usage(PsiElement element, String label) {
 		return new DependencySiteSearchHit(element, SiteRole.VERSION_USAGE, label);
@@ -101,7 +101,7 @@ public class DependencySiteSearchHit {
 	/**
 	 * Return the PSI element to navigate to and preview.
 	 *
-	 * @return the located element; never {@literal null}.
+	 * @return the located element.
 	 */
 	public PsiElement element() {
 		return element;
@@ -110,7 +110,7 @@ public class DependencySiteSearchHit {
 	/**
 	 * Return the role the element plays for the dependency's version.
 	 *
-	 * @return the site role; never {@literal null}.
+	 * @return the site role.
 	 */
 	public SiteRole role() {
 		return role;
@@ -119,7 +119,7 @@ public class DependencySiteSearchHit {
 	/**
 	 * Return the concise display text (the version or property expression).
 	 *
-	 * @return the display label; never {@literal null}.
+	 * @return the display label.
 	 */
 	public String label() {
 		return label;

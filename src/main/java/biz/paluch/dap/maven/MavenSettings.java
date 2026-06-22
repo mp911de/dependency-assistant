@@ -49,14 +49,14 @@ public class MavenSettings {
 	 * Resolve the effective remote repository for the given declared repository,
 	 * applying mirror routing and attaching credentials.
 	 *
-	 * <p>If a mirror matches the repository, the result carries the mirror's id
-	 * and URL and the credentials of the {@code <server>} matching the mirror id.
+	 * <p>If a mirror matches the repository, the result carries the mirror's id and
+	 * URL and the credentials of the {@code <server>} matching the mirror id.
 	 * Otherwise, the repository is returned unchanged with the credentials of the
 	 * {@code <server>} matching its own id.
 	 *
-	 * @param id  the declared repository id; must not be {@literal null}.
-	 * @param url the declared repository URL; must not be {@literal null}.
-	 * @return the effective remote repository; never {@literal null}.
+	 * @param id the declared repository id.
+	 * @param url the declared repository URL.
+	 * @return the effective remote repository.
 	 */
 	public RemoteRepository getRemoteRepository(String id, String url) {
 

@@ -67,7 +67,7 @@ class DerivedGroupName {
 	/**
 	 * Return the label shown as the {@code Inferred Upgrade Group} row name.
 	 *
-	 * @return the derived label; never {@literal null}.
+	 * @return the derived label.
 	 */
 	String displayName() {
 		return displayName;
