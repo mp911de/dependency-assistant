@@ -409,7 +409,7 @@ class GroovyDslCompletionTests {
 		assertThat(fixture).completionSuggests("6.0.3");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(buildFile).containsText("junit = '6.1.0-M1'");
+		assertThat(buildFile).containsText("junit = '6.1.0-M1'").caretBetween("junit = '6.1.0-M1", "'");
 	}
 
 	@EditorFile(name = "build.gradle", content = """

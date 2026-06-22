@@ -18,6 +18,7 @@ package biz.paluch.dap.antora;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
@@ -82,8 +83,15 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 			return builder.withInsertHandler((insertionContext, lookupElement) -> {
 
 				YAMLScalar toUpdate = pointer.getElement();
-				if (toUpdate != null) {
-					new UpdateAntoraPlaybookFile(project).updateVersion(toUpdate, originalValue, gitVersion);
+				if (toUpdate == null) {
+					return;
+				}
+
+				int caretOffset = insertionContext.getEditor().getCaretModel().getOffset();
+				VersionCaretRemap remap = new UpdateAntoraPlaybookFile(project).applyUpdate(toUpdate, originalValue,
+						gitVersion);
+				if (remap.canTranslate()) {
+					insertionContext.getEditor().getCaretModel().moveToOffset(remap.translate(caretOffset));
 				}
 			});
 		}

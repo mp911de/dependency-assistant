@@ -16,11 +16,13 @@
 
 package biz.paluch.dap.github;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.assistant.ReleaseCompletionProvider;
-import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
@@ -80,13 +82,22 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				return builder;
 			}
 
+			ArtifactId artifactId = action.toArtifactId();
 			SmartPsiElementPointer<YAMLScalar> pointer = SmartPointerManager.createPointer(scalar);
 			Project project = element.getProject();
 			return builder.withInsertHandler((insertionContext, lookupElement) -> {
 
 				YAMLScalar toUpdate = pointer.getElement();
-				VersionText text = action.getVersion(version);
-				new UpdateGitHubWorkflowFile(project).updateVersionAndComment(toUpdate, text);
+				if (toUpdate == null) {
+					return;
+				}
+
+				int caretOffset = insertionContext.getEditor().getCaretModel().getOffset();
+				VersionCaretRemap remap = new UpdateGitHubWorkflowFile(project).applyUpdate(toUpdate, action,
+						DependencyUpdate.create(artifactId, version));
+				if (remap.canTranslate()) {
+					insertionContext.getEditor().getCaretModel().moveToOffset(remap.translate(caretOffset));
+				}
 			});
 		}
 

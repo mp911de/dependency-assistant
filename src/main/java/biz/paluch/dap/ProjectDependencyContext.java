@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.support.ProjectBuildContext;
@@ -99,16 +100,21 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 
 	/**
 	 * Apply a single dependency update at the given PSI element.
-	 * <p>
-	 * The method rewrites only that literal in place and never re-traverses the
-	 * containing file.
+	 * <p>The method rewrites only that literal in place and never re-traverses the
+	 * containing file. The returned {@link VersionCaretRemap} lets a single-update
+	 * call site move the caret behind the version it wrote; capture the caret
+	 * offset <em>before</em> invoking this method, because the document mutation
+	 * shifts the live caret.
 	 * @param versionLiteral the version PSI element that triggered the update; must
 	 * not be {@literal null}.
 	 * @param update the update to apply; must not be {@literal null}.
+	 * @return the caret remap for the rewritten version, or
+	 * {@link VersionCaretRemap#none()} when no caret-eligible occurrence was
+	 * written.
 	 * @throws IllegalStateException when the anchor resolves to an unexpected
 	 * element kind.
 	 */
-	void applyUpdate(PsiElement versionLiteral, DependencyUpdate update);
+	VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update);
 
 	/**
 	 * Apply the given dependency updates to the appropriate build files.

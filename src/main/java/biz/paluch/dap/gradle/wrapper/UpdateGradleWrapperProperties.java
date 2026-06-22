@@ -20,6 +20,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.Properties;
@@ -43,17 +44,35 @@ import org.jspecify.annotations.Nullable;
  */
 class UpdateGradleWrapperProperties {
 
-	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+	/**
+	 * Apply a single update at the given wrapper version literal.
+	 * @param versionLiteral the property value that owns the distribution URL; must
+	 * not be {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 * @return the caret remap with one range per rewritten version occurrence in
+	 * document order, computed after the SHA post-process, or
+	 * {@link VersionCaretRemap#none()} when no occurrence is rewritten.
+	 */
+	public static VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
 		PropertyImpl property = PropertyUtils.findProperty(versionLiteral);
 		if (property == null) {
-			return;
+			return VersionCaretRemap.none();
 		}
 
 		GradleWrapperEntry entry = GradleWrapperParser.parse(property);
-		if (entry != null) {
+		List<TextRange> oldRanges = List.of();
+		if (entry != null && entry.hasArtifactId(update.coordinate())) {
+			oldRanges = GradleWrapperUtils.getVersionRanges(property);
 			applyUpdate(property, entry, update);
 		}
+
+		List<TextRange> newRanges = GradleWrapperUtils.getVersionRanges(property);
+		if (oldRanges.isEmpty() || oldRanges.size() != newRanges.size()) {
+			return VersionCaretRemap.none();
+		}
+
+		return VersionCaretRemap.of(oldRanges, newRanges);
 	}
 
 	public static void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {

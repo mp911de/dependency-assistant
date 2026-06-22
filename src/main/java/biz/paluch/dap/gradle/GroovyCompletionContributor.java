@@ -77,8 +77,8 @@ public class GroovyCompletionContributor extends CompletionContributor {
 				return builder;
 			}
 
-			return builder.withInsertHandler((context, lookupElement) -> GradleCompletionSupport
-					.trimInsertedVersionSuffix(context, context.getCompletionChar() == Lookup.REPLACE_SELECT_CHAR));
+			return builder.withInsertHandler((context, lookupElement) -> GradleCompletionSupport.insertVersion(context,
+					lookupElement.getLookupString(), context.getCompletionChar() == Lookup.REPLACE_SELECT_CHAR));
 		}
 
 	};

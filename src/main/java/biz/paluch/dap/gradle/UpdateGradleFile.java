@@ -21,15 +21,19 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.gradle.TomlParser.TomlCatalogDeclaration;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
+import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -100,33 +104,76 @@ class UpdateGradleFile {
 	 * @param literal the version PSI element to rewrite; must not be
 	 * {@literal null}.
 	 * @param update the update to apply; must not be {@literal null}.
+	 * @return the caret remap whose single range ends behind the rewritten version
+	 * digits, or {@link VersionCaretRemap#none()} when the literal is not a
+	 * supported version shape.
 	 */
-	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
+	public VersionCaretRemap applyUpdate(PsiElement literal, DependencyUpdate update) {
 
 		String newVersion = update.version().toString();
 
 		switch (literal) {
 		case PropertyValueImpl propertyValue -> {
-			if (propertyValue.getParent() instanceof IProperty property) {
-				property.setValue(newVersion);
+			if (propertyValue.getParent() instanceof PropertyImpl property) {
+				return updateProperty(property, propertyValue.getTextRange(), newVersion);
 			}
 		}
+		case PropertyImpl property -> {
+			ASTNode valueNode = property.getValueNode();
+			TextRange oldRange = valueNode != null ? valueNode.getTextRange() : property.getTextRange();
+			return updateProperty(property, oldRange, newVersion);
+		}
 		case TomlLiteral tomlLiteral -> {
-			updateTomlLiteral(tomlLiteral, newVersion);
+			TextRange oldRange = tomlLiteral.getTextRange();
+			TomlLiteral newLiteral = updateTomlLiteral(tomlLiteral, replaceTomlVersion(tomlLiteral, newVersion));
+			return VersionCaretRemap.of(List.of(oldRange), List.of(versionRangeIn(newLiteral, newVersion)));
 		}
 		case GrLiteral grLiteral -> {
+			TextRange oldRange = grLiteral.getTextRange();
 			if (update.hasVersionSource(VersionSource::isProperty)) {
 				UpdateGroovyDsl.updateExtProperty(grLiteral, newVersion);
 			} else {
 				UpdateGroovyDsl.updateVersion(grLiteral, newVersion);
 			}
+			return VersionCaretRemap.of(List.of(oldRange), List.of(versionRangeIn(grLiteral, newVersion)));
 		}
 		case KtStringTemplateExpression ktExpression -> {
+			TextRange oldRange = ktExpression.getTextRange();
 			UpdateKotlinDsl.updateVersion(ktExpression, newVersion);
+			return VersionCaretRemap.of(List.of(oldRange), List.of(versionRangeIn(ktExpression, newVersion)));
 		}
 		default -> {
 		}
 		}
+
+		return VersionCaretRemap.none();
+	}
+
+	private static VersionCaretRemap updateProperty(PropertyImpl property, TextRange oldRange, String newVersion) {
+
+		property.setValue(newVersion);
+		ASTNode valueNode = property.getValueNode();
+		if (valueNode == null) {
+			return VersionCaretRemap.none();
+		}
+		return VersionCaretRemap.of(List.of(oldRange), List.of(valueNode.getTextRange()));
+	}
+
+	/**
+	 * Return the file-absolute range of the {@code newVersion} digits within the
+	 * rewritten literal, or the literal's full range when the version cannot be
+	 * located inside it.
+	 */
+	private static TextRange versionRangeIn(PsiElement literal, String newVersion) {
+
+		String text = literal.getText();
+		int index = text.lastIndexOf(newVersion);
+		if (index < 0) {
+			return literal.getTextRange();
+		}
+
+		int start = literal.getTextRange().getStartOffset() + index;
+		return new TextRange(start, start + newVersion.length());
 	}
 
 	/**
@@ -186,10 +233,26 @@ class UpdateGradleFile {
 		}
 	}
 
-	private void updateTomlLiteral(TomlLiteral literal, String newVersion) {
+	private TomlLiteral updateTomlLiteral(TomlLiteral literal, String newContent) {
 		TomlLiteral newLiteral = new TomlPsiFactory(project, false)
-				.createLiteral("\"%s\"".formatted(newVersion));
-		literal.replace(newLiteral);
+				.createLiteral("\"%s\"".formatted(newContent));
+		return (TomlLiteral) literal.replace(newLiteral);
+	}
+
+	/**
+	 * Compute the new literal content for a TOML version literal. A bare version
+	 * literal becomes {@code newVersion}; a {@code group:artifact:version} GAV
+	 * literal keeps its coordinate prefix and swaps only the trailing version
+	 * segment so the caret can land behind the version digits.
+	 */
+	private static String replaceTomlVersion(TomlLiteral literal, String newVersion) {
+
+		String content = TomlParser.getRequiredText(literal);
+		int lastColon = content.lastIndexOf(':');
+		if (lastColon < 0) {
+			return newVersion;
+		}
+		return content.substring(0, lastColon + 1) + newVersion;
 	}
 
 	/**

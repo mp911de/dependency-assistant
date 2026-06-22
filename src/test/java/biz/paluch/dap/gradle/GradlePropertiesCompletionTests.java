@@ -22,6 +22,7 @@ import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
+import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,8 +80,10 @@ class GradlePropertiesCompletionTests {
 		prepareProjectState(propertiesFile, buildFile);
 
 		fixture.completeBasic();
-
 		assertThat(fixture).completionSuggests("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(propertiesFile).containsText("junitVersion=6.0.3").caretAfter("junitVersion=6.0.3");
 	}
 
 	@Test

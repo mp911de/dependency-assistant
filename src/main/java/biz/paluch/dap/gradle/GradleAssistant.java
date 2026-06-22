@@ -32,6 +32,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -239,8 +240,8 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
-			new UpdateGradleFile(delegate.getProject()).applyUpdate(anchor, update);
+		public VersionCaretRemap applyUpdate(PsiElement anchor, DependencyUpdate update) {
+			return new UpdateGradleFile(delegate.getProject()).applyUpdate(anchor, update);
 		}
 
 		@Override

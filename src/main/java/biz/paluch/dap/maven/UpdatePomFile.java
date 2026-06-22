@@ -23,10 +23,12 @@ import java.util.function.Consumer;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -73,18 +75,24 @@ class UpdatePomFile {
 	 * the same POM file.
 	 * @param versionLiteral the version PSI element; must not be {@literal null}.
 	 * @param update the update to apply; must not be {@literal null}.
+	 * @return the caret remap whose single range ends behind the rewritten version
+	 * digits, or {@link VersionCaretRemap#none()} when the literal is not a version
+	 * tag value.
 	 */
-	public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+	public VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
 		XmlTag versionTag = versionLiteral instanceof XmlTag tag ? tag
 				: PsiTreeUtil.getParentOfType(versionLiteral, XmlTag.class);
 
 		if (versionTag == null || !"version".equals(versionTag.getName()) && !isPropertiesChild(versionTag)) {
-			return;
+			return VersionCaretRemap.none();
 		}
 
 		String value = update.version().toString();
+		TextRange oldRange = versionTag.getValue().getTextRange();
 		versionTag.getValue().setText(value);
+
+		return VersionCaretRemap.of(List.of(oldRange), List.of(versionTag.getValue().getTextRange()));
 	}
 
 	private void apply(XmlTag projectTag, DependencyUpdate update) {

@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.gradle.GradleDistributionService;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -191,8 +192,8 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-			UpdateGradleWrapperProperties.applyUpdate(versionLiteral, update);
+		public VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+			return UpdateGradleWrapperProperties.applyUpdate(versionLiteral, update);
 		}
 
 		@Override

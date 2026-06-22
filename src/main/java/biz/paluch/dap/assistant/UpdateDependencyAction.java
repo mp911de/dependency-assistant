@@ -24,10 +24,10 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
-import biz.paluch.dap.util.PsiElements;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.util.IntentionFamilyName;
@@ -36,7 +36,6 @@ import com.intellij.modcommand.ModPsiUpdater;
 import com.intellij.modcommand.Presentation;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiElement;
 
 /**
@@ -84,19 +83,10 @@ public class UpdateDependencyAction extends PsiUpdateModCommandAction<PsiElement
 	public void invoke(ActionContext context, PsiElement element, ModPsiUpdater updater) {
 
 		int caretOffset = context.offset();
-		String previousText = null;
-		PsiElement container = null;
-		if (element.getTextRange().containsOffset(caretOffset)) {
-			container = PsiElements.unleaf(element);
-			previousText = container.getText();
-		}
-		dependencyContext.applyUpdate(element, update);
+		VersionCaretRemap remap = dependencyContext.applyUpdate(element, update);
 
-		if (container != null && updater != null) {
-			String currentText = container.getText();
-			int cpl = StringUtil.commonSuffixLength(previousText, currentText);
-			int newOffset = container.getTextRange().getEndOffset() - cpl;
-			updater.moveCaretTo(newOffset);
+		if (remap.canTranslate()) {
+			updater.moveCaretTo(remap.translate(caretOffset));
 		}
 	}
 

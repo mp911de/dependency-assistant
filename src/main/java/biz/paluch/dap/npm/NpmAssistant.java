@@ -33,6 +33,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -217,8 +218,8 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
-			new UpdatePackageJsonFile(project).applyUpdate(anchor, update);
+		public VersionCaretRemap applyUpdate(PsiElement anchor, DependencyUpdate update) {
+			return new UpdatePackageJsonFile(project).applyUpdate(anchor, update);
 		}
 
 		@Override

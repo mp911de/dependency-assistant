@@ -34,6 +34,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -226,8 +227,8 @@ public class AntoraAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-			new UpdateAntoraPlaybookFile(delegate.getProject()).applyUpdate((YAMLScalar) versionLiteral, update);
+		public VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+			return new UpdateAntoraPlaybookFile(delegate.getProject()).applyUpdate((YAMLScalar) versionLiteral, update);
 		}
 
 		@Override

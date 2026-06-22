@@ -58,7 +58,7 @@ class GradleWrapperCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(file)
 				.containsText("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip")
-				.caretAfter("gradle-9.5.1-bin.zip")
+				.caretBetween("gradle-9.5.1", "-bin.zip")
 				.doesNotContainText("distributionSha256Sum");
 	}
 
@@ -86,7 +86,7 @@ class GradleWrapperCompletionTests {
 
 		assertThat(file)
 				.containsText("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip")
-				.caretAfter("gradle-9.5.1-bin.zip")
+				.caretBetween("gradle-9.5.1", "-bin.zip")
 				.doesNotContainText("distributionSha256Sum");
 	}
 
@@ -102,7 +102,7 @@ class GradleWrapperCompletionTests {
 
 		assertThat(file)
 				.containsText("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip")
-				.caretAfter("gradle-9.5.1-bin.zip")
+				.caretBetween("gradle-9.5.1", "-bin.zip")
 				.doesNotContainText("distributionSha256Sum");
 	}
 

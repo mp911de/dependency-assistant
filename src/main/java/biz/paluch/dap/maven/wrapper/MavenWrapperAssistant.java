@@ -33,6 +33,7 @@ import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
@@ -217,8 +218,8 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-			UpdateMavenWrapperProperties.applyUpdate(versionLiteral, update);
+		public VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+			return UpdateMavenWrapperProperties.applyUpdate(versionLiteral, update);
 		}
 
 		@Override

@@ -26,11 +26,13 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyfileService;
@@ -48,12 +50,11 @@ import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.ElementManipulator;
-import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.util.ProcessingContext;
 import org.jspecify.annotations.Nullable;
 
@@ -144,9 +145,12 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 					.withRenderer(renderer);
 
 			if (metadata.versionLiteral() != null) {
+				SmartPsiElementPointer<PsiElement> pointer = SmartPointerManager
+						.createPointer(metadata.versionLiteral());
+				DependencyUpdate update = DependencyUpdate.create(metadata.artifactId(), completionVersion);
 				element = element
 						.withInsertHandler((insertionContext, lookupElement) -> replaceVersion(insertionContext,
-								metadata.versionLiteral(), lookupElement.getLookupString()));
+								metadata.context(), pointer, update));
 			}
 			element = postProcess(parameters, element, position, release);
 			LookupElement lookupElement = PrioritizedLookupElement.withPriority(
@@ -334,40 +338,27 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), psiFile);
 	}
 
-	private static void replaceVersion(InsertionContext context, PsiElement versionLiteral, String version) {
+	/**
+	 * Insert handler that rewrites the version through the same
+	 * {@link ProjectDependencyContext#applyUpdate(PsiElement, DependencyUpdate)}
+	 * the quickfix path uses, then positions the caret behind the written version
+	 * digits from the returned {@link VersionCaretRemap}. The pre-edit caret offset
+	 * is captured before the write because the document mutation shifts the live
+	 * caret.
+	 */
+	private static void replaceVersion(InsertionContext context, ProjectDependencyContext dependencyContext,
+			SmartPsiElementPointer<PsiElement> pointer, DependencyUpdate update) {
 
-		if (!versionLiteral.isValid()) {
+		PsiElement versionLiteral = pointer.getElement();
+		if (versionLiteral == null || !versionLiteral.isValid()) {
 			return;
 		}
 
-		PsiElement updated = replaceVersion(versionLiteral, version);
-		if (updated == null || !updated.isValid()) {
-			return;
+		int caretOffset = context.getEditor().getCaretModel().getOffset();
+		VersionCaretRemap remap = dependencyContext.applyUpdate(versionLiteral, update);
+		if (remap.canTranslate()) {
+			context.getEditor().getCaretModel().moveToOffset(remap.translate(caretOffset));
 		}
-
-		context.getEditor().getCaretModel().moveToOffset(getVersionTextEndOffset(updated));
-	}
-
-	private static @Nullable PsiElement replaceVersion(PsiElement versionLiteral, String version) {
-
-		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
-		if (manipulator == null) {
-			return null;
-		}
-
-		TextRange valueTextRange = ElementManipulators.getValueTextRange(versionLiteral);
-		return ElementManipulators.handleContentChange(versionLiteral, valueTextRange, version);
-	}
-
-	private static int getVersionTextEndOffset(PsiElement versionLiteral) {
-
-		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
-		if (manipulator != null) {
-			return versionLiteral.getTextRange().getStartOffset()
-					+ ElementManipulators.getValueTextRange(versionLiteral).getEndOffset();
-		}
-
-		return versionLiteral.getTextRange().getEndOffset();
 	}
 
 	/**

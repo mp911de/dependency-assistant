@@ -114,7 +114,7 @@ class MavenCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(pomFile).containsText("<version>6.1.0-M1</version>");
+		assertThat(pomFile).containsText("<version>6.1.0-M1</version>").caretBetween("6.1.0-M1", "</version>");
 	}
 
 	@Test
@@ -162,7 +162,7 @@ class MavenCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(pomFile).containsText("<junit>6.1.0-M1</junit>");
+		assertThat(pomFile).containsText("<junit>6.1.0-M1</junit>").caretBetween("6.1.0-M1", "</junit>");
 	}
 
 	@Test
@@ -236,6 +236,9 @@ class MavenCompletionTests {
 
 		fixture.completeBasic();
 		assertThat(fixture).completionSuggests("6.0.3");
+
+		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
+		assertThat(pomFile).containsText("<version>6.0.3</version>").caretBetween("6.0.3", "</version>");
 	}
 
 	@Test

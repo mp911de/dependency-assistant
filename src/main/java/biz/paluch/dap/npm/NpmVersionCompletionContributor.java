@@ -33,6 +33,7 @@ import com.intellij.patterns.ElementPattern;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Completion contributor for NPM dependency version strings.
@@ -56,13 +57,15 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 			NpmVersionExpression expression = NpmVersionExpression.parse(originalValue);
 			int caretInValue = literal != null ? getCaretInValue(parameters, literal) : 0;
 			int valueStart = literal != null ? getValueStart(literal) : -1;
+			int originalValueLength = originalValue != null ? originalValue.length() : 0;
 
 			return builder.withInsertHandler((context, lookupElement) -> {
 
 				if (valueStart >= 0 && originalValue != null) {
 					String replacement = renderCompletion(originalValue, expression, caretInValue,
 							option.getVersion(), lookupElement.getLookupString());
-					replaceLiteralValue(context, valueStart, closed, replacement);
+					NpmVersionExpression rendered = NpmVersionExpression.parse(replacement);
+					replaceLiteralValue(context, valueStart, originalValueLength, closed, replacement, rendered);
 					return;
 				}
 
@@ -133,37 +136,51 @@ public class NpmVersionCompletionContributor extends CompletionContributor {
 		return originalValue.substring(0, start) + lookupString + originalValue.substring(end);
 	}
 
-	private static void replaceLiteralValue(InsertionContext context, int valueStart, boolean closed,
-			String replacement) {
+	private static void replaceLiteralValue(InsertionContext context, int valueStart, int originalValueLength,
+			boolean closed, String replacement, @Nullable NpmVersionExpression rendered) {
+
+		context.commitDocument();
+		int valueEnd = valueContentEnd(context, valueStart, originalValueLength, closed);
 
 		Document document = context.getDocument();
-		int valueEnd = findValueEnd(document, valueStart, closed);
 		document.replaceString(valueStart, valueEnd, closed ? replacement : replacement + "\"");
-		context.getEditor().getCaretModel().moveToOffset(valueStart + replacement.length());
+		context.getEditor().getCaretModel().moveToOffset(caretAfterVersion(valueStart, replacement, rendered));
 	}
 
-	private static int findValueEnd(Document document, int valueStart, boolean closed) {
+	/**
+	 * Return the file-absolute end of the live value content to replace, taken from
+	 * the literal's PSI value range rather than scanning for a closing quote. The
+	 * platform pre-inserted the lookup string into the value before this handler
+	 * ran, so the live content is the original value plus the inserted text.
+	 */
+	private static int valueContentEnd(InsertionContext context, int valueStart, int originalValueLength,
+			boolean closed) {
 
-		CharSequence chars = document.getCharsSequence();
-		for (int i = valueStart; i < chars.length(); i++) {
-			char c = chars.charAt(i);
-			if (closed && c == '"' && !isEscaped(chars, i)) {
-				return i;
-			}
-			if (!closed && (c == '\n' || c == '\r')) {
-				return i;
-			}
+		JsonStringLiteral literal = NpmPsiUtils.findDependencyLiteral(context.getFile().findElementAt(valueStart));
+		if (literal != null && closed) {
+			TextRange valueRange = ElementManipulators.getValueTextRange(literal);
+			return literal.getTextRange().getStartOffset() + valueRange.getEndOffset();
 		}
-		return document.getTextLength();
+
+		int extra = Math.max(0, context.getTailOffset() - context.getStartOffset());
+		return valueStart + originalValueLength + extra;
 	}
 
-	private static boolean isEscaped(CharSequence chars, int quoteOffset) {
+	/**
+	 * Return the file-absolute offset just behind the version digits in the
+	 * rendered value, located through the rendered expression's
+	 * {@link NpmVersionExpression#replaceableRange(String) replaceable range} over
+	 * {@code replacement} (the writer's approach), or the end of
+	 * {@code replacement} when the rendered value is not a recognized expression.
+	 */
+	private static int caretAfterVersion(int valueStart, String replacement,
+			@Nullable NpmVersionExpression rendered) {
 
-		int backslashes = 0;
-		for (int i = quoteOffset - 1; i >= 0 && chars.charAt(i) == '\\'; i--) {
-			backslashes++;
+		if (rendered == null) {
+			return valueStart + replacement.length();
 		}
-		return backslashes % 2 == 1;
+
+		return valueStart + rendered.replaceableRange(replacement).getEndOffset();
 	}
 
 }

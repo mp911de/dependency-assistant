@@ -16,16 +16,30 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.List;
 import java.util.Locale;
 
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 
 /**
  * Shared helpers for Gradle Groovy/Kotlin version completion.
+ *
+ * <p>Inline dependency-notation completion (a {@code "group:name:version"} GAV
+ * string, possibly carrying a rich-version range or a {@code ${property}}
+ * expression) cannot route through {@code UpdateGradleFile.applyUpdate}: that
+ * writer rewrites the whole version segment with a fixed range-bound policy and
+ * never sees the caret position or the completion select character. Completion
+ * here is caret- and select-char-aware (it inserts at the caret, trims only the
+ * in-progress token, and either keeps or replaces a following expression), so
+ * it keeps a dedicated insert handler. The handler still positions the caret
+ * from a {@link VersionCaretRemap} so caret placement matches the quickfix
+ * path.
  *
  * @author Mark Paluch
  */
@@ -56,7 +70,25 @@ class GradleCompletionSupport {
 		return text.substring(prefixStart, prefixEnd);
 	}
 
-	static void trimInsertedVersionSuffix(InsertionContext context, boolean replaceFollowingExpression) {
+	/**
+	 * Clean up the version the completion popup pre-inserted into an inline GAV
+	 * literal and position the caret behind the inserted version digits.
+	 *
+	 * <p>The popup inserts the selected version at the prefix-match position but
+	 * leaves the rest of the original value (a stale range bound, a following
+	 * {@code ${property}} expression) in place. This removes the leftover
+	 * in-progress token to the right of the caret, and, when the user committed
+	 * with the replace key, the immediately following Gradle expression. The caret
+	 * then lands behind the inserted version through a {@link VersionCaretRemap} so
+	 * it matches the quickfix path.
+	 * @param context the completion insertion context; must not be {@literal null}.
+	 * @param insertedVersion the version text the completion popup inserted; must
+	 * not be {@literal null}.
+	 * @param replaceFollowingExpression whether to also remove a following
+	 * {@code ${...}}, {@code $var}, or {@code {...}} expression (true for the
+	 * replace select key).
+	 */
+	static void insertVersion(InsertionContext context, String insertedVersion, boolean replaceFollowingExpression) {
 
 		Document document = context.getDocument();
 		int tailOffset = context.getTailOffset();
@@ -78,19 +110,10 @@ class GradleCompletionSupport {
 			document.deleteString(tailOffset, deleteEnd);
 		}
 
-		context.getEditor().getCaretModel().moveToOffset(tailOffset);
-	}
-
-	private static int getPrefixEnd(String text, int caretInLiteral) {
-
-		int dummy = text.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED);
-		if (dummy == -1) {
-			dummy = text.toLowerCase(Locale.ROOT)
-					.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED.toLowerCase(Locale.ROOT));
-		}
-
-		int prefixEnd = dummy != -1 ? dummy : caretInLiteral;
-		return Math.clamp(prefixEnd, 0, text.length());
+		int versionStart = Math.max(0, tailOffset - insertedVersion.length());
+		TextRange versionRange = new TextRange(versionStart, tailOffset);
+		VersionCaretRemap remap = VersionCaretRemap.of(List.of(versionRange), List.of(versionRange));
+		context.getEditor().getCaretModel().moveToOffset(remap.translate(versionStart));
 	}
 
 	private static int extendFollowingExpression(CharSequence text, int offset, int contentEnd) {
@@ -134,6 +157,18 @@ class GradleCompletionSupport {
 		}
 
 		return openBraceOffset;
+	}
+
+	private static int getPrefixEnd(String text, int caretInLiteral) {
+
+		int dummy = text.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED);
+		if (dummy == -1) {
+			dummy = text.toLowerCase(Locale.ROOT)
+					.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER_TRIMMED.toLowerCase(Locale.ROOT));
+		}
+
+		int prefixEnd = dummy != -1 ? dummy : caretInLiteral;
+		return Math.clamp(prefixEnd, 0, text.length());
 	}
 
 	private static int getStringContentStart(String text) {

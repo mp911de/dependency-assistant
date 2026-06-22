@@ -16,10 +16,9 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.List;
-
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import com.intellij.codeInsight.intention.FileModifier;
@@ -28,6 +27,7 @@ import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.codeInspection.util.IntentionName;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
@@ -78,7 +78,18 @@ class UpdateDependencyIntention implements IntentionAction, FileModifier {
 
 	@Override
 	public void invoke(@NotNull Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
-		dependencyContext.applyUpdates(psiFile, List.of(update));
+
+		PsiElement versionLiteral = declaration.getVersionLiteral();
+		if (versionLiteral == null) {
+			return;
+		}
+
+		int caretOffset = editor.getCaretModel().getOffset();
+		VersionCaretRemap remap = dependencyContext.applyUpdate(versionLiteral, update);
+
+		if (remap.canTranslate()) {
+			editor.getCaretModel().moveToOffset(remap.translate(caretOffset));
+		}
 	}
 
 	@Override

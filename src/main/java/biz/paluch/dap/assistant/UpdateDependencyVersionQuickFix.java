@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.UpgradeSuggestion;
@@ -113,7 +114,13 @@ public class UpdateDependencyVersionQuickFix extends LocalQuickFixOnPsiElement
 
 	@Override
 	public void invoke(@NotNull Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
-		dependencyContext.applyUpdates(psiFile, List.of(update));
+
+		int caretOffset = editor.getCaretModel().getOffset();
+		VersionCaretRemap remap = dependencyContext.applyUpdate(getStartElement(), update);
+
+		if (remap.canTranslate()) {
+			editor.getCaretModel().moveToOffset(remap.translate(caretOffset));
+		}
 	}
 
 	@Override

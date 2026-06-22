@@ -25,6 +25,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
@@ -163,8 +164,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
-			new UpdateExtensionsFile().applyUpdate(anchor, update);
+		public VersionCaretRemap applyUpdate(PsiElement anchor, DependencyUpdate update) {
+			return new UpdateExtensionsFile().applyUpdate(anchor, update);
 		}
 
 		@Override

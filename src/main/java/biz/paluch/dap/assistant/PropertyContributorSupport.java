@@ -17,9 +17,11 @@
 package biz.paluch.dap.assistant;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.PropertyRenderer;
@@ -121,6 +123,20 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 			PropertyImpl propertyPosition);
 
 	/**
+	 * Return file-absolute ranges of the version segments in the wrapper URL of
+	 * {@code property}, used to place the caret behind the version digits after a
+	 * full property line is inserted. The default returns an empty list, which
+	 * leaves the caret at the end of the inserted line.
+	 * @param property the freshly inserted wrapper property; must not be
+	 * {@literal null}.
+	 * @return the version ranges in document order, or an empty list when the value
+	 * is not a supported wrapper URL.
+	 */
+	protected List<TextRange> getVersionRanges(PropertyImpl property) {
+		return List.of();
+	}
+
+	/**
 	 * Add a wrapper {@code key=url} line completion item to {@code result}.
 	 *
 	 * <p>The synthetic {@link PropertyImpl} created here is wired to
@@ -138,7 +154,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	 * @param url the canonical download URL for {@code release}; must not be
 	 * {@literal null}.
 	 */
-	protected static void addPropertyLineCompletion(CompletionResultSet result, PsiFileFactory factory,
+	protected void addPropertyLineCompletion(CompletionResultSet result, PsiFileFactory factory,
 			PropertyImpl propertyPosition, String key, ArtifactRelease release, String url) {
 
 		String lookupString = key + "=" + url;
@@ -181,7 +197,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 
 	protected abstract boolean isPropertyKeyTrigger(char typeChar);
 
-	protected static class PropertyLineInsertHandler implements InsertHandler<LookupElement> {
+	protected class PropertyLineInsertHandler implements InsertHandler<LookupElement> {
 
 		private final String replacement;
 
@@ -198,7 +214,23 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 			int end = context.getDocument().getLineEndOffset(line);
 
 			context.getDocument().replaceString(start, end, replacement);
-			context.getEditor().getCaretModel().moveToOffset(start + replacement.length());
+			context.getEditor().getCaretModel().moveToOffset(caretOffset(context, start));
+		}
+
+		private int caretOffset(InsertionContext context, int lineStart) {
+
+			context.commitDocument();
+			PropertyImpl property = PropertyUtils.findProperty(context.getFile().findElementAt(lineStart));
+			if (property == null) {
+				return lineStart + replacement.length();
+			}
+
+			List<TextRange> ranges = getVersionRanges(property);
+			if (ranges.isEmpty()) {
+				return lineStart + replacement.length();
+			}
+
+			return VersionCaretRemap.of(ranges, ranges).translate(lineStart);
 		}
 
 	}

@@ -19,6 +19,7 @@ package biz.paluch.dap.maven.wrapper;
 import java.util.List;
 
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.assistant.VersionContributorSupport;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.util.TextRange;
@@ -53,8 +54,8 @@ class VersionContributor extends VersionContributorSupport {
 	}
 
 	@Override
-	protected void applyVersionUpdate(PsiElement versionLiteral, DependencyUpdate update) {
-		UpdateMavenWrapperProperties.applyUpdate(versionLiteral, update);
+	protected VersionCaretRemap applyVersionUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+		return UpdateMavenWrapperProperties.applyUpdate(versionLiteral, update);
 	}
 
 }

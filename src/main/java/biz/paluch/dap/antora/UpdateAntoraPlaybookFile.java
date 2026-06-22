@@ -22,13 +22,16 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import org.jetbrains.yaml.YAMLElementGenerator;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
+import org.jspecify.annotations.Nullable;
 
 /**
  * PSI updater for Antora playbook {@code ui.bundle.url} declarations.
@@ -78,20 +81,29 @@ class UpdateAntoraPlaybookFile {
 	 * Apply a single update at the given Antora playbook scalar.
 	 * @param scalar the {@code ui.bundle.url} scalar containing the URL.
 	 * @param update the update to apply.
+	 * @return the caret remap whose single range ends behind the rewritten version
+	 * segment of the release URL path, or {@link VersionCaretRemap#none()} when
+	 * nothing was rewritten.
 	 */
-	void applyUpdate(YAMLScalar scalar, DependencyUpdate update) {
+	VersionCaretRemap applyUpdate(YAMLScalar scalar, DependencyUpdate update) {
 
 		AntoraBundleUrl bundleUrl = AntoraBundleUrl.from(scalar.getTextValue());
 		if (bundleUrl == null) {
-			return;
+			return VersionCaretRemap.none();
 		}
 
 		if (!bundleUrl.toArtifactId().equals(update.coordinate())
 				|| !(update.version() instanceof GitVersion gitVersion)) {
-			return;
+			return VersionCaretRemap.none();
 		}
 
-		updateVersion(scalar, gitVersion);
+		TextRange oldRange = versionRangeIn(scalar);
+		YAMLScalar updatedScalar = updateVersion(scalar, scalar.getTextValue(), gitVersion);
+		if (updatedScalar == null) {
+			return VersionCaretRemap.none();
+		}
+
+		return VersionCaretRemap.of(List.of(oldRange), List.of(versionRangeIn(updatedScalar)));
 	}
 
 	/**
@@ -105,6 +117,33 @@ class UpdateAntoraPlaybookFile {
 	}
 
 	/**
+	 * Apply a single update at a {@code ui.bundle.url} scalar that completion has
+	 * already dirtied with the inserted lookup string.
+	 * <p>The asset path around the version is preserved from {@code originalValue},
+	 * captured before the completion popup inserted the lookup string, so the
+	 * writer rewrites the version segment of the original URL rather than the
+	 * pre-inserted lookup text. The remap is computed from the rewritten scalar.
+	 * @param scalar the live bundle URL scalar carrying the pre-inserted lookup
+	 * text; must not be {@literal null}.
+	 * @param originalValue the scalar's original URL value captured before the
+	 * completion popup inserted the lookup string; must not be {@literal null}.
+	 * @param newVersion the resolved release version to render; must not be
+	 * {@literal null}.
+	 * @return the caret remap behind the rewritten version segment, or
+	 * {@link VersionCaretRemap#none()} when nothing was rewritten.
+	 */
+	VersionCaretRemap applyUpdate(YAMLScalar scalar, String originalValue, GitVersion newVersion) {
+
+		TextRange oldRange = versionRangeIn(scalar);
+		YAMLScalar updatedScalar = updateVersion(scalar, originalValue, newVersion);
+		if (updatedScalar == null) {
+			return VersionCaretRemap.none();
+		}
+
+		return VersionCaretRemap.of(List.of(oldRange), List.of(versionRangeIn(updatedScalar)));
+	}
+
+	/**
 	 * Update an Antora playbook {@code ui.bundle.url} scalar using the given
 	 * original URL value. Completion insertion may have already edited the live
 	 * scalar, so the original value is used to preserve the asset path around the
@@ -112,24 +151,52 @@ class UpdateAntoraPlaybookFile {
 	 * @param scalar the scalar to replace.
 	 * @param value the original scalar text value.
 	 * @param newVersion the resolved release version to render.
+	 * @return the rewritten scalar, or {@literal null} when the value is not a
+	 * bundle URL or the scalar is not a {@code ui.bundle.url} site.
 	 */
-	void updateVersion(YAMLScalar scalar, String value, GitVersion newVersion) {
+	@Nullable
+	YAMLScalar updateVersion(YAMLScalar scalar, String value, GitVersion newVersion) {
 
 		AntoraBundleUrl bundleUrl = AntoraBundleUrl.from(value);
 		if (bundleUrl == null) {
-			return;
+			return null;
 		}
 
 		YamlVersionSite site = YamlVersionSite.locate(scalar, AntoraPlaybookParser::isBundleUrlKeyValue);
 		if (site == null) {
-			return;
+			return null;
 		}
 
 		String renderedVersion = newVersion.renderRef(RefStyle.VERSION, bundleUrl.version());
 		int versionStart = value.indexOf(RELEASE_DOWNLOAD_FRAGMENT) + RELEASE_DOWNLOAD_FRAGMENT.length();
 		int versionEnd = value.indexOf('/', versionStart);
 		String replacement = value.substring(0, versionStart) + renderedVersion + value.substring(versionEnd);
-		site.replaceRawValue(replacement, factory);
+
+		return (YAMLScalar) site.replaceRawValue(replacement, factory).getValue();
+	}
+
+	/**
+	 * Return the file-absolute range of the version segment within the scalar's raw
+	 * text, between {@code /releases/download/} and the next path separator, or the
+	 * scalar's full range when the fragment cannot be located. The raw text keeps
+	 * offsets aligned with the document for quoted scalars.
+	 */
+	private static TextRange versionRangeIn(YAMLScalar scalar) {
+
+		String text = scalar.getText();
+		int fragment = text.indexOf(RELEASE_DOWNLOAD_FRAGMENT);
+		if (fragment < 0) {
+			return scalar.getTextRange();
+		}
+
+		int versionStart = fragment + RELEASE_DOWNLOAD_FRAGMENT.length();
+		int versionEnd = text.indexOf('/', versionStart);
+		if (versionEnd < 0) {
+			return scalar.getTextRange();
+		}
+
+		int start = scalar.getTextRange().getStartOffset();
+		return new TextRange(start + versionStart, start + versionEnd);
 	}
 
 	private void applyUpdates(List<DependencyUpdate> updates, YAMLScalar scalar) {

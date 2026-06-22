@@ -16,12 +16,15 @@
 
 package biz.paluch.dap.maven.wrapper;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.PropertyContributorSupport;
 import biz.paluch.dap.state.Cache;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFileFactory;
 
 /**
@@ -41,6 +44,11 @@ class PropertyContributor extends PropertyContributorSupport {
 			String url = MavenWrapperUrlRewriter.canonicalUrl(kind, release);
 			addPropertyLineCompletion(result, factory, propertyPosition, kind.key(), release, url);
 		}
+	}
+
+	@Override
+	protected List<TextRange> getVersionRanges(PropertyImpl property) {
+		return MavenWrapperUtils.getVersionRanges(property);
 	}
 
 	@Override

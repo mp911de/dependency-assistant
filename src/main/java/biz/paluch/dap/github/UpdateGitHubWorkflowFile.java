@@ -22,10 +22,12 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiElement;
@@ -99,19 +101,54 @@ class UpdateGitHubWorkflowFile {
 
 	/**
 	 * Apply a single update at the given YAML scalar anchor of a {@code uses:} key.
+	 * @param scalar the YAML scalar of a {@code uses:} value; must not be
+	 * {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 * @return the caret remap whose single range ends behind the rewritten
+	 * {@code @ref} version, never inside the managed pin comment, or
+	 * {@link VersionCaretRemap#none()} when nothing was rewritten. The new range is
+	 * computed after the comment edit so its offset is final.
 	 */
-	public void applyUpdate(YAMLScalar scalar, DependencyUpdate update) {
+	public VersionCaretRemap applyUpdate(YAMLScalar scalar, DependencyUpdate update) {
 
 		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
 		if (ref == null || !StringUtils.hasText(ref.version())) {
-			return;
+			return VersionCaretRemap.none();
 		}
+
+		return applyUpdate(scalar, ref, update);
+	}
+
+	/**
+	 * Apply a single update at a {@code uses:} scalar whose ref was parsed before
+	 * completion dirtied the scalar with the inserted lookup string.
+	 * <p>The pin style is decided by {@code ref}, which is parsed from the scalar
+	 * before the completion popup inserted the lookup string, so the version-style
+	 * versus SHA-style decision matches the user's original ref rather than the
+	 * pre-inserted lookup text. The rewrite preserves everything before the live
+	 * scalar's {@code @} separator and replaces the ref, which normalizes away the
+	 * pre-inserted lookup text without rewriting the scalar twice.
+	 * @param scalar the live {@code uses:} scalar carrying the pre-inserted lookup
+	 * text; must not be {@literal null}.
+	 * @param ref the {@code uses:} ref parsed before the completion popup inserted
+	 * the lookup string; must not be {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 * @return the caret remap behind the rewritten {@code @ref} version, or
+	 * {@link VersionCaretRemap#none()} when nothing was rewritten.
+	 */
+	public VersionCaretRemap applyUpdate(YAMLScalar scalar, UsesRepositoryAction ref, DependencyUpdate update) {
 
 		if (!(update.version() instanceof GitVersion gitVersion)) {
-			return;
+			return VersionCaretRemap.none();
 		}
 
-		updateVersionAndComment(scalar, ref.getVersion(gitVersion));
+		TextRange oldRange = GitHubUtils.getVersionRange(scalar);
+		YAMLScalar updatedScalar = updateVersionAndComment(scalar, ref.getVersion(gitVersion));
+		if (updatedScalar == null) {
+			return VersionCaretRemap.none();
+		}
+
+		return VersionCaretRemap.of(List.of(oldRange), List.of(GitHubUtils.getVersionRange(updatedScalar)));
 	}
 
 	/**

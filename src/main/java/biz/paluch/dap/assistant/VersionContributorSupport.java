@@ -23,6 +23,7 @@ import java.util.function.Function;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.DependencyUpdate;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionParameters;
@@ -119,8 +120,13 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	 * Apply the dependency update at {@code versionLiteral}. Called from the insert
 	 * handler after the property value has been restored to the original
 	 * (pre-completion) text.
+	 * @param versionLiteral the wrapper property whose URL version segments are
+	 * rewritten; must not be {@literal null}.
+	 * @param update the update to apply; must not be {@literal null}.
+	 * @return the caret remap returned by the wrapper writer, with one range per
+	 * rewritten version occurrence in document order.
 	 */
-	protected abstract void applyVersionUpdate(PsiElement versionLiteral, DependencyUpdate update);
+	protected abstract VersionCaretRemap applyVersionUpdate(PsiElement versionLiteral, DependencyUpdate update);
 
 	private BiFunction<ArtifactRelease, CompletionParameters, Optional<WrapperInsertHandler>> wrapperInsertHandler(
 			CompletionPrefix prefix, PropertyImpl property) {
@@ -265,7 +271,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 				return;
 			}
 
-			int caretRangeIndex = caretRangeIndex();
+			int caretOffset = prefix.getStartOffset();
 			context.commitDocument();
 			property.setValue(prefix.getOriginalText(), PropertyKeyValueFormat.FILE);
 
@@ -274,36 +280,15 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 				return;
 			}
 
-			applyVersionUpdate(freshProperty, DependencyUpdate.create(release.artifactId(), release.getVersion()));
+			VersionCaretRemap remap = applyVersionUpdate(freshProperty,
+					DependencyUpdate.create(release.artifactId(), release.getVersion()));
+			if (!remap.canTranslate()) {
+				return;
+			}
 
-			int newCaretOffset = caretOffsetAfterUpdate(freshProperty, caretRangeIndex);
+			int newCaretOffset = remap.translate(caretOffset);
 			context.getEditor().getCaretModel().moveToOffset(newCaretOffset);
 			context.setTailOffset(newCaretOffset);
-		}
-
-		private int caretRangeIndex() {
-
-			List<TextRange> ranges = prefix.getRanges();
-			for (int i = 0; i < ranges.size(); i++) {
-				if (ranges.get(i).containsOffset(prefix.getStartOffset())) {
-					return i;
-				}
-			}
-			return -1;
-		}
-
-		private int caretOffsetAfterUpdate(PropertyImpl freshProperty, int caretRangeIndex) {
-
-			if (caretRangeIndex < 0) {
-				return prefix.getStartOffset();
-			}
-
-			List<TextRange> ranges = getVersionRanges(freshProperty);
-			if (caretRangeIndex >= ranges.size()) {
-				return prefix.getStartOffset();
-			}
-
-			return ranges.get(caretRangeIndex).getEndOffset();
 		}
 
 	}

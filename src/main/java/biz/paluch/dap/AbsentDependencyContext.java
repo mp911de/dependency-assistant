@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -58,7 +59,7 @@ enum AbsentDependencyContext implements ProjectDependencyContext {
 	}
 
 	@Override
-	public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+	public VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 		throw new IllegalStateException("No dependency context available");
 	}
 

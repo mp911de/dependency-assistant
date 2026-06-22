@@ -68,7 +68,7 @@ class MavenWrapperCompletionTests {
 		assertThat(file)
 				.containsText(
 						"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.zip")
-				.caretAfter("apache-maven-3.10.0-bin.zip");
+				.caretBetween("apache-maven/3.10.0", "/apache-maven");
 	}
 
 	@Test
@@ -85,7 +85,7 @@ class MavenWrapperCompletionTests {
 		assertThat(file)
 				.containsText(
 						"wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.3/maven-wrapper-3.3.3.jar")
-				.caretAfter("maven-wrapper-3.3.3.jar");
+				.caretBetween("maven-wrapper/3.3.3", "/maven-wrapper");
 	}
 
 	@Test
@@ -257,7 +257,7 @@ class MavenWrapperCompletionTests {
 		assertThat(file)
 				.containsText(
 						"distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.zip")
-				.caretAfter("apache-maven-3.10.0-bin.zip");
+				.caretBetween("apache-maven/3.10.0", "/apache-maven");
 	}
 
 	@Test
@@ -272,7 +272,7 @@ class MavenWrapperCompletionTests {
 		assertThat(file)
 				.containsText(
 						"wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.3/maven-wrapper-3.3.3.jar")
-				.caretAfter("maven-wrapper-3.3.3.jar");
+				.caretBetween("maven-wrapper/3.3.3", "/maven-wrapper");
 	}
 
 	@Test

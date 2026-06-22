@@ -512,7 +512,7 @@ class DependencyCheckAggregatorTests {
 		}
 
 		@Override
-		public void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
+		public VersionCaretRemap applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 			throw new UnsupportedOperationException();
 		}
 

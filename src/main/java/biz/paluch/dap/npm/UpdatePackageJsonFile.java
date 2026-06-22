@@ -23,12 +23,15 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyUpdate;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
+import biz.paluch.dap.artifact.VersionCaretRemap;
 import com.intellij.json.psi.JsonElementGenerator;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonStringLiteral;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.TextRange;
+import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -86,12 +89,13 @@ class UpdatePackageJsonFile {
 	 * @param literal the JSON string literal of a {@code dependencies} or
 	 * {@code devDependencies} entry value; must not be {@literal null}.
 	 * @param update the update to apply; must not be {@literal null}.
-	 * @return {@literal true} if the rewrite was applied; {@literal false} on stale
-	 * PSI without error.
+	 * @return the caret remap whose single range ends behind the rewritten version
+	 * digits, after any range/alias operator and before the closing quote, or
+	 * {@link VersionCaretRemap#none()} when nothing was rewritten.
 	 * @throws IllegalStateException when the anchor resolves to an unexpected
 	 * element kind.
 	 */
-	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
+	public VersionCaretRemap applyUpdate(PsiElement literal, DependencyUpdate update) {
 
 		JsonProperty property = literal instanceof JsonProperty p ? p
 				: PsiTreeUtil.getParentOfType(literal, JsonProperty.class);
@@ -100,39 +104,72 @@ class UpdatePackageJsonFile {
 					"Unsupported version literal element: %s".formatted(literal.getClass().getName()));
 		}
 
-		applyUpdates(property, List.of(update));
+		return applyUpdate(property, update);
 	}
 
 	private void applyUpdates(JsonProperty entry, List<DependencyUpdate> updates) {
 
 		String name = entry.getName();
-		if (!NpmPackageParser.NAME_ALLOWLIST.matcher(name).matches()) {
-			return;
-		}
-
-		if (!(entry.getValue() instanceof JsonStringLiteral literal)) {
-			return;
-		}
-
-		NpmVersionExpression expression = NpmVersionExpression.parse(literal.getValue());
-		if (expression == null) {
+		if (!NpmPackageParser.NAME_ALLOWLIST.matcher(name).matches()
+				|| !(entry.getValue() instanceof JsonStringLiteral literal)) {
 			return;
 		}
 
 		ArtifactId artifactId = NpmPackageParser.toArtifactId(name);
 		for (DependencyUpdate update : updates) {
-
-			if (!artifactId.equals(update.coordinate())) {
-				continue;
+			if (artifactId.equals(update.coordinate())) {
+				rewriteVersion(literal, update);
+				return;
 			}
-
-			String replacement = render(expression, literal.getValue(), update);
-			if (replacement != null && !replacement.equals(literal.getValue())) {
-				JsonStringLiteral replacementLiteral = factory.createStringLiteral(replacement);
-				literal.replace(replacementLiteral);
-			}
-			return;
 		}
+	}
+
+	private VersionCaretRemap applyUpdate(JsonProperty entry, DependencyUpdate update) {
+
+		String name = entry.getName();
+		if (!NpmPackageParser.NAME_ALLOWLIST.matcher(name).matches()
+				|| !(entry.getValue() instanceof JsonStringLiteral literal)
+				|| !NpmPackageParser.toArtifactId(name).equals(update.coordinate())) {
+			return VersionCaretRemap.none();
+		}
+
+		return rewriteVersion(literal, update);
+	}
+
+	private VersionCaretRemap rewriteVersion(JsonStringLiteral literal, DependencyUpdate update) {
+
+		NpmVersionExpression expression = NpmVersionExpression.parse(literal.getValue());
+		if (expression == null) {
+			return VersionCaretRemap.none();
+		}
+
+		String oldValue = literal.getValue();
+		String replacement = render(expression, oldValue, update);
+		if (replacement == null || replacement.equals(oldValue)) {
+			return VersionCaretRemap.none();
+		}
+
+		TextRange oldRange = versionRangeIn(literal, expression, oldValue);
+		JsonStringLiteral newLiteral = (JsonStringLiteral) literal.replace(factory.createStringLiteral(replacement));
+
+		return VersionCaretRemap.of(List.of(oldRange), List.of(versionRangeIn(newLiteral, expression, replacement)));
+	}
+
+	/**
+	 * Return the file-absolute range of the version digits within the given JSON
+	 * string literal, after any operator/alias prefix and before the closing quote.
+	 * The version digits are located through the operator-aware
+	 * {@link NpmVersionExpression#replaceableRange(String) replaceable range} over
+	 * {@code rawValue}, then projected onto the literal's value content.
+	 */
+	private static TextRange versionRangeIn(JsonStringLiteral literal, NpmVersionExpression expression,
+			String rawValue) {
+
+		TextRange valueRange = ElementManipulators.getValueTextRange(literal);
+		int valueStart = literal.getTextRange().getStartOffset() + valueRange.getStartOffset();
+		TextRange digits = expression.replaceableRange(rawValue);
+
+		return TextRange.from(valueStart + digits.getStartOffset(), digits.getLength());
 	}
 
 	private static @Nullable String render(NpmVersionExpression expression, String rawValue, DependencyUpdate update) {
