@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.json.psi.JsonElementGenerator;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
@@ -444,29 +445,13 @@ class DependencyfileArtifactWriter {
 			artifactIds.add(member.getArtifactId().artifactId());
 		}
 
-		String commonPrefix = longestCommonPrefix(artifactIds);
+		String commonPrefix = StringUtils.longestCommonPrefix(artifactIds);
 		int separator = Math.max(commonPrefix.lastIndexOf('-'), commonPrefix.lastIndexOf('.'));
 		if (separator < 0) {
 			return null;
 		}
 
 		return groupId + ":" + commonPrefix.substring(0, separator + 1) + "*";
-	}
-
-	private static String longestCommonPrefix(List<String> values) {
-
-		String first = values.getFirst();
-		int length = first.length();
-		for (String value : values) {
-			length = Math.min(length, value.length());
-			for (int i = 0; i < length; i++) {
-				if (first.charAt(i) != value.charAt(i)) {
-					length = i;
-					break;
-				}
-			}
-		}
-		return first.substring(0, length);
 	}
 
 	record ArtifactEntry(String key, String name) {

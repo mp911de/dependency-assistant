@@ -32,6 +32,7 @@ import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -257,7 +258,7 @@ class UpgradeGroup extends UpgradeCandidate {
 
 	private static List<String> commonSeparatorPrefixLabelParts(List<String> artifactIds) {
 
-		String lcp = longestCommonPrefix(artifactIds);
+		String lcp = StringUtils.longestCommonPrefix(artifactIds);
 		int separator = Math.max(lcp.lastIndexOf('-'), lcp.lastIndexOf('.'));
 		if (separator < 0) {
 			return List.of();
@@ -287,22 +288,6 @@ class UpgradeGroup extends UpgradeCandidate {
 				.toList();
 
 		return prefixes.size() == artifactIds.size() ? prefixes : List.of();
-	}
-
-	private static String longestCommonPrefix(List<String> strings) {
-
-		String first = strings.getFirst();
-		int len = first.length();
-		for (String s : strings) {
-			len = Math.min(len, s.length());
-			for (int i = 0; i < len; i++) {
-				if (first.charAt(i) != s.charAt(i)) {
-					len = i;
-					break;
-				}
-			}
-		}
-		return first.substring(0, len);
 	}
 
 	private static String longestCommonSuffix(List<String> strings) {

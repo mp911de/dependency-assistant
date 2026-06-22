@@ -16,8 +16,13 @@
 
 package biz.paluch.dap.util;
 
+import java.util.Collection;
+import java.util.Iterator;
+
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Miscellaneous {@link String} utility methods.
@@ -110,4 +115,20 @@ public abstract class StringUtils {
 		return str;
 	}
 
+	public static String longestCommonPrefix(Collection<String> values) {
+		Assert.notEmpty(values, "Values must not be empty");
+		Iterator<String> iterator = values.iterator();
+		String first = iterator.next();
+		int length = first.length();
+		for (String value : values) {
+			length = Math.min(length, value.length());
+			for (int i = 0; i < length; i++) {
+				if (first.charAt(i) != value.charAt(i)) {
+					length = i;
+					break;
+				}
+			}
+		}
+		return first.substring(0, length);
+	}
 }
