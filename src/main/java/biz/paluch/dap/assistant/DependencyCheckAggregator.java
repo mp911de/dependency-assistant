@@ -239,8 +239,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
 			candidates.add(new UpgradeCandidate(option, entry.contexts().iterator().next()
-					.getInterfaceAssistant(),
-					declaredVersions, rule));
+					.getInterfaceAssistant(), declaredVersions, rule));
 		});
 
 		candidates.sort(Comparator.comparing(UpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));

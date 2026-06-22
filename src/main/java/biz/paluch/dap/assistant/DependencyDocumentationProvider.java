@@ -146,24 +146,19 @@ public class DependencyDocumentationProvider
 				return;
 			}
 
-			ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
+			ArtifactReferenceContext context = ArtifactReferenceContext.from(element);
 			if (context.isAbsent()) {
 				return;
 			}
 
-			VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
-			ArtifactReference reference = lookup.resolveArtifactReference(element);
-			if (!reference.isResolved()) {
-				return;
-			}
-
+			ArtifactReference reference = context.getArtifactReference();
 			PsiElement versionLiteral = reference.getDeclaration().getVersionLiteral();
 			if (versionLiteral == null) {
 				return;
 			}
 
-			Release release = DocumentationContext.findRelease(lookup.getCache(), reference.getArtifactId(), version);
-			context.applyUpdate(versionLiteral, DependencyUpdate.from(reference, release));
+			Release release = DocumentationContext.findRelease(context.getCache(), reference.getArtifactId(), version);
+			context.getDependencyContext().applyUpdate(versionLiteral, DependencyUpdate.from(reference, release));
 		}
 
 		/**

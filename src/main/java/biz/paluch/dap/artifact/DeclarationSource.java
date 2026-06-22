@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.Collection;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -134,6 +135,34 @@ public abstract class DeclarationSource {
 	 */
 	public static DeclarationSource profilePluginManagement(String id) {
 		return new ProfilePluginManagement(id);
+	}
+
+	/**
+	 * Check if the current declaration source is a plugin.
+	 * @return {@literal true} if the source is a plugin; {@literal false}
+	 * otherwise.
+	 */
+	public boolean isPlugin() {
+		return this instanceof DeclarationSource.Plugin;
+	}
+
+	/**
+	 * Return {@literal true} if all the given sources are plugins. This is useful
+	 * to determine whether an artifact is solely used as plugin or addtionally as
+	 * dependency.
+	 * @param declarationSources the declaration sources to check.
+	 * @return {@literal true} if all sources are plugins.
+	 */
+	public static boolean isPlugin(Collection<DeclarationSource> declarationSources) {
+		int plugin = 0;
+		for (DeclarationSource source : declarationSources) {
+			if (source.isPlugin()) {
+				plugin++;
+			} else {
+				return false;
+			}
+		}
+		return plugin > 0 && declarationSources.size() == plugin;
 	}
 
 	@Override

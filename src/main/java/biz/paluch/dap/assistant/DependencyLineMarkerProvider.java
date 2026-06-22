@@ -24,10 +24,6 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.lookup.VersionUpgradeLookup;
-import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
@@ -68,32 +64,23 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
-		ProjectDependencyContext context = getContext(element);
-		if ((context.isAbsent())) {
+		ArtifactReferenceContext context = ArtifactReferenceContext.from(element, this::getContext);
+		if (context.isAbsent()) {
 			return null;
 		}
 
-		VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
-
-		ArtifactReference artifactReference = UpgradeSuggestions.resolveArtifact(context, element);
-		if (!artifactReference.isResolved() || !artifactReference.getDeclaration().isVersionDefined()) {
+		ArtifactReference artifactReference = context.getArtifactReference();
+		if (!artifactReference.getDeclaration().isVersionDefined()) {
 			return null;
 		}
 
-		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
-		DependencyfileService ruleService = DependencyfileService.getInstance(element.getProject());
-		ArtifactId artifactId = artifactReference.getArtifactId();
-		DependencyRule rule = ruleService.resolve(artifactId, containingFile, context.getProjectVersion());
-		EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.of(rule, artifactId,
-				artifactReference.getDeclaration().getVersion().getVersion(),
-				context.getInterfaceAssistant());
-		InterfaceAssistant ui = context.getInterfaceAssistant();
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
-		AvailableUpgrades upgrades = lookup.suggestUpgrades(artifactReference).filterSuggestions(rule::isEnabled);
+		AvailableUpgrades upgrades = context.suggestUpgrades();
+		EvaluatedDependencyRule evaluated = context.getEvaluatedRule();
 
 		if (!upgrades.isPresent()) {
 			if (evaluated.isPresent() && evaluated.isLocked()) {
-				return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
+				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						evaluated.getIcon(), e -> evaluated.getToolTipText(),
 						new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
 						GutterIconRenderer.Alignment.LEFT, evaluated::getAccessibleName);
@@ -106,8 +93,8 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 			return null;
 		}
 
-		String tooltip = rule.isPresent() ? suggestion.getSuggestionMessage() : suggestion.getMessage();
-		String accessibleName = rule.isPresent() ? MessageBundle.message("gutter.suggestion.accessible")
+		String tooltip = context.hasRule() ? suggestion.getSuggestionMessage() : suggestion.getMessage();
+		String accessibleName = context.hasRule() ? MessageBundle.message("gutter.suggestion.accessible")
 				: MessageBundle.message("gutter.newer.accessible");
 
 		if (evaluated.isPresent()) {
@@ -119,6 +106,8 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 		ArtifactDeclaration declaration = suggestion.getArtifactDeclaration();
 		PsiElement versionLiteral = declaration.getVersionLiteral();
+		InterfaceAssistant ui = context.getDependencyContext()
+				.getInterfaceAssistant();
 		if (!declaration.isVersionDefinedInSameFile() && versionLiteral != null) {
 
 			VirtualFile virtualFile = versionLiteral.getContainingFile().getVirtualFile();
@@ -127,7 +116,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 				String tooltipToUse = MessageBundle.message("gutter.declaration.file", virtualFile.getName())
 						+ "<br/>" + tooltip;
 
-				return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
+				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						ui.getNavigateIcon(declaration),
 						e -> tooltipToUse,
 						(mouseEvent, psiElement) -> {
@@ -148,7 +137,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 			icon = IconLoader.getTransparentIcon(ui.getGutterIcon(declaration), 0.7f);
 		}
 
-		return new LineMarkerInfo<>(anchor, ui.getHighlightRange(anchor),
+		return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 				icon, e -> tooltipToUse,
 				new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);

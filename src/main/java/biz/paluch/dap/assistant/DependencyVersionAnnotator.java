@@ -19,11 +19,7 @@ package biz.paluch.dap.assistant;
 import java.util.HashSet;
 import java.util.Set;
 
-import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.AvailableUpgrades;
@@ -49,28 +45,19 @@ public class DependencyVersionAnnotator implements Annotator {
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
+
+		ArtifactReferenceContext context = ArtifactReferenceContext.from(element);
 		if (context.isAbsent()) {
 			return;
 		}
 
-		AvailableUpgrades upgrades = UpgradeSuggestions.suggest(context, element);
-		if (!upgrades.isPresent()) {
-			return;
-		}
-
-		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
-		DependencyfileService ruleService = DependencyfileService.getInstance(element.getProject());
-		DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration()
-				.getArtifactId(), containingFile, context.getProjectVersion());
-		upgrades = upgrades.filterSuggestions(rule::isEnabled);
-
+		AvailableUpgrades upgrades = context.suggestUpgrades();
 		if (!upgrades.isPresent()) {
 			return;
 		}
 
 		UpgradeSuggestion bestOption = upgrades.getUpgradeSuggestion();
-		String message = rule.isPresent() ? bestOption.getSuggestionMessage() : bestOption.getMessage();
+		String message = context.hasRule() ? bestOption.getSuggestionMessage() : bestOption.getMessage();
 		ArtifactDeclaration declaration = upgrades.getArtifactDeclaration();
 		PsiElement versionLiteral = declaration.getVersionLiteral();
 		boolean sameFileDeclaration = true;
@@ -95,9 +82,9 @@ public class DependencyVersionAnnotator implements Annotator {
 		AnnotationBuilder builder = holder
 				.newAnnotation(DependencyAssistantSeverities.UPGRADE_AVAILABLE,
 						declaration.getArtifactId() + ": " + message)
-				.range(context.getInterfaceAssistant().getHighlightRange(element));
+				.range(context.getHighlightRange(element));
 
-		if (rule.isPresent()) {
+		if (context.hasRule()) {
 			builder.problemGroup(UpgradeSuggestionGroup.problemGroup())
 					.textAttributes(DependencyAssistantSeverities.UPGRADE_SUGGESTION_KEY);
 		} else {
@@ -111,7 +98,8 @@ public class DependencyVersionAnnotator implements Annotator {
 
 			Set<ArtifactVersion> seen = new HashSet<>();
 
-			UpdateDependencyVersionQuickFix fix = new UpdateDependencyVersionQuickFix(versionLiteral, context,
+			UpdateDependencyVersionQuickFix fix = new UpdateDependencyVersionQuickFix(versionLiteral,
+					context.getDependencyContext(),
 					bestOption);
 			builder = builder.newFix(fix).key(key).registerFix();
 			seen.add(bestOption.getRelease().getVersion());
@@ -120,7 +108,9 @@ public class DependencyVersionAnnotator implements Annotator {
 				if (suggestion == bestOption || seen.contains(suggestion.getRelease().getVersion())) {
 					continue;
 				}
-				builder = builder.newFix(new UpdateDependencyVersionQuickFix(versionLiteral, context, suggestion))
+				builder = builder
+						.newFix(new UpdateDependencyVersionQuickFix(versionLiteral, context.getDependencyContext(),
+								suggestion))
 						.key(key)
 						.registerFix();
 				seen.add(bestOption.getRelease().getVersion());

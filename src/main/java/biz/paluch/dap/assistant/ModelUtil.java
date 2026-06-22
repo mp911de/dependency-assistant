@@ -79,4 +79,5 @@ class ModelUtil {
 		VersionAge versionAge = VersionAge.between(currentVersion, candidate);
 		return versionAge.getIcon();
 	}
+
 }

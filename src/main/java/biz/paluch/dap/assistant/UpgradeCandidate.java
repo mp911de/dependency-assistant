@@ -80,7 +80,12 @@ public class UpgradeCandidate implements HasArtifactId {
 		this.candidate = candidate;
 		this.interfaceAssistant = assistant;
 		this.declaredVersions = declaredVersions;
-		this.rule = rule;
+
+		if (DeclarationSource.isPlugin(candidate.getDependency().getDeclarationSources())) {
+			this.rule = DependencyRule.absent();
+		} else {
+			this.rule = rule;
+		}
 
 		if (rule.isPresent()) {
 			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
@@ -94,9 +99,22 @@ public class UpgradeCandidate implements HasArtifactId {
 			}
 		}
 
-		this.ruleResult = EvaluatedDependencyRule.of(rule, getArtifactId(), getCurrentVersion(), assistant);
+		this.ruleResult = EvaluatedDependencyRule.of(this.rule, getArtifactId(), getCurrentVersion(), assistant);
 		this.tableIcon = createTableIcon();
 		this.toolTipText = createToolTipText();
+	}
+
+	private boolean isPlugin(Dependency dependency) {
+
+		Set<DeclarationSource> declarationSources = dependency.getDeclarationSources();
+		int plugin = 0;
+		for (DeclarationSource source : declarationSources) {
+			if (source instanceof DeclarationSource.Plugin) {
+				plugin++;
+			}
+		}
+
+		return plugin > 0 && declarationSources.size() == plugin;
 	}
 
 	private String createToolTipText() {
