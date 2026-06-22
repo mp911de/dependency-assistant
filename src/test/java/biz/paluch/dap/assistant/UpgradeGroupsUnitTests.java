@@ -184,8 +184,8 @@ class UpgradeGroupsUnitTests {
 	void unnamedRuleFallsThroughToInferredGroup() {
 
 		UpgradeGroups rows = UpgradeGroups.builder()
-				.add(member(VAVR, "1.0.0", new TestDependencyRule("")))
-				.add(member(VAVR_MATCH, "1.0.0", new TestDependencyRule("")))
+				.add(ungoverned("io.vavr", "vavr", new TestDependencyRule(""), "1.0.0"))
+				.add(ungoverned("io.vavr", "vavr-match", new TestDependencyRule(""), "1.0.0"))
 				.build();
 
 		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
@@ -196,8 +196,8 @@ class UpgradeGroupsUnitTests {
 	void absentRuleFallsThroughToInferredGroup() {
 
 		UpgradeGroups rows = UpgradeGroups.builder()
-				.add(member(VAVR, "1.0.0", DependencyRule.absent()))
-				.add(member(VAVR_MATCH, "1.0.0", DependencyRule.absent()))
+				.add(ungoverned("io.vavr", "vavr", DependencyRule.absent(), "1.0.0"))
+				.add(ungoverned("io.vavr", "vavr-match", DependencyRule.absent(), "1.0.0"))
 				.build();
 
 		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
@@ -294,6 +294,73 @@ class UpgradeGroupsUnitTests {
 	}
 
 	@Test
+	void inferredGroupCollapsesCoReleasedMembers() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-core", "1.0.0", "1.0.0", "1.1.0"))
+				.add(released("io.example", "foo-util", "1.0.0", "1.0.0", "1.1.0"))
+				.build();
+
+		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
+				group -> assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(
+						ArtifactId.of("io.example", "foo-core"), ArtifactId.of("io.example", "foo-util")));
+	}
+
+	@Test
+	void inferredGroupConsidersReleaseHistoryMembers() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-core", "1.1.0", "1.0.0", "1.1.0"))
+				.add(released("io.example", "foo-util", "1.1.0", "1.0.0", "1.0.1", "1.1.0"))
+				.build();
+
+		assertThat(rows).hasSize(2);
+
+		rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-core", "1.2.0", "1.0.0", "1.1.0"))
+				.add(released("io.example", "foo-util", "1.2.0", "1.0.0", "1.0.1", "1.1.0"))
+				.build();
+
+		assertThat(rows).hasSize(2);
+	}
+
+	@Test
+	void inferredGroupRejectsMembersOffTheSameReleaseLine() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-core", "1.0.0", "1.0.0", "1.1.0"))
+				.add(released("io.example", "foo-util", "1.0.0", "1.0.0"))
+				.build();
+
+		assertThat(rows).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
+	}
+
+	@Test
+	void inferredReleaseLineIgnoresHistoryBelowCurrentVersion() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-core", "6.1.0", "5.0.0", "6.1.0", "6.1.1"))
+				.add(released("io.example", "foo-late", "6.1.0", "6.1.0", "6.1.1"))
+				.build();
+
+		assertThat(rows).singleElement().isInstanceOf(UpgradeGroup.class);
+	}
+
+	@Test
+	void inferredGroupSplitsDistinctReleaseLinesIntoSeparateGroups() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-client-core", "1.0.0", "1.0.0", "1.1.0"))
+				.add(released("io.example", "foo-client-api", "1.0.0", "1.0.0", "1.1.0"))
+				.add(released("io.example", "foo-server-core", "1.0.0", "1.0.0", "2.0.0"))
+				.add(released("io.example", "foo-server-api", "1.0.0", "1.0.0", "2.0.0"))
+				.build();
+
+		assertThat(rows).hasSize(2).allMatch(UpgradeGroup.class::isInstance);
+		assertThat(rows).extracting(UpgradeCandidate::getRowLabel).containsExactly("foo-client", "foo-server");
+	}
+
+	@Test
 	void doesNotGroupSuffixOnlyFamily() {
 
 		UpgradeGroups rows = UpgradeGroups.builder()
@@ -346,11 +413,20 @@ class UpgradeGroupsUnitTests {
 	}
 
 	private static UpgradeCandidate ungoverned(String groupId, String artifactId, String version) {
-		return ungoverned(groupId, artifactId, null, version);
+		return ungoverned(groupId, artifactId, DependencyRule.absent(), null, version);
 	}
 
 	private static UpgradeCandidate ungoverned(String groupId, String artifactId, @Nullable String property,
 			String... versions) {
+		return ungoverned(groupId, artifactId, DependencyRule.absent(), property, versions);
+	}
+
+	private static UpgradeCandidate ungoverned(String groupId, String artifactId, DependencyRule rule, String version) {
+		return ungoverned(groupId, artifactId, rule, null, version);
+	}
+
+	private static UpgradeCandidate ungoverned(String groupId, String artifactId, DependencyRule rule,
+			@Nullable String property, String... versions) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		ArtifactVersion current = ArtifactVersion.of(versions[0]);
@@ -367,7 +443,29 @@ class UpgradeGroupsUnitTests {
 		}
 
 		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of(versions[0]))),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(sites, it -> null, null),
+				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(sites, it -> null, null), rule);
+	}
+
+	private static UpgradeCandidate released(String groupId, String artifactId, String current,
+			String... releaseVersions) {
+
+		ArtifactId id = ArtifactId.of(groupId, artifactId);
+		ArtifactVersion currentVersion = ArtifactVersion.of(current);
+
+		Dependency dependency = new Dependency(id, currentVersion);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.declared(current));
+
+		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "x"),
+				ProjectId.of(groupId, artifactId), new Dependency(id, currentVersion));
+
+		List<Release> releases = new ArrayList<>();
+		for (String version : releaseVersions) {
+			releases.add(Release.of(version));
+		}
+
+		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(releases)),
+				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(List.of(site), it -> null, null),
 				DependencyRule.absent());
 	}
 
