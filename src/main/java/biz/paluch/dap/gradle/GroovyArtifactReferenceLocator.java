@@ -121,12 +121,13 @@ class GroovyArtifactReferenceLocator {
 	 */
 	private ArtifactReference resolveVersionSite(PsiElement element) {
 
-		if (!GroovyDslParser.isVersionPosition(element) || isExcludedVersionPosition(element)) {
+		DeclarationStyle site = GroovyDeclarationStyleDetector.getInstance().detect(element);
+		if (site.isAbsent() || !site.kind().isInlineInCall() || isExcludedVersionPosition(site, element)) {
 			return ArtifactReference.unresolved();
 		}
 
-		GrMethodCall owner = findRecognizedConstruct(element);
-		return owner != null ? reference(parserFor(element).parse(owner)) : ArtifactReference.unresolved();
+		return site.owningCall() instanceof GrMethodCall owner ? reference(parserFor(element).parse(owner))
+				: ArtifactReference.unresolved();
 	}
 
 	/**
@@ -136,41 +137,15 @@ class GroovyArtifactReferenceLocator {
 	 * reference nested inside a string interpolation, where the enclosing
 	 * interpolated string is the resolving element instead.
 	 */
-	private static boolean isExcludedVersionPosition(PsiElement element) {
+	private static boolean isExcludedVersionPosition(DeclarationStyle site, PsiElement element) {
 
-		if (element instanceof GrLiteral literal
-				&& GroovyDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY)
+		if (site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY && element instanceof GrLiteral literal
 				&& GradleUtils.isVersionRange(GroovyDslUtils.getText(literal))) {
 			return true;
 		}
 
 		return element instanceof GrReferenceExpression
 				&& PsiTreeUtil.getParentOfType(element, GrStringInjection.class) != null;
-	}
-
-	/**
-	 * Walk outward from the element to the innermost call the forward parser
-	 * recognizes as a declaration, resolving the plugin {@code id(...)} call behind
-	 * a chained {@code version(...)} call.
-	 */
-	private static @Nullable GrMethodCall findRecognizedConstruct(PsiElement element) {
-
-		GrMethodCall call = PsiTreeUtil.getParentOfType(element, GrMethodCall.class);
-		while (call != null) {
-
-			if (GroovyDslParser.isDeclarationCall(call)) {
-				return call;
-			}
-
-			GrMethodCall pluginIdCall = GroovyDslParser.findPluginIdCallForVersionCall(call);
-			if (pluginIdCall != null) {
-				return pluginIdCall;
-			}
-
-			call = PsiTreeUtil.getParentOfType(call, GrMethodCall.class);
-		}
-
-		return null;
 	}
 
 	/**
@@ -209,8 +184,8 @@ class GroovyArtifactReferenceLocator {
 
 	private ArtifactReference locateCommandPlatformString(PsiElement element) {
 
-		GrMethodCall call = GroovyDslParser.findCommandPlatformDependencyCall(element);
-		String text = GroovyDslParser.getCommandPlatformStringText(element);
+		GrMethodCall call = GroovyDeclarationStyleDetector.getInstance().findCommandPlatformDependencyCall(element);
+		String text = GroovyDeclarationStyleDetector.getInstance().getCommandPlatformStringText(element);
 		if (call == null || !StringUtils.hasText(text)) {
 			return ArtifactReference.unresolved();
 		}
@@ -220,11 +195,9 @@ class GroovyArtifactReferenceLocator {
 			return ArtifactReference.unresolved();
 		}
 
-		PsiElement stringElement = GroovyDslParser.findCommandPlatformString(element);
+		PsiElement stringElement = GroovyDeclarationStyleDetector.getInstance().findCommandPlatformString(element);
 		PsiElement versionElement = stringElement != null ? stringElement : element;
-		@Nullable
-		DependencySite site = dependency.toDependencySite(call, versionElement);
-		return reference(site);
+		return reference(dependency.toDependencySite(call, versionElement));
 	}
 
 	private ArtifactReference locateCatalogReference(PsiElement element) {

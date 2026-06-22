@@ -99,7 +99,7 @@ class UpdateGradleFile {
 	 * literal, or Kotlin string template).
 	 * @param literal the version PSI element to rewrite; must not be
 	 * {@literal null}.
-	 * @param update the update to apply; must not be {@literal null}.
+	 * @param update the update to apply.
 	 */
 	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
 

@@ -44,8 +44,7 @@ class GroovyDslExtParser {
 
 	/**
 	 * Parse all Groovy {@code ext} property declarations from the given file.
-	 * <p>
-	 * Three forms are supported:
+	 * <p>Three forms are supported:
 	 *
 	 * <pre>
 	 * ext {
@@ -55,7 +54,7 @@ class GroovyDslExtParser {
 	 * ext.springVersion = '6.1.0'             // dot-qualified assignment form
 	 * </pre>
 	 *
-	 * @param file a Groovy {@code .gradle} file; must not be {@literal null}.
+	 * @param file a Groovy {@code .gradle} file.
 	 * @return a map of property key to literal string value.
 	 */
 	public static Map<String, PropertyValue> parseExtProperties(PsiFile file) {

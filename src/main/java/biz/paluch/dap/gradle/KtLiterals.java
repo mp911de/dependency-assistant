@@ -312,8 +312,8 @@ class KtLiterals {
 			return EMPTY;
 		}
 		Segment first = segments.getFirst();
-		if (first instanceof TextSegment text) {
-			return new KtLiterals(new PropertySegment(text.text(), text.element()));
+		if (first instanceof TextSegment(String text, KtElement element)) {
+			return new KtLiterals(new PropertySegment(text, element));
 		}
 		return new KtLiterals(first);
 	}

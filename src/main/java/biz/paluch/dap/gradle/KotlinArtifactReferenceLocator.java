@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.gradle.KtVersion.Constraint;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
@@ -74,105 +73,32 @@ class KotlinArtifactReferenceLocator {
 	}
 
 	/**
-	 * Find the dependency call that owns the given PSI element.
-	 * <p>Used by lookup-site resolution to map version literals, named arguments,
-	 * and version-constraint entries back to their declaration call.
+	 * Find the dependency or plugin call that owns the given version element.
+	 * <p>Delegates to {@link KotlinDeclarationStyleDetector} so reverse lookup and
+	 * version completion share one version-position grammar. Returns
+	 * {@literal null} for positions resolved through a dedicated path (backing
+	 * properties and {@code extra} assignments) and for range-only version
+	 * constraints, which carry no single navigable version.
 	 */
-	public static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
+	private static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
 
 		if (PsiTreeUtil.getParentOfType(element, KtArrayAccessExpression.class) != null) {
 			return null;
 		}
 
-		KtBinaryExpression binary = PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class);
-		KtCallExpression call = PsiTreeUtil.getParentOfType(element, KtCallExpression.class);
-		boolean dependencyCall = call != null && KotlinDslUtils.isDependencyCall(call);
-
-		// A version-block declaration carries a trailing lambda; its literal is reached
-		// through the
-		// version-block branch below, not as a direct argument of the dependency call.
-		if (dependencyCall && (PsiTreeUtil.countChildrenOfType(call, KtLambdaExpression.class) > 0
-				|| PsiTreeUtil.countChildrenOfType(call, KtLambdaArgument.class) > 0)) {
+		DeclarationStyle site = KotlinDeclarationStyleDetector.getInstance().detect(element);
+		if (site.isAbsent() || !site.kind().isInlineInCall() || isVersionConstraintRange(site)) {
 			return null;
 		}
 
-		// Direct argument of a dependency call: compact notation or a `version = ...`
-		// named argument.
-		if (binary == null && dependencyCall) {
+		return site.owningCall() instanceof KtCallExpression call ? call : null;
+	}
 
-			if (element.getNextSibling() instanceof KtBlockStringTemplateEntry) {
-				return null;
-			}
-
-			if (call.getValueArguments().size() == 1) {
-				return call;
-			}
-
-			if (element.getParent().getParent() instanceof KtValueArgument valueArgument
-					&& valueArgument.getArgumentName() instanceof KtValueArgumentName argumentName) {
-				return GradleUtils.VERSION.equals(argumentName.getAsName().asString()) ? call : null;
-			}
-
-			return call;
-		}
-
-		// `id("plugin") version "1.0"`: the literal lives in a binary that wraps the
-		// dependency call.
-		if (binary != null && dependencyCall) {
-			return null;
-		}
-
-		if (binary != null && binary != element) {
-			PsiElement previous = element.getPrevSibling();
-			while (previous != null && !(previous instanceof PsiFile)) {
-
-				if (previous instanceof KtOperationReferenceExpression ops
-						&& GradleUtils.VERSION.equals(ops.getReferencedName())) {
-					for (PsiElement child : binary.getChildren()) {
-						if (child instanceof KtCallExpression nested && KotlinDslUtils.isDependencyCall(nested)) {
-							return nested;
-						}
-					}
-				}
-
-				previous = previous.getPrevSibling() != null ? previous.getPrevSibling() : previous.getParent();
-			}
-		}
-
-		if (call == null) {
-			return null;
-		}
-
-		// version { prefer(...) / strictly(...) } block: resolve the version() call,
-		// then its dependency call.
-		String callName = KotlinDslUtils.getKotlinCallName(call);
-		KtCallExpression versionCall;
-		if (GradleVersionConstraint.PREFER.equals(callName) || GradleVersionConstraint.STRICTLY.equals(callName)) {
-			Constraint constraint = Constraint.of(call);
-			versionCall = constraint.hasProperty() || constraint.hasText() && !constraint.isRange()
-					? (KtCallExpression) PsiTreeUtil.findFirstParent(element,
-							it -> it instanceof KtCallExpression candidate
-									&& GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(candidate)))
-					: null;
-		} else {
-			versionCall = call;
-		}
-
-		if (versionCall != null && GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(versionCall))) {
-			KtCallExpression depCall = PsiTreeUtil.getParentOfType(versionCall, KtCallExpression.class);
-			if (depCall != null && KotlinDslUtils.isDependencyCall(depCall)) {
-				return depCall;
-			}
-		}
-
-		if (element instanceof KtBlockStringTemplateEntry block) {
-			KtLiterals literals = KtLiterals.from(block);
-			if (literals.hasProperty() && GradleUtils.isDependencySection(callName)) {
-				return call;
-			}
-		}
-
-		return null;
+	private static boolean isVersionConstraintRange(DeclarationStyle site) {
+		return (site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_PREFER
+				|| site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY)
+				&& site.versionElement() instanceof KtStringTemplateExpression template
+				&& GradleUtils.isVersionRange(KtLiterals.from(template).toString());
 	}
 
 	/**

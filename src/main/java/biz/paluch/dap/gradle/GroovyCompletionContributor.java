@@ -16,10 +16,9 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.function.Predicate;
-
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.ReleaseCompletionProvider;
+import biz.paluch.dap.gradle.DeclarationStyle.Kind;
 import biz.paluch.dap.util.PatternConditions;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionContributor;
@@ -29,16 +28,13 @@ import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.patterns.ElementPattern;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrReferenceExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Completion contributor for Gradle Groovy DSL.
@@ -57,10 +53,13 @@ public class GroovyCompletionContributor extends CompletionContributor {
 				return result.withPrefixMatcher("");
 			}
 
-			GrLiteral literal = getLiteral(parameters.getPosition());
-			PsiElement versionElement = literal != null ? literal
-					: GroovyDslParser.findCommandPlatformString(parameters.getPosition());
-			if (versionElement == null) {
+			DeclarationStyle site = GroovyDeclarationStyleDetector.getInstance().detect(parameters.getPosition());
+			if (site.isAbsent()) {
+				return result;
+			}
+
+			PsiElement versionElement = site.versionElement();
+			if (!(versionElement instanceof GrLiteral) && site.kind() != Kind.COMMAND_PLATFORM) {
 				return result;
 			}
 
@@ -71,9 +70,8 @@ public class GroovyCompletionContributor extends CompletionContributor {
 		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
 				PsiElement element, ArtifactRelease option) {
 
-			GrLiteral literal = getLiteral(element);
-			if ((literal == null || !GroovyDslParser.isDirectDependencyNotationLiteral(literal))
-					&& GroovyDslParser.findCommandPlatformString(element) == null) {
+			DeclarationStyle site = GroovyDeclarationStyleDetector.getInstance().detect(element);
+			if (site.isAbsent() || (site.kind() != Kind.INLINE_NOTATION && site.kind() != Kind.COMMAND_PLATFORM)) {
 				return builder;
 			}
 
@@ -86,152 +84,44 @@ public class GroovyCompletionContributor extends CompletionContributor {
 	private static final PatternCondition<PsiFile> IS_GRADLE_GROOVY_DSL_FILE = PatternConditions.conditional(
 			"isGradleGroovyDslFile", GradleUtils::isGroovyDsl);
 
-	private static final PatternCondition<PsiElement> DIRECT_DEPENDENCY_NOTATION_POSITION = literalPosition(
-			"directDependencyNotationPosition", GroovyDslParser::isDirectDependencyNotationLiteral);
+	// Any element that classifies as a Gradle version position: inline notation,
+	// command-platform string, map version argument, version-block constraint,
+	// plugin version, or a backing version property. Completion only applies to a
+	// constant version literal, so interpolated GString literals are excluded.
+	private static final PatternCondition<PsiElement> VERSION_POSITION_CONDITION = PatternConditions.conditional(
+			"versionPosition", GroovyCompletionContributor::isVersionCompletionPosition);
 
-	private static final PatternCondition<PsiElement> COMMAND_PLATFORM_STRING_POSITION = PatternConditions
-			.conditional("commandPlatformStringPosition",
-					position -> GroovyDslParser.findCommandPlatformString(position) != null);
-
-	private static final PatternCondition<PsiElement> VERSION_NAMED_ARGUMENT_LITERAL_POSITION = literalPosition(
-			"versionNamedArgumentLiteralPosition", GroovyDslParser::isVersionNamedArgumentLiteral);
-
-	private static final PatternCondition<GrReferenceExpression> VERSION_NAMED_ARGUMENT_REFERENCE = PatternConditions
-			.conditional("versionNamedArgumentReference", GroovyDslParser::isVersionNamedArgumentReference);
-
-	private static final PatternCondition<PsiElement> PREFER_VERSION_BLOCK_POSITION = literalPosition(
-			"preferVersionBlockPosition",
-			literal -> GroovyDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.PREFER));
-
-	private static final PatternCondition<PsiElement> STRICTLY_VERSION_BLOCK_POSITION = literalPosition(
-			"strictlyVersionBlockPosition",
-			literal -> GroovyDslParser.isVersionBlockLiteral(literal, GradleVersionConstraint.STRICTLY));
-
-	private static final PatternCondition<GrReferenceExpression> PREFER_VERSION_BLOCK_REFERENCE = PatternConditions
-			.conditional("preferVersionBlockReference",
-					reference -> GroovyDslParser.isVersionBlockReference(reference, GradleVersionConstraint.PREFER));
-
-	private static final PatternCondition<GrReferenceExpression> STRICTLY_VERSION_BLOCK_REFERENCE = PatternConditions
-			.conditional("strictlyVersionBlockReference",
-					reference -> GroovyDslParser.isVersionBlockReference(reference, GradleVersionConstraint.STRICTLY));
-
-	private static final PatternCondition<PsiElement> PLUGIN_VERSION_POSITION = literalPosition(
-			"pluginVersionPosition", GroovyDslParser::isPluginVersionLiteral);
-
-	private static final PatternCondition<PsiElement> BACKING_VERSION_PROPERTY_POSITION = literalPosition(
-			"backingVersionPropertyPosition", GroovyDslParser::isBackingVersionPropertyLiteral);
-
-	private static final PsiElementPattern.Capture<PsiElement> INLINE_DEPENDENCY_NOTATION = inGradleGroovyFile(
-			DIRECT_DEPENDENCY_NOTATION_POSITION);
-
-	private static final PsiElementPattern.Capture<PsiElement> COMMAND_PLATFORM_STRING = inGradleGroovyFile(
-			COMMAND_PLATFORM_STRING_POSITION);
-
-	private static final PsiElementPattern.Capture<PsiElement> MAP_LITERAL_VERSION = inGradleGroovyFile(
-			VERSION_NAMED_ARGUMENT_LITERAL_POSITION);
-
-	private static final PsiElementPattern.Capture<PsiElement> MAP_PROPERTY_VERSION = insideGradleGroovyFile(
-			PlatformPatterns.psiElement(GrReferenceExpression.class).with(VERSION_NAMED_ARGUMENT_REFERENCE));
-
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_LITERAL_VERSION = inGradleGroovyFile(
-			PREFER_VERSION_BLOCK_POSITION);
-
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_LITERAL_VERSION = inGradleGroovyFile(
-			STRICTLY_VERSION_BLOCK_POSITION);
-
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_PREFER_PROPERTY_VERSION = insideGradleGroovyFile(
-			PlatformPatterns.psiElement(GrReferenceExpression.class).with(PREFER_VERSION_BLOCK_REFERENCE));
-
-	private static final PsiElementPattern.Capture<PsiElement> VERSION_BLOCK_STRICTLY_PROPERTY_VERSION = insideGradleGroovyFile(
-			PlatformPatterns.psiElement(GrReferenceExpression.class).with(STRICTLY_VERSION_BLOCK_REFERENCE));
-
-	private static final PsiElementPattern.Capture<PsiElement> PLUGIN_DSL_VERSION = inGradleGroovyFile(
-			PLUGIN_VERSION_POSITION);
-
-	private static final PsiElementPattern.Capture<PsiElement> BACKING_VERSION_PROPERTY = inGradleGroovyFile(
-			BACKING_VERSION_PROPERTY_POSITION);
+	private static final PsiElementPattern.Capture<PsiElement> VERSION_POSITION = PlatformPatterns.psiElement()
+			.with(VERSION_POSITION_CONDITION)
+			.inside(PlatformPatterns.psiFile().with(IS_GRADLE_GROOVY_DSL_FILE));
 
 	public GroovyCompletionContributor() {
-
-		// implementation 'group:name:version' and platform/enforcedPlatform string
-		// notation.
-		extend(CompletionType.BASIC, INLINE_DEPENDENCY_NOTATION, provider);
-
-		// implementation platform "group:name:version" command notation.
-		extend(CompletionType.BASIC, COMMAND_PLATFORM_STRING, provider);
-
-		// implementation group: 'group', name: 'name', version: 'version'.
-		extend(CompletionType.BASIC, MAP_LITERAL_VERSION, provider);
-
-		// implementation group: 'group', name: 'name', version: versionProperty.
-		extend(CompletionType.BASIC, MAP_PROPERTY_VERSION, provider);
-
-		// implementation('group:name') { version { prefer 'version' } }.
-		extend(CompletionType.BASIC, VERSION_BLOCK_PREFER_LITERAL_VERSION, provider);
-
-		// implementation('group:name') { version { strictly 'version' } }.
-		extend(CompletionType.BASIC, VERSION_BLOCK_STRICTLY_LITERAL_VERSION, provider);
-
-		// implementation('group:name') { version { prefer versionProperty } }.
-		extend(CompletionType.BASIC, VERSION_BLOCK_PREFER_PROPERTY_VERSION, provider);
-
-		// implementation('group:name') { version { strictly versionProperty } }.
-		extend(CompletionType.BASIC, VERSION_BLOCK_STRICTLY_PROPERTY_VERSION, provider);
-
-		// plugins { id 'plugin.id' version 'version' }.
-		extend(CompletionType.BASIC, PLUGIN_DSL_VERSION, provider);
-
-		// Groovy local/ext property version literals used as backing version values.
-		extend(CompletionType.BASIC, BACKING_VERSION_PROPERTY, provider);
+		extend(CompletionType.BASIC, VERSION_POSITION, provider);
 	}
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 
 		if (typeChar == ':') {
-			return INLINE_DEPENDENCY_NOTATION.accepts(position) && isCompactNotationBeforeVersion(position);
+			DeclarationStyle site = GroovyDeclarationStyleDetector.getInstance().detect(position);
+			return site.isPresent() && site.kind() == Kind.INLINE_NOTATION
+					&& GradleUtils.isGroovyDsl(position.getContainingFile())
+					&& isCompactNotationBeforeVersion(position);
 		}
 
 		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
 	}
 
-	private static PsiElementPattern.Capture<PsiElement> insideGradleGroovyFile(
-			ElementPattern<? extends PsiElement> pattern) {
-
-		return PlatformPatterns.psiElement()
-				.inside(pattern)
-				.inside(PlatformPatterns.psiFile().with(IS_GRADLE_GROOVY_DSL_FILE));
-	}
-
-	private static PsiElementPattern.Capture<PsiElement> inGradleGroovyFile(
-			PatternCondition<? super PsiElement> condition) {
-
-		return PlatformPatterns.psiElement()
-				.with(condition)
-				.inside(PlatformPatterns.psiFile().with(IS_GRADLE_GROOVY_DSL_FILE));
-	}
-
-	private static PatternCondition<PsiElement> literalPosition(String name,
-			Predicate<GrLiteral> predicate) {
-
-		return PatternConditions.conditional(name, position -> {
-			GrLiteral literal = getLiteral(position);
-			return GroovyDslParser.isStringLiteral(literal) && predicate.test(literal);
-		});
-	}
-
 	public static boolean isSupportedCompletionSite(PsiElement position) {
+		return VERSION_POSITION.accepts(position);
+	}
 
-		return INLINE_DEPENDENCY_NOTATION.accepts(position)
-				|| COMMAND_PLATFORM_STRING.accepts(position)
-				|| MAP_LITERAL_VERSION.accepts(position)
-				|| MAP_PROPERTY_VERSION.accepts(position)
-				|| VERSION_BLOCK_PREFER_LITERAL_VERSION.accepts(position)
-				|| VERSION_BLOCK_STRICTLY_LITERAL_VERSION.accepts(position)
-				|| VERSION_BLOCK_PREFER_PROPERTY_VERSION.accepts(position)
-				|| VERSION_BLOCK_STRICTLY_PROPERTY_VERSION.accepts(position)
-				|| PLUGIN_DSL_VERSION.accepts(position)
-				|| BACKING_VERSION_PROPERTY.accepts(position);
+	private static boolean isVersionCompletionPosition(PsiElement position) {
+
+		DeclarationStyle site = GroovyDeclarationStyleDetector.getInstance().detect(position);
+		return site.isPresent()
+				&& (!(site.versionElement() instanceof GrLiteral literal)
+						|| GroovyDeclarationStyleDetector.getInstance().isConstantStringLiteral(literal));
 	}
 
 	private static boolean isCompactNotationBeforeVersion(PsiElement position) {
@@ -249,11 +139,6 @@ public class GroovyCompletionContributor extends CompletionContributor {
 		String[] parts = existingText.split(":", -1);
 		return parts.length == 2 && StringUtils.hasText(parts[0]) && StringUtils.hasText(parts[1])
 				&& !existingText.contains(" ");
-	}
-
-	private static @Nullable GrLiteral getLiteral(PsiElement element) {
-		return element instanceof GrLiteral literal ? literal
-				: PsiTreeUtil.getParentOfType(element, GrLiteral.class, false);
 	}
 
 }

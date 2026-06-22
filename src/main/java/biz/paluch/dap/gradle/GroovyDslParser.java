@@ -16,10 +16,8 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.BiFunction;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -35,9 +33,7 @@ import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.VersionedDependencySite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
@@ -103,16 +99,6 @@ class GroovyDslParser {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Return whether the call is a recognized Gradle dependency, platform, plugin,
-	 * or version-catalog declaration, that is whether {@link #parse(GrMethodCall)}
-	 * can classify it. Used by reverse element lookup to find the construct that
-	 * owns an element.
-	 */
-	static boolean isDeclarationCall(GrMethodCall call) {
-		return GroovyDeclarationCall.from(call) != null;
 	}
 
 	@Nullable
@@ -263,7 +249,7 @@ class GroovyDslParser {
 		@Override
 		public @Nullable ArtifactDeclaration parse(GrMethodCall call, DeclarationSource declarationSource) {
 
-			DependencySite site = parseMapDeclaration(call, declarationSource, propertyResolver);
+			DependencySite site = parseMapDeclaration(call, declarationSource);
 			return site != null ? dependency(site) : null;
 		}
 
@@ -279,319 +265,10 @@ class GroovyDslParser {
 		@Override
 		public @Nullable ArtifactDeclaration parse(GrMethodCall call, DeclarationSource declarationSource) {
 
-			DependencySite site = parseDependency(call, declarationSource, propertyResolver);
+			DependencySite site = parseDependency(call, declarationSource);
 			return site != null ? dependency(site) : null;
 		}
 
-	}
-
-	/**
-	 * Return whether the literal can represent a Groovy string value.
-	 */
-	static boolean isStringLiteral(@Nullable GrLiteral literal) {
-		return literal != null && literal.getValue() instanceof String;
-	}
-
-	/**
-	 * Return whether the literal is the coordinate argument in a direct dependency
-	 * notation call.
-	 */
-	static boolean isDirectDependencyNotationLiteral(GrLiteral literal) {
-
-		if (literal.getParent() instanceof GrNamedArgument) {
-			return false;
-		}
-
-		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		if (call != null && isDependencyOrPlatformCall(call) && isArgumentOfCall(literal, call)
-				&& call.getClosureArguments().length == 0) {
-			return true;
-		}
-
-		return findCommandPlatformDependencyCall(literal) != null;
-	}
-
-	/**
-	 * Return whether the literal is a {@code version: '...'} value in map-style
-	 * dependency notation.
-	 */
-	static boolean isVersionNamedArgumentLiteral(GrLiteral literal) {
-
-		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(literal, GrNamedArgument.class);
-		return namedArgument != null && GradleUtils.VERSION.equals(namedArgument.getLabelName())
-				&& isExpressionOfNamedArgument(literal, namedArgument)
-				&& findNamedArgumentDependencyCall(namedArgument) != null;
-	}
-
-	/**
-	 * Return whether the reference is a {@code version: property} value in
-	 * map-style dependency notation.
-	 */
-	static boolean isVersionNamedArgumentReference(GrReferenceExpression reference) {
-
-		GrNamedArgument namedArgument = PsiTreeUtil.getParentOfType(reference, GrNamedArgument.class);
-		return namedArgument != null && GradleUtils.VERSION.equals(namedArgument.getLabelName())
-				&& isExpressionOfNamedArgument(reference, namedArgument)
-				&& findNamedArgumentDependencyCall(namedArgument) != null;
-	}
-
-	/**
-	 * Return whether the literal is an argument to a version-block constraint call.
-	 */
-	static boolean isVersionBlockLiteral(GrLiteral literal, String constraintName) {
-
-		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		return constraintCall != null && constraintName.equals(GroovyDslUtils.getGroovyMethodName(constraintCall))
-				&& isArgumentOfCall(literal, constraintCall)
-				&& findVersionBlockDependencyCall(constraintCall) != null;
-	}
-
-	/**
-	 * Return whether the reference is an argument to a version-block constraint
-	 * call.
-	 */
-	static boolean isVersionBlockReference(GrReferenceExpression reference, String constraintName) {
-
-		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(reference, GrMethodCall.class);
-		return constraintCall != null && constraintName.equals(GroovyDslUtils.getGroovyMethodName(constraintCall))
-				&& isArgumentOfCall(reference, constraintCall)
-				&& findVersionBlockDependencyCall(constraintCall) != null;
-	}
-
-	/**
-	 * Return whether the literal is an argument to any supported version-block
-	 * constraint call ({@code prefer} or {@code strictly}).
-	 * <p>Consolidates the per-constraint checks into a single ancestor walk so
-	 * per-element reverse resolution does not recompute the enclosing dependency
-	 * call once per constraint name.
-	 */
-	private static boolean isVersionBlockLiteral(GrLiteral literal) {
-
-		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		return constraintCall != null
-				&& GradleVersionConstraint.isConstraint(GroovyDslUtils.getGroovyMethodName(constraintCall))
-				&& isArgumentOfCall(literal, constraintCall)
-				&& findVersionBlockDependencyCall(constraintCall) != null;
-	}
-
-	/**
-	 * Return whether the reference is an argument to any supported version-block
-	 * constraint call ({@code prefer} or {@code strictly}).
-	 */
-	private static boolean isVersionBlockReference(GrReferenceExpression reference) {
-
-		GrMethodCall constraintCall = PsiTreeUtil.getParentOfType(reference, GrMethodCall.class);
-		return constraintCall != null
-				&& GradleVersionConstraint.isConstraint(GroovyDslUtils.getGroovyMethodName(constraintCall))
-				&& isArgumentOfCall(reference, constraintCall)
-				&& findVersionBlockDependencyCall(constraintCall) != null;
-	}
-
-	/**
-	 * Return whether the literal is the version argument in a Groovy plugin
-	 * declaration.
-	 */
-	static boolean isPluginVersionLiteral(GrLiteral literal) {
-
-		GrMethodCall call = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-		return call != null && findPluginIdCallForVersionCall(call) != null && isArgumentOfCall(literal, call);
-	}
-
-	/**
-	 * Return whether the literal is a Groovy local/ext property that backs a
-	 * supported dependency version reference.
-	 */
-	static boolean isBackingVersionPropertyLiteral(GrLiteral literal) {
-
-		GroovyExtAssignment assignment = GroovyExtAssignment.from(literal);
-		if (assignment == null) {
-			return false;
-		}
-
-		PsiFile file = literal.getContainingFile();
-		return file != null && referencedVersionPropertyNames(file).contains(assignment.getKey());
-	}
-
-	/**
-	 * Return the property names referenced by a supported declaration anywhere in
-	 * the file. The result is cached and recomputed when the PSI changes, so the
-	 * repeated completion-position checks do not each re-traverse the file.
-	 */
-	private static Set<String> referencedVersionPropertyNames(PsiFile file) {
-		return CachedValuesManager.getProjectPsiDependentCache(file,
-				psiFile -> {
-
-					Set<String> names = new HashSet<>();
-
-					for (GrReferenceExpression reference : SyntaxTraverser.psiTraverser(psiFile)
-							.filter(GrReferenceExpression.class)) {
-						if (isVersionPropertyReference(reference)
-								&& StringUtils.hasText(reference.getReferenceName())) {
-							names.add(reference.getReferenceName());
-						}
-					}
-
-					return names;
-				});
-	}
-
-	/**
-	 * Walks up from a {@code prefer} or {@code strictly} call to the enclosing
-	 * dependency method call, returning the outer {@link GrMethodCall} when the
-	 * full version-block structure is present, or {@literal null} otherwise.
-	 */
-	static @Nullable GrMethodCall findVersionBlockDependencyCall(GrMethodCall preferOrStrictlyCall) {
-
-		GrClosableBlock versionClosure = PsiTreeUtil.getParentOfType(preferOrStrictlyCall, GrClosableBlock.class);
-		if (versionClosure == null) {
-			return null;
-		}
-
-		GrMethodCall versionCall = PsiTreeUtil.getParentOfType(versionClosure, GrMethodCall.class);
-		if (versionCall == null || !GradleUtils.VERSION.equals(GroovyDslUtils.getGroovyMethodName(versionCall))) {
-			return null;
-		}
-
-		GrClosableBlock depClosure = PsiTreeUtil.getParentOfType(versionCall, GrClosableBlock.class);
-		if (depClosure == null) {
-			return null;
-		}
-
-		GrMethodCall depCall = PsiTreeUtil.getParentOfType(depClosure, GrMethodCall.class);
-		if (depCall == null || !isDependencyOrPlatformCall(depCall)) {
-			return null;
-		}
-
-		return depCall;
-	}
-
-	static @Nullable GrMethodCall findCommandPlatformDependencyCall(PsiElement element) {
-
-		PsiElement stringElement = findCommandPlatformString(element);
-		if (stringElement == null) {
-			return null;
-		}
-
-		GrMethodCall call = PsiTreeUtil.findChildOfType(stringElement, GrMethodCall.class);
-		return call != null && findCommandPlatformString(call) == stringElement ? call : null;
-	}
-
-	static @Nullable PsiElement findCommandPlatformString(PsiElement element) {
-
-		if (element instanceof GrMethodCall call) {
-			return findCommandPlatformString(call);
-		}
-
-		PsiElement candidate = element instanceof GrReferenceExpression ? element
-				: PsiTreeUtil.getParentOfType(element, GrReferenceExpression.class, false);
-		if (!(candidate instanceof GrReferenceExpression referenceExpression)) {
-			return null;
-		}
-
-		GrMethodCall call = PsiTreeUtil.findChildOfType(referenceExpression, GrMethodCall.class);
-		return call != null && findCommandPlatformString(call) == candidate ? candidate : null;
-	}
-
-	static @Nullable String getCommandPlatformStringText(PsiElement element) {
-
-		PsiElement stringElement = findCommandPlatformString(element);
-		return stringElement != null ? getQuotedCommandArgument(stringElement.getText()) : null;
-	}
-
-	/**
-	 * Return the plugin {@code id(...)} call if {@code call} is the chained
-	 * {@code version(...)} call in a Groovy plugin declaration.
-	 */
-	static @Nullable GrMethodCall findPluginIdCallForVersionCall(GrMethodCall call) {
-
-		if (!(call.getInvokedExpression() instanceof GrReferenceExpression versionReference)) {
-			return null;
-		}
-
-		if (!GradleUtils.VERSION.equals(versionReference.getReferenceName())) {
-			return null;
-		}
-
-		if (!(versionReference.getQualifierExpression() instanceof GrMethodCall idCall)) {
-			return null;
-		}
-
-		if (!GradleUtils.isPlugin(GroovyDslUtils.getGroovyMethodName(idCall))
-				|| !GroovyDslUtils.isInsidePluginsBlock(idCall)) {
-			return null;
-		}
-
-		return idCall;
-	}
-
-	private static boolean isExpressionOfNamedArgument(PsiElement element, GrNamedArgument namedArgument) {
-
-		PsiElement expression = namedArgument.getExpression();
-		return expression != null && (expression == element || PsiTreeUtil.isAncestor(expression, element, false));
-	}
-
-	private static @Nullable GrMethodCall findNamedArgumentDependencyCall(GrNamedArgument namedArgument) {
-
-		GrMethodCall call = PsiTreeUtil.getParentOfType(namedArgument, GrMethodCall.class);
-		return call != null && isDependencyOrPlatformCall(call) ? call : null;
-	}
-
-	private static boolean isVersionPropertyReference(GrReferenceExpression reference) {
-		return isVersionNamedArgumentReference(reference)
-				|| isVersionBlockReference(reference)
-				|| isReferenceInsideSupportedVersionLiteral(reference);
-	}
-
-	private static boolean isReferenceInsideSupportedVersionLiteral(GrReferenceExpression reference) {
-
-		GrLiteral literal = PsiTreeUtil.getParentOfType(reference, GrLiteral.class);
-		return literal != null && isSupportedVersionLiteral(literal);
-	}
-
-	private static boolean isSupportedVersionLiteral(GrLiteral literal) {
-		return isDirectDependencyNotationLiteral(literal)
-				|| isVersionNamedArgumentLiteral(literal)
-				|| isVersionBlockLiteral(literal)
-				|| isPluginVersionLiteral(literal);
-	}
-
-	/**
-	 * Return whether the element occupies a recognized version position, either a
-	 * version-definition literal or a property reference used as a version, that a
-	 * reverse lookup can resolve to a declaration.
-	 * @param element the PSI element under inspection.
-	 * @return {@literal true} if the element is a supported version position;
-	 * {@literal false} otherwise.
-	 */
-	static boolean isVersionPosition(PsiElement element) {
-
-		if (element instanceof GrLiteral literal) {
-			return isSupportedVersionLiteral(literal);
-		}
-
-		if (element instanceof GrReferenceExpression reference) {
-			return isVersionNamedArgumentReference(reference)
-					|| isVersionBlockReference(reference);
-		}
-
-		return false;
-	}
-
-	private static boolean isDependencyOrPlatformCall(GrMethodCall call) {
-
-		String methodName = GroovyDslUtils.getGroovyMethodName(call);
-		return GradleUtils.isDependencySection(methodName) || GradleUtils.isPlatformSection(methodName);
-	}
-
-	private static boolean isArgumentOfCall(PsiElement element, GrMethodCall call) {
-
-		for (PsiElement argument : call.getArgumentList().getAllArguments()) {
-			if (argument == element || PsiTreeUtil.isAncestor(argument, element, false)) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	/**
@@ -604,12 +281,10 @@ class GroovyDslParser {
 	 * @param call the method call to inspect.
 	 * @param declarationSource the structural origin (direct, managed, plugin, or
 	 * profile-scoped) of the declaration.
-	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed dependency, or {@literal null} if the call does not
 	 * contain a supported direct declaration.
 	 */
-	private static @Nullable DependencySite parseDependency(GrMethodCall call, DeclarationSource declarationSource,
-			PropertyResolver propertyResolver) {
+	private @Nullable DependencySite parseDependency(GrMethodCall call, DeclarationSource declarationSource) {
 
 		PsiElement[] args = call.getArgumentList().getAllArguments();
 		for (PsiElement arg : args) {
@@ -624,25 +299,25 @@ class GroovyDslParser {
 			if (arg instanceof GrLiteral literal) {
 
 				String rawText = GroovyDslUtils.getText(literal);
-				DependencySite site = parseVersionBlockDependency(call, propertyResolver);
+				DependencySite site = parseVersionBlockDependency(call);
 				if (site != null) {
 					return site;
 				}
 
-				GradleDependency dependency = GradleDependency.parse(rawText,
-						declarationSource, propertyResolver);
+				GradleDependency dependency = GradleDependency.parse(rawText, declarationSource, propertyResolver);
 				if (dependency != null) {
 					return dependency.toDependencySite(call, literal);
 				}
 			}
 		}
 
-		PsiElement commandPlatformString = findCommandPlatformString(call);
+		PsiElement commandPlatformString = GroovyDeclarationStyleDetector.getInstance().findCommandPlatformString(call);
 		if (commandPlatformString == null) {
 			return null;
 		}
 
-		String gav = getQuotedCommandArgument(commandPlatformString.getText());
+		String gav = GroovyDeclarationStyleDetector.getInstance()
+				.getQuotedCommandArgument(commandPlatformString.getText());
 		if (StringUtils.isEmpty(gav)) {
 			return null;
 		}
@@ -673,12 +348,10 @@ class GroovyDslParser {
 	 * @param call the method call to parse.
 	 * @param declarationSource the structural origin (direct, managed, plugin, or
 	 * profile-scoped) of the declaration.
-	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed declaration, possibly incomplete.
 	 */
-	private static @Nullable DependencySite parseMapDeclaration(GrMethodCall call, DeclarationSource declarationSource,
-			PropertyResolver propertyResolver) {
-		return parseMapDependency(call, call.getNamedArguments(), declarationSource, propertyResolver);
+	private @Nullable DependencySite parseMapDeclaration(GrMethodCall call, DeclarationSource declarationSource) {
+		return parseMapDependency(call, call.getNamedArguments(), declarationSource);
 	}
 
 	/**
@@ -691,15 +364,14 @@ class GroovyDslParser {
 	 *     }
 	 * }
 	 * </pre>
-	 * <p>When {@code propertyResolver} is provided, bare variable references such
-	 * as {@code prefer varName} are resolved through it.
+	 * <p>Bare variable references such as {@code prefer varName} are resolved
+	 * through the file-scoped property resolver.
 	 *
 	 * @param call the method call to parse.
-	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed declaration, possibly incomplete if no usable version can
 	 * be extracted.
 	 */
-	static @Nullable DependencySite parseVersionBlockDependency(GrMethodCall call, PropertyResolver propertyResolver) {
+	private @Nullable DependencySite parseVersionBlockDependency(GrMethodCall call) {
 
 		GrLiteral gavLiteral = findCoordinateLiteral(call);
 		GrClosableBlock depClosure = getFirstClosure(call);
@@ -723,10 +395,8 @@ class GroovyDslParser {
 			return null;
 		}
 
-		GroovyVersionValue prefer = findConstraintValue(versionClosure, GradleVersionConstraint.PREFER,
-				propertyResolver);
-		GroovyVersionValue strictly = findConstraintValue(versionClosure, GradleVersionConstraint.STRICTLY,
-				propertyResolver);
+		GroovyVersionValue prefer = findConstraintValue(versionClosure, GradleVersionConstraint.PREFER);
+		GroovyVersionValue strictly = findConstraintValue(versionClosure, GradleVersionConstraint.STRICTLY);
 		GroovyVersionValue versionValue = prefer.isPresent() ? prefer : strictly;
 
 		if (!versionValue.isPresent()) {
@@ -788,11 +458,10 @@ class GroovyDslParser {
 	 * @param named the named arguments to parse.
 	 * @param declarationSource the structural origin (direct, managed, plugin, or
 	 * profile-scoped) of the declaration.
-	 * @param propertyResolver property resolver used for property-backed versions.
 	 * @return the parsed declaration, possibly incomplete.
 	 */
-	static @Nullable DependencySite parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
-			DeclarationSource declarationSource, PropertyResolver propertyResolver) {
+	private @Nullable DependencySite parseMapDependency(GrMethodCall call, GrNamedArgument[] named,
+			DeclarationSource declarationSource) {
 
 		String group = null;
 		String artifact = null;
@@ -864,55 +533,6 @@ class GroovyDslParser {
 		return null;
 	}
 
-	private static @Nullable PsiElement findCommandPlatformString(GrMethodCall call) {
-
-		if (!GradleUtils.isDependencySection(GroovyDslUtils.getGroovyMethodName(call))
-				|| !hasPlatformArgument(call)) {
-			return null;
-		}
-
-		if (call.getParent() instanceof GrReferenceExpression referenceExpression
-				&& getQuotedCommandArgument(referenceExpression.getText()) != null) {
-			return referenceExpression;
-		}
-
-		return null;
-	}
-
-	private static boolean hasPlatformArgument(GrMethodCall call) {
-
-		for (GrReferenceExpression reference : SyntaxTraverser.psiTraverser(call)
-				.filter(GrReferenceExpression.class)) {
-			if (reference != call.getInvokedExpression()
-					&& GradleUtils.isPlatformSection(reference.getReferenceName())) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private static @Nullable String getQuotedCommandArgument(String text) {
-		int singleQuote = text.indexOf('\'');
-		int doubleQuote = text.indexOf('"');
-		int start;
-		if (singleQuote == -1) {
-			start = doubleQuote;
-		} else if (doubleQuote == -1) {
-			start = singleQuote;
-		} else {
-			start = Math.min(singleQuote, doubleQuote);
-		}
-
-		if (start == -1) {
-			return null;
-		}
-
-		char quote = text.charAt(start);
-		int end = text.lastIndexOf(quote);
-		return end > start ? text.substring(start + 1, end) : null;
-	}
-
 	private static @Nullable GrClosableBlock getFirstClosure(GrMethodCall call) {
 
 		GrClosableBlock[] closures = call.getClosureArguments();
@@ -930,8 +550,7 @@ class GroovyDslParser {
 		return null;
 	}
 
-	private static GroovyVersionValue findConstraintValue(GrClosableBlock versionClosure, String constraint,
-			@Nullable PropertyResolver propertyResolver) {
+	private GroovyVersionValue findConstraintValue(GrClosableBlock versionClosure, String constraint) {
 
 		for (GrMethodCall methodCall : SyntaxTraverser.psiTraverser(versionClosure).filter(GrMethodCall.class)) {
 			if (!constraint.equals(GroovyDslUtils.getGroovyMethodName(methodCall))) {
@@ -945,7 +564,7 @@ class GroovyDslParser {
 						: GroovyVersionValue.absent();
 			}
 
-			if (!(argument instanceof GrReferenceExpression referenceExpression) || propertyResolver == null) {
+			if (!(argument instanceof GrReferenceExpression referenceExpression)) {
 				return GroovyVersionValue.absent();
 			}
 
