@@ -27,7 +27,6 @@ package biz.paluch.dap.rule;
  * exists (the default behavior).
  *
  * @author Mark Paluch
- * @see DependencyRules#resolveBranchRule
  */
 enum SemVerUpdating {
 

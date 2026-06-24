@@ -65,6 +65,11 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 		}
 
 		@Override
+		public boolean isSemanticUpgradingEnabled() {
+			return false;
+		}
+
+		@Override
 		public @Nullable Release suggestRemediation(Releases releases) {
 			return null;
 		}
@@ -86,6 +91,21 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 	 * {@linkplain #absent() absent} rule.
 	 */
 	boolean isPresent();
+
+	/**
+	 * Return whether semantic version upgrading governs this rule. This is the
+	 * semVer governance mode (the cause), not the observable strategy narrowing
+	 * (the effect): it is {@literal true} when semVer-based upgrading is active for
+	 * a present, generation-unconstrained dependency, and {@literal false} for an
+	 * {@linkplain #absent() absent} rule, a generation-locked rule, a rule with
+	 * semVer disabled, and a rule whose semVer governance was lifted (a plugin).
+	 * Use this instead of inferring the mode from {@link #getGenerations()} or
+	 * {@link #isEnabled(UpgradeStrategy)}.
+	 *
+	 * @return {@literal true} if semVer upgrading governs this rule;
+	 * {@literal false} otherwise.
+	 */
+	boolean isSemanticUpgradingEnabled();
 
 	/**
 	 * Return the required generations, or the

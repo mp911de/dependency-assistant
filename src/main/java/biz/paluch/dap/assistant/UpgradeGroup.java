@@ -25,6 +25,7 @@ import java.util.TreeSet;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
@@ -129,8 +130,23 @@ class UpgradeGroup extends UpgradeCandidate {
 		}
 
 		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(merged, intersectReleases(members));
-		return new UpgradeGroup(candidate, first.getInterfaceAssistant(), declaredVersions, first.getRule(), members,
-				derivedLabel);
+		return new UpgradeGroup(candidate, first.getInterfaceAssistant(), declaredVersions, governingRule(members),
+				members, derivedLabel);
+	}
+
+	/**
+	 * Select the rule that governs the group. A plugin member has its semantic
+	 * upgrading lifted, so the group is governed by the first non-plugin (semVer
+	 * retaining) member to keep a mixed cohort moving together; an all-plugin group
+	 * falls back to the first member's lifted rule.
+	 */
+	private static DependencyRule governingRule(List<UpgradeCandidate> members) {
+		return members.stream()
+				.filter(member -> !DeclarationSource
+						.isPlugin(member.getUpdateCandidate().getDependency().getDeclarationSources()))
+				.findFirst()
+				.map(UpgradeCandidate::getRule)
+				.orElseGet(() -> members.getFirst().getRule());
 	}
 
 	@Override

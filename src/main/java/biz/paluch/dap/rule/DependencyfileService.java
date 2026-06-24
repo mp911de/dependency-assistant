@@ -21,9 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Versioned;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.dvcs.repo.Repository;
 import com.intellij.dvcs.repo.VcsRepositoryManager;
@@ -105,14 +103,15 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	}
 
 	@Override
-	public DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion) {
-		return rules().resolve(artifactId, currentBranchName(this.project, file), projectVersion.orElseGet(() -> null));
-	}
-
-	@Override
-	public DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
-			@Nullable ArtifactVersion projectVersion) {
-		return rules().resolve(artifactId, branchName, projectVersion);
+	public DependencyRule resolve(ResolutionContext context) {
+		Rules rules = rules();
+		String branchName = currentBranchName(this.project, context.getBranchSource().getFile());
+		ArtifactVersion projectVersion = context.getProjectVersion().orElseGet(() -> null);
+		if (rules instanceof DependencyRules dependencyRules) {
+			return dependencyRules.resolve(context.getArtifactId(), branchName, projectVersion,
+					context.suppressSemanticUpgrading());
+		}
+		return rules.resolve(context.getArtifactId(), branchName, projectVersion);
 	}
 
 	/**

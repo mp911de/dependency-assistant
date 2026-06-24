@@ -38,6 +38,11 @@ public record TestDependencyRule(String dependencyName) implements DependencyRul
 	}
 
 	@Override
+	public boolean isSemanticUpgradingEnabled() {
+		return true;
+	}
+
+	@Override
 	public Generations getGenerations() {
 		return Generations.unconstrained();
 	}

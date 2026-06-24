@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant;
+package biz.paluch.dap.rule;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,40 +24,28 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleService;
-import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
-import com.intellij.openapi.vfs.VirtualFile;
 
 /**
  * Outcome of testing a {@link DependencyRule} against a concrete artifact
  * version, paired with the presentation an upgrade view needs to surface it.
  *
- * <p>The rule is evaluated once at construction and the result is retained as
- * one of three states: undefined (no rule governs the artifact), passed, or not
+ * <p>The rule is evaluated once at construction. Its result is retained as one
+ * of three states: undefined (no rule governs the artifact), passed, or not
  * passed. A renderer consults {@link #isPresent()} to decide whether to show an
  * indicator at all, then {@link #getIcon()} and {@link #getToolTipText()} for
  * the indicator itself.
  *
- * <p>{@link #absent()} is a distinct sentinel for "the project defines rules,
- * but none govern this artifact": unlike an undefined evaluation it reports
- * {@link #isPresent() present} and renders a neutral icon with an explanatory
- * tooltip. {@link UpgradeReview#getResult} substitutes it when the project has
- * rules yet the candidate is ungoverned.
- *
  * @author Mark Paluch
  */
-class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
+public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
-	private static final EvaluatedDependencyRule ABSENT = new EvaluatedDependencyRule(DependencyRule.absent(),
+	private static final DependencyRuleEvaluator ABSENT = new DependencyRuleEvaluator(DependencyRule.absent(),
 			ArtifactId.of("", ""), ArtifactVersion.of("1.0"), "") {
 
 		@Override
@@ -81,61 +69,68 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 
 	private final DependencyRule rule;
 
+	private final boolean hasDependencyName;
+
 	private final ArtifactId artifactId;
 
 	private final String renderedVersion;
 
 	private final EvaluationState result;
 
-	private EvaluatedDependencyRule(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
+	private DependencyRuleEvaluator(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
 			InterfaceAssistant assistant) {
 		this(rule, artifactId, version, assistant.getDocumentationText(version));
 	}
 
-	private EvaluatedDependencyRule(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version, String renderedVersion) {
+	private DependencyRuleEvaluator(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
+			String renderedVersion) {
 		this.rule = rule;
+		this.hasDependencyName = StringUtils.hasText(rule.getDependencyName());
 		this.artifactId = artifactId;
 		this.renderedVersion = renderedVersion;
 
 		if (rule.isPresent()) {
 			this.result = rule.test(version) ? EvaluationState.PASSED : EvaluationState.NOT_PASSED;
-		}
-		else {
+		} else {
 			this.result = EvaluationState.UNDEFINED;
 		}
 	}
 
 	/**
-	 * Evaluate the governing rule of the given candidate against its current version.
+	 * Evaluate the governing rule of the given candidate against its current
+	 * version.
 	 * @return the evaluation outcome for the candidate's current version.
 	 */
-	public static EvaluatedDependencyRule of(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
+	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
 			InterfaceAssistant assistant) {
-		return new EvaluatedDependencyRule(rule, artifactId, version, assistant);
+		return new DependencyRuleEvaluator(rule, artifactId, version, assistant);
 	}
 
 	/**
-	 * Return the shared sentinel for an artifact that no rule governs while the project still
-	 * defines rules.
+	 * Return the shared sentinel for an artifact that no rule governs while the
+	 * project still defines rules.
 	 *
-	 * @return a sentinel that reports {@link #isPresent() present} with a neutral icon and an
-	 * explanatory tooltip.
+	 * @return a sentinel that reports {@link #isPresent() present} with a neutral
+	 * icon and an explanatory tooltip.
 	 */
-	public static EvaluatedDependencyRule absent() {
+	public static DependencyRuleEvaluator absent() {
 		return ABSENT;
 	}
 
 	/**
-	 * Evaluate the governing rule of the given candidate against its current
-	 * version.
+	 * Evaluate the rule governing the given artifact against the supplied version.
+	 *
+	 * @param rules the rule service.
+	 * @param context the rule resolution context.
+	 * @param version the version to evaluate.
+	 * @param assistant the interface assistant used to render version text.
+	 * @return the evaluation outcome for the declaration's current version.
 	 */
-	public static EvaluatedDependencyRule evaluate(DependencyRuleService rules, ArtifactDeclaration declaration,
-			ProjectDependencyContext context, VirtualFile virtualFile, Versioned projectVersion) {
+	public static DependencyRuleEvaluator evaluate(DependencyRuleService rules, ResolutionContext context,
+			ArtifactVersion version, InterfaceAssistant assistant) {
 
-		DependencyRule rule = rules.resolve(declaration.getArtifactId(), virtualFile, projectVersion);
-		InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
-		return EvaluatedDependencyRule.of(rule, declaration.getArtifactId(),
-				declaration.getVersion(), interfaceAssistant);
+		DependencyRule rule = rules.resolve(context);
+		return DependencyRuleEvaluator.create(rule, context.getArtifactId(), version, assistant);
 	}
 
 	@Override
@@ -165,29 +160,34 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 	/**
 	 * Return whether this evaluation contributes an indicator.
 	 *
-	 * @return {@literal true} when a rule governs the artifact, whether passed or not passed;
-	 * {@literal false} when no rule is defined.
+	 * @return {@literal true} when a rule governs the artifact, whether passed or
+	 * not passed; {@literal false} when no rule is defined.
 	 */
 	public boolean isPresent() {
 		return result != EvaluationState.UNDEFINED;
 	}
 
+	/**
+	 * Return whether semantic version upgrading governs the evaluated rule.
+	 *
+	 * @return {@literal true} if semVer upgrading is the active governance mode;
+	 * {@literal false} otherwise.
+	 * @see DependencyRule#isSemanticUpgradingEnabled()
+	 */
+	public boolean isSemanticUpgradingEnabled() {
+		return rule.isSemanticUpgradingEnabled();
+	}
+
 	public String getDependencyName() {
-		if (StringUtils.hasText(rule.getDependencyName())) {
+		if (hasDependencyName) {
 			return rule.getDependencyName();
 		}
 		return artifactId.toString();
 	}
 
-	private String getDependencyNameForToolTip() {
-		if (StringUtils.hasText(rule.getDependencyName())) {
-			return rule.getDependencyName();
-		}
-		return "'" + artifactId + "'";
-	}
-
 	/**
-	 * Build the HTML tooltip describing the rule outcome and the enabled upgrade strategies.
+	 * Build the HTML tooltip describing the rule outcome and the enabled upgrade
+	 * strategies.
 	 *
 	 * @return the tooltip markup; empty when there is nothing to report.
 	 */
@@ -196,18 +196,24 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 		StringBuilder sb = new StringBuilder();
 
 		if (isLocked()) {
+
+			String dependencyName = getDependencyName();
+			if (!hasDependencyName) {
+				dependencyName = "'" + dependencyName + "'";
+			}
+
 			if (result == EvaluationState.NOT_PASSED) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.problem",
-						getDependencyNameForToolTip(), renderedVersion, rule.getGenerations().value()));
+						dependencyName, renderedVersion, rule.getGenerations().value()));
 			}
 
 			if (result == EvaluationState.PASSED) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.description",
-						getDependencyNameForToolTip(), rule.getGenerations().value()));
+						dependencyName, rule.getGenerations().value()));
 			}
 		}
 
-		if (!isLocked() && rule.isPresent()) {
+		if (isSemanticUpgradingEnabled()) {
 			sb.append(MessageBundle.message("inspection.dependency-rule.semantic-upgrade.enabled"));
 		}
 
@@ -228,7 +234,7 @@ class EvaluatedDependencyRule implements Predicate<ArtifactVersion> {
 		String strategies = getUpgradeStrategiesHint();
 		if (StringUtils.hasText(strategies)) {
 			return strategies;
-		} else if (!isLocked() && rule.isPresent()) {
+		} else if (isSemanticUpgradingEnabled()) {
 			return MessageBundle.message("inspection.dependency-rule.semantic-upgrade.enabled");
 		}
 

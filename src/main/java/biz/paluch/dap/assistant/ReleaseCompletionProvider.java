@@ -32,8 +32,10 @@ import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyfileService;
+import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
@@ -116,17 +118,17 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		RefStyle refStyle = getRefStyle(position, metadata);
 		Project project = parameters.getPosition().getProject();
-		StateService service = StateService
-				.getInstance(project);
+		StateService service = StateService.getInstance(project);
 		List<ArtifactRelease> releases = getReleases(metadata.artifactId(), service.getCache());
 
 		if (releases.isEmpty()) {
 			return;
 		}
 
-		DependencyfileService ruleService = DependencyfileService.getInstance(project);
-		DependencyRule rule = ruleService.resolve(metadata.artifactId(), parameters.getEditor()
-				.getVirtualFile(), metadata.context.getProjectVersion());
+		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
+		ResolutionContext resolutionContext = ResolutionContext.of(metadata.artifactReference(),
+				BranchSource.of(parameters.getEditor().getVirtualFile()), metadata.context().getProjectVersion());
+		DependencyRule rule = ruleService.resolve(resolutionContext);
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
 				.getInterfaceAssistant(), metadata.currentVersion(), rule);
@@ -202,8 +204,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			version = artifactReference.getDeclaration().getVersion();
 		}
 
-		return new CompletionMetadata(artifactReference.getArtifactId(), version,
-				artifactReference.getDeclaration().getVersionLiteral(), context);
+		return new CompletionMetadata(artifactReference, version,
+				artifactReference.getDeclaration().getVersionLiteral(),
+				context);
 	}
 
 	/**
@@ -373,15 +376,23 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Artifact metadata needed to build release completion suggestions.
 	 *
-	 * @param artifactId the resolved artifact whose releases should be suggested.
+	 * @param artifactReference the resolved artifact whose releases should be
+	 * suggested.
 	 * @param currentVersion the currently declared version, or {@literal null} if
 	 * no current version is available.
 	 * @param versionLiteral the PSI element to replace with the selected lookup
 	 * string, or {@literal null} if insertion is handled elsewhere.
 	 * @param context the dependency context that resolved the artifact.
 	 */
-	public record CompletionMetadata(ArtifactId artifactId, @Nullable ArtifactVersion currentVersion,
+	public record CompletionMetadata(ArtifactReference artifactReference, @Nullable ArtifactVersion currentVersion,
 			@Nullable PsiElement versionLiteral, ProjectDependencyContext context) {
+
+		/**
+		 * Return the resolved artifact id.
+		 */
+		public ArtifactId artifactId() {
+			return artifactReference.getArtifactId();
+		}
 
 	}
 

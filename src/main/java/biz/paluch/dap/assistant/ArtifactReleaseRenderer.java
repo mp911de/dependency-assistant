@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.lookup.LookupElement;
@@ -76,7 +77,8 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 		String itemText = version.toString();
 		presentation.setItemText(itemText);
 
-		EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.of(rule, release.artifactId(), version, assistant);
+		DependencyRuleEvaluator evaluated = DependencyRuleEvaluator.create(rule, release.artifactId(), version,
+				assistant);
 		String dependencyName = evaluated.getDependencyName();
 
 		String tailText;

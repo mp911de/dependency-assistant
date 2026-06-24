@@ -27,8 +27,11 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyfileService;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
+import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -40,7 +43,6 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
@@ -49,7 +51,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * {@link LocalInspectionTool} that flags {@link DependencyRule} violations.
  *
- * <p>The governing rule is resolved through {@link DependencyfileService}. The
+ * <p>The governing rule is resolved through {@link DependencyRuleService}. The
  * inspection is advisory and warning-only: it stays silent for artifacts that
  * no rule governs and produces nothing when the project has no
  * {@code dependencyfile.json} descriptor. When the release cache holds a
@@ -65,7 +67,6 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 
 		PsiFile file = holder.getFile();
 		Project project = file.getProject();
-		VirtualFile virtualFile = file.getVirtualFile();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, file);
 		if (context.isAbsent()) {
 			return PsiElementVisitor.EMPTY_VISITOR;
@@ -73,7 +74,7 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 
 		StateService stateService = StateService.getInstance(project);
 		Cache cache = stateService.getCache();
-		DependencyfileService rules = DependencyfileService.getInstance(project);
+		DependencyRuleService rules = DependencyRuleService.getInstance(project);
 		Versioned projectVersion = context.getProjectVersion();
 
 		return new ArtifactReferenceVisitor(context, file) {
@@ -88,14 +89,16 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 				}
 
 				ArtifactVersion version = declaration.getVersion();
-				EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.evaluate(rules, declaration,
-						context, virtualFile, projectVersion);
+				InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
+				ResolutionContext resolutionContext = ResolutionContext.of(reference, BranchSource.of(file),
+						projectVersion);
+				DependencyRuleEvaluator evaluated = DependencyRuleEvaluator.evaluate(rules, resolutionContext,
+						version, interfaceAssistant);
 				if (evaluated.test(version)) {
 					return;
 				}
 
 				Releases releases = cache.getReleases(reference.getArtifactId());
-				InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
 				Release remediation = evaluated.getRule().suggestRemediation(releases);
 				String message = MessageBundle.message("inspection.dependency-rule.problem",
 						evaluated.getDependencyName(), interfaceAssistant

@@ -61,6 +61,7 @@ class ArchitectureTests {
 						.withStrictClosedHierarchy(PropertyResolver.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
 						.withClosedHierarchy(DependencySite.class)
+						.withClosedHierarchy(DependencyRuleService.class)
 						.withClosedHierarchy(ReleaseSource.class)
 						.withStrictClosedHierarchy(ArtifactId.class)
 						.withStrictClosedHierarchy(DependencyRuleService.class)

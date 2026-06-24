@@ -4,15 +4,16 @@ import java.util.function.Function;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyfileService;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
+import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
@@ -26,7 +27,7 @@ import org.springframework.util.Assert;
  * everything they need to act on it: the resolved {@link ArtifactReference} and
  * its {@link Cache}, the owning {@link ProjectDependencyContext}, and the
  * governing {@link DependencyRule} together with its
- * {@link EvaluatedDependencyRule evaluation}. When the element does not resolve
+ * {@link DependencyRuleEvaluator evaluation}. When the element does not resolve
  * to a version-defined dependency the context is {@link #isAbsent() absent}: a
  * shared empty instance on which only the present/absent checks are meaningful.
  * Callers test {@link #isPresent()} before reading any held value or calling
@@ -39,7 +40,7 @@ class ArtifactReferenceContext {
 	private static final ArtifactReferenceContext ABSENT = new ArtifactReferenceContext(
 			ProjectDependencyContext.absent(), new Cache(),
 			null, ArtifactReference.unresolved(),
-			DependencyRule.absent(), EvaluatedDependencyRule.absent());
+			DependencyRule.absent(), DependencyRuleEvaluator.absent());
 
 	private final ProjectDependencyContext dependencyContext;
 
@@ -51,11 +52,11 @@ class ArtifactReferenceContext {
 
 	private final DependencyRule rule;
 
-	private final EvaluatedDependencyRule evaluatedRule;
+	private final DependencyRuleEvaluator evaluatedRule;
 
 	private ArtifactReferenceContext(ProjectDependencyContext dependencyContext, Cache cache,
 			@Nullable PsiElement element, ArtifactReference artifactReference,
-			DependencyRule rule, EvaluatedDependencyRule evaluatedRule) {
+			DependencyRule rule, DependencyRuleEvaluator evaluatedRule) {
 		this.dependencyContext = dependencyContext;
 		this.cache = cache;
 		this.element = element;
@@ -105,18 +106,14 @@ class ArtifactReferenceContext {
 			return ABSENT;
 		}
 
-		VirtualFile containingFile = element.getContainingFile().getVirtualFile();
-		DependencyfileService ruleService = DependencyfileService.getInstance(element.getProject());
-		ArtifactId artifactId = artifactReference.getArtifactId();
-		DependencyRule rule = artifactReference.getDeclaration().getDeclarationSource().isPlugin()
-				? DependencyRule.absent()
-				: ruleService.resolve(artifactId, containingFile, context.getProjectVersion());
-		EvaluatedDependencyRule evaluated = EvaluatedDependencyRule.of(rule, artifactId,
-				artifactReference.getDeclaration().getVersion().getVersion(),
-				context.getInterfaceAssistant());
+		DependencyRuleService ruleService = DependencyRuleService.getInstance(element.getProject());
+		ResolutionContext resolutionContext = ResolutionContext.of(artifactReference, BranchSource.of(element),
+				context.getProjectVersion());
+		DependencyRuleEvaluator evaluated = DependencyRuleEvaluator.evaluate(ruleService, resolutionContext,
+				artifactReference.getDeclaration().getVersion(), context.getInterfaceAssistant());
 
 		return new ArtifactReferenceContext(context, lookup.getCache(), element, artifactReference,
-				rule, evaluated);
+				evaluated.getRule(), evaluated);
 	}
 
 	/**
@@ -180,7 +177,7 @@ class ArtifactReferenceContext {
 		return cache;
 	}
 
-	public EvaluatedDependencyRule getEvaluatedRule() {
+	public DependencyRuleEvaluator getEvaluatedRule() {
 		return evaluatedRule;
 	}
 

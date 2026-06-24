@@ -160,24 +160,28 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * @return the effective dependency rule.
 	 */
 	public DependencyRule select(Rules parentRules, ArtifactId artifactId, @Nullable String branchName,
-			@Nullable ArtifactVersion projectVersion) {
+			@Nullable ArtifactVersion projectVersion, boolean semanticUpgradingMode) {
 
-		DependencyRule rule = selectRule(parentRules, this.artifacts, artifactId, branchName, projectVersion);
+		DependencyRule rule = selectRule(parentRules, this.artifacts, artifactId, branchName, projectVersion,
+				semanticUpgradingMode);
 		if (rule != null) {
 			return rule;
 		}
 
-		rule = selectRule(parentRules, this.defaultArtifacts, artifactId, branchName, projectVersion);
+		rule = selectRule(parentRules, this.defaultArtifacts, artifactId, branchName, projectVersion,
+				semanticUpgradingMode);
 		if (rule != null) {
 			return rule;
 		}
 
-		return this.fallback ? new ResolvedDependencyRule(Generations.unconstrained(), "", this::supports)
+		return this.fallback
+				? new ResolvedDependencyRule(Generations.unconstrained(), "", this::supports, semanticUpgradingMode)
 				: DependencyRule.absent();
 	}
 
 	private @Nullable DependencyRule selectRule(Rules parentRules, Collection<ArtifactRule> artifacts,
-			ArtifactId artifactId, @Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
+			ArtifactId artifactId, @Nullable String branchName, @Nullable ArtifactVersion projectVersion,
+			boolean semanticUpgradingMode) {
 
 		return artifacts.stream()
 				.filter(it -> it.pattern().test(artifactId))
@@ -192,7 +196,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 						}
 					}
 
-					return new ResolvedDependencyRule(it.generations(), name, this::supports);
+					return new ResolvedDependencyRule(it.generations(), name, this::supports, semanticUpgradingMode);
 				})
 				.orElse(null);
 	}

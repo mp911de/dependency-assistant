@@ -34,6 +34,7 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -57,7 +58,7 @@ public class UpgradeCandidate implements HasArtifactId {
 
 	private final DependencyRule rule;
 
-	private final EvaluatedDependencyRule ruleResult;
+	private final DependencyRuleEvaluator ruleResult;
 
 	private final Icon tableIcon;
 
@@ -80,41 +81,23 @@ public class UpgradeCandidate implements HasArtifactId {
 		this.candidate = candidate;
 		this.interfaceAssistant = assistant;
 		this.declaredVersions = declaredVersions;
+		this.rule = rule;
 
-		if (DeclarationSource.isPlugin(candidate.getDependency().getDeclarationSources())) {
-			this.rule = DependencyRule.absent();
-		} else {
-			this.rule = rule;
-		}
-
-		if (rule.isPresent()) {
+		if (this.rule.isPresent()) {
 			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
-				if (!rule.isEnabled(strategy)) {
+				if (!this.rule.isEnabled(strategy)) {
 					candidate.getFilteredTargets().remove(strategy);
 				}
 			}
 
-			if (!rule.test(candidate.getCurrentVersion())) {
+			if (!this.rule.test(candidate.getCurrentVersion())) {
 				filterUpgrades();
 			}
 		}
 
-		this.ruleResult = EvaluatedDependencyRule.of(this.rule, getArtifactId(), getCurrentVersion(), assistant);
+		this.ruleResult = DependencyRuleEvaluator.create(this.rule, getArtifactId(), getCurrentVersion(), assistant);
 		this.tableIcon = createTableIcon();
 		this.toolTipText = createToolTipText();
-	}
-
-	private boolean isPlugin(Dependency dependency) {
-
-		Set<DeclarationSource> declarationSources = dependency.getDeclarationSources();
-		int plugin = 0;
-		for (DeclarationSource source : declarationSources) {
-			if (source instanceof DeclarationSource.Plugin) {
-				plugin++;
-			}
-		}
-
-		return plugin > 0 && declarationSources.size() == plugin;
 	}
 
 	private String createToolTipText() {
@@ -229,7 +212,7 @@ public class UpgradeCandidate implements HasArtifactId {
 		return rule;
 	}
 
-	public EvaluatedDependencyRule getRuleResult() {
+	public DependencyRuleEvaluator getRuleResult() {
 		return ruleResult;
 	}
 
@@ -321,8 +304,8 @@ public class UpgradeCandidate implements HasArtifactId {
 	 * @param version the version to evaluate.
 	 * @return the evaluation outcome.
 	 */
-	public EvaluatedDependencyRule evaluate(ArtifactVersion version) {
-		return EvaluatedDependencyRule.of(getRule(), getArtifactId(), version, interfaceAssistant);
+	public DependencyRuleEvaluator evaluate(ArtifactVersion version) {
+		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version, interfaceAssistant);
 	}
 
 	@Override

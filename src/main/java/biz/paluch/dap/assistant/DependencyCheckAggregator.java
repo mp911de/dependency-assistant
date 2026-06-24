@@ -34,8 +34,10 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -232,11 +234,11 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 				}
 			}
 
-			DependencyRule rule = evaluator.resolve(artifactId, entry.declarationSites()
-					.iterator().next().file(), versioned);
-
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
+			ResolutionContext resolutionContext = ResolutionContext.of(merged,
+					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned);
+			DependencyRule rule = evaluator.resolve(resolutionContext);
 			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
 			candidates.add(new UpgradeCandidate(option, entry.contexts().iterator().next()
 					.getInterfaceAssistant(), declaredVersions, rule));

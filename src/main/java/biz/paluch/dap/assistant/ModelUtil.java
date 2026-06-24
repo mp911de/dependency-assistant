@@ -22,6 +22,7 @@ import javax.swing.JTable;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import com.intellij.util.ui.SortableColumnModel;
 import org.jspecify.annotations.Nullable;
 
@@ -49,7 +50,7 @@ class ModelUtil {
 	 * @param candidate candidate version.
 	 * @return the icon to use.
 	 */
-	public static Icon getIcon(EvaluatedDependencyRule rule, @Nullable ArtifactVersion currentVersion,
+	public static Icon getIcon(DependencyRuleEvaluator rule, @Nullable ArtifactVersion currentVersion,
 			ArtifactVersion candidate) {
 
 		if (!rule.test(candidate)) {

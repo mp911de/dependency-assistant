@@ -78,11 +78,11 @@ class DependencyfileArtifactWriter {
 
 	private final Project project;
 
-	private final DependencyfileService dependencyfileservice;
+	private final DependencyfileService dependencyfileService;
 
 	DependencyfileArtifactWriter(Project project) {
 		this.project = project;
-		this.dependencyfileservice = DependencyfileService.getInstance(project);
+		this.dependencyfileService = DependencyfileService.getInstance(project);
 	}
 
 	/**
@@ -96,7 +96,7 @@ class DependencyfileArtifactWriter {
 	 */
 	boolean canAdd(UpgradeCandidate candidate) {
 
-		VirtualFile descriptor = dependencyfileservice.getDescriptor();
+		VirtualFile descriptor = dependencyfileService.getDescriptor();
 		if (descriptor == null) {
 			return true;
 		}
@@ -292,7 +292,7 @@ class DependencyfileArtifactWriter {
 
 	private @Nullable VirtualFile findOrCreateDescriptor() throws IOException {
 
-		VirtualFile descriptor = dependencyfileservice.getDescriptor();
+		VirtualFile descriptor = dependencyfileService.getDescriptor();
 		return descriptor != null ? descriptor : newEmptyDescriptor();
 	}
 

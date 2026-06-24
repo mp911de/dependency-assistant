@@ -26,8 +26,11 @@ import javax.swing.Icon;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyfileService;
+import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.rule.ResolutionContext;
+import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
@@ -140,7 +143,7 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 	private Map<PsiElement, DependencyUpdate> collectUpdates(PsiFile file) {
 
 		Map<PsiElement, DependencyUpdate> updates = new LinkedHashMap<>();
-		DependencyfileService ruleService = DependencyfileService.getInstance(file.getProject());
+		DependencyRuleService ruleService = DependencyRuleService.getInstance(file.getProject());
 		VirtualFile virtualFile = file.getVirtualFile();
 
 		file.accept(new PsiRecursiveElementWalkingVisitor() {
@@ -155,8 +158,10 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 					return;
 				}
 
-				DependencyRule rule = ruleService.resolve(upgrades.getArtifactDeclaration().getArtifactId(),
-						virtualFile, dependencyContext.getProjectVersion());
+				ResolutionContext context = ResolutionContext.of(
+						ArtifactReference.from(upgrades.getArtifactDeclaration()),
+						BranchSource.of(virtualFile), dependencyContext.getProjectVersion());
+				DependencyRule rule = ruleService.resolve(context);
 				UpgradeSuggestion suggestion = upgrades.filterSuggestions(rule::isEnabled).getUpgrades().get(strategy);
 				if (suggestion == null) {
 					return;

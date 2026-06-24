@@ -24,21 +24,14 @@ import java.util.Map;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclaredDependency;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
-import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.rule.Generations;
+import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -145,6 +138,51 @@ class DependencyCheckAggregatorTests {
 			assertThat(candidate.getDeclaredVersions().hasVersionDrift()).isFalse();
 			assertThat(candidate.getDeclaredVersions().hasDeclarationDrift()).isTrue();
 			assertThat(candidate.getDeclaredVersions().hasDrift()).isTrue();
+		});
+	}
+
+	@Test
+	void liftsSemanticUpgradingForPurePluginCandidate() {
+
+		ArtifactId compilerPlugin = ArtifactId.of("org.apache.maven.plugins", "maven-compiler-plugin");
+		VirtualFile file = buildFile("plugin/pom.xml");
+		Dependency plugin = dependency(compilerPlugin, ArtifactVersion.of("3.14.0"));
+		plugin.addDeclarationSource(DeclarationSource.plugin());
+		aggregator.add(plugin, context(ACME_APP), file, List.of());
+
+		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(
+				Map.of(compilerPlugin, resolved(ArtifactVersion.of("4.0.0"))), governingRules());
+
+		assertThat(result.candidates()).singleElement().satisfies(candidate -> {
+			assertThat(candidate.getRule().isPresent()).isTrue();
+			assertThat(candidate.getRule().isSemanticUpgradingEnabled()).isFalse();
+		});
+	}
+
+	@Test
+	void mixedPluginGroupGovernsBySemVerRetainingMember() {
+
+		ArtifactId pluginArtifact = ArtifactId.of("com.example", "a-plugin");
+		ArtifactId libArtifact = ArtifactId.of("com.example", "z-lib");
+		ArtifactVersion current = ArtifactVersion.of("1.0.0");
+		VirtualFile file = buildFile("group/pom.xml");
+
+		Dependency plugin = dependency(pluginArtifact, current);
+		plugin.addDeclarationSource(DeclarationSource.plugin());
+		Dependency lib = dependency(libArtifact, current);
+		lib.addDeclarationSource(DeclarationSource.dependency());
+		aggregator.add(plugin, context(ACME_APP), file, List.of());
+		aggregator.add(lib, context(ACME_APP), file, List.of());
+
+		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(
+				Map.of(pluginArtifact, resolved(ArtifactVersion.of("1.1.0")), libArtifact,
+						resolved(ArtifactVersion.of("1.1.0"))),
+				governingRules());
+
+		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
+					.containsExactly(pluginArtifact, libArtifact);
+			assertThat(group.getRule().isSemanticUpgradingEnabled()).isTrue();
 		});
 	}
 
@@ -467,21 +505,75 @@ class DependencyCheckAggregatorTests {
 		return ReleaseLookupResult.of(Releases.of(Arrays.stream(versions).map(Release::of).toList()));
 	}
 
+	private static DependencyRuleService governingRules() {
+		return new DependencyRuleService() {
+
+			@Override
+			public DependencyRule resolve(ResolutionContext context) {
+				return resolve(context.getArtifactId(), context.suppressSemanticUpgrading());
+			}
+
+			private DependencyRule resolve(ArtifactId artifactId, boolean suppressSemanticUpgrading) {
+				String id = artifactId.toString();
+				if (id.startsWith("org.apache.maven.plugins:")) {
+					return new GoverningRule("", !suppressSemanticUpgrading);
+				}
+				if (id.startsWith("com.example:")) {
+					return new GoverningRule("Example", !suppressSemanticUpgrading);
+				}
+				return DependencyRule.absent();
+			}
+
+		};
+	}
+
+	private record GoverningRule(String dependencyName, boolean semanticUpgrading) implements DependencyRule {
+
+		@Override
+		public boolean isPresent() {
+			return true;
+		}
+
+		@Override
+		public boolean isSemanticUpgradingEnabled() {
+			return semanticUpgrading;
+		}
+
+		@Override
+		public Generations getGenerations() {
+			return Generations.unconstrained();
+		}
+
+		@Override
+		public String getDependencyName() {
+			return dependencyName;
+		}
+
+		@Override
+		public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
+			return true;
+		}
+
+		@Override
+		public boolean test(ArtifactVersion version) {
+			return true;
+		}
+
+		@Override
+		public @Nullable Release suggestRemediation(Releases releases) {
+			return null;
+		}
+
+	}
+
 	private static DependencyRuleService rules(Map<ArtifactId, DependencyRule> rules) {
 
 		return new DependencyRuleService() {
 
 			@Override
-			public DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion) {
-				return rules.getOrDefault(artifactId, DependencyRule.absent());
+			public DependencyRule resolve(ResolutionContext context) {
+				return rules.getOrDefault(context.getArtifactId(), DependencyRule.absent());
 			}
-
-			@Override
-			public DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
-					@Nullable ArtifactVersion projectVersion) {
-				return rules.getOrDefault(artifactId, DependencyRule.absent());
-			}
-
 		};
 	}
 

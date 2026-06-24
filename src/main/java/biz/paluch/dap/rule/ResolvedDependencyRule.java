@@ -37,15 +37,24 @@ class ResolvedDependencyRule implements DependencyRule {
 
 	private final Predicate<UpgradeStrategy> upgradeStrategies;
 
-	ResolvedDependencyRule(Generations generations, String dependencyName, Predicate<UpgradeStrategy> upgradeStrategies) {
+	private final boolean semanticUpgradingMode;
+
+	ResolvedDependencyRule(Generations generations, String dependencyName, Predicate<UpgradeStrategy> upgradeStrategies,
+			boolean semanticUpgradingMode) {
 		this.generations = generations;
 		this.dependencyName = dependencyName;
 		this.upgradeStrategies = upgradeStrategies;
+		this.semanticUpgradingMode = semanticUpgradingMode;
 	}
 
 	@Override
 	public boolean isPresent() {
 		return true;
+	}
+
+	@Override
+	public boolean isSemanticUpgradingEnabled() {
+		return this.semanticUpgradingMode && !this.generations.isConstrained();
 	}
 
 	@Override

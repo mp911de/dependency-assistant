@@ -24,6 +24,7 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.AvailableUpgrades;
@@ -76,7 +77,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
 		AvailableUpgrades upgrades = context.suggestUpgrades();
-		EvaluatedDependencyRule evaluated = context.getEvaluatedRule();
+		DependencyRuleEvaluator evaluated = context.getEvaluatedRule();
 
 		if (!upgrades.isPresent()) {
 			if (evaluated.isPresent() && evaluated.isLocked()) {

@@ -139,6 +139,58 @@ class DependencyRuleInspectionTests {
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
+				<build>
+					<plugins>
+						<plugin>
+							<artifactId>maven-compiler-plugin</artifactId>
+							<version>3.14.0</version>
+						</plugin>
+					</plugins>
+				</build>
+			</project>
+			""")
+	void flagsPluginViolatingGenerationPin(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+		install(DependencyRules.builder().artifact("org.apache.maven.plugins:*", "4.0")
+				.build());
+
+		assertThat(inspect(pomFile)).singleElement()
+				.satisfies(problem -> assertThat(problem.getDescriptionTemplate())
+						.contains("maven-compiler-plugin").contains("4.0"));
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<build>
+					<plugins>
+						<plugin>
+							<artifactId>maven-compiler-plugin</artifactId>
+							<version>4.0.0</version>
+						</plugin>
+					</plugins>
+				</build>
+			</project>
+			""")
+	void doesNotFlagPluginWithinGenerationPin(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+		install(DependencyRules.builder().artifact("org.apache.maven.plugins:*", "4.0")
+				.build());
+
+		assertThat(inspect(pomFile)).isEmpty();
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
 						<groupId>org.springframework</groupId>

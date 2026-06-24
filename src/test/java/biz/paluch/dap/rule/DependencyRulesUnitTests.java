@@ -62,6 +62,86 @@ class DependencyRulesUnitTests {
 	}
 
 	@Test
+	void reportsSemanticUpgradingEnabledForPresentUnlockedRule() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.springframework:*")
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "main", null);
+
+		assertThat(rule.isSemanticUpgradingEnabled()).isTrue();
+	}
+
+	@Test
+	void reportsSemanticUpgradingDisabledForGenerationLockedRule() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.springframework:*", "7.0")
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "main", null);
+
+		assertThat(rule.isSemanticUpgradingEnabled()).isFalse();
+	}
+
+	@Test
+	void liftingSemanticUpgradingKeepsAllStrategiesAndClearsFlag() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.springframework:*")
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), null,
+				ArtifactVersion.of("2.1.1"), true);
+
+		assertThat(rule.isSemanticUpgradingEnabled()).isFalse();
+		assertThat((Predicate<UpgradeStrategy>) rule::isEnabled)
+				.accepts(UpgradeStrategy.PATCH, UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
+	}
+
+	@Test
+	void liftingSemanticUpgradingKeepsGenerationLock() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.springframework:*", "6.0")
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "main", null, true);
+
+		assertThat(rule.getGenerations()).hasToString("6.0.x");
+		assertThat(rule).accepts(ArtifactVersion.of("6.0.5")).rejects(ArtifactVersion.of("7.0.0"));
+	}
+
+	@Test
+	void liftingSemanticUpgradingKeepsExplicitUpgrades() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.springframework:*")
+				.branch("2.*.x", branch -> branch.upgrades(UpgradeStrategy.PATCH))
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "2.5.x", null, true);
+
+		assertThat((Predicate<UpgradeStrategy>) rule::isEnabled)
+				.accepts(UpgradeStrategy.PATCH).rejects(UpgradeStrategy.MINOR, UpgradeStrategy.MAJOR);
+		assertThat(rule.isSemanticUpgradingEnabled()).isFalse();
+	}
+
+	@Test
+	void reportsSemanticUpgradingDisabledWhenSemVerDisabled() {
+
+		DependencyRules rules = DependencyRules.builder()
+				.artifact("org.springframework:*")
+				.semVerUpdating(SemVerUpdating.DISABLED)
+				.build();
+
+		DependencyRule rule = rules.resolve(ArtifactId.of("org.springframework", "spring-core"), "main", null);
+
+		assertThat(rule.isSemanticUpgradingEnabled()).isFalse();
+	}
+
+	@Test
 	void resolvesMostSpecificArtifactRule() {
 
 		DependencyRules rules = DependencyRules.builder()

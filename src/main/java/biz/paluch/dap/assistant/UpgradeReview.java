@@ -33,6 +33,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.openapi.Disposable;
 import com.intellij.util.EventDispatcher;
@@ -333,10 +334,10 @@ class UpgradeReview {
 		return true;
 	}
 
-	public EvaluatedDependencyRule getResult(EvaluatedDependencyRule rule) {
+	public DependencyRuleEvaluator getResult(DependencyRuleEvaluator rule) {
 
 		if (!rule.isPresent() && hasRule) {
-			return EvaluatedDependencyRule.absent();
+			return DependencyRuleEvaluator.absent();
 		} return rule;
 	}
 

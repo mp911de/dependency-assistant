@@ -16,12 +16,6 @@
 
 package biz.paluch.dap.rule;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Versioned;
-import com.intellij.openapi.vfs.VirtualFile;
-import org.jspecify.annotations.Nullable;
-
 /**
  * {@link DependencyRuleService} resolving every artifact to
  * {@link DependencyRule#absent()}.
@@ -34,13 +28,7 @@ enum AbsentDependencyRuleService implements DependencyRuleService {
 	INSTANCE;
 
 	@Override
-	public DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion) {
-		return DependencyRule.absent();
-	}
-
-	@Override
-	public DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
-			@Nullable ArtifactVersion projectVersion) {
+	public DependencyRule resolve(ResolutionContext context) {
 		return DependencyRule.absent();
 	}
 

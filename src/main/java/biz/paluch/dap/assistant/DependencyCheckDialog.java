@@ -46,6 +46,7 @@ import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ReleaseDateFormatter;
@@ -815,7 +816,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				UpgradeCandidate candidate = ModelUtil.getRow(table, row);
 				DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
-				EvaluatedDependencyRule rule = candidate.getRuleResult();
+				DependencyRuleEvaluator rule = candidate.getRuleResult();
 
 				if (declaredVersions.hasVersionDrift()) {
 					setIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
@@ -868,7 +869,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private static @Nullable String conflictTooltip(
 				UpgradeCandidate candidate,
-				EvaluatedDependencyRule rule) {
+				DependencyRuleEvaluator rule) {
 			StringBuilder tooltip = new StringBuilder();
 			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
 
@@ -1266,7 +1267,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			DependencyRule rule = candidate.getRule();
 			boolean valid = rule.test(value.getVersion());
 			append(text, valid ? SimpleTextAttributes.REGULAR_ATTRIBUTES : SimpleTextAttributes.GRAYED_ATTRIBUTES);
-			EvaluatedDependencyRule evaluated = candidate.evaluate(value.getVersion());
+			DependencyRuleEvaluator evaluated = candidate.evaluate(value.getVersion());
 
 			setIcon(ModelUtil.getIcon(evaluated, candidate.getCurrentVersion(), value.getVersion()));
 		}

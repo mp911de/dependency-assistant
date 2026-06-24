@@ -129,9 +129,33 @@ public class DependencyRules implements Rules {
 	@Override
 	public DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
 			@Nullable ArtifactVersion projectVersion) {
+		return resolve(artifactId, branchName, projectVersion, false);
+	}
 
-		BranchRule branchRule = resolveBranchRule(branchName, projectVersion);
-		return branchRule.select(parent, artifactId, branchName, projectVersion);
+	/**
+	 * Resolve a dependency rule for the given artifact, optionally suppressing
+	 * semantic version upgrading.
+	 *
+	 * <p>When {@code suppressSemanticUpgrading} is {@literal true} the
+	 * project-version derived (inferred) upgrade-strategy limits are skipped and
+	 * {@link DependencyRule#isSemanticUpgradingEnabled()} reports {@literal false}.
+	 * Generations, dependency names, and author-written {@code upgrades(...)}
+	 * limits are unaffected. This is how a plugin declaration is kept under naming
+	 * and generation governance while leaving semVer.
+	 *
+	 * @param artifactId the artifact id.
+	 * @param branchName the active branch name; can be {@literal null}.
+	 * @param projectVersion the project version; can be {@literal null}.
+	 * @param suppressSemanticUpgrading whether to suppress inferred semantic
+	 * upgrading.
+	 * @return the resolved dependency rule, or an absent rule.
+	 */
+	DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
+			@Nullable ArtifactVersion projectVersion, boolean suppressSemanticUpgrading) {
+
+		BranchRule branchRule = resolveBranchRule(branchName, projectVersion, suppressSemanticUpgrading);
+		boolean semanticUpgradingMode = this.semVerUpdating != SemVerUpdating.DISABLED && !suppressSemanticUpgrading;
+		return branchRule.select(parent, artifactId, branchName, projectVersion, semanticUpgradingMode);
 	}
 
 	/**
@@ -149,17 +173,23 @@ public class DependencyRules implements Rules {
 	 * {@literal null}.
 	 */
 	public BranchRule resolveBranchRule(@Nullable String branchName, @Nullable ArtifactVersion projectVersion) {
+		return resolveBranchRule(branchName, projectVersion, false);
+	}
+
+	private BranchRule resolveBranchRule(@Nullable String branchName, @Nullable ArtifactVersion projectVersion,
+			boolean suppressSemanticUpgrading) {
+
+		boolean inferSemVer = this.semVerUpdating != SemVerUpdating.DISABLED && !suppressSemanticUpgrading;
 
 		BranchRule branchRule = doResolveBranchRule(branchName, projectVersion);
 		if (branchRule == null) {
-			if (projectVersion != null && this.semVerUpdating != SemVerUpdating.DISABLED) {
+			if (projectVersion != null && inferSemVer) {
 				return BranchRule.fallback(this.artifacts, upgradeStrategies(projectVersion));
 			}
 			return BranchRule.of("*", this.artifacts, Set.of());
 		}
 
-		if (this.semVerUpdating == SemVerUpdating.DISABLED || branchRule.hasUpgradeStrategies()
-				|| projectVersion == null) {
+		if (!inferSemVer || branchRule.hasUpgradeStrategies() || projectVersion == null) {
 			return branchRule;
 		}
 

@@ -16,11 +16,7 @@
 
 package biz.paluch.dap.rule;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Versioned;
-import com.intellij.openapi.vfs.VirtualFile;
-import org.jspecify.annotations.Nullable;
+import com.intellij.openapi.project.Project;
 
 /**
  * Resolver for {@link DependencyRule}s.
@@ -41,32 +37,21 @@ public interface DependencyRuleService {
 	}
 
 	/**
-	 * Resolve an effective {@link DependencyRule} for the given {@link ArtifactId}
-	 * and {@link Versioned} project version.
-	 *
-	 * @param artifactId the artifact to resolve a rule for.
-	 * @param file the file used to detect the active branch; can be {@literal null}
-	 * if no branch context is available.
-	 * @param projectVersion the project version used to select branch rules.
-	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
-	 * when no rule applies.
+	 * Return the rule service for the given project.
+	 * @param project the project.
+	 * @return the project rule service.
 	 */
-	DependencyRule resolve(ArtifactId artifactId, @Nullable VirtualFile file, Versioned projectVersion);
+	static DependencyRuleService getInstance(Project project) {
+		return project.getService(DependencyfileService.class);
+	}
 
 	/**
-	 * Resolve the dependency rule for the given artifact using an explicit branch
-	 * name instead of VCS branch detection.
+	 * Resolve an effective {@link DependencyRule} for the given resolution context.
 	 *
-	 * @param artifactId the artifact to resolve a rule for.
-	 * @param branchName the current branch name, can be {@literal null} if the
-	 * project is not versioned.
-	 * @param projectVersion the project version, can be {@literal null} if not
-	 * provided.
+	 * @param context the resolution input.
 	 * @return the governing dependency rule, or {@link DependencyRule#absent()}
 	 * when no rule applies.
-	 * @see #resolve(ArtifactId, VirtualFile, Versioned)
 	 */
-	DependencyRule resolve(ArtifactId artifactId, @Nullable String branchName,
-			@Nullable ArtifactVersion projectVersion);
+	DependencyRule resolve(ResolutionContext context);
 
 }
