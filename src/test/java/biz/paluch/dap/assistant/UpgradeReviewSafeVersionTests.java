@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +23,6 @@ import java.util.Map;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.CvssSeverity;
@@ -33,6 +31,7 @@ import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
@@ -155,7 +154,7 @@ class UpgradeReviewSafeVersionTests {
 	private static VulnerabilityRepository vulnerable(String... cleanNewer) {
 
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new HashMap<>();
-		vulnerabilities.put(CURRENT, Vulnerabilities.of(List.of(cve())));
+		vulnerabilities.put(CURRENT, Vulnerabilities.of(cve()));
 		for (String version : cleanNewer) {
 			vulnerabilities.put(ArtifactVersion.of(version), Vulnerabilities.clean());
 		}
@@ -167,7 +166,7 @@ class UpgradeReviewSafeVersionTests {
 
 		Dependency dependency = new Dependency(artifactId, current);
 		dependency.addVersionSource(VersionSource.declared(current.toString()));
-		Releases releases = Releases.of(Arrays.stream(versions).map(Release::of).toList());
+		Releases releases = TestReleases.from(versions);
 		return new UpgradeCandidate(
 				new DependencyUpdateCandidate(dependency, releases, vulnerabilities,
 						new TestDependencyRule(artifactId.artifactId())),

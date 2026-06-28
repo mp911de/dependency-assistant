@@ -36,7 +36,6 @@ import biz.paluch.dap.fixtures.TestProjectDependencyContext;
 import biz.paluch.dap.fixtures.TestReleaseSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
-import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.mock.MockProjectEx;
@@ -461,15 +460,7 @@ class DependencyCheckAggregatorTests {
 	}
 
 	private static DependencyRuleService rules(Map<ArtifactId, DependencyRule> rules) {
-
-		return new DependencyRuleService() {
-
-			@Override
-			public DependencyRule resolve(ResolutionContext context) {
-				return rules.getOrDefault(context.getArtifactId(), DependencyRule.absent());
-			}
-
-		};
+		return context -> rules.getOrDefault(context.getArtifactId(), DependencyRule.absent());
 	}
 
 	static class OtherEcosystemAssistant extends TestInterfaceAssistant {

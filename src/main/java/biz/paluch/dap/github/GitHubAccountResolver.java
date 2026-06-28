@@ -26,6 +26,7 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import git4idea.remote.hosting.GitHostingUrlUtil;
 import git4idea.repo.GitRepositoryManager;
@@ -206,6 +207,8 @@ class GitHubAccountResolver {
 		} catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
 			return null;
+		} catch (ProcessCanceledException ex) {
+			throw ex;
 		} catch (RuntimeException ex) {
 			LOG.warn("Failed to read GitHub credentials for %s: %s".formatted(account.getName(), ex.getMessage()));
 			return null;

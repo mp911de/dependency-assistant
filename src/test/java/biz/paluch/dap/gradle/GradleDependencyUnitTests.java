@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
@@ -42,8 +43,7 @@ class GradleDependencyUnitTests {
 				.parse("org.springframework:spring-core:6.1.0", DeclarationSource.dependency());
 
 		assertThat(dependency).isNotNull();
-		assertThat(dependency.id().groupId()).isEqualTo("org.springframework");
-		assertThat(dependency.id().artifactId()).isEqualTo("spring-core");
+		assertThat(dependency.id()).isEqualTo(ArtifactId.of("org.springframework", "spring-core"));
 		assertThat(dependency.version()).isEqualTo("6.1.0");
 		assertThat(dependency.versionSource()).isInstanceOf(VersionSource.DeclaredVersion.class);
 	}
@@ -56,8 +56,7 @@ class GradleDependencyUnitTests {
 				DeclarationSource.dependency(), props::get);
 
 		assertThat(dependency).isNotNull();
-		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
-		assertThat(dependency.getId().artifactId()).isEqualTo("spring-core");
+		assertThat(dependency.getId()).isEqualTo(ArtifactId.of("org.springframework", "spring-core"));
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("springVersion"));
 	}
@@ -69,8 +68,7 @@ class GradleDependencyUnitTests {
 				DeclarationSource.dependency());
 
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
-		assertThat(dependency.getId().groupId()).isEqualTo("org.springframework");
-		assertThat(dependency.getId().artifactId()).isEqualTo("spring-core");
+		assertThat(dependency.getId()).isEqualTo(ArtifactId.of("org.springframework", "spring-core"));
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("springVersion"));
 	}
@@ -83,8 +81,7 @@ class GradleDependencyUnitTests {
 		GradleDependency parsed = GradleDependency.parse(gav, DeclarationSource.dependency());
 
 		assertThat(parsed).isNotNull();
-		assertThat(parsed.getId().groupId()).isEqualTo(group);
-		assertThat(parsed.getId().artifactId()).isEqualTo(artifact);
+		assertThat(parsed.getId()).isEqualTo(ArtifactId.of(group, artifact));
 	}
 
 	@Test
@@ -104,7 +101,6 @@ class GradleDependencyUnitTests {
 		GradleDependency dependency = GradleDependency.parse("com.example:artifact:${myVersion}",
 				DeclarationSource.dependency(), properties::get);
 
-		assertThat(dependency).isNotNull();
 		assertThat(dependency).isNotNull().isInstanceOf(PropertyManagedDependency.class);
 		assertThat(dependency.getVersionSource()).isInstanceOf(VersionSource.VersionProperty.class);
 		assertThat(dependency.getVersionSource()).isEqualTo(VersionSource.property("myVersion"));

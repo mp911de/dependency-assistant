@@ -19,7 +19,6 @@ package biz.paluch.dap.github;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
@@ -210,11 +209,8 @@ class UpdateGitHubWorkflowFileTests {
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		GitVersion targetVersion = GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of(toTag));
 
-		Dependency dependency = new Dependency(id, targetVersion);
-		dependency.addDeclarationSource(DeclarationSource.dependency());
-		dependency.addVersionSource(VersionSource.declared(fromRef));
-
-		DependencyUpdate update = DependencyUpdate.from(dependency, targetVersion);
+		DependencyUpdate update = DependencyUpdate.create(id, targetVersion, DeclarationSource.dependency(),
+				VersionSource.declared(fromRef));
 		UpdateGitHubWorkflowFile updater = new UpdateGitHubWorkflowFile(file.getProject());
 
 		BuildFileUpdates.applyUpdate(file, update, updater::applyUpdates);

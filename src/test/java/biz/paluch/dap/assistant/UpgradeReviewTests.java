@@ -24,12 +24,12 @@ import java.util.TreeSet;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.mock.MockVirtualFile;
@@ -79,7 +79,7 @@ class UpgradeReviewTests {
 	void groupFanOutCarriesDriftingMemberCurrentVersion() {
 
 		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0");
-		UpgradeCandidate drifting = candidate(SPRING_TEST, "6.0.9", releases("6.0.9", "6.2.1"), "6.2.0",
+		UpgradeCandidate drifting = candidate(SPRING_TEST, "6.0.9", TestReleases.from("6.0.9", "6.2.1"), "6.2.0",
 				"6.0.9");
 		UpgradeGroup group = UpgradeGroup.of(core, drifting);
 
@@ -123,9 +123,9 @@ class UpgradeReviewTests {
 	@Test
 	void strategySelectionOnGroupResolvesAgainstIntersectionReleases() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", releases("6.2.0", "6.2.1", "6.3.0"));
-		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0", releases("6.2.0", "6.2.1"));
-		UpgradeGroup group = UpgradeGroup.of(List.of(core, test));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"));
+		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"));
+		UpgradeGroup group = UpgradeGroup.of(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.LATEST);
@@ -138,7 +138,7 @@ class UpgradeReviewTests {
 
 		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
 		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0");
-		UpgradeGroup group = UpgradeGroup.of(List.of(core, test));
+		UpgradeGroup group = UpgradeGroup.of(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
@@ -235,7 +235,7 @@ class UpgradeReviewTests {
 	}
 
 	private static UpgradeCandidate candidate(Dependency dependency) {
-		return candidate(dependency, releases(dependency.getCurrentVersion().toString(), "6.2.1"),
+		return candidate(dependency, TestReleases.from(dependency.getCurrentVersion().toString(), "6.2.1"),
 				declaredVersions(dependency));
 	}
 
@@ -258,15 +258,6 @@ class UpgradeReviewTests {
 					ProjectId.of("com.acme", "app"), declared));
 		}
 		return DeclaredVersions.from(declarations, it -> null, null);
-	}
-
-	private static Releases releases(String... versions) {
-
-		List<Release> releases = new ArrayList<>();
-		for (String version : versions) {
-			releases.add(Release.of(version));
-		}
-		return Releases.of(releases);
 	}
 
 }

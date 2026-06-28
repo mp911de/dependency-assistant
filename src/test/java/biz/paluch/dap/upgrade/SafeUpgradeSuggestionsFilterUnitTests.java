@@ -17,7 +17,6 @@
 package biz.paluch.dap.upgrade;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -30,6 +29,7 @@ import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 	@Test
 	void picksLowestCleanNewerRelease() {
 
-		Releases releases = releases("5.0.10", "5.0.11", "5.0.12", "5.1.0");
+		Releases releases = TestReleases.from("5.0.10", "5.0.11", "5.0.12", "5.1.0");
 
 		UpgradeSuggestions filtered = safeVersions(releases, "5.0.10",
 				vulnerable(releases, "5.0.10", "5.0.11"), UpgradeSuggestions.from(version("5.0.10"), releases));
@@ -64,7 +64,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 	@Test
 	void picksCleanReleaseAcrossAMajorLine() {
 
-		Releases releases = releases("5.0.10", "5.0.11", "6.0.0");
+		Releases releases = TestReleases.from("5.0.10", "5.0.11", "6.0.0");
 
 		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.10", "5.0.11"));
 
@@ -74,7 +74,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 	@Test
 	void absentWhenNoNewerReleaseIsClean() {
 
-		Releases releases = releases("5.0.10", "5.0.11", "6.0.0");
+		Releases releases = TestReleases.from("5.0.10", "5.0.11", "6.0.0");
 
 		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.10", "5.0.11", "6.0.0"));
 
@@ -84,9 +84,9 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 	@Test
 	void absentWhenNewerReleaseHasNoVulnerabilityScan() {
 
-		Releases releases = releases("5.0.10", "5.0.11");
+		Releases releases = TestReleases.from("5.0.10", "5.0.11");
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new LinkedHashMap<>();
-		vulnerabilities.put(version("5.0.10"), Vulnerabilities.of(List.of(cve())));
+		vulnerabilities.put(version("5.0.10"), Vulnerabilities.of(cve()));
 		vulnerabilities.put(version("5.0.11"), Vulnerabilities.absent());
 
 		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", VulnerabilityRepository.of(vulnerabilities));
@@ -97,7 +97,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 	@Test
 	void absentWhenCurrentIsNotVulnerable() {
 
-		Releases releases = releases("5.0.10", "5.0.11");
+		Releases releases = TestReleases.from("5.0.10", "5.0.11");
 
 		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.11"));
 
@@ -107,7 +107,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 	@Test
 	void ignoresOlderAndEqualReleases() {
 
-		Releases releases = releases("5.0.8", "5.0.9", "5.0.10");
+		Releases releases = TestReleases.from("5.0.8", "5.0.9", "5.0.10");
 
 		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.10"));
 
@@ -134,14 +134,10 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new LinkedHashMap<>();
 		for (Release release : releases) {
 			vulnerabilities.put(release.version(), vulnerableVersions.contains(release.version().toString())
-					? Vulnerabilities.of(List.of(cve()))
+					? Vulnerabilities.of(cve())
 					: Vulnerabilities.clean());
 		}
 		return VulnerabilityRepository.of(vulnerabilities);
-	}
-
-	private static Releases releases(String... versions) {
-		return Releases.of(List.of(versions).stream().map(Release::of).toList());
 	}
 
 	private static ArtifactVersion version(String version) {

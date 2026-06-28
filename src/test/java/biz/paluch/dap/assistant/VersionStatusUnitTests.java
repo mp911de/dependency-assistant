@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.List;
-
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -53,7 +51,7 @@ class VersionStatusUnitTests {
 	@Test
 	void vulnerableCandidateUsesRequestedShieldStyle() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(List.of(cve(CvssSeverity.HIGH))));
+		VersionStatus status = status(PATCH, Vulnerabilities.of(cve(CvssSeverity.HIGH)));
 
 		assertThat(status.isVulnerable()).isTrue();
 		assertThat(status.getVersionAge()).isEqualTo(VersionAge.NEWER_PATCH);
@@ -105,8 +103,8 @@ class VersionStatusUnitTests {
 	@Test
 	void tailLabelHeadsWithHighestSeverityAdvisory() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(List.of(cve("CVE-LOW", "GHSA-LOW", CvssSeverity.LOW),
-				cve("CVE-CRIT", "GHSA-CRIT", CvssSeverity.CRITICAL))));
+		VersionStatus status = status(PATCH, Vulnerabilities.of(cve("CVE-LOW", "GHSA-LOW", CvssSeverity.LOW),
+				cve("CVE-CRIT", "GHSA-CRIT", CvssSeverity.CRITICAL)));
 
 		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-CRIT + 1");
 	}
@@ -114,8 +112,8 @@ class VersionStatusUnitTests {
 	@Test
 	void tailLabelSuffixesRemainingAdvisoryCount() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(List.of(cve("CVE-A", "GHSA-A", CvssSeverity.CRITICAL),
-				cve("CVE-B", "GHSA-B", CvssSeverity.HIGH), cve("CVE-C", "GHSA-C", CvssSeverity.LOW))));
+		VersionStatus status = status(PATCH, Vulnerabilities.of(cve("CVE-A", "GHSA-A", CvssSeverity.CRITICAL),
+				cve("CVE-B", "GHSA-B", CvssSeverity.HIGH), cve("CVE-C", "GHSA-C", CvssSeverity.LOW)));
 
 		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-A + 2");
 	}
@@ -123,7 +121,7 @@ class VersionStatusUnitTests {
 	@Test
 	void tailLabelFallsBackToGhsaIdWhenNoCveId() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(List.of(cve(null, "GHSA-xyz", CvssSeverity.HIGH))));
+		VersionStatus status = status(PATCH, Vulnerabilities.of(cve(null, "GHSA-xyz", CvssSeverity.HIGH)));
 
 		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("GHSA-xyz");
 	}

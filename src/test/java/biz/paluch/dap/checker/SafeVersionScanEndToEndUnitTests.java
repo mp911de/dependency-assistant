@@ -20,7 +20,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -31,6 +30,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.TestCache;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.VulnerabilityScannerPolicy;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -59,7 +59,7 @@ class SafeVersionScanEndToEndUnitTests {
 	@Test
 	void scanResultsCanProduceSafeVersion() {
 
-		Releases releases = releases("5.0.10", "5.0.11", "5.0.12", "5.1.0", "5.1.1", "6.0.0");
+		Releases releases = TestReleases.from("5.0.10", "5.0.11", "5.0.12", "5.1.0", "5.1.1", "6.0.0");
 		ArtifactVersion current = ArtifactVersion.of("5.0.10");
 
 		scanCandidates(releases, current, vulnerableVersions("5.0.10", "5.0.11", "5.0.12", "5.1.0", "5.1.1"));
@@ -90,10 +90,6 @@ class SafeVersionScanEndToEndUnitTests {
 	private static Predicate<String> vulnerableVersions(String... versions) {
 		Set<String> vulnerableVersions = Set.of(versions);
 		return vulnerableVersions::contains;
-	}
-
-	private static Releases releases(String... versions) {
-		return Releases.of(Arrays.stream(versions).map(Release::of).toList());
 	}
 
 }

@@ -55,9 +55,9 @@ class DependencyfileArtifactWriterUnitTests {
 	@Test
 	void groupWithSharedGroupIdAndWordBoundaryPrefixYieldsWildcardEntry() {
 
-		UpgradeGroup group = UpgradeGroup.of(List.of(
+		UpgradeGroup group = UpgradeGroup.of(
 				candidate(ArtifactId.of("org.springframework.boot", "spring-boot-starter-web"), "Spring Boot"),
-				candidate(ArtifactId.of("org.springframework.boot", "spring-boot-starter-data-jpa"), "Spring Boot")));
+				candidate(ArtifactId.of("org.springframework.boot", "spring-boot-starter-data-jpa"), "Spring Boot"));
 
 		assertThat(DependencyfileArtifactWriter.entries(group)).containsExactly(
 				new ArtifactEntry("org.springframework.boot:spring-boot-starter-*", "Spring Boot"));
@@ -66,9 +66,9 @@ class DependencyfileArtifactWriterUnitTests {
 	@Test
 	void groupWithDifferentGroupIdsFallsBackToPerMemberEntries() {
 
-		UpgradeGroup group = UpgradeGroup.of(List.of(
+		UpgradeGroup group = UpgradeGroup.of(
 				candidate(ArtifactId.of("org.postgresql", "postgresql"), "PostgreSQL"),
-				candidate(ArtifactId.of("org.testcontainers", "postgresql"), "PostgreSQL")));
+				candidate(ArtifactId.of("org.testcontainers", "postgresql"), "PostgreSQL"));
 
 		assertThat(DependencyfileArtifactWriter.entries(group)).containsExactly(
 				new ArtifactEntry("org.postgresql:postgresql", "PostgreSQL"),
@@ -78,9 +78,9 @@ class DependencyfileArtifactWriterUnitTests {
 	@Test
 	void groupWithoutWordBoundaryPrefixFallsBackToPerMemberEntries() {
 
-		UpgradeGroup group = UpgradeGroup.of(List.of(
+		UpgradeGroup group = UpgradeGroup.of(
 				candidate(ArtifactId.of("com.example", "webflux"), "Web"),
-				candidate(ArtifactId.of("com.example", "webmvc"), "Web")));
+				candidate(ArtifactId.of("com.example", "webmvc"), "Web"));
 
 		assertThat(DependencyfileArtifactWriter.entries(group)).containsExactly(
 				new ArtifactEntry("com.example:webflux", "Web"),

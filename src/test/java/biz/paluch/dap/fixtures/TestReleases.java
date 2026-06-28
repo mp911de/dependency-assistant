@@ -16,26 +16,27 @@
 
 package biz.paluch.dap.fixtures;
 
-import java.util.List;
+import java.util.Arrays;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSource;
-import com.intellij.openapi.progress.ProgressIndicator;
+import biz.paluch.dap.artifact.Releases;
 
 /**
+ * Test factory for {@link Releases} built from plain version strings.
+ *
  * @author Mark Paluch
  */
-public record TestReleaseSource(String name) implements ReleaseSource {
+public class TestReleases {
 
-	@Override
-	public String getId() {
-		return name;
-	}
-
-	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
-		return List.of();
+	/**
+	 * Create {@link Releases} from the given version strings.
+	 *
+	 * @param versions the version strings, each parsed through
+	 * {@link Release#of(String)}.
+	 * @return the releases for the given versions.
+	 */
+	public static Releases from(String... versions) {
+		return Releases.of(Arrays.stream(versions).map(Release::of).toList());
 	}
 
 }

@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.npm;
 
+import java.util.stream.Stream;
+
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
@@ -25,6 +27,9 @@ import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import static biz.paluch.dap.assertions.Assertions.*;
 
@@ -43,16 +48,17 @@ class NpmCompletionTests {
 		NpmFixtures.setup(fixture.getProject());
 	}
 
-	@Test
-	@EditorFile(name = "package.json", content = """
-			{
-			  "dependencies": {
-			    "@springio/antora-xref-extension": "<caret>1.0.0-alpha.1"
-			  }
-			}
-			""")
-	void completesExactVersionAtStart(PsiFile packageJson) {
+	@ParameterizedTest
+	@MethodSource("exactVersionFinishChars")
+	void completesExactVersionAtStart(char finishChar) {
 
+		PsiFile packageJson = fixture.configureByText("package.json", """
+				{
+				  "dependencies": {
+				    "@springio/antora-xref-extension": "<caret>1.0.0-alpha.1"
+				  }
+				}
+				""");
 		NpmFixtures.analyze(packageJson);
 		fixture.complete(CompletionType.BASIC);
 
@@ -60,50 +66,13 @@ class NpmCompletionTests {
 				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
 						"1.0.0-alpha.1");
 
-		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
+		fixture.finishLookup(finishChar);
 		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
 	}
 
-	@Test
-	@EditorFile(name = "package.json", content = """
-			{
-			  "dependencies": {
-			    "@springio/antora-xref-extension": "<caret>1.0.0-alpha.1"
-			  }
-			}
-			""")
-	void completesExactVersionAtStartTab(PsiFile packageJson) {
-
-		NpmFixtures.analyze(packageJson);
-		fixture.complete(CompletionType.BASIC);
-
-		assertThat(fixture)
-				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
-						"1.0.0-alpha.1");
-
-		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
-		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
-	}
-
-	@Test
-	@EditorFile(name = "package.json", content = """
-			{
-			  "dependencies": {
-			    "@springio/antora-xref-extension": "<caret>1.0.0-alpha.1"
-			  }
-			}
-			""")
-	void completesExactVersionAtStartTabComplete(PsiFile packageJson) {
-
-		NpmFixtures.analyze(packageJson);
-		fixture.complete(CompletionType.BASIC);
-
-		assertThat(fixture)
-				.completionSuggests("1.0.0-alpha.5", "1.0.0-alpha.4", "1.0.0-alpha.3", "1.0.0-alpha.2",
-						"1.0.0-alpha.1");
-
-		fixture.finishLookup(Lookup.COMPLETE_STATEMENT_SELECT_CHAR);
-		assertThat(packageJson).containsText("extension\": \"1.0.0-alpha.5\"");
+	static Stream<Arguments> exactVersionFinishChars() {
+		return Stream.of(Arguments.of(Lookup.COMPLETE_STATEMENT_SELECT_CHAR),
+				Arguments.of(Lookup.REPLACE_SELECT_CHAR));
 	}
 
 	@Test

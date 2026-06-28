@@ -82,7 +82,7 @@ class UpgradeCandidateUnitTests {
 
 		ArtifactId core = ArtifactId.of("org.springframework", "spring-core");
 		ArtifactId web = ArtifactId.of("org.springframework", "spring-web");
-		UpgradeGroup group = UpgradeGroup.of(List.of(member(core), member(web)));
+		UpgradeGroup group = UpgradeGroup.of(member(core), member(web));
 
 		DependencySiteQuery query = group.toQuery();
 

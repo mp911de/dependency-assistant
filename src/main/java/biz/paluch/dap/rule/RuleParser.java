@@ -18,6 +18,7 @@ package biz.paluch.dap.rule;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.json.psi.JsonArray;
@@ -210,7 +211,7 @@ class RuleParser {
 			return null;
 		}
 		try {
-			return UpgradeStrategy.valueOf(value.toUpperCase());
+			return UpgradeStrategy.valueOf(value.toUpperCase(Locale.ROOT));
 		} catch (IllegalArgumentException ex) {
 			LOG.warn("Ignoring unknown upgrade strategy '%s' in %s".formatted(value, file.getName()));
 			return null;

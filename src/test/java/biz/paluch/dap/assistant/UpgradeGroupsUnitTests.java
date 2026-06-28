@@ -24,12 +24,12 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectId;
@@ -436,23 +436,17 @@ class UpgradeGroupsUnitTests {
 			@Nullable String property, String... versions) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
-		ArtifactVersion current = ArtifactVersion.of(versions[0]);
 
-		Dependency dependency = new Dependency(id, current);
+		Dependency dependency = new Dependency(id, ArtifactVersion.of(versions[0]));
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(property != null ? VersionSource.property(property)
 				: VersionSource.declared(versions[0]));
 
-		List<DeclarationSite> sites = new ArrayList<>();
-		for (String version : versions) {
-			sites.add(new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of(groupId, artifactId),
-					new Dependency(id, ArtifactVersion.of(version))));
-		}
-
 		return new UpgradeCandidate(
-				new DependencyUpdateCandidate(dependency, Releases.of(Release.of(versions[0])),
+				new DependencyUpdateCandidate(dependency, TestReleases.from(versions[0]),
 						VulnerabilityRepository.empty(), rule),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(sites, it -> null, null));
+				TestInterfaceAssistant.INSTANCE,
+				DeclaredVersions.from(declarationSites(id, versions), it -> null, null));
 	}
 
 	private static UpgradeCandidate released(String groupId, String artifactId, String current,
@@ -468,13 +462,9 @@ class UpgradeGroupsUnitTests {
 		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "x"),
 				ProjectId.of(groupId, artifactId), new Dependency(id, currentVersion));
 
-		List<Release> releases = new ArrayList<>();
-		for (String version : releaseVersions) {
-			releases.add(Release.of(version));
-		}
-
 		return new UpgradeCandidate(
-				new DependencyUpdateCandidate(dependency, Releases.of(releases), VulnerabilityRepository.empty()),
+				new DependencyUpdateCandidate(dependency, TestReleases.from(releaseVersions),
+						VulnerabilityRepository.empty()),
 				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(List.of(site), it -> null, null));
 	}
 
@@ -501,23 +491,26 @@ class UpgradeGroupsUnitTests {
 			@Nullable String property, String... declaredVersions) {
 
 		ArtifactId id = artifact.toArtifactId();
-		ArtifactVersion current = ArtifactVersion.of(declaredVersions[0]);
 
-		Dependency dependency = new Dependency(id, current);
+		Dependency dependency = new Dependency(id, ArtifactVersion.of(declaredVersions[0]));
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(property != null ? VersionSource.property(property)
 				: VersionSource.declared(declaredVersions[0]));
 
-		List<DeclarationSite> sites = new ArrayList<>();
-		for (String version : declaredVersions) {
-			sites.add(new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of(id.groupId(),
-					id.artifactId()), new Dependency(id, ArtifactVersion.of(version))));
-		}
-
 		Releases releases = Releases.of(artifact.getVersionOptions());
 		return new UpgradeCandidate(
 				new DependencyUpdateCandidate(dependency, releases, VulnerabilityRepository.empty(), rule), assistant,
-				DeclaredVersions.from(sites, it -> null, null));
+				DeclaredVersions.from(declarationSites(id, declaredVersions), it -> null, null));
+	}
+
+	private static List<DeclarationSite> declarationSites(ArtifactId id, String... versions) {
+
+		List<DeclarationSite> sites = new ArrayList<>();
+		for (String version : versions) {
+			sites.add(new DeclarationSite(new MockVirtualFile("pom.xml", "x"),
+					ProjectId.of(id.groupId(), id.artifactId()), new Dependency(id, ArtifactVersion.of(version))));
+		}
+		return sites;
 	}
 
 	static class OtherEcosystemAssistant extends TestInterfaceAssistant {

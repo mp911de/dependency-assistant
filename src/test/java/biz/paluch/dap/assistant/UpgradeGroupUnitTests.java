@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -119,7 +120,7 @@ class UpgradeGroupUnitTests {
 				Vulnerabilities.clean()));
 		VulnerabilityRepository second = VulnerabilityRepository.of(Map.of(vulnerableVersion,
 				Vulnerabilities.of(vulnerability("CVE-2026-1"))));
-		UpgradeGroup group = UpgradeGroup.of(List.of(member("core", first), member("support", second)));
+		UpgradeGroup group = UpgradeGroup.of(member("core", first), member("support", second));
 
 		assertThat(group.getVulnerabilities(vulnerableVersion)).extracting(Vulnerability::getIdentifier)
 				.containsExactly("CVE-2026-1", "CVE-2026-2");
@@ -128,7 +129,7 @@ class UpgradeGroupUnitTests {
 	}
 
 	private static UpgradeGroup group(String... artifactIds) {
-		return UpgradeGroup.of(List.of(artifactIds).stream().map(UpgradeGroupUnitTests::member).toList());
+		return UpgradeGroup.of(Arrays.stream(artifactIds).map(UpgradeGroupUnitTests::member).toList());
 	}
 
 	private static UpgradeCandidate member(String artifactId) {

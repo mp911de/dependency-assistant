@@ -16,13 +16,11 @@
 
 package biz.paluch.dap.upgrade;
 
-import java.util.Arrays;
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.fixtures.Releases;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
@@ -262,12 +260,8 @@ class UpgradeStrategyUnitTests {
 				biz.paluch.dap.artifact.Releases.of(artifact.getVersionOptions()));
 	}
 
-	private static Release select(UpgradeStrategy strategy, String currentVersion, String... versions) {
-
-		List<Release> releases = Arrays.stream(versions).map(Release::of).toList();
-
-		return strategy.select(ArtifactVersion.of(currentVersion),
-				biz.paluch.dap.artifact.Releases.of(releases));
+	private static Release select(UpgradeStrategy strategy, String currentVersion, String... releases) {
+		return strategy.select(ArtifactVersion.of(currentVersion), TestReleases.from(releases));
 	}
 
 }

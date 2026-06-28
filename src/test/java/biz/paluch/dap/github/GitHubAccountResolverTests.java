@@ -109,29 +109,7 @@ class GitHubAccountResolverTests {
 
 	private static GitHubAccountResolver resolver(List<GithubAccount> accounts, List<String> remoteHosts,
 			@Nullable GithubAccount defaultAccount, Function<GithubAccount, String> tokens) {
-		return new GitHubAccountResolver(null) {
-
-			@Override
-			protected Collection<GithubAccount> lookupAccounts() {
-				return accounts;
-			}
-
-			@Override
-			protected Collection<String> collectRemoteHosts() {
-				return remoteHosts;
-			}
-
-			@Override
-			protected @Nullable GithubAccount lookupDefaultAccount() {
-				return defaultAccount;
-			}
-
-			@Override
-			protected @Nullable String lookupToken(GithubAccount account) {
-				return tokens.apply(account);
-			}
-
-		};
+		return new TestGitHubAccountResolver(accounts, remoteHosts, defaultAccount, tokens);
 	}
 
 	private static GithubAccount account(String id, String name, GithubServerPath server) {
@@ -148,6 +126,48 @@ class GitHubAccountResolverTests {
 			}
 			return null;
 		};
+	}
+
+	private static class TestGitHubAccountResolver extends GitHubAccountResolver {
+
+		private final Collection<GithubAccount> accounts;
+
+		private final Collection<String> remoteHosts;
+
+		private final @Nullable GithubAccount defaultAccount;
+
+		private final Function<GithubAccount, String> tokens;
+
+		TestGitHubAccountResolver(List<GithubAccount> accounts, List<String> remoteHosts,
+				@Nullable GithubAccount defaultAccount, Function<GithubAccount, String> tokens) {
+
+			super(null);
+			this.accounts = accounts;
+			this.remoteHosts = remoteHosts;
+			this.defaultAccount = defaultAccount;
+			this.tokens = tokens;
+		}
+
+		@Override
+		protected Collection<GithubAccount> lookupAccounts() {
+			return accounts;
+		}
+
+		@Override
+		protected Collection<String> collectRemoteHosts() {
+			return remoteHosts;
+		}
+
+		@Override
+		protected @Nullable GithubAccount lookupDefaultAccount() {
+			return defaultAccount;
+		}
+
+		@Override
+		protected @Nullable String lookupToken(GithubAccount account) {
+			return tokens.apply(account);
+		}
+
 	}
 
 }

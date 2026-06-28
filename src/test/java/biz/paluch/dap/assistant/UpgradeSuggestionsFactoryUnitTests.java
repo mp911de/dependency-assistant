@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -28,6 +27,7 @@ import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.Generations;
 import biz.paluch.dap.state.Cache;
@@ -52,7 +52,7 @@ class UpgradeSuggestionsFactoryUnitTests {
 	void addsSafeSuggestionFromVulnerabilities() {
 
 		Dependency dependency = dependency("1.0.0");
-		Releases releases = releases("1.0.0", "1.0.1", "1.0.2", "1.1.0");
+		Releases releases = TestReleases.from("1.0.0", "1.0.1", "1.0.2", "1.1.0");
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"), vulnerable(),
 				version("1.0.1"), vulnerable(), version("1.0.2"), Vulnerabilities.clean()));
 
@@ -66,7 +66,7 @@ class UpgradeSuggestionsFactoryUnitTests {
 	void omitsSafeSuggestionWhenCurrentVersionIsNotVulnerable() {
 
 		Dependency dependency = dependency("1.0.0");
-		Releases releases = releases("1.0.0", "1.0.1");
+		Releases releases = TestReleases.from("1.0.0", "1.0.1");
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
 				Vulnerabilities.clean(), version("1.0.1"), Vulnerabilities.clean()));
 
@@ -80,7 +80,7 @@ class UpgradeSuggestionsFactoryUnitTests {
 	void ruleFilteringKeepsSafeSuggestionAndDropsDisabledTiers() {
 
 		Dependency dependency = dependency("1.0.0");
-		Releases releases = releases("1.0.0", "1.0.1", "1.1.0");
+		Releases releases = TestReleases.from("1.0.0", "1.0.1", "1.1.0");
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"), vulnerable(),
 				version("1.0.1"), Vulnerabilities.clean()));
 
@@ -96,7 +96,7 @@ class UpgradeSuggestionsFactoryUnitTests {
 	void addsRuleSuggestionWhenCurrentVersionViolatesRule() {
 
 		Dependency dependency = dependency("3.0.0");
-		Releases releases = releases("3.0.0", "2.0.1", "2.0.0", "1.0.0");
+		Releases releases = TestReleases.from("3.0.0", "2.0.1", "2.0.0", "1.0.0");
 
 		UpgradeSuggestions suggestions = factory().createSuggestions(dependency, releases,
 				VulnerabilityRepository.empty(), new GenerationTwoRule());
@@ -116,13 +116,9 @@ class UpgradeSuggestionsFactoryUnitTests {
 		return ArtifactVersion.of(version);
 	}
 
-	private static Releases releases(String... versions) {
-		return Releases.of(List.of(versions).stream().map(Release::of).toList());
-	}
-
 	private static Vulnerabilities vulnerable() {
-		return Vulnerabilities.of(List.of(new Vulnerability("GHSA-x", "CVE-2026-1", "GHSA-x", "Boom", 8.1,
-				CvssSeverity.HIGH, "https://example.com")));
+		return Vulnerabilities.of(new Vulnerability("GHSA-x", "CVE-2026-1", "GHSA-x", "Boom", 8.1,
+				CvssSeverity.HIGH, "https://example.com"));
 	}
 
 	private static class PatchOnlyRule implements DependencyRule {

@@ -29,7 +29,7 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
-import com.intellij.openapi.progress.ProgressIndicator;
+import biz.paluch.dap.fixtures.TestReleaseSource;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -211,23 +211,7 @@ class FetchPlanUnitTests {
 
 	private static ReleaseSources releaseSources(String... ids) {
 		return new ReleaseSources(ARTIFACT_ID, PackageSystem.MAVEN,
-				Arrays.stream(ids).map(FetchPlanUnitTests::source).toList());
-	}
-
-	private static ReleaseSource source(String id) {
-		return new ReleaseSource() {
-
-			@Override
-			public String getId() {
-				return id;
-			}
-
-			@Override
-			public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
-				return List.of();
-			}
-
-		};
+				Arrays.stream(ids).<ReleaseSource>map(TestReleaseSource::new).toList());
 	}
 
 }

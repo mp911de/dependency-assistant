@@ -18,7 +18,7 @@ package biz.paluch.dap.artifact;
 
 import java.util.List;
 
-import com.intellij.openapi.progress.ProgressIndicator;
+import biz.paluch.dap.fixtures.TestReleaseSource;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -36,7 +36,7 @@ class ReleaseSourcesUnitTests {
 	void exposesSourceIdentifiersInOrder() {
 
 		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
-				List.of(source("central"), source("portal")));
+				List.of(new TestReleaseSource("central"), new TestReleaseSource("portal")));
 
 		assertThat(sources.sourceIds()).containsExactly("central", "portal");
 	}
@@ -45,7 +45,7 @@ class ReleaseSourcesUnitTests {
 	void retainsSourcesAcceptedByPredicate() {
 
 		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
-				List.of(source("central"), source("github")));
+				List.of(new TestReleaseSource("central"), new TestReleaseSource("github")));
 
 		assertThat(sources.filter(source -> source.getId().equals("github")).sourceIds()).containsExactly("github");
 	}
@@ -54,25 +54,9 @@ class ReleaseSourcesUnitTests {
 	void keepsAllSourcesWhenPredicateRejectsEveryone() {
 
 		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
-				List.of(source("central"), source("portal")));
+				List.of(new TestReleaseSource("central"), new TestReleaseSource("portal")));
 
 		assertThat(sources.filter(source -> false).sourceIds()).containsExactly("central", "portal");
-	}
-
-	private static ReleaseSource source(String id) {
-		return new ReleaseSource() {
-
-			@Override
-			public String getId() {
-				return id;
-			}
-
-			@Override
-			public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
-				return List.of();
-			}
-
-		};
 	}
 
 }

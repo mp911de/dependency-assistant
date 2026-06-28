@@ -6,8 +6,9 @@ Mark Paluch
 
 image:{github}/actions/workflows/build.yml/badge.svg?branch=main[Build Status (GitHub Workflow Build), link={github}/actions?query=workflow%3ABuild+branch%3Amain]
 
-An https://plugins.jetbrains.com[IntelliJ IDEA] plugin that helps you upgrade dependencies declared in Maven, Gradle, GitHub Actions, NPM, Antora, Maven Wrapper, and Gradle Wrapper projects.
+An https://plugins.jetbrains.com[IntelliJ IDEA] plugin that helps you upgrade dependencies declared in Maven, Gradle, GitHub Actions, NPM, and Antora projects, plus Maven and Gradle wrapper properties.
 Dependency Assistant resolves available releases from the relevant repositories, registries, or release feeds and can apply updates selectively.
+When JetBrains Package Checker is available in the IDE, known Maven and npm vulnerabilities can be shown alongside versions.
 
 == Features
 
@@ -17,6 +18,7 @@ Dependency Assistant resolves available releases from the relevant repositories,
 * Suggests update candidates and lets you pick target versions.
 * Uses ecosystem-specific release metadata sources, including Maven repositories, the Gradle Plugin Portal, Gradle distribution metadata, GitHub, Git tags, and npmjs.
 * Supports Maven repository credentials declared in Maven `settings.xml` when they can be resolved by the active Maven installation.
+* Shows Package Checker vulnerability information for Maven and npm packages when available, and can suggest remediation.
 * Inspections for Maven and Gradle wrappers.
 * Inspection for Version and Declaration drift.
 

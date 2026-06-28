@@ -613,7 +613,9 @@ public class Cache {
 	 * @return {@literal true} if at least one artifact entry is present.
 	 */
 	public boolean hasReleases() {
-		return !artifacts.isEmpty();
+		synchronized (artifacts) {
+			return !artifacts.isEmpty();
+		}
 	}
 
 	/**

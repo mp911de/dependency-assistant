@@ -16,11 +16,8 @@
 
 package biz.paluch.dap.support;
 
-import java.util.Arrays;
-
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import org.junit.jupiter.api.Test;
@@ -86,8 +83,7 @@ class UpgradeSuggestionsUnitTests {
 	}
 
 	private static UpgradeSuggestions from(String current, String... versions) {
-		Releases releases = Releases.of(Arrays.stream(versions).map(Release::of).toList());
-		return UpgradeSuggestions.from(version(current), releases);
+		return UpgradeSuggestions.from(version(current), TestReleases.from(versions));
 	}
 
 	private static ArtifactVersion version(String version) {

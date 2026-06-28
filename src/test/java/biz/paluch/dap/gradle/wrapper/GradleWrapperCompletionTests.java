@@ -56,10 +56,7 @@ class GradleWrapperCompletionTests {
 				.completionSuggests("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
-		assertThat(file)
-				.containsText("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip")
-				.caretAfter("gradle-9.5.1-bin.zip")
-				.doesNotContainText("distributionSha256Sum");
+		assertCompletedTo(file, "9.5.1");
 	}
 
 	@Test
@@ -84,10 +81,7 @@ class GradleWrapperCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(file)
-				.containsText("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip")
-				.caretAfter("gradle-9.5.1-bin.zip")
-				.doesNotContainText("distributionSha256Sum");
+		assertCompletedTo(file, "9.5.1");
 	}
 
 	@Test
@@ -100,10 +94,7 @@ class GradleWrapperCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(file)
-				.containsText("distributionUrl=https://services.gradle.org/distributions/gradle-9.5.1-bin.zip")
-				.caretAfter("gradle-9.5.1-bin.zip")
-				.doesNotContainText("distributionSha256Sum");
+		assertCompletedTo(file, "9.5.1");
 	}
 
 	@Test
@@ -133,6 +124,14 @@ class GradleWrapperCompletionTests {
 				.caretBetween("gradle-8.14.4", "-bin.zip")
 				.doesNotContainText("distributionSha256Sum=xyz")
 				.containsText("distributionSha256Sum=sha-8.14.4");
+	}
+
+	private void assertCompletedTo(PsiFile file, String version) {
+		assertThat(file)
+				.containsText("distributionUrl=https://services.gradle.org/distributions/gradle-%s-bin.zip"
+						.formatted(version))
+				.caretAfter("gradle-%s-bin.zip".formatted(version))
+				.doesNotContainText("distributionSha256Sum");
 	}
 
 }
