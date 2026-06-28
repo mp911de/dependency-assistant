@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.rule.DependencyRule;
@@ -341,9 +342,15 @@ class UpgradeGroupsUnitTests {
 		UpgradeGroups rows = UpgradeGroups.builder()
 				.add(released("io.example", "foo-core", "6.1.0", "5.0.0", "6.1.0", "6.1.1"))
 				.add(released("io.example", "foo-late", "6.1.0", "6.1.0", "6.1.1"))
+				.add(released("io.example", "foo-other", "6.1.0", "6.1.0", "6.2.0"))
 				.build();
 
-		assertThat(rows).singleElement().isInstanceOf(UpgradeGroup.class);
+		assertThat(rows).hasSize(2);
+		assertThat(rows).filteredOn(UpgradeGroup.class::isInstance).singleElement()
+				.isInstanceOfSatisfying(UpgradeGroup.class, group -> assertThat(group.getMembers())
+						.extracting(UpgradeCandidate::getArtifactId)
+						.containsExactly(ArtifactId.of("io.example", "foo-core"),
+								ArtifactId.of("io.example", "foo-late")));
 	}
 
 	@Test
@@ -442,8 +449,10 @@ class UpgradeGroupsUnitTests {
 					new Dependency(id, ArtifactVersion.of(version))));
 		}
 
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of(versions[0]))),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(sites, it -> null, null), rule);
+		return new UpgradeCandidate(
+				new DependencyUpdateCandidate(dependency, Releases.of(Release.of(versions[0])),
+						VulnerabilityRepository.empty(), rule),
+				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(sites, it -> null, null));
 	}
 
 	private static UpgradeCandidate released(String groupId, String artifactId, String current,
@@ -464,9 +473,9 @@ class UpgradeGroupsUnitTests {
 			releases.add(Release.of(version));
 		}
 
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(releases)),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(List.of(site), it -> null, null),
-				DependencyRule.absent());
+		return new UpgradeCandidate(
+				new DependencyUpdateCandidate(dependency, Releases.of(releases), VulnerabilityRepository.empty()),
+				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(List.of(site), it -> null, null));
 	}
 
 	private static UpgradeCandidate member(CachedArtifact artifact, String version, DependencyRule rule) {
@@ -506,8 +515,9 @@ class UpgradeGroupsUnitTests {
 		}
 
 		Releases releases = Releases.of(artifact.getVersionOptions());
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, releases), assistant,
-				DeclaredVersions.from(sites, it -> null, null), rule);
+		return new UpgradeCandidate(
+				new DependencyUpdateCandidate(dependency, releases, VulnerabilityRepository.empty(), rule), assistant,
+				DeclaredVersions.from(sites, it -> null, null));
 	}
 
 	static class OtherEcosystemAssistant extends TestInterfaceAssistant {

@@ -20,17 +20,21 @@ import java.util.HashSet;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.AvailableUpgrades;
-import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.support.UpgradeAvailable;
-import biz.paluch.dap.support.UpgradeSuggestion;
-import biz.paluch.dap.support.UpgradeSuggestionGroup;
+import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.upgrade.UpgradeAvailable;
+import biz.paluch.dap.upgrade.UpgradeSuggestion;
+import biz.paluch.dap.upgrade.UpgradeSuggestionGroup;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.daemon.HighlightDisplayKey;
+import com.intellij.codeInsight.intention.PriorityAction;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
+import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -45,20 +49,41 @@ public class DependencyVersionAnnotator implements Annotator {
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
+		DependencyUpgradeContext context = DependencyUpgradeContext.from(element);
 
-		ArtifactReferenceContext context = ArtifactReferenceContext.from(element);
 		if (context.isAbsent()) {
 			return;
 		}
 
-		AvailableUpgrades upgrades = context.suggestUpgrades();
-		if (!upgrades.isPresent()) {
+		UpgradeSuggestions suggestions = context.getSuggestions();
+		ArtifactDeclaration declaration = context.getArtifactReference().getDeclaration();
+
+		Vulnerabilities vulnerabilities = context.getCurrentVulnerabilities();
+		VulnerabilitiesPresentation vulnerability = null;
+		if (vulnerabilities.isVulnerable()) {
+			vulnerability = VulnerabilitiesPresentation.of(vulnerabilities);
+		}
+
+		if (suggestions.isEmpty()) {
+
+			if (vulnerability != null) {
+
+				AnnotationBuilder builder = holder
+						.newAnnotation(HighlightSeverity.WARNING,
+								declaration.getArtifactId() + ": " + vulnerability.getText())
+						.range(context.getHighlightRange(element));
+
+				builder.textAttributes(vulnerability.getTextAttributes());
+				builder.create();
+			}
+
 			return;
 		}
 
-		UpgradeSuggestion bestOption = upgrades.getUpgradeSuggestion();
-		String message = context.hasRule() ? bestOption.getSuggestionMessage() : bestOption.getMessage();
-		ArtifactDeclaration declaration = upgrades.getArtifactDeclaration();
+		UpgradeSuggestion bestOption = suggestions.getSuggestion();
+		String message = vulnerability != null ? vulnerability.getText()
+				: context.hasRule() ? bestOption.getSuggestionMessage() : bestOption.getMessage();
+
 		PsiElement versionLiteral = declaration.getVersionLiteral();
 		boolean sameFileDeclaration = true;
 
@@ -84,7 +109,9 @@ public class DependencyVersionAnnotator implements Annotator {
 						declaration.getArtifactId() + ": " + message)
 				.range(context.getHighlightRange(element));
 
-		if (context.hasRule()) {
+		if (vulnerability != null) {
+			builder.textAttributes(vulnerability.getTextAttributes());
+		} else if (context.hasRule()) {
 			builder.problemGroup(UpgradeSuggestionGroup.problemGroup())
 					.textAttributes(DependencyAssistantSeverities.UPGRADE_SUGGESTION_KEY);
 		} else {
@@ -98,26 +125,26 @@ public class DependencyVersionAnnotator implements Annotator {
 
 			Set<ArtifactVersion> seen = new HashSet<>();
 
-			UpdateDependencyVersionQuickFix fix = new UpdateDependencyVersionQuickFix(versionLiteral,
-					context.getDependencyContext(),
-					bestOption);
-			builder = builder.newFix(fix).key(key).registerFix();
-			seen.add(bestOption.getRelease().getVersion());
-
-			for (UpgradeSuggestion suggestion : upgrades.getUpgrades().values()) {
-				if (suggestion == bestOption || seen.contains(suggestion.getRelease().getVersion())) {
+			PriorityAction.Priority priority = PriorityAction.Priority.HIGH;
+			for (UpgradeSuggestion suggestion : suggestions.getSuggestions()) {
+				if (seen.contains(suggestion.getVersion())) {
 					continue;
 				}
-				builder = builder
-						.newFix(new UpdateDependencyVersionQuickFix(versionLiteral, context.getDependencyContext(),
-								suggestion))
-						.key(key)
-						.registerFix();
-				seen.add(bestOption.getRelease().getVersion());
+
+				DependencyUpdate update = DependencyUpdate.from(context.getArtifactReference(), suggestion);
+				UpdateDependencyVersionQuickFix fix = new UpdateDependencyVersionQuickFix(versionLiteral,
+						suggestion.getStrategy(), context.getReferenceContext(), update);
+				builder = builder.newFix(fix).key(key).registerFix();
+				seen.add(suggestion.getVersion());
+				if (!suggestion.getStrategy().isRemediation()
+						&& priority.ordinal() < PriorityAction.Priority.LOW.ordinal()) {
+					priority = PriorityAction.Priority.values()[priority.ordinal() + 1];
+				}
 			}
 		}
 
 		builder.create();
 	}
+
 
 }

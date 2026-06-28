@@ -22,8 +22,11 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactVersion} implementation for versions associated with a SHA
- * commit hash.
+ * {@link ArtifactVersion} implementation for versions resolved from a Git ref.
+ *
+ * <p>An instance optionally carries the resolved SHA-1 commit hash. A SHA-less
+ * instance (created through {@link #of(ArtifactVersion)}) represents a tag-only
+ * resolution where no commit hash is available.
  *
  * @author Mark Paluch
  */
@@ -46,7 +49,8 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 
 	/**
 	 * Create a {@code GitVersion} with an SHA.
-	 * @param sha the character SHA.
+	 * @param sha the full 40-character SHA-1 commit hash, or {@literal null} when
+	 * unavailable.
 	 * @param version the normalized delegate version.
 	 * @return the version.
 	 */
@@ -85,7 +89,9 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	/**
-	 * Return the resolved SHA-1 commit hash, or {@literal null} if unavailable.
+	 * Return the resolved SHA-1 commit hash truncated to its first 8 characters,
+	 * the full hash when it is 8 characters or shorter, or {@literal null} if
+	 * unavailable.
 	 */
 	@Nullable
 	public String getShortSha() {

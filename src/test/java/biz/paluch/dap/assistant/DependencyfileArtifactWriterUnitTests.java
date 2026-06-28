@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.DependencyfileArtifactWriter.ArtifactEntry;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.state.ProjectId;
@@ -110,9 +111,11 @@ class DependencyfileArtifactWriterUnitTests {
 		dependency.addVersionSource(VersionSource.declared(CURRENT.toString()));
 		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "// test"),
 				ProjectId.of("com.acme", "app"), new Dependency(artifactId, CURRENT));
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of(CURRENT))),
-				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null),
+		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(dependency,
+				Releases.of(Release.of(CURRENT)), VulnerabilityRepository.empty(),
 				new TestDependencyRule(dependencyName));
+		return new UpgradeCandidate(candidate,
+				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null));
 	}
 
 }

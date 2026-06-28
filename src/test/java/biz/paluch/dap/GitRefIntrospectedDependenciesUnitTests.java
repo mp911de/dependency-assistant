@@ -51,7 +51,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 	@Test
 	void completePromotesDeclarationWhenCacheMatchesVersion() {
 
-		Cache cache = cacheWith(ReleaseBuilder.cachedArtifact(CHECKOUT, releases -> releases
+		Cache cache = cacheWith(ReleaseBuilder.artifact(CHECKOUT, releases -> releases
 				.add("v4.2.0", "2024-10-01", SHA_V4)));
 
 		DependencyCollector collector = new DependencyCollector();
@@ -61,13 +61,16 @@ class GitRefIntrospectedDependenciesUnitTests {
 
 		Dependency usage = collector.getUsage(CHECKOUT);
 		assertThat(usage).isNotNull();
-		assertThat(usage.getCurrentVersion()).isInstanceOf(GitVersion.class).hasToString("v4.2.0");
+		assertThat(usage.getCurrentVersion()).isInstanceOfSatisfying(GitVersion.class, version -> {
+			assertThat(version).hasToString("v4.2.0");
+			assertThat(version.getSha()).isEqualTo(SHA_V4);
+		});
 	}
 
 	@Test
 	void completePromotesGitArtifactIdDeclarationWhenCacheMatchesByOwnerAndRepository() {
 
-		Cache cache = cacheWith(ReleaseBuilder.cachedArtifact(ANTORA_UI_CACHE_KEY, releases -> releases
+		Cache cache = cacheWith(ReleaseBuilder.artifact(ANTORA_UI_CACHE_KEY, releases -> releases
 				.add("v0.4.26", "2025-01-01", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
 
 		DependencyCollector collector = new DependencyCollector();
@@ -77,7 +80,10 @@ class GitRefIntrospectedDependenciesUnitTests {
 
 		Dependency usage = collector.getUsage(ANTORA_UI);
 		assertThat(usage).isNotNull();
-		assertThat(usage.getCurrentVersion()).isInstanceOf(GitVersion.class).hasToString("v0.4.26");
+		assertThat(usage.getCurrentVersion()).isInstanceOfSatisfying(GitVersion.class, version -> {
+			assertThat(version).hasToString("v0.4.26");
+			assertThat(version.getSha()).isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+		});
 	}
 
 	@Test
@@ -96,7 +102,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 	@Test
 	void completeDoesNotDisturbAlreadyResolvedUsage() {
 
-		Cache cache = cacheWith(ReleaseBuilder.cachedArtifact(CHECKOUT, releases -> releases
+		Cache cache = cacheWith(ReleaseBuilder.artifact(CHECKOUT, releases -> releases
 				.add("v4.2.0", "2024-10-01", SHA_V4)));
 
 		DependencyCollector collector = new DependencyCollector();

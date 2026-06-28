@@ -21,7 +21,7 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -109,14 +109,14 @@ public interface DependencyRule extends Predicate<ArtifactVersion> {
 
 	/**
 	 * Return the required generations, or the
-	 * {@linkplain Generations#unconstrained() unconstrained} instance if this
-	 * rule is {@linkplain #isPresent() absent} or unconstrained.
+	 * {@linkplain Generations#unconstrained() unconstrained} instance if this rule
+	 * is {@linkplain #absent() absent} or unconstrained.
 	 */
 	Generations getGenerations();
 
 	/**
 	 * Return the friendly dependency name, or an empty string if this rule is
-	 * {@linkplain #isPresent() absent}.
+	 * {@linkplain #absent() absent}.
 	 */
 	String getDependencyName();
 

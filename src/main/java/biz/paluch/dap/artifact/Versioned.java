@@ -122,11 +122,13 @@ public interface Versioned extends VersionAware {
 	 * <em>not</em> the unwrapped form. Call {@link #unwrap()} first if you need the
 	 * innermost version.
 	 *
-	 * @param mapper the mapping function to apply to a value, if present
-	 * @param <U>    The type of the value returned from the mapping function
-	 * @return an {@link Optional} describing the result of applying a mapping
-	 * function to the value of this {@code Versioned}, if a value is present,
-	 * otherwise an empty {@code link}.
+	 * @param <U> the type of the value returned from the mapping function.
+	 * @param mapper the mapping function to apply to the version, if present; must
+	 * not be {@literal null}.
+	 * @return an {@link Optional} describing the result of applying the mapping
+	 * function to the version of this {@code Versioned} when a version is present,
+	 * or an empty {@link Optional} when this container is unversioned or the mapper
+	 * returns {@literal null}.
 	 */
 	default <U> @Nullable Optional<U> map(Function<? super ArtifactVersion, ? extends U> mapper) {
 		Assert.notNull(mapper, "Mapper must not be null");

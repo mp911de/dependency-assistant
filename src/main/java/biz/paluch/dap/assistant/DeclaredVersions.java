@@ -34,7 +34,7 @@ import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectUtil;
@@ -248,8 +248,8 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 	}
 
 	/**
-	 * Return the lowest version the artifact is declared at, used as the upgrade
-	 * baseline.
+	 * Return the lowest version the artifact is declared at, the most conservative
+	 * declared version across all sites.
 	 *
 	 * @return the last version according to the artifact version ordering.
 	 * @throws IllegalStateException if no version was found.

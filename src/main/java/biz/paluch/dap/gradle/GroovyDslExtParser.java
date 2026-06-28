@@ -55,7 +55,7 @@ class GroovyDslExtParser {
 	 * </pre>
 	 *
 	 * @param file a Groovy {@code .gradle} file.
-	 * @return a map of property key to literal string value.
+	 * @return a map of property key to its {@link PropertyValue}.
 	 */
 	public static Map<String, PropertyValue> parseExtProperties(PsiFile file) {
 
@@ -103,17 +103,15 @@ class GroovyDslExtParser {
 
 	/**
 	 * Parse script-level variable declarations from the given file.
-	 * <p>
-	 * Supported forms:
+	 * <p>Supported forms:
 	 *
 	 * <pre class="code">
 	 * def springVersion = '6.1.0'
-	 * val springVersion = '6.1.0'
 	 * String springVersion = '6.1.0'
 	 * </pre>
 	 *
 	 * @param file a Groovy {@code .gradle} file.
-	 * @return a map of variable name to its literal string value.
+	 * @return a map of variable name to its {@link PropertyValue}.
 	 */
 	public static Map<String, PropertyValue> parseLocalVariables(PsiFile file) {
 

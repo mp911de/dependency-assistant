@@ -17,9 +17,8 @@
 package biz.paluch.dap.npm;
 
 import java.util.List;
-import java.util.Optional;
 
-import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
@@ -58,7 +57,10 @@ class NpmDependencyCollector {
 	}
 
 	/**
-	 * Collect NPM dependencies from the given {@code package.json} file.
+	 * Parse the given {@code package.json} file and register each accepted entry
+	 * with the given collector.
+	 * @param file the JSON PSI file to scan.
+	 * @param collector the collector to populate with declarations and usages.
 	 */
 	void doCollect(PsiFile file, DependencyCollector collector) {
 
@@ -66,32 +68,23 @@ class NpmDependencyCollector {
 		for (NpmDependency dependency : dependencies) {
 
 			VersionSource versionSource = dependency.versionSource();
-			collector.registerDeclaration(dependency.artifactId(), DeclarationSource.dependency(), versionSource);
+			collector.registerDeclaration(dependency.artifactId(), dependency.declarationSource(), versionSource);
 
 			if (!versionSource.isDefined() || versionSource.isPrefix()) {
 				continue;
 			}
 
 			if (dependency.version() instanceof NpmVersionExpression.Git git) {
-				Optional<GitVersion> version = gitVersionResolver.resolve(dependency.artifactId(), git.text());
-				if (version.isPresent()) {
-					version.ifPresent(it -> {
-						collector.registerUsage(dependency.artifactId(), it, DeclarationSource.dependency(),
-								versionSource);
-					});
-				} else {
-					collector.registerUsage(dependency.artifactId(), new GitRef(git.text()),
-							DeclarationSource.dependency(),
-							versionSource);
-				}
+
+				GitVersion resolved = gitVersionResolver.resolve(dependency.artifactId(), git.text()).orElse(null);
+				ArtifactVersion gitVersion = resolved != null ? resolved : new GitRef(git.text());
+				collector.registerUsage(dependency.artifactId(), gitVersion, dependency.declarationSource(),
+						versionSource);
 			} else {
-				dependency.artifactVersion().ifPresent(version -> {
-					collector.registerUsage(dependency.artifactId(), version, DeclarationSource.dependency(),
-							versionSource);
-				});
+				dependency.artifactVersion().ifPresent(version -> collector.registerUsage(dependency.artifactId(),
+						version, dependency.declarationSource(), versionSource));
 			}
 		}
 	}
-
 
 }

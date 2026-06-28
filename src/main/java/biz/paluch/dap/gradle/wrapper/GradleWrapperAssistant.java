@@ -27,6 +27,7 @@ import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.gradle.GradleDistributionService;
 import biz.paluch.dap.lookup.LookupContext;
@@ -35,9 +36,9 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -60,7 +61,9 @@ import icons.GradleIcons;
 import org.springframework.util.Assert;
 
 /**
- * Gradle Wrapper implementation of {@link DependencyAssistant}.
+ * {@link DependencyAssistant} that discovers {@code gradle-wrapper.properties}
+ * files, extracts the Gradle distribution version from the
+ * {@code distributionUrl}, and offers upgrades for the wrapper distribution.
  *
  * @author Mark Paluch
  */
@@ -74,6 +77,11 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 	@Override
 	public String getDisplayName() {
 		return GradleWrapperInterface.INSTANCE.getDisplayName();
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.OTHER;
 	}
 
 	@Override
@@ -155,6 +163,11 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return GradleWrapperInterface.INSTANCE;
+		}
+
+		@Override
+		public PackageSystem getPackageSystem() {
+			return PackageSystem.OTHER;
 		}
 
 		@Override

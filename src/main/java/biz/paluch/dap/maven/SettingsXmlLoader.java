@@ -71,7 +71,8 @@ class SettingsXmlLoader {
 	 * Loads credentials from the Maven settings files applicable to the given
 	 * project.
 	 * @param project the IntelliJ project.
-	 * @return map from server {@code <id>} to credentials.
+	 * @return the merged server credentials and mirrors, or
+	 * {@link MavenSettings#empty()} when no settings apply.
 	 */
 	public static MavenSettings load(Project project) {
 

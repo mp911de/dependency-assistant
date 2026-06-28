@@ -19,6 +19,7 @@ package biz.paluch.dap.npm;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
@@ -83,7 +84,14 @@ class NpmPackageParserTests {
 		List<NpmDependency> dependencies = parser.parse(packageJson);
 
 		assertThat(dependencies).hasSize(1);
-		assertThat(dependencies.getFirst().version()).isInstanceOf(NpmVersionExpression.Alias.class);
+		assertThat(dependencies.getFirst().artifactId()).isEqualTo(ArtifactId.of("alias", "alias"));
+		assertThat(dependencies.getFirst().version()).isInstanceOfSatisfying(NpmVersionExpression.Alias.class,
+				alias -> {
+					assertThat(alias.packageName()).isEqualTo("@ankurk91/bootstrap-vue");
+					assertThat(alias.text()).isEqualTo("3.0.2");
+					assertThat(alias.renderUpdate(ArtifactVersion.of("3.1.0")))
+							.isEqualTo("npm:@ankurk91/bootstrap-vue@^3.1.0");
+				});
 	}
 
 	@Test

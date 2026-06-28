@@ -45,6 +45,7 @@ import com.intellij.psi.PsiFile;
  * @param fileType the file type used to syntax-highlight the preview.
  * @author Mark Paluch
  */
+// TODO: Polishing
 record DependencySitePresentation(DependencySiteSearchHit finding, String label, String location, String previewText,
 		FileType fileType) {
 

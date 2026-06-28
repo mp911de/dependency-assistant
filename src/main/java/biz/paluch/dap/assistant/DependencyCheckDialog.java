@@ -23,8 +23,16 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -42,16 +50,19 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.checker.ShieldStyle;
+import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
+import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ReleaseDateFormatter;
+import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.EditorSchemes;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
@@ -90,7 +101,8 @@ import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Dialog showing Maven dependency versions and update suggestions.
+ * Dialog showing declared dependency versions and update suggestions across all
+ * supported build tools (Maven, Gradle, GitHub Actions, NPM, and Antora).
  *
  * @author Mark Paluch
  */
@@ -221,8 +233,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 					new CurrentVersionColumn(), new UpgradeTargetsColumn(review), new UpdateToColumn(review),
 					new DoUpdateColumn(review));
 			this.table = new DependencyUpdateTable(tableModel, escapeHandler, onNavigate, onContextMenu);
-			this.strategyComboBox = new ComboBox<>(
-					UpgradeReview.UpgradeStrategies.values());
+			this.strategyComboBox = new ComboBox<>(strategyOptions(review));
 			this.filterVersionsCheckBox = new JCheckBox(MessageBundle.message("dialog.filter.version.suggestions"),
 					this.review.isHideUpToDate());
 
@@ -343,7 +354,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			TableViewSpeedSearch<UpgradeCandidate> speedSearch = new TableViewSpeedSearch<>(table, null) {
 
 				@Override
-				protected @Nullable String getItemText(UpgradeCandidate item) {
+				protected String getItemText(UpgradeCandidate item) {
 					return item.getArtifactId() + " " + item.getDependencyName() + " " + item.getRowLabel();
 				}
 
@@ -391,6 +402,22 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		/**
+		 * Return the upgrade-strategy entries to offer: the {@code Safe} entry is added
+		 * only when at least one unfiltered candidate is vulnerable.
+		 */
+		private static UpgradeReview.UpgradeStrategies[] strategyOptions(UpgradeReview review) {
+
+			List<UpgradeReview.UpgradeStrategies> options = new ArrayList<>();
+			for (UpgradeReview.UpgradeStrategies strategy : UpgradeReview.UpgradeStrategies.values()) {
+				if (strategy == UpgradeReview.UpgradeStrategies.SAFE && !review.isSafeStrategyAvailable()) {
+					continue;
+				}
+				options.add(strategy);
+			}
+			return options.toArray(UpgradeReview.UpgradeStrategies[]::new);
+		}
+
+		/**
 		 * Row-height floor matching the upgrades column button strip so rows keep the
 		 * same height whether or not any row offers strategy buttons.
 		 */
@@ -398,7 +425,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			int height = 0;
 			for (UpgradeStrategy strategy : UPGRADE_TARGET_STRATEGIES) {
-				height = Math.max(height, strategyIconSize(VersionAge.fromTarget(strategy).getIcon()).height);
+				height = Math.max(height, strategyIconSize(DependencyUpgradeIcons.resolveIcon(strategy)).height);
 			}
 			return height;
 		}
@@ -456,7 +483,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 	private void applyUpdates(List<DependencyUpdate> updates, List<DependencyAssistant> assistants,
 			ProgressIndicator indicator) {
 
-		Set<AppliedDependencyUpdate> applied = new TreeSet<>();
+		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
+		AppliedUpdates applied = new AppliedUpdates();
 		new BuildActionDelegate(project, (file, fileUpdates) -> {
 
 			indicator.checkCanceled();
@@ -468,19 +496,45 @@ public class DependencyCheckDialog extends DialogWrapper {
 				}
 
 				ProjectDependencyContext context = dependencyAssistant.createContext(file);
-				if (context.isAvailable()) {
-					indicator.checkCanceled();
-					context.applyUpdates(file, fileUpdates);
+				if (!context.isAvailable()) {
+					continue;
+				}
 
-					for (DependencyUpdate fileUpdate : fileUpdates) {
-						applied.add(new AppliedDependencyUpdate(fileUpdate.coordinate(), fileUpdate.from(),
-								fileUpdate.version()));
-					}
+				indicator.checkCanceled();
+				context.applyUpdates(file, fileUpdates);
+
+				for (DependencyUpdate fileUpdate : fileUpdates) {
+
+					DependencyRule rule = ruleService.resolve(ResolutionContext.of(fileUpdate.artifactId(),
+							fileUpdate.declarationSources(), BranchSource.of(file), context.getProjectVersion()));
+
+					applied.record(file.getVirtualFile(), fileUpdate, rule);
 				}
 			}
 		}).updateBuildFiles(files, updates);
 
-		Notifications.updatesApplied(project, applied);
+		Runnable undo = () -> {
+
+			BuildActionDelegate delegate = new BuildActionDelegate(project, (file, fileUpdates) -> {
+
+				for (DependencyAssistant dependencyAssistant : assistants) {
+					if (!dependencyAssistant.supports(file)) {
+						continue;
+					}
+
+					ProjectDependencyContext context = dependencyAssistant.createContext(file);
+					if (!context.isAvailable()) {
+						continue;
+					}
+
+					context.applyUpdates(file, fileUpdates);
+				}
+			});
+
+			delegate.updateBuildFiles(applied.getReverseFiles(), applied.getReverse());
+		};
+
+		Notifications.updatesApplied(project, applied.applied(), undo);
 	}
 
 	class ApplyUpdatesTask extends Task.Backgroundable {
@@ -816,7 +870,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				UpgradeCandidate candidate = ModelUtil.getRow(table, row);
 				DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
-				DependencyRuleEvaluator rule = candidate.getRuleResult();
+				DependencyRuleEvaluator rule = candidate.getRuleEvaluator();
 
 				if (declaredVersions.hasVersionDrift()) {
 					setIcon(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
@@ -988,7 +1042,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private static ActionButton createButton(UpgradeStrategy strategy, Runnable action) {
 
-			Icon icon = VersionAge.fromTarget(strategy).getIcon();
+			Icon icon = DependencyUpgradeIcons.resolveIcon(strategy);
 			String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
 
 			AnAction buttonAction = new AnAction(shortLabel, null, icon) {
@@ -1064,7 +1118,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			this.review = review;
 			for (UpgradeStrategy strategy : UPGRADE_TARGET_STRATEGIES) {
 
-				Icon icon = VersionAge.fromTarget(strategy).getIcon();
+				Icon icon = DependencyUpgradeIcons.resolveIcon(strategy);
 				JLabel label = new JLabel(icon);
 				label.setHorizontalAlignment(SwingConstants.CENTER);
 				label.setPreferredSize(strategyIconSize(icon));
@@ -1146,7 +1200,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final ComboBox<Release> combo = new ComboBox<>();
 
-		private final VersionOptionCellRenderer optionRenderer = new VersionOptionCellRenderer();
+		private final VersionOptionCellRenderer optionRenderer;
 
 		/** Suppresses selection events while the combo is re-targeted to a row. */
 		private boolean refreshing;
@@ -1154,6 +1208,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		SuggestedVersionComboBoxEditor(UpgradeReview review) {
 
 			this.review = review;
+			this.optionRenderer = new VersionOptionCellRenderer(review);
 			combo.registerTableCellEditor(this);
 			combo.setRenderer(optionRenderer);
 			combo.setBorder(JBUI.Borders.empty(0, SUGGESTED_VERSION_CELL_PADDING));
@@ -1200,13 +1255,14 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final ComboBox<Release> combo = new ComboBox<>();
 
-		private final VersionOptionCellRenderer optionRenderer = new VersionOptionCellRenderer();
+		private final VersionOptionCellRenderer optionRenderer;
 
 		private final CollectionComboBoxModel<Release> model = new CollectionComboBoxModel<>(new ArrayList<>());
 
 		SuggestedVersionRenderer(UpgradeReview review) {
 
 			this.review = review;
+			this.optionRenderer = new VersionOptionCellRenderer(review);
 			combo.setModel(model);
 			combo.setRenderer(optionRenderer);
 			combo.setBorder(JBUI.Borders.empty(0, SUGGESTED_VERSION_CELL_PADDING));
@@ -1242,7 +1298,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private @Nullable UpgradeCandidate candidate;
 
-		VersionOptionCellRenderer() {
+		VersionOptionCellRenderer(UpgradeReview review) {
 			setIconTextGap(JBUI.scale(4));
 			setBorder(JBUI.Borders.empty());
 		}
@@ -1264,12 +1320,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 				text += " (" + formatter.format(value.releaseDate()) + ")";
 			}
 
-			DependencyRule rule = candidate.getRule();
-			boolean valid = rule.test(value.getVersion());
-			append(text, valid ? SimpleTextAttributes.REGULAR_ATTRIBUTES : SimpleTextAttributes.GRAYED_ATTRIBUTES);
-			DependencyRuleEvaluator evaluated = candidate.evaluate(value.getVersion());
+			VersionStatus status = candidate.getStatus(value.getVersion());
+			append(text, status.isRuleViolation() ? SimpleTextAttributes.GRAYED_ATTRIBUTES
+					: SimpleTextAttributes.REGULAR_ATTRIBUTES);
 
-			setIcon(ModelUtil.getIcon(evaluated, candidate.getCurrentVersion(), value.getVersion()));
+			setIcon(status.getIcon(ShieldStyle.FILLED));
 		}
 
 	}

@@ -58,6 +58,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see UpgradeGroup
  */
+// TODO: Polishing
 public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 
 	private final List<UpgradeCandidate> groups;
@@ -258,7 +259,7 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 					return;
 				}
 
-				firstMemberToGroup.put(line.getFirst(), UpgradeGroup.inferred(line, name.displayName()));
+				firstMemberToGroup.put(line.getFirst(), UpgradeGroup.inferred(line, name.getDisplayName()));
 				grouped.addAll(line);
 			});
 		});

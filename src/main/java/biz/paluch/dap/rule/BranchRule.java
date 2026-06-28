@@ -23,7 +23,7 @@ import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -152,11 +152,15 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * rule enforcing this branch's upgrade-strategy limits; otherwise
 	 * {@link DependencyRule#absent()} is returned.
 	 *
+	 * @param parentRules the parent rules consulted to resolve a friendly
+	 * dependency name when an artifact rule does not declare one.
 	 * @param artifactId the artifact to select a dependency rule for.
 	 * @param branchName the current branch name, can be {@literal null} if the
 	 * project is not versioned.
 	 * @param projectVersion the project version, can be {@literal null} if not
 	 * provided.
+	 * @param semanticUpgradingMode whether semantic version upgrading governs the
+	 * resolved rule.
 	 * @return the effective dependency rule.
 	 */
 	public DependencyRule select(Rules parentRules, ArtifactId artifactId, @Nullable String branchName,

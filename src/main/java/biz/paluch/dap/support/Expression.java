@@ -74,9 +74,12 @@ public abstract class Expression {
 	}
 
 	/**
-	 * Create a {@link Expression} from the given value.
+	 * Create a property {@link Expression} from the given value.
+	 * <p>The value is always treated as a property reference, regardless of whether
+	 * it contains placeholder syntax.
 	 *
-	 * @param value the source value.
+	 * @param value the property name.
+	 * @return a {@link Reference} for the given property name.
 	 */
 	@Contract("null -> fail; _ -> new")
 	public static Expression property(@Nullable String value) {
@@ -110,7 +113,7 @@ public abstract class Expression {
 	 * {@link PropertyResolver}. If this expression is a property reference, the
 	 * resolver will be used to resolve the property value; otherwise, the literal
 	 * value will be returned as-is.
-	 * @param propertyResolver the property resolve to use for resolving property
+	 * @param propertyResolver the property resolver to use for resolving property
 	 * references.
 	 * @return the resolved value.
 	 */
@@ -123,7 +126,7 @@ public abstract class Expression {
 	 * {@link PropertyResolver}. If this expression is a property reference, the
 	 * resolver will be used to resolve the property value; otherwise, the literal
 	 * value will be returned as-is.
-	 * @param propertyResolver the property resolve to use for resolving property
+	 * @param propertyResolver the property resolver to use for resolving property
 	 * references.
 	 * @return the resolved value.
 	 * @throws IllegalStateException if the expression is a property reference but

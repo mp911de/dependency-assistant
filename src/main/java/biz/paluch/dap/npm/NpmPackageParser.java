@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.DeclarationSource;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
 import com.intellij.json.psi.JsonProperty;
@@ -77,24 +78,22 @@ class NpmPackageParser {
 				continue;
 			}
 
-			collectFrom(dependenciesObject, result);
+			DeclarationSource declarationSource = key.equals("devDependencies") ? DeclarationSource.plugin()
+					: DeclarationSource.dependency();
+
+			for (JsonProperty entry : dependenciesObject.getPropertyList()) {
+
+				NpmDependency dependency = parseEntry(entry, declarationSource);
+				if (dependency != null) {
+					result.add(dependency);
+				}
+			}
 		}
 
 		return result;
 	}
 
-	private static void collectFrom(JsonObject dependenciesObject, List<NpmDependency> result) {
-
-		for (JsonProperty entry : dependenciesObject.getPropertyList()) {
-
-			NpmDependency dependency = parseEntry(entry);
-			if (dependency != null) {
-				result.add(dependency);
-			}
-		}
-	}
-
-	private static @Nullable NpmDependency parseEntry(JsonProperty entry) {
+	private static @Nullable NpmDependency parseEntry(JsonProperty entry, DeclarationSource declarationSource) {
 
 		String name = entry.getName();
 		if (!NAME_ALLOWLIST.matcher(name).matches()) {
@@ -111,7 +110,7 @@ class NpmPackageParser {
 		}
 
 		ArtifactId artifactId = expression.postProcess(toArtifactId(name));
-		return new NpmDependency(artifactId, expression);
+		return new NpmDependency(artifactId, expression, declarationSource);
 	}
 
 	/**

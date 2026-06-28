@@ -18,7 +18,7 @@ package biz.paluch.dap.maven.wrapper;
 
 import java.util.List;
 
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 
@@ -33,11 +33,13 @@ import com.intellij.modcommand.PsiUpdateModCommandAction;
 sealed interface MavenWrapperUrlProblem {
 
 	/**
+	 * Return the localized inspection message describing this problem.
 	 * @return the localized inspection message for this problem.
 	 */
 	String getMessage();
 
 	/**
+	 * Return the quick-fixes offered for this problem.
 	 * @param kind the wrapper URL property kind being inspected.
 	 * @return the specific quick-fixes offered for this problem, excluding the
 	 * generic "use default URL" fallback added by the inspection.

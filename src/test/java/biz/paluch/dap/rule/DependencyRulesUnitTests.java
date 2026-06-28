@@ -22,7 +22,7 @@ import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;

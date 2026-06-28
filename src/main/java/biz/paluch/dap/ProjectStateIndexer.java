@@ -38,11 +38,11 @@ import com.intellij.psi.PsiFile;
  * <p>The indexer enumerates anchor files through the assistant, derives a
  * {@link biz.paluch.dap.support.ProjectBuildContext} per anchor on demand, runs
  * phase-one collection for available anchors, then applies phase-two completion
- * via {@link IntrospectedDependencies}, invalidates and stores the resulting
- * collectors per project, and finally lets the introspection update the cache.
- * Read-action wrapping, progress reporting, availability guards, and
- * cancellation are handled here so build-tool integrations contribute only the
- * source component.
+ * via {@link IntrospectedDependencies}, and finally invalidates and stores the
+ * resulting collectors per project in the
+ * {@link biz.paluch.dap.state.ProjectState}. Read-action wrapping, progress
+ * reporting, availability guards, and cancellation are handled here so
+ * build-tool integrations contribute only the source component.
  *
  * @author Mark Paluch
  * @see DependencyAssistant
@@ -121,7 +121,7 @@ public class ProjectStateIndexer {
 		for (ActiveScan scan : active) {
 			ProjectState state = service.getProjectState(scan.context().getProjectId());
 			state.invalidateDependencies();
-			state.setDependencies(scan.collector());
+			state.setDependencies(scan.collector(), assistant.getPackageSystem());
 		}
 	}
 
@@ -182,7 +182,7 @@ public class ProjectStateIndexer {
 
 		ProjectState state = service.getProjectState(context.getProjectId());
 		state.invalidateDependencies();
-		state.setDependencies(collector);
+		state.setDependencies(collector, assistant.getPackageSystem());
 	}
 
 	private List<ActiveScan> collectPhase(DependencyAssistant assistant, IntrospectedDependencies introspected) {

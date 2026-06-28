@@ -59,7 +59,7 @@ public class DependencySearchResults implements Iterable<DependencySiteSearchHit
 	/**
 	 * Create results wrapping the given hits in iteration order.
 	 *
-	 * @param hits the located hits; must not be {@literal null}, may be empty.
+	 * @param hits the located hits, may be empty.
 	 * @return the results holding a defensive copy of the hits; never
 	 * {@literal null}.
 	 */

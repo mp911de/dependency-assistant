@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,26 +16,19 @@
 
 package biz.paluch.dap.artifact;
 
-import javax.swing.Icon;
-
-import com.intellij.icons.AllIcons;
-import com.intellij.openapi.util.ScalableIcon;
+import biz.paluch.dap.support.UpgradeStrategy;
 
 /**
- * Coarse presentation category for a candidate artifact version.
+ * Coarse relationship category for a candidate artifact version.
  *
- * <p>
- * {@code VersionAge} is the shared visual language for dependency update
- * candidates in completion lists, dialogs, and generated documentation. It
- * intentionally sits after version parsing and upgrade selection: callers use
- * {@link ArtifactVersion} to compare concrete versions and
- * {@link UpgradeStrategy} to select an update target, then use this type to
- * present the candidate with consistent impact semantics.
+ * <p>{@code VersionAge} intentionally sits after version parsing and upgrade
+ * selection: callers use {@link ArtifactVersion} to compare concrete versions
+ * and {@link UpgradeStrategy} to select an update target, then use this type to
+ * classify the candidate's relationship to the declared version.
  *
- * <p>
- * The categories are not an ordering contract. They describe the
- * relationship that is useful to a user reviewing an update: older, neutral,
- * patch, minor, major, preview, or a stable release target.
+ * <p>The categories are not an ordering contract. They describe the
+ * relationship useful to a user reviewing an update: older, neutral, patch,
+ * minor, major, or preview.
  *
  * @author Mark Paluch
  */
@@ -73,42 +66,7 @@ public enum VersionAge {
 	 * Newer milestone or release candidate. Preview status takes precedence over
 	 * patch/minor/major presentation because it communicates release stability.
 	 */
-	PREVIEW,
-
-	/**
-	 * Stable release target selected by policy rather than inferred from a concrete
-	 * version comparison.
-	 */
-	RELEASE,
-
-	/**
-	 * Align with dependency rule.
-	 */
-	RULE;
-
-
-	public static final Icon RULE_COMPLIANT = ((ScalableIcon) AllIcons.Actions.InlaySecuredShield).scale(1.3f);
-
-	/**
-	 * Return the presentation category for the given upgrade strategy.
-	 * <p>
-	 * The mapping bridges a user-selected strategy to the same categories used
-	 * for concrete versions. It does not inspect available releases; it only
-	 * expresses the expected impact of the selected strategy.
-	 * @param target the selected upgrade strategy
-	 * @return the corresponding presentation category
-	 */
-	public static VersionAge fromTarget(UpgradeStrategy target) {
-
-		return switch (target) {
-		case PATCH -> NEWER_PATCH;
-		case MINOR -> NEWER_MINOR;
-		case MAJOR, LATEST -> NEWER_MAJOR;
-		case PREVIEW -> PREVIEW;
-		case RELEASE -> RELEASE;
-		case RULE -> RULE;
-		};
-	}
+	PREVIEW;
 
 	/**
 	 * Return how the candidate version relates to the current version.
@@ -161,37 +119,6 @@ public enum VersionAge {
 		}
 
 		return NEWER_MAJOR;
-	}
-
-	/**
-	 * Return the IntelliJ icon associated with this category.
-	 */
-	public Icon getIcon() {
-		return switch (this) {
-		case OLDER -> AllIcons.Nodes.Library;
-		case RELEASE, NEWER_PATCH -> AllIcons.Actions.StartDebugger;
-		case NEWER_MINOR -> AllIcons.Debugger.ThreadRunning;
-		case NEWER_MAJOR -> AllIcons.Actions.RunAll;
-		case PREVIEW -> AllIcons.Debugger.DebuggerSync;
-		case SAME_OR_UNKNOWN -> AllIcons.Nodes.PpLibFolder;
-		case RULE -> RULE_COMPLIANT;
-		};
-	}
-
-	/**
-	 * Return the symbolic icon name used when rendering this category in
-	 * documentation.
-	 */
-	public String getIconName() {
-		return switch (this) {
-		case OLDER -> "AllIcons.Nodes.Library";
-		case RELEASE, NEWER_PATCH -> "AllIcons.Actions.StartDebugger";
-		case NEWER_MINOR -> "AllIcons.Debugger.ThreadRunning";
-		case NEWER_MAJOR -> "AllIcons.Actions.RunAll";
-		case PREVIEW -> "AllIcons.Debugger.DebuggerSync";
-		case SAME_OR_UNKNOWN -> "AllIcons.Nodes.PpLibFolder";
-		case RULE -> "AllIcons.Actions.InlaySecuredShield";
-		};
 	}
 
 }

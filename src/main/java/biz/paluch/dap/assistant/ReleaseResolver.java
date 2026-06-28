@@ -112,16 +112,13 @@ class ReleaseResolver {
 	 */
 	public ReleaseLookupResult getReleases(ReleaseSources sources, Consistency consistency) {
 		indicator.checkCanceled();
-
 		try {
-
 			if (consistency == Consistency.CACHED) {
 				Releases releases = cache.getReleases(sources.artifactId(), true);
 				if (!releases.isEmpty()) {
 					return ReleaseLookupResult.of(releases);
 				}
 			}
-
 			return fetchAndCache(sources, consistency);
 		} catch (ProcessCanceledException e) {
 			throw e;
@@ -145,8 +142,12 @@ class ReleaseResolver {
 
 		FetchResult result = fetch(sources);
 		FetchedReleases fetchedReleases = result.toFetchedReleases(fetchPlan);
-		cache.updateVersionOptions(fetchedReleases);
-		return ReleaseLookupResult.of(result.toReleases());
+
+		List<Release> newReleases = new ArrayList<>();
+		cache.updateVersionOptions(fetchedReleases, sources.packageSystem(),
+				(release, cached) -> newReleases.add(release));
+
+		return ReleaseLookupResult.of(result.toReleases(), Releases.of(newReleases));
 	}
 
 	private FetchResult fetch(ReleaseSources releaseSources) {
@@ -162,6 +163,8 @@ class ReleaseResolver {
 				try {
 					return new SourceAwareReleases(source, Releases.of(source.getReleases(artifactId, indicator)),
 							null);
+				} catch (ProcessCanceledException e) {
+					throw e;
 				} catch (Exception e) {
 					return new SourceAwareReleases(source, Releases.empty(), e);
 				}
@@ -183,6 +186,9 @@ class ReleaseResolver {
 			} catch (TimeoutException e) {
 				errors.add(new RuntimeException("Release source " + source.getId() + " timed out", e));
 			} catch (ExecutionException e) {
+				if (e.getCause() instanceof ProcessCanceledException pce) {
+					throw pce;
+				}
 				errors.add(e.getCause() instanceof RuntimeException re ? re
 						: new UndeclaredThrowableException(e.getCause()));
 			}
@@ -310,12 +316,14 @@ class ReleaseResolver {
 		CACHED,
 
 		/**
-		 * Bypass the cache.
+		 * Do not serve an already-cached result, but still fetch through the cache's
+		 * incremental {@link FetchPlan}, which may skip sources that are already up to
+		 * date.
 		 */
 		REFRESH,
 
 		/**
-		 * Bypass the cache completely.
+		 * Bypass the cache completely and perform a full fetch.
 		 */
 		RESET;
 	}

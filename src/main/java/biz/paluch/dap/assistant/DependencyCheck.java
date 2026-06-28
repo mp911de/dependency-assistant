@@ -36,12 +36,13 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.google.common.base.Supplier;
 import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -58,6 +59,10 @@ import com.intellij.openapi.project.Project;
  * @author Mark Paluch
  */
 class DependencyCheck {
+
+	private static final Logger LOG = Logger.getInstance(DependencyCheck.class);
+
+	private static final long VULNERABILITY_SCAN_TIMEOUT_SECONDS = 20;
 
 	private final Project project;
 
@@ -96,8 +101,8 @@ class DependencyCheck {
 		}).inSmartMode(project).executeSynchronously();
 		steps.nextStep();
 
-		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(steps, getArtifactSources(aggregator),
-				ReleaseResolver.cached());
+		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(steps,
+				aggregator.getReleaseSources(), ReleaseResolver.cached());
 		return aggregator.toDependencyCheckResult(releases, ruleService);
 	}
 
@@ -131,15 +136,7 @@ class DependencyCheck {
 		indexer.forEachAvailableEntry(assistant, (psiFile, context) -> {
 			aggregator.add(psiFile.getVirtualFile(), context, indicator);
 		});
-		return getArtifactSources(aggregator);
-	}
-
-	private List<ReleaseSources> getArtifactSources(DependencyCheckAggregator aggregator) {
-		List<ReleaseSources> candidates = new ArrayList<>();
-		aggregator.forEachArtifact((artifactId, releaseSources) -> {
-			candidates.add(new ReleaseSources(artifactId, releaseSources));
-		});
-		return candidates;
+		return aggregator.getReleaseSources();
 	}
 
 	/**
@@ -194,11 +191,17 @@ class DependencyCheck {
 			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency,
 			ExecutorService resolverExecutor, ExecutorService executor) {
 
-		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, artifactSources.size() + 1);
+		VulnerabilityScanner scanner = VulnerabilityScanner.create(project);
+		int stepCount = artifactSources.size() + 1;
+		if (scanner.isPresent()) {
+			stepCount++;
+		}
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, stepCount);
 		steps.setIndeterminate(false);
 
 		Cache cache = service.getCache();
 		ReleaseResolver resolver = new ReleaseResolver(resolverExecutor, indicator, cache);
+
 		Map<ArtifactId, Future<ReleaseLookupResult>> futures = new LinkedHashMap<>();
 
 		for (ReleaseSources artifactSource : artifactSources) {
@@ -208,14 +211,14 @@ class DependencyCheck {
 				String name = artifactSource.artifactId().toString();
 				indicator.setText(MessageBundle.message("action.check.dependency.loading", name));
 				ReleaseLookupResult result = resolver.getReleases(artifactSource, consistency);
+
 				indicator.setText(MessageBundle.message("action.check.dependency.checked", name));
 				steps.nextStep();
 				return result;
 			};
 
-			futures.put(artifactSource.artifactId(), executor.submit(() -> lookupReleaseSupplier.get()));
+			futures.put(artifactSource.artifactId(), executor.submit(lookupReleaseSupplier::get));
 		}
-
 
 		steps.nextStep();
 
@@ -265,8 +268,54 @@ class DependencyCheck {
 			}
 		}
 
+		if (scanner.isPresent()) {
+			indicator.setText(MessageBundle.message("action.check.dependency.vulnerability-scan"));
+			scanNewReleasesBestEffort(scanner, artifactSources, results);
+		}
+		steps.nextStep();
+
 		cache.recordUpdate();
 		return results;
+	}
+
+	/**
+	 * Scan the releases this check newly surfaced across all artifacts as one bulk
+	 * delta scan, blocking only until a bounded timeout so a slow or failing scan
+	 * never holds up release loading. Cancellation propagates; every other failure
+	 * is swallowed and the unstamped releases are retried by the PostStartup sweep.
+	 */
+	private void scanNewReleasesBestEffort(VulnerabilityScanner scanner, List<ReleaseSources> artifactSources,
+			Map<ArtifactId, ReleaseLookupResult> results) {
+
+		List<VulnerabilityScanner.NewReleases> batch = new ArrayList<>();
+		for (ReleaseSources artifactSource : artifactSources) {
+			ReleaseLookupResult result = results.get(artifactSource.artifactId());
+			if (result != null && result.error() == null) {
+				batch.add(new VulnerabilityScanner.NewReleases(artifactSource.artifactId(),
+						artifactSource.packageSystem(), result.newReleases()));
+			}
+		}
+
+		if (batch.isEmpty()) {
+			return;
+		}
+
+		try {
+			scanner.scanNewReleases(batch).get(VULNERABILITY_SCAN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+		} catch (ProcessCanceledException e) {
+			throw e;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		} catch (ExecutionException e) {
+			if (e.getCause() instanceof ProcessCanceledException pce) {
+				throw pce;
+			}
+			LOG.warn("Bulk vulnerability delta scan failed", e);
+		} catch (TimeoutException e) {
+			// ponytail: bounded best-effort. The unstamped releases stay unscanned and
+			// the PostStartup sweep picks them up on a later session.
+			LOG.warn("Bulk vulnerability delta scan timed out");
+		}
 	}
 
 	private static void cancelRemainingFutures(Map<ArtifactId, Future<ReleaseLookupResult>> futures) {

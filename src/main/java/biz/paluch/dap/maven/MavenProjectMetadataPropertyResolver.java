@@ -42,7 +42,8 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 	private final @Nullable PropertyValue parentVersion;
 
 	/**
-	 * Create a new {@code PropertyResolver} for {@link XmlFile}
+	 * Create a new {@code MavenProjectMetadataPropertyResolver} for the given POM
+	 * file.
 	 * @param pom the POM file providing project coordinates.
 	 */
 	MavenProjectMetadataPropertyResolver(XmlFile pom) {

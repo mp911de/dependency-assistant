@@ -17,11 +17,11 @@
 package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.maven.MavenFixtures;
+import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -75,6 +75,7 @@ class ApplyAllUpgradesIntentionTests {
 	void appliesAllUpgradesOfSameStrategy(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
+		fixture.doHighlighting();
 		invoke(pomFile, UpgradeStrategy.MAJOR);
 
 		assertThat(pomFile).containsText("1.0.1") // vavr
@@ -88,6 +89,7 @@ class ApplyAllUpgradesIntentionTests {
 	void skipsDeclarationsWithoutUpgradeForStrategy(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
+		fixture.doHighlighting();
 		invoke(pomFile, UpgradeStrategy.PATCH);
 
 		// no 0.11.x patch release cached for vavr/vavr-match

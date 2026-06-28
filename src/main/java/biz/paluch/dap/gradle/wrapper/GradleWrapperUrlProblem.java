@@ -18,7 +18,7 @@ package biz.paluch.dap.gradle.wrapper;
 
 import java.util.List;
 
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 

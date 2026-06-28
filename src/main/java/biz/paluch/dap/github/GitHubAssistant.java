@@ -33,6 +33,7 @@ import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -40,9 +41,9 @@ import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.plugins.PluginManagerCore;
@@ -94,6 +95,11 @@ public class GitHubAssistant implements DependencyAssistant {
 	@Override
 	public String getDisplayName() {
 		return GitHubInterface.INSTANCE.getDisplayName();
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.GITHUB;
 	}
 
 	@Override
@@ -193,6 +199,11 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public PackageSystem getPackageSystem() {
+			return projectContext.getPackageSystem();
+		}
+
+		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
 			return psiManager.optional(anchor).map(psiFile -> {
@@ -223,7 +234,7 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			LookupContext context = LookupContext.create(project, projectContext);
+			LookupContext context = LookupContext.create(project, this);
 			return new VersionUpgradeLookup(context, new GitHubArtifactReferenceResolver(context, projectContext));
 		}
 

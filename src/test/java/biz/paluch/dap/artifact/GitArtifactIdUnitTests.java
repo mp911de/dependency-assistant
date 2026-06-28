@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -51,6 +53,10 @@ class GitArtifactIdUnitTests {
 		assertThat(gitArtifactId.groupId()).isEqualTo("@scope");
 		assertThat(gitArtifactId.artifactId()).isEqualTo("package");
 		assertThat(gitArtifactId.releaseSource()).isEqualTo(ArtifactId.of("owner", "repository"));
+		assertThat(gitArtifactId).isEqualTo(declared);
+		assertThat(gitArtifactId).hasSameHashCodeAs(declared);
+		Map<ArtifactId, String> usages = Map.of(gitArtifactId, "value");
+		assertThat(usages).containsEntry(declared, "value");
 		assertThat(gitArtifactId.toString()).isEqualTo("@scope:package@git://github.com/owner/repository.git");
 	}
 

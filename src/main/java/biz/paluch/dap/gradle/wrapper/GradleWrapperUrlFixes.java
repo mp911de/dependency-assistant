@@ -19,7 +19,7 @@ package biz.paluch.dap.gradle.wrapper;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;

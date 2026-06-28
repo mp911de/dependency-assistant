@@ -16,18 +16,22 @@
 
 package biz.paluch.dap.assistant;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
-import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.TestCache;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.checker.CvssSeverity;
+import biz.paluch.dap.checker.Vulnerability;
+import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
+import biz.paluch.dap.fixtures.Releases;
+import biz.paluch.dap.fixtures.TestProjectDependencyContext;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.VersionProperty;
+import biz.paluch.dap.support.ArtifactReference;
+import com.intellij.mock.MockPsiElement;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -39,59 +43,137 @@ import static org.assertj.core.api.Assertions.*;
  */
 class DocumentationContextTests {
 
-	static final InterfaceAssistant ASSISTANT = TestInterfaceAssistant.INSTANCE;
+	static final Vulnerability CVE = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd", "Remote code execution",
+			9.8, CvssSeverity.CRITICAL, "https://example.com/advisory");
+
+	TestCache cache = DependencyAssistantFixtures.createCache();
 
 	@Test
-	void propertyDocumentationCollapsesArtifactsWithSameReleaseVersions() {
+	void shouldDocumentPropertyWithSharedReleaseLine() {
 
-		ArtifactId core = ArtifactId.of("org.springframework", "spring-core");
-		ArtifactId context = ArtifactId.of("org.springframework", "spring-context");
-		Cache cache = new Cache();
-		cache.putVersionOptions(core, List.of(release("6.2.0", 1), release("6.1.1", 2)));
-		cache.putVersionOptions(context, List.of(release("6.1.1", 3), release("6.2.0", 4)));
-		VersionProperty property = property("spring.version", core, context);
+		cache.putVersionOptions(Releases.VAVR_MATCH.toArtifactId(),
+				cache.getReleases(Releases.VAVR.toArtifactId()));
+		VersionProperty property = new VersionProperty("vavr.version", Releases.VAVR, Releases.VAVR_MATCH);
 
-		String html = documentation(cache).render(property, null);
+		String html = documentation().render(property, false);
 
 		assertThat(html)
 				.containsOnlyOnce("Version property for:")
 				.containsOnlyOnce("<table>")
-				.contains("<p>Version property for: <code>org.springframework:spring-core</code>, "
-						+ "<code>org.springframework:spring-context</code></p>");
+				.contains("<p>Version property for: <code>io.vavr:vavr</code>, "
+						+ "<code>io.vavr:vavr-match</code></p>");
 	}
 
 	@Test
-	void propertyDocumentationKeepsSeparateTablesForDifferentReleaseVersions() {
+	void shouldDocumentPropertyWithIndividualReleaseLines() {
 
-		ArtifactId core = ArtifactId.of("org.springframework", "spring-core");
-		ArtifactId context = ArtifactId.of("org.springframework", "spring-context");
-		ArtifactId boot = ArtifactId.of("org.springframework.boot", "spring-boot");
-		Cache cache = new Cache();
-		cache.putVersionOptions(core, List.of(release("6.2.0", 1), release("6.1.1", 2)));
-		cache.putVersionOptions(context, List.of(release("6.1.1", 3), release("6.2.0", 4)));
-		cache.putVersionOptions(boot, List.of(release("3.5.0", 5), release("3.4.1", 6)));
-		VersionProperty property = property("spring.version", core, context, boot);
+		VersionProperty property = new VersionProperty("managed.version",
+				Releases.LETTUCE_CORE, Releases.JUNIT_BOM);
 
-		String html = documentation(cache).render(property, null);
+		String html = documentation().render(property, false);
 
 		assertThat(StringUtils.countMatches(html, "Version property for:")).isEqualTo(2);
 		assertThat(StringUtils.countMatches(html, "<table>")).isEqualTo(2);
 		assertThat(html)
-				.contains("<p>Version property for: <code>org.springframework:spring-core</code>, "
-						+ "<code>org.springframework:spring-context</code></p>")
-				.contains("<p>Version property for: <code>org.springframework.boot:spring-boot</code></p>");
+				.contains("<p>Version property for: <code>io.lettuce:lettuce-core</code></p>")
+				.contains("<p>Version property for: <code>org.junit:junit-bom</code></p>");
 	}
 
-	private static DocumentationContext documentation(Cache cache) {
-		return new DocumentationContext(ASSISTANT, cache, null, false);
+	@Test
+	void shouldDocumentSecurityAdvisoriesForVulnerableCurrentVersion() {
+
+		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", CVE);
+
+		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
+
+		assertThat(html)
+				.contains("Security advisories")
+				.contains("Remote code execution")
+				.contains("CVE-2026-1")
+				.contains("9.8")
+				.contains("Critical")
+				.contains("https://example.com/advisory");
 	}
 
-	private static VersionProperty property(String name, ArtifactId... artifactIds) {
-		return new VersionProperty(name, List.of(artifactIds).stream().map(CachedArtifact::new).toList());
+	@Test
+	void shouldRenderSecurityAdvisoryCodeFences() {
+
+		Vulnerability cve = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
+				"Remote `foo` execution in `bar`", 9.8, CvssSeverity.CRITICAL,
+				"https://example.com/advisory");
+		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
+
+		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
+
+		assertThat(html).contains("Remote <code>foo</code> execution in <code>bar</code>");
 	}
 
-	private static Release release(String version, int dayOfMonth) {
-		return Release.of(ArtifactVersion.of(version), LocalDateTime.of(2026, 1, dayOfMonth, 0, 0));
+	@Test
+	void shouldEscapeUnbalancedSecurityAdvisoryCodeFences() {
+
+		Vulnerability cve = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
+				"Remote `foo execution", 9.8, CvssSeverity.CRITICAL,
+				"https://example.com/advisory");
+		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
+
+		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
+
+		assertThat(html).contains("Remote `foo execution").doesNotContain("Remote <code>foo");
+	}
+
+	@Test
+	void shouldOmitSecurityAdvisoriesForCleanCurrentVersion() {
+
+		ArtifactId lettuce = Releases.LETTUCE_CORE.toArtifactId();
+		cache.addVulnerabilities(lettuce, "7.5.1.RELEASE");
+
+		String html = new DocumentationContext(context(lettuce, "7.5.1.RELEASE"), false).render(lettuce, false);
+
+		assertThat(html).contains("Current value").doesNotContain("Security advisories");
+	}
+
+	@Test
+	void shouldOmitSecurityAdvisoriesForUnscannedCurrentVersion() {
+
+		ArtifactId lettuce = Releases.LETTUCE_CORE.toArtifactId();
+
+		String html = new DocumentationContext(context(lettuce, "7.5.1.RELEASE"), false).render(lettuce, false);
+
+		assertThat(html).contains("Current value").doesNotContain("Security advisories");
+	}
+
+	private DocumentationContext documentation() {
+		return new DocumentationContext(context(Releases.VAVR.toArtifactId()), false);
+	}
+
+	private ArtifactReferenceContext context(ArtifactId artifactId) {
+		return context(artifactId, (ArtifactVersion) null);
+	}
+
+	private ArtifactReferenceContext context(ArtifactId artifactId, String currentVersion) {
+		return context(artifactId, ArtifactVersion.of(currentVersion));
+	}
+
+	private ArtifactReferenceContext context(ArtifactId artifactId,
+			@Nullable ArtifactVersion currentVersion) {
+
+		VersionSource versionSource = currentVersion == null ? VersionSource.none()
+				: VersionSource.declared(currentVersion.toString());
+		ArtifactReference reference = ArtifactReference.from(builder -> {
+			builder.artifact(artifactId)
+					.versionSource(versionSource)
+					.declarationSource(DeclarationSource.dependency())
+					.declarationElement(new MockPsiElement(() -> {
+					}));
+			if (currentVersion != null) {
+				builder.version(currentVersion);
+			}
+		});
+		return new ArtifactReferenceContext(TestProjectDependencyContext.INSTANCE, cache, reference,
+				DependencyRuleEvaluator.absent());
 	}
 
 }

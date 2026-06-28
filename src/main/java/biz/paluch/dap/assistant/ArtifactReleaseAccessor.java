@@ -23,6 +23,14 @@ import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
+ * Attaches and retrieves the {@link ArtifactRelease} associated with a PSI
+ * element or {@link UserDataHolder} through a shared user-data key.
+ *
+ * <p>Lookup elements stash the resolved release on the element so later editor
+ * actions (documentation, insertion) can recover it without re-resolving. The
+ * {@link PsiElement} overloads use copyable user data so the release survives
+ * PSI copies created during completion.
+ *
  * @author Mark Paluch
  */
 public class ArtifactReleaseAccessor {

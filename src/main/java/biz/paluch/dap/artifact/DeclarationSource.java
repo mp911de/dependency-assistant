@@ -151,7 +151,8 @@ public abstract class DeclarationSource {
 	 * to determine whether an artifact is solely used as plugin or addtionally as
 	 * dependency.
 	 * @param declarationSources the declaration sources to check.
-	 * @return {@literal true} if all sources are plugins.
+	 * @return {@literal true} if the collection is non-empty and every source is a
+	 * plugin; {@literal false} otherwise, including for an empty collection.
 	 */
 	public static boolean isPlugin(Collection<DeclarationSource> declarationSources) {
 		int plugin = 0;

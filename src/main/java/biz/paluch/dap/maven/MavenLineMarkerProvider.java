@@ -23,7 +23,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.maven.MavenAssistant.MavenInterface;
 import biz.paluch.dap.maven.wrapper.MavenWrapperAssistant;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.psi.PsiElement;
 
 /**

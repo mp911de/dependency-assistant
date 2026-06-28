@@ -24,42 +24,39 @@ import java.util.Map;
 import javax.swing.Icon;
 
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.rule.BranchSource;
-import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleService;
-import biz.paluch.dap.rule.ResolutionContext;
-import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.AvailableUpgrades;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
-import biz.paluch.dap.support.UpgradeSuggestion;
+import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.upgrade.UpgradeSuggestion;
+import biz.paluch.dap.util.MessageBundle;
+import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerEx;
+import com.intellij.codeInsight.daemon.impl.HighlightInfo;
 import com.intellij.codeInsight.intention.IntentionAction;
+import com.intellij.codeInsight.intention.IntentionActionDelegate;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.codeInspection.util.IntentionName;
+import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Intention that applies all dependency upgrades of one {@link UpgradeStrategy}
  * within the current file in a single batch.
  *
  * <p>Counterpart to the platform's {@code FixAllHighlightingProblems} option
- * for {@link UpdateDependencyVersionQuickFix}: instead of scanning daemon
- * highlights (an implementation-only API), the intention recomputes the upgrade
- * suggestions the annotator would offer, keeps the suggestion matching this
- * intention's strategy per declaration, and applies each update at its version
- * literal through
+ * for {@link UpdateDependencyVersionQuickFix}: it first gathers registered
+ * daemon fixes of the same strategy, falls back to recomputing the annotator's
+ * upgrade contexts when no highlights are available, and applies each update at
+ * its version literal through
  * {@link ProjectDependencyContext#applyUpdate(PsiElement, DependencyUpdate)}.
  *
  * <p>Preview gathers the updates from the physical file and replays them onto
@@ -79,12 +76,12 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 	ApplyAllUpgradesIntention(ProjectDependencyContext dependencyContext, UpgradeStrategy strategy) {
 		this.dependencyContext = dependencyContext;
 		this.strategy = strategy;
-		this.icon = VersionAge.fromTarget(strategy).getIcon();
+		this.icon = DependencyUpgradeIcons.resolveIcon(strategy);
 	}
 
 	@Override
 	public @IntentionName String getText() {
-		return MessageBundle.message("UpgradeDependencyAction.fix-all", MessageBundle.displayName(strategy));
+		return MessageBundle.message("UpgradeDependencyAction.fix-all", strategy.getDisplayName());
 	}
 
 	@Override
@@ -104,13 +101,13 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 
 	@Override
 	public void invoke(@NotNull Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
-		applyUpdates(collectUpdates(psiFile));
+		applyUpdates(collectUpdates(project, psiFile));
 	}
 
 	@Override
 	public IntentionPreviewInfo generatePreview(Project project, Editor editor, PsiFile psiFile) {
 
-		Map<PsiElement, DependencyUpdate> updates = collectUpdates(psiFile.getOriginalFile());
+		Map<PsiElement, DependencyUpdate> updates = collectUpdates(project, psiFile.getOriginalFile());
 		if (updates.isEmpty()) {
 			return IntentionPreviewInfo.EMPTY;
 		}
@@ -130,21 +127,65 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 	private void applyUpdates(Map<PsiElement, DependencyUpdate> updates) {
 
 		List<PsiElement> versionLiterals = new ArrayList<>(updates.keySet());
-		for (PsiElement versionLiteral : versionLiterals.reversed()) {
+		versionLiterals.sort((left, right) -> Integer.compare(right.getTextOffset(), left.getTextOffset()));
+
+		for (PsiElement versionLiteral : versionLiterals) {
 			dependencyContext.applyUpdate(versionLiteral, updates.get(versionLiteral));
 		}
 	}
 
 	/**
-	 * Collect one {@link DependencyUpdate} per version literal in {@code file}
-	 * whose upgrade suggestions contain a rule-enabled suggestion for
-	 * {@link #strategy}. Declarations resolving to other files are skipped.
+	 * Collect one {@link DependencyUpdate} per version literal in {@code file} from
+	 * the daemon highlights already registered by the annotator.
 	 */
-	private Map<PsiElement, DependencyUpdate> collectUpdates(PsiFile file) {
+	private Map<PsiElement, DependencyUpdate> collectUpdates(Project project, PsiFile file) {
 
 		Map<PsiElement, DependencyUpdate> updates = new LinkedHashMap<>();
-		DependencyRuleService ruleService = DependencyRuleService.getInstance(file.getProject());
-		VirtualFile virtualFile = file.getVirtualFile();
+		collectHighlightedUpdates(project, file, updates);
+		if (updates.isEmpty()) {
+			collectContextUpdates(file, updates);
+		}
+
+		return updates;
+	}
+
+	private void collectHighlightedUpdates(Project project, PsiFile file, Map<PsiElement, DependencyUpdate> updates) {
+
+		Document document = file.getFileDocument();
+
+		DaemonCodeAnalyzerEx.processHighlights(document, project, null, 0, document.getTextLength(), info -> {
+			DependencyUpdateFix fix = findFix(info);
+			if (fix == null) {
+				return true;
+			}
+
+			PsiElement versionLiteral = fix.getStartElement();
+			if (versionLiteral != null && file.equals(versionLiteral.getContainingFile())) {
+				updates.put(versionLiteral, fix.getUpdate());
+			}
+
+			return true;
+		});
+	}
+
+	private @Nullable DependencyUpdateFix findFix(HighlightInfo info) {
+
+		return info.findRegisteredQuickFix((descriptor, range) -> {
+			IntentionAction action = IntentionActionDelegate.unwrap(descriptor.getAction());
+			if (action instanceof DependencyUpdateFix fix && fix.hasStrategy(this.strategy)) {
+				return fix;
+			}
+			return null;
+		});
+	}
+
+	/**
+	 * Fallback in case no highlights are available.
+	 * @param file the file to walk for dependency declarations.
+	 * @param updates the map collecting one update per version literal, keyed by
+	 * the version literal element.
+	 */
+	private void collectContextUpdates(PsiFile file, Map<PsiElement, DependencyUpdate> updates) {
 
 		file.accept(new PsiRecursiveElementWalkingVisitor() {
 
@@ -153,31 +194,27 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 
 				super.visitElement(element);
 
-				AvailableUpgrades upgrades = UpgradeSuggestions.suggest(dependencyContext, element);
-				if (!upgrades.isPresent()) {
+				DependencyUpgradeContext context = DependencyUpgradeContext.from(element);
+				if (context.isAbsent()) {
 					return;
 				}
 
-				ResolutionContext context = ResolutionContext.of(
-						ArtifactReference.from(upgrades.getArtifactDeclaration()),
-						BranchSource.of(virtualFile), dependencyContext.getProjectVersion());
-				DependencyRule rule = ruleService.resolve(context);
-				UpgradeSuggestion suggestion = upgrades.filterSuggestions(rule::isEnabled).getUpgrades().get(strategy);
-				if (suggestion == null) {
-					return;
-				}
-
-				PsiElement versionLiteral = suggestion.getArtifactDeclaration().getVersionLiteral();
+				ArtifactDeclaration declaration = context.getArtifactReference().getDeclaration();
+				PsiElement versionLiteral = declaration.getVersionLiteral();
 				if (versionLiteral == null || !file.equals(versionLiteral.getContainingFile())) {
 					return;
 				}
 
-				updates.putIfAbsent(versionLiteral, suggestion.toDependencyUpdate());
+				for (UpgradeSuggestion suggestion : context.getSuggestions().getSuggestions()) {
+					if (suggestion.getStrategy() == strategy) {
+						DependencyUpdate update = DependencyUpdate.from(context.getArtifactReference(), suggestion);
+						updates.putIfAbsent(versionLiteral, update);
+						return;
+					}
+				}
 			}
 
 		});
-
-		return updates;
 	}
 
 	@Override

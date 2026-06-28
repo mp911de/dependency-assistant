@@ -24,13 +24,14 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRules;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
@@ -54,7 +55,7 @@ class UpgradeCandidateUnitTests {
 		UpgradeCandidate candidate = candidate("0.9.0", rule,
 				Release.of("0.9.0"), Release.of("1.0.5"), Release.of("2.0.1"), Release.of("3.0.0"));
 
-		assertThat(candidate.getUpdateCandidate().getTargets().get(UpgradeStrategy.RULE))
+		assertThat(candidate.getUpdateCandidate().getTargets().get(UpgradeStrategy.RULE).getRelease())
 				.isEqualTo(Release.of("2.0.1"));
 	}
 
@@ -66,8 +67,9 @@ class UpgradeCandidateUnitTests {
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(VersionSource.property("springVersion"));
 		UpgradeCandidate candidate = new UpgradeCandidate(
-				new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0"))),
-				new TestInterfaceAssistant(), DeclaredVersions.empty(), DependencyRule.absent());
+				new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0")),
+						VulnerabilityRepository.empty()),
+				new TestInterfaceAssistant(), DeclaredVersions.empty());
 
 		DependencySiteQuery query = candidate.toQuery();
 
@@ -96,9 +98,10 @@ class UpgradeCandidateUnitTests {
 		dependency.addVersionSource(VersionSource.property("spring.version"));
 		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of("com.acme", "app"),
 				new Dependency(artifactId, version));
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0"))),
-				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null),
-				DependencyRule.absent());
+		return new UpgradeCandidate(
+				new DependencyUpdateCandidate(dependency, Releases.of(Release.of("6.1.0")),
+						VulnerabilityRepository.empty()),
+				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null));
 	}
 
 	private static UpgradeCandidate candidate(String currentVersion, DependencyRule rule, Release... releases) {
@@ -106,8 +109,10 @@ class UpgradeCandidateUnitTests {
 		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"),
 				ArtifactVersion.of(currentVersion));
 		dependency.addDeclarationSource(DeclarationSource.dependency());
-		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, Releases.of(releases));
-		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.empty(), rule);
+		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, Releases.of(releases),
+				VulnerabilityRepository.empty(),
+				rule);
+		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.empty());
 	}
 
 }

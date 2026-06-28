@@ -93,7 +93,7 @@ interface DeclarationStyle {
 
 	/**
 	 * Create a {@link Kind#INLINE_NOTATION} style.
-	 * @param versionElement the coordinate literal; must not be {@literal null}.
+	 * @param versionElement the coordinate literal.
 	 * @param owningCall the owning dependency or platform call; can be
 	 * {@literal null}.
 	 * @return the declaration style.
@@ -104,8 +104,7 @@ interface DeclarationStyle {
 
 	/**
 	 * Create a {@link Kind#NAMED_ARGUMENT} (map-notation {@code version}) style.
-	 * @param versionElement the version literal or reference; must not be
-	 * {@literal null}.
+	 * @param versionElement the version literal or reference.
 	 * @param owningCall the owning dependency call; can be {@literal null}.
 	 * @return the declaration style.
 	 */
@@ -120,7 +119,7 @@ interface DeclarationStyle {
 	 * @param versionElement the constraint version literal or reference; must not
 	 * be {@literal null}.
 	 * @param owningCall the owning dependency call; can be {@literal null}.
-	 * @return the position.
+	 * @return the declaration style.
 	 * @throws IllegalArgumentException if {@code kind} is not a version-block kind.
 	 */
 	static DeclarationStyle versionBlock(Kind kind, PsiElement versionElement, @Nullable PsiElement owningCall) {

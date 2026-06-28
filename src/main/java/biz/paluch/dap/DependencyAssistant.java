@@ -19,6 +19,7 @@ package biz.paluch.dap;
 import java.util.List;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
@@ -31,10 +32,10 @@ import com.intellij.psi.PsiFile;
  * configuration; per-run state lives in the {@link IntrospectedDependencies}
  * instance returned by {@link #introspect(Project)}.
  *
- * <p>An assistant provides integration points for {@link ProjectStateIndexer}
- * drives to enumerate files an ecosystem owns and collects each into a
- * store-ready {@link DependencyCollector}. The indexer derives the build
- * context for each anchor on demand through
+ * <p>An assistant supplies the integration points the
+ * {@link ProjectStateIndexer} drives: it enumerates the files an ecosystem owns
+ * and collects each into a store-ready {@link DependencyCollector}. The indexer
+ * derives the build context for each anchor on demand through
  * {@link #createContext(Project, PsiFile)}.
  *
  * <p>Support checks are expected to be cheap. Expensive parsing and state
@@ -58,6 +59,13 @@ public interface DependencyAssistant {
 	 * Return the human-readable integration name.
 	 */
 	String getDisplayName();
+
+	/**
+	 * Return the package {@link PackageSystem ecosystem} this integration serves.
+	 * <p>One assistant serves exactly one ecosystem.
+	 * @return the ecosystem served by this integration.
+	 */
+	PackageSystem getPackageSystem();
 
 	/**
 	 * Return whether this integration applies to the given project.
@@ -84,8 +92,7 @@ public interface DependencyAssistant {
 	 * Enumerate the anchor files owned by this integration for the given project.
 	 * <p>Implementations must apply their own file-scope filters here. The indexer
 	 * derives the build context for each anchor on demand.
-	 * @param project the IntelliJ project to enumerate against; must not be
-	 * {@literal null}.
+	 * @param project the IntelliJ project to enumerate against.
 	 * @return the anchor files to be processed by the indexer.
 	 */
 	List<PsiFile> enumerate(Project project);
@@ -97,8 +104,7 @@ public interface DependencyAssistant {
 	 * the {@link biz.paluch.dap.state.ProjectState}. Implementations must mutate
 	 * the provided collector directly and must not replace it with a new instance.
 	 * @param anchor the anchor file to collect for.
-	 * @param collector the collector to populate in place; must not be
-	 * {@literal null}.
+	 * @param collector the collector to populate in place.
 	 */
 	void collect(PsiFile anchor, DependencyCollector collector);
 
@@ -111,10 +117,8 @@ public interface DependencyAssistant {
 	 * introspection state. Integrations that need to feed phase-one state into
 	 * their {@link IntrospectedDependencies} should override this method.
 	 * @param anchor the anchor file to collect for.
-	 * @param collector the collector to populate in place; must not be
-	 * {@literal null}.
-	 * @param introspected the introspection handle for the current indexer run;
-	 * must not be {@literal null}.
+	 * @param collector the collector to populate in place.
+	 * @param introspected the introspection handle for the current indexer run.
 	 */
 	default void collect(PsiFile anchor, DependencyCollector collector, IntrospectedDependencies introspected) {
 		collect(anchor, collector);
@@ -134,10 +138,9 @@ public interface DependencyAssistant {
 	/**
 	 * Create the file-scoped dependency context for the given anchor file.
 	 * <p>Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
-	 * @param anchor the build file or catalog file that anchors the operation; must
-	 * not be {@literal null}.
+	 * @param anchor the build file or catalog file that anchors the operation.
 	 * @return a file-scoped context.
-	 * @throws IllegalStateException if this integration does not own the file.
+	 * @throws IllegalStateException if this integration does not support the file.
 	 */
 	default ProjectDependencyContext createContext(PsiFile anchor) {
 		return createContext(anchor.getProject(), anchor);
@@ -147,8 +150,7 @@ public interface DependencyAssistant {
 	 * Create the file-scoped dependency context for the given anchor file.
 	 * <p>Invoke only after {@link #supports(PsiFile)} returned {@literal true}.
 	 * @param project the IntelliJ project.
-	 * @param anchor the build file or catalog file that anchors the operation; must
-	 * not be {@literal null}.
+	 * @param anchor the build file or catalog file that anchors the operation.
 	 * @return a file-scoped context.
 	 * @throws IllegalStateException if this integration does not support the file.
 	 */

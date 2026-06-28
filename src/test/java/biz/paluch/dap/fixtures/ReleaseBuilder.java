@@ -30,8 +30,8 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>A {@link CachedArtifact} is identified by a group and an artifact
  * identifier; these are generic artifact coordinates independent of any
- * specific build system. Use {@link #cachedArtifact(String, String, Consumer)}
- * as the primary entry point.
+ * specific build system. Use {@link #artifact(String, String, Consumer)} as the
+ * primary entry point.
  *
  * @author Mark Paluch
  */
@@ -52,9 +52,9 @@ public class ReleaseBuilder {
 	 * {@code ReleaseBuilder}.
 	 * @return the configured {@link CachedArtifact}.
 	 */
-	public static CachedArtifact cachedArtifact(String groupId, String artifactId,
+	public static CachedArtifact artifact(String groupId, String artifactId,
 			Consumer<ReleaseBuilder> configurer) {
-		return cachedArtifact(ArtifactId.of(groupId, artifactId), configurer);
+		return artifact(ArtifactId.of(groupId, artifactId), configurer);
 	}
 
 	/**
@@ -66,7 +66,7 @@ public class ReleaseBuilder {
 	 * {@code ReleaseBuilder}.
 	 * @return the configured {@link CachedArtifact}.
 	 */
-	public static CachedArtifact cachedArtifact(ArtifactId artifactId, Consumer<ReleaseBuilder> configurer) {
+	public static CachedArtifact artifact(ArtifactId artifactId, Consumer<ReleaseBuilder> configurer) {
 
 		CachedArtifact artifact = new CachedArtifact(artifactId);
 		configurer.accept(new ReleaseBuilder(artifact.getReleases()));

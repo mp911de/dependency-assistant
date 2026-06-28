@@ -37,15 +37,15 @@ import org.jspecify.annotations.Nullable;
  * @param buildContext the build context for the anchored file; must not be
  * {@literal null}.
  * @param cache the shared release cache.
- * @param projectState the cached project state.
- * @param versionResolver the Git-ref resolver bound to {@code cache} and
- * {@code projectState}.
+ * @param projectState the cached project state; can be {@literal null} when no
+ * state is available for the build context.
+ * @param versionResolver the Git-ref resolver bound to {@code cache}.
  * @author Mark Paluch
  * @see VersionUpgradeLookup
  * @see ArtifactReferenceResolver
  */
 public record LookupContext(Project project, ProjectBuildContext buildContext, Cache cache,
-		ProjectState projectState, GitVersionResolver versionResolver) {
+		@Nullable ProjectState projectState, GitVersionResolver versionResolver) {
 
 	/**
 	 * Create a {@code LookupContext} for the given project and build context,
@@ -79,11 +79,17 @@ public record LookupContext(Project project, ProjectBuildContext buildContext, C
 	}
 
 	public @Nullable ArtifactVersion findCurrentVersion(ArtifactId artifactId) {
+		if (projectState == null) {
+			return null;
+		}
 		Dependency dependency = projectState.findDependency(artifactId);
 		return dependency != null ? dependency.getCurrentVersion() : null;
 	}
 
 	public @Nullable VersionProperty findProperty(String propertyName) {
+		if (projectState == null) {
+			return null;
+		}
 		return projectState.findProperty(propertyName);
 	}
 

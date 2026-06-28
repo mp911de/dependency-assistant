@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -54,6 +55,11 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * Return the user-interface support for this context.
 	 */
 	InterfaceAssistant getInterfaceAssistant();
+
+	/**
+	 * Return the package ecosystem this context supports.
+	 */
+	PackageSystem getPackageSystem();
 
 	/**
 	 * Scan the build files reachable from the anchor file and return the aggregated

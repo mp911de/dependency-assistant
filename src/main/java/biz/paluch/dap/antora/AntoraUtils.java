@@ -45,8 +45,14 @@ public class AntoraUtils {
 	/**
 	 * Return whether the given file is an Antora playbook supported by this
 	 * integration.
-	 * @param file the PSI file to test.
-	 * @return {@literal true} if this file is supported.
+	 *
+	 * <p>A file qualifies when it carries an injected
+	 * {@link AntoraProjectContext#KEY} user-data entry (used by tests) or when its
+	 * name matches {@link #PLAYBOOK_FILE_NAME}.
+	 *
+	 * @param file the PSI file to test; can be {@literal null}.
+	 * @return {@literal true} if the file is an Antora playbook; {@literal false}
+	 * otherwise.
 	 */
 	public static boolean isPlaybookFile(@Nullable PsiFile file) {
 

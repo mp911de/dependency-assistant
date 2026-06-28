@@ -104,8 +104,7 @@ public class BetterPsiManager {
 	 * <p>Must be called inside a read action. The returned stream is lazy;
 	 * resolution happens as the stream is consumed.
 	 *
-	 * @param files the files to resolve; must not be {@literal null}, individual
-	 * entries may be invalid.
+	 * @param files the files to resolve; individual entries may be invalid.
 	 * @return a stream of the resolvable {@link PsiFile PsiFiles}, in iteration
 	 * order of {@code files}.
 	 */

@@ -20,9 +20,9 @@ import com.intellij.psi.PsiElement;
 import org.springframework.util.ObjectUtils;
 
 /**
- * Search hit during a dependendency site search: a navigable PSI element
- * together with the {@link SiteRole role} it plays for the dependency's version
- * and a concise {@code label} (the version or property expression) for display.
+ * Search hit during a dependency site search: a navigable PSI element together
+ * with the {@link SiteRole role} it plays for the dependency's version and a
+ * concise {@code label} (the version or property expression) for display.
  *
  * <p>Instances are immutable and created through the role-named factories
  * {@link #declaration(PsiElement)} and {@link #usage(PsiElement)} (or their

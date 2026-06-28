@@ -208,7 +208,7 @@ public class DependencyCollector {
 
 	/**
 	 * Return the registered declaration for the given artifact, or {@literal null}
-	 * if no usage has been registered.
+	 * if no declaration has been registered.
 	 * @param artifactId the artifact coordinates to look up.
 	 */
 	public @Nullable DeclaredDependency getDeclaration(ArtifactId artifactId) {

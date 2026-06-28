@@ -17,33 +17,30 @@
 package biz.paluch.dap.lookup;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.GitRef;
-import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.AvailableUpgrades;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Per-file deep module that turns a build-file element into upgrade
- * suggestions.
+ * Per-file deep module that resolves a build-file element to its
+ * {@link ArtifactReference} and current version.
  *
- * <p>The module owns cached release lookup, current-version resolution, and
- * upgrade tiering. Build-tool variation is isolated behind a single
+ * <p>The module owns cached release lookup and current-version resolution.
+ * Build-tool variation is isolated behind a single
  * {@link ArtifactReferenceResolver} that the module holds and delegates
  * {@link #resolveArtifactReference(PsiElement)} to. The same concrete type
- * serves every build ecosystem.
+ * serves every build ecosystem. Producing filtered upgrade suggestions is the
+ * job of {@code UpgradeSuggestionsFactory}, not this module.
  *
  * <p>Lookup methods are cache-only and never trigger remote repository access.
  *
  * @author Mark Paluch
  * @see ArtifactReferenceResolver
  * @see LookupContext
- * @see AvailableUpgrades
  */
 public class VersionUpgradeLookup {
 
@@ -94,28 +91,6 @@ public class VersionUpgradeLookup {
 	}
 
 	/**
-	 * Resolve available upgrades for the given PSI element.
-	 * @param element the PSI element under inspection.
-	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
-	 */
-	public AvailableUpgrades suggestUpgrades(PsiElement element) {
-		return suggestUpgrades(resolveArtifactReference(element));
-	}
-
-	/**
-	 * Resolve available upgrades for the given {@link ArtifactReference}.
-	 * @param artifactReference the artifact reference.
-	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
-	 */
-	public AvailableUpgrades suggestUpgrades(ArtifactReference artifactReference) {
-		if (artifactReference.isResolved() && artifactReference.getDeclaration().isVersionDefined()
-				&& artifactReference.getDeclaration().getVersion() instanceof GitRef) {
-			return AvailableUpgrades.none();
-		}
-		return suggestUpgrades(context.cache(), artifactReference);
-	}
-
-	/**
 	 * Return the current version of the dependency with the given artifact
 	 * reference.
 	 * <p>The {@link ProjectState} version wins when present; on a project-state
@@ -158,32 +133,6 @@ public class VersionUpgradeLookup {
 			return null;
 		}
 		return context.findCurrentVersion(property.artifacts().getFirst().toArtifactId());
-	}
-
-	/**
-	 * Resolve available upgrades for a pre-resolved {@link ArtifactReference}.
-	 * <p>Resolution is intentionally cache-only and never schedules a refresh.
-	 * @param cache the cache to read releases from.
-	 * @param artifactReference the reference to evaluate.
-	 * @return the available upgrades, or {@link AvailableUpgrades#none()}.
-	 */
-	private AvailableUpgrades suggestUpgrades(Cache cache, ArtifactReference artifactReference) {
-
-		if (!artifactReference.isResolved()) {
-			return AvailableUpgrades.none();
-		}
-
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
-			return AvailableUpgrades.none();
-		}
-
-		Releases releases = cache.getReleases(declaration.getArtifactId());
-		if (releases.isEmpty()) {
-			return AvailableUpgrades.none();
-		}
-
-		return AvailableUpgrades.determineUpgrades(artifactReference, declaration.getVersion(), releases);
 	}
 
 }

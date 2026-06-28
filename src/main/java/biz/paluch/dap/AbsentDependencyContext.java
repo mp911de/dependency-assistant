@@ -19,6 +19,7 @@ package biz.paluch.dap;
 import java.util.List;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
@@ -29,8 +30,14 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
- * Absent {@link ProjectDependencyContext} implementation that throws exceptions
- * for all operations. Used when no dependency context is available.
+ * Absent {@link ProjectDependencyContext} implementation used when no
+ * dependency context is available.
+ *
+ * <p>Reports its unavailable state without failing: {@link #isAvailable()} and
+ * {@link #isVersionElement(PsiElement)} return {@literal false} and
+ * {@link #getReleaseSources()} returns an empty list. Operations that require a
+ * live context (resolving the assistant, scanning, applying updates) throw
+ * {@link IllegalStateException}.
  * @author Mark Paluch
  */
 enum AbsentDependencyContext implements ProjectDependencyContext {
@@ -39,6 +46,11 @@ enum AbsentDependencyContext implements ProjectDependencyContext {
 
 	@Override
 	public InterfaceAssistant getInterfaceAssistant() {
+		throw new IllegalStateException("No dependency context available");
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
 		throw new IllegalStateException("No dependency context available");
 	}
 

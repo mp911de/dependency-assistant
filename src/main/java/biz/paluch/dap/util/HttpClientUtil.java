@@ -140,6 +140,14 @@ public class HttpClientUtil {
 
 	/**
 	 * Return the effective port for the given URI.
+	 * <p>When the URI specifies an explicit port, that port is returned. Otherwise
+	 * the scheme default is used: {@code 443} for {@code https} and {@code 80} for
+	 * {@code http}.
+	 *
+	 * @param uri the URI to inspect.
+	 * @return the explicit port, the scheme default ({@code 443} or {@code 80}), or
+	 * {@code -1} when no port is given and the scheme is neither {@code http} nor
+	 * {@code https}.
 	 */
 	public static int getEffectivePort(URI uri) {
 

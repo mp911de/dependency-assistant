@@ -16,11 +16,11 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.Map;
-
-import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.upgrade.UpgradeSuggestion;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
 
 /**
  * Decides what the dependency upgrade review shows: which rows are visible and
@@ -49,7 +49,7 @@ record VisibilityFilter(boolean hideUpToDate) {
 	/**
 	 * Return the upgrade targets to show for the given option.
 	 */
-	Map<UpgradeStrategy, Release> visibleTargets(DependencyUpdateCandidate option) {
+	UpgradeSuggestions visibleTargets(DependencyUpdateCandidate option) {
 		return hideUpToDate ? option.getFilteredTargets() : option.getTargets();
 	}
 
@@ -63,24 +63,29 @@ record VisibilityFilter(boolean hideUpToDate) {
 			return true;
 		}
 
+		if (option.isVulnerable()) {
+			return true;
+		}
+
 		if (!option.hasUpgradeTargets()) {
 			return false;
 		}
 
-		Map<UpgradeStrategy, Release> targets = option.getTargets();
-		if (option.getDependency().getCurrentVersion().isPreview()) {
-			Release release = targets.get(UpgradeStrategy.PREVIEW);
-			if (release != null) {
-				return release.isNewer(option.getDependency().getCurrentVersion());
+		UpgradeSuggestions targets = option.getTargets();
+		Dependency dependency = option.getDependency();
+		if (dependency.getCurrentVersion().isPreview()) {
+			UpgradeSuggestion release = targets.get(UpgradeStrategy.PREVIEW);
+			if (release.isPresent()) {
+				return release.getRelease().isNewer(dependency.getCurrentVersion());
 			}
 		}
-		if (targets.size() == 2 && targets.containsKey(UpgradeStrategy.LATEST)
-				&& targets.containsKey(UpgradeStrategy.PREVIEW)) {
+		if (targets.size() == 2 && targets.contains(UpgradeStrategy.LATEST)
+				&& targets.contains(UpgradeStrategy.PREVIEW)) {
 			return false;
 		}
 
-		if (targets.size() == 1 && (targets.containsKey(UpgradeStrategy.PREVIEW)
-				|| targets.containsKey(UpgradeStrategy.LATEST))) {
+		if (targets.size() == 1 && (targets.contains(UpgradeStrategy.PREVIEW)
+				|| targets.contains(UpgradeStrategy.LATEST))) {
 			return false;
 		}
 

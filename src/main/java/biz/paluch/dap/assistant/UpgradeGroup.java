@@ -19,20 +19,25 @@ package biz.paluch.dap.assistant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.lookup.DependencySiteQuery;
-import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.upgrade.DependencyUpgradeSubject;
+import biz.paluch.dap.upgrade.UpgradeSuggestion;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -61,10 +66,10 @@ class UpgradeGroup extends UpgradeCandidate {
 	private final String toolTipText;
 
 	private UpgradeGroup(DependencyUpdateCandidate candidate, InterfaceAssistant assistant,
-			DeclaredVersions declaredVersions, DependencyRule rule, List<UpgradeCandidate> members,
+			DeclaredVersions declaredVersions, List<UpgradeCandidate> members,
 			@Nullable String derivedLabel) {
 
-		super(candidate, assistant, declaredVersions, rule);
+		super(candidate, assistant, declaredVersions);
 		this.members = List.copyOf(members);
 		this.derivedLabel = derivedLabel;
 		if (derivedLabel == null) {
@@ -88,6 +93,18 @@ class UpgradeGroup extends UpgradeCandidate {
 		}
 
 		return tooltip.append("</ul>").toString();
+	}
+
+	/**
+	 * Create a governed upgrade group from the given members, labeled by the rule's
+	 * dependency name.
+	 *
+	 * @param members the agreeing candidates governed by the same named rule; must
+	 * contain at least two members.
+	 * @return the group row aggregating the members.
+	 */
+	static UpgradeGroup of(UpgradeCandidate... members) {
+		return create(List.of(members), null);
 	}
 
 	/**
@@ -122,31 +139,34 @@ class UpgradeGroup extends UpgradeCandidate {
 		UpgradeCandidate first = members.getFirst();
 		DeclaredVersions declaredVersions = mergeDeclaredVersions(members);
 
+		VulnerabilityRepository mergedVulnerabilities = mergeVulnerabilities(members);
 		Dependency merged = new Dependency(first.getArtifactId(), declaredVersions.getLowestDeclaredVersion());
+
+		Map<UpgradeStrategy, UpgradeSuggestion> suggestions = new LinkedHashMap<>();
+
 		for (UpgradeCandidate member : members) {
+
 			Dependency dependency = member.getUpdateCandidate().getDependency();
+			UpgradeSuggestions targets = member.getUpdateCandidate().getTargets();
+			targets.forEach(it -> suggestions.put(it.getStrategy(), it));
 			merged.addAllDeclarationSources(dependency.getDeclarationSources());
 			merged.addAllVersionSources(dependency.getVersionSources());
 		}
 
-		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(merged, intersectReleases(members));
-		return new UpgradeGroup(candidate, first.getInterfaceAssistant(), declaredVersions, governingRule(members),
-				members, derivedLabel);
+		DependencyUpgradeSubject subject = DependencyUpgradeSubject.of(merged, intersectReleases(members),
+				mergedVulnerabilities, first.getRule());
+
+		UpgradeSuggestions upgradeSuggestions = UpgradeSuggestions.of(suggestions);
+		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(subject, upgradeSuggestions);
+		return new UpgradeGroup(candidate, first.getInterfaceAssistant(), declaredVersions, members, derivedLabel);
 	}
 
-	/**
-	 * Select the rule that governs the group. A plugin member has its semantic
-	 * upgrading lifted, so the group is governed by the first non-plugin (semVer
-	 * retaining) member to keep a mixed cohort moving together; an all-plugin group
-	 * falls back to the first member's lifted rule.
-	 */
-	private static DependencyRule governingRule(List<UpgradeCandidate> members) {
-		return members.stream()
-				.filter(member -> !DeclarationSource
-						.isPlugin(member.getUpdateCandidate().getDependency().getDeclarationSources()))
-				.findFirst()
-				.map(UpgradeCandidate::getRule)
-				.orElseGet(() -> members.getFirst().getRule());
+	private static VulnerabilityRepository mergeVulnerabilities(List<UpgradeCandidate> members) {
+
+		List<VulnerabilityRepository> repositories = members.stream()
+				.map(member -> member.getUpdateCandidate().getVulnerabilities())
+				.toList();
+		return VulnerabilityRepository.composite(repositories);
 	}
 
 	@Override

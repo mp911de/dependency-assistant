@@ -342,7 +342,7 @@ class TomlParser {
 	}
 
 	/**
-	 * Return the text of the given TOML key.
+	 * Return the text of the key of the given TOML key-value pair.
 	 */
 	public static String getTomlKeyName(TomlKeyValue keyValue) {
 		return getTomlKeyName(keyValue.getKey());
@@ -358,9 +358,9 @@ class TomlParser {
 	/**
 	 * Return the required text associated with {@code element}.
 	 *
-	 * @param element the PSI element to inspect.
+	 * @param element the PSI element to inspect; must not be {@literal null}.
 	 * @return the required text.
-	 * @throws IllegalArgumentException if the element is not supported.
+	 * @throws IllegalArgumentException if {@code element} is {@literal null}.
 	 */
 	static String getRequiredText(PsiElement element) {
 

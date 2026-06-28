@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
@@ -31,6 +32,7 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
@@ -73,9 +75,8 @@ import org.jspecify.annotations.Nullable;
  * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)} for
  * format-specific prefix handling,
  * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}
- * for insert handlers, {@link #getRefStyle(PsiElement, CompletionMetadata)} for
- * tag-vs-SHA insertion, and {@link #getReleases(ArtifactId, Cache)} for
- * filtering or ordering the release list.
+ * for insert handlers, and {@link #getRefStyle(PsiElement, CompletionMetadata)}
+ * for tag-vs-SHA insertion.
  *
  * <p>This provider does not decide completion locations, refresh release
  * metadata, or contact remote repositories. Register it from a
@@ -87,6 +88,7 @@ import org.jspecify.annotations.Nullable;
  * @see ArtifactReleaseRenderer
  * @see VersionUpgradeLookup
  */
+// TODO: Polishing
 public class ReleaseCompletionProvider extends CompletionProvider<CompletionParameters> {
 
 	/**
@@ -118,20 +120,26 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		RefStyle refStyle = getRefStyle(position, metadata);
 		Project project = parameters.getPosition().getProject();
-		StateService service = StateService.getInstance(project);
-		List<ArtifactRelease> releases = getReleases(metadata.artifactId(), service.getCache());
+		StateService service = StateService
+				.getInstance(project);
+		List<ArtifactRelease> releases = getReleases(metadata.artifactReference().getArtifactId(), service.getCache());
 
 		if (releases.isEmpty()) {
 			return;
 		}
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
-		ResolutionContext resolutionContext = ResolutionContext.of(metadata.artifactReference(),
+		ResolutionContext resolutionContext = ResolutionContext.of(metadata.artifactReference,
 				BranchSource.of(parameters.getEditor().getVirtualFile()), metadata.context().getProjectVersion());
 		DependencyRule rule = ruleService.resolve(resolutionContext);
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
+		Cache cache = service.getCache();
+
+		ArtifactId artifactId = metadata.artifactReference().getArtifactId();
+		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = cache.getVulnerabilities(artifactId);
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
-				.getInterfaceAssistant(), metadata.currentVersion(), rule);
+				.getInterfaceAssistant(), metadata.currentVersion(), rule,
+				vulnerabilities::get);
 
 		for (ArtifactRelease release : releases) {
 			renderer.withVersion(release);
@@ -205,8 +213,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		return new CompletionMetadata(artifactReference, version,
-				artifactReference.getDeclaration().getVersionLiteral(),
-				context);
+				artifactReference.getDeclaration().getVersionLiteral(), context);
 	}
 
 	/**
@@ -386,13 +393,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 */
 	public record CompletionMetadata(ArtifactReference artifactReference, @Nullable ArtifactVersion currentVersion,
 			@Nullable PsiElement versionLiteral, ProjectDependencyContext context) {
-
-		/**
-		 * Return the resolved artifact id.
-		 */
-		public ArtifactId artifactId() {
-			return artifactReference.getArtifactId();
-		}
 
 	}
 

@@ -30,8 +30,8 @@ import com.intellij.psi.impl.source.tree.LeafPsiElement;
 public abstract class PsiElements {
 
 	/**
-	 * Ensure the element is not a {@link LeafPsiElement leaf} by returning its
-	 * parent {@code element} was a leaf.
+	 * Return the element itself, or its parent when the element is a
+	 * {@link LeafPsiElement leaf}.
 	 * @param element the potential leaf element.
 	 * @return {@code element} if it is not a {@link LeafPsiElement leaf}, otherwise
 	 * its {@link PsiElement#getParent() parent}.

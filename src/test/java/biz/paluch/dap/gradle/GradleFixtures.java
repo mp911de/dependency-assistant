@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.gradle.GradleProjectContext.GradleBuildContextImpl;
 import biz.paluch.dap.state.ProjectId;
@@ -58,7 +59,7 @@ public class GradleFixtures {
 						.getPath()), "1.0.0", ""));
 		file.putUserData(GradleProjectContext.KEY, projectContext);
 		StateService.getInstance(file.getProject()).getProjectState(projectContext.getProjectId())
-				.setDependencies(collector);
+				.setDependencies(collector, PackageSystem.MAVEN);
 
 		return collector;
 	}

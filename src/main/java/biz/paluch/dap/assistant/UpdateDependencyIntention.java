@@ -21,7 +21,7 @@ import java.util.List;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.FileModifier;
 import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.codeInspection.util.IntentionFamilyName;
@@ -34,8 +34,13 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * {@link FileModifier} stub for upgrading a single dependency. Used for
- * previewing the intention action.
+ * {@link IntentionAction} that upgrades a single dependency declaration to the
+ * version carried by its {@link DependencyUpdate}, applying the change through
+ * the owning {@link ProjectDependencyContext}.
+ *
+ * <p>Also implements {@link FileModifier} so the platform can render an
+ * intention preview against a copied file via
+ * {@link #getFileModifierForPreview(PsiFile)}.
  *
  * @author Mark Paluch
  */

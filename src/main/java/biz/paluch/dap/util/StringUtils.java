@@ -36,8 +36,13 @@ public abstract class StringUtils {
 	// ---------------------------------------------------------------------
 
 	/**
-	 * Check whether the given {@code CharSequence} is empty.
+	 * Check whether the given {@code CharSequence} contains no actual
+	 * <em>text</em>.
+	 * <p>This is the inverse of {@link #hasText(CharSequence)}: a {@literal null},
+	 * empty, or whitespace-only value is considered empty.
 	 * @param str the candidate string; can be {@literal null}.
+	 * @return {@literal true} if the value is {@literal null}, empty, or contains
+	 * only whitespace; {@literal false} otherwise.
 	 */
 	@Contract("null -> true")
 	public static boolean isEmpty(@Nullable CharSequence str) {
@@ -45,8 +50,12 @@ public abstract class StringUtils {
 	}
 
 	/**
-	 * Check whether the given {@code String} is empty.
+	 * Check whether the given {@code String} contains no actual <em>text</em>.
+	 * <p>This is the inverse of {@link #hasText(String)}: a {@literal null}, empty,
+	 * or whitespace-only value is considered empty.
 	 * @param str the candidate string; can be {@literal null}.
+	 * @return {@literal true} if the value is {@literal null}, empty, or contains
+	 * only whitespace; {@literal false} otherwise.
 	 */
 	@Contract("null -> true")
 	public static boolean isEmpty(@Nullable String str) {

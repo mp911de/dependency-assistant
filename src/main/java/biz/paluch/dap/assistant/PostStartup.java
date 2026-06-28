@@ -25,7 +25,8 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -66,7 +67,9 @@ public class PostStartup implements ProjectActivity {
 	private void postStartup(ProgressIndicator indicator, Project project) {
 
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
-		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, assistants.size());
+		VulnerabilityScanner scanner = VulnerabilityScanner.create(project);
+		StepsProgressIndicator steps = new StepsProgressIndicator(indicator,
+				assistants.size() + (scanner.isPresent() ? 1 : 0));
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, steps);
 		steps.setIndeterminate(false);
 
@@ -75,11 +78,16 @@ public class PostStartup implements ProjectActivity {
 			steps.setText(MessageBundle.message("post-startup.indexing", assistant.getDisplayName()));
 			assistant.prepare(project);
 			indexer.readAndUpdateAll(assistant);
-			steps.setFraction(1);
 			steps.nextStep();
 		}
 
 		StateService service = indexer.getService();
+
+		if (scanner.isPresent()) {
+			scanVulnerabilities(scanner, indicator, project, service);
+			steps.nextStep();
+		}
+
 		if (!service.hasBeenUsed()) {
 			return;
 		}
@@ -96,6 +104,21 @@ public class PostStartup implements ProjectActivity {
 		if (age != null && lastUpdate != null && age.compareTo(Duration.ofDays(2)) > 0) {
 			Notifications.releaseMetadataStale(project, lastUpdate,
 					RefreshReleaseMetadata::new);
+		}
+	}
+
+	private void scanVulnerabilities(VulnerabilityScanner scanner, ProgressIndicator indicator, Project project,
+			StateService service) {
+
+		if (!service.getCache().hasReleases()) {
+			return;
+		}
+
+		indicator.setText(MessageBundle.message("checker-startup.loading"));
+		scanner.scanUsedVersions(indicator);
+
+		if (!project.isDisposed()) {
+			DaemonCodeAnalyzer.getInstance(project).restart(MessageBundle.message("post-startup.loading"));
 		}
 	}
 

@@ -31,6 +31,7 @@ dependencies {
 		bundledPlugin("org.jetbrains.plugins.github")
 		bundledPlugin("Git4Idea")
 		bundledPlugin("com.intellij.modules.json")
+		bundledPlugin("org.jetbrains.security.package-checker")
 	}
 
 	implementation("org.springframework:spring-core:7.0.7")

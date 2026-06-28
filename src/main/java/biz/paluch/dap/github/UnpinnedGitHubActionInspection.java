@@ -18,16 +18,14 @@ package biz.paluch.dap.github;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.assistant.ArtifactReferenceVisitor;
+import biz.paluch.dap.assistant.ArtifactReferenceContext;
+import biz.paluch.dap.assistant.ArtifactReferenceContextVisitor;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemsHolder;
@@ -75,14 +73,12 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
 			return PsiElementVisitor.EMPTY_VISITOR;
 		}
 
-		StateService state = StateService.getInstance(project);
-
-		return new ArtifactReferenceVisitor(context, file) {
+		return new ArtifactReferenceContextVisitor(context, file) {
 
 			@Override
-			public void visitArtifactReference(PsiElement element, ArtifactReference reference) {
+			protected void visitArtifactReference(PsiElement element, ArtifactReferenceContext referenceContext) {
 
-				ArtifactDeclaration declaration = reference.getDeclaration();
+				ArtifactDeclaration declaration = referenceContext.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();
 				if (!(versionLiteral instanceof YAMLScalar scalar)) {
 					return;
@@ -98,7 +94,7 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
 					return;
 				}
 
-				GitVersion pinTarget = findPinTarget(declaration.getArtifactId(), rawRef);
+				GitVersion pinTarget = findPinTarget(referenceContext, rawRef);
 				if (pinTarget == null) {
 					return;
 				}
@@ -111,9 +107,9 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
 						new PinToShaQuickFix(pinTarget));
 			}
 
-			private @Nullable GitVersion findPinTarget(ArtifactId artifactId, String ref) {
+			private @Nullable GitVersion findPinTarget(ArtifactReferenceContext referenceContext, String ref) {
 
-				for (Release release : state.getCache().getReleases(artifactId, false)) {
+				for (Release release : referenceContext.getReleases()) {
 					if (release.getVersion() instanceof GitVersion gitVersion && gitVersion.hasSha()
 							&& ref.equals(gitVersion.toString())) {
 						return gitVersion;

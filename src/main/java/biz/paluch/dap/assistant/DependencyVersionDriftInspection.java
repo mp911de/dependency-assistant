@@ -18,8 +18,10 @@ package biz.paluch.dap.assistant;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import javax.swing.Icon;
@@ -30,11 +32,11 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
@@ -53,18 +55,6 @@ import com.intellij.psi.PsiFile;
  * at more than one distinct version or through mixed declaration styles across
  * the project's modules.
  *
- * <p>The open file contributes its live, in-editor version and version source
- * straight from PSI, while versions and version sources from other modules are
- * read from the in-memory
- * {@link StateService#getDeclaredVersions(ArtifactId, biz.paluch.dap.state.ProjectId)
- * project state}. Reading the current file live keeps the inspection consistent
- * with unsaved edits, whose module state is only re-indexed on save, while
- * still reusing the cheap cached cross-module set. Only declarations that
- * resolve to a concrete version are flagged; ranges and dynamic versions are
- * out of scope. Version drift can be reconciled to the highest or lowest
- * declared version; pure declaration drift is reported without an automated
- * quick fix.
- *
  * @author Mark Paluch
  */
 public class DependencyVersionDriftInspection extends LocalInspectionTool implements Iconable {
@@ -82,12 +72,12 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 		StateService state = StateService.getInstance(project);
 		Set<PsiElement> reported = new HashSet<>();
 
-		return new ArtifactReferenceVisitor(context, file) {
+		return new ArtifactReferenceContextVisitor(context, file) {
 
 			@Override
-			public void visitArtifactReference(PsiElement element, ArtifactReference reference) {
+			protected void visitArtifactReference(PsiElement element, ArtifactReferenceContext referenceContext) {
 
-				ArtifactDeclaration declaration = reference.getDeclaration();
+				ArtifactDeclaration declaration = referenceContext.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();
 				if (versionLiteral == null || !declaration.isVersionDefinedInSameFile()
 						|| !declaration.isVersionDefined()) {
@@ -111,13 +101,19 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 					return;
 				}
 
-				Set<ArtifactVersion> declaredVersions = state.getDeclaredVersions(declaration.getArtifactId(),
-						context.getProjectId());
-				declaredVersions.add(declaration.getVersion());
+				ArtifactId artifactId = declaration.getArtifactId();
+				ProjectId excludedModule = context.getProjectId();
 
-				Set<VersionSource> versionSources = state.getVersionSources(
-						project -> !context.getProjectId().equals(project), declaration.getArtifactId());
-				versionSources.add(versionSource);
+				Set<ArtifactVersion> declaredVersions = new TreeSet<>();
+				Set<VersionSource> versionSources = new LinkedHashSet<>();
+				state.doWithDependencies(projectId -> !projectId.equals(excludedModule), dependency -> {
+					if (dependency.getArtifactId().equals(artifactId)) {
+						declaredVersions.add(dependency.getCurrentVersion());
+						versionSources.addAll(dependency.getVersionSources());
+					}
+				});
+				declaredVersions.add(declaration.getVersion());
+				versionSources.add(declaration.getVersionSource());
 
 				boolean versionDrift = declaredVersions.size() > 1;
 				boolean declarationDrift = hasDeclarationDrift(versionSources);
@@ -142,8 +138,8 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 						: "inspection.version-drift.problem", declaration.getArtifactId(), versions);
 
 				holder.registerProblem(anchor, message,
-						new AlignVersionAction(context, DependencyUpdate.from(reference, highest), true),
-						new AlignVersionAction(context, DependencyUpdate.from(reference, lowest), false));
+						new AlignVersionAction(referenceContext, highest, true),
+						new AlignVersionAction(referenceContext, lowest, false));
 			}
 
 		};
@@ -180,6 +176,12 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 		private final DependencyUpdate update;
 
 		private final boolean highest;
+
+		AlignVersionAction(ArtifactReferenceContext context, ArtifactVersion version, boolean highest) {
+			this.context = context.getDependencyContext();
+			this.update = DependencyUpdate.from(context.getArtifactReference(), version);
+			this.highest = highest;
+		}
 
 		AlignVersionAction(ProjectDependencyContext context, DependencyUpdate update, boolean highest) {
 			this.context = context;

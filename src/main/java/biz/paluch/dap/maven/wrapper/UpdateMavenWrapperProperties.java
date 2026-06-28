@@ -87,7 +87,7 @@ class UpdateMavenWrapperProperties {
 	private static void applyUpdate(PropertyImpl property, WrapperEntry entry, DependencyUpdate update,
 			Collection<String> toCommentOut) {
 
-		if (!entry.hasArtifactId(update.coordinate())) {
+		if (!entry.hasArtifactId(update.artifactId())) {
 			return;
 		}
 

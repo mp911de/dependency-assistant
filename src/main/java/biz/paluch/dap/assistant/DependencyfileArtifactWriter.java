@@ -28,7 +28,7 @@ import java.util.TreeSet;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileService;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.json.psi.JsonElementGenerator;
 import com.intellij.json.psi.JsonFile;
@@ -78,11 +78,11 @@ class DependencyfileArtifactWriter {
 
 	private final Project project;
 
-	private final DependencyfileService dependencyfileService;
+	private final DependencyfileService dependencyfileservice;
 
 	DependencyfileArtifactWriter(Project project) {
 		this.project = project;
-		this.dependencyfileService = DependencyfileService.getInstance(project);
+		this.dependencyfileservice = DependencyfileService.getInstance(project);
 	}
 
 	/**
@@ -96,7 +96,7 @@ class DependencyfileArtifactWriter {
 	 */
 	boolean canAdd(UpgradeCandidate candidate) {
 
-		VirtualFile descriptor = dependencyfileService.getDescriptor();
+		VirtualFile descriptor = dependencyfileservice.getDescriptor();
 		if (descriptor == null) {
 			return true;
 		}
@@ -292,7 +292,7 @@ class DependencyfileArtifactWriter {
 
 	private @Nullable VirtualFile findOrCreateDescriptor() throws IOException {
 
-		VirtualFile descriptor = dependencyfileService.getDescriptor();
+		VirtualFile descriptor = dependencyfileservice.getDescriptor();
 		return descriptor != null ? descriptor : newEmptyDescriptor();
 	}
 

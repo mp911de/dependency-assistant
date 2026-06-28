@@ -29,9 +29,6 @@ class DefaultGradlePluginId implements GradlePluginId {
 
 	private final ArtifactId id;
 
-	/**
-	 * Create a plugin artifact id adapter.
-	 */
 	public DefaultGradlePluginId(ArtifactId id) {
 		this.id = id;
 	}

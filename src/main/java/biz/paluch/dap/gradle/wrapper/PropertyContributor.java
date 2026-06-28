@@ -19,14 +19,14 @@ package biz.paluch.dap.gradle.wrapper;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.assistant.PropertyContributorSupport;
 import biz.paluch.dap.state.Cache;
-import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.psi.PsiFileFactory;
 
 /**
- * {@link CompletionContributor} for Gradle {@link WrapperProperty wrapper
- * properties}.
+ * {@link PropertyContributorSupport} that completes Gradle
+ * {@link WrapperProperty wrapper property} lines with the latest Gradle
+ * distribution URL.
  *
  * @author Mark Paluch
  */

@@ -25,7 +25,7 @@ import javax.swing.Icon;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;

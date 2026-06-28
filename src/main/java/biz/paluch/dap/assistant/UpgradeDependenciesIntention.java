@@ -22,7 +22,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.HighPriorityAction;
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
@@ -34,7 +34,9 @@ import com.intellij.psi.PsiFile;
 import com.intellij.util.IncorrectOperationException;
 
 /**
- * Intention action for supported dependency build files.
+ * Intention action that launches a dependency check over the current build
+ * file, opening the upgrade review for the resolved dependencies. Available
+ * whenever the file is backed by a supported dependency context.
  *
  * @author Mark Paluch
  */

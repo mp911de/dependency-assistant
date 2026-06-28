@@ -21,8 +21,6 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
@@ -33,8 +31,9 @@ import com.intellij.psi.xml.XmlTag;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Applies selected dependency and plugin version updates to an extensions file
- * according to the {@link VersionSource} and {@link DeclarationSource}.
+ * Applies selected extension version updates to a Maven {@code extensions.xml}
+ * file by rewriting the inline {@code <version>} tag of each matching
+ * {@code <extension>} declaration.
  */
 class UpdateExtensionsFile {
 
@@ -81,7 +80,7 @@ class UpdateExtensionsFile {
 	private void apply(XmlTag root, DependencyUpdate update) {
 
 		String newVersion = update.version().toString();
-		updateDeclaration(root, update.coordinate(), newVersion);
+		updateDeclaration(root, update.artifactId(), newVersion);
 	}
 
 	private void updateDeclaration(XmlTag projectTag, ArtifactId coordinate, String newVersion) {

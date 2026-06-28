@@ -65,7 +65,11 @@ public class FetchPlan implements Predicate<String> {
 	}
 
 	/**
-	 * Return a fetching plan for partial fetching
+	 * Return a partial fetching plan that queries all sources, delegating to
+	 * {@link #partial(String, Set)} with no preferred source and no excluded
+	 * sources.
+	 *
+	 * @return the fetching plan.
 	 */
 	static FetchPlan partial() {
 		return partial(null, Set.of());

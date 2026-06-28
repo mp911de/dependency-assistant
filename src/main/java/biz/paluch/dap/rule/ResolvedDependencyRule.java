@@ -21,7 +21,7 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -69,7 +69,7 @@ class ResolvedDependencyRule implements DependencyRule {
 
 	@Override
 	public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
-		return this.upgradeStrategies.test(upgradeStrategy);
+		return upgradeStrategy.isRemediation() || this.upgradeStrategies.test(upgradeStrategy);
 	}
 
 	@Override

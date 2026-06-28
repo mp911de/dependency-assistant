@@ -18,6 +18,7 @@ package biz.paluch.dap.antora;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.github.GitHubReleaseSourceRouter;
 import biz.paluch.dap.state.ProjectId;
@@ -58,7 +59,7 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 	 * Create a context for the given project and anchor playbook file.
 	 * @param project the IntelliJ project.
 	 * @param anchor the Antora playbook file.
-	 * @return the context to be used.
+	 * @return a context isolated to the given playbook file, keyed by its path.
 	 */
 	static AntoraProjectContext of(Project project, VirtualFile anchor) {
 
@@ -72,6 +73,11 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 	 */
 	static List<ReleaseSource> getReleaseSources(Project project) {
 		return List.of(new GitHubReleaseSourceRouter(project, true));
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.OTHER;
 	}
 
 }

@@ -18,11 +18,14 @@ package biz.paluch.dap.state;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import org.junit.jupiter.api.Test;
 
@@ -40,30 +43,16 @@ class StateServiceUnitTests {
 	private ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
 	@Test
-	void collectsDistinctDeclaredVersionsAcrossModules() {
-
-		StateService service = new StateService();
-		store(service, "com.acme", "app", SPRING_CORE, "6.0.0");
-		store(service, "com.acme", "lib", SPRING_CORE, "6.1.0");
-
-		assertThat(service.getDeclaredVersions(SPRING_CORE)).extracting(Object::toString)
-				.containsExactlyInAnyOrder("6.0.0", "6.1.0");
-	}
-
-	@Test
-	void collapsesAgreeingModulesToSingleVersion() {
-
-		StateService service = new StateService();
-		store(service, "com.acme", "app", SPRING_CORE, "6.1.0");
-		store(service, "com.acme", "lib", SPRING_CORE, "6.1.0");
-
-		assertThat(service.getDeclaredVersions(SPRING_CORE)).extracting(Object::toString)
-				.containsExactly("6.1.0");
-	}
-
-	@Test
 	void returnsEmptyForUnknownArtifact() {
-		assertThat(new StateService().getDeclaredVersions(SPRING_CORE)).isEmpty();
+		StateService stateService = new StateService();
+
+		Set<ArtifactVersion> versions = new TreeSet<>();
+		stateService.doWithDependencies(projectId -> !projectId.equals(null), dependency -> {
+			if (dependency.getArtifactId().equals(SPRING_CORE)) {
+				versions.add(dependency.getCurrentVersion());
+			}
+		});
+		assertThat(versions).isEmpty();
 	}
 
 	@Test
@@ -78,30 +67,6 @@ class StateServiceUnitTests {
 		assertThat(visited).containsExactlyInAnyOrder(SPRING_CORE, SPRING_TEST);
 	}
 
-	@Test
-	void collectsVersionSourcesAcrossModules() {
-
-		StateService service = new StateService();
-		store(service, "com.acme", "app", SPRING_CORE, "6.1.0", VersionSource.property("spring.version"));
-		store(service, "com.acme", "lib", SPRING_CORE, "6.1.0", VersionSource.declared("6.1.0"));
-
-		assertThat(service.getVersionSources(SPRING_CORE)).hasSize(2)
-				.anyMatch(VersionSource.VersionProperty.class::isInstance)
-				.anyMatch(VersionSource.DeclaredVersion.class::isInstance);
-	}
-
-	@Test
-	void excludesModuleFromVersionSourceLookup() {
-
-		StateService service = new StateService();
-		store(service, "com.acme", "app", SPRING_CORE, "6.1.0", VersionSource.property("spring.version"));
-		store(service, "com.acme", "lib", SPRING_CORE, "6.1.0", VersionSource.declared("6.1.0"));
-
-		assertThat(service.getVersionSources(it -> !it.equals(ProjectId.of("com.acme", "app")), SPRING_CORE))
-				.singleElement()
-				.isInstanceOf(VersionSource.DeclaredVersion.class);
-	}
-
 	private static void store(StateService service, String groupId, String artifactId, ArtifactId dependency,
 			String version) {
 		store(service, groupId, artifactId, dependency, version, VersionSource.declared(version));
@@ -114,7 +79,7 @@ class StateServiceUnitTests {
 		collector.registerUsage(dependency, ArtifactVersion.of(version), DeclarationSource.dependency(),
 				versionSource);
 		service.getProjectState(ProjectId.of(groupId, artifactId))
-				.setDependencies(collector);
+				.setDependencies(collector, PackageSystem.MAVEN);
 	}
 
 }

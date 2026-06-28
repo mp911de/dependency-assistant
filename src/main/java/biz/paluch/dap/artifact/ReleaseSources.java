@@ -31,7 +31,7 @@ import java.util.function.Predicate;
  * artifact.
  * @see ReleaseSource
  */
-public record ReleaseSources(ArtifactId artifactId, Collection<ReleaseSource> sources) {
+public record ReleaseSources(ArtifactId artifactId, PackageSystem packageSystem, Collection<ReleaseSource> sources) {
 
 	/**
 	 * Retain only the sources accepted by the given predicate. If the predicate
@@ -44,7 +44,7 @@ public record ReleaseSources(ArtifactId artifactId, Collection<ReleaseSource> so
 	 */
 	public ReleaseSources filter(Predicate<ReleaseSource> predicate) {
 		List<ReleaseSource> filtered = sources.stream().filter(predicate).toList();
-		return filtered.isEmpty() ? this : new ReleaseSources(artifactId, filtered);
+		return filtered.isEmpty() ? this : new ReleaseSources(artifactId, packageSystem, filtered);
 	}
 
 	/**

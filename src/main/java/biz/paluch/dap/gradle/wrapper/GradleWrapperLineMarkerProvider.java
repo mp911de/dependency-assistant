@@ -22,11 +22,12 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperAssistant.GradleWrapperInterface;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.psi.PsiElement;
 
 /**
- * Gutter configurable for Gradle wrapper properties.
+ * Provides the upgrade-available gutter marker for Gradle wrapper property
+ * files.
  *
  * @author Mark Paluch
  */

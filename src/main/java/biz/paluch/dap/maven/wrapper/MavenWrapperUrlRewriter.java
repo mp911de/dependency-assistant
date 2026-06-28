@@ -213,7 +213,8 @@ class MavenWrapperUrlRewriter {
 	/**
 	 * Build the canonical URL for the given wrapper property and version.
 	 * @param property the wrapper property.
-	 * @param version the canonical version. {@literal null}.
+	 * @param version the version carrier supplying the canonical version; must not
+	 * be {@literal null}.
 	 * @return the canonical URL.
 	 */
 	static String canonicalUrl(WrapperProperty property, VersionAware version) {

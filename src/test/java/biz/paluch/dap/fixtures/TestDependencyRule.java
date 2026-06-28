@@ -19,9 +19,9 @@ package biz.paluch.dap.fixtures;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.Generations;
+import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**

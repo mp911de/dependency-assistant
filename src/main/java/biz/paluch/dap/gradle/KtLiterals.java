@@ -80,7 +80,10 @@ class KtLiterals {
 	}
 
 	/**
-	 * Return an empty instance.
+	 * Return the shared instance that carries no fragments and renders to the empty
+	 * string.
+	 *
+	 * @return the empty {@link KtLiterals} instance, never {@literal null}.
 	 */
 	public static KtLiterals empty() {
 		return EMPTY;
@@ -193,10 +196,13 @@ class KtLiterals {
 
 	/**
 	 * Extract text from supported Kotlin DSL literal forms.
-	 * <p>
-	 * Used for property keys, dependency coordinates, and simple synthesized
-	 * string values.
-	 * @throws IllegalArgumentException if the element type is not supported.
+	 * <p>Used for property keys, dependency coordinates, and simple synthesized
+	 * string values. Unsupported element shapes yield an empty string rather than
+	 * an exception.
+	 * @param element the Kotlin PSI element to inspect; must not be
+	 * {@literal null}.
+	 * @return the rendered text, or the empty string for unsupported shapes.
+	 * @throws IllegalArgumentException if {@code element} is {@literal null}.
 	 */
 	public static String getText(KtElement element) {
 		Assert.notNull(element, "Element must not be null");
@@ -333,9 +339,11 @@ class KtLiterals {
 
 	/**
 	 * Render the literals to {@code String} and resolve any property references.
+	 * <p>Property fragments that the resolver cannot resolve fall back to their
+	 * {@code ${name}} placeholder, so a property-only value still renders content.
 	 * @param propertyResolver the property resolver to use.
-	 * @return the rendered literal content, or the empty string if there are no
-	 * literal fragments.
+	 * @return the rendered literal content, or the empty string only when no
+	 * fragments are present.
 	 */
 	public String toString(PropertyResolver propertyResolver) {
 

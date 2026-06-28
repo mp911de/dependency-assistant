@@ -74,7 +74,8 @@ class MavenParser {
 	}
 
 	/**
-	 * Parse Maven properties from the given {@link PsiFile}.
+	 * Parse Maven properties from the given {@link XmlFile}, retaining the
+	 * declaring PSI element of each property as a {@link PropertyValue}.
 	 */
 	public static Map<String, PropertyValue> parseProperties(XmlFile pomFile) {
 
@@ -98,7 +99,8 @@ class MavenParser {
 	}
 
 	/**
-	 * Parse Maven properties from the given {@link PsiFile}.
+	 * Parse Maven properties from the given {@link XmlFile}, returning each
+	 * property mapped to its plain {@link String} value.
 	 */
 	public static Map<String, String> getProperties(XmlFile pomFile) {
 

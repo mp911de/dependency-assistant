@@ -224,10 +224,12 @@ interface GradleDependency {
 	}
 
 	/**
-	 * Adapt this descriptor to a PSI-backed dependency site with a distinct version
-	 * anchor.
-	 * <p>Parser implementations should prefer this variant when the editable
-	 * version literal is not the same PSI element as the dependency declaration.
+	 * Adapt this descriptor to a PSI-backed dependency site, offering a separate
+	 * version anchor.
+	 * <p>The default implementation ignores {@code version} and anchors the site on
+	 * {@code declaration} only. Implementations whose editable version literal is a
+	 * distinct PSI element (for example {@link SimpleDependency}) override this to
+	 * anchor the version separately.
 	 * @param declaration PSI element representing the dependency declaration.
 	 * @param version PSI element representing the editable version location.
 	 * @return the dependency site.

@@ -16,12 +16,16 @@
 
 package biz.paluch.dap.state;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
+import com.intellij.util.xmlb.XmlSerializer;
+import org.jdom.Element;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -34,6 +38,35 @@ import static org.assertj.core.api.Assertions.*;
 class CachedArtifactUnitTests {
 
 	private static final ArtifactId ARTIFACT_ID = ArtifactId.of("io.lettuce", "lettuce-core");
+
+	@Test
+	void updateCachedReleasesRetainsReleasesAbsentFromTheFetch() {
+
+		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
+		artifact.getReleases().add(new CachedRelease("0.9.0", null));
+
+		updateReleases(artifact,
+				List.of(CachedRelease.from(Release.of("1.0.0")), CachedRelease.from(Release.of("1.1.0"))),
+				2_000L, Set.of(), FetchPlan.fullFetch());
+
+		assertThat(artifact.getReleases()).extracting(CachedRelease::version)
+				.containsExactlyInAnyOrder("0.9.0", "1.0.0", "1.1.0");
+	}
+
+	@Test
+	void updateCachedReleasesNotifiesOnlyNewReleases() {
+
+		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
+		artifact.getReleases().add(new CachedRelease("1.0.0", null));
+
+		List<String> added = new ArrayList<>();
+		artifact.updateCachedReleases(new FetchedReleases(ARTIFACT_ID,
+				List.of(CachedRelease.from(Release.of("1.0.0")), CachedRelease.from(Release.of("1.1.0"))),
+				FetchPlan.fullFetch(), null, Set.of()), 2_000L,
+				(release, cached) -> added.add(release.version().toString()));
+
+		assertThat(added).containsExactly("1.1.0");
+	}
 
 	@Test
 	void roundTripsEmptyReleaseSources() {
@@ -123,6 +156,36 @@ class CachedArtifactUnitTests {
 
 		updateReleases(artifact, List.of(), 3_000L, Set.of("central"), FetchPlan.fullFetch());
 		assertThat(artifact.getSourcesCheckedSince()).isEqualTo(3_000L);
+	}
+
+	@Test
+	void roundTripsEcosystemThroughXmlSerialization() {
+
+		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
+		artifact.setEcosystem(PackageSystem.NPM);
+
+		Element element = XmlSerializer.serialize(artifact);
+		CachedArtifact deserialized = XmlSerializer.deserialize(element, CachedArtifact.class);
+
+		assertThat(deserialized.getEcosystem()).isEqualTo(PackageSystem.NPM);
+	}
+
+	@Test
+	void deserializedArtifactWithoutEcosystemReadsNull() {
+
+		Element element = XmlSerializer.serialize(new CachedArtifact(ARTIFACT_ID));
+		CachedArtifact deserialized = XmlSerializer.deserialize(element, CachedArtifact.class);
+
+		assertThat(deserialized.getEcosystem()).isNull();
+	}
+
+	@Test
+	void carriesEcosystemIntoSnapshot() {
+
+		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
+		artifact.setEcosystem(PackageSystem.MAVEN);
+
+		assertThat(artifact.snapshot().getEcosystem()).isEqualTo(PackageSystem.MAVEN);
 	}
 
 	@Test

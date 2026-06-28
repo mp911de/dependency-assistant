@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.DependencyVersionDriftInspection;
 import biz.paluch.dap.state.ProjectId;
@@ -87,7 +88,7 @@ public class Inspections {
 				DeclarationSource.dependency(), versionSource);
 		StateService.getInstance(project)
 				.getProjectState(ProjectId.of("com.example", projectId))
-				.setDependencies(collector);
+				.setDependencies(collector, PackageSystem.MAVEN);
 	}
 
 }

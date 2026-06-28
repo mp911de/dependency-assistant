@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
@@ -186,7 +187,7 @@ class MavenCompletionTests {
 		DependencyCollector collector = new DependencyCollector();
 		collector.registerUsage(Releases.JUNIT_BOM.toArtifactId(), ArtifactVersion.of("5.14.1"),
 				DeclarationSource.dependency(), VersionSource.declared("5.14.1"));
-		projectState.setDependencies(collector);
+		projectState.setDependencies(collector, PackageSystem.MAVEN);
 
 		fixture.completeBasic();
 		assertThat(fixture).completionSuggests("5.14.1");

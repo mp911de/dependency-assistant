@@ -70,7 +70,7 @@ class UnpinnedGitHubActionInspectionTests {
 		GitHubFixtures.analyze(workflowFile);
 
 		assertThat(inspect(workflowFile)).singleElement().satisfies(problem -> {
-			assertThat(problem.getDescriptionTemplate()).isEqualTo("Unpinned GitHub Action reference");
+			assertThat(problem.getDescriptionTemplate()).isEqualTo("Unpinned GitHub action reference");
 			assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
 			assertThat(highlightText(workflowFile, problem)).isEqualTo("v4.2.0");
 			assertThat(problem.getFixes()).extracting(QuickFix::getName)

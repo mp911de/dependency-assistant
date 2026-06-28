@@ -30,6 +30,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.MavenRepository;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.lookup.LookupContext;
@@ -39,9 +40,9 @@ import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -73,6 +74,11 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	@Override
 	public String getId() {
 		return "maven-wrapper";
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.MAVEN;
 	}
 
 	@Override
@@ -180,6 +186,11 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public PackageSystem getPackageSystem() {
+			return PackageSystem.MAVEN;
+		}
+
+		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
 			return delegate.collectDependencies(it -> {
@@ -234,7 +245,8 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	}
 
 	/**
-	 * Maven-specific user interface support.
+	 * Maven Wrapper-specific {@link InterfaceAssistant} supplying the display name
+	 * and icons for Maven Wrapper version declarations.
 	 */
 	enum MavenWrapperInterface implements InterfaceAssistant {
 

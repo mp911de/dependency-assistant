@@ -107,11 +107,15 @@ class GroovyDslUtils {
 	}
 
 	/**
-	 * Return the text of a Groovy literal or expression.
+	 * Return the text of a Groovy reference or literal expression.
+	 *
+	 * <p>A {@link GrReferenceExpression} resolves to its reference name and a
+	 * {@link GrLiteral} resolves to its literal text.
 	 *
 	 * @param expression the expression to extract the text from.
-	 * @return the extracted text.
-	 * @throws IllegalArgumentException if {@code expression} is not a literal.
+	 * @return the reference name or literal text.
+	 * @throws IllegalArgumentException if {@code expression} is neither a reference
+	 * nor a literal expression.
 	 */
 	public static @Nullable String getText(GrExpression expression) {
 

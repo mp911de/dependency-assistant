@@ -73,11 +73,10 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 	}
 
 	/**
-	 * Resolution is anchored to the {@link XmlText} value of a version or property
-	 * tag. Line markers and highlighting fire on every element of a tag (the angle
-	 * brackets, the tag name, the value text, and the surrounding text node);
-	 * pinning to the single text node keeps the gutter from duplicating across
-	 * them. Completion and documentation pre-unleaf to this same text node.
+	 * Resolution is anchored to the {@link XmlText} value of a version tag. Line
+	 * markers and highlighting fire on every element of a tag (the angle brackets,
+	 * the tag name, the value text, and the surrounding text node); pinning to the
+	 * single text node keeps the gutter from duplicating across them.
 	 */
 	private boolean isResolvableElement(PsiElement element) {
 		return element.isValid() && element instanceof XmlText;

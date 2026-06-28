@@ -34,7 +34,10 @@ interface DependencyUpgradeTarget {
 	Project getProject();
 
 	/**
-	 * Return the associated ArtifactId.
+	 * Return the {@link ArtifactId} of the documented declaration this target
+	 * applies versions to.
+	 *
+	 * @return the artifact identity; never {@literal null}.
 	 */
 	ArtifactId getArtifactId();
 

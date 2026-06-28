@@ -21,6 +21,7 @@ import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.MavenRepository;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.Versioned;
@@ -54,7 +55,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 	/**
 	 * Lookup the {@link MavenProjectContext} for the given {@link Project} and
-	 * {@link VirtualFile}.
+	 * {@link PsiFile}.
 	 */
 	static MavenProjectContext of(Project project, @Nullable PsiFile file) {
 
@@ -173,6 +174,11 @@ interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
+		public PackageSystem getPackageSystem() {
+			return PackageSystem.MAVEN;
+		}
+
+		@Override
 		public List<ReleaseSource> getReleaseSources() {
 
 			MavenSettings settings = SettingsXmlLoader.load(project);
@@ -224,6 +230,11 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		@Override
 		public ProjectId getProjectId() {
+			throw new IllegalStateException("Maven Context not available");
+		}
+
+		@Override
+		public PackageSystem getPackageSystem() {
 			throw new IllegalStateException("Maven Context not available");
 		}
 

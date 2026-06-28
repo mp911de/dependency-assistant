@@ -18,6 +18,8 @@ package biz.paluch.dap.assertions;
 
 import java.util.List;
 
+import javax.swing.Icon;
+
 import biz.paluch.dap.assistant.DependencyLineMarkerProvider.ActionNavigationHandler;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
@@ -56,6 +58,40 @@ public class GutterMarkAssert
 
 	GutterMarkAssert(GutterMark gutterMark) {
 		super(gutterMark, GutterMarkAssert.class);
+	}
+
+	/**
+	 * Verifies that the actual gutter mark renders the given icon.
+	 * @param expected the icon expected to be rendered by this gutter mark.
+	 * @return this assertion object.
+	 */
+	public GutterMarkAssert hasIcon(Icon expected) {
+		isNotNull();
+		Icon actualIcon = this.actual.getIcon();
+		if (actualIcon != expected) {
+			failWithMessage("Expected gutter icon to be:\n  %s\nbut was:\n  %s", expected, actualIcon);
+		}
+		return this;
+	}
+
+	/**
+	 * Verifies that the actual gutter mark tooltip does not contain any of the
+	 * given fragments.
+	 * @param unexpected the fragments expected to be absent from the tooltip text.
+	 * @return this assertion object.
+	 */
+	public GutterMarkAssert tooltipDoesNotContain(String... unexpected) {
+		isNotNull();
+		String tooltip = this.actual.getTooltipText();
+		if (tooltip == null) {
+			return this;
+		}
+		for (String fragment : unexpected) {
+			if (tooltip.contains(fragment)) {
+				failWithMessage("Expected gutter tooltip not to contain '%s' but was:\n  \"%s\"", fragment, tooltip);
+			}
+		}
+		return this;
 	}
 
 	/**

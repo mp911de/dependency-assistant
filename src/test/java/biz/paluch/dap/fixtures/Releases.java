@@ -149,7 +149,7 @@ public class Releases {
 
 	private static CachedArtifact create(String groupId, String artifactId, Consumer<ReleaseBuilder> configurer) {
 
-		CachedArtifact artifact = ReleaseBuilder.cachedArtifact(groupId, artifactId, configurer);
+		CachedArtifact artifact = ReleaseBuilder.artifact(groupId, artifactId, configurer);
 		ALL.add(artifact);
 		return artifact;
 	}

@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.gradle.wrapper;
 
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
@@ -27,7 +27,8 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Quick-fix that computes and inserts a missing Gradle wrapper checksum.
+ * Quick-fix that inserts the precomputed Gradle wrapper checksum supplied at
+ * construction next to the distribution URL property.
  *
  * @author Mark Paluch
  */

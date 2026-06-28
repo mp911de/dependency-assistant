@@ -17,7 +17,7 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Usage how an artifact is declared and used.
+ * Describes how an artifact is declared and where its version originates.
  *
  * @author Mark Paluch
  */

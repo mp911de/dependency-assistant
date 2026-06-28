@@ -20,6 +20,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
@@ -70,7 +71,7 @@ class GitHubFixtures {
 				new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()), releaseSource);
 		file.putUserData(GitHubProjectContext.KEY, projectContext);
 
-		service.getProjectState(projectContext.getProjectId()).setDependencies(collector);
+		service.getProjectState(projectContext.getProjectId()).setDependencies(collector, PackageSystem.GITHUB);
 
 		return collector;
 	}

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a snapshot of the License at
+ * You may obtain a copy of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -57,6 +57,8 @@ public class DependencyAssistantState {
 	}
 
 	/**
+	 * Return whether Dependency Assistant has been used actively at least once.
+	 *
 	 * @return {@literal true} if Dependency Assistant has been used actively.
 	 */
 	public boolean isUsedOnce() {

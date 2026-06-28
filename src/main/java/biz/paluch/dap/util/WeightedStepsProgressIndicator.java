@@ -73,7 +73,7 @@ public class WeightedStepsProgressIndicator extends DelegatingProgressIndicator 
 	 * @param weights the relative weight of each step in encounter order; must
 	 * contain at least one entry and every weight must be greater than {@code 0}.
 	 * Relative weights are not required to sum to {@code 1}. {@code (0.1, 0.9)} and
-	 * {@code (1, 9)} behave * identically.
+	 * {@code (1, 9)} behave identically.
 	 */
 	public WeightedStepsProgressIndicator(ProgressIndicator indicator, double... weights) {
 

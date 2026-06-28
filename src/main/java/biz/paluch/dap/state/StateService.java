@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a snapshot of the License at
+ * You may obtain a copy of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -16,19 +16,15 @@
 
 package biz.paluch.dap.state;
 
-import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
@@ -128,78 +124,6 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 	}
 
 	/**
-	 * Return the distinct versions the given artifact is declared at across every
-	 * module currently held in runtime dependency state.
-	 *
-	 * @param artifactId the artifact coordinates to look up; must not be
-	 *                   {@literal null}.
-	 * @return the distinct declared versions; empty when no module declares the
-	 * artifact.
-	 */
-	public Set<ArtifactVersion> getDeclaredVersions(ArtifactId artifactId) {
-		return getDeclaredVersions(artifactId, null);
-	}
-
-	/**
-	 * Return the distinct versions the given artifact is declared at across every
-	 * module except {@code excludedModule}.
-	 * <p>Callers inspecting a build file can exclude that file's module and supply
-	 * the live, in-editor version instead, avoiding a stale result for the module
-	 * whose runtime state has not yet been re-indexed after an edit.
-	 *
-	 * @param artifactId the artifact coordinates to look up; must not be
-	 * {@literal null}.
-	 * @param excludedModule the module to omit, or {@literal null} to include every
-	 * module.
-	 * @return the distinct declared versions; empty when no included module
-	 * declares the artifact.
-	 */
-	public Set<ArtifactVersion> getDeclaredVersions(ArtifactId artifactId, @Nullable ProjectId excludedModule) {
-
-		Set<ArtifactVersion> versions = new TreeSet<>();
-		doWithDependencies(projectId -> !projectId.equals(excludedModule), dependency -> {
-			if (dependency.getArtifactId().equals(artifactId)) {
-				versions.add(dependency.getCurrentVersion());
-			}
-		});
-		return versions;
-	}
-
-	/**
-	 * Return the version sources the given artifact is declared through across
-	 * every module currently held in runtime dependency state.
-	 *
-	 * @param artifactId the artifact coordinates to look up; must not be
-	 * {@literal null}.
-	 * @return the version sources; empty when no module declares the artifact.
-	 */
-	public Set<VersionSource> getVersionSources(ArtifactId artifactId) {
-		return getVersionSources(Predicates.alwaysTrue(), artifactId);
-	}
-
-	/**
-	 * Return the version sources the given artifact is declared through across the
-	 * modules accepted by {@code projectFilter}.
-	 *
-	 * @param projectFilter selects which modules contribute version sources; must
-	 * not be {@literal null}.
-	 * @param artifactId the artifact coordinates to look up; must not be
-	 * {@literal null}.
-	 * @return the version sources; empty when no accepted module declares the
-	 * artifact.
-	 */
-	public Set<VersionSource> getVersionSources(Predicate<ProjectId> projectFilter, ArtifactId artifactId) {
-
-		Set<VersionSource> versionSources = new LinkedHashSet<>();
-		doWithDependencies(projectFilter, dependency -> {
-			if (dependency.getArtifactId().equals(artifactId)) {
-				versionSources.addAll(dependency.getVersionSources());
-			}
-		});
-		return versionSources;
-	}
-
-	/**
 	 * Perform the given action for every dependency declared across all modules
 	 * currently held in runtime dependency state.
 	 *
@@ -270,9 +194,9 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		}
 
 		@Override
-		public void setDependencies(DependencyCollector collector) {
+		public void setDependencies(DependencyCollector collector, PackageSystem packageSystem) {
 			dependencies.put(identity, collector);
-			getCache().getProject(identity).setProperties(collector, getCache().clock.millis());
+			getCache().getProject(identity).setProperties(collector, getCache().now());
 		}
 
 		@Override

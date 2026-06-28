@@ -82,14 +82,13 @@ class UpdatePackageJsonFile {
 	}
 
 	/**
-	 * Apply a single update at the given JSON string-literal anchor.
-	 * @param literal the JSON string literal of a {@code dependencies} or
-	 * {@code devDependencies} entry value.
+	 * Apply a single update at the given anchor element.
+	 * @param literal the anchor element, either the {@link JsonProperty} of a
+	 * {@code dependencies} or {@code devDependencies} entry or an element nested
+	 * within such a property.
 	 * @param update the update to apply.
-	 * @return {@literal true} if the rewrite was applied; {@literal false} on stale
-	 * PSI without error.
-	 * @throws IllegalStateException when the anchor resolves to an unexpected
-	 * element kind.
+	 * @throws IllegalStateException when the anchor does not resolve to an
+	 * enclosing {@link JsonProperty}.
 	 */
 	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
 
@@ -122,7 +121,7 @@ class UpdatePackageJsonFile {
 		ArtifactId artifactId = NpmPackageParser.toArtifactId(name);
 		for (DependencyUpdate update : updates) {
 
-			if (!artifactId.equals(update.coordinate())) {
+			if (!artifactId.equals(update.artifactId())) {
 				continue;
 			}
 

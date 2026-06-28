@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a snapshot of the License at
+ * You may obtain a copy of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -21,6 +21,7 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,8 +50,10 @@ public interface ProjectState {
 	 * Replace the current runtime dependency state of this project.
 	 *
 	 * @param collector the freshly analyzed dependency collector.
+	 * @param packageSystem the package ecosystem the analyzed dependencies belong
+	 * to.
 	 */
-	void setDependencies(DependencyCollector collector);
+	void setDependencies(DependencyCollector collector, PackageSystem packageSystem);
 
 	/**
 	 * Return whether dependencies are available.

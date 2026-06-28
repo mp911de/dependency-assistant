@@ -29,8 +29,11 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.upgrade.DependencyUpgradeSubject;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.ListTableModel;
 import org.junit.jupiter.api.Test;
@@ -72,10 +75,10 @@ class SuggestedVersionComboBoxEditorTests {
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"), current);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
-		DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency,
-				Releases.just(Release.of(current)));
-		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.empty(),
-				DependencyRule.absent());
+		DependencyUpdateCandidate option = new DependencyUpdateCandidate(DependencyUpgradeSubject.of(dependency,
+				Releases.just(Release.of(current)), VulnerabilityRepository.empty(), DependencyRule.absent()),
+				UpgradeSuggestions.empty());
+		return new UpgradeCandidate(option, new TestInterfaceAssistant(), DeclaredVersions.empty());
 	}
 
 }

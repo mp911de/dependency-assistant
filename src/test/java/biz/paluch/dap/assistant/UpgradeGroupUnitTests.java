@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import java.util.List;
+import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -25,8 +26,11 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.checker.CvssSeverity;
+import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.checker.Vulnerability;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
@@ -105,12 +109,33 @@ class UpgradeGroupUnitTests {
 		assertThat(group.getMemberLabel()).isEqualTo("3");
 	}
 
-	private static UpgradeGroup group(String... artifactIds) {
+	@Test
+	void vulnerabilitiesMergeMemberRepositoriesByIdentifier() {
 
+		ArtifactVersion vulnerableVersion = ArtifactVersion.of("1.0.0");
+		ArtifactVersion cleanVersion = ArtifactVersion.of("1.0.1");
+		VulnerabilityRepository first = VulnerabilityRepository.of(Map.of(vulnerableVersion,
+				Vulnerabilities.of(vulnerability("CVE-2026-1"), vulnerability("CVE-2026-2")), cleanVersion,
+				Vulnerabilities.clean()));
+		VulnerabilityRepository second = VulnerabilityRepository.of(Map.of(vulnerableVersion,
+				Vulnerabilities.of(vulnerability("CVE-2026-1"))));
+		UpgradeGroup group = UpgradeGroup.of(List.of(member("core", first), member("support", second)));
+
+		assertThat(group.getVulnerabilities(vulnerableVersion)).extracting(Vulnerability::getIdentifier)
+				.containsExactly("CVE-2026-1", "CVE-2026-2");
+		assertThat(group.getVulnerabilities(cleanVersion).isClean()).isTrue();
+		assertThat(group.getVulnerabilities(ArtifactVersion.of("2.0.0")).isUnknown()).isTrue();
+	}
+
+	private static UpgradeGroup group(String... artifactIds) {
 		return UpgradeGroup.of(List.of(artifactIds).stream().map(UpgradeGroupUnitTests::member).toList());
 	}
 
 	private static UpgradeCandidate member(String artifactId) {
+		return member(artifactId, VulnerabilityRepository.empty());
+	}
+
+	private static UpgradeCandidate member(String artifactId, VulnerabilityRepository vulnerabilities) {
 
 		ArtifactId id = ArtifactId.of("com.example", artifactId);
 		ArtifactVersion version = ArtifactVersion.of("1.0.0");
@@ -119,9 +144,14 @@ class UpgradeGroupUnitTests {
 		dependency.addVersionSource(VersionSource.property("example.version"));
 		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of("com.example",
 				"app"), new Dependency(id, version));
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, Releases.of(Release.of("1.0.0"))),
-				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null),
-				DependencyRule.absent());
+		return new UpgradeCandidate(
+				new DependencyUpdateCandidate(dependency, Releases.of(Release.of("1.0.0")), vulnerabilities),
+				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null));
+	}
+
+	private static Vulnerability vulnerability(String identifier) {
+		return new Vulnerability(identifier, identifier, "GHSA-x", "Remote code execution", 9.8, CvssSeverity.CRITICAL,
+				"https://example.com/" + identifier);
 	}
 
 }

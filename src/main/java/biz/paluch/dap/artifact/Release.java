@@ -25,13 +25,15 @@ import java.util.Optional;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.util.ObjectUtils;
+
 /**
  * A release that consists of a version and an optional release date.
  *
  * @author Mark Paluch
  */
 public record Release(ArtifactVersion version,
-		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, VersionAware {
+		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, VersionAware, Versioned {
 
 	/**
 	 * Create a {@code Release} from a version string.
@@ -119,6 +121,11 @@ public record Release(ArtifactVersion version,
 		} catch (DateTimeParseException e) {
 			return LocalDateTime.of(LocalDate.parse(date), LocalTime.MIDNIGHT);
 		}
+	}
+
+	@Override
+	public boolean isVersioned() {
+		return true;
 	}
 
 	/**
@@ -214,6 +221,24 @@ public record Release(ArtifactVersion version,
 		}
 
 		return version.toString().compareToIgnoreCase(o.version.toString());
+	}
+
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof Release that)) {
+			return false;
+		}
+
+		if (that.releaseDate == null && releaseDate != null || that.releaseDate != null && releaseDate == null) {
+			return false;
+		}
+		return ObjectUtils.nullSafeEquals(version, that.version);
+	}
+
+	@Override
+	public int hashCode() {
+		return version.hashCode();
 	}
 
 	@Override

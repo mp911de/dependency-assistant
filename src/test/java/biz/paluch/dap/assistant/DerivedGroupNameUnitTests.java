@@ -39,7 +39,7 @@ class DerivedGroupNameUnitTests {
 		DerivedGroupName name = DerivedGroupName.of(groupId, artifactIds);
 
 		assertThat(name).isNotNull();
-		assertThat(name.displayName()).isEqualTo(expected);
+		assertThat(name.getDisplayName()).isEqualTo(expected);
 	}
 
 	static Stream<Arguments> derivableNames() {

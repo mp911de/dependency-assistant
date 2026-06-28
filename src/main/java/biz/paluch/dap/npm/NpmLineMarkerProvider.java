@@ -21,10 +21,10 @@ import javax.swing.Icon;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.npm.NpmAssistant.NpmInterface;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 
 /**
- * Gutter configurable for NPM dependencies.
+ * Provides gutter icons for NPM dependencies that have an available upgrade.
  *
  * @author Mark Paluch
  */

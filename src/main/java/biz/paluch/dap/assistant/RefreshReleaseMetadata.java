@@ -25,7 +25,7 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
@@ -90,6 +90,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 		Map<ArtifactId, Releases> result = dependencyCheck.getReleases(steps, sources,
 				ReleaseResolver.refresh());
 		steps.nextStep();
+
 		updates = result.keySet().stream().toList();
 		duration = TimeoutUtil.getDurationMillis(startNs);
 	}

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a snapshot of the License at
+ * You may obtain a copy of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -22,16 +22,24 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.checker.Vulnerability;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -85,7 +93,6 @@ public class Cache {
 	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project", style = XCollection.Style.v2) List<ProjectCache> projects = Collections
 			.synchronizedList(new ArrayList<>());
 
-
 	/**
 	 * Create a new {@code Cache} using the current UTC clock for XML
 	 * deserialization.
@@ -125,7 +132,7 @@ public class Cache {
 	}
 
 	/**
-	 * Return cached releases for the given artifact from.
+	 * Return cached releases for the given artifact.
 	 *
 	 * @param artifactId the artifact to look up.
 	 * @return the cached releases for the artifact, or an empty list if no entry is
@@ -173,8 +180,17 @@ public class Cache {
 
 	/**
 	 * Append cached artifact entries to this cache.
-	 * <p>
-	 * Existing entries are not de-duplicated.
+	 * <p>Existing entries are not de-duplicated.
+	 *
+	 * @param artifacts the artifact entries to append.
+	 */
+	public void addArtifacts(CachedArtifact... artifacts) {
+		addArtifacts(List.of(artifacts));
+	}
+
+	/**
+	 * Append cached artifact entries to this cache.
+	 * <p>Existing entries are not de-duplicated.
 	 *
 	 * @param artifacts the artifact entries to append.
 	 */
@@ -186,7 +202,7 @@ public class Cache {
 	}
 
 	/**
-	 * Replace the cached releases for the given artifact update their last seen
+	 * Replace the cached releases for the given artifact and update their last seen
 	 * timestamps.
 	 * <p>If no cache entry exists yet, one is created first.
 	 *
@@ -212,9 +228,17 @@ public class Cache {
 	}
 
 	/**
-	 * Update the cached releases using the given {@link FetchedReleases}
+	 * Update the cached releases using the given {@link FetchedReleases}, notifying
+	 * {@code onNewRelease} for each release added that was not previously cached.
+	 *
+	 * @param releases the fetched releases.
+	 * @param packageSystem the ecosystem the fetched artifact belongs to; stored on
+	 * a freshly created entry.
+	 * @param onNewRelease invoked once per newly cached release; must not be
+	 * {@literal null}.
 	 */
-	public void updateVersionOptions(FetchedReleases releases) {
+	public void updateVersionOptions(FetchedReleases releases, PackageSystem packageSystem,
+			BiConsumer<Release, CachedRelease> onNewRelease) {
 
 		ArtifactId artifactId = releases.getArtifactId();
 
@@ -222,22 +246,24 @@ public class Cache {
 			CachedArtifact artifactToUse = null;
 			for (CachedArtifact artifact : artifacts) {
 
-				if (artifact.matches(artifactId)) {
+				if (artifact.matches(artifactId, packageSystem)) {
 					artifactToUse = artifact;
 					break;
 				}
 			}
 			if (artifactToUse == null) {
 				artifactToUse = new CachedArtifact(artifactId);
+				artifactToUse.setEcosystem(packageSystem);
 				artifacts.add(artifactToUse);
 			}
 
-			artifactToUse.updateCachedReleases(releases, clock.millis());
+			artifactToUse.updateCachedReleases(releases, now(), onNewRelease);
 		}
 	}
 
 	/**
-	 * Record a successful cache update using the current UTC clock.
+	 * Record a successful cache update, stamping the current time from this cache's
+	 * {@link Clock}.
 	 */
 	public void recordUpdate() {
 		this.lastUpdateTimestamp = clock.millis();
@@ -311,6 +337,22 @@ public class Cache {
 	}
 
 	/**
+	 * Return a snapshot of the cached artifact entries.
+	 * <p>The list is a copy taken under the artifacts lock; the entries themselves
+	 * are the live instances. The background scan walks this snapshot to read each
+	 * artifact's persisted {@link CachedArtifact#getEcosystem() ecosystem} and
+	 * cached releases so it can build the correct vulnerability query from the
+	 * cache alone.
+	 *
+	 * @return an immutable snapshot of the current artifact entries.
+	 */
+	public List<CachedArtifact> getCachedArtifacts() {
+		synchronized (artifacts) {
+			return List.copyOf(artifacts);
+		}
+	}
+
+	/**
 	 * Return the raw {@link CachedRelease} entries for the given artifact.
 	 * <p>
 	 * Unlike {@link #getReleases(ArtifactId, boolean)}, this variant returns the
@@ -328,9 +370,157 @@ public class Cache {
 	}
 
 	/**
+	 * Return the three-state vulnerabilities for the given artifact version.
+	 * <p>The result is absent when the version is unknown or has no vulnerability
+	 * scan. A scanned version with no vulnerabilities is clean, one with
+	 * vulnerabilities is vulnerable.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @param version the exact version whose scan is requested.
+	 * @return the vulnerability scan; never {@literal null}.
+	 */
+	@Transient
+	public Vulnerabilities getVulnerabilities(ArtifactId artifactId, ArtifactVersion version) {
+		return getVulnerabilities(findCachedRelease(artifactId, version));
+	}
+
+	private Vulnerabilities getVulnerabilities(@Nullable CachedRelease release) {
+		return release == null ? Vulnerabilities.absent() : release.toVulnerabilities();
+	}
+
+	/**
+	 * Return the per-version {@link Vulnerabilities} for the given artifact across
+	 * all package systems.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @return a map of cached version to its vulnerability scan; empty if no entry
+	 * is present.
+	 */
+	@Transient
+	public Map<ArtifactVersion, Vulnerabilities> getVulnerabilities(ArtifactId artifactId) {
+		return getVulnerabilities(artifactId, (PackageSystem) null);
+	}
+
+	/**
+	 * Return the per-version {@link Vulnerabilities} for the artifact and package
+	 * system carried by the given identity.
+	 *
+	 * @param identity the package identity to look up.
+	 * @return a map of cached version to its vulnerability scan; empty if no entry
+	 * is present.
+	 */
+	@Transient
+	public Map<ArtifactVersion, Vulnerabilities> getVulnerabilities(PackageIdentity identity) {
+		return getVulnerabilities(identity.getArtifactId(), identity.getPackageSystem());
+	}
+
+	/**
+	 * Return the per-version {@link Vulnerabilities} for the given artifact,
+	 * optionally restricted to a package system.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @param packageSystem the package system to match, or {@literal null} to match
+	 * any package system.
+	 * @return a map of cached version to its vulnerability scan; empty if no entry
+	 * is present.
+	 */
+	@Transient
+	public Map<ArtifactVersion, Vulnerabilities> getVulnerabilities(ArtifactId artifactId,
+			@Nullable PackageSystem packageSystem) {
+
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId, packageSystem);
+		if (cachedArtifact == null) {
+			return Map.of();
+		}
+
+		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new HashMap<>();
+		for (CachedRelease release : cachedArtifact.getReleases()) {
+			vulnerabilities.put(release.toRelease().getVersion(), getVulnerabilities(release));
+		}
+
+		return vulnerabilities;
+	}
+
+	/**
+	 * Record a completed scan for one version on an already-cached release. A no-op
+	 * when the artifact or release entry is not present.
+	 *
+	 * @param artifactId the artifact.
+	 * @param version the exact version scanned.
+	 * @param vulnerabilities the advisories found, empty for a clean scan.
+	 */
+	public void recordVulnerabilities(ArtifactId artifactId, ArtifactVersion version,
+			Iterable<Vulnerability> vulnerabilities) {
+
+		CachedRelease cachedRelease = findCachedRelease(artifactId, version);
+		if (cachedRelease != null) {
+			cachedRelease.setVulnerabilities(now(), vulnerabilities);
+		}
+	}
+
+	/**
+	 * Record a completed vulnerability scan for one version on an already-cached
+	 * release. A no-op when the artifact or release entry is not present.
+	 *
+	 * @param identity the package identity.
+	 * @param version the exact version scanned.
+	 * @param vulnerabilities the advisories found, empty for a clean scan.
+	 */
+	public void recordVulnerabilities(PackageIdentity identity, ArtifactVersion version,
+			Iterable<Vulnerability> vulnerabilities) {
+		CachedRelease cachedRelease = findCachedRelease(identity.getArtifactId(), identity.getPackageSystem(), version);
+		if (cachedRelease != null) {
+			cachedRelease.setVulnerabilities(now(), vulnerabilities);
+		}
+	}
+
+	/**
+	 * Record one completed scan attempt that returned no data for the version,
+	 * advancing its scan-attempt counter. A no-op when the version is not cached.
+	 *
+	 * @param artifactId the artifact.
+	 * @param version the exact version that was requested.
+	 */
+	public void recordAttempt(ArtifactId artifactId, ArtifactVersion version) {
+
+		CachedRelease release = findCachedRelease(artifactId, version);
+		if (release != null) {
+			release.recordAttempt();
+		}
+	}
+
+	/**
+	 * Return whether the bulk scan should re-query the given version, per the
+	 * {@link VulnerabilityScannerPolicy} scan-state and re-scan interval rules.
+	 *
+	 * @param artifactId the artifact.
+	 * @param version the exact version.
+	 * @return {@literal true} if the version needs a scan; {@literal false}
+	 * otherwise.
+	 */
+	public boolean needsScan(ArtifactId artifactId, ArtifactVersion version) {
+		return new VulnerabilityScannerPolicy(clock).scanRequired(findCachedRelease(artifactId, version));
+	}
+
+	public @Nullable CachedRelease findCachedRelease(PackageIdentity pkg, ArtifactVersion version) {
+		return findCachedRelease(pkg.getArtifactId(), pkg.getPackageSystem(), version);
+	}
+
+	public @Nullable CachedRelease findCachedRelease(ArtifactId artifactId, ArtifactVersion version) {
+		CachedArtifact artifact = findCachedArtifact(artifactId);
+		return artifact == null ? null : artifact.getCachedRelease(version);
+	}
+
+	public @Nullable CachedRelease findCachedRelease(ArtifactId artifactId, PackageSystem packageSystem,
+			ArtifactVersion version) {
+		CachedArtifact artifact = findCachedArtifact(artifactId, packageSystem);
+		return artifact == null ? null : artifact.getCachedRelease(version);
+	}
+
+	/**
 	 * Find a cached artifact.
 	 * @param artifactId the artifact to look up.
-	 * @return the cached aartifact or {@literal null} if none found.
+	 * @return the cached artifact or {@literal null} if none found.
 	 */
 	public @Nullable CachedArtifact findCachedArtifact(ArtifactId artifactId) {
 		synchronized (artifacts) {
@@ -345,11 +535,38 @@ public class Cache {
 	}
 
 	/**
+	 * Find a cached artifact.
+	 * @param pkg the package identity to look up.
+	 * @return the cached artifact or {@literal null} if none found.
+	 */
+	public @Nullable CachedArtifact findCachedArtifact(PackageIdentity pkg) {
+		return findCachedArtifact(pkg.getArtifactId(), pkg.getPackageSystem());
+	}
+
+	/**
+	 * Find a cached artifact.
+	 * @param artifactId the artifact to look up.
+	 * @param packageSystem the artifact ecosytem.
+	 * @return the cached artifact or {@literal null} if none found.
+	 */
+	public @Nullable CachedArtifact findCachedArtifact(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
+		synchronized (artifacts) {
+			for (CachedArtifact artifact : artifacts) {
+				// TODO: more performant lookup? Use Comparator and a tree set?
+				if (artifact.matches(artifactId, packageSystem)) {
+					return artifact;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Decide how the given artifact should be fetched from its release sources,
 	 * given empty-lookup back-off to avoid constantly re-querying a source assumed
 	 * to remain empty.
 	 *
-	 * @param sources the release sources. configured for the artifact.
+	 * @param sources the release sources configured for the artifact.
 	 * @return the fetch plan to apply.
 	 */
 	public FetchPlan createFetchPlan(ReleaseSources sources) {
@@ -458,6 +675,15 @@ public class Cache {
 		}
 
 		return copy;
+	}
+
+	/**
+	 * Return the current epoch milliseconds from this cache's clock.
+	 *
+	 * @return the current time in epoch milliseconds.
+	 */
+	public long now() {
+		return clock.millis();
 	}
 
 }

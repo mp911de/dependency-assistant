@@ -26,7 +26,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link MavenIntrospectedDependencies}.
@@ -50,9 +50,10 @@ class MavenIntrospectedDependenciesUnitTests {
 
 		introspected.complete(collector);
 
-		Dependency usage = collector.getUsage(COMMONS_LANG);
-		assertThat(usage).isNotNull();
-		assertThat(usage.getCurrentVersion().toString()).isEqualTo("3.19.0");
+		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3")
+				.hasVersion("3.19.0")
+				.hasDeclaration(DeclarationSource.managed())
+				.hasVersionSource(VersionSource.property("commons.version"));
 	}
 
 	@Test
@@ -71,9 +72,10 @@ class MavenIntrospectedDependenciesUnitTests {
 
 		introspected.complete(child);
 
-		Dependency usage = child.getUsage(COMMONS_LANG);
-		assertThat(usage).isNotNull();
-		assertThat(usage.getCurrentVersion().toString()).isEqualTo("3.19.0");
+		assertThat(child).hasDependencyUsage("org.apache.commons", "commons-lang3")
+				.hasVersion("3.19.0")
+				.hasDeclaration(DeclarationSource.managed())
+				.hasVersionSource(VersionSource.property("commons.version"));
 	}
 
 	@Test

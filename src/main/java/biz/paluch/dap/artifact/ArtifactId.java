@@ -40,12 +40,16 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 	}
 
 	/**
-	 * Return the group id.
+	 * Return the group id that namespaces the artifact (e.g. the Maven
+	 * {@code groupId} or the first segment of Gradle coordinates).
+	 * @return the group id; never {@literal null}.
 	 */
 	String groupId();
 
 	/**
-	 * Return the artifact id.
+	 * Return the artifact id that names the artifact within its {@link #groupId()
+	 * group}.
+	 * @return the artifact id; never {@literal null}.
 	 */
 	String artifactId();
 

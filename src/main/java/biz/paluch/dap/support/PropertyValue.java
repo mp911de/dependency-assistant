@@ -21,8 +21,8 @@ import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 
 /**
- * Location of a property value inside {@code gradle.properties} or a
- * script-local declaration (e.g. {@code ext} / {@code extra}).
+ * Location of a resolved property value, pairing its key and value with the PSI
+ * element from which it originates.
  *
  * @author Mark Paluch
  */

@@ -46,7 +46,7 @@ class GitVersionResolverUnitTests {
 
 	private static Cache cacheWithReleases() {
 
-		CachedArtifact artifact = ReleaseBuilder.cachedArtifact(ARTIFACT, releases -> releases
+		CachedArtifact artifact = ReleaseBuilder.artifact(ARTIFACT, releases -> releases
 				.add("1.0.0", null, SHA_V1)
 				.add("1.5.0", null, SHA_V1_FORK)
 				.add("2.0.0", "2026-01-01", SHA_V2)

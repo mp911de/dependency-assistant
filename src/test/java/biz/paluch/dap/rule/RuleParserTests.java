@@ -20,9 +20,9 @@ import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;

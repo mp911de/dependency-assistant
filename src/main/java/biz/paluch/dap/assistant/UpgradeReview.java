@@ -31,10 +31,13 @@ import javax.swing.Icon;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.upgrade.UpgradeSuggestion;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import com.intellij.openapi.Disposable;
 import com.intellij.util.EventDispatcher;
 import org.jspecify.annotations.Nullable;
@@ -64,8 +67,18 @@ class UpgradeReview {
 
 	private UpgradeStrategies upgradeStrategy = UpgradeStrategies.MANUAL;
 
+	private final boolean hasSafeVersion;
+
 	/**
-	 * Create a new {@code DependencyUpgradeReview}.
+	 * Create a new {@code UpgradeReview}.
+	 * @param candidates the update candidates to display.
+	 */
+	UpgradeReview(UpgradeCandidate... candidates) {
+		this(List.of(candidates), List.of());
+	}
+
+	/**
+	 * Create a new {@code UpgradeReview}.
 	 * @param candidates the update candidates to display.
 	 * @param errors release-fetch errors collected while resolving.
 	 */
@@ -110,6 +123,17 @@ class UpgradeReview {
 				sharedPropertyPeers.put(candidate, peers);
 			}
 		});
+
+		boolean hasSafeVersion = false;
+
+		for (UpgradeCandidate upgradeCandidate : this.candidates) {
+			if (upgradeCandidate.getUpdateCandidate().isVulnerable()) {
+				hasSafeVersion = true;
+				break;
+			}
+		}
+
+		this.hasSafeVersion = hasSafeVersion;
 	}
 
 	/**
@@ -150,20 +174,30 @@ class UpgradeReview {
 
 	/**
 	 * Return the candidates currently shown by the dialog under the active filter.
+	 *
+	 * <p>Under {@link VisibilityFilter#HIDE_UP_TO_DATE} a row whose declared
+	 * version is vulnerable always stays visible, even with no clean target, so the
+	 * developer is never left unaware of a vulnerability the gutter stays quiet
+	 * about (Issue 03).
 	 */
 	List<UpgradeCandidate> getCandidates() {
-		return candidates.stream().filter(candidate -> filter.includes(candidate.getUpdateCandidate())).toList();
+		return candidates.stream().filter(this::isVisible).toList();
+	}
+
+	private boolean isVisible(UpgradeCandidate candidate) {
+		return filter.includes(candidate.getUpdateCandidate());
 	}
 
 	/**
 	 * Return the release options shown for the given candidate under the active
-	 * filter.
+	 * filter. A vulnerable row's Safe Version is pinned in so it stays selectable
+	 * even when the filter would otherwise hide every newer release.
 	 */
 	public Releases getReleases(UpgradeCandidate candidate) {
 		return filter.visibleReleases(candidate.getUpdateCandidate());
 	}
 
-	public Map<UpgradeStrategy, Release> getTargets(UpgradeCandidate candidate) {
+	public UpgradeSuggestions getTargets(UpgradeCandidate candidate) {
 		return filter.visibleTargets(candidate.getUpdateCandidate());
 	}
 
@@ -174,9 +208,27 @@ class UpgradeReview {
 	 */
 	@Nullable
 	Release resolveTarget(UpgradeCandidate candidate, UpgradeStrategy strategy) {
+		UpgradeSuggestion upgradeSuggestion = getTargets(candidate).get(strategy);
+		if (!upgradeSuggestion.isPresent()) {
+			return null;
+		}
+		Releases releases = getReleases(candidate);
+		if (releases.contains(upgradeSuggestion.getRelease())) {
+			return upgradeSuggestion.getRelease();
+		}
+		return null;
+	}
 
-		Release target = getTargets(candidate).get(strategy);
-		return target != null && getReleases(candidate).contains(target) ? target : null;
+	/**
+	 * Return whether the {@code Safe} upgrade-strategy entry should be offered:
+	 * only when at least one unfiltered candidate is vulnerable. Evaluated over the
+	 * full candidate set so the entry stays available while filters toggle.
+	 *
+	 * @return {@literal true} if any candidate is vulnerable; {@literal false}
+	 * otherwise.
+	 */
+	boolean isSafeStrategyAvailable() {
+		return hasSafeVersion;
 	}
 
 	/**
@@ -346,7 +398,8 @@ class UpgradeReview {
 		MANUAL("dialog.upgradeStrategy.manual"), //
 		BUGFIX("dialog.upgradeStrategy.bugfix", UpgradeStrategy.PATCH), //
 		MINOR("dialog.upgradeStrategy.minor", UpgradeStrategy.MINOR), //
-		LATEST("dialog.upgradeStrategy.latest", UpgradeStrategy.LATEST);
+		LATEST("dialog.upgradeStrategy.latest", UpgradeStrategy.LATEST), //
+		SAFE("dialog.upgradeStrategy.safe", UpgradeStrategy.SAFE);
 
 		private final String messageKey;
 
@@ -355,7 +408,6 @@ class UpgradeReview {
 		UpgradeStrategies(String messageKey) {
 			this.messageKey = messageKey;
 			this.strategy = null;
-
 		}
 
 		UpgradeStrategies(String messageKey, UpgradeStrategy strategy) {
@@ -382,24 +434,13 @@ class UpgradeReview {
 		 */
 		Icon getIcon() {
 
-			if (this == MANUAL || this.strategy == null) {
-				return VersionAge.SAME_OR_UNKNOWN.getIcon();
+			if (this == SAFE) {
+				return CheckerIcons.SAFE;
 			}
-			return getIcon(this.strategy);
-		}
-
-		/**
-		 * Same visual language as
-		 * {@link DependencyCheckDialog.VersionOptionCellRenderer} / {@link VersionAge}
-		 * for version steps.
-		 */
-		Icon getIcon(UpgradeStrategy upgradeStrategy) {
-			return (switch (upgradeStrategy) {
-			case RELEASE, PATCH -> VersionAge.NEWER_PATCH;
-			case MINOR -> VersionAge.NEWER_MINOR;
-			case MAJOR, LATEST -> VersionAge.NEWER_MAJOR;
-				case PREVIEW -> VersionAge.PREVIEW; case RULE -> VersionAge.RULE;
-			}).getIcon();
+			if (this == MANUAL || this.strategy == null) {
+				return DependencyUpgradeIcons.resolveIcon(VersionAge.SAME_OR_UNKNOWN);
+			}
+			return DependencyUpgradeIcons.resolveIcon(this.strategy);
 		}
 
 	}

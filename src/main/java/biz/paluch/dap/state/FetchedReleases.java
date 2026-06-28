@@ -3,6 +3,9 @@ package biz.paluch.dap.state;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.TreeMap;
+import java.util.function.BiConsumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.HasArtifactId;
@@ -11,7 +14,7 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Value object capturing the release fetching for a single artifact.
+ * Value object capturing the releases fetched for a single artifact.
  *
  * @author Mark Paluch
  */
@@ -20,6 +23,8 @@ public class FetchedReleases implements HasArtifactId {
 	private final ArtifactId artifactId;
 
 	private final Collection<CachedRelease> releases;
+
+	private final NavigableMap<Release, CachedRelease> releasePairs;
 
 	private final FetchPlan plan;
 
@@ -45,6 +50,12 @@ public class FetchedReleases implements HasArtifactId {
 		this.plan = plan;
 		this.preferredSource = preferredSource;
 		this.emptySources = emptySources;
+
+		NavigableMap<Release, CachedRelease> pairs = new TreeMap<>();
+		for (CachedRelease cached : releases) {
+			pairs.put(cached.toRelease(), cached);
+		}
+		this.releasePairs = pairs;
 	}
 
 	@Override
@@ -54,6 +65,16 @@ public class FetchedReleases implements HasArtifactId {
 
 	public Collection<CachedRelease> getReleases() {
 		return this.releases;
+	}
+
+	/**
+	 * Perform the given action for each fetched release paired with its cached
+	 * representation, in {@link Release} order.
+	 *
+	 * @param action the action to perform; must not be {@literal null}.
+	 */
+	public void forEach(BiConsumer<? super Release, ? super CachedRelease> action) {
+		this.releasePairs.forEach(action);
 	}
 
 	public boolean isFullFetch() {

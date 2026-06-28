@@ -17,7 +17,7 @@
 package biz.paluch.dap.gradle.wrapper;
 
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;

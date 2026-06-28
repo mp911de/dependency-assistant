@@ -24,7 +24,6 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.PropertyRenderer;
 import biz.paluch.dap.util.PropertyUtils;
-import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -49,7 +48,14 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 
 /**
- * {@link CompletionContributor} for properties.
+ * Base {@link CompletionProvider} for {@code .properties} files that offers
+ * completions inside property keys, property values, and on blank lines in the
+ * properties list (see {@link #PATTERNS}).
+ *
+ * <p>Subclasses implement {@link #supports(PropertyImpl)} and the
+ * {@link #addCompletions(CompletionResultSet, Cache, PsiFileFactory, PropertyImpl)}
+ * hook to contribute format-specific lookup elements, typically through
+ * {@link #addPropertyLineCompletion}.
  *
  * @author Mark Paluch
  */

@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -35,11 +36,11 @@ import org.jspecify.annotations.Nullable;
  * {@link VersioningScheme}; this type gives callers the artifact-level view
  * needed by {@link UpgradeStrategy upgrade strategies} and completion lists.
  *
- * <p>The scheme with the most recent dated release is the successor scheme. Its
- * releases form past releases and appear before releases from superseded
- * schemes. Release dates choose scheme precedence; they do not interleave
- * releases from different schemes. Within each scheme, releases follow the
- * scheme's version order, newest first.
+ * <p>The scheme with the most recent dated release is the successor scheme.
+ * Releases in that scheme appear before releases from superseded schemes.
+ * Release dates choose scheme precedence; they do not interleave releases from
+ * different schemes. Within each scheme, releases follow the scheme's version
+ * order, newest first.
  *
  * @author Mark Paluch
  * @see Release
@@ -99,8 +100,8 @@ public class Releases implements Iterable<Release> {
 	/**
 	 * Create {@code Releases} from an array of releases.
 	 *
-	 * @param releases releases for the same artifact; must not be {@literal null}
-	 * and must contain no {@literal null} elements.
+	 * @param releases releases for the same artifact and must contain no
+	 * {@literal null} elements.
 	 * @return a new {@code Releases} instance containing the given releases.
 	 */
 	public static Releases of(Release... releases) {
@@ -114,8 +115,8 @@ public class Releases implements Iterable<Release> {
 	 * by {@link VersioningScheme} and ordered as described in the class-level
 	 * Javadoc.
 	 *
-	 * @param releases releases for the same artifact; must not be {@literal null}
-	 * and must contain no {@literal null} elements.
+	 * @param releases releases for the same artifact and must contain no
+	 * {@literal null} elements.
 	 * @return a new {@code Releases} instance containing the given releases.
 	 * @see #just(Release)
 	 */
@@ -154,6 +155,17 @@ public class Releases implements Iterable<Release> {
 			}
 		}
 		return latest;
+	}
+
+	/**
+	 * Create a new {@link Builder} that assembles a {@code Releases} instance from
+	 * individual version strings, {@link ArtifactVersion versions}, and
+	 * {@link Release releases}.
+	 *
+	 * @return a new, empty builder.
+	 */
+	public static Builder builder() {
+		return new Builder();
 	}
 
 	/**
@@ -257,8 +269,8 @@ public class Releases implements Iterable<Release> {
 	/**
 	 * Return the releases in artifact-level release order.
 	 *
-	 * @return the ordered releases as an unmodifiable list; an empty list if
-	 * {@link #isEmpty() empty}.
+	 * @return the live backing list of ordered releases; callers must not modify
+	 * it. An empty list if {@link #isEmpty() empty}.
 	 */
 	public List<Release> toList() {
 		return ordered;
@@ -271,6 +283,49 @@ public class Releases implements Iterable<Release> {
 	@Override
 	public String toString() {
 		return stream().map(Release::version).map(Object::toString).collect(Collectors.joining(", "));
+	}
+
+	/**
+	 * Builder for {@link Releases}.
+	 */
+	public static class Builder {
+
+		private final List<Release> releases = new ArrayList<>();
+
+		private Builder() {
+		}
+
+		/**
+		 * Add a release for the given {@link ArtifactVersion}.
+		 *
+		 * @param version the version to add.
+		 * @return this builder.
+		 */
+		public Builder add(ArtifactVersion version) {
+			return add(Release.of(version));
+		}
+
+		/**
+		 * Add the given release.
+		 *
+		 * @param release the release to add.
+		 * @return this builder.
+		 */
+		public Builder add(Release release) {
+			this.releases.add(release);
+			return this;
+		}
+
+		/**
+		 * Build the {@code Releases} instance from the collected releases.
+		 *
+		 * @return a new {@code Releases} instance; {@link Releases#empty() empty} when
+		 * no releases were added.
+		 */
+		public Releases build() {
+			return Releases.of(this.releases);
+		}
+
 	}
 
 }

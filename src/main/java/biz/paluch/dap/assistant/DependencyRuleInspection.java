@@ -25,19 +25,13 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.rule.DependencyRuleService;
-import biz.paluch.dap.rule.ResolutionContext;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.icons.AllIcons;
@@ -46,12 +40,11 @@ import com.intellij.openapi.util.Iconable;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
-import org.jspecify.annotations.Nullable;
 
 /**
  * {@link LocalInspectionTool} that flags {@link DependencyRule} violations.
  *
- * <p>The governing rule is resolved through {@link DependencyRuleService}. The
+ * <p>The governing rule is resolved through {@link DependencyfileService}. The
  * inspection is advisory and warning-only: it stays silent for artifacts that
  * no rule governs and produces nothing when the project has no
  * {@code dependencyfile.json} descriptor. When the release cache holds a
@@ -68,54 +61,51 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 		PsiFile file = holder.getFile();
 		Project project = file.getProject();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, file);
+
 		if (context.isAbsent()) {
 			return PsiElementVisitor.EMPTY_VISITOR;
 		}
 
-		StateService stateService = StateService.getInstance(project);
-		Cache cache = stateService.getCache();
-		DependencyRuleService rules = DependencyRuleService.getInstance(project);
-		Versioned projectVersion = context.getProjectVersion();
+		InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
 
-		return new ArtifactReferenceVisitor(context, file) {
+		return new ArtifactReferenceContextVisitor(context, file) {
 
 			@Override
-			public void visitArtifactReference(PsiElement element, ArtifactReference reference) {
+			public void visitArtifactReference(PsiElement element, ArtifactReferenceContext artifactContext) {
 
-				ArtifactDeclaration declaration = reference.getDeclaration();
+				ArtifactDeclaration declaration = artifactContext.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();
 				if (versionLiteral == null || !declaration.isVersionDefined()) {
 					return;
 				}
 
 				ArtifactVersion version = declaration.getVersion();
-				InterfaceAssistant interfaceAssistant = context.getInterfaceAssistant();
-				ResolutionContext resolutionContext = ResolutionContext.of(reference, BranchSource.of(file),
-						projectVersion);
-				DependencyRuleEvaluator evaluated = DependencyRuleEvaluator.evaluate(rules, resolutionContext,
-						version, interfaceAssistant);
-				if (evaluated.test(version)) {
+				DependencyRuleEvaluator evaluator = artifactContext.getEvaluator();
+
+				if (evaluator.test(version)) {
 					return;
 				}
 
-				Releases releases = cache.getReleases(reference.getArtifactId());
-				Release remediation = evaluated.getRule().suggestRemediation(releases);
+				Releases releases = artifactContext.getReleases();
+				Release remediation = evaluator.getRule().suggestRemediation(releases);
 				String message = MessageBundle.message("inspection.dependency-rule.problem",
-						evaluated.getDependencyName(), interfaceAssistant
+						evaluator.getDependencyName(), interfaceAssistant
 								.getDocumentationText(version),
-						evaluated.getRule().getGenerations().value());
+						evaluator.getRule().getGenerations().value());
 
 				if (remediation != null) {
 					message += " " + MessageBundle.message("inspection.dependency-rule.remediation.message",
 							interfaceAssistant.getDocumentationText(remediation.getVersion()));
 				}
-				AlignGenerationQuickFix fix = AlignGenerationQuickFix.findFix(reference,
-						context, remediation);
 
-				if (fix == null) {
+				if (declaration.getVersionLiteral() == null || remediation == null) {
 					holder.registerProblem(element, message);
 					return;
 				}
+
+				DependencyUpdate update = DependencyUpdate.from(declaration.toDependency(), remediation);
+				AlignGenerationQuickFix fix = new AlignGenerationQuickFix(artifactContext, update);
+
 				holder.problem(element, message).fix(fix).register();
 			}
 
@@ -133,19 +123,9 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 	 */
 	static class AlignGenerationQuickFix extends UpdateDependencyVersionQuickFix implements Iconable {
 
-		AlignGenerationQuickFix(ArtifactDeclaration declaration, ProjectDependencyContext context,
+		AlignGenerationQuickFix(ArtifactReferenceContext context,
 				DependencyUpdate update) {
-			super(declaration, context, update, UpgradeStrategy.RULE);
-		}
-
-		public static @Nullable AlignGenerationQuickFix findFix(ArtifactReference reference,
-				ProjectDependencyContext context, @Nullable Release remediation) {
-
-			if (reference.getDeclaration().getVersionLiteral() == null || remediation == null) {
-				return null;
-			}
-			DependencyUpdate update = DependencyUpdate.from(reference, remediation);
-			return new AlignGenerationQuickFix(reference.getDeclaration(), context, update);
+			super(UpgradeStrategy.RULE, context, update);
 		}
 
 		@Override
@@ -154,13 +134,8 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 		}
 
 		@Override
-		protected Icon getVersionAgeIcon() {
-			return AllIcons.General.GreenCheckmark;
-		}
-
-		@Override
 		public Icon getIcon() {
-			return super.getIcon();
+			return AllIcons.General.GreenCheckmark;
 		}
 
 		@Override

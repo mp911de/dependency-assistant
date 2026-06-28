@@ -105,12 +105,12 @@ class UpdatePomFile {
 			}
 
 			if (source instanceof VersionSource.VersionDeclarationSource vds) {
-				updateDeclaration(projectTag, update.coordinate(), vds.getDeclarationSource(), newVersion);
+				updateDeclaration(projectTag, update.artifactId(), vds.getDeclarationSource(), newVersion);
 			}
 
 			if (source instanceof VersionSource.DeclaredVersion) {
 				for (DeclarationSource declarationSource : update.declarationSources()) {
-					updateDeclaration(projectTag, update.coordinate(), declarationSource, newVersion);
+					updateDeclaration(projectTag, update.artifactId(), declarationSource, newVersion);
 				}
 			}
 		}

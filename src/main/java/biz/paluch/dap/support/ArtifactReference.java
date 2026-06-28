@@ -19,6 +19,7 @@ package biz.paluch.dap.support;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.Dependency;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -87,8 +88,10 @@ public class ArtifactReference {
 	}
 
 	/**
-	 * Return the {@link ArtifactDeclaration} or throws an exception if none is
-	 * present.
+	 * Return the resolved {@link ArtifactDeclaration}.
+	 *
+	 * @return the resolved declaration.
+	 * @throws IllegalStateException if this reference is unresolved.
 	 */
 	public ArtifactDeclaration getDeclaration() {
 
@@ -101,6 +104,17 @@ public class ArtifactReference {
 	 */
 	public ArtifactId getArtifactId() {
 		return getDeclaration().getArtifactId();
+	}
+
+	/**
+	 * Adapt this reference's resolved declaration into a single-source
+	 * {@link Dependency}.
+	 *
+	 * @return the dependency derived from the resolved declaration.
+	 * @throws IllegalStateException if this reference is unresolved.
+	 */
+	public Dependency toDependency() {
+		return getDeclaration().toDependency();
 	}
 
 	@Override

@@ -19,6 +19,7 @@ package biz.paluch.dap.npm;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.github.GitHubReleaseSourceRouter;
@@ -68,7 +69,7 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	/**
 	 * Create a context for the given anchor file.
 	 * @param anchor the {@code package.json} PSI file.
-	 * @return the context to be used.
+	 * @return the build context for the anchor file's {@code package.json}.
 	 */
 	public static NpmProjectContext of(PsiFile anchor) {
 		return of(anchor.getProject(), anchor.getVirtualFile(), resolveProjectVersion(anchor));
@@ -78,7 +79,7 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	 * Create a context for the given project and anchor file.
 	 * @param project the IntelliJ project.
 	 * @param anchor the {@code package.json} virtual file.
-	 * @return the context to be used.
+	 * @return the build context for the given {@code package.json} file.
 	 */
 	public static NpmProjectContext of(Project project, VirtualFile anchor) {
 		return of(project, anchor, Versioned.unversioned());
@@ -106,6 +107,11 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 		}
 
 		return ArtifactVersion.from(literal.getValue().trim()).map(Versioned::of).orElseGet(Versioned::unversioned);
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.NPM;
 	}
 
 	@Override

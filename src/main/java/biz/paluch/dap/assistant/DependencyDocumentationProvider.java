@@ -16,14 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
-import java.awt.Image;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
@@ -69,27 +62,19 @@ public class DependencyDocumentationProvider
 	 */
 	static @Nullable DocumentationTarget createTarget(PsiElement target) {
 
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(target.getProject(),
-				target.getContainingFile());
+		ArtifactReferenceContext context = ArtifactReferenceContext.from(target);
 		if (context.isAbsent()) {
 			return null;
 		}
 
-		VersionUpgradeLookup lookup = context.getLookup(target, target.getContainingFile().getVirtualFile());
-		ArtifactReference artifactReference = lookup.resolveArtifactReference(target);
-		if (!artifactReference.isResolved()) {
-			return null;
-		}
-
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		ArtifactVersion currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
+		ArtifactDeclaration declaration = context.getDeclaration();
 		boolean linkable = declaration.getVersionLiteral() != null;
-		DocumentationContext documentation = new DocumentationContext(context.getInterfaceAssistant(),
-				lookup.getCache(),
-				currentVersion, linkable);
+		DocumentationContext documentation = DocumentationContext.create(context, linkable);
 
 		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
 
+			VersionUpgradeLookup lookup = context.getDependencyContext().getLookup(target,
+					target.getContainingFile().getVirtualFile());
 			VersionProperty property = lookup.findProperty(propertySource.getProperty());
 			if (property == null || property.artifacts().isEmpty()) {
 				return null;
@@ -98,7 +83,7 @@ public class DependencyDocumentationProvider
 			return new PropertyDocumentationTarget(target, documentation, property);
 		}
 
-		return new DependencyVersionTarget(target, documentation, artifactReference.getArtifactId());
+		return new DependencyVersionTarget(target, documentation, context.getArtifactReference().getArtifactId());
 	}
 
 	private abstract static class DocumentationTargetSupport implements DocumentationTarget, DependencyUpgradeTarget {
@@ -157,8 +142,11 @@ public class DependencyDocumentationProvider
 				return;
 			}
 
-			Release release = DocumentationContext.findRelease(context.getCache(), reference.getArtifactId(), version);
-			context.getDependencyContext().applyUpdate(versionLiteral, DependencyUpdate.from(reference, release));
+			Release release = context.getReleases().stream()
+					.filter(it -> it.toString().equals(version) || it.getVersion().toString().equals(version))
+					.findFirst().orElseThrow();
+			DependencyUpdate update = DependencyUpdate.from(reference, release);
+			context.getDependencyContext().applyUpdate(versionLiteral, update);
 		}
 
 		/**
@@ -169,12 +157,11 @@ public class DependencyDocumentationProvider
 		@Override
 		public @Nullable DocumentationResult computeDocumentation() {
 
-			Map<String, Image> iconImages = new LinkedHashMap<>();
-			String html = buildHtmlBody(iconImages);
+			String html = buildHtmlBody(true);
 			if (html == null) {
 				return null;
 			}
-			return DocumentationResult.documentation(html).images(iconImages);
+			return DocumentationResult.documentation(html);
 		}
 
 		/**
@@ -183,19 +170,19 @@ public class DependencyDocumentationProvider
 		 */
 		@Override
 		public @Nullable String computeDocumentationHint() {
-			return buildHtmlBody(null);
+			return buildHtmlBody(false);
 		}
 
 		/**
 		 * Builds the documentation HTML body, or {@literal null} when nothing can be
 		 * rendered.
 		 *
-		 * @param iconImages sink for the {@link VersionAge} icons referenced by the
-		 * HTML, or {@literal null} to render plain HTML without icons or links (hover
-		 * hint).
+		 * @param withIcons {@literal true} to render the full body with
+		 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
+		 * without icons or links (hover hint).
 		 * @return the HTML body, or {@literal null} if no documentation is available.
 		 */
-		protected abstract @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages);
+		protected abstract @Nullable String buildHtmlBody(boolean withIcons);
 
 	}
 
@@ -214,8 +201,8 @@ public class DependencyDocumentationProvider
 		}
 
 		@Override
-		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
-			return documentation.render(property, iconImages);
+		protected @Nullable String buildHtmlBody(boolean withIcons) {
+			return documentation.render(property, withIcons);
 		}
 
 	}
@@ -238,8 +225,8 @@ public class DependencyDocumentationProvider
 		}
 
 		@Override
-		protected @Nullable String buildHtmlBody(@Nullable Map<String, Image> iconImages) {
-			return documentation.render(artifactId, iconImages);
+		protected @Nullable String buildHtmlBody(boolean withIcons) {
+			return documentation.render(artifactId, withIcons);
 		}
 
 	}

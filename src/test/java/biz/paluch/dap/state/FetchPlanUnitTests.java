@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
@@ -209,7 +210,8 @@ class FetchPlanUnitTests {
 	}
 
 	private static ReleaseSources releaseSources(String... ids) {
-		return new ReleaseSources(ARTIFACT_ID, Arrays.stream(ids).map(FetchPlanUnitTests::source).toList());
+		return new ReleaseSources(ARTIFACT_ID, PackageSystem.MAVEN,
+				Arrays.stream(ids).map(FetchPlanUnitTests::source).toList());
 	}
 
 	private static ReleaseSource source(String id) {

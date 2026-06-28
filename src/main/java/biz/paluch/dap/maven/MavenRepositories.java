@@ -44,8 +44,10 @@ class MavenRepositories {
 	 * project, decorated with credentials where available.
 	 * <p>Repositories are deduplicated by URL.
 	 *
-	 * @param settings Maven settings; must not be {@literal null}.
+	 * @param settings Maven settings.
 	 * @param project the Maven project to inspect.
+	 * @param pomFile the POM file whose declared repositories are also collected;
+	 * can be {@literal null} to inspect only the resolved project model.
 	 * @return the deduplicated set of remote repositories; guaranteed to be not
 	 * {@literal null} but may be empty.
 	 */

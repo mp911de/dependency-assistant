@@ -22,9 +22,8 @@ package biz.paluch.dap.rule;
  *
  * <p>The state is determined from the {@code semver} property in
  * {@code dependencyfile.json}: {@link #ENABLED} when {@code "semver": true},
- * {@link #DISABLED} when {@code "semver": false} or when no descriptor is
- * present, and {@link #INFERRED} when the property is absent but a descriptor
- * exists (the default behavior).
+ * {@link #DISABLED} when {@code "semver": false}, and {@link #INFERRED} when
+ * the property is absent but a descriptor exists (the default behavior).
  *
  * @author Mark Paluch
  */
@@ -45,8 +44,7 @@ enum SemVerUpdating {
 
 	/**
 	 * Semver-based upgrade strategy limits are disabled. Set via
-	 * {@code "semver": false} in {@code dependencyfile.json}, or when no
-	 * {@code dependencyfile.json} is present.
+	 * {@code "semver": false} in {@code dependencyfile.json}.
 	 */
 	DISABLED
 

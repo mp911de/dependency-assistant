@@ -27,8 +27,8 @@ import java.util.function.Consumer;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.NumericVersion;
-import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 

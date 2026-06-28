@@ -14,4 +14,37 @@
 			<option name="ERROR_STRIPE_COLOR" value="CDFABFFF"/>
 		</value>
 	</option>
+
+	<option name="VULNERABLE_LOW">
+		<value>
+			<option name="ERROR_STRIPE_COLOR" value="D9CFADFF"/>
+			<option name="EFFECT_COLOR" value="FCF4D4FF"/>
+			<option name="EFFECT_TYPE" value="2"/>
+		</value>
+	</option>
+
+	<option name="VULNERABLE_MEDIUM">
+		<value>
+			<option name="ERROR_STRIPE_COLOR" value="E69317FF"/>
+			<option name="EFFECT_COLOR" value="F49810FF"/>
+			<option name="EFFECT_TYPE" value="2"/>
+		</value>
+	</option>
+
+	<option name="VULNERABLE_HIGH">
+		<value>
+			<option name="ERROR_STRIPE_COLOR" value="CF5B56FF"/>
+			<option name="EFFECT_COLOR" value="FF0000FF"/>
+			<option name="EFFECT_TYPE" value="2"/>
+		</value>
+	</option>
+
+	<option name="VULNERABLE_CRITICAL">
+		<value>
+			<option name="ERROR_STRIPE_COLOR" value="CF5B56FF"/>
+			<option name="EFFECT_COLOR" value="FF0000FF"/>
+			<option name="EFFECT_TYPE" value="2"/>
+		</value>
+	</option>
+
 </list>

@@ -73,7 +73,7 @@ class UpdateGradleWrapperProperties {
 
 	private static void applyUpdate(PropertyImpl property, GradleWrapperEntry entry, DependencyUpdate update) {
 
-		if (!entry.hasArtifactId(update.coordinate())) {
+		if (!entry.hasArtifactId(update.artifactId())) {
 			return;
 		}
 
@@ -127,7 +127,7 @@ class UpdateGradleWrapperProperties {
 		}
 
 		for (CachedRelease release : StateService.getInstance(property.getProject()).getCache()
-				.getCachedReleases(update.coordinate())) {
+				.getCachedReleases(update.artifactId())) {
 			if (update.versionAsString().equals(release.version())) {
 				return release.sha();
 			}

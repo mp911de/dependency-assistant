@@ -16,7 +16,12 @@
 
 package biz.paluch.dap.fixtures;
 
-import biz.paluch.dap.state.Cache;
+import java.util.ArrayList;
+import java.util.List;
+
+import biz.paluch.dap.artifact.TestCache;
+import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 
@@ -30,12 +35,35 @@ public class DependencyAssistantFixtures {
 	 * Set up Dependency Assistant for the given project.
 	 */
 	public static void setup(Project project) {
-
-		Cache cache = new Cache();
-		cache.addArtifacts(Releases.all());
-
 		StateService service = StateService.getInstance(project);
-		service.setCache(cache);
+		service.setCache(createCache());
+	}
+
+	public static TestCache createCache() {
+		TestCache cache = new TestCache();
+		cache.addArtifacts(getArtifacts());
+		return cache;
+	}
+
+	/**
+	 * Return deep copies of the registry artifacts so a test that records
+	 * vulnerabilities (mutating a {@link CachedRelease}) never pollutes the shared
+	 * static fixtures consumed by other tests.
+	 */
+	private static List<CachedArtifact> getArtifacts() {
+
+		List<CachedArtifact> copies = new ArrayList<>();
+		for (CachedArtifact artifact : Releases.all()) {
+
+			CachedArtifact copy = artifact.snapshot();
+			List<CachedRelease> releases = new ArrayList<>();
+			for (CachedRelease release : artifact.getReleases()) {
+				releases.add(new CachedRelease(release.version(), release.date(), release.sha()));
+			}
+			copy.setCachedReleases(releases, copy.getLastSeen());
+			copies.add(copy);
+		}
+		return copies;
 	}
 
 }

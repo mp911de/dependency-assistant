@@ -16,13 +16,14 @@
 
 package biz.paluch.dap.assistant;
 
-import java.awt.Image;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Formatter;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,11 +33,14 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.VersionProperty;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ReleaseDateFormatter;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.openapi.util.text.StringUtil;
@@ -45,38 +49,54 @@ import org.jspecify.annotations.Nullable;
 /**
  * Immutable rendering context for dependency Quick Documentation.
  *
- * <p>Bundles everything needed to render a documentation body besides the PSI
- * element itself: the release {@link Cache}, the declaration's current version,
- * whether upgrades may be offered as links, and the {@link InterfaceAssistant}
- * that formats versions. It owns HTML construction for both single-artifact and
- * version-property documentation through {@link #render(ArtifactId, Map)} and
- * {@link #render(VersionProperty, Map)}.
- *
- * @param interfaceAssistant the UI support used to format versions; must not be
- *                           {@literal null}.
- * @param cache              the release metadata cache to read versions from; must not be
- *                           {@literal null}.
- * @param currentVersion     the declaration's current version, or {@literal null}
- *                           when no version is resolved.
- * @param linkable           whether release rows may carry an upgrade link;
- *                           {@literal true} only when the declaration exposes a writable version literal.
  * @author Mark Paluch
  */
-record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
-                            @Nullable ArtifactVersion currentVersion, boolean linkable) {
+class DocumentationContext {
 
 	private static final int MAX_VERSIONS = 10;
+
+	private final ArtifactReferenceContext artifactContext;
+
+	private final InterfaceAssistant interfaceAssistant;
+
+	private final @Nullable ArtifactVersion currentVersion;
+
+	private final boolean linkable;
+
+	DocumentationContext(ArtifactReferenceContext artifactContext, boolean linkable) {
+		this.artifactContext = artifactContext;
+		this.interfaceAssistant = artifactContext.getDependencyContext()
+				.getInterfaceAssistant();
+		ArtifactDeclaration declaration = artifactContext.getDeclaration();
+		this.currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
+		this.linkable = linkable;
+	}
+
+	/**
+	 * Create a rendering context from a resolved {@link ArtifactReferenceContext},
+	 * reusing its interface assistant, cache, and current version rather than
+	 * re-resolving the element.
+	 *
+	 * @param context a {@link ArtifactReferenceContext#isPresent() present}
+	 * reference context.
+	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
+	 * links.
+	 * @return the documentation context.
+	 */
+	static DocumentationContext create(ArtifactReferenceContext context, boolean linkable) {
+		return new DocumentationContext(context, linkable);
+	}
 
 	/**
 	 * Render the documentation body for a single concrete artifact.
 	 *
 	 * @param artifactId the artifact to document.
-	 * @param iconImages sink for the {@link VersionAge} icons referenced by the
-	 * HTML, or {@literal null} to render plain HTML without icons or links (hover
-	 * hint).
+	 * @param withIcons {@literal true} to render the full body with
+	 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
+	 * without icons or links (hover hint).
 	 * @return the HTML body.
 	 */
-	String render(ArtifactId artifactId, @Nullable Map<String, Image> iconImages) {
+	String render(ArtifactId artifactId, boolean withIcons) {
 
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		StringBuilder sb = new StringBuilder();
@@ -91,7 +111,9 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			sb.append(renderCurrentVersion(currentVersion));
 		}
 
-		appendVersionsTable(sb, artifactId, cache.getReleases(artifactId), iconImages, formatter);
+		appendVersionsTable(sb, artifactId, artifactContext.getCache().getReleases(artifactId), withIcons, formatter);
+
+		appendSecurityAdvisories(sb);
 
 		sb.append(DocumentationMarkup.CONTENT_END);
 
@@ -99,19 +121,59 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 	}
 
 	/**
+	 * Append a "Security advisories" section for the current version when the cache
+	 * holds vulnerabilities for it. Renders nothing when no current version is
+	 * resolved or vulnerabilities are absent or clean, so an unscanned dependency
+	 * shows no section. Reads the cache only and never fetches.
+	 */
+	private void appendSecurityAdvisories(StringBuilder sb) {
+
+		if (currentVersion == null) {
+			return;
+		}
+
+		Vulnerabilities vulnerabilities = artifactContext.getCurrentVulnerabilities();
+		if (!vulnerabilities.isVulnerable()) {
+			return;
+		}
+
+		sb.append("<p><b>")
+				.append(MessageBundle.message("documentation.security-advisories"))
+				.append("</b></p>");
+		sb.append("<ul>");
+
+		for (Vulnerability vulnerability : vulnerabilities) {
+			sb.append("<li>");
+			sb.append(Markdown.of(vulnerability.getTitle()).toHtml());
+			sb.append(" (");
+			String identifier = vulnerability.getCveId() != null ? vulnerability.getCveId()
+					: vulnerability.getAdvisoryId();
+
+			HtmlChunk.Element link = HtmlChunk.link(vulnerability.getSourceUrl(), identifier);
+			sb.append(link);
+
+			Formatter format = new Formatter(Locale.ROOT).format("%1.1f", vulnerability.getCvssScore());
+			sb.append(", CVSS ").append(format);
+			sb.append(" ").append(vulnerability.getSeverity().getLabel());
+			sb.append(")</li>");
+		}
+		sb.append("</ul>");
+	}
+
+	/**
 	 * Render the documentation body for a version property, with one release table
 	 * per group of artifacts sharing the same available versions.
 	 *
-	 * @param property   the version property to document; must not be
-	 *                   {@literal null}.
-	 * @param iconImages sink for the {@link VersionAge} icons referenced by the
-	 *                   HTML, or {@literal null} to render plain HTML without icons or links (hover
-	 *                   hint).
+	 * @param property the version property to document; must not be
+	 * {@literal null}.
+	 * @param withIcons {@literal true} to render the full body with
+	 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
+	 * without icons or links (hover hint).
 	 * @return the HTML body, or {@literal null} if the property drives no
 	 * artifacts.
 	 */
 	@Nullable
-	String render(VersionProperty property, @Nullable Map<String, Image> iconImages) {
+	String render(VersionProperty property, boolean withIcons) {
 
 		if (property.artifacts().isEmpty()) {
 			return null;
@@ -130,36 +192,17 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			sb.append(renderCurrentVersion(currentVersion));
 		}
 
-		for (ReleaseGroup group : ReleaseGroup.group(cache, MAX_VERSIONS, property.artifacts())) {
+		for (ReleaseGroup group : ReleaseGroup.group(artifactContext.getCache(), MAX_VERSIONS, property.artifacts())) {
 
 			sb.append(group.renderHeader());
-			appendVersionsTable(sb, group.artifactIds.getFirst(), group.releases(), iconImages, formatter);
+			appendVersionsTable(sb, group.artifactIds.getFirst(), group.releases(), withIcons, formatter);
+
+			appendSecurityAdvisories(sb);
 		}
 
 		sb.append(DocumentationMarkup.CONTENT_END);
 
 		return sb.toString();
-	}
-
-	/**
-	 * Locate the release matching the given version string, falling back to a
-	 * version-only release when the cache holds no matching entry.
-	 *
-	 * @param cache the release cache to search.
-	 * @param artifactId the artifact whose releases to search; must not be
-	 * {@literal null}.
-	 * @param version the canonical version string to match; must not be
-	 * {@literal null}.
-	 * @return the matching release, never {@literal null}.
-	 */
-	static Release findRelease(Cache cache, ArtifactId artifactId, String version) {
-
-		for (Release release : cache.getReleases(artifactId)) {
-			if (releaseVersionKey(release).equals(version)) {
-				return release;
-			}
-		}
-		return Release.of(ArtifactVersion.of(version));
 	}
 
 	private String renderCurrentVersion(ArtifactVersion version) {
@@ -175,7 +218,7 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 	 * {@link DependencyUpgradeLinkHandler}.
 	 */
 	private void appendVersionsTable(StringBuilder sb, ArtifactId artifactId, Releases releases,
-			@Nullable Map<String, Image> iconImages, ReleaseDateFormatter formatter) {
+			boolean withIcons, ReleaseDateFormatter formatter) {
 
 		if (releases.isEmpty()) {
 			return;
@@ -184,8 +227,10 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 		Set<String> seen = new HashSet<>();
 		sb.append("<table>");
 		int count = 0;
-		for (Release v : releases) {
-			DocumentedRelease documented = currentVersion != null ? new CurrentVersionDocumentedRelease(artifactId.toString(), v, interfaceAssistant, linkable, currentVersion, iconImages != null) : new DocumentedRelease(v, interfaceAssistant, linkable);
+		for (Release release : releases) {
+			DocumentedRelease documented = new DocumentedRelease(artifactContext, artifactId.toString(), release,
+					interfaceAssistant, linkable, currentVersion, withIcons);
+
 			if (!seen.add(documented.getKey())) {
 				continue;
 			}
@@ -199,11 +244,11 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 		sb.append("</table>");
 	}
 
-	private static String releaseVersionKey(Release release) {
-		return release.version().getVersion().getVersion().toString();
+	public @Nullable ArtifactVersion currentVersion() {
+		return currentVersion;
 	}
 
-	private record ReleaseGroup(List<ArtifactId> artifactIds, Releases releases) {
+	record ReleaseGroup(List<ArtifactId> artifactIds, Releases releases) {
 
 		public static Collection<ReleaseGroup> group(Cache cache, int limit, List<CachedArtifact> artifacts) {
 
@@ -224,7 +269,7 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 
 			Set<String> versions = new LinkedHashSet<>();
 			for (Release release : releases) {
-				versions.add(releaseVersionKey(release));
+				versions.add(release.unwrap().toString());
 				if (versions.size() >= limit) {
 					break;
 				}
@@ -261,17 +306,37 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 
 		private final InterfaceAssistant interfaceAssistant;
 
+		private final boolean current;
+
 		private final boolean linkable;
 
-		public DocumentedRelease(Release release, InterfaceAssistant interfaceAssistant, boolean linkable) {
-			this.release = release;
-			this.key = releaseVersionKey(release);
-			this.interfaceAssistant = interfaceAssistant;
-			this.linkable = linkable;
-		}
+		private final @Nullable HtmlChunk firstColumnIcon;
 
-		public Release getRelease() {
-			return release;
+		public DocumentedRelease(ArtifactReferenceContext artifactContext, String name, Release release,
+				InterfaceAssistant interfaceAssistant, boolean linkable, @Nullable ArtifactVersion currentVersion,
+				boolean withIcons) {
+
+			this.release = release;
+			this.key = release.unwrap().toString();
+			this.interfaceAssistant = interfaceAssistant;
+
+			VersionStatus status = artifactContext.getStatus(release.getVersion());
+			this.current = status.isCurrent();
+			this.linkable = linkable && !current;
+
+			if (withIcons) {
+
+				HtmlChunk htmlIcon = status.resolveFilledIcon().asHtml();
+				HtmlChunk content = this.linkable
+						? HtmlChunk.tag("a")
+								.attr("href", DependencyUpgradeLinkHandler.SCHEME + key)
+								.attr("title", MessageBundle.message("documentation.upgrade-to", name, key))
+								.child(htmlIcon)
+						: htmlIcon;
+				this.firstColumnIcon = HtmlChunk.tag("td").child(content);
+			} else {
+				this.firstColumnIcon = null;
+			}
 		}
 
 		public String getKey() {
@@ -281,8 +346,12 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 		public StringBuilder render(ReleaseDateFormatter formatter) {
 
 			StringBuilder sb = new StringBuilder();
+			if (firstColumnIcon != null) {
+				sb.append(firstColumnIcon);
+			}
+
 			sb.append("<td>");
-			if (isLinkable()) {
+			if (linkable) {
 				sb.append("<a href=\"").append(DependencyUpgradeLinkHandler.SCHEME)
 						.append(key).append("\">");
 			}
@@ -294,7 +363,7 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			if (preview) {
 				sb.append("</i>");
 			}
-			if (isLinkable()) {
+			if (linkable) {
 				sb.append("</a>");
 			}
 			sb.append("</td><td>");
@@ -306,66 +375,10 @@ record DocumentationContext(InterfaceAssistant interfaceAssistant, Cache cache,
 			return sb;
 		}
 
-		protected boolean isLinkable() {
-			return linkable;
+		private String renderVersion() {
+			String text = StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(release.version()));
+			return current ? "<b>" + text + "</b>" : text;
 		}
-
-		protected String renderVersion() {
-			return StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(release.version()));
-		}
-	}
-
-	static class CurrentVersionDocumentedRelease extends DocumentedRelease {
-
-		private final boolean isCurrentVersion;
-		private final @Nullable HtmlChunk firstColumnIcon;
-
-		public CurrentVersionDocumentedRelease(String name, Release release, InterfaceAssistant assistant, boolean linkable, ArtifactVersion version, boolean withIcons) {
-			super(release, assistant, linkable);
-			this.isCurrentVersion = release.version().equals(version);
-
-			if (withIcons) {
-
-				VersionAge age = VersionAge.between(version, release.getVersion());
-				HtmlChunk icon = HtmlChunk.icon(age.getIconName(), age.getIcon());
-				HtmlChunk content = isLinkable()
-						? HtmlChunk.tag("a")
-						  .attr("href", DependencyUpgradeLinkHandler.SCHEME + getKey())
-						  .attr("title",
-								  MessageBundle.message("documentation.upgrade-to", name, getKey()))
-						  .child(icon)
-						: icon;
-				firstColumnIcon = HtmlChunk.tag("td").child(content);
-			}
-			else {
-				firstColumnIcon = null;
-			}
-		}
-
-		@Override
-		public StringBuilder render(ReleaseDateFormatter formatter) {
-			if (firstColumnIcon == null) {
-				return super.render(formatter);
-			}
-
-			StringBuilder builder = new StringBuilder();
-			builder.append(firstColumnIcon).append(super.render(formatter));
-			return builder;
-		}
-
-		@Override
-		protected boolean isLinkable() {
-			return super.isLinkable() && !isCurrentVersion;
-		}
-
-		@Override
-		protected String renderVersion() {
-			if (isCurrentVersion) {
-				return "<b>" + super.renderVersion() + "</b>";
-			}
-			return super.renderVersion();
-		}
-
 	}
 
 }

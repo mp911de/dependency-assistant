@@ -24,7 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.nls.NlsMessages;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
@@ -88,8 +88,13 @@ public class Notifications {
 	}
 
 	/**
-	 * Notify the user that release metadata is unavailable and offer to update the
-	 * cache.
+	 * Notify the user that release metadata was refreshed, reporting how many
+	 * artifacts were updated and how long the refresh took.
+	 *
+	 * @param project the project to notify; must not be {@literal null}.
+	 * @param updates the artifacts whose release metadata was refreshed; must not
+	 * be {@literal null}.
+	 * @param durationMs the refresh duration in milliseconds.
 	 */
 	public static void releaseMetadataRefreshed(Project project, List<ArtifactId> updates, long durationMs) {
 
@@ -129,15 +134,78 @@ public class Notifications {
 	}
 
 	/**
-	 * Notify that a dependency upgrade has been applied.
+	 * Notify that a bulk dependency upgrade has been applied, offering to reverse
+	 * only the out-of-bounds entries when at least one is flagged.
+	 *
+	 * @param updates the applied updates; an empty collection is a no-op.
+	 * @param undoOutOfBounds reverse-applies only the out-of-bounds entries.
 	 */
-	static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates) {
+	static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates,
+			Runnable undoOutOfBounds) {
 
 		if (updates.isEmpty()) {
 			return;
 		}
 
+		List<AppliedDependencyUpdate> outOfBounds = updates.stream().filter(AppliedDependencyUpdate::outOfBounds)
+				.toList();
+
+		if (outOfBounds.isEmpty()) {
+			updatesApplied(updates).notify(project);
+		} else {
+			updatesAppliedOutOfBounds(updates, outOfBounds, undoOutOfBounds).notify(project);
+		}
+	}
+
+	private static Notification updatesApplied(Collection<AppliedDependencyUpdate> updates) {
+
+		List<AppliedDependencyUpdate> outOfBounds = updates.stream().filter(AppliedDependencyUpdate::outOfBounds)
+				.toList();
+
 		StringBuilder message = new StringBuilder();
+		renderApplied(updates, message);
+
+		return new Notification(
+				outOfBounds.isEmpty() ? UPGRADE_NOTIFICATIONS : STICKY_NOTIFICATION,
+				MessageBundle.message("notification.dependencies-updates"), message.toString(),
+				NotificationType.INFORMATION);
+	}
+
+	private static Notification updatesAppliedOutOfBounds(Collection<AppliedDependencyUpdate> updates,
+			Collection<AppliedDependencyUpdate> outOfBounds,
+			Runnable undoOutOfBounds) {
+
+		StringBuilder message = new StringBuilder();
+		renderApplied(updates, message);
+
+		if (!outOfBounds.isEmpty()) {
+			message.append(
+					MessageBundle.message("notification.dependencies-updates.out-of-bounds", outOfBounds.size()));
+			message.append("<ul>");
+			for (AppliedDependencyUpdate update : outOfBounds) {
+				message.append("<li>")
+						.append(MessageBundle.message("notification.dependencies-updates.out-of-bounds.entry",
+								update.displayLabel(), update.to()))
+						.append("</li>");
+			}
+			message.append("</ul>");
+		}
+
+		Notification notification = new Notification(
+				STICKY_NOTIFICATION,
+				MessageBundle.message("notification.dependencies-updates"), message.toString(),
+				NotificationType.INFORMATION);
+
+		notification.addAction(NotificationAction.createSimpleExpiring(
+				MessageBundle.message("notification.dependencies-updates.undo-out-of-bounds"),
+				undoOutOfBounds));
+		notification.addAction(NotificationAction.createSimple(
+				MessageBundle.message("notification.dependencies-updates.dismiss"), notification::expire));
+
+		return notification;
+	}
+
+	private static void renderApplied(Collection<AppliedDependencyUpdate> updates, StringBuilder message) {
 		message.append(MessageBundle.message("notification.dependencies-updates.description", updates.size()));
 
 		message.append("<ul>");
@@ -145,24 +213,19 @@ public class Notifications {
 			message.append("<li>");
 			if (update.to().isNewer(update.from())) {
 				message.append(MessageBundle.message("notification.dependencies-updates.upgrade",
-						update.getDependencyName(), update.to()));
+						update.displayLabel(), update.to()));
 			}
 			else if (update.from().isNewer(update.to())) {
 				message.append(MessageBundle.message("notification.dependencies-updates.downgrade",
-						update.getDependencyName(), update.to()));
+						update.displayLabel(), update.to()));
 			}
 			else {
 				message.append(MessageBundle.message("notification.dependencies-updates.update",
-						update.getDependencyName(), update.to()));
+						update.displayLabel(), update.to()));
 			}
 			message.append("</li>");
 		}
 		message.append("</ul>");
-
-		Notification notification = new Notification(
-				UPGRADE_NOTIFICATIONS, MessageBundle.message("notification.dependencies-updates"), message.toString(), NotificationType.INFORMATION);
-
-		notification.notify(project);
 	}
 
 	/**

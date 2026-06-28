@@ -44,9 +44,9 @@ class KotlinDslExtraParser {
 
 	/**
 	 * Parse {@code extra["key"]} property declarations from a Kotlin DSL file to
-	 * {@link PropertyValue} instances.
+	 * {@link Property} instances.
 	 * @param file the Kotlin build script.
-	 * @return a map of property key to literal value.
+	 * @return a map of property key to its {@link Property}.
 	 */
 	public static Map<String, Property> parseExtraProperties(PsiFile file) {
 

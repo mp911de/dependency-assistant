@@ -19,6 +19,7 @@ package biz.paluch.dap.support;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
@@ -50,8 +51,9 @@ public class ArtifactDeclaration implements DependencySite {
 
 	private final @Nullable PsiElement versionLiteral;
 
-	private ArtifactDeclaration(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
-			boolean versionDefinedInSameFile, @Nullable ArtifactVersion version, PsiElement declarationElement,
+	private ArtifactDeclaration(ArtifactId artifactId, VersionSource versionSource,
+			DeclarationSource declarationSource, boolean versionDefinedInSameFile,
+			@Nullable ArtifactVersion version, PsiElement declarationElement,
 			@Nullable PsiElement versionLiteral) {
 		this.artifactId = artifactId;
 		this.versionSource = versionSource;
@@ -76,6 +78,7 @@ public class ArtifactDeclaration implements DependencySite {
 	 * @param declarationElement the consuming declaration element.
 	 * @return the re-anchored artifact declaration.
 	 */
+	// TODO: introduce mutate() method
 	public ArtifactDeclaration at(PsiElement declarationElement) {
 
 		Builder builder = builder().artifact(artifactId)
@@ -148,9 +151,9 @@ public class ArtifactDeclaration implements DependencySite {
 	}
 
 	/**
-	 * Return the PSI element representing the declaration, if available.
+	 * Return the PSI element representing the declaration.
 	 *
-	 * @return the declaration element, or {@literal null} if not available.
+	 * @return the declaration element, never {@literal null}.
 	 */
 	public PsiElement getDeclarationElement() {
 		return declarationElement;
@@ -163,6 +166,32 @@ public class ArtifactDeclaration implements DependencySite {
 	 */
 	public @Nullable PsiElement getVersionLiteral() {
 		return versionLiteral;
+	}
+
+	/**
+	 * Return the PSI element representing the version, failing if none is present.
+	 *
+	 * @return the version element, never {@literal null}.
+	 * @throws IllegalStateException if no version literal is present.
+	 */
+	public PsiElement getRequiredVersionLiteral() {
+		Assert.state(versionLiteral != null, "Version literal must not be null");
+		return versionLiteral;
+	}
+
+	/**
+	 * Adapt this declaration into a single-source {@link Dependency}.
+	 *
+	 * @return a dependency carrying this declaration's artifact, version, version
+	 * source, and declaration source.
+	 */
+	public Dependency toDependency() {
+
+		Dependency dependency = new Dependency(getArtifactId(), getVersion());
+		dependency.addVersionSource(getVersionSource());
+		dependency.addDeclarationSource(getDeclarationSource());
+
+		return dependency;
 	}
 
 	@Override

@@ -28,15 +28,13 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasArtifactId;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.UpgradeStrategy;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.ui.LayeredIcon;
@@ -56,9 +54,7 @@ public class UpgradeCandidate implements HasArtifactId {
 
 	private final DeclaredVersions declaredVersions;
 
-	private final DependencyRule rule;
-
-	private final DependencyRuleEvaluator ruleResult;
+	private final DependencyRuleEvaluator evaluator;
 
 	private final Icon tableIcon;
 
@@ -73,29 +69,16 @@ public class UpgradeCandidate implements HasArtifactId {
 	 * @param assistant the format-specific assistant that can apply the update.
 	 * @param declaredVersions the versions the artifact is declared at, used for
 	 * drift reporting.
-	 * @param rule the associated dependency rule.
 	 */
 	public UpgradeCandidate(DependencyUpdateCandidate candidate, InterfaceAssistant assistant,
-			DeclaredVersions declaredVersions, DependencyRule rule) {
+			DeclaredVersions declaredVersions) {
 
 		this.candidate = candidate;
 		this.interfaceAssistant = assistant;
 		this.declaredVersions = declaredVersions;
-		this.rule = rule;
 
-		if (this.rule.isPresent()) {
-			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
-				if (!this.rule.isEnabled(strategy)) {
-					candidate.getFilteredTargets().remove(strategy);
-				}
-			}
-
-			if (!this.rule.test(candidate.getCurrentVersion())) {
-				filterUpgrades();
-			}
-		}
-
-		this.ruleResult = DependencyRuleEvaluator.create(this.rule, getArtifactId(), getCurrentVersion(), assistant);
+		this.evaluator = DependencyRuleEvaluator.create(this.candidate.getRule(), getArtifactId(), getCurrentVersion(),
+				assistant);
 		this.tableIcon = createTableIcon();
 		this.toolTipText = createToolTipText();
 	}
@@ -127,17 +110,6 @@ public class UpgradeCandidate implements HasArtifactId {
 		}
 
 		return tooltip;
-	}
-
-	private void filterUpgrades() {
-
-		Releases releases = this.candidate.getReleases();
-		Release target = rule.suggestRemediation(releases);
-
-		if (target != null) {
-			this.candidate.getTargets().put(UpgradeStrategy.RULE, target);
-			this.candidate.getFilteredTargets().put(UpgradeStrategy.RULE, target);
-		}
 	}
 
 	private Icon createTableIcon() {
@@ -209,11 +181,24 @@ public class UpgradeCandidate implements HasArtifactId {
 	}
 
 	public DependencyRule getRule() {
-		return rule;
+		return getUpdateCandidate().getRule();
 	}
 
-	public DependencyRuleEvaluator getRuleResult() {
-		return ruleResult;
+	public DependencyRuleEvaluator getRuleEvaluator() {
+		return evaluator;
+	}
+
+	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
+		return getUpdateCandidate().getVulnerabilities(version);
+	}
+
+	/**
+	 * Return the status of the given candidate version within this dialog row.
+	 * @param version the candidate version to describe.
+	 * @return the candidate version status.
+	 */
+	VersionStatus getStatus(ArtifactVersion version) {
+		return VersionStatus.of(evaluate(version), getCurrentVersion(), version, getVulnerabilities(version));
 	}
 
 	/**

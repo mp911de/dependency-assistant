@@ -31,6 +31,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -38,10 +39,10 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -71,6 +72,11 @@ class MavenAssistant implements DependencyAssistant {
 	@Override
 	public String getDisplayName() {
 		return MavenInterface.INSTANCE.getDisplayName();
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.MAVEN;
 	}
 
 	@Override
@@ -162,14 +168,6 @@ class MavenAssistant implements DependencyAssistant {
 		return values;
 	}
 
-	private static VersionUpgradeLookup createLookup(PsiFile pom) {
-
-		Project project = pom.getProject();
-		MavenProjectContext buildContext = MavenProjectContext.of(project, pom);
-		LookupContext context = LookupContext.create(project, buildContext);
-		return new VersionUpgradeLookup(context, new MavenArtifactReferenceResolver(context, pom, buildContext));
-	}
-
 	static class MavenDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final MavenProjectContext projectContext;
@@ -192,6 +190,11 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public PackageSystem getPackageSystem() {
+			return PackageSystem.MAVEN;
+		}
+
+		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 			return delegate.collectDependencies(this::collect);
 		}
@@ -205,7 +208,14 @@ class MavenAssistant implements DependencyAssistant {
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
 			return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
-					MavenAssistant::createLookup);
+					this::createLookup);
+		}
+
+		private VersionUpgradeLookup createLookup(PsiFile pom) {
+
+			Project project = pom.getProject();
+			LookupContext context = LookupContext.create(project, this);
+			return new VersionUpgradeLookup(context, new MavenArtifactReferenceResolver(context, pom, projectContext));
 		}
 
 		@Override
@@ -234,7 +244,8 @@ class MavenAssistant implements DependencyAssistant {
 	}
 
 	/**
-	 * Maven-specific user interface support.
+	 * Maven-specific {@link InterfaceAssistant} supplying the display name and
+	 * gutter, navigation, and table icons for Maven dependency declarations.
 	 */
 	enum MavenInterface implements InterfaceAssistant {
 

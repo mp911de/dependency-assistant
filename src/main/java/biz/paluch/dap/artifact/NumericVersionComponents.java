@@ -34,7 +34,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/**
 	 * Creates a new {@link NumericVersionComponents} from the given integer values.
-	 * At least one value has to be given but a maximum of 4.
+	 * At least one value has to be given.
 	 *
 	 * @param parts must not be {@literal null} or empty.
 	 */
@@ -51,7 +51,7 @@ public class NumericVersionComponents implements Comparable<NumericVersionCompon
 
 	/**
 	 * Creates a new {@link NumericVersionComponents} from the given integer values.
-	 * At least one value has to be given but a maximum of 4.
+	 * At least one value has to be given.
 	 *
 	 * @param parts must not be {@literal null} or empty.
 	 */

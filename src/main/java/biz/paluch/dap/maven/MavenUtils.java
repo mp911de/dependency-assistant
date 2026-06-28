@@ -47,13 +47,14 @@ class MavenUtils {
 	}
 
 	/**
-	 * Return whether the given file is a Maven extensions.xml by filename and type.
-	 * <p>This is a lightweight check suitable for action-visibility guards. It does
-	 * not inspect file content or PSI structure.
+	 * Return whether the given file is a Maven extensions.xml by filename.
+	 * <p>This is a lightweight check suitable for action-visibility guards. It only
+	 * inspects the filename and does not check the file type, content, or PSI
+	 * structure.
 	 *
 	 * @param file the file to test; can be {@literal null}.
-	 * @return {@literal true} if the file is an XML file named
-	 * {@code extensions.xml}; {@literal false} otherwise.
+	 * @return {@literal true} if the file is named {@code extensions.xml};
+	 * {@literal false} otherwise.
 	 */
 	public static boolean isMavenExtensionsFile(@Nullable VirtualFile file) {
 		return file != null && "extensions.xml".equals(file.getName());

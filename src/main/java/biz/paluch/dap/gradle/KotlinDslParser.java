@@ -355,13 +355,13 @@ class KotlinDslParser {
 	}
 
 	/**
-	 * Parse a supported Kotlin DSL dependency or plugin declaration.
+	 * Parse inline-notation Kotlin DSL dependency or plugin declarations whose
+	 * version is part of the call itself.
 	 * <p>Supports declarations such as: <pre class="code">
 	 * implementation("org.junit.jupiter:junit-jupiter:5.11.0")
-	 * implementation(group = "org.junit.jupiter", name = "junit-jupiter", version = "5.11.0")
-	 * implementation("org.junit.jupiter:junit-jupiter") { version { prefer("5.11.0") } }
 	 * id("org.springframework.boot") version "3.3.2"
-	 * </pre>
+	 * </pre> Named-argument and {@code version { ... }} block forms are handled by
+	 * {@link NamedArgumentsStrategy} and {@link VersionBlockStrategy}.
 	 */
 	class InlineNotationStrategy implements ParsingStrategy<KotlinDeclarationCall, KtCallElement> {
 

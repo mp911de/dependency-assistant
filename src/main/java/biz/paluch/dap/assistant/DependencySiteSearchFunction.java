@@ -30,7 +30,13 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Search function for dependency sites in a single build file.
+ * Resolves a {@link DependencySiteQuery} against a single build file, returning
+ * the declaration sites that match.
+ *
+ * <p>Delegates to the file's {@link VersionUpgradeLookup}; ecosystems without
+ * an explicit site search (NPM, Antora, GitHub Actions) fall back to an
+ * inline-only scan over their declarations. An unresolvable or unsupported file
+ * yields {@link DependencySearchResults#empty() empty} results.
  *
  * @author Mark Paluch
  */

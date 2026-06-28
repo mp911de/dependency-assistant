@@ -67,9 +67,9 @@ public class DependencyAssistantDispatcher {
 
 	/**
 	 * Return whether any registered integration supports the given {@code file}.
-	 * <p>Return {@literal true} immediately if the project-scoped
-	 * {@link StateService} already holds dependency or release data, avoiding
-	 * repeated project applicability checks during UI updates.
+	 * <p>Integrations are consulted in registration order and the check returns on
+	 * the first integration that recognizes the file type. This is a cheap
+	 * file-type recognition check and does not require an available project model.
 	 * @param file the PSI file to test.
 	 * @return {@literal true} if some integration supports the file;
 	 * {@literal false} otherwise.
@@ -121,7 +121,8 @@ public class DependencyAssistantDispatcher {
 	 * Return the {@link ProjectDependencyContext} from the first integration that
 	 * owns the given PSI element.
 	 * @param element the PSI element to resolve.
-	 * @return the context from the first matching integration, or {@literal null}.
+	 * @return the context from the first matching integration or an
+	 * {@link ProjectDependencyContext#isAbsent() absent} context.
 	 */
 	public static ProjectDependencyContext findFirstContext(PsiElement element) {
 		return findFirstContext(element instanceof PsiFile file ? file : element.getContainingFile());
@@ -131,7 +132,8 @@ public class DependencyAssistantDispatcher {
 	 * Return the {@link ProjectDependencyContext} from the first integration that
 	 * owns the given PSI file.
 	 * @param file the PSI file to resolve.
-	 * @return the context from the first matching integration, or {@literal null}.
+	 * @return the context from the first matching integration or an
+	 * {@link ProjectDependencyContext#isAbsent() absent} context.
 	 */
 	public static ProjectDependencyContext findFirstContext(PsiFile file) {
 		return findFirstContext(file.getProject(), file);

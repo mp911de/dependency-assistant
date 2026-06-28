@@ -19,6 +19,7 @@ package biz.paluch.dap.github;
 import java.util.List;
 
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
@@ -38,7 +39,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 class GitHubProjectContext extends AbstractProjectBuildContext {
 
 	/**
-	 * Key used to inject a test-scoped context into a PSI file's user data.
+	 * User-data key under which {@link #of(Project, VirtualFile)} caches the
+	 * resolved context on the anchor {@link VirtualFile} so it is computed once per
+	 * file.
 	 */
 	static final Key<GitHubProjectContext> KEY = Key.create("GitHubProjectContext");
 
@@ -82,6 +85,11 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 				? ProjectId.of(gitRepository.owner(), gitRepository.repository(), anchor.getPath())
 				: ProjectId.of(anchor);
 		return new GitHubProjectContext(projectId, releaseSource);
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.GITHUB;
 	}
 
 }

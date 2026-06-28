@@ -27,7 +27,10 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Value object to represent version of a particular artifact.
+ * {@link NumericVersion} parsed from a semantic version string, splitting the
+ * numeric components from a release qualifier such as {@code RELEASE},
+ * {@code SNAPSHOT}, {@code RCn}, or {@code Mn}, and supporting both
+ * dot-separated and modifier ({@code -}) suffix notations.
  *
  * @author Mark Paluch
  */
@@ -363,7 +366,9 @@ class SemanticArtifactVersion implements NumericVersion {
 	}
 
 	/**
-	 * @return the next minor version retaining the modifier and snapshot suffix.
+	 * Return the next minor version, retaining this version's current suffix and
+	 * suffix notation.
+	 * @return the next minor version.
 	 */
 	public ArtifactVersion getNextMinorVersion() {
 		return versionOf(components.nextMinor());

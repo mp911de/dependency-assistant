@@ -42,12 +42,18 @@
 	<depends optional="true" config-file="github.xml">org.jetbrains.plugins.github</depends>
 	<depends optional="true" config-file="git.xml">Git4Idea</depends>
 	<depends optional="true" config-file="json.xml">com.intellij.modules.json</depends>
+	<depends optional="true" config-file="package-checker.xml">
+		org.jetbrains.security.package-checker
+	</depends>
 
 	<resource-bundle>messages.MessageBundle</resource-bundle>
 
 	<extensionPoints>
 		<extensionPoint qualifiedName="biz.paluch.dap.assistant"
 		                interface="biz.paluch.dap.DependencyAssistant"
+		                dynamic="true"/>
+		<extensionPoint qualifiedName="biz.paluch.dap.vulnerabilitySource"
+		                interface="biz.paluch.dap.checker.VulnerabilitySource"
 		                dynamic="true"/>
 	</extensionPoints>
 

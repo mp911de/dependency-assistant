@@ -22,7 +22,7 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 
 /**
- * Support class {@link ProjectBuildContext}.
+ * Base class for {@link ProjectBuildContext} implementations.
  *
  * <p>The context is always {@link #isAvailable() available}; integrations that
  * need an absent state use a dedicated sentinel rather than this base.

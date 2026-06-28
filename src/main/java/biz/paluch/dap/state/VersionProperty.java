@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a snapshot of the License at
+ * You may obtain a copy of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -27,8 +27,7 @@ import com.intellij.util.xmlb.annotations.XCollection;
 
 /**
  * Persistent descriptor of a project property and the artifacts it governs.
- * <p>
- * A property can be merely declared, actually used as a version source, or
+ * <p>A property can be merely declared, actually used as a version source, or
  * both. Artifact associations are stored without duplicates.
  *
  * @author Mark Paluch
@@ -36,11 +35,17 @@ import com.intellij.util.xmlb.annotations.XCollection;
 @Tag("property")
 public class VersionProperty {
 
-	@Attribute private String name;
-	@Attribute private boolean declared;
-	@Attribute private boolean used;
-	@XCollection(propertyElementName = "artifacts", elementName = "artifact",
-			style = XCollection.Style.v2) private final List<CachedArtifact> artifacts = new ArrayList<>();
+	@Attribute
+	private String name;
+
+	@Attribute
+	private boolean declared;
+
+	@Attribute
+	private boolean used;
+
+	@XCollection(propertyElementName = "artifacts", elementName = "artifact", style = XCollection.Style.v2)
+	private final List<CachedArtifact> artifacts = new ArrayList<>();
 
 	/**
 	 * Create an empty property entry for XML deserialization.
@@ -63,11 +68,20 @@ public class VersionProperty {
 	 * @param name the property name.
 	 * @param artifacts the initial artifact associations.
 	 */
+	public VersionProperty(String name, CachedArtifact... artifacts) {
+		this.name = name;
+		this.artifacts.addAll(List.of(artifacts));
+	}
+
+	/**
+	 * Create a property entry with the given name and artifact associations.
+	 *
+	 * @param name the property name.
+	 * @param artifacts the initial artifact associations.
+	 */
 	public VersionProperty(String name, List<CachedArtifact> artifacts) {
 		this.name = name;
-		synchronized (this.artifacts) {
-			this.artifacts.addAll(artifacts);
-		}
+		this.artifacts.addAll(artifacts);
 	}
 
 	/**
@@ -79,13 +93,11 @@ public class VersionProperty {
 	public void addArtifact(ArtifactId artifactId) {
 
 		synchronized (this.artifacts) {
-
 			for (CachedArtifact artifact : artifacts) {
 				if (artifact.matches(artifactId)) {
 					return;
 				}
 			}
-
 			this.artifacts.add(new CachedArtifact(artifactId));
 		}
 	}
@@ -138,8 +150,7 @@ public class VersionProperty {
 
 	/**
 	 * Return the backing artifact associations.
-	 * <p>
-	 * This is the live storage list used for persistence and in-place mutation.
+	 * <p>This is the live storage list used for persistence and in-place mutation.
 	 *
 	 * @return the mutable backing artifact associations.
 	 */

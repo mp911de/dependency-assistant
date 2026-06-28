@@ -19,14 +19,14 @@ package biz.paluch.dap.assistant;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import javax.swing.Icon;
-
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.checker.ShieldStyle;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.ReleaseDateFormatter;
@@ -41,7 +41,7 @@ import org.jspecify.annotations.Nullable;
  * Renderer for lookup elements that provide a {@link ArtifactRelease} object.
  * @author Mark Paluch
  */
-public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
+class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 
 	private static final int MAX_VERSION_LENGTH_PADDING = 15;
 
@@ -53,12 +53,27 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 
 	private final DependencyRule rule;
 
+	private final VulnerabilityRepository vulnerabilities;
+
 	private int versionLength = 0;
 
-	public ArtifactReleaseRenderer(InterfaceAssistant assistant, @Nullable ArtifactVersion currentVersion, DependencyRule rule) {
+	/**
+	 * Create a renderer that decorates vulnerable candidate rows by reading the
+	 * cache.
+	 *
+	 * @param assistant the format-specific assistant.
+	 * @param currentVersion the currently declared version, or {@literal null}.
+	 * @param rule the dependency rule governing the artifact; must not be
+	 * {@literal null}.
+	 * @param vulnerabilities the per-version vulnerabilities, read from the cache
+	 * and never blocking.
+	 */
+	public ArtifactReleaseRenderer(InterfaceAssistant assistant, @Nullable ArtifactVersion currentVersion,
+			DependencyRule rule, VulnerabilityRepository vulnerabilities) {
 		this.assistant = assistant;
 		this.currentVersion = currentVersion instanceof GitRef ? null : currentVersion;
 		this.rule = rule;
+		this.vulnerabilities = vulnerabilities;
 	}
 
 	public String formatReleaseDate(ArtifactRelease release) {
@@ -77,19 +92,9 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 		String itemText = version.toString();
 		presentation.setItemText(itemText);
 
-		DependencyRuleEvaluator evaluated = DependencyRuleEvaluator.create(rule, release.artifactId(), version,
+		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.create(rule, release.artifactId(), version,
 				assistant);
-		String dependencyName = evaluated.getDependencyName();
 
-		String tailText;
-		if (itemText.length() < MAX_VERSION_LENGTH_PADDING) {
-			int padding = this.versionLength - itemText.length();
-			tailText = " ".repeat(padding) + " " + dependencyName;
-		} else {
-			tailText = " " + dependencyName;
-		}
-
-		presentation.setTailText(tailText);
 
 		String typeText = "";
 		LocalDateTime releaseDate = release.getReleaseDate();
@@ -109,20 +114,29 @@ public class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement
 			presentation.setTypeText(typeText.trim());
 		}
 
-		if (currentVersion != null) {
-			if (release.isOlder(currentVersion)) {
-				presentation.setItemTextItalic(true);
-			}
+		VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
+				vulnerabilities.getVulnerabilities(release.getVersion()));
+		presentation.setItemTextItalic(status.isOlder());
+		presentation.setStrikeout(status.isRuleViolation());
+		presentation.setIcon(status.getIcon(ShieldStyle.OUTLINE));
+
+		String tailText;
+
+		if (itemText.length() < MAX_VERSION_LENGTH_PADDING) {
+			int padding = this.versionLength - itemText.length();
+			tailText = " ".repeat(padding);
+		} else {
+			tailText = " ";
 		}
 
-		boolean valid = !rule.isPresent() || rule.test(release.getVersion());
-
-		if (!valid) {
-			presentation.setStrikeout(true);
+		String tailLabel = status.getVulnerabilityTailLabel();
+		if (StringUtils.hasText(tailLabel)) {
+			tailText += tailLabel;
+		} else {
+			tailText += evaluator.getDependencyName();
 		}
 
-		Icon icon = ModelUtil.getIcon(evaluated, currentVersion, release.getVersion());
-		presentation.setIcon(icon);
+		presentation.setTailText(" " + tailText, true);
 	}
 
 	public void withVersion(ArtifactRelease release) {

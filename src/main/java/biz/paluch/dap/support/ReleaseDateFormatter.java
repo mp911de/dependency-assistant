@@ -45,7 +45,12 @@ public class ReleaseDateFormatter {
 	}
 
 	/**
-	 * Format the given release date.
+	 * Format the given release date as a relative description (e.g. "3 days ago")
+	 * when it falls within the last 8 days, and as an absolute medium-style date
+	 * otherwise.
+	 *
+	 * @param releaseDate the release date to format.
+	 * @return the formatted release date.
 	 */
 	public String format(LocalDateTime releaseDate) {
 
@@ -61,7 +66,12 @@ public class ReleaseDateFormatter {
 	}
 
 	/**
-	 * Format the given release date.
+	 * Format the given release date, combining the relative description with the
+	 * absolute medium-style date (e.g. "3 days ago (Jun 25, 2026)") when it falls
+	 * within the last 8 days, and using the absolute date alone otherwise.
+	 *
+	 * @param releaseDate the release date to format.
+	 * @return the formatted release date.
 	 */
 	public String formatLong(LocalDateTime releaseDate) {
 

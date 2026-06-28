@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.rule;
 
+import java.util.Collection;
 import java.util.Objects;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -65,6 +66,21 @@ public class ResolutionContext {
 	}
 
 	/**
+	 * Create a resolution context for a bare artifact without plugin semantics.
+	 *
+	 * @param artifactId the artifact to resolve.
+	 * @param branchSource the source used for branch lookup.
+	 * @param projectVersion the project version used for branch rule selection.
+	 * @return a resolution context treating the artifact as a non-plugin
+	 * dependency.
+	 */
+	public static ResolutionContext of(ArtifactId artifactId, BranchSource branchSource,
+			Versioned projectVersion) {
+
+		return new ResolutionContext(artifactId, false, branchSource, projectVersion);
+	}
+
+	/**
 	 * Create a resolution context from an aggregate declared dependency.
 	 *
 	 * @param dependency the aggregate dependency declaration.
@@ -74,9 +90,24 @@ public class ResolutionContext {
 	 */
 	public static ResolutionContext of(DeclaredDependency dependency, BranchSource branchSource,
 			Versioned projectVersion) {
+		return of(dependency.getArtifactId(), dependency.getDeclarationSources(), branchSource, projectVersion);
+	}
 
-		return new ResolutionContext(dependency.getArtifactId(),
-				DeclarationSource.isPlugin(dependency.getDeclarationSources()), branchSource, projectVersion);
+	/**
+	 * Create a resolution context from an artifact and its declaration sources
+	 * using aggregate plugin-only semantics.
+	 *
+	 * @param artifactId the artifact to resolve.
+	 * @param declarationSources the declaration sources backing the artifact.
+	 * @param branchSource the source used for branch lookup.
+	 * @param projectVersion the project version used for branch rule selection.
+	 * @return a resolution context using aggregate plugin-only semantics.
+	 */
+	public static ResolutionContext of(ArtifactId artifactId, Collection<DeclarationSource> declarationSources,
+			BranchSource branchSource, Versioned projectVersion) {
+
+		return new ResolutionContext(artifactId, DeclarationSource.isPlugin(declarationSources), branchSource,
+				projectVersion);
 	}
 
 	public ArtifactId getArtifactId() {
@@ -103,7 +134,7 @@ public class ResolutionContext {
 		if (obj == null || obj.getClass() != this.getClass()) {
 			return false;
 		}
-		var that = (ResolutionContext) obj;
+		ResolutionContext that = (ResolutionContext) obj;
 		return Objects.equals(this.artifactId, that.artifactId) &&
 				this.suppressSemanticUpgrading == that.suppressSemanticUpgrading &&
 				Objects.equals(this.branchSource, that.branchSource) &&

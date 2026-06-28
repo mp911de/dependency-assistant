@@ -35,7 +35,8 @@ class ReleaseSourcesUnitTests {
 	@Test
 	void exposesSourceIdentifiersInOrder() {
 
-		ReleaseSources sources = new ReleaseSources(LETTUCE, List.of(source("central"), source("portal")));
+		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+				List.of(source("central"), source("portal")));
 
 		assertThat(sources.sourceIds()).containsExactly("central", "portal");
 	}
@@ -43,7 +44,8 @@ class ReleaseSourcesUnitTests {
 	@Test
 	void retainsSourcesAcceptedByPredicate() {
 
-		ReleaseSources sources = new ReleaseSources(LETTUCE, List.of(source("central"), source("github")));
+		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+				List.of(source("central"), source("github")));
 
 		assertThat(sources.filter(source -> source.getId().equals("github")).sourceIds()).containsExactly("github");
 	}
@@ -51,7 +53,8 @@ class ReleaseSourcesUnitTests {
 	@Test
 	void keepsAllSourcesWhenPredicateRejectsEveryone() {
 
-		ReleaseSources sources = new ReleaseSources(LETTUCE, List.of(source("central"), source("portal")));
+		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+				List.of(source("central"), source("portal")));
 
 		assertThat(sources.filter(source -> false).sourceIds()).containsExactly("central", "portal");
 	}

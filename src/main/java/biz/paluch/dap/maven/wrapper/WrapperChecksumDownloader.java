@@ -24,8 +24,8 @@ import java.security.DigestOutputStream;
 import java.util.HexFormat;
 import java.util.concurrent.atomic.AtomicReference;
 
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.util.HttpClientUtil;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;

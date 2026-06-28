@@ -18,6 +18,7 @@ package biz.paluch.dap.support;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
@@ -75,6 +76,11 @@ public interface ProjectBuildContext {
 	 * @throws IllegalStateException if the build context is not available.
 	 */
 	ProjectId getProjectId();
+
+	/**
+	 * Return the package ecosystem this context supports.
+	 */
+	PackageSystem getPackageSystem();
 
 	/**
 	 * Return the version of the project or build file.

@@ -89,7 +89,7 @@ class UpdateGradleFile {
 				continue;
 			}
 
-			updateDeclaration(buildFile, propertyResolver, update.coordinate(), newVersion);
+			updateDeclaration(buildFile, propertyResolver, update.artifactId(), newVersion);
 		}
 	}
 

@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a snapshot of the License at
+ * You may obtain a copy of the License at
  *
  *      https://www.apache.org/licenses/LICENSE-2.0
  *
@@ -18,13 +18,18 @@ package biz.paluch.dap.state;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -40,13 +45,22 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 @Tag("artifact")
-public class CachedArtifact {
+public class CachedArtifact implements ArtifactId {
+
+	private static final Logger LOG = Logger.getInstance(CachedArtifact.class);
 
 	private @Attribute String groupId;
 
 	private @Attribute String artifactId;
 
 	private @Nullable @Attribute String preferredSource;
+
+	/**
+	 * Package ecosystem this artifact belongs to, or {@literal null} for entries
+	 * persisted before ecosystem tracking. Persisted so a cache-only scan can build
+	 * the correct vulnerability query without re-reading the build files.
+	 */
+	private @Nullable @Attribute PackageSystem packageSystem;
 
 	/**
 	 * Number of consecutive lookups that returned no releases at all, reset to
@@ -123,6 +137,12 @@ public class CachedArtifact {
 		return groupId;
 	}
 
+	@Override
+	@Transient
+	public String groupId() {
+		return getGroupId();
+	}
+
 	/**
 	 * Return the cached artifact identifier.
 	 *
@@ -130,6 +150,12 @@ public class CachedArtifact {
 	 */
 	public String getArtifactId() {
 		return artifactId;
+	}
+
+	@Override
+	@Transient
+	public String artifactId() {
+		return getArtifactId();
 	}
 
 	/**
@@ -158,6 +184,20 @@ public class CachedArtifact {
 	}
 
 	/**
+	 * Return whether this entry matches the given coordinates and ecosystem. A
+	 * {@literal null} ecosystem on either side is treated as a wildcard so entries
+	 * persisted before ecosystem tracking still match.
+	 *
+	 * @param artifactId the artifact to compare with.
+	 * @param packageSystem the ecosystem to compare; may be {@literal null}.
+	 * @return {@literal true} if the entry matches; {@literal false} otherwise.
+	 */
+	public boolean matches(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
+		PackageSystem ecosystem = getEcosystem();
+		return matches(artifactId) && (ecosystem == null || packageSystem == null || ecosystem == packageSystem);
+	}
+
+	/**
 	 * Return this entry's releases as domain {@link Release} objects.
 	 *
 	 * @return a newly created list of releases.
@@ -167,7 +207,14 @@ public class CachedArtifact {
 
 		List<Release> options = new ArrayList<>();
 		for (CachedRelease release : releases) {
-			options.add(release.toRelease());
+			try {
+				options.add(release.toRelease());
+			} catch (RuntimeException e) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("Failed to parse release '%s:%s': '%s'".formatted(getGroupId(), getArtifactId(), release),
+							e);
+				}
+			}
 		}
 		return options;
 	}
@@ -180,12 +227,40 @@ public class CachedArtifact {
 		this.preferredSource = preferredSource;
 	}
 
+	/**
+	 * Return the package ecosystem this artifact belongs to.
+	 *
+	 * @return the ecosystem, or {@literal null} when not yet known.
+	 */
+	public @Nullable PackageSystem getEcosystem() {
+		return packageSystem;
+	}
+
+	/**
+	 * Record the package ecosystem this artifact belongs to.
+	 *
+	 * @param packageSystem the ecosystem to store; may be {@literal null}.
+	 */
+	public void setEcosystem(@Nullable PackageSystem packageSystem) {
+		this.packageSystem = packageSystem;
+	}
+
 	public int getEmptyLookups() {
 		return emptyLookups;
 	}
 
 	public long getSourcesCheckedSince() {
 		return sourcesCheckedSince;
+	}
+
+	public @Nullable CachedRelease getCachedRelease(ArtifactVersion version) {
+		String versionString = version.toString();
+		for (CachedRelease release : getReleases()) {
+			if (versionString.equals(release.version())) {
+				return release;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -239,8 +314,26 @@ public class CachedArtifact {
 	 * @param timestamp current timestamp for expiry tracking.
 	 */
 	public void updateCachedReleases(FetchedReleases fetchedReleases, long timestamp) {
+		updateCachedReleases(fetchedReleases, timestamp, (release, cached) -> {
+		});
+	}
 
-		setCachedReleases(fetchedReleases.getReleases(), timestamp);
+	/**
+	 * Merge the given fetched releases into the cached releases, preserving the
+	 * stored vulnerabilities of releases already known so a metadata refresh never
+	 * discards a scan, and notifying {@code onNewRelease} for each release that was
+	 * not previously cached.
+	 *
+	 * @param fetchedReleases the fetched releases.
+	 * @param timestamp current timestamp for expiry tracking.
+	 * @param onNewRelease invoked once per newly added release; must not be
+	 * {@literal null}.
+	 */
+	public void updateCachedReleases(FetchedReleases fetchedReleases, long timestamp,
+			BiConsumer<Release, CachedRelease> onNewRelease) {
+
+		updateReleases(fetchedReleases, onNewRelease);
+		this.lastSeen = timestamp;
 		setPreferredSource(fetchedReleases.getPreferredSource());
 
 		Collection<String> emptySources = fetchedReleases.getEmptySources();
@@ -258,6 +351,21 @@ public class CachedArtifact {
 		this.emptyLookups = releases.isEmpty() ? Math.min(this.emptyLookups + 1, 999) : 0;
 	}
 
+	private void updateReleases(FetchedReleases fetched, BiConsumer<Release, CachedRelease> onNewConsumer) {
+
+		Set<String> known = new HashSet<>();
+		for (CachedRelease existing : releases) {
+			known.add(existing.version());
+		}
+
+		fetched.forEach((release, cached) -> {
+			if (known.add(cached.version())) {
+				releases.add(cached);
+				onNewConsumer.accept(release, cached);
+			}
+		});
+	}
+
 	/**
 	 * Return the artifact coordinates represented by this cache entry.
 	 *
@@ -270,11 +378,14 @@ public class CachedArtifact {
 	public CachedArtifact snapshot() {
 		CachedArtifact copy = new CachedArtifact(groupId, artifactId);
 		copy.lastSeen = lastSeen;
-		copy.releases.addAll(releases);
+		for (CachedRelease release : releases) {
+			copy.releases.add(release.snapshot());
+		}
 		copy.preferredSource = preferredSource;
 		copy.emptyLookups = emptyLookups;
 		copy.sourcesCheckedSince = sourcesCheckedSince;
 		copy.emptyReleaseSources = emptyReleaseSources;
+		copy.packageSystem = packageSystem;
 		return copy;
 	}
 
@@ -282,4 +393,5 @@ public class CachedArtifact {
 	public String toString() {
 		return groupId + ":" + artifactId + ", Release count: " + releases.size();
 	}
+
 }

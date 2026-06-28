@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitArtifactId;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
@@ -61,7 +62,7 @@ class AntoraFixtures {
 				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()), List.of());
 		file.putUserData(AntoraProjectContext.KEY, projectContext);
 
-		service.getProjectState(projectContext.getProjectId()).setDependencies(collector);
+		service.getProjectState(projectContext.getProjectId()).setDependencies(collector, PackageSystem.OTHER);
 
 		return collector;
 	}

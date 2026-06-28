@@ -19,7 +19,7 @@ package biz.paluch.dap.rule;
 import java.util.ArrayList;
 import java.util.List;
 
-import biz.paluch.dap.artifact.UpgradeStrategy;
+import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.json.psi.JsonArray;
 import com.intellij.json.psi.JsonBooleanLiteral;
 import com.intellij.json.psi.JsonFile;

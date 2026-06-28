@@ -31,15 +31,16 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.MessageBundle;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.externalSystem.model.DataNode;
@@ -75,6 +76,11 @@ class GradleAssistant implements DependencyAssistant {
 	@Override
 	public String getId() {
 		return "gradle";
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.MAVEN;
 	}
 
 	@Override
@@ -201,6 +207,11 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
+		public PackageSystem getPackageSystem() {
+			return projectContext.getPackageSystem();
+		}
+
+		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 			return delegate.collectDependencies(it -> {
 				DependencyCollector collector = new GradleDependencyCollector(delegate.getProject()).collect(it);
@@ -233,8 +244,7 @@ class GradleAssistant implements DependencyAssistant {
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
 			PsiFile psiFile = element.getContainingFile();
-			GradleProjectContext buildContext = GradleProjectContext.of(delegate.getProject(), file);
-			LookupContext context = LookupContext.create(delegate, buildContext);
+			LookupContext context = LookupContext.create(delegate, this);
 			return new VersionUpgradeLookup(context, new GradleArtifactReferenceResolver(context, psiFile));
 		}
 

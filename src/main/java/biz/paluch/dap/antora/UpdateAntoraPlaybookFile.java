@@ -86,7 +86,7 @@ class UpdateAntoraPlaybookFile {
 			return;
 		}
 
-		if (!bundleUrl.toArtifactId().equals(update.coordinate())
+		if (!bundleUrl.toArtifactId().equals(update.artifactId())
 				|| !(update.version() instanceof GitVersion gitVersion)) {
 			return;
 		}
@@ -143,7 +143,7 @@ class UpdateAntoraPlaybookFile {
 
 		for (DependencyUpdate update : updates) {
 
-			if (!artifactId.equals(update.coordinate()) || !(update.version() instanceof GitVersion gitVersion)) {
+			if (!artifactId.equals(update.artifactId()) || !(update.version() instanceof GitVersion gitVersion)) {
 				continue;
 			}
 

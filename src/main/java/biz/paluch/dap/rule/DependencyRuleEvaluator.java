@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.UpgradeStrategy;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 
@@ -43,6 +43,7 @@ import com.intellij.icons.AllIcons;
  *
  * @author Mark Paluch
  */
+// TODO: too many responsibilities current version vs testing other versions.
 public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
 	private static final DependencyRuleEvaluator ABSENT = new DependencyRuleEvaluator(DependencyRule.absent(),
@@ -110,8 +111,8 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * Return the shared sentinel for an artifact that no rule governs while the
 	 * project still defines rules.
 	 *
-	 * @return a sentinel that reports {@link #isPresent() present} with a neutral
-	 * icon and an explanatory tooltip.
+	 * @return a sentinel that reports {@link #isPresent() not present} with a
+	 * neutral icon and an explanatory tooltip.
 	 */
 	public static DependencyRuleEvaluator absent() {
 		return ABSENT;
@@ -124,7 +125,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * @param context the rule resolution context.
 	 * @param version the version to evaluate.
 	 * @param assistant the interface assistant used to render version text.
-	 * @return the evaluation outcome for the declaration's current version.
+	 * @return the evaluation outcome for the supplied version.
 	 */
 	public static DependencyRuleEvaluator evaluate(DependencyRuleService rules, ResolutionContext context,
 			ArtifactVersion version, InterfaceAssistant assistant) {
@@ -148,13 +149,17 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * @return the icon for a passed rule, otherwise the warning icon.
 	 */
 	public Icon getIcon() {
-		if (result == EvaluationState.PASSED) {
+		if (isPassed()) {
 			if (isLocked()) {
 				return DependencyAssistantIcons.DEPENDENCY_LOCK;
 			}
-			return DependencyAssistantIcons.DEPENDENCY_RULE;
+			return DependencyAssistantIcons.RULE_COMPLIANT;
 		}
 		return DependencyAssistantIcons.DEPENDENCY_RULE_WARN;
+	}
+
+	public boolean isPassed() {
+		return result == EvaluationState.PASSED;
 	}
 
 	/**
@@ -176,6 +181,10 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 */
 	public boolean isSemanticUpgradingEnabled() {
 		return rule.isSemanticUpgradingEnabled();
+	}
+
+	public boolean isEnabled(UpgradeStrategy strategy) {
+		return rule.isEnabled(strategy);
 	}
 
 	public String getDependencyName() {
@@ -207,7 +216,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 						dependencyName, renderedVersion, rule.getGenerations().value()));
 			}
 
-			if (result == EvaluationState.PASSED) {
+			if (isPassed()) {
 				sb.append(MessageBundle.message("inspection.dependency-rule.description",
 						dependencyName, rule.getGenerations().value()));
 			}
@@ -226,7 +235,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 			if (result == EvaluationState.NOT_PASSED) {
 				return MessageBundle.message("inspection.dependency-rule.display-name");
 			}
-			if (result == EvaluationState.PASSED) {
+			if (isPassed()) {
 				return MessageBundle.message("inspection.dependency-rule.passed");
 			}
 		}
@@ -257,7 +266,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		for (UpgradeStrategy strategy : STRATEGIES) {
 			if (rule.isEnabled(strategy)) {
 				strategyCount++;
-				names.add(MessageBundle.displayName(strategy));
+				names.add(strategy.getDisplayName());
 			}
 		}
 

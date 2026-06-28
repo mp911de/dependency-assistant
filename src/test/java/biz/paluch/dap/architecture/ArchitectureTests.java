@@ -22,6 +22,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
@@ -60,11 +61,11 @@ class ArchitectureTests {
 				it.withClosedHierarchy(ArtifactVersion.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
+						.withStrictClosedHierarchy(VulnerabilityRepository.class)
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(DependencyRuleService.class)
 						.withClosedHierarchy(ReleaseSource.class)
 						.withStrictClosedHierarchy(ArtifactId.class)
-						.withStrictClosedHierarchy(DependencyRuleService.class)
 						.withClosedHierarchy(Properties.class)
 						.withStrictClosedHierarchy("biz.paluch.dap.util.StepsProgressIndicator")
 						.withStrictClosedHierarchy("biz.paluch.dap.npm.NpmVersionExpression")
@@ -87,7 +88,7 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule root = packageDependencies("biz.paluch.dap",
-			"artifact", "state", "lookup", "support");
+			"artifact", "state", "lookup", "support", "util");
 
 	@ArchTest
 	ArchRule artifact = packageDependencies(
@@ -95,11 +96,15 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistantPackage = packageDependencies(
-			"assistant", "biz.paluch.dap", "artifact", "rule", "severity", "state", "lookup", "support", "util");
+			"assistant", "biz.paluch.dap", "artifact", "checker", "rule", "severity", "state", "lookup", "support",
+			"upgrade", "util");
 
 	@ArchTest
 	ArchRule antora = packageDependencies("antora",
 			"biz.paluch.dap", "artifact", "assistant", "state", "lookup", "support", "support.yaml", "util", "github");
+
+	@ArchTest
+	ArchRule checker = packageDependencies("checker", "artifact", "util");
 
 	@ArchTest
 	ArchRule github = packageDependencies("github",
@@ -125,10 +130,14 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule severity = packageDependencies("severity",
-			"biz.paluch.dap", "support");
+			"biz.paluch.dap", "support", "util");
 
 	@ArchTest
-	ArchRule state = packageDependencies("state", "artifact",
+	ArchRule state = packageDependencies("state", "artifact", "checker", "util");
+
+	@ArchTest
+	ArchRule upgrade = packageDependencies(
+			"upgrade", "biz.paluch.dap", "artifact", "checker", "rule", "severity", "state", "lookup", "support",
 			"util");
 
 	@ArchTest

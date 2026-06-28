@@ -21,7 +21,7 @@ import javax.swing.Icon;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
 import biz.paluch.dap.github.GitHubAssistant.GitHubInterface;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 
 /**
  * Gutter configurable for GitHub actions.

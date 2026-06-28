@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -30,7 +29,7 @@ import com.intellij.openapi.vfs.VirtualFile;
  * deduplicating sites seen through more than one file.
  *
  * <p>Per-file resolution is injected so the aggregation can be tested in
- * isolation; {@link #create(Project)} wires it to the live build-tool
+ * isolation; {@link #create(BiFunction)} wires it to the live build-tool
  * integration.
  *
  * @author Mark Paluch

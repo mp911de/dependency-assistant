@@ -23,7 +23,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 
 /**
- * Collects dependency coordinates from Maven build files associated.
+ * Collects dependency coordinates from Maven POM and extensions build files.
  *
  * @author Mark Paluch
  */
@@ -32,7 +32,10 @@ class MavenDependencyCollector {
 	private final Cache cache;
 
 	/**
-	 * Create a collector using the given cache and project properties.
+	 * Create a collector using the given cache.
+	 *
+	 * @param cache the cache used while parsing POM files; must not be
+	 * {@literal null}.
 	 */
 	public MavenDependencyCollector(Cache cache) {
 		this.cache = cache;

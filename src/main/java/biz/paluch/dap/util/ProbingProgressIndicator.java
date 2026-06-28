@@ -1154,7 +1154,7 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 			String exceptionType, @Nullable String message) {
 	}
 
-	private class MutableStep {
+	private final class MutableStep {
 
 		private final int index;
 

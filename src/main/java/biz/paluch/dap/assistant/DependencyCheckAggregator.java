@@ -32,8 +32,11 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -41,6 +44,9 @@ import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.upgrade.DependencyUpgradeSubject;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
+import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -56,9 +62,9 @@ import org.springframework.util.StringUtils;
  *
  * @author Mark Paluch
  */
-class DependencyCheckAggregator implements Iterable<ArtifactId> {
+class DependencyCheckAggregator implements Iterable<DependencyCheckAggregator.ArtifactPackage> {
 
-	private final Map<ArtifactId, Entry> entries = new LinkedHashMap<>();
+	private final Map<ArtifactPackage, Entry> entries = new LinkedHashMap<>();
 
 	private final Set<VirtualFile> files = new LinkedHashSet<>();
 
@@ -89,7 +95,8 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 			Collection<ReleaseSource> releaseSources) {
 
 		files.add(virtualFile);
-		Entry entry = entries.computeIfAbsent(dependency.getArtifactId(),
+		ArtifactPackage pkg = new ArtifactPackage(dependency.getArtifactId(), context.getPackageSystem());
+		Entry entry = entries.computeIfAbsent(pkg,
 				it -> new Entry(new LinkedHashSet<>(), new ArrayList<>(), new ArrayList<>()));
 		entry.releaseSources.addAll(releaseSources);
 		entry.contexts.add(context);
@@ -101,7 +108,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * Iterate over the unique artifacts in encounter order.
 	 */
 	@Override
-	public Iterator<ArtifactId> iterator() {
+	public Iterator<ArtifactPackage> iterator() {
 		return entries.keySet().iterator();
 	}
 
@@ -111,7 +118,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * @param consumer the consumer receiving artifact identifiers and release
 	 * sources in encounter order.
 	 */
-	public void forEachArtifact(BiConsumer<ArtifactId, Collection<ReleaseSource>> consumer) {
+	public void forEachArtifact(BiConsumer<ArtifactPackage, Collection<ReleaseSource>> consumer) {
 		entries.forEach((artifactId, entry) -> consumer.accept(artifactId, entry.releaseSources));
 	}
 
@@ -122,6 +129,14 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 */
 	public Set<VirtualFile> getFiles() {
 		return files;
+	}
+
+	public List<ReleaseSources> getReleaseSources() {
+		List<ReleaseSources> sources = new ArrayList<>();
+		forEachArtifact((pkg, releaseSources) -> {
+			sources.add(new ReleaseSources(pkg.artifactId(), pkg.packageSystem(), releaseSources));
+		});
+		return sources;
 	}
 
 	/**
@@ -166,7 +181,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 		ProjectState projectState = service.getProjectState(context.getProjectId());
 
 		DependencyCollector collector = context.scanDependencies(indicator);
-		projectState.setDependencies(collector);
+		projectState.setDependencies(collector, context.getPackageSystem());
 
 		Collection<ReleaseSource> sources = collector.getReleaseSources();
 
@@ -203,7 +218,7 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 	 * that were resolved successfully.
 	 *
 	 * @param releases the resolved releases keyed by artifact.
-	 * @param evaluator the rule evaluator.
+	 * @param evaluator the rule service used to resolve governing dependency rules.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
 	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
@@ -211,9 +226,12 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 
 		List<UpgradeCandidate> candidates = new ArrayList<>();
 		List<String> errors = getErrors(releases);
+		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, service);
+		UpgradeSuggestionsFactory suggestionsFactory = new UpgradeSuggestionsFactory(service.getCache());
 
-		entries.forEach((artifactId, entry) -> {
+		entries.forEach((pkg, entry) -> {
 
+			ArtifactId artifactId = pkg.artifactId();
 			ReleaseLookupResult lookup = releases.get(artifactId);
 			if (lookup == null) {
 				return;
@@ -236,17 +254,36 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
+
 			ResolutionContext resolutionContext = ResolutionContext.of(merged,
 					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned);
 			DependencyRule rule = evaluator.resolve(resolutionContext);
-			DependencyUpdateCandidate option = new DependencyUpdateCandidate(dependency, lookup.releases());
+
+			VulnerabilityRepository vulnerabilities = getVulnerabilities(pkg, scanner);
+
+			DependencyUpgradeSubject subject = DependencyUpgradeSubject.of(dependency, lookup.releases(),
+					vulnerabilities, rule);
+			UpgradeSuggestions suggestions = suggestionsFactory.createSuggestions(subject);
+
+			DependencyUpdateCandidate option = new DependencyUpdateCandidate(subject, suggestions);
 			candidates.add(new UpgradeCandidate(option, entry.contexts().iterator().next()
-					.getInterfaceAssistant(), declaredVersions, rule));
+					.getInterfaceAssistant(), declaredVersions));
 		});
 
 		candidates.sort(Comparator.comparing(UpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
 		return new DependencyUpgradeCandidates(UpgradeGroups.of(candidates), files, errors);
+	}
+
+	private VulnerabilityRepository getVulnerabilities(ArtifactPackage artifactPackage,
+			VulnerabilityScanner scanner) {
+
+		if (!scanner.isPresent()) {
+			return VulnerabilityRepository.empty();
+		}
+
+		return VulnerabilityRepository
+				.of(scanner.getVulnerabilities(artifactPackage.artifactId, artifactPackage.packageSystem));
 	}
 
 	private static List<String> getErrors(Map<?, ReleaseLookupResult> map) {
@@ -260,6 +297,10 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 		return errors;
 	}
 
+	record ArtifactPackage(ArtifactId artifactId, PackageSystem packageSystem) {
+
+	}
+
 	/**
 	 * Aggregated scan data for one artifact coordinate.
 	 *
@@ -271,5 +312,6 @@ class DependencyCheckAggregator implements Iterable<ArtifactId> {
 			Collection<DeclarationSite> declarationSites) {
 
 	}
+
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,28 +26,65 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionAware;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.upgrade.UpgradeSuggestion;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
 
 /**
- * Value object to represent a dependency update.
+ * Apply-ready version change for one dependency declaration.
  *
- * @param coordinate the dependency coordinate to update.
- * @param version the selected target version.
- * @param declarationSources the declaration sources to update.
- * @param versionSources the version sources to update.
+ * <p>A {@code DependencyUpdate} extends an {@link ArtifactVersionChange} with
+ * the declaration sources and version sources that an update writer needs to
+ * rewrite a build file. It represents a chosen target, not a suggestion. Use
+ * {@link UpgradeSuggestion} or {@link UpgradeSuggestions} for proposed targets
+ * before the user or policy has selected one.
+ *
+ * @author Mark Paluch
+ * @see ArtifactVersionChange
+ * @see UpgradeSuggestion
  */
-public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, ArtifactVersion version,
-		Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
+public class DependencyUpdate extends ArtifactVersionChange {
 
-	public DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, ArtifactVersion version,
-			DeclarationSource declarationSource, VersionSource versionSource) {
-		this(coordinate, from, version, List.of(declarationSource), List.of(versionSource));
+	private final Collection<DeclarationSource> declarationSources;
+
+	private final Collection<VersionSource> versionSources;
+
+	/**
+	 * Create an apply-ready update with explicit source locations.
+	 *
+	 * @param artifactId the dependency coordinate to update.
+	 * @param from the dependency version currently in use.
+	 * @param version the selected target version.
+	 * @param declarationSources the declaration sources participating in the
+	 * update.
+	 * @param versionSources the version sources that can be rewritten.
+	 */
+	public DependencyUpdate(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion version,
+			Collection<DeclarationSource> declarationSources, Collection<VersionSource> versionSources) {
+		super(artifactId, from, version);
+		this.declarationSources = declarationSources;
+		this.versionSources = versionSources;
 	}
 
 	/**
-	 * Create an update for a dependency and release.
+	 * Create an apply-ready update for one declaration source and one version
+	 * source.
 	 *
-	 * @param reference the artifact reference to update.
-	 * @param version the selected version.
+	 * @param artifactId the dependency coordinate to update.
+	 * @param from the dependency version currently in use.
+	 * @param version the selected target version.
+	 * @param declarationSource the declaration source participating in the update.
+	 * @param versionSource the version source that can be rewritten.
+	 */
+	public DependencyUpdate(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion version,
+			DeclarationSource declarationSource, VersionSource versionSource) {
+		this(artifactId, from, version, List.of(declarationSource), List.of(versionSource));
+	}
+
+	/**
+	 * Create an update from a resolved artifact reference and target version.
+	 *
+	 * @param reference the resolved artifact reference to update.
+	 * @param version the selected target version.
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(ArtifactReference reference, VersionAware version) {
@@ -55,10 +92,10 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 	}
 
 	/**
-	 * Create an update for a dependency and release.
+	 * Create an update from a resolved artifact reference and target version.
 	 *
-	 * @param reference the artifact reference to update.
-	 * @param version the selected version.
+	 * @param reference the resolved artifact reference to update.
+	 * @param version the selected target version.
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(ArtifactReference reference, ArtifactVersion version) {
@@ -67,11 +104,11 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 				declaration.getDeclarationSource(), declaration.getVersionSource());
 	}
 
-
 	/**
-	 * Create an update for a dependency and release.
-	 * @param dependency the dependency to update.
-	 * @param release the selected release.
+	 * Create an update from a dependency and target version.
+	 *
+	 * @param dependency the dependency whose declarations should be updated.
+	 * @param release the selected target release.
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(Dependency dependency, VersionAware release) {
@@ -79,10 +116,10 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 	}
 
 	/**
-	 * Create an update for a dependency and release.
+	 * Create an update from a dependency and target version.
 	 *
-	 * @param dependency the dependency to update.
-	 * @param version the selected version.
+	 * @param dependency the dependency whose declarations should be updated.
+	 * @param version the selected target version.
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(Dependency dependency, ArtifactVersion version) {
@@ -91,11 +128,11 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 	}
 
 	/**
-	 * Create an update for a dependency and release.
+	 * Create an update from a dependency while using a replacement artifact id.
 	 *
-	 * @param artifactId the artifact Id to update.
-	 * @param dependency the dependency to update.
-	 * @param version the selected version.
+	 * @param artifactId the artifact id to write into the update.
+	 * @param dependency the dependency whose declarations should be updated.
+	 * @param version the selected target version.
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate from(ArtifactId artifactId, Dependency dependency, ArtifactVersion version) {
@@ -105,7 +142,8 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 
 	/**
 	 * Create an update for a direct dependency declaration with an inline version.
-	 * @param artifactId the artifact coordinate to update.
+	 *
+	 * @param artifactId the dependency coordinate to update.
 	 * @param version the selected target version.
 	 * @return the dependency update to apply.
 	 */
@@ -116,10 +154,11 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 
 	/**
 	 * Create an update with explicit declaration and version sources.
-	 * @param artifactId the artifact coordinate to update.
+	 *
+	 * @param artifactId the dependency coordinate to update.
 	 * @param version the selected target version.
-	 * @param declarationSource the declaration source to update.
-	 * @param versionSource the version source to update.
+	 * @param declarationSource the declaration source participating in the update.
+	 * @param versionSource the version source that can be rewritten.
 	 * @return the dependency update to apply.
 	 */
 	public static DependencyUpdate create(ArtifactId artifactId, ArtifactVersion version,
@@ -130,7 +169,8 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 	/**
 	 * Evaluate the {@link Predicate} against the {@link VersionSource}s and return
 	 * {@code true} if any match.
-	 * @param versionSourcePredicate the conditional to evaluate.
+	 *
+	 * @param versionSourcePredicate the predicate to apply to the version sources.
 	 * @return {@code true} if any version source matches; {@code false} otherwise.
 	 */
 	public boolean hasVersionSource(Predicate<VersionSource> versionSourcePredicate) {
@@ -143,12 +183,21 @@ public record DependencyUpdate(ArtifactId coordinate, ArtifactVersion from, Arti
 	}
 
 	/**
-	 * Return the {@link #version()} as String.
-	 * @return the string representation of the target version.
-	 * @see #version()
+	 * Return the declaration sources participating in this update.
+	 *
+	 * @return the declaration sources supplied when the update was created.
 	 */
-	public String versionAsString() {
-		return version.toString();
+	public Collection<DeclarationSource> declarationSources() {
+		return declarationSources;
+	}
+
+	/**
+	 * Return the version sources that can be rewritten by this update.
+	 *
+	 * @return the version sources supplied when the update was created.
+	 */
+	public Collection<VersionSource> versionSources() {
+		return versionSources;
 	}
 
 }

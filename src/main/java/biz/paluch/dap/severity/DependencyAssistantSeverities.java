@@ -21,7 +21,7 @@ import java.util.List;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.support.MessageBundle;
+import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
 import com.intellij.codeInsight.daemon.impl.SeveritiesProvider;
 import com.intellij.lang.annotation.HighlightSeverity;
@@ -35,19 +35,35 @@ import com.intellij.openapi.editor.colors.TextAttributesKey;
 public class DependencyAssistantSeverities extends SeveritiesProvider {
 
 	/**
-	 * Text attributes key for upgrade available dependencies.
+	 * Editor color key applied to a declared version when a newer release is
+	 * available for the dependency.
 	 */
 	public static final TextAttributesKey UPGRADE_AVAILABLE_KEY = TextAttributesKey
 			.createTextAttributesKey("UPGRADE_AVAILABLE");
 
 	/**
-	 * Text attributes key for upgrade suggestions.
+	 * Editor color key applied to a declared version when an optional upgrade is
+	 * suggested rather than directly available.
 	 */
 	public static final TextAttributesKey UPGRADE_SUGGESTION_KEY = TextAttributesKey
 			.createTextAttributesKey("UPGRADE_SUGGESTION");
 
+	public static final TextAttributesKey VULNERABLE_LOW_KEY = TextAttributesKey
+			.createTextAttributesKey("VULNERABLE_LOW");
+
+	public static final TextAttributesKey VULNERABLE_MEDIUM_KEY = TextAttributesKey
+			.createTextAttributesKey("VULNERABLE_MEDIUM");
+
+	public static final TextAttributesKey VULNERABLE_HIGH_KEY = TextAttributesKey
+			.createTextAttributesKey("VULNERABLE_HIGH");
+
+	public static final TextAttributesKey VULNERABLE_CRITICAL_KEY = TextAttributesKey
+			.createTextAttributesKey("VULNERABLE_CRITICAL");
+
 	/**
-	 * Upgrade available highlight severity.
+	 * Highlight severity for available dependency upgrades, ranked just above
+	 * {@link HighlightSeverity#INFORMATION} so upgrade markers surface without
+	 * being treated as warnings.
 	 */
 	public static final HighlightSeverity UPGRADE_AVAILABLE = new HighlightSeverity(
 			UPGRADE_AVAILABLE_KEY.getExternalName(),
@@ -57,7 +73,9 @@ public class DependencyAssistantSeverities extends SeveritiesProvider {
 			MessageBundle.lazyMessage("severity.upgrade.available.count.message"));
 
 	/**
-	 * Create a new {@code DependencyAssistantSeverities}.
+	 * Instantiated by the platform through the
+	 * {@code com.intellij.severitiesProvider} extension point; not intended to be
+	 * constructed directly.
 	 */
 	public DependencyAssistantSeverities() {
 	}

@@ -43,7 +43,7 @@ class MavenProperties implements PropertyResolver {
 	}
 
 	/**
-	 * Creater a new {@code MavenProperties} for the given {@link PsiFile pom file}.
+	 * Create a new {@code MavenProperties} for the given {@link PsiFile pom file}.
 	 * @param file the pom file to parse.
 	 * @return {@code MavenProperties} declared within the given file.
 	 */

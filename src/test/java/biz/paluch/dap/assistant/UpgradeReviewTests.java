@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -26,6 +27,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.state.ProjectId;
@@ -42,76 +44,77 @@ import static org.assertj.core.api.Assertions.*;
  */
 class UpgradeReviewTests {
 
-	ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
+	private static final ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
 
-		ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
+	private static final ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
-		ArtifactVersion CURRENT = ArtifactVersion.of("6.2.0");
+	private static final ArtifactId POSTGRESQL = ArtifactId.of("org.postgresql", "postgresql");
 
-		ArtifactVersion TARGET = ArtifactVersion.of("6.2.1");
+	private static final ArtifactId TESTCONTAINERS_POSTGRESQL = ArtifactId.of("org.testcontainers", "postgresql");
+
+	private static final ArtifactId LETTUCE_CORE = biz.paluch.dap.fixtures.Releases.LETTUCE_CORE.toArtifactId();
+
+	private static final ArtifactId ADDON = ArtifactId.of("com.example", "addon");
 
 	@Test
 	void groupApplyFansOutToOneUpdatePerMemberCoordinate() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, VersionSource.property("spring.version"));
-		UpgradeCandidate test = candidate(SPRING_TEST, CURRENT, VersionSource.declared(CURRENT.toString()));
-		UpgradeGroup group = UpgradeGroup.of(List.of(core, test));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0");
+		UpgradeGroup group = UpgradeGroup.of(core, test);
 
-		UpgradeReview review = new UpgradeReview(List.of(group), List.of());
-		review.selectTarget(group, TARGET);
+		UpgradeReview review = new UpgradeReview(group);
+		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
 
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 
 		assertThat(updates).hasSize(2);
-		assertThat(updates).extracting(DependencyUpdate::coordinate)
-				.allSatisfy(coordinate -> assertThat(coordinate).hasToString("Spring Framework"));
-		assertThat(updates).extracting(update -> update.coordinate().artifactId()).containsExactly("spring-core",
+		assertThat(updates).extracting(update -> update.artifactId().artifactId()).containsExactly("spring-core",
 				"spring-test");
-		assertThat(updates).extracting(DependencyUpdate::version).containsOnly(TARGET);
+		assertThat(updates).extracting(DependencyUpdate::versionAsString).containsOnly("6.2.1");
 		assertThat(updates.getFirst().versionSources()).containsExactly(VersionSource.property("spring.version"));
 	}
 
 	@Test
 	void groupFanOutCarriesDriftingMemberCurrentVersion() {
 
-		ArtifactVersion older = ArtifactVersion.of("6.0.9");
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0");
+		UpgradeCandidate drifting = candidate(SPRING_TEST, "6.0.9", releases("6.0.9", "6.2.1"), "6.2.0",
+				"6.0.9");
+		UpgradeGroup group = UpgradeGroup.of(core, drifting);
 
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, VersionSource.declared(CURRENT.toString()));
-		UpgradeCandidate drifting = candidate(SPRING_TEST, older, VersionSource.declared(older.toString()),
-				site(SPRING_TEST, CURRENT, "drift/pom.xml"), site(SPRING_TEST, older, "drift-b/pom.xml"));
-		UpgradeGroup group = UpgradeGroup.of(List.of(core, drifting));
-
-		UpgradeReview review = new UpgradeReview(List.of(group), List.of());
-		review.selectTarget(group, TARGET);
+		UpgradeReview review = new UpgradeReview(group);
+		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
 
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 
-		assertThat(updates).extracting(DependencyUpdate::from).containsExactly(CURRENT, older);
-		assertThat(updates).extracting(DependencyUpdate::version).containsOnly(TARGET);
+		assertThat(updates).extracting(update -> update.from().getVersion().toString()).containsExactly("6.2.0",
+				"6.0.9");
+		assertThat(updates).extracting(DependencyUpdate::versionAsString).containsOnly("6.2.1");
 	}
 
 	@Test
 	void selectedSingleCandidateProducesOneUpdate() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, VersionSource.declared(CURRENT.toString()));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0");
 
-		UpgradeReview review = new UpgradeReview(List.of(core), List.of());
-		review.selectTarget(core, TARGET);
+		UpgradeReview review = new UpgradeReview(core);
+		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
 
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 
 		assertThat(updates).hasSize(1);
-		assertThat(updates.getFirst().coordinate()).hasToString("Spring Framework");
-		assertThat(updates.getFirst().version()).isEqualTo(TARGET);
+		assertThat(updates.getFirst().artifactId()).hasToString("Spring Framework");
+		assertThat(updates.getFirst().versionAsString()).isEqualTo("6.2.1");
 	}
 
 	@Test
 	void deselectedCandidateProducesNoUpdate() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, VersionSource.declared(CURRENT.toString()));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0");
 
-		UpgradeReview review = new UpgradeReview(List.of(core), List.of());
-		review.selectTarget(core, TARGET);
+		UpgradeReview review = new UpgradeReview(core);
+		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
 		review.setSelected(core, false);
 
 		assertThat(review.getSelectedUpdates()).isEmpty();
@@ -120,49 +123,44 @@ class UpgradeReviewTests {
 	@Test
 	void strategySelectionOnGroupResolvesAgainstIntersectionReleases() {
 
-		ArtifactVersion next = ArtifactVersion.of("6.3.0");
-
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, Releases.of(Release.of(CURRENT), Release.of(TARGET),
-				Release.of(next)));
-		UpgradeCandidate test = candidate(SPRING_TEST, CURRENT, Releases.of(Release.of(CURRENT), Release.of(TARGET)));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", releases("6.2.0", "6.2.1", "6.3.0"));
+		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0", releases("6.2.0", "6.2.1"));
 		UpgradeGroup group = UpgradeGroup.of(List.of(core, test));
 
-		UpgradeReview review = new UpgradeReview(List.of(group), List.of());
+		UpgradeReview review = new UpgradeReview(group);
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.LATEST);
 
-		assertThat(review.getUpdateTo(group)).isEqualTo(TARGET);
+		assertThat(review.getUpdateTo(group)).hasToString("6.2.1");
 	}
 
 	@Test
 	void appliedGroupUpdatesCollapseToOneNotificationEntry() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, VersionSource.property("spring.version"));
-		UpgradeCandidate test = candidate(SPRING_TEST, CURRENT, VersionSource.declared(CURRENT.toString()));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0");
 		UpgradeGroup group = UpgradeGroup.of(List.of(core, test));
 
-		UpgradeReview review = new UpgradeReview(List.of(group), List.of());
-		review.selectTarget(group, TARGET);
+		UpgradeReview review = new UpgradeReview(group);
+		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
 
 		Set<AppliedDependencyUpdate> applied = new TreeSet<>();
 		for (DependencyUpdate update : review.getSelectedUpdates()) {
-			applied.add(new AppliedDependencyUpdate(update.coordinate(), update.from(), update.version()));
+			applied.add(AppliedDependencyUpdate.of(update.artifactId(), update.from().getVersion(), update.version(),
+					biz.paluch.dap.rule.DependencyRule.absent(), update.getUpgradeStrategy()));
 		}
 
 		assertThat(applied).singleElement()
-				.satisfies(update -> assertThat(update.getDependencyName()).isEqualTo("Spring Framework"));
+				.satisfies(update -> assertThat(update.displayLabel()).isEqualTo("Spring Framework"));
 	}
 
 	@Test
 	void ambiguityIsComputedOverFullCandidateSetRegardlessOfFilter() {
 
-		UpgradeCandidate driver = candidate(ArtifactId.of("org.postgresql", "postgresql"), CURRENT,
-				VersionSource.declared(CURRENT.toString()));
-		UpgradeCandidate testcontainer = candidate(ArtifactId.of("org.testcontainers", "postgresql"), CURRENT,
-				VersionSource.declared(CURRENT.toString()));
-		UpgradeCandidate lettuce = candidate(ArtifactId.of("io.lettuce", "lettuce-core"), CURRENT,
-				VersionSource.declared(CURRENT.toString()));
+		UpgradeCandidate driver = candidate(POSTGRESQL, "6.2.0");
+		UpgradeCandidate testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
+		UpgradeCandidate lettuce = candidate(LETTUCE_CORE, "6.2.0");
 
-		UpgradeReview review = new UpgradeReview(List.of(driver, testcontainer, lettuce), List.of());
+		UpgradeReview review = new UpgradeReview(driver, testcontainer, lettuce);
 
 		assertThat(review.isAmbiguous(driver)).isTrue();
 		assertThat(review.isAmbiguous(testcontainer)).isTrue();
@@ -176,13 +174,11 @@ class UpgradeReviewTests {
 	@Test
 	void rowsLabeledByRuleNameDoNotMakeCoordinatesAmbiguous() {
 
-		UpgradeCandidate driver = candidate(ArtifactId.of("org.postgresql", "postgresql"), CURRENT,
-				VersionSource.declared(CURRENT.toString()));
-		UpgradeCandidate testcontainer = candidate(ArtifactId.of("org.testcontainers", "postgresql"), CURRENT,
-				VersionSource.declared(CURRENT.toString()));
+		UpgradeCandidate driver = candidate(POSTGRESQL, "6.2.0");
+		UpgradeCandidate testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
 		testcontainer.labelByDependencyName();
 
-		UpgradeReview review = new UpgradeReview(List.of(driver, testcontainer), List.of());
+		UpgradeReview review = new UpgradeReview(driver, testcontainer);
 
 		assertThat(review.isAmbiguous(driver)).isFalse();
 	}
@@ -190,13 +186,11 @@ class UpgradeReviewTests {
 	@Test
 	void sharedVersionPropertyCrossReferencesCoupledRowsByBareName() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, VersionSource.property("spring.version"));
-		UpgradeCandidate addon = candidate(ArtifactId.of("com.example", "addon"), CURRENT,
-				VersionSource.profileProperty("dev", "spring.version"));
-		UpgradeCandidate lettuce = candidate(ArtifactId.of("io.lettuce", "lettuce-core"), CURRENT,
-				VersionSource.declared(CURRENT.toString()));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeCandidate addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
+		UpgradeCandidate lettuce = candidate(LETTUCE_CORE, "6.2.0");
 
-		UpgradeReview review = new UpgradeReview(List.of(core, addon, lettuce), List.of());
+		UpgradeReview review = new UpgradeReview(core, addon, lettuce);
 
 		assertThat(review.getSharedPropertyPeers(core)).containsExactly(addon);
 		assertThat(review.getSharedPropertyPeers(addon)).containsExactly(core);
@@ -206,45 +200,73 @@ class UpgradeReviewTests {
 	@Test
 	void groupCrossReferencesUngovernedRowSharingMemberProperty() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, CURRENT, VersionSource.property("spring.version"));
-		UpgradeCandidate test = candidate(SPRING_TEST, CURRENT, VersionSource.declared(CURRENT.toString()));
-		UpgradeGroup group = UpgradeGroup.of(List.of(core, test));
-		UpgradeCandidate ungoverned = candidate(ArtifactId.of("com.example", "addon"), CURRENT,
-				VersionSource.property("spring.version"));
+		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0");
+		UpgradeGroup group = UpgradeGroup.of(core, test);
+		UpgradeCandidate ungoverned = candidate(ADDON, "6.2.0", VersionSource.property("spring.version"));
 
-		UpgradeReview review = new UpgradeReview(List.of(group, ungoverned), List.of());
+		UpgradeReview review = new UpgradeReview(group, ungoverned);
 
 		assertThat(review.getSharedPropertyPeers(group)).containsExactly(ungoverned);
 		assertThat(review.getSharedPropertyPeers(ungoverned)).containsExactly(group);
 	}
 
-	private static UpgradeCandidate candidate(ArtifactId artifactId, ArtifactVersion version,
-			VersionSource versionSource) {
-		return candidate(artifactId, version, versionSource, site(artifactId, version, "review/pom.xml"));
-	}
 
-	private static UpgradeCandidate candidate(ArtifactId artifactId, ArtifactVersion version, Releases releases) {
-
-		Dependency dependency = new Dependency(artifactId, version);
-		dependency.addVersionSource(VersionSource.declared(version.toString()));
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, releases), new TestInterfaceAssistant(),
-				DeclaredVersions.from(List.of(site(artifactId, version, "review/pom.xml")), it -> null, null),
-				new TestDependencyRule("Spring Framework"));
-	}
-
-	private static UpgradeCandidate candidate(ArtifactId artifactId, ArtifactVersion version,
-			VersionSource versionSource, DeclarationSite... sites) {
-
-		Dependency dependency = new Dependency(artifactId, version);
+	private static Dependency dependency(ArtifactId artifactId, String version, VersionSource versionSource) {
+		ArtifactVersion artifactVersion = ArtifactVersion.of(version);
+		Dependency dependency = new Dependency(artifactId, artifactVersion);
 		dependency.addVersionSource(versionSource);
-		Releases releases = Releases.of(Release.of(version), Release.of("6.2.1"));
-		return new UpgradeCandidate(new DependencyUpdateCandidate(dependency, releases), new TestInterfaceAssistant(),
-				DeclaredVersions.from(List.of(sites), it -> null, null), new TestDependencyRule("Spring Framework"));
+		return dependency;
 	}
 
-	private static DeclarationSite site(ArtifactId artifactId, ArtifactVersion version, String path) {
-		return new DeclarationSite(new MockVirtualFile(path, "// test"), ProjectId.of("com.acme", "app"),
-				new Dependency(artifactId, version));
+	private static UpgradeCandidate candidate(ArtifactId artifactId, String version) {
+		return candidate(dependency(artifactId, version, VersionSource.declared(version)));
+	}
+
+	private static UpgradeCandidate candidate(ArtifactId artifactId, String version, VersionSource versionSource) {
+		return candidate(dependency(artifactId, version, versionSource));
+	}
+
+	private static UpgradeCandidate candidate(ArtifactId artifactId, String version, Releases releases,
+			String... declaredVersions) {
+
+		Dependency dependency = dependency(artifactId, version, VersionSource.declared(version));
+		return candidate(dependency, releases, declaredVersions(dependency, declaredVersions));
+	}
+
+	private static UpgradeCandidate candidate(Dependency dependency) {
+		return candidate(dependency, releases(dependency.getCurrentVersion().toString(), "6.2.1"),
+				declaredVersions(dependency));
+	}
+
+	private static UpgradeCandidate candidate(Dependency dependency, Releases releases,
+			DeclaredVersions declaredVersions) {
+		return new UpgradeCandidate(
+				new DependencyUpdateCandidate(dependency, releases, VulnerabilityRepository.empty(),
+						new TestDependencyRule("Spring Framework")),
+				TestInterfaceAssistant.INSTANCE, declaredVersions);
+	}
+
+	private static DeclaredVersions declaredVersions(Dependency dependency, String... versions) {
+
+		List<DeclarationSite> declarations = new ArrayList<>();
+		List<String> declaredVersions = versions.length == 0 ? List.of(dependency.getCurrentVersion().toString())
+				: List.of(versions);
+		for (String version : declaredVersions) {
+			Dependency declared = new Dependency(dependency.getArtifactId(), ArtifactVersion.of(version));
+			declarations.add(new DeclarationSite(new MockVirtualFile("review-" + version + "/pom.xml", "// test"),
+					ProjectId.of("com.acme", "app"), declared));
+		}
+		return DeclaredVersions.from(declarations, it -> null, null);
+	}
+
+	private static Releases releases(String... versions) {
+
+		List<Release> releases = new ArrayList<>();
+		for (String version : versions) {
+			releases.add(Release.of(version));
+		}
+		return Releases.of(releases);
 	}
 
 }

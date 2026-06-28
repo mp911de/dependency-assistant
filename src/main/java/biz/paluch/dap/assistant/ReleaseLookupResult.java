@@ -29,15 +29,22 @@ import org.jspecify.annotations.Nullable;
  * @param error the lookup error message, or {@literal null} when release lookup
  * succeeded.
  * @param releases the releases that were resolved for the artifact.
+ * @param newReleases the releases newly added to the cache by this lookup,
+ * empty when nothing new was fetched; used to scope an incremental
+ * vulnerability scan.
  */
-record ReleaseLookupResult(@Nullable String error, Releases releases) {
+record ReleaseLookupResult(@Nullable String error, Releases releases, Releases newReleases) {
 
 	public static ReleaseLookupResult of(Releases releases) {
-		return new ReleaseLookupResult(null, releases);
+		return of(releases, Releases.empty());
+	}
+
+	public static ReleaseLookupResult of(Releases releases, Releases newReleases) {
+		return new ReleaseLookupResult(null, releases, newReleases);
 	}
 
 	public static ReleaseLookupResult failed(String error) {
-		return new ReleaseLookupResult(error, Releases.empty());
+		return new ReleaseLookupResult(error, Releases.empty(), Releases.empty());
 	}
 
 	public static ReleaseLookupResult empty() {

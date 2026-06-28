@@ -52,7 +52,7 @@ class TomlParserTests {
 		assertThat(collector)
 				.hasDependencyUsage("org.springframework.boot", "spring-boot-starter")
 				.hasVersion("3.5.0")
-				.hasVersionSource(VersionSource.VersionCatalogProperty.class);
+				.hasVersionSource(VersionSource.versionCatalogProperty("spring-boot"));
 		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3").hasVersion("3.17.0");
 		assertThat(collector).hasDependencyUsage("org.junit.jupiter", "junit-jupiter").hasVersion("5.11.0");
 	}

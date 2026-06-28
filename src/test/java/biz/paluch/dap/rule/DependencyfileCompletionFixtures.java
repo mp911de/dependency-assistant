@@ -20,6 +20,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
@@ -47,7 +48,7 @@ class DependencyfileCompletionFixtures {
 
 		StateService.getInstance(project)
 				.getProjectState(ProjectId.of("test", "project"))
-				.setDependencies(collector);
+				.setDependencies(collector, PackageSystem.MAVEN);
 	}
 
 	private static void register(DependencyCollector collector, ArtifactId artifactId) {

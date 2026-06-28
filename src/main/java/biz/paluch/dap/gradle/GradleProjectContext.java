@@ -23,6 +23,7 @@ import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.MavenRepository;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.Versioned;
@@ -57,14 +58,18 @@ interface GradleProjectContext extends ProjectBuildContext {
 	Key<GradleProjectContext> KEY = Key.create("GradleProjectContext");
 
 	/**
-	 * Looks up the {@link GradleProjectContext} for the given PSI file.
+	 * Looks up the {@link GradleProjectContext} for the given PSI file, or returns
+	 * {@link EmptyGradleBuildContext#INSTANCE} when the file is not part of a
+	 * linked Gradle project.
 	 */
 	static GradleProjectContext of(PsiFile file) {
 		return of(file.getProject(), file);
 	}
 
 	/**
-	 * Looks up the {@link GradleProjectContext} for the given PSI file.
+	 * Looks up the {@link GradleProjectContext} for the given PSI file, or returns
+	 * {@link EmptyGradleBuildContext#INSTANCE} when the file is not part of a
+	 * linked Gradle project.
 	 */
 	static GradleProjectContext of(Project project, @Nullable PsiFile file) {
 
@@ -199,6 +204,11 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
+		public PackageSystem getPackageSystem() {
+			return PackageSystem.MAVEN;
+		}
+
+		@Override
 		public Versioned getProjectVersion() {
 			return projectVersion;
 		}
@@ -232,6 +242,11 @@ interface GradleProjectContext extends ProjectBuildContext {
 
 		@Override
 		public ProjectId getProjectId() {
+			throw new IllegalStateException("Gradle BuildContext not available");
+		}
+
+		@Override
+		public PackageSystem getPackageSystem() {
 			throw new IllegalStateException("Gradle BuildContext not available");
 		}
 

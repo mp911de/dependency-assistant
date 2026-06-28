@@ -66,10 +66,31 @@ class NpmReleases {
 	}
 
 	/**
-	 * @return all NPM artifacts registered in this fixture, in declaration order.
+	 * Return independent copies of all NPM artifacts registered in this fixture, in
+	 * declaration order.
+	 * <p>Each call yields fresh {@link CachedArtifact} and {@link CachedRelease}
+	 * instances so a test that mutates the cache (for example a vulnerability warm
+	 * scan on an open file) cannot leak state into another test through the shared
+	 * template.
+	 *
+	 * @return fresh copies of the registered artifacts.
 	 */
 	static List<CachedArtifact> all() {
-		return List.copyOf(ALL);
+
+		List<CachedArtifact> copies = new ArrayList<>(ALL.size());
+		for (CachedArtifact template : ALL) {
+			copies.add(copy(template));
+		}
+		return copies;
+	}
+
+	private static CachedArtifact copy(CachedArtifact template) {
+
+		CachedArtifact copy = new CachedArtifact(template.getGroupId(), template.getArtifactId());
+		for (CachedRelease release : template.getReleases()) {
+			copy.getReleases().add(new CachedRelease(release.version(), release.date(), release.sha()));
+		}
+		return copy;
 	}
 
 	private static CachedArtifact create(String groupId, String artifactId, Consumer<ReleaseBuilder> configurer) {

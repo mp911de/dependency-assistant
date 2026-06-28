@@ -89,8 +89,9 @@ public class Generation implements Predicate<String> {
 	}
 
 	/**
-	 * Return the normalized generation value.
-	 * @return the normalized generation value.
+	 * Return the generation in its {@code .x} display form, such as {@code 6.0.x}.
+	 *
+	 * @return the generation prefix suffixed with {@code .x}.
 	 */
 	public String value() {
 		return this.generation + ".x";

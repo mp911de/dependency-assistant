@@ -47,8 +47,9 @@ public abstract class EditorSchemes {
 	/**
 	 * Return the global editor color scheme.
 	 *
-	 * @return the global scheme, or {@literal null} when the {@link Application} or
-	 * {@link EditorColorsManager} is not initialized.
+	 * @return the global scheme, or a fresh {@link DefaultColorsScheme} when the
+	 * {@link Application} or {@link EditorColorsManager} is not initialized; never
+	 * {@literal null}.
 	 */
 	private static EditorColorsScheme globalScheme() {
 		Application application = ApplicationManager.getApplication();

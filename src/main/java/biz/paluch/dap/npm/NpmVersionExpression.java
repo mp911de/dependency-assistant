@@ -288,7 +288,10 @@ sealed interface NpmVersionExpression
 	/**
 	 * Return the source descriptor for the version-bearing text represented by this
 	 * expression.
-	 * @return the version source to register for dependency analysis.
+	 * <p>The default derives the source from {@link #text()}; {@link Prefix}
+	 * overrides this to mark the source as a prefix range.
+	 * @return the version source to register for dependency analysis; guaranteed to
+	 * be not {@literal null}.
 	 */
 	default VersionSource versionSource() {
 		return VersionSource.from(text());
@@ -323,10 +326,11 @@ sealed interface NpmVersionExpression
 	}
 
 	/**
-	 * Post-process the given artifact ID to apply any normalization.
-	 * @param artifactId the artifact ID to post-process; must not be
-	 * {@literal null}.
-	 * @return the post-processed artifact ID.
+	 * Adjust the declared artifact coordinates for variants that route lookup
+	 * elsewhere, such as {@link Git} redirecting release lookup to its repository.
+	 * <p>The default returns the artifact ID unchanged.
+	 * @param artifactId the declared artifact ID; must not be {@literal null}.
+	 * @return the artifact ID to use for release lookup; never {@literal null}.
 	 */
 	default ArtifactId postProcess(ArtifactId artifactId) {
 		return artifactId;
@@ -588,16 +592,14 @@ sealed interface NpmVersionExpression
 	 * Git dependency whose URL resolves through
 	 * {@link GitRepositoryMetadata#parseGitUrl(String)} to a GitHub repository.
 	 *
-	 * <p>
-	 * The repository metadata determines the release source used for update
+	 * <p>The repository metadata determines the release source used for update
 	 * lookup. The committish after {@code #} is modeled as another
 	 * {@code NpmVersionExpression}: semantic tags keep their npm modifier shape,
-	 * {@code #semver:} refs keep the {@code semver:} prefix in the surrounding
+	 * {@code #semver:} refs strip the marker before storing the surrounding
 	 * {@link NpmGitRef}, and non-semver refs such as SHAs or branch names fall back
 	 * to a raw {@link Exact} expression.
 	 *
-	 * <p>
-	 * The replaceable range always covers only the committish text that should
+	 * <p>The replaceable range always covers only the committish text that should
 	 * be rewritten. For {@code #semver:} refs, the range starts after the
 	 * {@code semver:} marker so the marker itself is preserved.
 	 *
@@ -825,20 +827,19 @@ sealed interface NpmVersionExpression
 	 * Git-backed NPM dependency reference resolved through
 	 * {@link GitRepositoryMetadata#parseGitUrl(String)}.
 	 *
-	 * <p>
-	 * The {@code prefix} is the original Git URL or shorthand text up to the
-	 * committish replacement point, including {@code #} and, for semver refs, the
-	 * {@code semver:} marker. The {@code committish} is modeled as an
-	 * {@link NpmVersionExpression} so tag-like refs, comparator refs, prefix refs,
+	 * <p>The {@code prefix} is the original Git URL or shorthand text up to the
+	 * committish replacement point, including {@code #}; for semver refs, the
+	 * {@code semver:} marker is not retained here. The {@code committish} is
+	 * modeled as an {@link NpmVersionExpression} so tag-like refs, comparator refs,
 	 * SHAs, and branch names can share the same rendering contract. An empty
 	 * committish indicates that the user did not pin the dependency to a specific
 	 * ref; downstream resolution treats that as no concrete version.
 	 *
-	 * @param prefix     the raw declaration prefix preserved when rendering an update.
+	 * @param prefix the raw declaration prefix preserved when rendering an update.
 	 * @param repository the resolved GitHub repository metadata, including the
-	 *                   GitHub host that drives release-source routing.
+	 * GitHub host that drives release-source routing.
 	 * @param committish the parsed ref expression written after {@code #}; may have
-	 *                   empty text when the user did not pin a ref.
+	 * empty text when the user did not pin a ref.
 	 * @author Mark Paluch
 	 * @see Git
 	 */

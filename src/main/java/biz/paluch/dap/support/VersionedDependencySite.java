@@ -55,8 +55,9 @@ public interface VersionedDependencySite extends DependencySite {
 	PsiElement getVersionElement();
 
 	/**
-	 * Create a new {@code DependencySite} instance given {@link ArtifactId},
-	 * {@link VersionSource} and its {@link PsiElement declaration}.
+	 * Create a new {@code VersionedDependencySite} instance given
+	 * {@link ArtifactId}, {@link ArtifactVersion}, {@link VersionSource} and its
+	 * {@link PsiElement declaration} and version elements.
 	 * @param artifactId the artifact identifier.
 	 * @param version the artifact version.
 	 * @param versionSource the version source, an inline-version or a property.

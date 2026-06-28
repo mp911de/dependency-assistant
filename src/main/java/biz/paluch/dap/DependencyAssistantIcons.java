@@ -18,16 +18,24 @@ package biz.paluch.dap;
 
 import javax.swing.Icon;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.ScalableIcon;
 import com.intellij.ui.LayeredIcon;
+import com.intellij.util.IconUtil;
 
 /**
- * Icon utility class for Dependency Assistant icons.
+ * Central registry of the {@link Icon} constants used across the plugin for
+ * gutter markers, dependency tables, and severity highlighting, plus helpers
+ * such as {@link #upgradeIcon(Icon, Icon)} that compose status overlays. All
+ * icons are loaded through {@link IconLoader} so HiDPI scaling and theming are
+ * handled by the platform.
  *
  * @author Mark Paluch
  */
 public class DependencyAssistantIcons {
+
+	private static final float UPGRADE_ICON_SCALE = 0.7f;
 
 	/**
 	 * Main Dependency Assistant icon.
@@ -40,7 +48,8 @@ public class DependencyAssistantIcons {
 	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/icons/propertyNavigate.svg");
 
 	/**
-	 * Shared property.
+	 * Gutter icon marking a version property referenced by more than one dependency
+	 * declaration.
 	 */
 	public static final Icon SHARED_PROPERTY = load("/META-INF/icons/sharedProperty.svg");
 
@@ -89,6 +98,8 @@ public class DependencyAssistantIcons {
 	 */
 	public static final Icon DEPENDENCY_RULE = load("/META-INF/icons/dependencyRule.svg");
 
+	public static final Icon RULE_COMPLIANT = ((ScalableIcon) AllIcons.Actions.InlaySecuredShield).scale(1.3f);
+
 	/**
 	 * Dependency rule violated.
 	 */
@@ -101,18 +112,18 @@ public class DependencyAssistantIcons {
 
 	/**
 	 * Compose a dependency upgrade icon: the assistant gutter icon scaled into the
-	 * lower-left corner with the version-age badge layered onto the lower-right
+	 * lower-left corner with the target status overlay layered onto the lower-right
 	 * quadrant.
 	 * @param dependencyIcon the assistant gutter icon.
-	 * @param ageIcon the version-age badge icon.
+	 * @param overlayIcon the target status overlay icon.
 	 * @return the layered upgrade icon.
 	 */
-	public static Icon upgradeIcon(Icon dependencyIcon, Icon ageIcon) {
+	public static Icon upgradeIcon(Icon dependencyIcon, Icon overlayIcon) {
 
 		LayeredIcon icon = new LayeredIcon(2);
-		Icon scaled = ((ScalableIcon) dependencyIcon).scale(0.7f);
+		Icon scaled = IconUtil.scale(dependencyIcon, null, UPGRADE_ICON_SCALE);
 		icon.setIcon(scaled, 0, dependencyIcon.getIconHeight() - scaled.getIconHeight(), 0);
-		icon.setIcon(((ScalableIcon) ageIcon).scale(0.7f), 1, dependencyIcon.getIconWidth() / 2,
+		icon.setIcon(IconUtil.scale(overlayIcon, null, UPGRADE_ICON_SCALE), 1, dependencyIcon.getIconWidth() / 2,
 				dependencyIcon.getIconHeight() / 2);
 		return icon;
 	}

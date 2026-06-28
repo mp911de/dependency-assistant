@@ -38,6 +38,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see UpgradeGroups
  */
+// TODO: refactor
 class DerivedGroupName {
 
 	private final String displayName;
@@ -69,7 +70,7 @@ class DerivedGroupName {
 	 *
 	 * @return the derived label.
 	 */
-	String displayName() {
+	String getDisplayName() {
 		return displayName;
 	}
 

@@ -17,6 +17,7 @@
 package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
@@ -57,7 +58,7 @@ class NpmFixtures {
 		NpmProjectContext context = NpmProjectContext.of(file);
 		file.putUserData(NpmProjectContext.KEY, context);
 
-		service.getProjectState(context.getProjectId()).setDependencies(collector);
+		service.getProjectState(context.getProjectId()).setDependencies(collector, PackageSystem.NPM);
 		return collector;
 	}
 

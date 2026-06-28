@@ -71,9 +71,13 @@ class VersionCatalogRegistry {
 	}
 
 	/**
-	 * Return a resolver anchored at {@code file} project root, or an empty
-	 * resolver when {@code file} is {@literal null}. File-backed instances are cached
-	 * on {@code file} (shared for the same PSI file).
+	 * Return the registry anchored at the project root of {@code file}, or the
+	 * {@link #ABSENT} registry when {@code file} has no backing virtual file. The
+	 * result is cached on {@code file} and shared for the same PSI file.
+	 *
+	 * @param file the Gradle build or settings file to anchor the registry at; must
+	 * not be {@literal null}.
+	 * @return the version-catalog registry for the file, never {@literal null}.
 	 */
 	public static VersionCatalogRegistry from(PsiFile file) {
 

@@ -189,7 +189,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	 * tag. Line markers and highlighting fire on every element of a tag (the angle
 	 * brackets, the tag name, the value text, and the surrounding text node);
 	 * pinning to the single text node keeps the gutter from duplicating across
-	 * them. Completion and documentation pre-unleaf to this same text node.
+	 * them. Completion and documentation resolve against this same text node.
 	 */
 	private boolean isResolvableElement(PsiElement element) {
 		return element.isValid() && (element instanceof XmlText

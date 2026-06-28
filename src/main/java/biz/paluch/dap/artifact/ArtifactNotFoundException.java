@@ -17,7 +17,10 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Exception thrown when an artifact is not found.
+ * Thrown when release information for a requested artifact cannot be resolved,
+ * for example because the artifact coordinates are unknown to the queried
+ * repository or no matching release exists. The unresolved coordinates are
+ * available through {@link #getArtifactId()}.
  *
  * @author Mark Paluch
  */

@@ -24,12 +24,16 @@ import org.xmlbeam.XBProjector;
 import org.xmlbeam.config.DefaultXMLFactoriesConfig;
 
 /**
- * Factory for XMLBeam projector with POM/metadata-friendly configuration.
+ * Factory for the shared XMLBeam projector used to read and write Maven XML
+ * with external entities and DOCTYPE declarations disabled.
  */
 public class XmlBeamProjectorFactory {
 
 	/**
-	 * Shared XMLBeam projector instance.
+	 * Shared, immutably configured {@link XBProjector} for reading and writing POM
+	 * and Maven metadata XML. The projector is configured for secure XML processing
+	 * (external entities and DOCTYPE declarations disabled) and is safe to reuse
+	 * across threads.
 	 */
 	public static final XBProjector INSTANCE = XmlBeamProjectorFactory.create();
 

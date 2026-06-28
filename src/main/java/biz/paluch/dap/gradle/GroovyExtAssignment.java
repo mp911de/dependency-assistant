@@ -47,6 +47,9 @@ import org.jspecify.annotations.Nullable;
 sealed interface GroovyExtAssignment extends ExtraDeclaration {
 
 	/**
+	 * Return the Groovy literal that holds the assigned value, serving as the
+	 * editable anchor when the property value is rewritten.
+	 *
 	 * @return the literal expression holding the value.
 	 */
 	@Override

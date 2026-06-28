@@ -23,6 +23,7 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -61,6 +62,11 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	@Override
 	public String getDisplayName() {
 		return MavenAssistant.MavenInterface.INSTANCE.getDisplayName();
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.MAVEN;
 	}
 
 	@Override
@@ -143,6 +149,11 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		@Override
 		public InterfaceAssistant getInterfaceAssistant() {
 			return MavenAssistant.MavenInterface.INSTANCE;
+		}
+
+		@Override
+		public PackageSystem getPackageSystem() {
+			return PackageSystem.MAVEN;
 		}
 
 		@Override

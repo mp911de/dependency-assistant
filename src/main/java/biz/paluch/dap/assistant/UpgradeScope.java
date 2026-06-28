@@ -35,14 +35,16 @@ import com.intellij.psi.PsiFile;
 public record UpgradeScope(List<Entry> entries, Reason reason) implements Iterable<UpgradeScope.Entry> {
 
 	/**
-	 * Create a resolved scope from the given entries.
+	 * Create a discovery scope from the given entries, gathered without an explicit
+	 * selection.
 	 */
 	public static UpgradeScope discover(List<Entry> entries) {
 		return new UpgradeScope(entries, Reason.DISCOVERY);
 	}
 
 	/**
-	 * Create a resolved scope from the given entries.
+	 * Create a resolved scope from the given entries, resolved from an explicit
+	 * selection.
 	 */
 	public static UpgradeScope resolved(List<Entry> entries) {
 		return new UpgradeScope(entries, Reason.SUCCESS);
@@ -78,7 +80,9 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Iterab
 	}
 
 	/**
-	 * Classification for an empty scope resolved from an explicit selection.
+	 * Classification of how a scope was resolved, covering both populated scopes
+	 * ({@link #DISCOVERY}, {@link #SUCCESS}) and the reasons a scope is empty
+	 * ({@link #NO_BUILD_FILES}, {@link #NOT_IMPORTED}).
 	 */
 	public enum Reason {
 
