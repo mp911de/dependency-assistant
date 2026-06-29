@@ -16,6 +16,9 @@
 
 package biz.paluch.dap.upgrade;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -23,7 +26,7 @@ import biz.paluch.dap.support.UpgradeStrategy;
 /**
  * Applies {@link DependencyRule} governance: drops suggestions the rule
  * disables (remediation targets always survive) and, when the current version
- * violates the rule, pins the lowest compliant {@link Release} as the
+ * violates the rule, pins the highest compliant {@link Release} as the
  * {@link UpgradeStrategy#RULE} target. The {@link UpgradeStrategy#SAFE} sibling
  * of {@link SafeUpgradeSuggestionsFilter}.
  *
@@ -43,7 +46,10 @@ class ComplianceUpgradeSuggestionsFilter implements UpgradeSuggestionsFilter {
 			Release first = subject.getReleases().stream()
 					.filter(it -> rule.test(it.getVersion())).findFirst().orElse(null);
 			if (first != null) {
-				return filtered.with(UpgradeSuggestion.of(UpgradeStrategy.RULE, first));
+				Map<UpgradeStrategy, UpgradeSuggestion> newSuggestions = new LinkedHashMap<>();
+				newSuggestions.put(UpgradeStrategy.RULE, UpgradeSuggestion.of(UpgradeStrategy.RULE, first));
+				newSuggestions.putAll(filtered.toMap());
+				return UpgradeSuggestions.of(newSuggestions);
 			}
 		}
 

@@ -16,6 +16,9 @@
 
 package biz.paluch.dap.upgrade;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
@@ -38,7 +41,11 @@ class SafeUpgradeSuggestionsFilter implements UpgradeSuggestionsFilter {
 
 		Release safeVersion = resolveSafeVersion(subject);
 		if (safeVersion != null) {
-			return suggestions.with(UpgradeSuggestion.of(UpgradeStrategy.SAFE, safeVersion));
+
+			Map<UpgradeStrategy, UpgradeSuggestion> newSuggestions = new LinkedHashMap<>();
+			newSuggestions.put(UpgradeStrategy.SAFE, UpgradeSuggestion.of(UpgradeStrategy.SAFE, safeVersion));
+			newSuggestions.putAll(suggestions.toMap());
+			return UpgradeSuggestions.of(newSuggestions);
 		}
 
 		return suggestions;
