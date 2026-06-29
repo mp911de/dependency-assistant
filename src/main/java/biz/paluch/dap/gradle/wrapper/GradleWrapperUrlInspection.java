@@ -37,6 +37,7 @@ import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.ProblemsHolder.ProblemBuilder;
+import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.project.DumbAware;
@@ -112,8 +113,10 @@ public class GradleWrapperUrlInspection extends LocalInspectionTool implements D
 			if (problem instanceof MissingChecksum missingChecksum) {
 
 				if (StringUtils.hasText(sha)) {
-					builder.highlight(ProblemHighlightType.WEAK_WARNING)
-							.fix(new GradleWrapperChecksumQuickFix(missingChecksum.property(), sha));
+					builder.highlight(ProblemHighlightType.WEAK_WARNING);
+					if (TrustedProjects.isProjectTrusted(property.getProject())) {
+						builder.fix(new GradleWrapperChecksumQuickFix(missingChecksum.property(), sha));
+					}
 				}
 			} else {
 				ArtifactDeclaration declaration = artifactReference.getDeclaration();

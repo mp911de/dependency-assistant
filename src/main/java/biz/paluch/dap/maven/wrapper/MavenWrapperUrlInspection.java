@@ -118,7 +118,10 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 			ProblemBuilder builder = holder.problem(property, problem.getMessage()).range(range);
 
 			if (problem instanceof MissingChecksum) {
-				builder.highlight(ProblemHighlightType.WEAK_WARNING).fix(new MavenWrapperChecksumQuickFix(kind));
+				builder.highlight(ProblemHighlightType.WEAK_WARNING);
+				if (TrustedProjects.isProjectTrusted(holder.getProject())) {
+					builder.fix(new MavenWrapperChecksumQuickFix(kind));
+				}
 			} else {
 				problem.getFixes(kind).forEach(builder::fix);
 			}
