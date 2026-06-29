@@ -66,7 +66,8 @@ public class Cache {
 	/**
 	 * Clock used for cache age calculations.
 	 */
-	public final Clock clock;
+	@Transient
+	private final Clock clock;
 
 	private static final Duration CACHE_EXPIRATION = Duration.ofHours(8);
 
@@ -106,6 +107,19 @@ public class Cache {
 	 */
 	public Cache(Clock clock) {
 		this.clock = clock;
+	}
+
+	public Clock getClock() {
+		return this.clock;
+	}
+
+	/**
+	 * Return the current epoch milliseconds from this cache's clock.
+	 *
+	 * @return the current time in epoch milliseconds.
+	 */
+	public long now() {
+		return clock.millis();
 	}
 
 	/**
@@ -633,15 +647,6 @@ public class Cache {
 		}
 
 		return copy;
-	}
-
-	/**
-	 * Return the current epoch milliseconds from this cache's clock.
-	 *
-	 * @return the current time in epoch milliseconds.
-	 */
-	public long now() {
-		return clock.millis();
 	}
 
 }

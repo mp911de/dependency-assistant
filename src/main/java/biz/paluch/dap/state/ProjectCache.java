@@ -163,22 +163,21 @@ public class ProjectCache implements Comparator<ProjectCache> {
 		this.descriptor = descriptor;
 	}
 
-	/**
-	 * Return all known property-to-artifact mappings. Each {@link VersionProperty}
-	 * carries the property name and the artifact(s) whose version it controls.
-	 */
-	public List<VersionProperty> getProperties() {
-		return List.copyOf(properties);
-	}
-
 	public long getLastSeen() {
 		return lastSeen;
 	}
 
 	/**
+	 * Return all known property-to-artifact mappings. Each {@link VersionProperty}
+	 * carries the property name and the artifact(s) whose version it controls.
+	 */
+	public synchronized List<VersionProperty> getProperties() {
+		return List.copyOf(properties);
+	}
+
+	/**
 	 * Set this project's property correlations from the given dependency collector.
-	 * <p>
-	 * The resulting property set contains both:
+	 * <p>The resulting property set contains both:
 	 * <ul>
 	 * <li>properties that are used as version sources for one or more declarations,
 	 * and</li>
@@ -190,43 +189,40 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	 * used.
 	 */
 	@Transient
-	public void setProperties(DependencyCollector collector, long timestamp) {
+	public synchronized void setProperties(DependencyCollector collector, long timestamp) {
 
-		synchronized (this) {
 
-			this.properties.clear();
-			this.propertyMap.clear();
+		this.properties.clear();
+		this.propertyMap.clear();
 
-			for (DeclaredDependency declaration : collector.getDeclarations()) {
+		for (DeclaredDependency declaration : collector.getDeclarations()) {
 
-				for (VersionSource versionSource : declaration.getVersionSources()) {
-					if (versionSource instanceof VersionSource.VersionProperty vps) {
+			for (VersionSource versionSource : declaration.getVersionSources()) {
+				if (versionSource instanceof VersionSource.VersionProperty vps) {
 
-						VersionProperty property = propertyMap.computeIfAbsent(vps.getProperty(), VersionProperty::new);
-						property.setUsed(true);
-						property.addArtifact(declaration.getArtifactId());
-					}
+					VersionProperty property = propertyMap.computeIfAbsent(vps.getProperty(), VersionProperty::new);
+					property.setUsed(true);
+					property.addArtifact(declaration.getArtifactId());
 				}
 			}
-
-			this.properties.addAll(propertyMap.values());
-
-			for (String propertyName : collector.getProperties()) {
-				propertyMap.computeIfAbsent(propertyName, k -> {
-					VersionProperty property = new VersionProperty(k);
-					this.properties.add(property);
-					return property;
-				}).setDeclared(true);
-			}
-
-			this.lastSeen = timestamp;
 		}
+
+		this.properties.addAll(propertyMap.values());
+
+		for (String propertyName : collector.getProperties()) {
+			propertyMap.computeIfAbsent(propertyName, k -> {
+				VersionProperty property = new VersionProperty(k);
+				this.properties.add(property);
+				return property;
+			}).setDeclared(true);
+		}
+
+		this.lastSeen = timestamp;
 	}
 
 	/**
 	 * Return the cached property with the given name.
-	 * <p>
-	 * If this instance was deserialized and the transient lookup map is not yet
+	 * <p>If this instance was deserialized and the transient lookup map is not yet
 	 * in sync with the persisted list, the lookup map is rebuilt first.
 	 *
 	 * @param propertyName the property name.
@@ -281,8 +277,7 @@ public class ProjectCache implements Comparator<ProjectCache> {
 	/**
 	 * Return a deep snapshot of this cache entry safe to hand off to the platform
 	 * serializer while concurrent mutations may still be in progress.
-	 * <p>
-	 * {@link VersionProperty} entries are mutable; each is copied so that the
+	 * <p>{@link VersionProperty} entries are mutable; each is copied so that the
 	 * snapshot does not share state with the live cache.
 	 *
 	 * @return a snapshot suitable for serialization.
