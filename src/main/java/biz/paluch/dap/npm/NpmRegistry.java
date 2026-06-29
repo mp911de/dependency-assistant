@@ -62,6 +62,7 @@ public class NpmRegistry implements ReleaseSource {
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 
+	// TODO: rely on cache, also, attempt json streaming for partial responses.
 	private static final LRUMap<ArtifactId, @Nullable AtomicInteger> KNOWN_FAILURES = new LRUMap<>(256, 256);
 
 	private final String registryBaseUrl;
