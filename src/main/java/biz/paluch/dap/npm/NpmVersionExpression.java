@@ -77,18 +77,21 @@ sealed interface NpmVersionExpression
 	 * Pattern for NPM wildcard/prefix ranges supported by this classifier.
 	 *
 	 * <pre class="code">
-	 * &lt;wildcard&gt;
 	 * &lt;number&gt;[.&lt;number&gt;]*.&lt;wildcard&gt;[.&lt;wildcard&gt;]*
 	 *
-	 * Examples: x, 2.x, 3.4.x, 1.*, 1.2.*
+	 * Examples: 2.x, 3.4.x, 1.*, 1.2.*
 	 * </pre>
 	 *
-	 * <p>
-	 * The parser still excludes bare {@code *}, since it provides no baseline
+	 * <p>The parser still excludes bare wildcards, since they provide no baseline
 	 * version for lookup.
 	 */
 	Pattern PREFIX_RANGE = Pattern
 			.compile("\\d+(?:\\.\\d+)*\\.(?:x|X|\\*)(?:\\.(?:x|X|\\*))*|\\d+\\.(?:x|X|\\*)|(?:x|X|\\*)");
+
+	/**
+	 * Wildcard segment used to derive a concrete baseline from a prefix range.
+	 */
+	Pattern PREFIX_WILDCARD_SEGMENT = Pattern.compile("(^|\\.)(?:x|X|\\*)(?=\\.|$)");
 
 	/**
 	 * Pattern for NPM hyphen ranges whose upper bound can be updated.
@@ -200,7 +203,7 @@ sealed interface NpmVersionExpression
 		}
 
 		String trimmed = value.trim();
-		if (trimmed.equals("*") || trimmed.equalsIgnoreCase("latest")) {
+		if (trimmed.equals("*") || trimmed.equalsIgnoreCase("x") || trimmed.equalsIgnoreCase("latest")) {
 			return null;
 		}
 
@@ -521,12 +524,15 @@ sealed interface NpmVersionExpression
 
 		/**
 		 * Return the numeric prefix used as a baseline for version lookup.
-		 * @return the prefix text before {@code .x}, or the full text if no {@code .x}
-		 * marker is present.
+		 * @return the prefix text before the first wildcard segment, or the full text
+		 * if no wildcard marker is present.
 		 */
 		public String getBaseVersion() {
-			int index = text.indexOf(".x");
-			return index != -1 ? text.substring(0, index) : text;
+			Matcher matcher = PREFIX_WILDCARD_SEGMENT.matcher(text);
+			if (!matcher.find()) {
+				return text;
+			}
+			return text.substring(0, matcher.start());
 		}
 
 		@Override

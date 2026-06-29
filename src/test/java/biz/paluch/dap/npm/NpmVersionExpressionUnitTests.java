@@ -173,6 +173,25 @@ class NpmVersionExpressionUnitTests {
 		assertThat(expression).isEqualTo(new NpmVersionExpression.Prefix("2.x"));
 		assertThat(NpmVersionExpression.parse("3.4.x")).isEqualTo(new NpmVersionExpression.Prefix("3.4.x"));
 		assertThat(NpmVersionExpression.parse("1.*")).isEqualTo(new NpmVersionExpression.Prefix("1.*"));
+		assertThat(NpmVersionExpression.parse("2.X")).isEqualTo(new NpmVersionExpression.Prefix("2.X"));
+		assertThat(NpmVersionExpression.parse("3.4.*")).isEqualTo(new NpmVersionExpression.Prefix("3.4.*"));
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+			"2.x, 2",
+			"2.X, 2",
+			"1.*, 1",
+			"3.4.x, 3.4",
+			"3.4.X, 3.4",
+			"3.4.*, 3.4"
+	})
+	void prefixBaseVersionUsesFirstWildcardSegment(String input, String baseline) {
+
+		NpmVersionExpression.Prefix prefix = (NpmVersionExpression.Prefix) NpmVersionExpression.parse(input);
+
+		assertThat(prefix.getBaseVersion()).isEqualTo(baseline);
+		assertThat(ArtifactVersion.from(prefix.getBaseVersion())).isPresent();
 	}
 
 	// -------------------------------------------------------------------------
@@ -392,7 +411,7 @@ class NpmVersionExpressionUnitTests {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"", "*", "latest", "LATEST", "<1.0.0 || >=2.3.1"})
+	@ValueSource(strings = {"", "*", "x", "X", "latest", "LATEST", "<1.0.0 || >=2.3.1"})
 	void rejectsOutOfScopeShapes(String input) {
 		assertThat(NpmVersionExpression.parse(input)).isNull();
 	}
