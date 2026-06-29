@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Formatter;
@@ -146,11 +147,17 @@ class DocumentationContext {
 			sb.append("<li>");
 			sb.append(Markdown.of(vulnerability.getTitle()).toHtml());
 			sb.append(" (");
-			String identifier = vulnerability.getCveId() != null ? vulnerability.getCveId()
-					: vulnerability.getAdvisoryId();
+			String identifier = vulnerability.getIdentifier();
 
-			HtmlChunk.Element link = HtmlChunk.link(vulnerability.getSourceUrl(), identifier);
-			sb.append(link);
+			HtmlChunk identifierText = HtmlChunk.text(identifier);
+			if (isHttpLink(vulnerability.getSourceUrl())) {
+				HtmlChunk.Element link = HtmlChunk.tag("a")
+						.attr("href", vulnerability.getSourceUrl())
+						.child(identifierText);
+				sb.append(link);
+			} else {
+				sb.append(identifierText);
+			}
 
 			Formatter format = new Formatter(Locale.ROOT).format("%1.1f", vulnerability.getCvssScore());
 			sb.append(", CVSS ").append(format);
@@ -158,6 +165,17 @@ class DocumentationContext {
 			sb.append(")</li>");
 		}
 		sb.append("</ul>");
+	}
+
+	private static boolean isHttpLink(String url) {
+
+		try {
+			URI uri = URI.create(url);
+			String scheme = uri.getScheme();
+			return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+		} catch (IllegalArgumentException ex) {
+			return false;
+		}
 	}
 
 	/**
@@ -351,20 +369,20 @@ class DocumentationContext {
 			}
 
 			sb.append("<td>");
-			if (linkable) {
-				sb.append("<a href=\"").append(DependencyUpgradeLinkHandler.SCHEME)
-						.append(key).append("\">");
-			}
 			boolean preview = release.isPreview();
 			if (preview) {
 				sb.append("<i>");
 			}
-			sb.append(renderVersion());
+			HtmlChunk version = renderVersion();
+			if (linkable) {
+				sb.append(HtmlChunk.tag("a")
+						.attr("href", DependencyUpgradeLinkHandler.SCHEME + key)
+						.child(version));
+			} else {
+				sb.append(version);
+			}
 			if (preview) {
 				sb.append("</i>");
-			}
-			if (linkable) {
-				sb.append("</a>");
 			}
 			sb.append("</td><td>");
 			if (release.releaseDate() != null) {
@@ -375,9 +393,9 @@ class DocumentationContext {
 			return sb;
 		}
 
-		private String renderVersion() {
-			String text = StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(release.version()));
-			return current ? "<b>" + text + "</b>" : text;
+		private HtmlChunk renderVersion() {
+			HtmlChunk text = HtmlChunk.text(interfaceAssistant.getDocumentationText(release.version()));
+			return current ? text.bold() : text;
 		}
 	}
 

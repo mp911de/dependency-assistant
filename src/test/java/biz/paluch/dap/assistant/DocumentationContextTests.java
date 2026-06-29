@@ -19,6 +19,8 @@ package biz.paluch.dap.assistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.TestCache;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.CvssSeverity;
@@ -94,6 +96,47 @@ class DocumentationContextTests {
 				.contains("9.8")
 				.contains("Critical")
 				.contains("https://example.com/advisory");
+	}
+
+	@Test
+	void shouldOmitSecurityAdvisoryLinkForUnsupportedScheme() {
+
+		Vulnerability cve = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd", "Remote code execution",
+				9.8, CvssSeverity.CRITICAL, "javascript:alert(1)");
+		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
+
+		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
+
+		assertThat(html)
+				.contains("CVE-2026-1")
+				.doesNotContain("href=\"javascript:alert(1)\"");
+	}
+
+	@Test
+	void shouldEscapeReleaseLinkHref() {
+
+		ArtifactId artifactId = ArtifactId.of("com.example", "unsafe");
+		String key = "release\" onclick=\"alert(1)\"><script>";
+		cache = new TestCache() {
+
+			@Override
+			public biz.paluch.dap.artifact.Releases getReleases(ArtifactId requested) {
+
+				if (artifactId.equals(requested)) {
+					return biz.paluch.dap.artifact.Releases.just(Release.of(new GitRef(key)));
+				}
+				return super.getReleases(requested);
+			}
+
+		};
+
+		String html = new DocumentationContext(context(artifactId), true).render(artifactId, false);
+
+		assertThat(html)
+				.contains(
+						"href=\"dependency-assistant-upgrade:release&quot; onclick=&quot;alert(1)&quot;&gt;&lt;script&gt;\"")
+				.doesNotContain("href=\"dependency-assistant-upgrade:release\" onclick=\"alert(1)\"><script>\"");
 	}
 
 	@Test
