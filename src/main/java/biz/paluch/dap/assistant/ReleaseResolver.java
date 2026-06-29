@@ -19,8 +19,10 @@ package biz.paluch.dap.assistant;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
@@ -28,7 +30,6 @@ import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
@@ -60,11 +61,19 @@ import org.jspecify.annotations.Nullable;
  */
 class ReleaseResolver {
 
+	private static final long DEFAULT_SOURCE_TIMEOUT = 30;
+
+	private static final TimeUnit DEFAULT_SOURCE_TIMEOUT_UNIT = TimeUnit.SECONDS;
+
 	private final ExecutorService executor;
 
 	private final ProgressIndicator indicator;
 
 	private final Cache cache;
+
+	private final long sourceTimeout;
+
+	private final TimeUnit sourceTimeoutUnit;
 
 	/**
 	 * Create a resolver fetching through the given executor, honoring the given
@@ -77,9 +86,16 @@ class ReleaseResolver {
 	 * not be {@literal null}.
 	 */
 	public ReleaseResolver(ExecutorService executor, ProgressIndicator indicator, Cache cache) {
+		this(executor, indicator, cache, DEFAULT_SOURCE_TIMEOUT, DEFAULT_SOURCE_TIMEOUT_UNIT);
+	}
+
+	ReleaseResolver(ExecutorService executor, ProgressIndicator indicator, Cache cache, long sourceTimeout,
+			TimeUnit sourceTimeoutUnit) {
 		this.executor = executor;
 		this.indicator = indicator;
 		this.cache = cache;
+		this.sourceTimeout = sourceTimeout;
+		this.sourceTimeoutUnit = sourceTimeoutUnit;
 	}
 
 	public static Consistency cached() {
@@ -157,9 +173,10 @@ class ReleaseResolver {
 				: new LinkedHashSet<>(releaseSources.sources());
 
 		ExecutorCompletionService<SourceAwareReleases> completionService = new ExecutorCompletionService<>(executor);
+		Map<Future<SourceAwareReleases>, ReleaseSource> pending = new LinkedHashMap<>();
 		for (ReleaseSource source : sources) {
 			indicator.checkCanceled();
-			completionService.submit(() -> {
+			Future<SourceAwareReleases> future = completionService.submit(() -> {
 				try {
 					return new SourceAwareReleases(source, Releases.of(source.getReleases(artifactId, indicator)),
 							null);
@@ -169,22 +186,27 @@ class ReleaseResolver {
 					return new SourceAwareReleases(source, Releases.empty(), e);
 				}
 			});
+			pending.put(future, source);
 		}
 
 		List<RuntimeException> errors = new ArrayList<>();
 		List<SourceAwareReleases> results = new ArrayList<>();
 		ArtifactNotFoundException notFoundException = null;
 
-		for (ReleaseSource source : sources) {
+		while (!pending.isEmpty()) {
 			indicator.checkCanceled();
 			try {
-				Future<SourceAwareReleases> future = completionService.take();
-				results.add(future.get(30, TimeUnit.SECONDS));
+				Future<SourceAwareReleases> future = completionService.poll(sourceTimeout, sourceTimeoutUnit);
+				if (future == null) {
+					recordTimeouts(pending, errors);
+					break;
+				}
+				pending.remove(future);
+				results.add(future.get());
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
+				cancel(pending);
 				return new FetchResult(artifactId, results);
-			} catch (TimeoutException e) {
-				errors.add(new RuntimeException("Release source " + source.getId() + " timed out", e));
 			} catch (ExecutionException e) {
 				if (e.getCause() instanceof ProcessCanceledException pce) {
 					throw pce;
@@ -205,7 +227,7 @@ class ReleaseResolver {
 			}
 		}
 
-		if (releaseCount == 0 || results.size() == errors.size()) {
+		if (releaseCount == 0) {
 			if (!errors.isEmpty()) {
 				throw errors.getFirst();
 			}
@@ -215,6 +237,24 @@ class ReleaseResolver {
 		}
 
 		return new FetchResult(artifactId, results);
+	}
+
+	private void recordTimeouts(Map<Future<SourceAwareReleases>, ReleaseSource> pending,
+			List<RuntimeException> errors) {
+
+		for (Map.Entry<Future<SourceAwareReleases>, ReleaseSource> entry : pending.entrySet()) {
+			entry.getKey().cancel(true);
+			errors.add(new RuntimeException("Release source " + entry.getValue().getId() + " timed out"));
+		}
+		pending.clear();
+	}
+
+	private static void cancel(Map<Future<SourceAwareReleases>, ReleaseSource> pending) {
+
+		for (Future<SourceAwareReleases> future : pending.keySet()) {
+			future.cancel(true);
+		}
+		pending.clear();
 	}
 
 	record SourceAwareReleases(ReleaseSource source, Releases releases, @Nullable Exception error) {

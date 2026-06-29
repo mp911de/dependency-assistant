@@ -17,7 +17,14 @@
 package biz.paluch.dap.artifact;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,32 +57,30 @@ import org.jspecify.annotations.Nullable;
  */
 public class Releases implements Iterable<Release> {
 
-	private static final Releases EMPTY = new Releases(Map.of(), List.of(), List.of());
+	private static final Releases EMPTY = new Releases(Map.of(), null, List.of());
 
 	private final Map<VersioningScheme, List<Release>> partitions;
 
-	private final Map<VersioningScheme, Map<ArtifactVersion, Release>> lookup = new HashMap<>();
-
-	private final List<VersioningScheme> schemesByRank;
+	private final @Nullable VersioningScheme successorScheme;
 
 	private final List<Release> ordered;
 
-	private final Set<Release> unique = new HashSet<>();
+	private final Set<Release> unique;
 
-	private Releases(Map<VersioningScheme, List<Release>> partitions, List<VersioningScheme> schemesByRank,
+	private Releases(Map<VersioningScheme, List<Release>> partitions, @Nullable VersioningScheme successorScheme,
 			List<Release> ordered) {
-		this.partitions = partitions;
-		this.schemesByRank = schemesByRank;
-		this.ordered = ordered;
+		this.partitions = immutablePartitions(partitions);
+		this.successorScheme = successorScheme;
+		this.ordered = List.copyOf(ordered);
+		this.unique = Set.copyOf(ordered);
+	}
 
-		partitions.forEach((scheme, releases) -> {
-			Map<ArtifactVersion, Release> map = new TreeMap<>();
-			for (Release release : releases) {
-				map.put(release.version(), release);
-			}
-			lookup.put(scheme, map);
-		});
-		this.unique.addAll(ordered);
+	private static Map<VersioningScheme, List<Release>> immutablePartitions(
+			Map<VersioningScheme, List<Release>> partitions) {
+
+		Map<VersioningScheme, List<Release>> copy = new EnumMap<>(VersioningScheme.class);
+		partitions.forEach((scheme, releases) -> copy.put(scheme, List.copyOf(releases)));
+		return copy;
 	}
 
 	/**
@@ -156,7 +161,7 @@ public class Releases implements Iterable<Release> {
 			ordered.addAll(partitions.get(scheme));
 		}
 
-		return new Releases(partitions, schemesByRank, ordered);
+		return new Releases(partitions, schemesByRank.getFirst(), ordered);
 	}
 
 	private static LocalDateTime lastActivity(List<Release> partition) {
@@ -194,10 +199,10 @@ public class Releases implements Iterable<Release> {
 	 */
 	public Releases withRelease(Release release) {
 
-		Map<VersioningScheme, List<Release>> partitions = copyPartitions();
-		List<Release> partition = partitions.computeIfAbsent(release.version().scheme(), scheme -> new ArrayList<>());
-		insertDescending(partition, release);
-		return fromSortedPartitions(partitions);
+		List<Release> releases = new ArrayList<>(ordered.size() + 1);
+		releases.add(release);
+		releases.addAll(ordered);
+		return of(releases);
 	}
 
 	/**
@@ -217,25 +222,6 @@ public class Releases implements Iterable<Release> {
 		return withRelease(Release.of(version));
 	}
 
-	private Map<VersioningScheme, List<Release>> copyPartitions() {
-
-		Map<VersioningScheme, List<Release>> partitions = new EnumMap<>(VersioningScheme.class);
-		this.partitions.forEach((scheme, releases) -> partitions.put(scheme, new ArrayList<>(releases)));
-		return partitions;
-	}
-
-	private static void insertDescending(List<Release> partition, Release release) {
-
-		for (int i = 0; i < partition.size(); i++) {
-			if (partition.get(i).compareTo(release) <= 0) {
-				partition.add(i, release);
-				return;
-			}
-		}
-
-		partition.add(release);
-	}
-
 	/**
 	 * Create a new {@code Releases} instance retaining only releases accepted by
 	 * the given predicate.
@@ -247,21 +233,7 @@ public class Releases implements Iterable<Release> {
 	 * @return the retained releases.
 	 */
 	public Releases filter(Predicate<Release> predicate) {
-
-		Map<VersioningScheme, List<Release>> partitions = new EnumMap<>(VersioningScheme.class);
-		this.partitions.forEach((scheme, releases) -> {
-			List<Release> retained = new ArrayList<>();
-			for (Release release : releases) {
-				if (predicate.test(release)) {
-					retained.add(release);
-				}
-			}
-			if (!retained.isEmpty()) {
-				partitions.put(scheme, retained);
-			}
-		});
-
-		return fromSortedPartitions(partitions);
+		return of(ordered.stream().filter(predicate).toList());
 	}
 
 	/**
@@ -290,12 +262,23 @@ public class Releases implements Iterable<Release> {
 	 * @return the successor scheme, or {@literal null} if there are no releases.
 	 */
 	public @Nullable VersioningScheme successorScheme() {
-		return schemesByRank.isEmpty() ? null : schemesByRank.getFirst();
+		return successorScheme;
 	}
 
+	/**
+	 * Return the release matching the given version within its
+	 * {@link VersioningScheme}.
+	 *
+	 * @param version the version to look up.
+	 * @return the matching release, or {@literal null} if no release matches.
+	 */
 	public @Nullable Release getRelease(ArtifactVersion version) {
-		Map<ArtifactVersion, Release> byScheme = lookup.get(version.scheme());
-		return byScheme != null ? byScheme.get(version) : null;
+		for (Release release : inScheme(version.scheme())) {
+			if (release.version().matches(version)) {
+				return release;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -349,13 +332,18 @@ public class Releases implements Iterable<Release> {
 	/**
 	 * Return the releases in artifact-level release order.
 	 *
-	 * @return the live backing list of ordered releases; callers must not modify
-	 * it. An empty list if {@link #isEmpty() empty}.
+	 * @return the immutable list of ordered releases. An empty list if
+	 * {@link #isEmpty() empty}.
 	 */
 	public List<Release> toList() {
 		return ordered;
 	}
 
+	/**
+	 * Return the number of releases.
+	 *
+	 * @return the number of releases.
+	 */
 	public int size() {
 		return ordered.size();
 	}

@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.artifact;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import biz.paluch.dap.fixtures.TestReleases;
@@ -40,8 +41,8 @@ class ReleasesUnitTests {
 				Release.from("Dysprosium-RELEASE", "2019-09-24"),
 				Release.from("2024.0.18", "2026-06-08"));
 
-		assertThat(releases)
-				.containsExactlyVersions("2025.0.6", "2024.0.18", "2020.0.0", "Dysprosium-SR25", "Dysprosium-RELEASE");
+		assertThat(releases).containsExactlyVersions("2025.0.6", "2024.0.18",
+				"2020.0.0", "Dysprosium-SR25", "Dysprosium-RELEASE");
 	}
 
 	@Test
@@ -90,9 +91,10 @@ class ReleasesUnitTests {
 	@Test
 	void withVersionAddsMissingCurrentVersionInOrder() {
 
-		Releases releases = TestReleases.from("3.10.0", "3.9.6");
+		Releases releases = TestReleases.from("3.10.0", "3.9.6")
+				.withVersion(ArtifactVersion.of("3.9.9"));
 
-		assertThat(releases.withVersion(ArtifactVersion.of("3.9.9")))
+		assertThat(releases)
 				.containsExactlyVersions("3.10.0", "3.9.9", "3.9.6");
 	}
 
@@ -105,17 +107,47 @@ class ReleasesUnitTests {
 	}
 
 	@Test
+	void getReleaseMatchesComparableVersionForm() {
+
+		Releases releases = Releases.just(Release.of("v1.2.3"));
+
+		assertThat(releases.getRelease(ArtifactVersion.of("1.2.3"))).isEqualTo(Release.of("v1.2.3"));
+	}
+
+	@Test
 	void filterRetainsSubsetInReleaseOrder() {
 
 		Releases releases = Releases.of(
 				Release.from("Dysprosium-SR25", "2021-11-09"),
 				Release.from("2025.0.6", "2026-06-08"),
 				Release.from("2024.0.18", "2026-06-08"),
-				Release.from("Dysprosium-RELEASE", "2019-09-24"));
+				Release.from("Dysprosium-RELEASE", "2019-09-24"))
+				.filter(release -> !release.version().toString().equals("2025.0.6"));
 
-		assertThat(releases.filter(release -> !release.version().toString().equals("2025.0.6")))
+		assertThat(releases)
 				.hasSuccessorScheme(VersioningScheme.NUMERIC)
 				.containsExactlyVersions("2024.0.18", "Dysprosium-SR25", "Dysprosium-RELEASE");
+	}
+
+	@Test
+	void copiesInputCollections() {
+
+		List<Release> source = new ArrayList<>(List.of(Release.of("3.10.0"), Release.of("3.9.6")));
+
+		Releases releases = Releases.of(source);
+		source.clear();
+
+		assertThat(releases).containsExactlyVersions("3.10.0", "3.9.6");
+	}
+
+	@Test
+	void exposesImmutableReleaseViews() {
+
+		Releases releases = TestReleases.from("3.10.0", "3.9.6");
+
+		assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> releases.toList().clear());
+		assertThatExceptionOfType(UnsupportedOperationException.class)
+				.isThrownBy(() -> releases.inScheme(VersioningScheme.NUMERIC).add(Release.of("3.9.9")));
 	}
 
 }
