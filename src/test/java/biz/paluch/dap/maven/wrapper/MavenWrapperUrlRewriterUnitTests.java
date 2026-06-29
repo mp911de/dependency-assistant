@@ -49,23 +49,6 @@ class MavenWrapperUrlRewriterUnitTests {
 	}
 
 	@ParameterizedTest
-	@CsvSource(textBlock = """
-			# plain http upgraded
-			http://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			# uppercase scheme upgraded
-			HTTP://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			# mixed-case scheme upgraded
-			Http://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip   , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			# https left unchanged
-			https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip  , https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			# scheme-less left unchanged
-			repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip          , repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			""")
-	void forceHttpsUpgradesPlainOrUppercaseHttpOnly(String input, String expected) {
-		assertThat(MavenWrapperUrlRewriter.forceHttps(input)).isEqualTo(expected);
-	}
-
-	@ParameterizedTest
 	@ValueSource(strings = {"1.2.3", "1.2.3-SNAPSHOT"})
 	void replaceVersionRewritesBothPathAndFileVersions(String toVersion) {
 
@@ -199,7 +182,6 @@ class MavenWrapperUrlRewriterUnitTests {
 		assertThat(MavenWrapperUrlRewriter.replaceGroupPath(canonical, "org/apache/maven")).isEqualTo(canonical);
 		assertThat(MavenWrapperUrlRewriter.replaceFileName(canonical, WrapperProperty.DISTRIBUTION, "3.9.6"))
 				.isEqualTo(canonical);
-		assertThat(MavenWrapperUrlRewriter.forceHttps(canonical)).isEqualTo(canonical);
 		assertThat(MavenWrapperUrlRewriter.stripCredentials(canonical)).isEqualTo(canonical);
 	}
 

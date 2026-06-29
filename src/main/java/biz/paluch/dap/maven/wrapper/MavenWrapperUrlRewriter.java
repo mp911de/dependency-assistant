@@ -70,19 +70,6 @@ class MavenWrapperUrlRewriter {
 	}
 
 	/**
-	 * Replace a leading {@code http://} scheme with {@code https://}.
-	 * @param url the URL to rewrite.
-	 * @return the upgraded URL, or the input when the scheme is not plain HTTP.
-	 */
-	static String forceHttps(String url) {
-
-		if (url.regionMatches(true, 0, "http://", 0, "http://".length())) {
-			return "https://" + url.substring("http://".length());
-		}
-		return url;
-	}
-
-	/**
 	 * Rewrite both the path-version and the file-version segments of the URL to the
 	 * given version.
 	 * @param url the URL to rewrite.
