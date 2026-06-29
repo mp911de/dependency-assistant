@@ -31,6 +31,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.RepositoryCredentials;
@@ -62,7 +63,7 @@ class SettingsXmlLoader {
 	 */
 	private static final Pattern STILL_ENCRYPTED = Pattern.compile("\\{[^}]+\\}");
 
-	private final static Map<File, URLClassLoader> MAVEN_CLASSLOADERS = new LinkedHashMap<>();
+	private final static Map<File, URLClassLoader> MAVEN_CLASSLOADERS = new ConcurrentHashMap<>();
 
 	private SettingsXmlLoader() {
 	}
