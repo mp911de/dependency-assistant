@@ -224,16 +224,6 @@ class SemanticArtifactVersion implements NumericVersion {
 	}
 
 	@Override
-	public boolean isNewer(ArtifactVersion other) {
-		return other.getVersion() instanceof SemanticArtifactVersion sav && this.compareTo(sav) > 0;
-	}
-
-	@Override
-	public boolean isOlder(ArtifactVersion other) {
-		return other.getVersion() instanceof SemanticArtifactVersion sav && this.compareTo(sav) < 0;
-	}
-
-	@Override
 	public boolean isNewerMinor(ArtifactVersion other) {
 		if (other.getVersion() instanceof SemanticArtifactVersion sav) {
 			return components.getMajor() == sav.components.getMajor()
@@ -268,16 +258,6 @@ class SemanticArtifactVersion implements NumericVersion {
 	@Override
 	public boolean isReleaseVersion() {
 		return suffix instanceof Release;
-	}
-
-	/**
-	 * Return whether the version is a preview version.
-	 *
-	 * @return {@code true} if this version is a preview version.
-	 */
-	@Override
-	public boolean isPreview() {
-		return isMilestoneVersion() || isReleaseCandidateVersion();
 	}
 
 	/**

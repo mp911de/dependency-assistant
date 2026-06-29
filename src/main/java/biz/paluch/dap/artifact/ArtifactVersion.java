@@ -86,7 +86,9 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * Return whether this version is strictly newer than the given version.
 	 * @param other the version to compare with.
 	 */
-	boolean isNewer(ArtifactVersion other);
+	default boolean isNewer(ArtifactVersion other) {
+		return canCompare(other) && compareTo(other) > 0;
+	}
 
 	/**
 	 * Return whether the given version is a newer minor in the same version line.
@@ -97,7 +99,9 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	/**
 	 * Whether this version is strictly older than the given version.
 	 */
-	boolean isOlder(ArtifactVersion other);
+	default boolean isOlder(ArtifactVersion other) {
+		return canCompare(other) && compareTo(other) < 0;
+	}
 
 	/**
 	 * Return whether this version shares the same major line or release train.
@@ -137,7 +141,9 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	/**
 	 * Return whether this version is a preview release.
 	 */
-	boolean isPreview();
+	default boolean isPreview() {
+		return isMilestoneVersion() || isReleaseCandidateVersion();
+	}
 
 	/**
 	 * Return whether this version is a general-availability release.

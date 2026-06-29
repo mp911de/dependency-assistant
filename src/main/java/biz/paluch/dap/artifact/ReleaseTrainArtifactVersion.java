@@ -121,16 +121,6 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	@Override
-	public boolean isNewer(ArtifactVersion other) {
-		return other.getVersion() instanceof ReleaseTrainArtifactVersion && compareTo(other) > 0;
-	}
-
-	@Override
-	public boolean isOlder(ArtifactVersion other) {
-		return other.getVersion() instanceof ReleaseTrainArtifactVersion && compareTo(other) < 0;
-	}
-
-	@Override
 	public boolean isNewerMinor(ArtifactVersion other) {
 		if (other instanceof ReleaseTrainArtifactVersion otherTrain) {
 			return trainName.equals(otherTrain.trainName) && compareTo(other) < 0;
@@ -167,11 +157,6 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	@Override
 	public boolean isReleaseCandidateVersion() {
 		return suffix instanceof SemVerSuffix sv && sv.isReleaseCandidate();
-	}
-
-	@Override
-	public boolean isPreview() {
-		return isMilestoneVersion() || isReleaseCandidateVersion();
 	}
 
 	@Override
