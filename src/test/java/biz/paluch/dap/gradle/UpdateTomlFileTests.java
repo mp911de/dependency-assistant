@@ -83,6 +83,20 @@ class UpdateTomlFileTests {
 	@Test
 	@ProjectFile(name = "gradle/libs.versions.toml", content = """
 
+			[libraries]
+			versioned-artifact = "org.foo:bar1.0:1.0"
+			""")
+	void libraryLiteralUpdateKeepsVersionTextInArtifactName(PsiFile tomlFile) {
+
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.foo", "bar1.0", "1.0", "2.0");
+
+		assertThat(updated).hasDependency("bar1.0", "2.0");
+		assertThat(tomlFile).containsText("versioned-artifact = \"org.foo:bar1.0:2.0\"");
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+
 			[plugins]
 			spring-boot = "org.springframework.boot:4.0.0"
 			""")

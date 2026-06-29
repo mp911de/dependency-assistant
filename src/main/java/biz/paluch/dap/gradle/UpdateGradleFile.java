@@ -252,7 +252,11 @@ class UpdateGradleFile {
 				}
 
 				String replacementText = newVersion;
-				if (kv.getValue() instanceof TomlLiteral) {
+				if (isDependency && kv.getValue() instanceof TomlLiteral) {
+					String text = TomlParser.getRequiredText(kv.getValue());
+					String updated = GradleUtils.updateGavVersion(text, newVersion);
+					replacementText = updated != null ? updated : newVersion;
+				} else if (kv.getValue() instanceof TomlLiteral) {
 					String text = TomlParser.getRequiredText(kv.getValue());
 					replacementText = text.replace(entry.getVersion(), newVersion);
 				}

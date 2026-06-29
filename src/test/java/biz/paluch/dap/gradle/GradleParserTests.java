@@ -1011,6 +1011,27 @@ class GradleParserTests {
 			""")
 	@ProjectFile(name = "build.gradle", content = """
 			plugins {
+			    id(libs.plugins.spring.dependency.management)
+			}
+			""")
+	void collectsVersionCatalogPluginIdUsage(@ProjectFile("build.gradle") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDependencyDeclaration("io.spring.dependency-management");
+		assertThat(collector).hasUsageCount(0);
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			spring-dependency-management = "1.1.1"
+
+			[plugins]
+			spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+			""")
+	@ProjectFile(name = "build.gradle", content = """
+			plugins {
 			}
 			""")
 	void groovyBuildScriptDoesNotDiscoverUnusedPlugin(@ProjectFile("build.gradle") PsiFile buildFile) {

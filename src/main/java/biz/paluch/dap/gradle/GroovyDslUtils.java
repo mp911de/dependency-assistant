@@ -218,7 +218,7 @@ class GroovyDslUtils {
 
 		String name = getGroovyMethodName(call);
 		return GradleUtils.isCatalogConsumerCall(name)
-				&& (!GradleUtils.isPlugin(name) || KotlinDslUtils.isInsidePluginsBlock(call));
+				&& (!GradleUtils.isPlugin(name) || GroovyDslUtils.isInsidePluginsBlock(call));
 	}
 
 	static @Nullable GrExpression getFirstGroovyCatalogArgumentExpression(GrMethodCall call) {
