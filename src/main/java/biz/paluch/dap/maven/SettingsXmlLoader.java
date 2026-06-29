@@ -53,6 +53,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
+// TODO: Caching
 class SettingsXmlLoader {
 
 	private static final Logger LOG = Logger.getInstance(SettingsXmlLoader.class);

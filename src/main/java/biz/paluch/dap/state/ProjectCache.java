@@ -40,7 +40,7 @@ import org.springframework.util.ObjectUtils;
  * @author Mark Paluch
  */
 @Tag("project")
-public class ProjectCache implements Comparator<ProjectCache> {
+public class ProjectCache {
 
 	static final Comparator<ProjectCache> COMPARATOR = Comparator.comparing(ProjectCache::getSafeGroupId)
 			.thenComparing(ProjectCache::getSafeArtifactId).thenComparing(ProjectCache::getSafeDescriptor);
@@ -293,11 +293,6 @@ public class ProjectCache implements Comparator<ProjectCache> {
 			copy.properties.add(property.snapshot());
 		}
 		return copy;
-	}
-
-	@Override
-	public int compare(ProjectCache o1, ProjectCache o2) {
-		return COMPARATOR.compare(o1, o2);
 	}
 
 	@Override

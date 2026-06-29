@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
+// TODO: consider successor scheme
 class SafeUpgradeSuggestionsFilter implements UpgradeSuggestionsFilter {
 
 	@Override

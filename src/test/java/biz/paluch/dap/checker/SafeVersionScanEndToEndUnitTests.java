@@ -76,7 +76,7 @@ class SafeVersionScanEndToEndUnitTests {
 	private void scanCandidates(Releases releases, ArtifactVersion current, Predicate<String> vulnerableVersions) {
 
 		cache.putVersionOptions(ARTIFACT, releases);
-		VulnerabilityScannerPolicy policy = new VulnerabilityScannerPolicy(cache.clock);
+		VulnerabilityScannerPolicy policy = new VulnerabilityScannerPolicy(cache.getClock());
 		for (Release candidate : policy.sweepVersions(List.of(current), releases.stream().toList(), version -> true)) {
 
 			List<Vulnerability> found = new ArrayList<>();
