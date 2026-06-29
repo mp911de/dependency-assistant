@@ -129,7 +129,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
-		ResolutionContext resolutionContext = ResolutionContext.of(metadata.artifactReference,
+		ResolutionContext resolutionContext = ResolutionContext.forReference(metadata.artifactReference,
 				BranchSource.of(parameters.getEditor().getVirtualFile()), metadata.context().getProjectVersion());
 		DependencyRule rule = ruleService.resolve(resolutionContext);
 		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);

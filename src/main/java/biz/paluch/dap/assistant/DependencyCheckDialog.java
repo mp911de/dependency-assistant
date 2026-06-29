@@ -505,7 +505,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				for (DependencyUpdate fileUpdate : fileUpdates) {
 
-					DependencyRule rule = ruleService.resolve(ResolutionContext.of(fileUpdate.artifactId(),
+					DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(fileUpdate.artifactId(),
 							fileUpdate.declarationSources(), BranchSource.of(file), context.getProjectVersion()));
 
 					applied.record(file.getVirtualFile(), fileUpdate, rule);

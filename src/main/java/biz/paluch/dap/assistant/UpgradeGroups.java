@@ -277,14 +277,14 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 		Releases releases = member.getUpdateCandidate().getReleases();
 		for (Release release : releases) {
 			allVersions.add(release.version());
-			ArtifactVersion version = release.version();
+		}
+
+		int recentVersions = Math.min(10, allVersions.size());
+		for (ArtifactVersion version : allVersions.subList(0, recentVersions)) {
 			if (version.equals(currentVersion) || version.isNewer(currentVersion)) {
 				line.add(version);
 			}
 		}
-
-		int lastVersions = Math.min(10, allVersions.size());
-		line.addAll(allVersions.subList(allVersions.size() - lastVersions, allVersions.size() - 1));
 
 		return line;
 	}

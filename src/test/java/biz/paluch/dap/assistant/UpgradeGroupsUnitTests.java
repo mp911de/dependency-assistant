@@ -33,6 +33,7 @@ import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.mock.MockVirtualFile;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -81,6 +82,21 @@ class UpgradeGroupsUnitTests {
 			assertThat(offered).containsRelease("0.11.0");
 			assertThat(offered).doesNotContainRelease("1.0.1");
 			assertThat(offered).doesNotContainRelease("0.10.7");
+		});
+	}
+
+	@Test
+	void groupTargetsAreComputedFromIntersectedReleases() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-core", SPRING, "1.0.0", "1.0.0", "1.0.1", "1.1.0"))
+				.add(released("io.example", "foo-support", SPRING, "1.0.0", "1.0.0", "1.0.1", "1.2.0"))
+				.build();
+
+		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+			assertThat(group.getUpdateCandidate().getTargets().get(UpgradeStrategy.LATEST).getVersion())
+					.isEqualTo(ArtifactVersion.of("1.0.1"));
+			assertThat(group.getUpdateCandidate().getTargets().get(UpgradeStrategy.MINOR).isPresent()).isFalse();
 		});
 	}
 
@@ -308,21 +324,17 @@ class UpgradeGroupsUnitTests {
 	}
 
 	@Test
-	void inferredGroupConsidersReleaseHistoryMembers() {
+	void inferredGroupIgnoresReleaseHistoryBelowCurrentVersion() {
 
 		UpgradeGroups rows = UpgradeGroups.builder()
 				.add(released("io.example", "foo-core", "1.1.0", "1.0.0", "1.1.0"))
 				.add(released("io.example", "foo-util", "1.1.0", "1.0.0", "1.0.1", "1.1.0"))
 				.build();
 
-		assertThat(rows).hasSize(2);
-
-		rows = UpgradeGroups.builder()
-				.add(released("io.example", "foo-core", "1.2.0", "1.0.0", "1.1.0"))
-				.add(released("io.example", "foo-util", "1.2.0", "1.0.0", "1.0.1", "1.1.0"))
-				.build();
-
-		assertThat(rows).hasSize(2);
+		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
+				group -> assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
+						.containsExactly(ArtifactId.of("io.example", "foo-core"),
+								ArtifactId.of("io.example", "foo-util")));
 	}
 
 	@Test
@@ -351,6 +363,22 @@ class UpgradeGroupsUnitTests {
 						.extracting(UpgradeCandidate::getArtifactId)
 						.containsExactly(ArtifactId.of("io.example", "foo-core"),
 								ArtifactId.of("io.example", "foo-late")));
+	}
+
+	@Test
+	void inferredReleaseLineUsesNewestWindowForLongHistories() {
+
+		UpgradeGroups rows = UpgradeGroups.builder()
+				.add(released("io.example", "foo-core", "2.2.0", "3.0.0", "2.9.0", "2.8.0", "2.7.0",
+						"2.6.0", "2.5.0", "2.4.0", "2.3.0", "2.2.0", "2.1.0", "1.1.0", "1.0.0"))
+				.add(released("io.example", "foo-util", "2.2.0", "3.0.0", "2.9.0", "2.8.0", "2.7.0",
+						"2.6.0", "2.5.0", "2.4.0", "2.3.0", "2.2.0", "2.1.0", "1.0.1", "1.0.0"))
+				.build();
+
+		assertThat(rows).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
+				group -> assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
+						.containsExactly(ArtifactId.of("io.example", "foo-core"),
+								ArtifactId.of("io.example", "foo-util")));
 	}
 
 	@Test
@@ -452,6 +480,12 @@ class UpgradeGroupsUnitTests {
 	private static UpgradeCandidate released(String groupId, String artifactId, String current,
 			String... releaseVersions) {
 
+		return released(groupId, artifactId, DependencyRule.absent(), current, releaseVersions);
+	}
+
+	private static UpgradeCandidate released(String groupId, String artifactId, DependencyRule rule, String current,
+			String... releaseVersions) {
+
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		ArtifactVersion currentVersion = ArtifactVersion.of(current);
 
@@ -464,7 +498,7 @@ class UpgradeGroupsUnitTests {
 
 		return new UpgradeCandidate(
 				new DependencyUpdateCandidate(dependency, TestReleases.from(releaseVersions),
-						VulnerabilityRepository.empty()),
+						VulnerabilityRepository.empty(), rule),
 				TestInterfaceAssistant.INSTANCE, DeclaredVersions.from(List.of(site), it -> null, null));
 	}
 

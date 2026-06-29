@@ -255,7 +255,7 @@ class DependencyCheckAggregator implements Iterable<DependencyCheckAggregator.Ar
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 
-			ResolutionContext resolutionContext = ResolutionContext.of(merged,
+			ResolutionContext resolutionContext = ResolutionContext.forAggregate(merged,
 					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned);
 			DependencyRule rule = evaluator.resolve(resolutionContext);
 

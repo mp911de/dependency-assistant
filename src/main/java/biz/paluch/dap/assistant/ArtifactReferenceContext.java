@@ -114,7 +114,8 @@ public class ArtifactReferenceContext {
 		}
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(element.getProject());
-		ResolutionContext resolutionContext = ResolutionContext.of(artifactReference, BranchSource.of(element),
+		ResolutionContext resolutionContext = ResolutionContext.forReference(artifactReference,
+				BranchSource.of(element),
 				context.getProjectVersion());
 		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.evaluate(ruleService, resolutionContext,
 				artifactReference.getDeclaration().getVersion(), context.getInterfaceAssistant());

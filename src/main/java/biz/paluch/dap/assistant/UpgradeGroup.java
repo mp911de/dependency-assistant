@@ -19,9 +19,7 @@ package biz.paluch.dap.assistant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -33,10 +31,7 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.DependencyUpgradeSubject;
-import biz.paluch.dap.upgrade.UpgradeSuggestion;
-import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -142,13 +137,9 @@ class UpgradeGroup extends UpgradeCandidate {
 		VulnerabilityRepository mergedVulnerabilities = mergeVulnerabilities(members);
 		Dependency merged = new Dependency(first.getArtifactId(), declaredVersions.getLowestDeclaredVersion());
 
-		Map<UpgradeStrategy, UpgradeSuggestion> suggestions = new LinkedHashMap<>();
-
 		for (UpgradeCandidate member : members) {
 
 			Dependency dependency = member.getUpdateCandidate().getDependency();
-			UpgradeSuggestions targets = member.getUpdateCandidate().getTargets();
-			targets.forEach(it -> suggestions.put(it.getStrategy(), it));
 			merged.addAllDeclarationSources(dependency.getDeclarationSources());
 			merged.addAllVersionSources(dependency.getVersionSources());
 		}
@@ -156,8 +147,7 @@ class UpgradeGroup extends UpgradeCandidate {
 		DependencyUpgradeSubject subject = DependencyUpgradeSubject.of(merged, intersectReleases(members),
 				mergedVulnerabilities, first.getRule());
 
-		UpgradeSuggestions upgradeSuggestions = UpgradeSuggestions.of(suggestions);
-		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(subject, upgradeSuggestions);
+		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(subject);
 		return new UpgradeGroup(candidate, first.getInterfaceAssistant(), declaredVersions, members, derivedLabel);
 	}
 
