@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.Objects;
-
 import biz.paluch.dap.artifact.ArtifactId;
 
 /**
@@ -50,16 +48,7 @@ class DefaultGradlePluginId implements GradlePluginId {
 
 	@Override
 	public boolean equals(Object o) {
-		if (o instanceof ArtifactId that) {
-			return id.equals(that);
-		}
-		if (this == o) {
-			return true;
-		}
-		if ((!(o instanceof ArtifactId other))) {
-			return false;
-		}
-		return Objects.equals(id, other);
+		return id.equals(o);
 	}
 
 	@Override

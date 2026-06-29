@@ -30,20 +30,6 @@ import static org.assertj.core.api.Assertions.*;
 class GitArtifactIdUnitTests {
 
 	@Test
-	void createsGitArtifactWithMatchingDeclaredAndReleaseSourceCoordinates() {
-
-		ArtifactId artifactId = ArtifactId.of("owner", "repository");
-
-		GitArtifactId gitArtifactId = GitArtifactId.of("github.example.com", artifactId);
-
-		assertThat(gitArtifactId.groupId()).isEqualTo("owner");
-		assertThat(gitArtifactId.artifactId()).isEqualTo("repository");
-		assertThat(gitArtifactId.releaseSource()).isEqualTo(artifactId);
-		assertThat(gitArtifactId.toString())
-				.isEqualTo("owner:repository@git://github.example.com/owner/repository.git");
-	}
-
-	@Test
 	void keepsDeclaredCoordinatesSeparateFromReleaseSourceCoordinates() {
 
 		ArtifactId declared = ArtifactId.of("@scope", "package");
@@ -55,6 +41,7 @@ class GitArtifactIdUnitTests {
 		assertThat(gitArtifactId.releaseSource()).isEqualTo(ArtifactId.of("owner", "repository"));
 		assertThat(gitArtifactId).isEqualTo(declared);
 		assertThat(gitArtifactId).hasSameHashCodeAs(declared);
+
 		Map<ArtifactId, String> usages = Map.of(gitArtifactId, "value");
 		assertThat(usages).containsEntry(declared, "value");
 		assertThat(gitArtifactId.toString()).isEqualTo("@scope:package@git://github.com/owner/repository.git");

@@ -27,7 +27,7 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 
 	/**
 	 * Natural ordering by {@code groupId} then {@code artifactId}, consistent with
-	 * {@link #equals(Object)}. This is the ordering used by
+	 * {@link Object#equals(Object)}. This is the ordering used by
 	 * {@link #compareTo(ArtifactId)} and therefore by
 	 * {@code TreeMap}/{@code TreeSet} keys, so it compares both segments
 	 * case-sensitively to match the case-sensitive identity contract.

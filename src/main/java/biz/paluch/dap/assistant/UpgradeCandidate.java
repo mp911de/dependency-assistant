@@ -310,6 +310,17 @@ public class UpgradeCandidate implements HasArtifactId {
 	private record FriendlyArtifactId(ArtifactId id, String friendlyName) implements ArtifactId {
 
 		@Override
+		public boolean equals(Object o) {
+			return id.equals(o);
+		}
+
+		@Override
+		public int hashCode() {
+			return id.hashCode();
+		}
+
+
+		@Override
 		public String groupId() {
 			return id.groupId();
 		}

@@ -126,15 +126,16 @@ public class GitArtifactId implements ArtifactId {
 	@Override
 	public boolean equals(@Nullable Object o) {
 
+		if (o instanceof GitArtifactId that) {
+			return Objects.equals(host, that.host) && Objects.equals(declared, that.declared)
+					&& Objects.equals(releaseSource, that.releaseSource);
+		}
+
 		if (o instanceof ArtifactId that) {
 			return declared.equals(that);
 		}
 
-		if (o == null || getClass() != o.getClass())
-			return false;
-		GitArtifactId that = (GitArtifactId) o;
-		return Objects.equals(host, that.host) && Objects.equals(declared, that.declared)
-				&& Objects.equals(releaseSource, that.releaseSource);
+		return false;
 	}
 
 	@Override

@@ -131,12 +131,8 @@ interface GitHubAction extends ArtifactId {
 						&& Objects.equals(repository, that.artifactId());
 			}
 
-			if (o instanceof ArtifactId that) {
-				return Objects.equals(owner, that.groupId())
-						&& Objects.equals(repository, that.artifactId());
-			}
-
-			return false;
+			return o instanceof ArtifactId that && Objects.equals(owner, that.groupId())
+					&& Objects.equals(repository, that.artifactId());
 		}
 
 		@Override
