@@ -80,7 +80,7 @@ class GroovyDslSettingsParser {
 
 		String alias = defaultAlias.get();
 
-		if (!catalogs.containsKey(TomlParser.LIBS)) {
+		if (!catalogs.containsKey(alias)) {
 			catalogs.put(alias, GradleUtils.DEFAULT_TOML_LOCATION);
 		}
 

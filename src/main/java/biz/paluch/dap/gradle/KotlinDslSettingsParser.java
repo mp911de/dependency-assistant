@@ -88,7 +88,7 @@ class KotlinDslSettingsParser {
 
 		String alias = defaultAlias.get();
 
-		if (!catalogs.containsKey(TomlParser.LIBS)) {
+		if (!catalogs.containsKey(alias)) {
 			catalogs.put(alias, GradleUtils.DEFAULT_TOML_LOCATION);
 		}
 
@@ -102,7 +102,12 @@ class KotlinDslSettingsParser {
 			return;
 		}
 
-		for (KtExpression stmt : lambda.getBodyExpression().getStatements()) {
+		KtBlockExpression body = lambda.getBodyExpression();
+		if (body == null) {
+			return;
+		}
+
+		for (KtExpression stmt : body.getStatements()) {
 			if (!(stmt instanceof KtCallExpression createCall)) {
 				continue;
 			}
@@ -130,7 +135,12 @@ class KotlinDslSettingsParser {
 			return null;
 		}
 
-		for (KtExpression stmt : lambda.getBodyExpression().getStatements()) {
+		KtBlockExpression body = lambda.getBodyExpression();
+		if (body == null) {
+			return null;
+		}
+
+		for (KtExpression stmt : body.getStatements()) {
 			if (stmt instanceof KtCallExpression fromCall
 					&& "from".equals(KotlinDslUtils.getKotlinCallName(fromCall))) {
 				return extractFilesArgument(fromCall);

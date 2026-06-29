@@ -104,6 +104,23 @@ class GroovyDslSettingsParserTests {
 
 	@Test
 	@ProjectFile(name = "settings.gradle", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        deps { from(files("gradle/deps.versions.toml")) }
+			    }
+			    defaultLibrariesExtensionName = 'deps'
+			}
+			""")
+	void preservesCustomPathForRenamedDefaultAlias(PsiFile buildFile) {
+
+		VersionCatalogRegistry registry = GroovyDslSettingsParser.parseRegistry(buildFile);
+
+		assertThat(registry.defaultAlias()).isEqualTo("deps");
+		assertThat(registry.pathForAlias("deps")).isEqualTo("gradle/deps.versions.toml");
+	}
+
+	@Test
+	@ProjectFile(name = "settings.gradle", content = """
 			rootProject.name = 'my-project'
 			""")
 	void noBlockFallsBackToDefaults(PsiFile buildFile) {

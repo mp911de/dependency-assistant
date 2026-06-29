@@ -85,6 +85,23 @@ class KotlinDslSettingsParserTests {
 
 	@Test
 	@ProjectFile(name = "settings.gradle.kts", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        create("deps") { from(files("gradle/deps.versions.toml")) }
+			    }
+			    defaultLibrariesExtensionName = "deps"
+			}
+			""")
+	void preservesCustomPathForRenamedDefaultAlias(PsiFile buildFile) {
+
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
+
+		assertThat(registry.defaultAlias()).isEqualTo("deps");
+		assertThat(registry.pathForAlias("deps")).isEqualTo("gradle/deps.versions.toml");
+	}
+
+	@Test
+	@ProjectFile(name = "settings.gradle.kts", content = """
 			rootProject.name = "my-project"
 			""")
 	void noBlockFallsBackToDefaults(PsiFile buildFile) {
@@ -102,6 +119,31 @@ class KotlinDslSettingsParserTests {
 			}
 			""")
 	void emptyVersionCatalogsFallsBackToDefaults(PsiFile buildFile) {
+
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
+
+		assertThat(registry).isEqualTo(VersionCatalogRegistry.defaults());
+	}
+
+	@Test
+	@ProjectFile(name = "settings.gradle.kts", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			""")
+	void incompleteVersionCatalogsBlockFallsBackToDefaults(PsiFile buildFile) {
+
+		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
+
+		assertThat(registry).isEqualTo(VersionCatalogRegistry.defaults());
+	}
+
+	@Test
+	@ProjectFile(name = "settings.gradle.kts", content = """
+			dependencyResolutionManagement {
+			    versionCatalogs {
+			        create("libs") {
+			""")
+	void incompleteCreateBlockFallsBackToDefaults(PsiFile buildFile) {
 
 		VersionCatalogRegistry registry = KotlinDslSettingsParser.parseRegistry(buildFile);
 
