@@ -72,11 +72,11 @@ class AntoraFixtures {
 		Cache cache = new Cache();
 
 		CachedArtifact ui = new CachedArtifact(ArtifactId.of("spring-io", "antora-ui-spring"));
-		ui.getReleases().add(new CachedRelease("v0.4.26", "2025-01-01",
+		ui.addRelease(new CachedRelease("v0.4.26", "2025-01-01",
 				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
-		ui.getReleases().add(new CachedRelease("v0.4.25", "2024-12-01",
+		ui.addRelease(new CachedRelease("v0.4.25", "2024-12-01",
 				"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
-		ui.getReleases().add(new CachedRelease("v0.3.0", "2024-06-01",
+		ui.addRelease(new CachedRelease("v0.3.0", "2024-06-01",
 				"cccccccccccccccccccccccccccccccccccccccc"));
 		cache.addArtifacts(List.of(ui));
 

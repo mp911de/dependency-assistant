@@ -88,7 +88,7 @@ class NpmReleases {
 
 		CachedArtifact copy = new CachedArtifact(template.getGroupId(), template.getArtifactId());
 		for (CachedRelease release : template.getReleases()) {
-			copy.getReleases().add(new CachedRelease(release.version(), release.date(), release.sha()));
+			copy.addRelease(new CachedRelease(release.version(), release.date(), release.sha()));
 		}
 		return copy;
 	}
@@ -96,7 +96,9 @@ class NpmReleases {
 	private static CachedArtifact create(String groupId, String artifactId, Consumer<ReleaseBuilder> configurer) {
 
 		CachedArtifact artifact = new CachedArtifact(groupId, artifactId);
-		configurer.accept(new ReleaseBuilder(artifact.getReleases()));
+		List<CachedRelease> releases = new ArrayList<>();
+		configurer.accept(new ReleaseBuilder(releases));
+		artifact.addReleases(releases);
 		ALL.add(artifact);
 		return artifact;
 	}

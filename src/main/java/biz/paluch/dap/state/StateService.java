@@ -79,6 +79,7 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 
 		DependencyAssistantState snapshot = new DependencyAssistantState();
 		snapshot.setCache(state.getCache().snapshot());
+		snapshot.setUsedOnce(state.isUsedOnce());
 		return snapshot;
 	}
 

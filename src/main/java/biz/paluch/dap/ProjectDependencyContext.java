@@ -18,13 +18,11 @@ package biz.paluch.dap;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.ProjectBuildContext;
@@ -80,10 +78,6 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * not be resolved.
 	 */
 	default @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
-		return null;
-	}
-
-	default @Nullable ArtifactVersion resolveVersion(VersionSource source, List<Release> releases) {
 		return null;
 	}
 

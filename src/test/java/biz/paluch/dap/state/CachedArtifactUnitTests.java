@@ -43,7 +43,7 @@ class CachedArtifactUnitTests {
 	void updateCachedReleasesRetainsReleasesAbsentFromTheFetch() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		artifact.getReleases().add(new CachedRelease("0.9.0", null));
+		artifact.addRelease(new CachedRelease("0.9.0", null));
 
 		updateReleases(artifact,
 				List.of(CachedRelease.from(Release.of("1.0.0")), CachedRelease.from(Release.of("1.1.0"))),
@@ -57,7 +57,7 @@ class CachedArtifactUnitTests {
 	void updateCachedReleasesNotifiesOnlyNewReleases() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		artifact.getReleases().add(new CachedRelease("1.0.0", null));
+		artifact.addRelease(new CachedRelease("1.0.0", null));
 
 		List<String> added = new ArrayList<>();
 		artifact.updateCachedReleases(new FetchedReleases(ARTIFACT_ID,

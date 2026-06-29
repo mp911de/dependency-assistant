@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.fixtures;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -69,7 +70,9 @@ public class ReleaseBuilder {
 	public static CachedArtifact artifact(ArtifactId artifactId, Consumer<ReleaseBuilder> configurer) {
 
 		CachedArtifact artifact = new CachedArtifact(artifactId);
-		configurer.accept(new ReleaseBuilder(artifact.getReleases()));
+		List<CachedRelease> releases = new ArrayList<>();
+		configurer.accept(new ReleaseBuilder(releases));
+		releases.forEach(artifact::addRelease);
 		return artifact;
 	}
 

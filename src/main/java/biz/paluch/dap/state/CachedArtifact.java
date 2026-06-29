@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.xmlb.annotations.Attribute;
@@ -166,7 +167,9 @@ public class CachedArtifact implements ArtifactId {
 	 * @return the mutable backing release entries.
 	 */
 	public List<CachedRelease> getReleases() {
-		return releases;
+		synchronized (releases) {
+			return List.copyOf(releases);
+		}
 	}
 
 	public long getLastSeen() {
@@ -206,13 +209,17 @@ public class CachedArtifact implements ArtifactId {
 	public List<Release> getVersionOptions() {
 
 		List<Release> options = new ArrayList<>();
-		for (CachedRelease release : releases) {
-			try {
-				options.add(release.toRelease());
-			} catch (RuntimeException e) {
-				if (LOG.isDebugEnabled()) {
-					LOG.debug("Failed to parse release '%s:%s': '%s'".formatted(getGroupId(), getArtifactId(), release),
-							e);
+		synchronized (releases) {
+			for (CachedRelease release : releases) {
+				try {
+					options.add(release.toRelease());
+				} catch (RuntimeException e) {
+					if (LOG.isDebugEnabled()) {
+						LOG.debug(
+								"Failed to parse release '%s:%s': '%s'".formatted(getGroupId(), getArtifactId(),
+										release),
+								e);
+					}
 				}
 			}
 		}
@@ -255,9 +262,11 @@ public class CachedArtifact implements ArtifactId {
 
 	public @Nullable CachedRelease getCachedRelease(ArtifactVersion version) {
 		String versionString = version.toString();
-		for (CachedRelease release : getReleases()) {
-			if (versionString.equals(release.version())) {
-				return release;
+		synchronized (releases) {
+			for (CachedRelease release : releases) {
+				if (versionString.equals(release.version())) {
+					return release;
+				}
 			}
 		}
 		return null;
@@ -296,6 +305,20 @@ public class CachedArtifact implements ArtifactId {
 		return Set.copyOf(ids);
 	}
 
+	public void addRelease(CachedRelease release) {
+		addReleases(release);
+	}
+
+	public void addReleases(CachedRelease... releases) {
+		addReleases(List.of(releases));
+	}
+
+	public void addReleases(Collection<CachedRelease> releases) {
+		synchronized (this.releases) {
+			this.releases.addAll(releases);
+		}
+	}
+
 	/**
 	 * Hard replace of cached releases.
 	 *
@@ -303,9 +326,11 @@ public class CachedArtifact implements ArtifactId {
 	 * @param timestamp current timestamp for expiry tracking.
 	 */
 	public void setCachedReleases(Collection<CachedRelease> releases, long timestamp) {
-		this.releases.clear();
-		this.releases.addAll(releases);
-		this.lastSeen = timestamp;
+		synchronized (this.releases) {
+			this.releases.clear();
+			this.releases.addAll(releases);
+			this.lastSeen = timestamp;
+		}
 	}
 
 	/**
@@ -353,17 +378,44 @@ public class CachedArtifact implements ArtifactId {
 
 	private void updateReleases(FetchedReleases fetched, BiConsumer<Release, CachedRelease> onNewConsumer) {
 
-		Set<String> known = new HashSet<>();
-		for (CachedRelease existing : releases) {
-			known.add(existing.version());
-		}
-
-		fetched.forEach((release, cached) -> {
-			if (known.add(cached.version())) {
-				releases.add(cached);
-				onNewConsumer.accept(release, cached);
+		synchronized (releases) {
+			Set<String> known = new HashSet<>();
+			for (CachedRelease existing : releases) {
+				known.add(existing.version());
 			}
-		});
+
+			fetched.forEach((release, cached) -> {
+				if (known.add(cached.version())) {
+					releases.add(cached);
+					onNewConsumer.accept(release, cached);
+				}
+			});
+		}
+	}
+
+	/**
+	 * Record one completed scan attempt that returned no data for this release,
+	 */
+	public void recordAttempt(ArtifactVersion version) {
+		CachedRelease cachedRelease = getCachedRelease(version);
+		if (cachedRelease != null) {
+			cachedRelease.recordAttempt();
+		}
+	}
+
+	/**
+	 * Store the vulnerabilities found by a completed scan, stamping the scan time.
+	 *
+	 * @param scannedAt the time the scan completed.
+	 * @param vulnerabilities the vulnerabilities found, possibly empty for a clean
+	 * scan.
+	 */
+	public void recordVulnerabilities(long scannedAt, ArtifactVersion version,
+			Iterable<Vulnerability> vulnerabilities) {
+		CachedRelease cachedRelease = getCachedRelease(version);
+		if (cachedRelease != null) {
+			cachedRelease.setVulnerabilities(scannedAt, vulnerabilities);
+		}
 	}
 
 	/**
@@ -378,8 +430,10 @@ public class CachedArtifact implements ArtifactId {
 	public CachedArtifact snapshot() {
 		CachedArtifact copy = new CachedArtifact(groupId, artifactId);
 		copy.lastSeen = lastSeen;
-		for (CachedRelease release : releases) {
-			copy.releases.add(release.snapshot());
+		synchronized (releases) {
+			for (CachedRelease release : releases) {
+				copy.releases.add(release.snapshot());
+			}
 		}
 		copy.preferredSource = preferredSource;
 		copy.emptyLookups = emptyLookups;

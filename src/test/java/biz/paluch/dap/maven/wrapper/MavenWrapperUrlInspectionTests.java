@@ -328,8 +328,8 @@ class MavenWrapperUrlInspectionTests {
 	void useDefaultUrlFixPrefersNonPreviewRelease(PsiFile file) {
 
 		CachedArtifact artifact = new CachedArtifact("org.apache.maven", "apache-maven");
-		artifact.getReleases().add(new CachedRelease("4.0.0-rc-1", "2026-03-01"));
-		artifact.getReleases().add(new CachedRelease("3.9.9", "2024-10-04"));
+		artifact.addRelease(new CachedRelease("4.0.0-rc-1", "2026-03-01"));
+		artifact.addRelease(new CachedRelease("3.9.9", "2024-10-04"));
 		Cache cache = new Cache();
 		cache.addArtifacts(List.of(artifact));
 		StateService.getInstance(fixture.getProject()).setCache(cache);

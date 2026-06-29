@@ -22,41 +22,109 @@ import java.util.List;
 
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 
 /**
- * Test {@link Cache} subclass exposing convenience methods to seed
- * vulnerability state.
+ * Test utility {@link Cache} for seeding release and vulnerability state.
+ *
+ * <p>Intended for tests that prepare cache content directly instead of going
+ * through scanner or repository collaborators. Vulnerability helpers update
+ * existing cached releases only, so tests must register the artifact and
+ * release first through {@link #addArtifacts(CachedArtifact...)} or
+ * {@link #putVersionOptions(ArtifactId, Iterable)}.
  *
  * @author Mark Paluch
  */
 public class TestCache extends Cache {
 
+	/**
+	 * Create a test cache using the default UTC clock.
+	 */
 	public TestCache() {
 	}
 
+	/**
+	 * Create a test cache using the given clock for cache timestamps.
+	 *
+	 * @param clock the clock used for cache timestamps.
+	 */
 	public TestCache(Clock clock) {
 		super(clock);
 	}
 
+	/**
+	 * Record vulnerability results for a version parsed from the given string.
+	 *
+	 * @param artifactId the cached artifact to update.
+	 * @param version the version text to update.
+	 * @param vulnerabilities the scan results to store.
+	 * @throws IllegalStateException if no cached artifact exists for
+	 * {@code artifactId}.
+	 * @see #addVulnerabilities(ArtifactId, ArtifactVersion, Collection)
+	 */
 	public void addVulnerabilities(ArtifactId artifactId, String version, Collection<Vulnerability> vulnerabilities) {
-		recordVulnerabilities(artifactId, ArtifactVersion.of(version), vulnerabilities);
+		addVulnerabilities(artifactId, ArtifactVersion.of(version), vulnerabilities);
 	}
 
+	/**
+	 * Record vulnerability results for a cached artifact version.
+	 *
+	 * <p>An empty vulnerability collection records a completed clean scan. The
+	 * target release must already exist in the cached artifact.
+	 *
+	 * @param artifactId the cached artifact to update.
+	 * @param version the cached version to update.
+	 * @param vulnerabilities the scan results to store.
+	 * @throws IllegalStateException if no cached artifact exists for
+	 * {@code artifactId}.
+	 */
 	public void addVulnerabilities(ArtifactId artifactId, ArtifactVersion version,
 			Collection<Vulnerability> vulnerabilities) {
-		recordVulnerabilities(artifactId, version, vulnerabilities);
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
+		if (cachedArtifact == null) {
+			throw new IllegalStateException("No CachedArtifact found for " + artifactId);
+		}
+		cachedArtifact.recordVulnerabilities(999, version, vulnerabilities);
 	}
 
+	/**
+	 * Record vulnerability results for a version parsed from the given string.
+	 *
+	 * @param artifactId the cached artifact to update.
+	 * @param version the version text to update.
+	 * @param vulnerabilities the scan results to store.
+	 * @throws IllegalStateException if no cached artifact exists for
+	 * {@code artifactId}.
+	 * @see #addVulnerabilities(ArtifactId, ArtifactVersion, Vulnerability...)
+	 */
 	public void addVulnerabilities(ArtifactId artifactId, String version, Vulnerability... vulnerabilities) {
 		addVulnerabilities(artifactId, ArtifactVersion.of(version), vulnerabilities);
 	}
 
+	/**
+	 * Record vulnerability results for a cached artifact version.
+	 *
+	 * @param artifactId the cached artifact to update.
+	 * @param version the cached version to update.
+	 * @param vulnerabilities the scan results to store.
+	 * @throws IllegalStateException if no cached artifact exists for
+	 * {@code artifactId}.
+	 * @see #addVulnerabilities(ArtifactId, ArtifactVersion, Collection)
+	 */
 	public void addVulnerabilities(ArtifactId artifactId, ArtifactVersion version, Vulnerability... vulnerabilities) {
-		recordVulnerabilities(artifactId, version, List.of(vulnerabilities));
+		addVulnerabilities(artifactId, version, List.of(vulnerabilities));
 	}
 
+	/**
+	 * Return the test cache installed for the given project.
+	 *
+	 * @param project the project whose state service provides the cache.
+	 * @return the cache installed in the project state service.
+	 * @throws ClassCastException if the project state service does not hold a
+	 * {@code TestCache}.
+	 */
 	public static TestCache getInstance(Project project) {
 		return (TestCache) StateService.getInstance(project).getCache();
 	}

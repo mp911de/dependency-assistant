@@ -39,7 +39,6 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.Vulnerability;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -167,12 +166,10 @@ public class Cache {
 		}
 
 		ArtifactId artifactIdToUse = artifactId instanceof GitArtifactId gid ? gid.releaseSource() : artifactId;
-		synchronized (artifacts) {
-			for (CachedArtifact artifact : artifacts) {
-				if (artifact.matches(artifactIdToUse)) {
-					return Releases.of(artifact.getVersionOptions());
-				}
-			}
+
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactIdToUse);
+		if (cachedArtifact != null) {
+			return Releases.of(cachedArtifact.getVersionOptions());
 		}
 
 		return Releases.empty();
@@ -212,13 +209,7 @@ public class Cache {
 	public void putVersionOptions(ArtifactId artifactId, Iterable<? extends Release> releases) {
 
 		synchronized (artifacts) {
-			CachedArtifact artifactToUse = null;
-			for (CachedArtifact artifact : artifacts) {
-				if (artifact.matches(artifactId)) {
-					artifactToUse = artifact;
-					break;
-				}
-			}
+			CachedArtifact artifactToUse = findCachedArtifact(artifactId);
 			if (artifactToUse == null) {
 				artifactToUse = new CachedArtifact(artifactId);
 				artifacts.add(artifactToUse);
@@ -243,14 +234,7 @@ public class Cache {
 		ArtifactId artifactId = releases.getArtifactId();
 
 		synchronized (artifacts) {
-			CachedArtifact artifactToUse = null;
-			for (CachedArtifact artifact : artifacts) {
-
-				if (artifact.matches(artifactId, packageSystem)) {
-					artifactToUse = artifact;
-					break;
-				}
-			}
+			CachedArtifact artifactToUse = findCachedArtifact(artifactId, packageSystem);
 			if (artifactToUse == null) {
 				artifactToUse = new CachedArtifact(artifactId);
 				artifactToUse.setEcosystem(packageSystem);
@@ -365,7 +349,35 @@ public class Cache {
 	public List<CachedRelease> getCachedReleases(ArtifactId artifactId) {
 		synchronized (artifacts) {
 			CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
-			return cachedArtifact != null ? List.copyOf(cachedArtifact.getReleases()) : Collections.emptyList();
+			return cachedArtifact != null ? cachedArtifact.getReleases() : Collections.emptyList();
+		}
+	}
+
+	/**
+	 * Invoke the given consumer for a known artifact to this cache. Iteration is
+	 * based on the actual artifact.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @param consumer the consumer to invoke.
+	 */
+	public void doWithArtifact(ArtifactId artifactId, Consumer<CachedArtifact> consumer) {
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
+		if (cachedArtifact != null) {
+			consumer.accept(cachedArtifact);
+		}
+	}
+
+	/**
+	 * Invoke the given consumer for a known artifact to this cache. Iteration is
+	 * based on the actual artifact.
+	 *
+	 * @param pkg the package identity to look up.
+	 * @param consumer the consumer to invoke.
+	 */
+	public void doWithArtifact(PackageIdentity pkg, Consumer<CachedArtifact> consumer) {
+		CachedArtifact cachedArtifact = findCachedArtifact(pkg);
+		if (cachedArtifact != null) {
+			consumer.accept(cachedArtifact);
 		}
 	}
 
@@ -381,11 +393,15 @@ public class Cache {
 	 */
 	@Transient
 	public Vulnerabilities getVulnerabilities(ArtifactId artifactId, ArtifactVersion version) {
-		return getVulnerabilities(findCachedRelease(artifactId, version));
-	}
-
-	private Vulnerabilities getVulnerabilities(@Nullable CachedRelease release) {
-		return release == null ? Vulnerabilities.absent() : release.toVulnerabilities();
+		CachedArtifact artifact = findCachedArtifact(artifactId);
+		if (artifact == null) {
+			return Vulnerabilities.absent();
+		}
+		CachedRelease cachedRelease = artifact.getCachedRelease(version);
+		if (cachedRelease == null) {
+			return Vulnerabilities.absent();
+		}
+		return cachedRelease.toVulnerabilities();
 	}
 
 	/**
@@ -435,86 +451,26 @@ public class Cache {
 
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new HashMap<>();
 		for (CachedRelease release : cachedArtifact.getReleases()) {
-			vulnerabilities.put(release.toRelease().getVersion(), getVulnerabilities(release));
+			vulnerabilities.put(release.toRelease().getVersion(), release.toVulnerabilities());
 		}
 
 		return vulnerabilities;
 	}
 
 	/**
-	 * Record a completed scan for one version on an already-cached release. A no-op
-	 * when the artifact or release entry is not present.
-	 *
-	 * @param artifactId the artifact.
-	 * @param version the exact version scanned.
-	 * @param vulnerabilities the advisories found, empty for a clean scan.
-	 */
-	public void recordVulnerabilities(ArtifactId artifactId, ArtifactVersion version,
-			Iterable<Vulnerability> vulnerabilities) {
-
-		CachedRelease cachedRelease = findCachedRelease(artifactId, version);
-		if (cachedRelease != null) {
-			cachedRelease.setVulnerabilities(now(), vulnerabilities);
-		}
-	}
-
-	/**
-	 * Record a completed vulnerability scan for one version on an already-cached
-	 * release. A no-op when the artifact or release entry is not present.
-	 *
-	 * @param identity the package identity.
-	 * @param version the exact version scanned.
-	 * @param vulnerabilities the advisories found, empty for a clean scan.
-	 */
-	public void recordVulnerabilities(PackageIdentity identity, ArtifactVersion version,
-			Iterable<Vulnerability> vulnerabilities) {
-		CachedRelease cachedRelease = findCachedRelease(identity.getArtifactId(), identity.getPackageSystem(), version);
-		if (cachedRelease != null) {
-			cachedRelease.setVulnerabilities(now(), vulnerabilities);
-		}
-	}
-
-	/**
-	 * Record one completed scan attempt that returned no data for the version,
-	 * advancing its scan-attempt counter. A no-op when the version is not cached.
-	 *
-	 * @param artifactId the artifact.
-	 * @param version the exact version that was requested.
-	 */
-	public void recordAttempt(ArtifactId artifactId, ArtifactVersion version) {
-
-		CachedRelease release = findCachedRelease(artifactId, version);
-		if (release != null) {
-			release.recordAttempt();
-		}
-	}
-
-	/**
 	 * Return whether the bulk scan should re-query the given version, per the
 	 * {@link VulnerabilityScannerPolicy} scan-state and re-scan interval rules.
 	 *
-	 * @param artifactId the artifact.
+	 * @param artifact the artifact.
 	 * @param version the exact version.
 	 * @return {@literal true} if the version needs a scan; {@literal false}
 	 * otherwise.
 	 */
-	public boolean needsScan(ArtifactId artifactId, ArtifactVersion version) {
-		return new VulnerabilityScannerPolicy(clock).scanRequired(findCachedRelease(artifactId, version));
-	}
-
-	public @Nullable CachedRelease findCachedRelease(PackageIdentity pkg, ArtifactVersion version) {
-		return findCachedRelease(pkg.getArtifactId(), pkg.getPackageSystem(), version);
-	}
-
-	public @Nullable CachedRelease findCachedRelease(ArtifactId artifactId, ArtifactVersion version) {
-		CachedArtifact artifact = findCachedArtifact(artifactId);
-		return artifact == null ? null : artifact.getCachedRelease(version);
-	}
-
-	public @Nullable CachedRelease findCachedRelease(ArtifactId artifactId, PackageSystem packageSystem,
-			ArtifactVersion version) {
-		CachedArtifact artifact = findCachedArtifact(artifactId, packageSystem);
-		return artifact == null ? null : artifact.getCachedRelease(version);
+	public boolean needsScan(@Nullable CachedArtifact artifact, ArtifactVersion version) {
+		if (artifact == null) {
+			return true;
+		}
+		return new VulnerabilityScannerPolicy(clock).scanRequired(artifact.getCachedRelease(version));
 	}
 
 	/**
