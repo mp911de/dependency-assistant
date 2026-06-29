@@ -18,6 +18,7 @@ package biz.paluch.dap.artifact;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -122,6 +123,10 @@ public class Releases implements Iterable<Release> {
 	 */
 	public static Releases of(Collection<Release> releases) {
 
+		if (releases.isEmpty()) {
+			return empty();
+		}
+
 		Map<VersioningScheme, List<Release>> partitions = new EnumMap<>(VersioningScheme.class);
 		for (Release release : releases) {
 			partitions.computeIfAbsent(release.version().scheme(), scheme -> new ArrayList<>()).add(release);
@@ -129,7 +134,15 @@ public class Releases implements Iterable<Release> {
 
 		for (Map.Entry<VersioningScheme, List<Release>> entry : partitions.entrySet()) {
 			entry.getValue().sort(Comparator.reverseOrder());
-			entry.setValue(entry.getValue());
+		}
+
+		return fromSortedPartitions(partitions);
+	}
+
+	private static Releases fromSortedPartitions(Map<VersioningScheme, List<Release>> partitions) {
+
+		if (partitions.isEmpty()) {
+			return empty();
 		}
 
 		List<VersioningScheme> schemesByRank = partitions.keySet().stream()
@@ -137,7 +150,8 @@ public class Releases implements Iterable<Release> {
 						.reversed())
 				.toList();
 
-		List<Release> ordered = new ArrayList<>(releases.size());
+		int size = partitions.values().stream().mapToInt(List::size).sum();
+		List<Release> ordered = new ArrayList<>(size);
 		for (VersioningScheme scheme : schemesByRank) {
 			ordered.addAll(partitions.get(scheme));
 		}
@@ -179,9 +193,75 @@ public class Releases implements Iterable<Release> {
 	 * the given release.
 	 */
 	public Releases withRelease(Release release) {
-		List<Release> releases = new ArrayList<>(ordered);
-		releases.add(release);
-		return of(releases);
+
+		Map<VersioningScheme, List<Release>> partitions = copyPartitions();
+		List<Release> partition = partitions.computeIfAbsent(release.version().scheme(), scheme -> new ArrayList<>());
+		insertDescending(partition, release);
+		return fromSortedPartitions(partitions);
+	}
+
+	/**
+	 * Create a new {@code Releases} instance that also includes the given version
+	 * as an undated release when it is not already present.
+	 *
+	 * @param version the version to include.
+	 * @return this instance if the version is already present, or a new instance
+	 * containing the additional release.
+	 */
+	public Releases withVersion(ArtifactVersion version) {
+
+		if (getRelease(version) != null) {
+			return this;
+		}
+
+		return withRelease(Release.of(version));
+	}
+
+	private Map<VersioningScheme, List<Release>> copyPartitions() {
+
+		Map<VersioningScheme, List<Release>> partitions = new EnumMap<>(VersioningScheme.class);
+		this.partitions.forEach((scheme, releases) -> partitions.put(scheme, new ArrayList<>(releases)));
+		return partitions;
+	}
+
+	private static void insertDescending(List<Release> partition, Release release) {
+
+		for (int i = 0; i < partition.size(); i++) {
+			if (partition.get(i).compareTo(release) <= 0) {
+				partition.add(i, release);
+				return;
+			}
+		}
+
+		partition.add(release);
+	}
+
+	/**
+	 * Create a new {@code Releases} instance retaining only releases accepted by
+	 * the given predicate.
+	 *
+	 * <p>Existing partition ordering is reused; scheme precedence is recomputed for
+	 * the retained subset.
+	 *
+	 * @param predicate the release predicate.
+	 * @return the retained releases.
+	 */
+	public Releases filter(Predicate<Release> predicate) {
+
+		Map<VersioningScheme, List<Release>> partitions = new EnumMap<>(VersioningScheme.class);
+		this.partitions.forEach((scheme, releases) -> {
+			List<Release> retained = new ArrayList<>();
+			for (Release release : releases) {
+				if (predicate.test(release)) {
+					retained.add(release);
+				}
+			}
+			if (!retained.isEmpty()) {
+				partitions.put(scheme, retained);
+			}
+		});
+
+		return fromSortedPartitions(partitions);
 	}
 
 	/**

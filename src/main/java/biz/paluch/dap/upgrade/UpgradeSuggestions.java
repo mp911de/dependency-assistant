@@ -246,6 +246,10 @@ public class UpgradeSuggestions implements Iterable<UpgradeSuggestion> {
 		return suggestions.toString();
 	}
 
+	public Map<UpgradeStrategy, UpgradeSuggestion> toMap() {
+		return this.suggestions;
+	}
+
 	/**
 	 * Accumulates the selected target per {@link UpgradeStrategy} for one current
 	 * version and release history, retaining only strategies whose target is newer

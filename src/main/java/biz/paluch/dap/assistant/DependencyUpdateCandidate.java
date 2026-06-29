@@ -16,8 +16,8 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.HashSet;
 import java.util.Set;
-import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -90,13 +90,8 @@ class DependencyUpdateCandidate implements HasArtifactId {
 		this.subject = subject;
 
 		Dependency dependency = subject.getDependency();
-		Releases releases = subject.getReleases();
-		if (releases.stream().map(Release::getVersion)
-				.noneMatch(it -> it.matches(dependency.getCurrentVersion()))) {
-			releases = releases.withRelease(new Release(dependency.getCurrentVersion(), null));
-		}
 
-		this.releases = releases;
+		this.releases = subject.getReleases();
 		this.targets = suggestions;
 
 		DependencyRule rule = subject.getRule();
@@ -107,33 +102,27 @@ class DependencyUpdateCandidate implements HasArtifactId {
 	private Releases filterVersionSuggestions(Releases releases,
 			ArtifactVersion current) {
 
-		Set<Release> result = new TreeSet<>();
-
-		for (Release release : releases) {
-
-			if (current.matches(release.version())) {
-				result.add(release);
-				continue;
-			}
-
-			if (!current.isPreview() && release.version().isPreview()) {
-				continue;
-			}
-
-			if (release.getVersion().isNewer(current)) {
-				result.add(release);
-			} else if (release.getVersion().isBugFixVersion() || release.getVersion().isReleaseVersion()) {
-				result.add(release);
-			}
-		}
-
+		Set<Release> remediations = new HashSet<>();
 		for (UpgradeSuggestion suggestion : this.targets.getSuggestions()) {
 			if (suggestion.getStrategy().isRemediation()) {
-				result.add(suggestion.getRelease());
+				remediations.add(suggestion.getRelease());
 			}
 		}
+		return releases.filter(release -> isDisplayable(release, current) || remediations.contains(release));
+	}
 
-		return Releases.of(result);
+	private boolean isDisplayable(Release release, ArtifactVersion current) {
+
+		if (current.matches(release.version())) {
+			return true;
+		}
+
+		if (!current.isPreview() && release.version().isPreview()) {
+			return false;
+		}
+
+		return release.getVersion().isNewer(current) || release.getVersion().isBugFixVersion()
+				|| release.getVersion().isReleaseVersion();
 	}
 
 	@Override

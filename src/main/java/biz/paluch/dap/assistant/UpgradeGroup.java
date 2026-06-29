@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -216,12 +217,13 @@ class UpgradeGroup extends UpgradeCandidate {
 
 	private static Releases intersectReleases(List<UpgradeCandidate> members) {
 
-		List<Release> common = members.getFirst().getUpdateCandidate().getReleases().stream()
-				.filter(release -> members.stream().allMatch(
-						member -> member.getUpdateCandidate().getReleases().getRelease(release.version()) != null))
-				.toList();
+		Releases releases = members.getFirst().getUpdateCandidate().getReleases();
+		Set<Release> retained = new HashSet<>(releases.toList());
+		for (int i = 1; i < members.size(); i++) {
+			retained.retainAll(members.get(i).getUpdateCandidate().getReleases().toList());
+		}
 
-		return Releases.of(common);
+		return releases.filter(retained::contains);
 	}
 
 	private static List<String> basePrefixLabelParts(List<String> artifactIds) {

@@ -18,6 +18,7 @@ package biz.paluch.dap.artifact;
 
 import java.util.List;
 
+import biz.paluch.dap.fixtures.TestReleases;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -72,13 +73,9 @@ class ReleasesUnitTests {
 	@Test
 	void singleSchemeWithoutDatesSortsByVersion() {
 
-		Releases releases = Releases.of(
-				Release.of("3.9.6"),
-				Release.of("3.10.0"),
-				Release.of("3.9.9"));
+		Releases releases = TestReleases.from("3.10.0", "3.9.6", "3.9.9");
 
-		assertThat(releases)
-				.hasSuccessorScheme(VersioningScheme.NUMERIC)
+		assertThat(releases).hasSuccessorScheme(VersioningScheme.NUMERIC)
 				.containsExactlyVersions("3.10.0", "3.9.9", "3.9.6");
 	}
 
@@ -87,9 +84,38 @@ class ReleasesUnitTests {
 
 		Releases releases = Releases.of(List.of());
 
-		assertThat(releases)
-				.hasNoSuccessorScheme()
-				.isEmpty();
+		assertThat(releases).hasNoSuccessorScheme().isEmpty();
+	}
+
+	@Test
+	void withVersionAddsMissingCurrentVersionInOrder() {
+
+		Releases releases = TestReleases.from("3.10.0", "3.9.6");
+
+		assertThat(releases.withVersion(ArtifactVersion.of("3.9.9")))
+				.containsExactlyVersions("3.10.0", "3.9.9", "3.9.6");
+	}
+
+	@Test
+	void withVersionReusesExistingVersion() {
+
+		Releases releases = TestReleases.from("3.10.0", "3.9.6");
+
+		assertThat(releases.withVersion(ArtifactVersion.of("3.9.6"))).isSameAs(releases);
+	}
+
+	@Test
+	void filterRetainsSubsetInReleaseOrder() {
+
+		Releases releases = Releases.of(
+				Release.from("Dysprosium-SR25", "2021-11-09"),
+				Release.from("2025.0.6", "2026-06-08"),
+				Release.from("2024.0.18", "2026-06-08"),
+				Release.from("Dysprosium-RELEASE", "2019-09-24"));
+
+		assertThat(releases.filter(release -> !release.version().toString().equals("2025.0.6")))
+				.hasSuccessorScheme(VersioningScheme.NUMERIC)
+				.containsExactlyVersions("2024.0.18", "Dysprosium-SR25", "Dysprosium-RELEASE");
 	}
 
 }

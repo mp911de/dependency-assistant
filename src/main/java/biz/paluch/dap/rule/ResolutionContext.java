@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 
 /**
@@ -56,12 +57,12 @@ public class ResolutionContext {
 	 * @param projectVersion the project version used for branch rule selection.
 	 * @return a resolution context using per-declaration plugin semantics.
 	 */
-	public static ResolutionContext forReference(ArtifactReference artifactReference, BranchSource branchSource,
-			Versioned projectVersion) {
+	public static ResolutionContext forReference(ArtifactReference artifactReference,
+			BranchSource branchSource, Versioned projectVersion) {
 
+		ArtifactDeclaration declaration = artifactReference.getDeclaration();
 		return new ResolutionContext(artifactReference.getArtifactId(),
-				artifactReference.getDeclaration().getDeclarationSource()
-						.isPlugin(),
+				declaration.getDeclarationSource().isPlugin(),
 				branchSource, projectVersion);
 	}
 

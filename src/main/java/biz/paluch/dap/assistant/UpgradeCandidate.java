@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.DependencySiteQuery;
@@ -267,6 +268,10 @@ public class UpgradeCandidate implements HasArtifactId {
 	DependencySiteQuery toQuery() {
 		return DependencySiteQuery
 				.create(it -> it.artifact(getArtifactId()).versionProperties(getVersionPropertyNames()));
+	}
+
+	boolean hasRelease(Release release) {
+		return getUpdateCandidate().getReleases().contains(release);
 	}
 
 	/**

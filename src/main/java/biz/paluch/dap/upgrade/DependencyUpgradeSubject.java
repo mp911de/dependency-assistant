@@ -50,7 +50,8 @@ public class DependencyUpgradeSubject {
 
 	public static DependencyUpgradeSubject of(Dependency dependency, Releases releases,
 			VulnerabilityRepository vulnerabilities, DependencyRule rule) {
-		return new DependencyUpgradeSubject(dependency, releases, vulnerabilities, rule);
+		return new DependencyUpgradeSubject(dependency, releases.withVersion(dependency.getCurrentVersion()),
+				vulnerabilities, rule);
 	}
 
 	public boolean isVulnerable() {
