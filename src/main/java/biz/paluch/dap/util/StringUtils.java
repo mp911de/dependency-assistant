@@ -19,6 +19,7 @@ package biz.paluch.dap.util;
 import java.util.Collection;
 import java.util.Iterator;
 
+import com.intellij.openapi.util.text.StringUtil;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
@@ -118,26 +119,19 @@ public abstract class StringUtils {
 	 * @return the unquoted String.
 	 */
 	public static String unquote(String str) {
-		if ((str.startsWith("\"") && str.endsWith("\"")) || (str.startsWith("'") && str.endsWith("'"))) {
-			return str.length() > 2 ? str.substring(1, str.length() - 1) : "";
-		}
-		return str;
+		return StringUtil.unquoteString(str);
 	}
 
 	public static String longestCommonPrefix(Collection<String> values) {
 		Assert.notEmpty(values, "Values must not be empty");
 		Iterator<String> iterator = values.iterator();
-		String first = iterator.next();
-		int length = first.length();
-		for (String value : values) {
-			length = Math.min(length, value.length());
-			for (int i = 0; i < length; i++) {
-				if (first.charAt(i) != value.charAt(i)) {
-					length = i;
-					break;
-				}
+		String prefix = iterator.next();
+		while (iterator.hasNext()) {
+			prefix = prefix.substring(0, StringUtil.commonPrefixLength(prefix, iterator.next()));
+			if (prefix.isEmpty()) {
+				return "";
 			}
 		}
-		return first.substring(0, length);
+		return prefix;
 	}
 }
