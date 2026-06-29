@@ -105,40 +105,39 @@ record DependencySitePresentation(DependencySiteSearchHit finding, String label,
 	}
 
 	/**
-	 * Walk up from the element to the widest ancestor that still begins on the
-	 * element's start line. That ancestor is the declaration statement owning the
-	 * element; an enclosing block (the surrounding {@code dependencies} or
-	 * {@code buildscript} closure, a parent XML tag) begins on an earlier line and
-	 * stops the ascent.
-	 *
-	 * <p>The ascent also stops at a parent that begins exactly where the current
-	 * node begins but extends past it: such a parent is a collection holding the
-	 * node as its first entry rather than a wrapper around it. A YAML block
-	 * sequence shares its start with its first item (it has no opening token of its
-	 * own), so without this guard the first step of a job would widen the preview
-	 * to the whole {@code steps:} sequence.
+	 * Return the widest ancestor that still begins on the element's start line.
+	 * That ancestor is the declaration statement owning the element; an enclosing
+	 * block (the surrounding {@code dependencies} or {@code buildscript} closure, a
+	 * parent XML tag) begins on an earlier line and stops the ascent.
 	 */
 	private static PsiElement enclosingStatement(PsiElement element, Document document, int startLine) {
 
-		PsiElement widest = element;
+		PsiElement statement = element;
 		for (PsiElement parent = element.getParent(); parent != null
 				&& !(parent instanceof PsiFile); parent = parent.getParent()) {
 
-			TextRange parentRange = parent.getTextRange();
-			if (document.getLineNumber(parentRange.getStartOffset()) != startLine) {
+			if (isPreviewBoundary(parent, statement, document, startLine)) {
 				break;
 			}
+			statement = parent;
+		}
+		return statement;
+	}
 
-			TextRange widestRange = widest.getTextRange();
-			if (parentRange.getStartOffset() == widestRange.getStartOffset()
-					&& parentRange.getEndOffset() > widestRange.getEndOffset()) {
-				break;
-			}
+	private static boolean isPreviewBoundary(PsiElement parent, PsiElement child, Document document, int startLine) {
 
-			widest = parent;
+		if (parent instanceof PsiFile) {
+			return true;
 		}
 
-		return widest;
+		TextRange parentRange = parent.getTextRange();
+		if (document.getLineNumber(parentRange.getStartOffset()) != startLine) {
+			return true;
+		}
+
+		TextRange childRange = child.getTextRange();
+		return parentRange.getStartOffset() == childRange.getStartOffset()
+				&& parentRange.getEndOffset() > childRange.getEndOffset();
 	}
 
 	private static String dedent(String text) {

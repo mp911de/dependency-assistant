@@ -34,9 +34,9 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
@@ -388,7 +388,7 @@ class MavenParser {
 	 */
 	public static DeclarationSource getDeclarationSource(XmlTag owner) {
 
-		XmlTag profile = (XmlTag) PsiTreeUtil.findFirstParent(owner,
+		XmlTag profile = (XmlTag) PsiElements.findFirstParent(owner, false,
 				psiElement -> psiElement instanceof XmlTag tag && "profile".equals(tag.getLocalName()));
 		String profileId = profile != null ? text(profile, "id") : null;
 

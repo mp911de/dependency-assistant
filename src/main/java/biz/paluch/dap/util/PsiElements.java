@@ -18,9 +18,13 @@ package biz.paluch.dap.util;
 
 import java.util.function.Predicate;
 
+import com.intellij.openapi.util.Condition;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFileSystemItem;
 import com.intellij.psi.PsiRecursiveElementVisitor;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Utility to create {@link com.intellij.psi.PsiElement}
@@ -56,6 +60,38 @@ public abstract class PsiElements {
 			Predicate<T> actionAndExitCondition) {
 		return new ExitConditionVisitor(psiElementType::isInstance,
 				it -> actionAndExitCondition.test(psiElementType.cast(it)));
+	}
+
+	/**
+	 * Find the first ancestor of {@code element} that satisfies {@link Condition
+	 * condition}.
+	 * <p>Parent traversal stops when the parent element is a
+	 * {@link PsiFileSystemItem file}.
+	 * @param element the starting element to search from.
+	 * @param strict if true, then the {@code element} itself is excluded from the
+	 * search and search starts from its parent instead.
+	 * @param condition determines whether an ancestor element satisfies the search
+	 * criteria.
+	 * @return the first ancestor of {@code element} that satisfies
+	 * {@link Condition}, or {@literal null} if no such ancestor exists before a
+	 * {@link PsiFileSystemItem} boundary.
+	 */
+	@Contract("null, _, _ -> null")
+	public static @Nullable PsiElement findFirstParent(@Nullable PsiElement element,
+			boolean strict, Condition<? super PsiElement> condition) {
+		if (strict && element != null) {
+			element = element.getParent();
+		}
+		while (element != null) {
+			if (element instanceof PsiFileSystemItem) {
+				return null;
+			}
+			if (condition.value(element)) {
+				return element;
+			}
+			element = element.getParent();
+		}
+		return null;
 	}
 
 }

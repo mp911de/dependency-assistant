@@ -18,9 +18,9 @@ package biz.paluch.dap.gradle;
 
 import java.util.function.Predicate;
 
+import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import org.jetbrains.kotlin.psi.KtCallElement;
 import org.jetbrains.kotlin.psi.KtCallExpression;
 import org.jetbrains.kotlin.psi.KtExpression;
@@ -65,16 +65,6 @@ class KotlinDslUtils {
 		return GradleUtils.isPlugin(methodName) && isInsidePluginsBlock(call);
 	}
 
-	public static boolean isPlatformSection(KtCallElement call) {
-
-		String methodName = getKotlinCallName(call);
-		if (StringUtils.isEmpty(methodName)) {
-			return false;
-		}
-
-		return GradleUtils.isPlatformSection(methodName);
-	}
-
 	static @Nullable String getKotlinCallName(KtCallElement call) {
 		PsiElement callee = call.getCalleeExpression();
 		if (callee instanceof KtNameReferenceExpression ref) {
@@ -92,17 +82,14 @@ class KotlinDslUtils {
 	}
 
 	static boolean isInsideBlock(PsiElement element, Predicate<String> predicate) {
-		PsiElement parent = element.getParent();
-		while (parent != null && !(parent instanceof PsiFile)) {
+
+		return PsiElements.findFirstParent(element, true, parent -> {
 			if (parent instanceof KtCallExpression parentCall) {
 				String name = getKotlinCallName(parentCall);
-				if (name != null && predicate.test(name)) {
-					return true;
-				}
+				return name != null && predicate.test(name);
 			}
-			parent = parent.getParent();
-		}
-		return false;
+			return false;
+		}) != null;
 	}
 
 	/**

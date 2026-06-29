@@ -19,9 +19,9 @@ package biz.paluch.dap.gradle;
 import java.util.List;
 import java.util.function.Predicate;
 
+import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyElementTypes;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrArgumentList;
@@ -63,19 +63,13 @@ class GroovyDslUtils {
 	 */
 	public static boolean isInsideGroovyBlock(PsiElement element, Predicate<String> predicate) {
 
-		PsiElement parent = element.getParent();
-
-		while (parent != null && !(parent instanceof PsiFile)) {
+		return PsiElements.findFirstParent(element, true, parent -> {
 			if (parent instanceof GrClosableBlock) {
 				PsiElement blockParent = parent.getParent();
-				if (blockParent instanceof GrMethodCall call && predicate.test(getGroovyMethodName(call))) {
-					return true;
-				}
+				return blockParent instanceof GrMethodCall call && predicate.test(getGroovyMethodName(call));
 			}
-			parent = parent.getParent();
-		}
-
-		return false;
+			return false;
+		}) != null;
 	}
 
 	/**
