@@ -27,16 +27,7 @@ record DefaultArtifactId(String groupId, String artifactId) implements ArtifactI
 
 	@Override
 	public boolean equals(Object o) {
-		if (o instanceof ArtifactId that) {
-			return groupId.equals(that.groupId()) && artifactId.equals(that.artifactId());
-		}
-		if (!(o instanceof DefaultArtifactId that)) {
-			return false;
-		}
-		if (!ObjectUtils.nullSafeEquals(groupId, that.groupId)) {
-			return false;
-		}
-		return ObjectUtils.nullSafeEquals(artifactId, that.artifactId);
+		return o instanceof ArtifactId that && groupId.equals(that.groupId()) && artifactId.equals(that.artifactId());
 	}
 
 	@Override

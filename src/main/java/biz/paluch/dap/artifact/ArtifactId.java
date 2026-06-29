@@ -25,9 +25,22 @@ import java.util.Comparator;
  */
 public interface ArtifactId extends Comparable<ArtifactId> {
 
+	/**
+	 * Natural ordering by {@code groupId} then {@code artifactId}, consistent with
+	 * {@link #equals(Object)}. This is the ordering used by
+	 * {@link #compareTo(ArtifactId)} and therefore by
+	 * {@code TreeMap}/{@code TreeSet} keys, so it compares both segments
+	 * case-sensitively to match the case-sensitive identity contract.
+	 */
 	Comparator<? super ArtifactId> COMPARATOR = Comparator.comparing(ArtifactId::groupId)
-			.thenComparing(ArtifactId::artifactId, String.CASE_INSENSITIVE_ORDER);
+			.thenComparing(ArtifactId::artifactId);
 
+	/**
+	 * Display ordering by {@code artifactId} then {@code groupId}. Unlike
+	 * {@link #COMPARATOR} this is a presentation-only comparator, never the natural
+	 * ordering or an identity key, so it orders {@code artifactId}
+	 * case-insensitively for readable, alphabetized lists.
+	 */
 	Comparator<? super ArtifactId> BY_ARTIFACT_ID = Comparator
 			.comparing(ArtifactId::artifactId, String.CASE_INSENSITIVE_ORDER)
 			.thenComparing(ArtifactId::groupId);
