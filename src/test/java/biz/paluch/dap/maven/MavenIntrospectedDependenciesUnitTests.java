@@ -21,7 +21,6 @@ import java.util.Map;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import org.junit.jupiter.api.Test;
@@ -90,7 +89,7 @@ class MavenIntrospectedDependenciesUnitTests {
 
 		introspected.complete(collector);
 
-		assertThat(collector.getUsages()).isEmpty();
+		assertThat(collector).isEmpty();
 	}
 
 	@Test
@@ -107,7 +106,7 @@ class MavenIntrospectedDependenciesUnitTests {
 
 		introspected.complete(collector);
 
-		assertThat(collector.getUsage(COMMONS_LANG).getCurrentVersion().toString()).isEqualTo("3.0.0");
+		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3").hasVersion("3.0.0");
 	}
 
 	@Test
@@ -122,9 +121,7 @@ class MavenIntrospectedDependenciesUnitTests {
 
 		introspected.complete(collector);
 
-		Dependency usage = collector.getUsage(COMMONS_LANG);
-		assertThat(usage).isNotNull();
-		assertThat(usage.getCurrentVersion().toString()).isEqualTo("3.19.0");
+		assertThat(collector).hasDependencyUsage("org.apache.commons", "commons-lang3").hasVersion("3.19.0");
 	}
 
 }

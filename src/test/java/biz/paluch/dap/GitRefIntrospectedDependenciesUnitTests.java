@@ -112,7 +112,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 
 		new GitRefIntrospectedDependencies(cache).complete(collector);
 
-		assertThat(collector.getUsage(CHECKOUT).getCurrentVersion()).hasToString("v3.6.0");
+		assertThat(collector).hasDependencyUsage("actions", "checkout").hasVersion("v3.6.0");
 	}
 
 	private static Cache cacheWith(CachedArtifact artifact) {

@@ -23,6 +23,7 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
+import biz.paluch.dap.fixtures.Inspections;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
@@ -32,7 +33,6 @@ import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
-import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.QuickFix;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
@@ -42,7 +42,6 @@ import com.intellij.modcommand.ModCommandQuickFix;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
-import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -414,17 +413,7 @@ class MavenWrapperUrlInspectionTests {
 	}
 
 	private List<ProblemDescriptor> inspectWrapperFile(PsiFile file) {
-
-		MavenWrapperUrlInspection inspection = new MavenWrapperUrlInspection();
-
-		Project project = fixture.getProject();
-		return ReadAction.compute(() -> {
-			InspectionManager manager = InspectionManager.getInstance(project);
-			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
-			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
-			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
-			return holder.getResults();
-		});
+		return Inspections.inspect(fixture.getProject(), file, new MavenWrapperUrlInspection());
 	}
 
 	private void invoke(QuickFix fix, ProblemDescriptor problem) {

@@ -23,11 +23,11 @@ import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.fixtures.Inspections;
 import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
-import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.QuickFix;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.ActionContext;
@@ -35,8 +35,6 @@ import com.intellij.modcommand.ModCommandAction;
 import com.intellij.modcommand.ModCommandQuickFix;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
-import com.intellij.openapi.project.Project;
-import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -228,17 +226,7 @@ class GradleWrapperUrlInspectionTests {
 	}
 
 	private List<ProblemDescriptor> inspectionProblems() {
-
-		GradleWrapperUrlInspection inspection = new GradleWrapperUrlInspection();
-		Project project = fixture.getProject();
-		PsiFile file = fixture.getFile();
-		return ReadAction.compute(() -> {
-			InspectionManager manager = InspectionManager.getInstance(project);
-			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
-			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
-			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
-			return holder.getResults();
-		});
+		return Inspections.inspect(fixture.getProject(), fixture.getFile(), new GradleWrapperUrlInspection());
 	}
 
 	@SuppressWarnings("rawtypes")
