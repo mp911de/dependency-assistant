@@ -68,7 +68,6 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 			return cached;
 		}
 		cached = create(project, anchor);
-		anchor.putUserData(KEY, cached);
 
 		return cached;
 	}

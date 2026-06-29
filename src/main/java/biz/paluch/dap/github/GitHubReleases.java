@@ -17,7 +17,6 @@
 package biz.paluch.dap.github;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -36,9 +35,7 @@ import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
@@ -223,10 +220,11 @@ public class GitHubReleases implements ReleaseSource {
 			if (ex.getStatusCode() == 404) {
 				throw new ArtifactNotFoundException("Action repository not found", artifactId);
 			}
-			LOG.warn("Failed to fetch GitHub releases for %s: %s".formatted(artifactId, ex.getMessage()));
+			warnRecoverableFailure(artifactId, ex);
 			return Map.of();
 		} catch (IOException e) {
-			throw new UncheckedIOException("%s: Failed to fetch %s".formatted(artifactId, url), e);
+			warnRecoverableFailure(artifactId, e);
+			return Map.of();
 		}
 	}
 
@@ -252,11 +250,16 @@ public class GitHubReleases implements ReleaseSource {
 			if (ex.getStatusCode() == 404) {
 				throw new ArtifactNotFoundException("Action repository not found", artifactId);
 			}
-			LOG.warn("Failed to fetch GitHub releases for %s: %s".formatted(artifactId, ex.getMessage()));
+			warnRecoverableFailure(artifactId, ex);
 			return List.of();
 		} catch (IOException e) {
-			throw new UncheckedIOException("%s: Failed to fetch %s".formatted(artifactId, url), e);
+			warnRecoverableFailure(artifactId, e);
+			return List.of();
 		}
+	}
+
+	private static void warnRecoverableFailure(ArtifactId artifactId, Exception ex) {
+		LOG.warn("Failed to fetch GitHub releases for %s: %s".formatted(artifactId, ex.getMessage()));
 	}
 
 	interface GitHubApiClient {
@@ -277,12 +280,7 @@ public class GitHubReleases implements ReleaseSource {
 
 		@Override
 		public <T> T loadOne(ProgressIndicator indicator, GithubApiRequest<T> request) throws IOException {
-			return executor.execute(currentIndicator(), request);
-		}
-
-		private static ProgressIndicator currentIndicator() {
-			ProgressIndicator indicator = ProgressManager.getInstance().getProgressIndicator();
-			return indicator != null ? indicator : new EmptyProgressIndicator();
+			return executor.execute(indicator, request);
 		}
 
 	}
