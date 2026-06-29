@@ -37,7 +37,7 @@ import com.intellij.psi.PsiFile;
  */
 class AntoraFixtures {
 
-	ArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
+	GitArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
 
 	/**
 	 * Set up a cache pre-populated with Antora UI releases for the given project.

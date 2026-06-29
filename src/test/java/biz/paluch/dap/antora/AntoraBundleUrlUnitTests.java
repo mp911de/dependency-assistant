@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.antora;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.VersionSource;
 import org.junit.jupiter.api.Test;
@@ -106,6 +107,7 @@ class AntoraBundleUrlUnitTests {
 				.from("https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip");
 
 		assertThat(url).isNotNull();
+		assertThat(url.toArtifactId()).isEqualTo(ArtifactId.of("spring-io", "antora-ui-spring"));
 		assertThat(url.toArtifactId()).isEqualTo(GitArtifactId.of("github.com", "spring-io", "antora-ui-spring"));
 	}
 

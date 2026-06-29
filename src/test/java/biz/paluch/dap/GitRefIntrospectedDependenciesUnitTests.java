@@ -44,7 +44,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 
 	static final String SHA_V4 = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
 
-	static final ArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
+	static final GitArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
 
 	static final ArtifactId ANTORA_UI_CACHE_KEY = ArtifactId.of("spring-io", "antora-ui-spring");
 
