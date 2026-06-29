@@ -20,6 +20,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Versioned;
 
 import org.springframework.util.Assert;
 
@@ -85,7 +86,7 @@ public class Generation implements Predicate<String> {
 	 * @return an {@link ArtifactVersion} predicate backed by this generation.
 	 */
 	public Predicate<ArtifactVersion> asVersionPredicate() {
-		return version -> test(innermost(version).toString());
+		return version -> test(Versioned.of(version).unwrap().toString());
 	}
 
 	/**
@@ -118,17 +119,6 @@ public class Generation implements Predicate<String> {
 
 	private static String normalize(String value) {
 		return value.endsWith(".x") ? value.substring(0, value.length() - 2) : value;
-	}
-
-	/**
-	 * Unwrap the innermost version of a wrapper chain.
-	 */
-	static ArtifactVersion innermost(ArtifactVersion version) {
-		ArtifactVersion candidate = version;
-		while (candidate.isWrapped()) {
-			candidate = candidate.getVersion();
-		}
-		return candidate;
 	}
 
 }
