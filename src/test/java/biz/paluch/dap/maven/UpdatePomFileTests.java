@@ -163,6 +163,31 @@ class UpdatePomFileTests {
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.springframework</groupId>
+						<artifactId>spring-core</artifactId>
+						<version>${spring.version}</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void missingPropertyVersionDoesNotCreateProperties(PsiFile pom) {
+
+		applyUpdate(pom, "org.springframework", "spring-core", DeclarationSource.dependency(),
+				VersionSource.property("spring.version"), "6.2.0");
+
+		assertThat(pom).doesNotContainText("<properties");
+		assertThat(pom).containsText("<version>${spring.version}</version>");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<?xml version="1.0" encoding="UTF-8"?>
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
 				<build>
 					<plugins>
 						<plugin>

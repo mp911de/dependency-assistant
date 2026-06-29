@@ -136,8 +136,7 @@ class UpdatePomFile {
 	private void updateProperty(XmlTag parent, String propertyName, String newVersion) {
 		XmlTag properties = parent.findFirstSubTag("properties");
 		if (properties == null) {
-			properties = parent.createChildTag("properties", parent.getNamespace(), "", false);
-			parent.addSubTag(properties, false);
+			return;
 		}
 		XmlTag prop = properties.findFirstSubTag(propertyName);
 		if (prop != null) {
