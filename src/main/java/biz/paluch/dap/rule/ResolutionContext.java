@@ -56,28 +56,13 @@ public class ResolutionContext {
 	 * @param projectVersion the project version used for branch rule selection.
 	 * @return a resolution context using per-declaration plugin semantics.
 	 */
-	public static ResolutionContext of(ArtifactReference artifactReference, BranchSource branchSource,
+	public static ResolutionContext forReference(ArtifactReference artifactReference, BranchSource branchSource,
 			Versioned projectVersion) {
 
 		return new ResolutionContext(artifactReference.getArtifactId(),
 				artifactReference.getDeclaration().getDeclarationSource()
 						.isPlugin(),
 				branchSource, projectVersion);
-	}
-
-	/**
-	 * Create a resolution context for a bare artifact without plugin semantics.
-	 *
-	 * @param artifactId the artifact to resolve.
-	 * @param branchSource the source used for branch lookup.
-	 * @param projectVersion the project version used for branch rule selection.
-	 * @return a resolution context treating the artifact as a non-plugin
-	 * dependency.
-	 */
-	public static ResolutionContext of(ArtifactId artifactId, BranchSource branchSource,
-			Versioned projectVersion) {
-
-		return new ResolutionContext(artifactId, false, branchSource, projectVersion);
 	}
 
 	/**
@@ -88,9 +73,10 @@ public class ResolutionContext {
 	 * @param projectVersion the project version used for branch rule selection.
 	 * @return a resolution context using aggregate plugin-only semantics.
 	 */
-	public static ResolutionContext of(DeclaredDependency dependency, BranchSource branchSource,
+	public static ResolutionContext forAggregate(DeclaredDependency dependency, BranchSource branchSource,
 			Versioned projectVersion) {
-		return of(dependency.getArtifactId(), dependency.getDeclarationSources(), branchSource, projectVersion);
+		return forAggregate(dependency.getArtifactId(), dependency.getDeclarationSources(), branchSource,
+				projectVersion);
 	}
 
 	/**
@@ -103,8 +89,8 @@ public class ResolutionContext {
 	 * @param projectVersion the project version used for branch rule selection.
 	 * @return a resolution context using aggregate plugin-only semantics.
 	 */
-	public static ResolutionContext of(ArtifactId artifactId, Collection<DeclarationSource> declarationSources,
-			BranchSource branchSource, Versioned projectVersion) {
+	public static ResolutionContext forAggregate(ArtifactId artifactId,
+			Collection<DeclarationSource> declarationSources, BranchSource branchSource, Versioned projectVersion) {
 
 		return new ResolutionContext(artifactId, DeclarationSource.isPlugin(declarationSources), branchSource,
 				projectVersion);

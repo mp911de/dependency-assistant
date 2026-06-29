@@ -158,7 +158,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 		LocalFileSystem fileSystem = LocalFileSystem.getInstance();
 
 		for (Path candidate : candidatePaths(projectRoot, userHome, trusted)) {
-			VirtualFile file = fileSystem.refreshAndFindFileByNioFile(candidate);
+			VirtualFile file = fileSystem.findFileByNioFile(candidate);
 			if (file != null && file.isValid() && !file.isDirectory()) {
 				return file;
 			}

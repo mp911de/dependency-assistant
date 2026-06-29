@@ -186,7 +186,7 @@ public class DependencyRules implements Rules {
 			if (projectVersion != null && inferSemVer) {
 				return BranchRule.fallback(this.artifacts, upgradeStrategies(projectVersion));
 			}
-			return BranchRule.of("*", this.artifacts, Set.of());
+			return BranchRule.of(this.artifacts, Set.of());
 		}
 
 		if (!inferSemVer || branchRule.hasUpgradeStrategies() || projectVersion == null) {

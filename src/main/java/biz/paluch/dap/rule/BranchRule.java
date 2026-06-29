@@ -40,11 +40,9 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 
 	private final boolean fallback;
 
-	private final String pattern;
+	private final KnownPattern pattern;
 
 	private final int specificity;
-
-	private final Predicate<String> predicate;
 
 	private final Collection<ArtifactRule> artifacts;
 
@@ -52,16 +50,28 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 
 	private final Set<UpgradeStrategy> upgradeStrategies;
 
-	private BranchRule(boolean fallback, String pattern, Collection<ArtifactRule> artifacts,
+	private BranchRule(boolean fallback, KnownPattern pattern, Collection<ArtifactRule> artifacts,
 			Collection<ArtifactRule> defaultArtifacts, Set<UpgradeStrategy> upgradeStrategies) {
 
 		this.fallback = fallback;
 		this.pattern = pattern;
-		this.specificity = specificity(pattern);
-		this.predicate = ArtifactPattern.glob(pattern);
+		this.specificity = specificity(pattern.getPattern());
 		this.artifacts = artifacts;
 		this.defaultArtifacts = defaultArtifacts;
 		this.upgradeStrategies = upgradeStrategies;
+	}
+
+	/**
+	 * Create a branch rule.
+	 *
+	 * @param artifacts the artifact rules.
+	 * @param upgradeStrategies the supported upgrade strategies; empty for no
+	 * limits.
+	 * @return the branch rule.
+	 */
+	public static BranchRule of(Collection<ArtifactRule> artifacts,
+			Set<UpgradeStrategy> upgradeStrategies) {
+		return new BranchRule(false, KnownPattern.ANY, artifacts, List.of(), upgradeStrategies);
 	}
 
 	/**
@@ -75,7 +85,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 */
 	public static BranchRule of(String pattern, Collection<ArtifactRule> artifacts,
 			Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(false, pattern, artifacts, List.of(), upgradeStrategies);
+		return new BranchRule(false, KnownPattern.of(pattern), artifacts, List.of(), upgradeStrategies);
 	}
 
 	/**
@@ -90,7 +100,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * @return the fallback branch rule.
 	 */
 	public static BranchRule fallback(Collection<ArtifactRule> artifacts, Set<UpgradeStrategy> upgradeStrategies) {
-		return new BranchRule(true, "*", artifacts, List.of(), upgradeStrategies);
+		return new BranchRule(true, KnownPattern.ANY, artifacts, List.of(), upgradeStrategies);
 	}
 
 	/**
@@ -98,7 +108,6 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 	 * patterns, then the match-all pattern.
 	 */
 	private static int specificity(String pattern) {
-
 		if ("*".equals(pattern)) {
 			return 0;
 		}
@@ -207,7 +216,7 @@ public class BranchRule implements Predicate<String>, Comparable<BranchRule> {
 
 	@Override
 	public boolean test(String value) {
-		return this.predicate.test(value);
+		return this.pattern.test(value);
 	}
 
 	@Override

@@ -84,6 +84,8 @@ class ResolvedDependencyRule implements DependencyRule {
 
 		for (Generation generation : getGenerations().list()) {
 
+			// TODO: suggestRemediation builds its baseline by re-parsing a rendered
+			// generation string
 			ArtifactVersion baseline = ArtifactVersion.of(generation.value());
 			for (UpgradeStrategy strategy : UpgradeStrategy.values()) {
 				if (!isEnabled(strategy)) {

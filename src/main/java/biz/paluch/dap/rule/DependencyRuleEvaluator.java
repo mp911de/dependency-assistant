@@ -264,7 +264,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
 		List<String> names = new ArrayList<>();
 		for (UpgradeStrategy strategy : STRATEGIES) {
-			if (rule.isEnabled(strategy)) {
+			if (!strategy.isRemediation() && rule.isEnabled(strategy)) {
 				strategyCount++;
 				names.add(strategy.getDisplayName());
 			}

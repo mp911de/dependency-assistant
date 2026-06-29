@@ -17,7 +17,6 @@
 package biz.paluch.dap.rule;
 
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.openapi.util.Predicates;
@@ -47,16 +46,16 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 
 	private final int comparisonValue;
 
-	private ArtifactPattern(String value) {
+	private ArtifactPattern(KnownPattern pattern) {
 
-		this.value = value;
+		this.value = pattern.getPattern();
 		int separator = separatorIndex(value);
 		if (separator == -1) {
 			this.groupIdPredicate = Predicates.alwaysTrue();
-			this.artifactIdPredicate = glob(value);
+			this.artifactIdPredicate = pattern;
 		} else {
-			this.groupIdPredicate = glob(value.substring(0, separator));
-			this.artifactIdPredicate = glob(value.substring(separator + 1));
+			this.groupIdPredicate = KnownPattern.of(value.substring(0, separator));
+			this.artifactIdPredicate = KnownPattern.of(value.substring(separator + 1));
 		}
 		this.comparisonValue = determineComparisonValue(value, separator);
 	}
@@ -70,7 +69,7 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 	 * @return the artifact pattern.
 	 */
 	public static ArtifactPattern of(String value) {
-		return new ArtifactPattern(value);
+		return new ArtifactPattern(KnownPattern.of(value));
 	}
 
 	/**
@@ -135,14 +134,6 @@ public class ArtifactPattern implements Predicate<ArtifactId>, Comparable<Artifa
 			return 4;
 		}
 		return 1;
-	}
-
-	/**
-	 * Compile a {@code *} wildcard pattern into a whole-string match predicate.
-	 */
-	static Predicate<String> glob(String pattern) {
-		Pattern compiled = Pattern.compile(Pattern.quote(pattern).replace("*", "\\E.*\\Q"));
-		return compiled.asMatchPredicate();
 	}
 
 }
