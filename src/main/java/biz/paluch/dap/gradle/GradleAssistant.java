@@ -315,7 +315,7 @@ class GradleAssistant implements DependencyAssistant {
 				return DependencyAssistantIcons.TOML_NAVIGATE;
 			}
 
-			if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
+			if (declaration.getVersionSource().isProperty()) {
 				return DependencyAssistantIcons.PROPERTY_NAVIGATE;
 			}
 

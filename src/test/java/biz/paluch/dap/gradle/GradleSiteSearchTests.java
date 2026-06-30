@@ -215,6 +215,61 @@ class GradleSiteSearchTests {
 		assertThat(resolverFor(buildFile).search(query)).as("build.gradle accessor usage").isNotEmpty();
 	}
 
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[versions]
+			orphan = "1.0"
+			""")
+	void findsOrphanTomlVersionDefinitionWithoutReferencingLibrary(PsiFile toml) {
+
+		GradleFixtures.analyze(toml);
+
+		List<DependencySiteSearchHit> definitions = search(toml, DependencySiteQuery.ofProperty("orphan"),
+				SiteRole.DECLARATION);
+
+		assertThat(definitions).hasSize(1);
+		assertThat(definitions).first().satisfies(it -> {
+			assertThat(it.element()).containsText("\"1.0\"");
+			assertThat(it.label()).isEqualTo("1.0");
+		});
+	}
+
+	@Test
+	@ProjectFile(name = "gradle.properties", content = "springVersion=6.1.0\n")
+	void findsGradlePropertiesVersionDefinition(PsiFile gradleProperties) {
+
+		GradleFixtures.analyze(gradleProperties);
+
+		List<DependencySiteSearchHit> definitions = search(gradleProperties,
+				DependencySiteQuery.ofProperty("springVersion"), SiteRole.DECLARATION);
+
+		assertThat(definitions).hasSize(1);
+		assertThat(definitions).first().satisfies(it -> {
+			assertThat(it.element()).containsText("6.1.0");
+			assertThat(it.label()).isEqualTo("6.1.0");
+		});
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			ext {
+			    springVersion = '6.1.0'
+			}
+			""")
+	void findsExtVersionDefinitionConsumedInAnotherModule(PsiFile buildFile) {
+
+		GradleFixtures.analyze(buildFile);
+
+		List<DependencySiteSearchHit> definitions = search(buildFile,
+				DependencySiteQuery.ofProperty("springVersion"), SiteRole.DECLARATION);
+
+		assertThat(definitions).hasSize(1);
+		assertThat(definitions).first().satisfies(it -> {
+			assertThat(it.element()).containsText("6.1.0");
+			assertThat(it.label()).isEqualTo("6.1.0");
+		});
+	}
+
 	private List<DependencySiteSearchHit> search(PsiFile file, DependencySiteQuery query, SiteRole role) {
 		return resolverFor(file).search(query).stream().filter(finding -> finding.role() == role).toList();
 	}

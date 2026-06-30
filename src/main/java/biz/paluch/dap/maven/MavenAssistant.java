@@ -32,7 +32,6 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.StateService;
@@ -269,7 +268,7 @@ class MavenAssistant implements DependencyAssistant {
 		@Override
 		public Icon getNavigateIcon(ArtifactDeclaration declaration) {
 
-			if (declaration.getVersionSource() instanceof VersionSource.VersionProperty) {
+			if (declaration.getVersionSource().isProperty()) {
 				return DependencyAssistantIcons.PROPERTY_NAVIGATE;
 			}
 

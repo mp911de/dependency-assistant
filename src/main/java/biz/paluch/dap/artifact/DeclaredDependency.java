@@ -120,8 +120,8 @@ public class DeclaredDependency implements HasArtifactId {
 	 */
 	public VersionSource.@Nullable VersionProperty findPropertyVersion() {
 		for (VersionSource versionSource : versionSources) {
-			if (versionSource instanceof VersionSource.VersionProperty) {
-				return (VersionSource.VersionProperty) versionSource;
+			if (versionSource instanceof VersionSource.VersionProperty vp) {
+				return vp;
 			}
 		}
 		return null;

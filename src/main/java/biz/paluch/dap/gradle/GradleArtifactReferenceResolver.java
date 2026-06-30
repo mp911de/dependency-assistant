@@ -17,9 +17,11 @@
 package biz.paluch.dap.gradle;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
@@ -33,6 +35,7 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.Property;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -105,25 +108,119 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return DependencySearchResults.empty();
 		}
 
-		GradleArtifactReferenceVisitor visitor = new GradleArtifactReferenceVisitor(this);
-		file.accept(visitor);
-
-		List<DependencySiteSearchHit> findings = new ArrayList<>();
+		List<DependencySiteSearchHit> hits = siteHits(query);
+		List<DependencySiteSearchHit> deduplicated = new ArrayList<>(hits.size());
 		Set<PsiElement> seen = new HashSet<>();
-		for (GradleArtifactReferenceVisitor.Match match : visitor.getMatches()) {
+		for (DependencySiteSearchHit hit : hits) {
+			if (seen.add(hit.element())) {
+				deduplicated.add(hit);
+			}
+		}
 
-			ArtifactDeclaration declaration = match.reference().getDeclaration();
-			if (!matches(declaration, query) || !seen.add(declaration.getDeclarationElement())) {
+		return DependencySearchResults.of(deduplicated);
+	}
+
+	private List<DependencySiteSearchHit> siteHits(DependencySiteQuery query) {
+
+		if (GradleUtils.isVersionCatalog(file)) {
+			List<DependencySiteSearchHit> hits = new ArrayList<>(
+					propertyDefinitionHits(query.versionProperties(), TomlParser.parseTomlVersions(file)::get));
+			hits.addAll(declarationHits(TomlParser.parseVersionCatalog(file), query));
+			return hits;
+		}
+
+		if (GradleUtils.isGradlePropertiesFile(file)) {
+			return propertyDefinitionHits(query.versionProperties(),
+					GradlePropertiesParser.parseGradleProperties(file)::get);
+		}
+
+		if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file)) {
+			KotlinDslFileParser parser = new KotlinDslFileParser(file, propertyResolver, registry);
+			List<DependencySiteSearchHit> hits = new ArrayList<>(declarationHits(parser.parseDeclarations(), query));
+			hits.addAll(propertyDefinitionHits(localNames(query, parser.getExtraPropertyNames()),
+					parser::getPropertyValue));
+			return hits;
+		}
+
+		if (GradleUtils.isGroovyDsl(file)) {
+			GroovyDslFileParser parser = new GroovyDslFileParser(file, propertyResolver, registry);
+			List<DependencySiteSearchHit> hits = new ArrayList<>(declarationHits(parser.parseDeclarations(), query));
+			hits.addAll(propertyDefinitionHits(localNames(query, parser.getDeclaredPropertyNames()),
+					parser::getPropertyValue));
+			return hits;
+		}
+
+		return List.of();
+	}
+
+	/**
+	 * Reconstruct declaration and version-usage hits from forward-parsed
+	 * declarations.
+	 */
+	private static List<DependencySiteSearchHit> declarationHits(List<ArtifactDeclaration> declarations,
+			DependencySiteQuery query) {
+
+		List<DependencySiteSearchHit> hits = new ArrayList<>();
+		for (ArtifactDeclaration declaration : declarations) {
+			ProgressManager.checkCanceled();
+
+			if (!matches(declaration, query)) {
 				continue;
 			}
 
-			SiteRole role = roleOf(match.element(), declaration);
-			String label = labelOf(role, match.element(), declaration);
-			findings.add(role == SiteRole.DECLARATION ? DependencySiteSearchHit.declaration(match.element(), label)
-					: DependencySiteSearchHit.usage(match.element(), label));
+			PsiElement declarationElement = declaration.getDeclarationElement();
+			PsiElement versionLiteral = declaration.getVersionLiteral();
+			VersionSource versionSource = declaration.getVersionSource();
+
+			if (versionLiteral != null && declaration.isVersionDefinedInSameFile()) {
+				hits.add(DependencySiteSearchHit.declaration(versionLiteral,
+						labelOf(SiteRole.DECLARATION, versionLiteral, declaration)));
+
+				if (!PsiTreeUtil.isAncestor(declarationElement, versionLiteral, false)) {
+					hits.add(DependencySiteSearchHit.usage(declarationElement,
+							labelOf(SiteRole.VERSION_USAGE, declarationElement, declaration)));
+				}
+			} else if (versionSource.isProperty() || versionSource instanceof VersionSource.VersionCatalog) {
+				hits.add(DependencySiteSearchHit.usage(declarationElement,
+						labelOf(SiteRole.VERSION_USAGE, declarationElement, declaration)));
+			}
 		}
 
-		return DependencySearchResults.of(findings);
+		return hits;
+	}
+
+	/**
+	 * Report each named version property defined in this file as a
+	 * {@link SiteRole#DECLARATION} anchored on its value literal. Shared by the
+	 * TOML {@code [versions]}, {@code gradle.properties}, and
+	 * {@code ext}/{@code extra} definition sources.
+	 */
+	private static List<DependencySiteSearchHit> propertyDefinitionHits(Collection<String> names,
+			Function<String, biz.paluch.dap.support.@Nullable Property> lookup) {
+
+		List<DependencySiteSearchHit> hits = new ArrayList<>();
+		for (String name : names) {
+			ProgressManager.checkCanceled();
+
+			biz.paluch.dap.support.Property property = lookup.apply(name);
+			if (property != null) {
+				hits.add(DependencySiteSearchHit.declaration(property.getValueLiteral(), property.getValue()));
+			}
+		}
+
+		return hits;
+	}
+
+	/**
+	 * The queried version properties that are declared locally in this file, so an
+	 * {@code ext}/{@code extra} property consumed only in another module still
+	 * surfaces as a definition.
+	 */
+	private static Set<String> localNames(DependencySiteQuery query, Set<String> declaredNames) {
+
+		Set<String> names = new HashSet<>(query.versionProperties());
+		names.retainAll(declaredNames);
+		return names;
 	}
 
 	/**
@@ -137,20 +234,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property
-				&& query.versionProperties().contains(property.getProperty());
-	}
-
-	/**
-	 * A site is a definition when the resolving element is the version literal
-	 * itself; otherwise it references the version from elsewhere.
-	 */
-	private static SiteRole roleOf(PsiElement element, ArtifactDeclaration declaration) {
-
-		PsiElement versionLiteral = declaration.getVersionLiteral();
-		boolean definition = versionLiteral != null && (versionLiteral == element
-				|| PsiTreeUtil.isAncestor(versionLiteral, element, false)
-				|| PsiTreeUtil.isAncestor(element, versionLiteral, false));
-		return definition ? SiteRole.DECLARATION : SiteRole.VERSION_USAGE;
+				&& query.matches(property);
 	}
 
 	/**
@@ -160,7 +244,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private static String labelOf(SiteRole role, PsiElement element, ArtifactDeclaration declaration) {
 
 		if (role == SiteRole.DECLARATION) {
-			return declaration.getVersion() != null ? declaration.getVersion().toString() : element.getText();
+			return declaration.isVersionDefined() ? declaration.getVersion().toString() : element.getText();
 		}
 
 		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property ? property.getProperty()

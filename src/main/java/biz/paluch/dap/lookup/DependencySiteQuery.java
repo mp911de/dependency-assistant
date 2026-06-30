@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.VersionSource;
 
 import org.springframework.util.ObjectUtils;
 
@@ -125,6 +126,15 @@ public class DependencySiteQuery {
 		return versionProperties;
 	}
 
+	/**
+	 * Return whether the given property is a version property of interest.
+	 * @param property the property to check.
+	 * @return
+	 */
+	public boolean matches(VersionSource.VersionProperty property) {
+		return versionProperties().contains(property.getProperty());
+	}
+
 	@Override
 	public boolean equals(Object o) {
 
@@ -144,6 +154,7 @@ public class DependencySiteQuery {
 	public String toString() {
 		return "DependencySiteQuery{artifacts=" + artifacts + ", versionProperties=" + versionProperties + '}';
 	}
+
 
 	/**
 	 * Builder for {@link DependencySiteQuery} collecting artifacts and version

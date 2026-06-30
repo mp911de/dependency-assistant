@@ -139,7 +139,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = cache.getVulnerabilities(artifactId);
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
 				.getInterfaceAssistant(), metadata.currentVersion(), rule,
-				vulnerabilities::get);
+				key -> vulnerabilities.getOrDefault(key, Vulnerabilities.absent()));
 
 		for (ArtifactRelease release : releases) {
 			renderer.withVersion(release);

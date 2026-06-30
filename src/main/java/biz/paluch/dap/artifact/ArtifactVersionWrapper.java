@@ -110,6 +110,11 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 	}
 
 	@Override
+	public int hashCode() {
+		return delegate.hashCode();
+	}
+
+	@Override
 	public String toString() {
 		return delegate.toString();
 	}

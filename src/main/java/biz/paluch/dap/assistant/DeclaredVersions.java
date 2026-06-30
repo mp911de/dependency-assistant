@@ -138,7 +138,7 @@ record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries
 						versions.add(declaredVersion);
 						entries.add(new VersionDrift(declaredVersion, location));
 					});
-				} else if (versionSource instanceof VersionSource.VersionProperty) {
+				} else if (versionSource.isProperty()) {
 					declarationEntries.add(new DeclarationDrift(DeclarationStyle.PROPERTY, location));
 				}
 			}

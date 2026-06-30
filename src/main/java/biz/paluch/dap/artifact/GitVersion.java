@@ -149,16 +149,20 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof GitVersion that)) {
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj instanceof GitVersion that) {
+			return Objects.equals(sha, that.sha) && Objects.equals(version, that.version);
+		}
+		if (!(obj instanceof ArtifactVersion av)) {
 			return false;
 		}
-		return Objects.equals(sha, that.sha) && Objects.equals(version, that.version);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(sha, version);
+		if (av.isWrapped()) {
+			return equals(av.getVersion());
+		}
+		return false;
 	}
 
 }

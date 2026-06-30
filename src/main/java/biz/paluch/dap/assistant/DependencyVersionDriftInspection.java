@@ -86,7 +86,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 
 				VersionSource versionSource = declaration.getVersionSource();
 				boolean catalogProperty = versionSource instanceof VersionSource.VersionCatalog
-						&& versionSource instanceof VersionSource.VersionProperty;
+						&& versionSource.isProperty();
 
 				// A version-catalog [versions] entry is a shared version definition, not a
 				// declaration site. Skip the definition itself and report drift on the
@@ -153,7 +153,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 			if (versionSource instanceof VersionSource.DeclaredVersion) {
 				inline = true;
 			}
-			if (versionSource instanceof VersionSource.VersionProperty) {
+			if (versionSource.isProperty()) {
 				property = true;
 			}
 		}

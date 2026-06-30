@@ -183,11 +183,17 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (this == o) {
+	public boolean equals(Object obj) {
+		if (this == obj) {
 			return true;
 		}
-		if (!(o instanceof ReleaseTrainArtifactVersion other)) {
+		if (!(obj instanceof ArtifactVersion av)) {
+			return false;
+		}
+		if (av.isWrapped()) {
+			return equals(av.getVersion());
+		}
+		if (!(obj instanceof ReleaseTrainArtifactVersion other)) {
 			return false;
 		}
 		return trainName.equalsIgnoreCase(other.trainName) && suffix.compareTo(other.suffix) == 0;
