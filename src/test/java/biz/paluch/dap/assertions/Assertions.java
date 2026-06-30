@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assertions;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
@@ -44,6 +45,24 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
  * @author Mark Paluch
  */
 public class Assertions extends org.assertj.core.api.Assertions {
+
+	/**
+	 * Creates a new assertion for the parsed artifact version string.
+	 * @param version the version string under test.
+	 * @return the created assertion object.
+	 */
+	public static ArtifactVersionAssert assertThatVersion(String version) {
+		return assertThat(ArtifactVersion.of(version));
+	}
+
+	/**
+	 * Creates a new assertion for the given artifact version.
+	 * @param version the version under test.
+	 * @return the created assertion object.
+	 */
+	public static ArtifactVersionAssert assertThat(ArtifactVersion version) {
+		return new ArtifactVersionAssert(version);
+	}
 
 	/**
 	 * Creates a new assertion for the given IntelliJ fixture.

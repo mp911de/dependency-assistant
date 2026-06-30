@@ -18,7 +18,6 @@ package biz.paluch.dap.artifact;
 
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -34,6 +33,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Version suffix such as {@code SNAPSHOT}, {@code M1}, {@code RC1} or
  * {@code RELEASE}.
+ *
+ * @author Mark Paluch
  */
 interface Suffix extends Comparable<Suffix> {
 
@@ -57,25 +58,6 @@ interface Suffix extends Comparable<Suffix> {
 			"pre", "next", "preview", "experimental");
 
 	Set<String> RELEASE_CANDIDATE_TYPES = Set.of("rc", "cr");
-
-	Map<String, Integer> STABILITY_RANKS = mapOf(it -> {
-		it.put("", 0);
-		it.put("dev", 0);
-		it.put("nightly", 0);
-		it.put("canary", 0);
-		it.put("experimental", 0);
-		it.put("alpha", 1);
-		it.put("a", 1);
-		it.put("beta", 2);
-		it.put("b", 2);
-		it.put("pre", 3);
-		it.put("preview", 3);
-		it.put("m", 3);
-		it.put("next", 3);
-		it.put("rc", 4);
-		it.put("cr", 4);
-		it.put("sr", 5);
-	});
 
 	Map<String, Integer> TYPE_ORDER = mapOf(it -> {
 		it.put("", 0);
@@ -226,63 +208,12 @@ interface Suffix extends Comparable<Suffix> {
 		return false;
 	}
 
-	private static boolean isPreRelease(Suffix suffix) {
-		return suffix instanceof PreReleaseSuffix || suffix instanceof Generic;
+	@Override
+	default int compareTo(Suffix other) {
+		return getOrderKey().compareTo(other.getOrderKey());
 	}
 
-	private static boolean isServiceRelease(Suffix suffix) {
-		return suffix instanceof PreReleaseSuffix preRelease && preRelease.isServiceRelease();
-	}
-
-	private static int comparePreRelease(PreReleaseSuffix left, PreReleaseSuffix right) {
-
-		int rank = Integer.compare(stabilityRank(left.getCanonicalType()), stabilityRank(right.getCanonicalType()));
-		if (rank != 0) {
-			return rank;
-		}
-
-		int type = compareType(left.getCanonicalType(), right.getCanonicalType());
-		if (type != 0) {
-			return type;
-		}
-
-		return compareIdentifiers(left.identifiers(), right.identifiers());
-	}
-
-	private static int comparePreReleaseWith(PreReleaseSuffix suffix, Suffix other) {
-
-		if (other instanceof Snapshot) {
-			return suffix.isServiceRelease() ? 1 : -1;
-		}
-
-		if (other instanceof Release) {
-			return suffix.isServiceRelease() ? 1 : -1;
-		}
-
-		if (other instanceof PreReleaseSuffix otherSuffix) {
-			return comparePreRelease(suffix, otherSuffix);
-		}
-
-		return Generic.COMPARATOR.compare(suffix, other);
-	}
-
-	private static int stabilityRank(String type) {
-		return STABILITY_RANKS.getOrDefault(type, Integer.MAX_VALUE);
-	}
-
-	private static int compareType(String left, String right) {
-
-		int leftRank = typeOrder(left);
-		int rightRank = typeOrder(right);
-		if (leftRank != -1 || rightRank != -1) {
-			return Integer.compare(leftRank, rightRank);
-		}
-		return left.compareTo(right);
-	}
-
-	private static int typeOrder(String type) {
-		return TYPE_ORDER.getOrDefault(type, -1);
-	}
+	OrderKey getOrderKey();
 
 	private static int compareIdentifiers(List<Identifier> left, List<Identifier> right) {
 
@@ -294,6 +225,18 @@ interface Suffix extends Comparable<Suffix> {
 			}
 		}
 		return Integer.compare(left.size(), right.size());
+	}
+
+	private static String canonicalIdentifiers(List<Identifier> identifiers) {
+
+		StringBuilder builder = new StringBuilder();
+		for (Identifier identifier : identifiers) {
+			if (!builder.isEmpty()) {
+				builder.append('.');
+			}
+			builder.append(identifier.canonical());
+		}
+		return builder.toString();
 	}
 
 	private static boolean isNumeric(String value) {
@@ -310,27 +253,69 @@ interface Suffix extends Comparable<Suffix> {
 		return true;
 	}
 
-	private static String canonicalIdentifiers(List<Identifier> identifiers) {
+	class OrderKey implements Comparable<OrderKey> {
 
-		StringBuilder builder = new StringBuilder();
-		for (Identifier identifier : identifiers) {
-			if (builder.length() > 0) {
-				builder.append('.');
-			}
-			builder.append(identifier.canonical());
+		static final int SNAPSHOT_ORDER = 0;
+
+		static final int KNOWN_PRE_RELEASE_OFFSET = 1;
+
+		static final int GENERIC_ORDER = KNOWN_PRE_RELEASE_OFFSET + TYPE_ORDER.get("cr") + 1;
+
+		static final int RELEASE_ORDER = GENERIC_ORDER + 1;
+
+		static final int SERVICE_RELEASE_ORDER = RELEASE_ORDER + 1;
+
+		private final int order;
+
+		private final List<Identifier> identifiers;
+
+		private final @Nullable String genericText;
+
+		private OrderKey(int order, List<Identifier> identifiers, @Nullable String genericText) {
+			this.order = order;
+			this.identifiers = identifiers;
+			this.genericText = genericText;
 		}
-		return builder.toString();
+
+		public static OrderKey from(String type, List<Identifier> identifiers, String canonical) {
+
+			if (type.equalsIgnoreCase("sr")) {
+				return new OrderKey(OrderKey.SERVICE_RELEASE_ORDER, identifiers, null);
+			}
+
+			int typeOrder = OrderKey.typeOrder(type);
+			if (typeOrder == -1) {
+				return new OrderKey(OrderKey.GENERIC_ORDER, List.of(), canonical);
+			}
+
+			return new OrderKey(OrderKey.KNOWN_PRE_RELEASE_OFFSET + typeOrder, identifiers, null);
+		}
+
+		@Override
+		public int compareTo(OrderKey other) {
+
+			int comparison = Integer.compare(order, other.order);
+			if (comparison != 0) {
+				return comparison;
+			}
+
+			if (genericText != null && other.genericText != null) {
+				comparison = String.CASE_INSENSITIVE_ORDER.compare(genericText, other.genericText);
+				return comparison != 0 ? comparison : genericText.compareTo(other.genericText);
+			}
+
+			return compareIdentifiers(identifiers, other.identifiers);
+		}
+
+		private static int typeOrder(String type) {
+			return TYPE_ORDER.getOrDefault(type, -1);
+		}
+
 	}
 
 	interface PreReleaseSuffix extends Suffix {
 
 		String getCanonicalType();
-
-		List<Identifier> identifiers();
-
-		default boolean isServiceRelease() {
-			return getCanonicalType().equals("sr");
-		}
 
 		@Override
 		default boolean isMilestone() {
@@ -376,31 +361,30 @@ interface Suffix extends Comparable<Suffix> {
 
 	/**
 	 * Snapshot suffix such as {@code SNAPSHOT} or {@code BUILD-SNAPSHOT}.
-	 *
-	 * @param canonical the canonical suffix text.
 	 */
-	record Snapshot(String canonical) implements Suffix {
+	class Snapshot implements Suffix {
 
 		private static final Snapshot INSTANCE = new Snapshot("SNAPSHOT");
 
 		private static final Snapshot BUILD_SNAPSHOT = new Snapshot("BUILD-SNAPSHOT");
 
+		private final String canonical;
+
+		private final OrderKey orderKey;
+
+		private Snapshot(String canonical) {
+			this.canonical = canonical;
+			this.orderKey = new OrderKey(OrderKey.SNAPSHOT_ORDER, List.of(), null);
+		}
+
 		@Override
-		public int compareTo(Suffix other) {
+		public String canonical() {
+			return canonical;
+		}
 
-			if (other instanceof Snapshot) {
-				return 0;
-			}
-
-			if (other instanceof Release) {
-				return -1;
-			}
-
-			if (other instanceof PreReleaseSuffix preRelease && preRelease.isServiceRelease()) {
-				return -1;
-			}
-
-			return 1;
+		@Override
+		public OrderKey getOrderKey() {
+			return orderKey;
 		}
 
 		@Override
@@ -412,10 +396,8 @@ interface Suffix extends Comparable<Suffix> {
 
 	/**
 	 * Release suffix (or no suffix at all).
-	 *
-	 * @param canonical the canonical suffix text.
 	 */
-	record Release(String canonical) implements Suffix {
+	class Release implements Suffix {
 
 		/**
 		 * Shared empty release suffix.
@@ -427,18 +409,23 @@ interface Suffix extends Comparable<Suffix> {
 		 */
 		public static final Release RELEASE = new Release("RELEASE");
 
+		private final String canonical;
+
+		private final OrderKey orderKey;
+
+		private Release(String canonical) {
+			this.canonical = canonical;
+			this.orderKey = new OrderKey(OrderKey.RELEASE_ORDER, List.of(), null);
+		}
+
 		@Override
-		public int compareTo(Suffix other) {
+		public String canonical() {
+			return canonical;
+		}
 
-			if (isServiceRelease(other)) {
-				return -1;
-			}
-
-			if (isPreRelease(other) || other instanceof Snapshot) {
-				return 1;
-			}
-
-			return other instanceof Release ? 0 : -1;
+		@Override
+		public OrderKey getOrderKey() {
+			return orderKey;
 		}
 
 		@Override
@@ -449,32 +436,27 @@ interface Suffix extends Comparable<Suffix> {
 	}
 
 	/**
-	 * Generic suffix that doesn't fit into any of the other categories. Will be
-	 * sorted alphabetically by canonical value.
-	 *
-	 * @param canonical the canonical suffix text.
+	 * Generic suffix that doesn't fit into any of the other categories.
 	 */
-	record Generic(String canonical) implements Suffix {
+	class Generic implements Suffix {
 
-		private static final Comparator<Suffix> COMPARATOR = Comparator.comparing(Suffix::canonical,
-				String.CASE_INSENSITIVE_ORDER);
+		private final String canonical;
+
+		private final OrderKey orderKey;
+
+		private Generic(String canonical) {
+			this.canonical = canonical;
+			this.orderKey = new OrderKey(OrderKey.GENERIC_ORDER, List.of(), canonical);
+		}
 
 		@Override
-		public int compareTo(Suffix other) {
+		public String canonical() {
+			return canonical;
+		}
 
-			if (other instanceof Release) {
-				return -1;
-			}
-
-			if (other instanceof Snapshot) {
-				return -1;
-			}
-
-			if (other instanceof PreReleaseSuffix preRelease) {
-				return COMPARATOR.compare(this, preRelease);
-			}
-
-			return COMPARATOR.compare(this, other);
+		@Override
+		public OrderKey getOrderKey() {
+			return orderKey;
 		}
 
 		@Override
@@ -486,32 +468,45 @@ interface Suffix extends Comparable<Suffix> {
 
 	/**
 	 * Semantic versioning suffix such as {@code M1}, {@code RC1} or {@code SR1}.
-	 *
-	 * @param type the qualifier type.
-	 * @param counter the qualifier counter.
-	 * @param separator the qualifier separator.
-	 * @param raw the original counter value.
 	 */
-	record SemVerSuffix(String type, @Nullable BigInteger counter, @Nullable String separator, @Nullable String raw)
-			implements PreReleaseSuffix {
+	class SemVerSuffix implements PreReleaseSuffix {
 
+		private final String type;
+
+		private final @Nullable BigInteger counter;
+
+		private final @Nullable String separator;
+
+		private final @Nullable String raw;
+
+		private final OrderKey orderKey;
+
+		private SemVerSuffix(String type, @Nullable BigInteger counter, @Nullable String separator,
+				@Nullable String raw) {
+
+			this.type = type;
+			this.counter = counter;
+			this.separator = separator;
+			this.raw = raw;
+			List<Identifier> identifiers = counter == null ? List.of()
+					: List.of(new Identifier(raw != null ? raw : counter.toString()));
+			this.orderKey = OrderKey.from(getCanonicalType(), identifiers, canonical());
+		}
+
+		@Override
 		public String getCanonicalType() {
 			return type.toLowerCase(Locale.ROOT);
 		}
 
-		@Override
-		public List<Identifier> identifiers() {
-			return counter == null ? List.of() : List.of(new Identifier(raw != null ? raw : counter.toString()));
+		String type() {
+			return type;
 		}
 
 		@Override
-		public int compareTo(Suffix other) {
-			return comparePreReleaseWith(this, other);
+		public OrderKey getOrderKey() {
+			return orderKey;
 		}
 
-		/**
-		 * Normalized suffix without leading-zero padding.
-		 */
 		@Override
 		public String canonical() {
 
@@ -543,12 +538,23 @@ interface Suffix extends Comparable<Suffix> {
 	/**
 	 * Dot-separated semantic versioning suffix such as {@code alpha.0.3} or
 	 * {@code rc.1.2}.
-	 *
-	 * @param type the qualifier type.
-	 * @param identifiers the remaining qualifier identifiers.
-	 * @param raw the original suffix text.
 	 */
-	record MultiSegmentSuffix(String type, List<Identifier> identifiers, String raw) implements PreReleaseSuffix {
+	class MultiSegmentSuffix implements PreReleaseSuffix {
+
+		private final String type;
+
+		private final String canonical;
+
+		private final String raw;
+
+		private final OrderKey orderKey;
+
+		private MultiSegmentSuffix(String type, List<Identifier> identifiers, String raw) {
+			this.type = type;
+			this.raw = raw;
+			this.canonical = canonicalIdentifiers(identifiers);
+			this.orderKey = OrderKey.from(getCanonicalType(), identifiers, canonical());
+		}
 
 		static @Nullable MultiSegmentSuffix from(String suffix) {
 
@@ -568,13 +574,13 @@ interface Suffix extends Comparable<Suffix> {
 		}
 
 		@Override
-		public int compareTo(Suffix other) {
-			return comparePreReleaseWith(this, other);
+		public OrderKey getOrderKey() {
+			return orderKey;
 		}
 
 		@Override
 		public String canonical() {
-			return type + "." + canonicalIdentifiers(identifiers);
+			return type + "." + canonical;
 		}
 
 		@Override
@@ -586,11 +592,20 @@ interface Suffix extends Comparable<Suffix> {
 
 	/**
 	 * Numeric-only semantic versioning pre-release suffix.
-	 *
-	 * @param identifiers the numeric identifiers.
-	 * @param raw the original suffix text.
 	 */
-	record NumericPreReleaseSuffix(List<Identifier> identifiers, String raw) implements PreReleaseSuffix {
+	class NumericPreReleaseSuffix implements PreReleaseSuffix {
+
+		private final String canonical;
+
+		private final String raw;
+
+		private final OrderKey orderKey;
+
+		private NumericPreReleaseSuffix(List<Identifier> identifiers, String raw) {
+			this.canonical = Suffix.canonicalIdentifiers(identifiers);
+			this.raw = raw;
+			this.orderKey = OrderKey.from(getCanonicalType(), identifiers, canonical());
+		}
 
 		static NumericPreReleaseSuffix from(String suffix) {
 			return new NumericPreReleaseSuffix(Arrays.stream(suffix.split("\\.")).map(Identifier::new).toList(),
@@ -603,13 +618,13 @@ interface Suffix extends Comparable<Suffix> {
 		}
 
 		@Override
-		public int compareTo(Suffix other) {
-			return comparePreReleaseWith(this, other);
+		public OrderKey getOrderKey() {
+			return orderKey;
 		}
 
 		@Override
 		public String canonical() {
-			return canonicalIdentifiers(identifiers);
+			return canonical;
 		}
 
 		@Override
