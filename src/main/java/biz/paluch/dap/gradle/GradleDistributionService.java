@@ -17,7 +17,6 @@
 package biz.paluch.dap.gradle;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -26,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
@@ -38,6 +38,8 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.ObjectUtils;
 
 /**
  * {@link ReleaseSource} for Gradle distribution archives.
@@ -82,7 +84,12 @@ public class GradleDistributionService implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	public String getId() {
+		return "GradleDistributionService[%s]".formatted(VERSIONS_ALL.getHost());
+	}
+
+	@Override
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		if (!GRADLE_DISTRIBUTION.equals(artifactId)) {
 			return List.of();
@@ -97,9 +104,34 @@ public class GradleDistributionService implements ReleaseSource {
 				return List.of();
 			}
 			return parseReleases(body, indicator);
-		} catch (IOException e) {
-			throw new UncheckedIOException("Failed to fetch Gradle distribution versions", e);
+		} catch (HttpRequests.HttpStatusException e) {
+			if (e.getStatusCode() == 404) {
+				LOG.debug("[%s][%s] HTTP Status %d: %s".formatted(artifactId, getId(),
+						e.getStatusCode(), VERSIONS_ALL), e);
+				throw new ArtifactNotFoundException(e.getMessage(), artifactId);
+			}
+			LOG.warn("[%s][%s] HTTP Status %d: %s".formatted(artifactId, getId(),
+					e.getStatusCode(), VERSIONS_ALL), e);
+			throw e;
 		}
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof GradleDistributionService that)) {
+			return false;
+		}
+		return ObjectUtils.nullSafeEquals(fetcher, that.fetcher);
+	}
+
+	@Override
+	public int hashCode() {
+		return ObjectUtils.nullSafeHashCode(fetcher);
+	}
+
+	@Override
+	public String toString() {
+		return getId();
 	}
 
 	private static List<Release> parseReleases(String body, ProgressIndicator indicator) throws IOException {
@@ -162,13 +194,7 @@ public class GradleDistributionService implements ReleaseSource {
 	}
 
 	private static @Nullable String fetchUrl(URI uri) throws IOException {
-
-		try {
-			return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(ACCEPT_HEADER));
-		} catch (HttpRequests.HttpStatusException e) {
-			LOG.debug("HTTP %d fetching: %s".formatted(e.getStatusCode(), uri), e);
-			return null;
-		}
+		return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(ACCEPT_HEADER));
 	}
 
 	@FunctionalInterface

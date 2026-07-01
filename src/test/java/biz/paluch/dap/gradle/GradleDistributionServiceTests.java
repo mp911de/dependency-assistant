@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
+import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,7 +39,7 @@ import static org.assertj.core.api.Assertions.*;
 class GradleDistributionServiceTests {
 
 	@Test
-	void returnsStableReleasesWithReleaseDateAndSha() {
+	void returnsStableReleasesWithReleaseDateAndSha() throws IOException {
 
 		GradleDistributionService source = new GradleDistributionService(uri -> """
 				[
@@ -65,7 +66,7 @@ class GradleDistributionServiceTests {
 	}
 
 	@Test
-	void dropsSnapshotNightlyBrokenRcAndMilestoneEntries() {
+	void dropsSnapshotNightlyBrokenRcAndMilestoneEntries() throws IOException {
 
 		GradleDistributionService source = new GradleDistributionService(uri -> """
 				[
@@ -85,7 +86,7 @@ class GradleDistributionServiceTests {
 	}
 
 	@Test
-	void returnsEmptyForNonGradleDistributionArtifact() {
+	void returnsEmptyForNonGradleDistributionArtifact() throws IOException {
 
 		GradleDistributionService source = new GradleDistributionService(uri -> {
 			throw new AssertionError("Should not fetch versions for non-Gradle artifacts");
@@ -109,7 +110,7 @@ class GradleDistributionServiceTests {
 	}
 
 	@Test
-	void fetchesGradleVersionsAllEndpoint() {
+	void fetchesGradleVersionsAllEndpoint() throws IOException {
 
 		GradleDistributionService source = new GradleDistributionService(uri -> {
 			assertThat(uri).isEqualTo(URI.create("https://services.gradle.org/versions/all"));

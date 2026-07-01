@@ -74,7 +74,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 		protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
 				PsiElement element, ArtifactRelease option) {
 
-			YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(element);
+			YAMLScalar scalar = GitHubUtils.findUsesScalar(element);
 			UsesRepositoryAction action = GitHubArtifactReferenceResolver.findUsesRepository(element);
 			if (scalar == null || action == null || !(option.getVersion() instanceof GitVersion version)) {
 				return builder;
@@ -117,7 +117,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 
 		if (typeChar == '@') {
-			return GitHubArtifactReferenceResolver.findUsesScalar(position) != null;
+			return GitHubUtils.findUsesScalar(position) != null;
 		}
 
 		return ReleaseCompletionProvider.isVersionCharacter(typeChar) && isSupportedCompletionSite(position);
@@ -129,7 +129,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 	private static boolean isCaretInsideRef(CompletionParameters parameters) {
 
-		YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(parameters.getPosition());
+		YAMLScalar scalar = GitHubUtils.findUsesScalar(parameters.getPosition());
 		if (scalar == null) {
 			return false;
 		}
@@ -144,7 +144,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 	private static boolean isAfterRefSeparatorInUsesScalar(PsiElement element) {
 
-		YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(element);
+		YAMLScalar scalar = GitHubUtils.findUsesScalar(element);
 		if (scalar == null || !scalar.isValid()) {
 			return false;
 		}

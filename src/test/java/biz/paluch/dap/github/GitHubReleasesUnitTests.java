@@ -38,7 +38,7 @@ class GitHubReleasesUnitTests {
 	private static final ArtifactId ARTIFACT_ID = ArtifactId.of("actions", "checkout");
 
 	@Test
-	void degradesWhenTagFetchFailsWithIoException() {
+	void degradesWhenTagFetchFailsWithIoException() throws IOException {
 
 		GitHubReleases releases = new GitHubReleases(GithubServerPath.DEFAULT_SERVER,
 				new TestGitHubApiClient(true, false), 100);
@@ -47,12 +47,12 @@ class GitHubReleasesUnitTests {
 	}
 
 	@Test
-	void degradesWhenReleaseFetchFailsWithIoException() {
+	void degradesWhenReleaseFetchFailsWithIoException() throws IOException {
 
 		GitHubReleases releases = new GitHubReleases(GithubServerPath.DEFAULT_SERVER,
 				new TestGitHubApiClient(false, true), 100);
 
-		assertThat(releases.fetchAllReleases(ARTIFACT_ID, null)).isEmpty();
+		assertThat(releases.fetchAllReleases(ARTIFACT_ID, null)).hasSize(1);
 	}
 
 	private static class TestGitHubApiClient implements GitHubReleases.GitHubApiClient {
@@ -85,7 +85,9 @@ class GitHubReleasesUnitTests {
 			if (this.failTags) {
 				throw new IOException("connection refused");
 			}
-			return (T) new GithubResponsePage<>(List.of(), null, null, null, null);
+			return (T) new GithubResponsePage<>(
+					List.of(new GitHubReleases.GitHubTagDto("v1.2.3", new GitHubReleases.GitHubCommitRefDto("sha"))),
+					null, null, null, null);
 		}
 
 	}

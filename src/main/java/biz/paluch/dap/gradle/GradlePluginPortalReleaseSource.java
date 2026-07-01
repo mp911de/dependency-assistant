@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
+import java.io.IOException;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -52,7 +53,12 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	public String getId() {
+		return "GradlePluginPortalReleaseSource";
+	}
+
+	@Override
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		if (GradlePluginId.isPlugin(artifactId)) {
 			String pluginId = artifactId.groupId();
@@ -66,4 +72,8 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 		return GRADLE_PLUGIN_PORTAL.getReleases(artifactId, indicator);
 	}
 
+	@Override
+	public String toString() {
+		return getId();
+	}
 }

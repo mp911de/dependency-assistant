@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.npm;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
@@ -47,6 +48,16 @@ class NpmUtils {
 	static final String PACKAGE_JSON = "package.json";
 
 	private NpmUtils() {
+	}
+
+	/**
+	 * Render ArtifactId as string.
+	 */
+	static String toString(ArtifactId artifactId) {
+		if (artifactId.groupId().equals(artifactId.artifactId())) {
+			return artifactId.artifactId();
+		}
+		return artifactId.groupId() + "/" + artifactId.artifactId();
 	}
 
 	/**

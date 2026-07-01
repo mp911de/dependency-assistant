@@ -109,7 +109,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 	@Override
 	public boolean supports(PsiFile file) {
-		return AVAILABLE && GitHubUtils.isWorkflowFile(file);
+		return AVAILABLE && (GitHubUtils.isWorkflowFile(file) || file.getUserData(GitHubProjectContext.KEY) != null);
 	}
 
 	@Override
@@ -222,9 +222,12 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public boolean isVersionElement(PsiElement element) {
 
-			if (GitHubUtils.isWorkflowFile(element.getContainingFile())) {
+			PsiFile file = element.getContainingFile();
 
-				YAMLScalar usesScalar = GitHubArtifactReferenceResolver.findUsesScalar(PsiElements.unleaf(element));
+			if (GitHubUtils.isWorkflowFile(file)
+					|| file != null && file.getUserData(GitHubProjectContext.KEY) != null) {
+
+				YAMLScalar usesScalar = GitHubUtils.findUsesScalar(PsiElements.unleaf(element));
 				return usesScalar != null;
 			}
 

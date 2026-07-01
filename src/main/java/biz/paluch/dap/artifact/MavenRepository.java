@@ -91,24 +91,11 @@ public class MavenRepository implements ReleaseSource {
 
 	@Override
 	public String getId() {
-		return repository.id();
+		return "MavenRepository[%s@%s]".formatted(repository.id(), repository.uri().getHost());
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof MavenRepository that)) {
-			return false;
-		}
-		return Objects.equals(repository, that.repository);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hashCode(repository);
-	}
-
-	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		String path = artifactId.groupId().replace(".", "/") + "/" + artifactId.artifactId() + "/";
 		String metadataPath = path + "maven-metadata.xml";
@@ -177,6 +164,24 @@ public class MavenRepository implements ReleaseSource {
 		return result;
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof MavenRepository that)) {
+			return false;
+		}
+		return Objects.equals(repository, that.repository);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(repository);
+	}
+
+	@Override
+	public String toString() {
+		return getId();
+	}
+
 	private DirectoryResponse fetchDirectoryListing(ArtifactId artifactId, URI uri,
 			@Nullable RepositoryCredentials credentials, URI repositoryBaseUri) {
 
@@ -201,8 +206,9 @@ public class MavenRepository implements ReleaseSource {
 		}
 	}
 
-	private static @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
-			@Nullable RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri) {
+	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri,
+			@Nullable RepositoryCredentials credentials, boolean failOnNotFound, URI repositoryBaseUri)
+			throws IOException {
 
 		try {
 			return HttpClientUtil.fetchUrl(uri, requestBuilder -> {
@@ -216,12 +222,13 @@ public class MavenRepository implements ReleaseSource {
 			});
 		} catch (HttpRequests.HttpStatusException e) {
 			if (failOnNotFound && e.getStatusCode() == 404) {
+				LOG.debug("[%s][%s] HTTP Status %d: %s".formatted(artifactId, getId(),
+						e.getStatusCode(), uri), e);
 				throw new ArtifactNotFoundException("%s: HTTP Status 404".formatted(uri), artifactId);
 			}
-			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, e.getStatusCode(), uri), e);
+			LOG.warn("[%s][%s] HTTP Status %d: %s".formatted(artifactId, getId(),
+					e.getStatusCode(), uri), e);
 			return null;
-		} catch (IOException e) {
-			throw new UncheckedIOException("%s: Failed to fetch %s: %s".formatted(artifactId, uri, e.getMessage()), e);
 		}
 	}
 
@@ -242,11 +249,6 @@ public class MavenRepository implements ReleaseSource {
 
 		String raw = credentials.username() + ":" + credentials.password();
 		return "Basic " + Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
-	}
-
-	@Override
-	public String toString() {
-		return "MavenRepository " + repository.id() + " [" + repository.url() + "]";
 	}
 
 	record DirectoryResponse(@Nullable String body, @Nullable String dateHeader) {

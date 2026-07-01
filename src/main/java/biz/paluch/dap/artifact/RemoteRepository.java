@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.artifact;
 
+import java.net.URI;
+
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -26,18 +28,31 @@ import org.springframework.util.ObjectUtils;
  *
  * @author Mark Paluch
  */
-public record RemoteRepository(String id, String url, @Nullable RepositoryCredentials credentials) {
+public final class RemoteRepository {
 
 	static final RemoteRepository MAVEN_CENTRAL = new RemoteRepository("central", "https://repo1.maven.org/maven2/",
 			null);
 
-	public RemoteRepository {
+	private final String id;
+
+	private final String url;
+
+	private final URI uri;
+
+	private final @Nullable RepositoryCredentials credentials;
+
+
+	public RemoteRepository(String id, String url, @Nullable RepositoryCredentials credentials) {
 		Assert.hasText(id, "Id must not be null or empty!");
 		Assert.hasText(url, "URL must not be null or empty!");
 
 		if (!url.endsWith("/")) {
 			url = url + "/";
 		}
+		this.id = id;
+		this.url = url;
+		this.uri = URI.create(url);
+		this.credentials = credentials;
 	}
 
 	@Override
@@ -49,6 +64,22 @@ public record RemoteRepository(String id, String url, @Nullable RepositoryCreden
 			return false;
 		}
 		return ObjectUtils.nullSafeEquals(credentials, that.credentials);
+	}
+
+	public String id() {
+		return id;
+	}
+
+	public String url() {
+		return url;
+	}
+
+	public URI uri() {
+		return uri;
+	}
+
+	public @Nullable RepositoryCredentials credentials() {
+		return credentials;
 	}
 
 	@Override
@@ -67,4 +98,5 @@ public record RemoteRepository(String id, String url, @Nullable RepositoryCreden
 	public String toString() {
 		return "Repository " + id + " [" + url + "]";
 	}
+
 }

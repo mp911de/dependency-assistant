@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
@@ -100,24 +101,6 @@ public class GitHubReleases implements ReleaseSource {
 		this.pageSize = pageSize;
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof GitHubReleases that)) {
-			return false;
-		}
-		return Objects.equals(server, that.server);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hashCode(server);
-	}
-
-	@Override
-	public String getId() {
-		return "github:" + server.getHost();
-	}
-
 	/**
 	 * Create a release source for the given project.
 	 */
@@ -141,8 +124,18 @@ public class GitHubReleases implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	public String getId() {
+		return "GitHub[%s]".formatted(server.getHost());
+	}
+
+	@Override
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 		return fetchAllReleases(artifactId, indicator);
+	}
+
+	@Override
+	public String toString(ArtifactId artifactId) {
+		return GitHubUtils.toString(artifactId);
 	}
 
 	/**
@@ -154,10 +147,15 @@ public class GitHubReleases implements ReleaseSource {
 	 * complete for a recoverable error.
 	 * @throws ArtifactNotFoundException if the repository does not exist.
 	 */
-	public List<Release> fetchAllReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	public List<Release> fetchAllReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+		List<IOException> exceptions = new ArrayList<>();
+		Map<String, String> shaByTag = fetchTagShas(artifactId, indicator, exceptions::add);
+		List<GitHubReleaseDto> releases = fetchReleases(artifactId, indicator, exceptions::add);
 
-		Map<String, String> shaByTag = fetchTagShas(artifactId, indicator);
-		List<GitHubReleaseDto> releases = fetchReleases(artifactId, indicator);
+		if (shaByTag.isEmpty() && releases.isEmpty() && !exceptions.isEmpty()) {
+			throw exceptions.getFirst();
+		}
+
 		return createReleases(releases, shaByTag);
 	}
 
@@ -194,7 +192,8 @@ public class GitHubReleases implements ReleaseSource {
 		return result;
 	}
 
-	private Map<String, String> fetchTagShas(ArtifactId artifactId, ProgressIndicator indicator) {
+	private Map<String, String> fetchTagShas(ArtifactId artifactId, ProgressIndicator indicator,
+			Consumer<IOException> exceptionConsumer) {
 
 		String url = "/repos/%s/%s/tags?per_page=%d".formatted(artifactId.groupId(), artifactId.artifactId(), pageSize);
 		GithubApiRequest<GithubResponsePage<GitHubTagDto>> request = new GithubApiRequest.Get.JsonPage<>(
@@ -217,18 +216,19 @@ public class GitHubReleases implements ReleaseSource {
 			}
 			return shaByTag;
 		} catch (GithubStatusCodeException ex) {
-			if (ex.getStatusCode() == 404) {
-				throw new ArtifactNotFoundException("Action repository not found", artifactId);
-			}
-			warnRecoverableFailure(artifactId, ex);
+			handleException(ex, artifactId, request.getUrl());
 			return Map.of();
-		} catch (IOException e) {
-			warnRecoverableFailure(artifactId, e);
+		} catch (IOException ex) {
+			LOG.warn("[%s][%s] HTTP fetching of %s failed: %s".formatted(toString(artifactId),
+					getId(), url, ex.getMessage()), ex);
+			exceptionConsumer.accept(ex);
 			return Map.of();
 		}
 	}
 
-	private List<GitHubReleaseDto> fetchReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	private List<GitHubReleaseDto> fetchReleases(ArtifactId artifactId, ProgressIndicator indicator,
+			Consumer<IOException> exceptionConsumer)
+			throws IOException {
 
 		String apiBase = server.toApiUrl();
 		String url = "/repos/%s/%s/releases?per_page=%s".formatted(artifactId.groupId(), artifactId.artifactId(),
@@ -247,19 +247,37 @@ public class GitHubReleases implements ReleaseSource {
 		try {
 			return client.loadAll(indicator, pages);
 		} catch (GithubStatusCodeException ex) {
-			if (ex.getStatusCode() == 404) {
-				throw new ArtifactNotFoundException("Action repository not found", artifactId);
-			}
-			warnRecoverableFailure(artifactId, ex);
+			handleException(ex, artifactId, initial.getUrl());
 			return List.of();
-		} catch (IOException e) {
-			warnRecoverableFailure(artifactId, e);
+		} catch (IOException ex) {
+			LOG.warn("[%s][%s] HTTP fetching of %s failed: %s".formatted(toString(artifactId),
+					getId(), url, ex.getMessage()), ex);
+			exceptionConsumer.accept(ex);
 			return List.of();
 		}
 	}
 
-	private static void warnRecoverableFailure(ArtifactId artifactId, Exception ex) {
-		LOG.warn("Failed to fetch GitHub releases for %s: %s".formatted(artifactId, ex.getMessage()));
+	private void handleException(GithubStatusCodeException ex, ArtifactId artifactId, String url) {
+		if (ex.getStatusCode() == 404) {
+			LOG.debug("[%s][%s] HTTP Status %d: %s %s".formatted(toString(artifactId), getId(),
+					ex.getStatusCode(), url, ex.getError()), ex);
+			throw new ArtifactNotFoundException("Action repository not found", artifactId);
+		}
+		LOG.warn("[%s][%s] HTTP Status %d: %s %s".formatted(toString(artifactId), getId(),
+				ex.getStatusCode(), url, ex.getError()), ex);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof GitHubReleases that)) {
+			return false;
+		}
+		return Objects.equals(server, that.server);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hashCode(server);
 	}
 
 	interface GitHubApiClient {

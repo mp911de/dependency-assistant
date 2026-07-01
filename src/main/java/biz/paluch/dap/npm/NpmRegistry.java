@@ -17,7 +17,6 @@
 package biz.paluch.dap.npm;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -26,7 +25,6 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
@@ -36,11 +34,12 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.util.HttpClientUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.util.LRUMap;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.ObjectUtils;
 
 /**
  * {@link ReleaseSource} that fetches release metadata from the public NPM
@@ -62,24 +61,24 @@ public class NpmRegistry implements ReleaseSource {
 
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 
-	// TODO: rely on cache, also, attempt json streaming for partial responses.
-	private static final LRUMap<ArtifactId, @Nullable AtomicInteger> KNOWN_FAILURES = new LRUMap<>(256, 256);
-
 	private final String registryBaseUrl;
+
+	private final URI uri;
 
 	NpmRegistry(String registryBaseUrl) {
 		this.registryBaseUrl = registryBaseUrl.endsWith("/") ? registryBaseUrl : registryBaseUrl + "/";
+		this.uri = URI.create(registryBaseUrl);
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	public String getId() {
+		return "NpmRegistry[%s]".formatted(uri.getHost());
+	}
+
+	@Override
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		if (artifactId instanceof GitArtifactId && NpmUtils.GITHUB_AVAILABLE) {
-			return List.of();
-		}
-
-		AtomicInteger counter = KNOWN_FAILURES.get(artifactId);
-		if (counter != null && counter.get() > 1) {
 			return List.of();
 		}
 
@@ -87,31 +86,16 @@ public class NpmRegistry implements ReleaseSource {
 		URI uri = URI.create(registryBaseUrl + encodePackageName(packageName));
 		indicator.checkCanceled();
 
-		try {
 			String body = fetchUrl(artifactId, uri);
 			if (body == null || body.isEmpty()) {
 				return List.of();
 			}
-
 			return parseReleases(body);
-		} catch (IOException e) {
-			if (counter == null) {
-				counter = new AtomicInteger(0);
-			}
-			counter.incrementAndGet();
-			KNOWN_FAILURES.putIfAbsent(artifactId, counter);
-			throw new UncheckedIOException(e);
-		}
 	}
 
-	private static String toPackageName(ArtifactId artifactId) {
-
-		String groupId = artifactId.groupId();
-		String name = artifactId.artifactId();
-		if (groupId.equals(name)) {
-			return name;
-		}
-		return groupId + "/" + name;
+	@Override
+	public String toString(ArtifactId artifactId) {
+		return NpmUtils.toString(artifactId);
 	}
 
 	/**
@@ -132,6 +116,21 @@ public class NpmRegistry implements ReleaseSource {
 			}
 		}
 		return URLEncoder.encode(packageName, StandardCharsets.UTF_8);
+	}
+
+	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri) throws IOException {
+		try {
+			return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(ACCEPT_HEADER));
+		} catch (HttpRequests.HttpStatusException e) {
+			if (e.getStatusCode() == 404) {
+				LOG.debug("[%s][%s] HTTP Status %d: %s".formatted(toString(artifactId), getId(),
+						e.getStatusCode(), uri), e);
+				throw new ArtifactNotFoundException(e.getMessage(), artifactId);
+			}
+			LOG.warn("[%s][%s] HTTP Status %d: %s".formatted(toString(artifactId), getId(), e.getStatusCode(),
+					uri), e);
+			return null;
+		}
 	}
 
 	protected List<Release> parseReleases(String body) throws IOException {
@@ -157,6 +156,38 @@ public class NpmRegistry implements ReleaseSource {
 		return result;
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (!(o instanceof NpmRegistry that)) {
+			return false;
+		}
+		if (!ObjectUtils.nullSafeEquals(registryBaseUrl, that.registryBaseUrl)) {
+			return false;
+		}
+		return ObjectUtils.nullSafeEquals(uri, that.uri);
+	}
+
+	@Override
+	public int hashCode() {
+		return ObjectUtils.nullSafeHash(
+				registryBaseUrl, uri);
+	}
+
+	@Override
+	public String toString() {
+		return getId();
+	}
+
+	private static String toPackageName(ArtifactId artifactId) {
+
+		String groupId = artifactId.groupId();
+		String name = artifactId.artifactId();
+		if (groupId.equals(name)) {
+			return name;
+		}
+		return groupId + "/" + name;
+	}
+
 	private static @Nullable LocalDateTime parseReleaseDate(@Nullable String publishedAt) {
 
 		if (publishedAt == null || publishedAt.isEmpty()) {
@@ -168,19 +199,5 @@ public class NpmRegistry implements ReleaseSource {
 			return null;
 		}
 	}
-
-	private @Nullable String fetchUrl(ArtifactId artifactId, URI uri) throws IOException {
-
-		try {
-			return HttpClientUtil.fetchUrl(uri, requestBuilder -> requestBuilder.accept(ACCEPT_HEADER));
-		} catch (HttpRequests.HttpStatusException e) {
-			if (e.getStatusCode() == 404) {
-				throw new ArtifactNotFoundException(e.getMessage(), artifactId);
-			}
-			LOG.debug("%s: HTTP %d fetching: %s".formatted(artifactId, e.getStatusCode(), uri), e);
-			return null;
-		}
-	}
-
 
 }

@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.github;
 
-import java.util.function.Predicate;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -25,7 +23,6 @@ import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.impl.source.tree.LeafPsiElement;
@@ -52,8 +49,6 @@ import org.jspecify.annotations.Nullable;
  */
 class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private static final Predicate<YAMLKeyValue> IS_USES_KEY = kv -> "uses".equals(kv.getKeyText());
-
 	private final LookupContext context;
 
 	private final GitHubProjectContext buildContext;
@@ -75,7 +70,7 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		YAMLScalar scalar = findUsesScalar(element);
+		YAMLScalar scalar = GitHubUtils.findUsesScalar(element);
 		if (buildContext.isAbsent() || scalar == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -101,18 +96,8 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 		});
 	}
 
-	/**
-	 * Return the {@link YAMLScalar} that is the value of a {@code uses:} key.
-	 * @param element the element at the cursor position.
-	 * @return the scalar, or {@literal null} if it is not the value of such a key.
-	 */
-	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
-		YamlVersionSite site = YamlVersionSite.locate(element, IS_USES_KEY);
-		return site != null ? site.scalar() : null;
-	}
-
 	public static @Nullable UsesRepositoryAction findUsesRepository(PsiElement element) {
-		YAMLScalar scalar = findUsesScalar(element);
+		YAMLScalar scalar = GitHubUtils.findUsesScalar(element);
 		if (scalar != null) {
 			return GitHubWorkflowParser.parseUses(scalar.getTextValue());
 		}

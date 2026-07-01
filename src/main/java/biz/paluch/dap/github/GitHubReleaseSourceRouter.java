@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.github;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,6 +88,11 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 		this.strict = strict;
 	}
 
+	@Override
+	public String getId() {
+		return "GitHubReleaseSourceRouter[" + releaseSources + "]";
+	}
+
 	/**
 	 * Resolve releases for the repository represented by the given artifact.
 	 * <p>
@@ -100,7 +106,7 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	 * @return releases obtained from the selected GitHub release source.
 	 */
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		ReleaseSource releaseSource;
 		ArtifactId id = artifactId;
@@ -138,5 +144,10 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	@Override
 	public int hashCode() {
 		return ObjectUtils.nullSafeHash(project, strict, releaseSources);
+	}
+
+	@Override
+	public String toString() {
+		return getId();
 	}
 }

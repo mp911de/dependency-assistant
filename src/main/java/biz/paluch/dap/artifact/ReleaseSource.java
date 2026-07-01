@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.artifact;
 
+import java.io.IOException;
 import java.util.List;
 
 import biz.paluch.dap.gradle.GradlePluginPortalReleaseSource;
@@ -56,7 +57,16 @@ public interface ReleaseSource {
 	 * @return the releases known to this source.
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
 	 */
-	List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator);
+	List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException;
+
+	/**
+	 * Render the artifact coordinates as a human-readable string.
+	 * @param artifactId the artifact coordinates.
+	 * @return
+	 */
+	default String toString(ArtifactId artifactId) {
+		return artifactId.toString();
+	}
 
 	/**
 	 * Return the built-in {@link ReleaseSource} backed by Maven Central.

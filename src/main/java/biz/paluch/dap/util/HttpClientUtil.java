@@ -28,6 +28,7 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.io.HttpRequests;
 import com.intellij.util.io.RequestBuilder;
 import org.jspecify.annotations.Nullable;
@@ -130,7 +131,8 @@ public class HttpClientUtil {
 			while ((read = in.read(buf)) >= 0) {
 				total += read;
 				if (total > MAX_RESPONSE_BODY_BYTES) {
-					throw new IOException("Response body exceeds %d bytes".formatted(MAX_RESPONSE_BODY_BYTES));
+					throw new IOException("Response body exceeds %s bytes"
+							.formatted(StringUtil.formatFileSize(MAX_RESPONSE_BODY_BYTES)));
 				}
 				out.write(buf, 0, read);
 			}

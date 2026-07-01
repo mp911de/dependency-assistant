@@ -16,11 +16,16 @@
 
 package biz.paluch.dap.github;
 
+import java.util.function.Predicate;
+
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
@@ -34,6 +39,18 @@ class GitHubUtils {
 
 	private static final String WORKFLOWS_PATH_FRAGMENT = ".github/workflows/";
 
+	private static final Predicate<YAMLKeyValue> IS_USES_KEY = kv -> "uses".equals(kv.getKeyText());
+
+	/**
+	 * Render ArtifactId as string.
+	 */
+	static String toString(ArtifactId artifactId) {
+		if (artifactId instanceof GitHubAction action) {
+			return action.toString();
+		}
+		return artifactId.groupId() + "/" + artifactId.artifactId();
+	}
+
 	/**
 	 * Return whether the given file is supported by the GitHub Actions integration.
 	 * <p>A supported file must be a YAML file and either live under
@@ -43,13 +60,8 @@ class GitHubUtils {
 	 * @return {@literal true} if this file is supported.
 	 */
 	static boolean isWorkflowFile(@Nullable PsiFile file) {
-
 		if (file == null) {
 			return false;
-		}
-
-		if (file.getUserData(GitHubProjectContext.KEY) != null) {
-			return true;
 		}
 		return file.getVirtualFile() != null && isWorkflowFile(file.getVirtualFile());
 	}
@@ -63,15 +75,12 @@ class GitHubUtils {
 	 * @return {@literal true} if this file is supported.
 	 */
 	static boolean isWorkflowFile(VirtualFile file) {
-
 		if (!isYamlFile(file)) {
 			return false;
 		}
-
 		if (file.getNameWithoutExtension().equals("action")) {
 			return true;
 		}
-
 		return file.getPath().contains(WORKFLOWS_PATH_FRAGMENT);
 	}
 
@@ -96,7 +105,7 @@ class GitHubUtils {
 	 */
 	public static TextRange getVersionRange(PsiElement element) {
 
-		YAMLScalar scalar = GitHubArtifactReferenceResolver.findUsesScalar(element);
+		YAMLScalar scalar = findUsesScalar(element);
 		if (scalar == null) {
 			return element.getTextRange();
 		}
@@ -120,4 +129,13 @@ class GitHubUtils {
 		return new TextRange(refStart, refEnd);
 	}
 
+	/**
+	 * Return the {@link YAMLScalar} that is the value of a {@code uses:} key.
+	 * @param element the element at the cursor position.
+	 * @return the scalar, or {@literal null} if it is not the value of such a key.
+	 */
+	public static @Nullable YAMLScalar findUsesScalar(PsiElement element) {
+		YamlVersionSite site = YamlVersionSite.locate(element, IS_USES_KEY);
+		return site != null ? site.scalar() : null;
+	}
 }
