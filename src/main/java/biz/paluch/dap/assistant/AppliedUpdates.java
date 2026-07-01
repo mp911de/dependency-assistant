@@ -28,12 +28,13 @@ import com.intellij.openapi.vfs.VirtualFile;
 
 /**
  * Accumulator for the updates a bulk apply wrote, retaining enough
- * per-occurrence detail to summarize them and to reverse-apply only the
- * out-of-bounds entries.
+ * per-occurrence detail to summarize them and to reverse-apply only the flagged
+ * entries.
  *
- * <p>The out-of-bounds entries keep their originating {@link DependencyUpdate}
- * and target file so {@link #undoOutOfBounds(Project)} can rewrite each back to
- * its {@code from} version through the same per-file build-file update path.
+ * <p>The flagged entries keep their originating {@link DependencyUpdate} and
+ * target file so the undo action ({@link #getReverse()} applied to
+ * {@link #getReverseFiles()}) can rewrite each back to its {@code from} version
+ * through the same per-file build-file update path.
  *
  * @author Mark Paluch
  * @see AppliedDependencyUpdate
@@ -57,7 +58,7 @@ class AppliedUpdates {
 
 		AppliedDependencyUpdate summary = AppliedDependencyUpdate.from(update, rule);
 		applied.add(summary);
-		if (summary.outOfBounds()) {
+		if (summary.isFlagged()) {
 			outOfBounds.add(new Reversible(file, update));
 		}
 	}

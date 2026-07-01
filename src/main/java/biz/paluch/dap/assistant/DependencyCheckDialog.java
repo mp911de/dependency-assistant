@@ -19,25 +19,23 @@ package biz.paluch.dap.assistant;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
@@ -63,12 +61,11 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.EditorSchemes;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
+import com.intellij.CommonBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.DataManager;
-import com.intellij.ide.IdeEventQueue;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionManager;
@@ -79,7 +76,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.ex.ActionButtonLook;
-import com.intellij.openapi.actionSystem.impl.ActionButton;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
@@ -89,10 +85,13 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiFile;
 import com.intellij.ui.*;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.render.RenderingUtil;
 import com.intellij.ui.table.TableView;
 import com.intellij.util.ui.ColumnInfo;
 import com.intellij.util.ui.JBUI;
@@ -106,7 +105,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class DependencyCheckDialog extends DialogWrapper {
+class DependencyCheckDialog extends DialogWrapper {
 
 	private static final int DEPENDENCY_COLUMN_INDEX = 0;
 
@@ -133,15 +132,43 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private volatile @Nullable ProgressIndicator updateProgress;
 
-	public DependencyCheckDialog(Project project, DependencyUpgradeCandidates result, String title) {
+	DependencyCheckDialog(Project project, DependencyUpgradeCandidates result, String title) {
 		super(project, false, IdeModalityType.MODELESS);
 		this.project = project;
 		this.files = result.files();
 		this.review = new UpgradeReview(result.candidates().toList(), result.errors());
-		this.components = new DependencyCheckComponents(this.review, getDisposable(), this::doCancelAction,
-				this::navigateToSites, this::showContextMenu);
+		this.components = new DependencyCheckComponents(this.review, getDisposable(), this::navigateToSites,
+				this::showContextMenu);
 		setTitle(title);
 		init();
+		review.addListener(change -> updateOkButtonText(), getDisposable());
+		updateOkButtonText();
+	}
+
+	/**
+	 * Reflect the number of dependencies selected for update in the OK button so
+	 * the scale of the apply is visible before confirming. When every shown row is
+	 * selected the count collapses to "All"; with an active filter hiding rows,
+	 * "All Shown" avoids overstating what gets applied.
+	 */
+	private void updateOkButtonText() {
+
+		List<UpgradeCandidate> visible = review.getCandidates();
+		long selected = visible.stream().filter(review::isApplyUpdate).count();
+
+		if (selected == 0) {
+			setOKButtonText(CommonBundle.getOkButtonText());
+			return;
+		}
+
+		if (selected == visible.size()) {
+			setOKButtonText(MessageBundle.message(visible.size() == review.getTotalCandidateCount()
+					? "dialog.ok.update.all"
+					: "dialog.ok.update.all-shown"));
+			return;
+		}
+
+		setOKButtonText(MessageBundle.message("dialog.ok.update", selected));
 	}
 
 	/**
@@ -209,7 +236,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 */
 	static class DependencyCheckComponents extends JPanel {
 
-		private final static int STATE_STRIP_HEIGHT = getStrategyStripHeight();
+		private static final int STRATEGY_STRIP_HEIGHT = getStrategyStripHeight();
 
 		private final UpgradeReview review;
 
@@ -223,7 +250,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final JCheckBox filterVersionsCheckBox;
 
-		DependencyCheckComponents(UpgradeReview review, Disposable parent, Runnable escapeHandler,
+		DependencyCheckComponents(UpgradeReview review, Disposable parent,
 				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate,
 				BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu) {
 			super(new BorderLayout());
@@ -232,7 +259,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			this.tableModel = new ListTableModel<>(new DependencyCoordinateColumn(review),
 					new CurrentVersionColumn(), new UpgradeTargetsColumn(review), new UpdateToColumn(review),
 					new DoUpdateColumn(review));
-			this.table = new DependencyUpdateTable(tableModel, escapeHandler, onNavigate, onContextMenu);
+			this.table = new DependencyUpdateTable(tableModel, review, onNavigate, onContextMenu);
 			this.strategyComboBox = new ComboBox<>(strategyOptions(review));
 			this.filterVersionsCheckBox = new JCheckBox(MessageBundle.message("dialog.filter.version.suggestions"),
 					this.review.isHideUpToDate());
@@ -247,13 +274,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private void initialize(Disposable parent) {
 
 			tableModel.setItems(this.review.getCandidates());
-			table.setRowSelectionAllowed(false);
-			table.setCellSelectionEnabled(false);
+			table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
 			review.addListener(change -> {
 
 				if (change.reload()) {
 					stopEditing();
+					table.clearStrategyHover();
 					tableModel.setItems(review.getCandidates());
 					return;
 				}
@@ -275,7 +302,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			table.setAutoCreateRowSorter(true);
 			table.setShowGrid(true);
-			table.setRowHeight(Math.max(table.getRowHeight(), STATE_STRIP_HEIGHT) + 4);
+			table.setRowHeight(Math.max(table.getRowHeight(), STRATEGY_STRIP_HEIGHT) + 4);
 			table.setIntercellSpacing(new Dimension(JBUI.scale(2), JBUI.scale(2)));
 			table.getTableHeader().setReorderingAllowed(false);
 
@@ -289,13 +316,24 @@ public class DependencyCheckDialog extends DialogWrapper {
 			columns.getColumn(3).setPreferredWidth(JBUI.scale(180));
 			TableUtil.setupCheckboxColumn(columns.getColumn(4), columns.getColumnMargin() + JBUI.scale(32));
 
-			filterVersionsCheckBox.setToolTipText(MessageBundle.message("dialog.filter.version.tooltip"));
-
 			toolbar.setTargetComponent(table);
 			installSpeedSearch(table);
 
+			add(createToolbarPanel(), BorderLayout.NORTH);
+			add(new JBScrollPane(table), BorderLayout.CENTER);
+
+			JComponent warningBanner = createWarningBanner();
+			if (warningBanner != null) {
+				add(warningBanner, BorderLayout.SOUTH);
+			}
+		}
+
+		private JPanel createToolbarPanel() {
+
+			filterVersionsCheckBox.setToolTipText(MessageBundle.message("dialog.filter.version.tooltip"));
 			filterVersionsCheckBox.addItemListener(e -> review.setHideUpToDate(filterVersionsCheckBox.isSelected()));
 
+			strategyComboBox.setToolTipText(MessageBundle.message("dialog.upgradeStrategy.tooltip"));
 			strategyComboBox.setSelectedItem(this.review.getUpgradeStrategy());
 			strategyComboBox.setRenderer(SimpleListCellRenderer.create((label, value, index) -> {
 				label.setText(MessageBundle.message(value.getMessageKey()));
@@ -306,15 +344,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 				if (e.getStateChange() != ItemEvent.SELECTED) {
 					return;
 				}
-				UpgradeReview.UpgradeStrategies strategy = (UpgradeReview.UpgradeStrategies) e
-						.getItem();
-				review.applyStrategyToAll(strategy);
+				review.applyStrategyToAll((UpgradeReview.UpgradeStrategies) e.getItem());
 			});
 
 			JPanel strategyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(5), 0));
-			JLabel strategyLabel = new JLabel(MessageBundle.message("dialog.upgradeStrategy.label"));
-			strategyComboBox.setToolTipText(MessageBundle.message("dialog.upgradeStrategy.tooltip"));
-			strategyPanel.add(strategyLabel);
+			strategyPanel.add(new JLabel(MessageBundle.message("dialog.upgradeStrategy.label")));
 			strategyPanel.add(strategyComboBox);
 
 			JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(8), 0));
@@ -327,26 +361,28 @@ public class DependencyCheckDialog extends DialogWrapper {
 			JPanel toolbarPanel = new JPanel(new BorderLayout());
 			toolbarPanel.add(leftPanel, BorderLayout.WEST);
 			toolbarPanel.add(rightPanel, BorderLayout.EAST);
+			return toolbarPanel;
+		}
 
-			JBScrollPane scrollPane = new JBScrollPane(table);
-			scrollPane.setPreferredSize(new Dimension(JBUI.scale(775), JBUI.scale(420)));
+		private @Nullable JComponent createWarningBanner() {
 
-			add(toolbarPanel, BorderLayout.NORTH);
-			add(scrollPane, BorderLayout.CENTER);
-			if (!this.review.getErrors().isEmpty()) {
-				String errorText = "<html><b>"
-						+ com.intellij.openapi.util.text.StringUtil
-								.escapeXmlEntities(MessageBundle.message("dialog.warnings.prefix"))
-						+ "</b><br>"
-						+ this.review.getErrors().stream()
-								.map(s -> MessageBundle.message("dialog.warnings.bullet") + s)
-								.map(com.intellij.openapi.util.text.StringUtil::escapeXmlEntities)
-								.collect(Collectors.joining("<br>"))
-						+ "</html>";
-				InlineBanner warningBanner = new InlineBanner(errorText, EditorNotificationPanel.Status.Warning);
-				warningBanner.showCloseButton(false);
-				add(warningBanner, BorderLayout.SOUTH);
+			List<String> errors = this.review.getErrors();
+			if (errors.isEmpty()) {
+				return null;
 			}
+
+			String errorText = "<html><b>"
+					+ StringUtil.escapeXmlEntities(MessageBundle.message("dialog.warnings.prefix"))
+					+ "</b><br>"
+					+ errors.stream()
+							.map(error -> MessageBundle.message("dialog.warnings.bullet") + error)
+							.map(StringUtil::escapeXmlEntities)
+							.collect(Collectors.joining("<br>"))
+					+ "</html>";
+
+			InlineBanner warningBanner = new InlineBanner(errorText, EditorNotificationPanel.Status.Warning);
+			warningBanner.showCloseButton(false);
+			return JBUI.Panels.simplePanel(warningBanner).withBorder(JBUI.Borders.emptyTop(8));
 		}
 
 		private static void installSpeedSearch(TableView<UpgradeCandidate> table) {
@@ -438,8 +474,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	@Override
-	public @Nullable JComponent getPreferredFocusedComponent() {
-		return null;
+	protected @Nullable String getDimensionServiceKey() {
+		return "DependencyAssistant.DependencyCheckDialog";
+	}
+
+	@Override
+	public JComponent getPreferredFocusedComponent() {
+		return this.components.table;
 	}
 
 	@Override
@@ -489,19 +530,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			indicator.checkCanceled();
 			indicator.setText2(file.getName());
-			for (DependencyAssistant dependencyAssistant : assistants) {
-				indicator.checkCanceled();
-				if (!dependencyAssistant.supports(file)) {
-					continue;
-				}
-
-				ProjectDependencyContext context = dependencyAssistant.createContext(file);
-				if (!context.isAvailable()) {
-					continue;
-				}
-
-				indicator.checkCanceled();
-				context.applyUpdates(file, fileUpdates);
+			applyToSupportingContexts(assistants, file, fileUpdates, context -> {
 
 				for (DependencyUpdate fileUpdate : fileUpdates) {
 
@@ -510,31 +539,38 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 					applied.record(file.getVirtualFile(), fileUpdate, rule);
 				}
-			}
+			});
 		}).updateBuildFiles(files, updates);
 
-		Runnable undo = () -> {
-
-			BuildActionDelegate delegate = new BuildActionDelegate(project, (file, fileUpdates) -> {
-
-				for (DependencyAssistant dependencyAssistant : assistants) {
-					if (!dependencyAssistant.supports(file)) {
-						continue;
-					}
-
-					ProjectDependencyContext context = dependencyAssistant.createContext(file);
-					if (!context.isAvailable()) {
-						continue;
-					}
-
-					context.applyUpdates(file, fileUpdates);
-				}
-			});
-
-			delegate.updateBuildFiles(applied.getReverseFiles(), applied.getReverse());
-		};
+		Runnable undo = () -> new BuildActionDelegate(project,
+				(file, fileUpdates) -> applyToSupportingContexts(assistants, file, fileUpdates, context -> {
+				})).updateBuildFiles(applied.getReverseFiles(), applied.getReverse());
 
 		Notifications.updatesApplied(project, applied.applied(), undo);
+	}
+
+	/**
+	 * Apply the file's updates through every assistant that supports the file and
+	 * produces an available context, invoking {@code afterApply} with each context
+	 * that applied.
+	 */
+	private static void applyToSupportingContexts(List<DependencyAssistant> assistants, PsiFile file,
+			List<DependencyUpdate> fileUpdates, Consumer<ProjectDependencyContext> afterApply) {
+
+		for (DependencyAssistant assistant : assistants) {
+
+			if (!assistant.supports(file)) {
+				continue;
+			}
+
+			ProjectDependencyContext context = assistant.createContext(file);
+			if (!context.isAvailable()) {
+				continue;
+			}
+
+			context.applyUpdates(file, fileUpdates);
+			afterApply.accept(context);
+		}
 	}
 
 	class ApplyUpdatesTask extends Task.Backgroundable {
@@ -595,21 +631,28 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	static class DependencyUpdateTable extends TableView<UpgradeCandidate> {
 
-		private final Runnable escapeHandler;
+		private final UpgradeReview review;
 
 		private final BiConsumer<UpgradeCandidate, RelativePoint> onNavigate;
 
 		private final BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu;
 
-		DependencyUpdateTable(ListTableModel<UpgradeCandidate> model, Runnable escapeHandler,
+		/** View row whose strategy strip is hovered, {@code -1} for none. */
+		private int hoveredStrategyRow = -1;
+
+		private @Nullable UpgradeStrategy hoveredStrategy;
+
+		DependencyUpdateTable(ListTableModel<UpgradeCandidate> model, UpgradeReview review,
 				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate,
 				BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu) {
 			super(model);
-			this.escapeHandler = escapeHandler;
+			this.review = review;
 			this.onNavigate = onNavigate;
 			this.onContextMenu = onContextMenu;
 			setToolTipText("");
 
+			// A disabled "cancel" action keeps JTable's ESC binding from consuming
+			// the event, so ESC reaches the dialog while the table has focus.
 			getActionMap().put("cancel", new AbstractAction() {
 
 				@Override
@@ -627,7 +670,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				@Override
 				public void mouseMoved(MouseEvent e) {
-					editUpgradeTargetsOnHover(e);
+					trackStrategyHover(e);
 				}
 
 			});
@@ -636,7 +679,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				@Override
 				public void mouseClicked(MouseEvent e) {
+					applyStrategyOnClick(e);
 					navigateOnDoubleClick(e);
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e) {
+					setHoveredStrategy(-1, null);
 				}
 
 				@Override
@@ -695,50 +744,105 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
-		public void editingCanceled(ChangeEvent e) {
-			editingCanceled(e, currentEvent());
-		}
+		public @Nullable String getToolTipText(MouseEvent event) {
 
-		void editingCanceled(@Nullable ChangeEvent e, @Nullable AWTEvent trigger) {
-
-			boolean hoverEditing = getEditingColumn() == convertColumnIndexToView(UPGRADE_TARGETS_COLUMN_INDEX);
-			super.editingCanceled(e);
-
-			// IdeEventQueue cancels any active table editor on ESC and consumes the
-			// event before key bindings run. The hover editor holds no edit state to
-			// abort, so that ESC means "close the dialog".
-			if (hoverEditing && isEscapeKeyPress(trigger)) {
-				escapeHandler.run();
+			UpgradeStrategy strategy = strategyAt(event.getPoint());
+			if (strategy == null) {
+				return super.getToolTipText(event);
 			}
+
+			UpgradeCandidate candidate = ModelUtil.getRow(this, rowAtPoint(event.getPoint()));
+			Release target = review.resolveTarget(candidate, strategy);
+			if (target == null) {
+				return super.getToolTipText(event);
+			}
+
+			String prefix = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
+			String suffix = candidate.getInterfaceAssistant()
+					.getDocumentationText(target.getVersion());
+			return MessageBundle.message("dialog.upgradeTarget.tooltip", prefix, suffix);
 		}
 
-		private static @Nullable AWTEvent currentEvent() {
-			return Toolkit.getDefaultToolkit().getSystemEventQueue() instanceof IdeEventQueue ideEventQueue
-					? ideEventQueue.getTrueCurrentEvent()
-					: null;
-		}
+		private void applyStrategyOnClick(MouseEvent e) {
 
-		private static boolean isEscapeKeyPress(@Nullable AWTEvent event) {
-			return event instanceof KeyEvent keyEvent && keyEvent.getID() == KeyEvent.KEY_PRESSED
-					&& keyEvent.getKeyCode() == KeyEvent.VK_ESCAPE;
-		}
-
-		private void editUpgradeTargetsOnHover(MouseEvent e) {
-
-			Point p = e.getPoint();
-			int row = rowAtPoint(p);
-			int col = columnAtPoint(p);
-			if (row < 0 || col != convertColumnIndexToView(UPGRADE_TARGETS_COLUMN_INDEX)) {
+			if (e.getClickCount() != 1 || !SwingUtilities.isLeftMouseButton(e) || e.getModifiersEx() != 0) {
 				return;
 			}
 
-			if (isEditing() && getEditingRow() == row && getEditingColumn() == col) {
+			UpgradeStrategy strategy = strategyAt(e.getPoint());
+			if (strategy == null) {
 				return;
 			}
 
-			if (isCellEditable(row, col)) {
-				editCellAt(row, col);
+			e.consume();
+			review.applyStrategyTarget(ModelUtil.getRow(this, rowAtPoint(e.getPoint())), strategy);
+		}
+
+		private void trackStrategyHover(MouseEvent e) {
+
+			UpgradeStrategy strategy = strategyAt(e.getPoint());
+			setHoveredStrategy(strategy == null ? -1 : rowAtPoint(e.getPoint()), strategy);
+			UIUtil.setCursor(this, strategy == null ? null : Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		}
+
+		private void setHoveredStrategy(int row, @Nullable UpgradeStrategy strategy) {
+
+			if (hoveredStrategyRow == row && hoveredStrategy == strategy) {
+				return;
 			}
+
+			int previousRow = hoveredStrategyRow;
+			this.hoveredStrategyRow = row;
+			this.hoveredStrategy = strategy;
+			repaintStrategyStrip(previousRow);
+			repaintStrategyStrip(row);
+		}
+
+		private void repaintStrategyStrip(int row) {
+
+			if (row < 0 || row >= getRowCount()) {
+				return;
+			}
+			repaint(getCellRect(row, convertColumnIndexToView(UPGRADE_TARGETS_COLUMN_INDEX), true));
+		}
+
+		/**
+		 * Clear the strategy-strip hover state, e.g. when the rows are replaced and the
+		 * hovered view row no longer refers to the same candidate.
+		 */
+		void clearStrategyHover() {
+			setHoveredStrategy(-1, null);
+		}
+
+		/**
+		 * Return the hovered strategy icon of the given view row, or {@literal null}
+		 * when the mouse is not over one of the row's strategy icons.
+		 */
+		@Nullable
+		UpgradeStrategy getHoveredStrategy(int row) {
+			return row == hoveredStrategyRow ? hoveredStrategy : null;
+		}
+
+		/**
+		 * Return the upgrade strategy whose icon is under the given point within the
+		 * upgrade-targets column, or {@literal null} for any other column, no row, or a
+		 * point between icons.
+		 */
+		private @Nullable UpgradeStrategy strategyAt(Point point) {
+
+			int row = rowAtPoint(point);
+			int column = columnAtPoint(point);
+			if (row < 0 || convertColumnIndexToModel(column) != UPGRADE_TARGETS_COLUMN_INDEX) {
+				return null;
+			}
+
+			if (!(getCellRenderer(row, column) instanceof UpgradeTargetsRenderer renderer)) {
+				return null;
+			}
+
+			Rectangle cellRect = getCellRect(row, column, false);
+			return renderer.getStrategyAt(this, row, column,
+					new Point(point.x - cellRect.x, point.y - cellRect.y), cellRect.getSize());
 		}
 
 	}
@@ -759,8 +863,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 				WEAK_WARNING_ATTRIBUTES.getEffectColor());
 
 		private final UpgradeReview review;
-
-		private final Map<UpgradeCandidate, String> tooltips = Collections.synchronizedMap(new HashMap<>());
 
 		private final ColoredTableCellRenderer renderer = new ColoredTableCellRenderer() {
 
@@ -843,6 +945,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
+		public Comparator<UpgradeCandidate> getComparator() {
+			return Comparator.comparing(UpgradeCandidate::getRowLabel, String.CASE_INSENSITIVE_ORDER);
+		}
+
+		@Override
 		public TableCellRenderer getRenderer(UpgradeCandidate item) {
 			return renderer;
 		}
@@ -882,7 +989,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				setFont(getCachedEditorFont(getFont().getSize()));
 
 				if (declaredVersions.hasVersionDrift() || rule.isPresent()) {
-					setToolTipText(conflictTooltip(candidate, rule));
+					setToolTipText(statusTooltip(candidate, rule));
 				} else {
 					setToolTipText(null);
 				}
@@ -912,6 +1019,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
+		public Comparator<UpgradeCandidate> getComparator() {
+			return Comparator.comparing(UpgradeCandidate::getCurrentVersion,
+					Comparator.nullsFirst(Comparator.naturalOrder()));
+		}
+
+		@Override
 		public TableCellRenderer getRenderer(UpgradeCandidate item) {
 			return renderer;
 		}
@@ -921,7 +1034,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			return ArtifactVersion.class;
 		}
 
-		private static @Nullable String conflictTooltip(
+		private static @Nullable String statusTooltip(
 				UpgradeCandidate candidate,
 				DependencyRuleEvaluator rule) {
 			StringBuilder tooltip = new StringBuilder();
@@ -934,7 +1047,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				tooltip.append(rule.getToolTipText());
 			}
 
-			if (StringUtils.isEmpty(tooltip.toString())) {
+			if (tooltip.isEmpty()) {
 				return null;
 			}
 
@@ -947,27 +1060,14 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final UpgradeTargetsRenderer renderer;
 
-		private final UpgradeTargetsToolbarEditor editor;
-
 		UpgradeTargetsColumn(UpgradeReview review) {
 			super(MessageBundle.message("dialog.column.upgrades"));
 			this.renderer = new UpgradeTargetsRenderer(review);
-			this.editor = new UpgradeTargetsToolbarEditor(review);
 		}
 
 		@Override
 		public @Nullable Object valueOf(UpgradeCandidate item) {
 			return null;
-		}
-
-		@Override
-		public boolean isCellEditable(UpgradeCandidate item) {
-			return true;
-		}
-
-		@Override
-		public TableCellEditor getEditor(UpgradeCandidate item) {
-			return editor;
 		}
 
 		@Override
@@ -1014,102 +1114,16 @@ public class DependencyCheckDialog extends DialogWrapper {
 		return new Dimension(icon.getIconWidth() + padding, icon.getIconHeight() + padding);
 	}
 
-	static class UpgradeTargetsToolbarEditor extends AbstractCellEditor implements TableCellEditor {
-
-		private final UpgradeReview review;
-
-		private final Map<UpgradeStrategy, ActionButton> buttons = new EnumMap<>(UpgradeStrategy.class);
-
-		private final JPanel buttonPanel;
-
-		private @Nullable UpgradeCandidate candidate;
-
-		UpgradeTargetsToolbarEditor(UpgradeReview review) {
-
-			this.review = review;
-			for (UpgradeStrategy strategy : UPGRADE_TARGET_STRATEGIES) {
-				buttons.put(strategy, createButton(strategy, () -> applyStrategy(strategy)));
-			}
-			this.buttonPanel = createStrategyStrip(buttons.values());
-		}
-
-		private void applyStrategy(UpgradeStrategy strategy) {
-
-			if (candidate != null) {
-				review.applyStrategyTarget(candidate, strategy);
-			}
-		}
-
-		private static ActionButton createButton(UpgradeStrategy strategy, Runnable action) {
-
-			Icon icon = DependencyUpgradeIcons.resolveIcon(strategy);
-			String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
-
-			AnAction buttonAction = new AnAction(shortLabel, null, icon) {
-
-				@Override
-				public void actionPerformed(AnActionEvent e) {
-					action.run();
-				}
-
-			};
-
-			Dimension size = strategyIconSize(icon);
-			ActionButton button = new ActionButton(buttonAction, null, "DependencyAssistant.UpgradeTarget", size);
-			button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-			button.setPreferredSize(size);
-			button.setMinimumSize(size);
-			button.setMaximumSize(size);
-			button.setLook(ActionButtonLook.SYSTEM_LOOK);
-			return button;
-		}
-
-		@Override
-		public JComponent getTableCellEditorComponent(JTable table, @Nullable Object value, boolean isSelected, int row,
-				int column) {
-
-			UpgradeCandidate candidate = ModelUtil.getRow(table, row);
-			this.candidate = candidate;
-
-			for (Map.Entry<UpgradeStrategy, ActionButton> entry : buttons.entrySet()) {
-
-				UpgradeStrategy strategy = entry.getKey();
-				ActionButton button = entry.getValue();
-				Release target = review.resolveTarget(candidate, strategy);
-
-				if (target == null) {
-					button.setVisible(false);
-					continue;
-				}
-
-				String shortLabel = MessageBundle.message("dialog.upgradeTarget." + strategy.name()) + ": "
-						+ candidate.getInterfaceAssistant().getDocumentationText(target.getVersion());
-				button.getPresentation().setText(shortLabel);
-				button.setToolTipText(
-						MessageBundle.message("dialog.upgradeTarget.tooltip", shortLabel, target.version()));
-				button.getAccessibleContext().setAccessibleName(shortLabel);
-				button.setVisible(true);
-			}
-			return buttonPanel;
-		}
-
-		@Override
-		public @Nullable Object getCellEditorValue() {
-			return null;
-		}
-
-	}
-
 	/**
-	 * Paint-only stamp mirroring {@link UpgradeTargetsToolbarEditor}'s button
-	 * strip. The live buttons exist only in the editor; hover-to-edit makes them
-	 * interactive.
+	 * Paint-only stamp of the strategy button strip. Interactivity (hover feedback,
+	 * clicks, tooltips) is provided by {@link DependencyUpdateTable} through
+	 * point-based hit-testing; no cell editing is involved.
 	 */
 	static class UpgradeTargetsRenderer implements TableCellRenderer {
 
 		private final UpgradeReview review;
 
-		private final Map<UpgradeStrategy, JLabel> icons = new EnumMap<>(UpgradeStrategy.class);
+		private final Map<UpgradeStrategy, StrategyIconLabel> icons = new EnumMap<>(UpgradeStrategy.class);
 
 		private final JPanel panel;
 
@@ -1119,7 +1133,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			for (UpgradeStrategy strategy : UPGRADE_TARGET_STRATEGIES) {
 
 				Icon icon = DependencyUpgradeIcons.resolveIcon(strategy);
-				JLabel label = new JLabel(icon);
+				StrategyIconLabel label = new StrategyIconLabel(icon);
 				label.setHorizontalAlignment(SwingConstants.CENTER);
 				label.setPreferredSize(strategyIconSize(icon));
 				icons.put(strategy, label);
@@ -1132,9 +1146,66 @@ public class DependencyCheckDialog extends DialogWrapper {
 				boolean hasFocus, int row, int column) {
 
 			UpgradeCandidate candidate = ModelUtil.getRow(table, row);
-			icons.forEach((strategy, label) -> label.setVisible(review.resolveTarget(candidate, strategy) != null));
+			UpgradeStrategy hovered = table instanceof DependencyUpdateTable updateTable
+					? updateTable.getHoveredStrategy(row)
+					: null;
+			icons.forEach((strategy, label) -> {
+				label.setVisible(review.resolveTarget(candidate, strategy) != null);
+				label.setHovered(strategy == hovered);
+			});
+			panel.setBackground(RenderingUtil.getBackground(table, isSelected));
 			panel.setEnabled(table.isEnabled());
 			return panel;
+		}
+
+		/**
+		 * Return the strategy whose icon is at {@code cellPoint} within a cell of
+		 * {@code cellSize}, or {@literal null} if the point hits no visible icon.
+		 */
+		@Nullable
+		UpgradeStrategy getStrategyAt(JTable table, int row, int column, Point cellPoint,
+				Dimension cellSize) {
+
+			getTableCellRendererComponent(table, null, false, false, row, column);
+			panel.setSize(cellSize);
+			panel.doLayout();
+
+			for (Map.Entry<UpgradeStrategy, StrategyIconLabel> entry : icons.entrySet()) {
+
+				StrategyIconLabel label = entry.getValue();
+				if (label.isVisible() && label.getBounds().contains(cellPoint)) {
+					return entry.getKey();
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * Icon label painting the action-button hover background when the mouse is over
+		 * it, mimicking a toolbar {@code ActionButton} rollover.
+		 */
+		static class StrategyIconLabel extends JLabel {
+
+			private boolean hovered;
+
+			StrategyIconLabel(Icon icon) {
+				super(icon);
+			}
+
+			void setHovered(boolean hovered) {
+				this.hovered = hovered;
+			}
+
+			@Override
+			protected void paintComponent(Graphics g) {
+
+				if (hovered) {
+					ActionButtonLook.SYSTEM_LOOK.paintLookBackground(g, new Rectangle(0, 0, getWidth(), getHeight()),
+							JBUI.CurrentTheme.ActionButton.hoverBackground());
+				}
+				super.paintComponent(g);
+			}
+
 		}
 
 	}
@@ -1157,6 +1228,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 		@Override
 		public @Nullable ArtifactVersion valueOf(UpgradeCandidate item) {
 			return review.getUpdateTo(item);
+		}
+
+		@Override
+		public Comparator<UpgradeCandidate> getComparator() {
+			return Comparator.comparing(review::getUpdateTo, Comparator.nullsFirst(Comparator.naturalOrder()));
 		}
 
 		@Override
@@ -1208,7 +1284,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		SuggestedVersionComboBoxEditor(UpgradeReview review) {
 
 			this.review = review;
-			this.optionRenderer = new VersionOptionCellRenderer(review);
+			this.optionRenderer = new VersionOptionCellRenderer();
 			combo.registerTableCellEditor(this);
 			combo.setRenderer(optionRenderer);
 			combo.setBorder(JBUI.Borders.empty(0, SUGGESTED_VERSION_CELL_PADDING));
@@ -1262,7 +1338,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		SuggestedVersionRenderer(UpgradeReview review) {
 
 			this.review = review;
-			this.optionRenderer = new VersionOptionCellRenderer(review);
+			this.optionRenderer = new VersionOptionCellRenderer();
 			combo.setModel(model);
 			combo.setRenderer(optionRenderer);
 			combo.setBorder(JBUI.Borders.empty(0, SUGGESTED_VERSION_CELL_PADDING));
@@ -1298,7 +1374,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private @Nullable UpgradeCandidate candidate;
 
-		VersionOptionCellRenderer(UpgradeReview review) {
+		VersionOptionCellRenderer() {
 			setIconTextGap(JBUI.scale(4));
 			setBorder(JBUI.Borders.empty());
 		}
@@ -1333,6 +1409,10 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final UpgradeReview review;
 
+		private final BooleanTableCellRenderer renderer = new BooleanTableCellRenderer();
+
+		private final BooleanTableCellEditor editor = new BooleanTableCellEditor();
+
 		DoUpdateColumn(UpgradeReview review) {
 			super(MessageBundle.message("dialog.column.upgrade"));
 			this.review = review;
@@ -1340,12 +1420,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		@Override
 		public TableCellRenderer getRenderer(UpgradeCandidate item) {
-			return new BooleanTableCellRenderer();
+			return renderer;
 		}
 
 		@Override
 		public TableCellEditor getEditor(UpgradeCandidate item) {
-			return new BooleanTableCellEditor();
+			return editor;
 		}
 
 		@Override

@@ -135,60 +135,61 @@ public class Notifications {
 
 	/**
 	 * Notify that a bulk dependency upgrade has been applied, offering to reverse
-	 * only the out-of-bounds entries when at least one is flagged.
+	 * only the flagged entries (out of bounds or major crossing) when at least one
+	 * is flagged.
 	 *
 	 * @param updates the applied updates; an empty collection is a no-op.
-	 * @param undoOutOfBounds reverse-applies only the out-of-bounds entries.
+	 * @param undoFlagged reverse-applies only the flagged entries.
 	 */
 	static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates,
-			Runnable undoOutOfBounds) {
+			Runnable undoFlagged) {
 
 		if (updates.isEmpty()) {
 			return;
 		}
 
-		List<AppliedDependencyUpdate> outOfBounds = updates.stream().filter(AppliedDependencyUpdate::outOfBounds)
+		List<AppliedDependencyUpdate> flagged = updates.stream().filter(AppliedDependencyUpdate::isFlagged)
 				.toList();
 
-		if (outOfBounds.isEmpty()) {
+		if (flagged.isEmpty()) {
 			updatesApplied(updates).notify(project);
 		} else {
-			updatesAppliedOutOfBounds(updates, outOfBounds, undoOutOfBounds).notify(project);
+			updatesAppliedFlagged(updates, flagged, undoFlagged).notify(project);
 		}
 	}
 
 	private static Notification updatesApplied(Collection<AppliedDependencyUpdate> updates) {
 
-		List<AppliedDependencyUpdate> outOfBounds = updates.stream().filter(AppliedDependencyUpdate::outOfBounds)
-				.toList();
-
 		StringBuilder message = new StringBuilder();
 		renderApplied(updates, message);
 
 		return new Notification(
-				outOfBounds.isEmpty() ? UPGRADE_NOTIFICATIONS : STICKY_NOTIFICATION,
+				UPGRADE_NOTIFICATIONS,
 				MessageBundle.message("notification.dependencies-updates"), message.toString(),
 				NotificationType.INFORMATION);
 	}
 
-	private static Notification updatesAppliedOutOfBounds(Collection<AppliedDependencyUpdate> updates,
-			Collection<AppliedDependencyUpdate> outOfBounds,
-			Runnable undoOutOfBounds) {
+	private static Notification updatesAppliedFlagged(Collection<AppliedDependencyUpdate> updates,
+			Collection<AppliedDependencyUpdate> flagged,
+			Runnable undoFlagged) {
 
 		StringBuilder message = new StringBuilder();
 		renderApplied(updates, message);
 
+		List<AppliedDependencyUpdate> outOfBounds = flagged.stream()
+				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.OUT_OF_BOUNDS).toList();
 		if (!outOfBounds.isEmpty()) {
-			message.append(
-					MessageBundle.message("notification.dependencies-updates.out-of-bounds", outOfBounds.size()));
-			message.append("<ul>");
-			for (AppliedDependencyUpdate update : outOfBounds) {
-				message.append("<li>")
-						.append(MessageBundle.message("notification.dependencies-updates.out-of-bounds.entry",
-								update.displayLabel(), update.to()))
-						.append("</li>");
-			}
-			message.append("</ul>");
+			renderFlagged(message,
+					MessageBundle.message("notification.dependencies-updates.out-of-bounds", outOfBounds.size()),
+					outOfBounds);
+		}
+
+		List<AppliedDependencyUpdate> majorCrossings = flagged.stream()
+				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.MAJOR_CROSSING).toList();
+		if (!majorCrossings.isEmpty()) {
+			renderFlagged(message,
+					MessageBundle.message("notification.dependencies-updates.major-crossing", majorCrossings.size()),
+					majorCrossings);
 		}
 
 		Notification notification = new Notification(
@@ -198,11 +199,25 @@ public class Notifications {
 
 		notification.addAction(NotificationAction.createSimpleExpiring(
 				MessageBundle.message("notification.dependencies-updates.undo-out-of-bounds"),
-				undoOutOfBounds));
+				undoFlagged));
 		notification.addAction(NotificationAction.createSimple(
 				MessageBundle.message("notification.dependencies-updates.dismiss"), notification::expire));
 
 		return notification;
+	}
+
+	private static void renderFlagged(StringBuilder message, String heading,
+			Collection<AppliedDependencyUpdate> entries) {
+
+		message.append(heading);
+		message.append("<ul>");
+		for (AppliedDependencyUpdate update : entries) {
+			message.append("<li>")
+					.append(MessageBundle.message("notification.dependencies-updates.out-of-bounds.entry",
+							update.displayLabel(), update.to()))
+					.append("</li>");
+		}
+		message.append("</ul>");
 	}
 
 	private static void renderApplied(Collection<AppliedDependencyUpdate> updates, StringBuilder message) {

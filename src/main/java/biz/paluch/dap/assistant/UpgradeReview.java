@@ -184,6 +184,13 @@ class UpgradeReview {
 		return candidates.stream().filter(this::isVisible).toList();
 	}
 
+	/**
+	 * Return the number of candidates regardless of the active visibility filter.
+	 */
+	int getTotalCandidateCount() {
+		return candidates.size();
+	}
+
 	private boolean isVisible(UpgradeCandidate candidate) {
 		return filter.includes(candidate.getUpdateCandidate());
 	}
