@@ -229,11 +229,11 @@ class DocumentationContext {
 	}
 
 	/**
-	 * Appends a release table, rendering at most {@link #MAX_VERSIONS} distinct
-	 * releases and skipping duplicates. Renders nothing when {@code releases} is
-	 * empty. When {@link #linkable} and icons are rendered, every non-current row
-	 * wraps its age icon in an upgrade link handled by
-	 * {@link DependencyUpgradeLinkHandler}.
+	 * Appends the release table for the rows a {@link ReleaseDigest} selects.
+	 * Renders nothing when {@code releases} is empty. When {@link #linkable} and
+	 * icons are rendered, every non-current row wraps its age icon in an upgrade
+	 * link handled by {@link DependencyUpgradeLinkHandler}. Rows the digest hides
+	 * are summarized in a grayed note, so truncation is never silent.
 	 */
 	private void appendVersionsTable(StringBuilder sb, ArtifactId artifactId, Releases releases,
 			boolean withIcons, ReleaseDateFormatter formatter) {
@@ -242,28 +242,117 @@ class DocumentationContext {
 			return;
 		}
 
-		Set<String> seen = new HashSet<>();
-		sb.append("<table>");
-		int count = 0;
-		for (Release release : releases) {
-			DocumentedRelease documented = new DocumentedRelease(artifactContext, artifactId.toString(), release,
-					interfaceAssistant, linkable, currentVersion, withIcons);
+		ReleaseDigest digest = ReleaseDigest.of(releases, currentVersion, MAX_VERSIONS);
 
-			if (!seen.add(documented.getKey())) {
-				continue;
+		if (!digest.rows().isEmpty()) {
+			sb.append("<table>");
+			for (Release release : digest.rows()) {
+				sb.append("<tr>");
+				sb.append(new DocumentedRelease(artifactContext, artifactId.toString(), release,
+						interfaceAssistant, linkable, withIcons).render(formatter));
+				sb.append("</tr>");
 			}
-			if (count++ >= MAX_VERSIONS) {
-				break;
-			}
-			sb.append("<tr>");
-			sb.append(documented.render(formatter));
-			sb.append("</tr>");
+			sb.append("</table>");
 		}
-		sb.append("</table>");
+
+		appendHiddenNote(sb, digest);
+	}
+
+	private static void appendHiddenNote(StringBuilder sb, ReleaseDigest digest) {
+
+		List<String> fragments = new ArrayList<>(2);
+		if (digest.hiddenPreviews() > 0) {
+			fragments.add(MessageBundle.message("documentation.hidden.previews", digest.hiddenPreviews()));
+		}
+		if (digest.hiddenReleases() > 0) {
+			fragments.add(MessageBundle.message("documentation.hidden.releases", digest.hiddenReleases()));
+		}
+
+		if (fragments.isEmpty()) {
+			return;
+		}
+
+		sb.append("<p>")
+				.append(DocumentationMarkup.GRAYED_START)
+				.append(MessageBundle.message("documentation.hidden", String.join(", ", fragments)))
+				.append(DocumentationMarkup.GRAYED_END)
+				.append("</p>");
 	}
 
 	public @Nullable ArtifactVersion currentVersion() {
 		return currentVersion;
+	}
+
+	/**
+	 * Bounded selection of the release rows the popup renders for one artifact: the
+	 * stable releases newer than the current version (capped at a limit), the
+	 * newest preview, and the current version as the anchor row. Everything else is
+	 * carried as hidden counts, keeping the popup an upgrade decision aid rather
+	 * than a release changelog.
+	 *
+	 * @param rows the releases to render, in the authoritative newest-first order
+	 * of {@link Releases}.
+	 * @param hiddenPreviews the number of distinct preview releases not rendered.
+	 * @param hiddenReleases the number of distinct stable releases not rendered.
+	 */
+	record ReleaseDigest(List<Release> rows, int hiddenPreviews, int hiddenReleases) {
+
+		/**
+		 * Select the rows to render from the given releases. Without a current version
+		 * every stable release qualifies; otherwise only releases newer than current
+		 * qualify, and the current version itself is kept as the anchor row. Duplicate
+		 * versions are skipped entirely, matching the release table's previous
+		 * de-duplication.
+		 *
+		 * @param releases the artifact's analyzed release history.
+		 * @param currentVersion the declared version, or {@literal null} when
+		 * unresolved.
+		 * @param limit the maximum number of stable rows.
+		 * @return the digest.
+		 */
+		static ReleaseDigest of(Releases releases, @Nullable ArtifactVersion currentVersion, int limit) {
+
+			List<Release> rows = new ArrayList<>();
+			Set<String> seen = new HashSet<>();
+			boolean previewShown = false;
+			int stableShown = 0;
+			int hiddenPreviews = 0;
+			int hiddenReleases = 0;
+
+			for (Release release : releases) {
+
+				if (!seen.add(release.unwrap().toString())) {
+					continue;
+				}
+
+				if (currentVersion != null && release.getVersion().matches(currentVersion)) {
+					rows.add(release);
+					continue;
+				}
+
+				boolean newer = currentVersion == null || release.isNewer(currentVersion);
+
+				if (release.isPreview()) {
+					if (newer && !previewShown) {
+						previewShown = true;
+						rows.add(release);
+					} else {
+						hiddenPreviews++;
+					}
+					continue;
+				}
+
+				if (newer && stableShown < limit) {
+					stableShown++;
+					rows.add(release);
+				} else {
+					hiddenReleases++;
+				}
+			}
+
+			return new ReleaseDigest(List.copyOf(rows), hiddenPreviews, hiddenReleases);
+		}
+
 	}
 
 	record ReleaseGroup(List<ArtifactId> artifactIds, Releases releases) {
@@ -331,8 +420,7 @@ class DocumentationContext {
 		private final @Nullable HtmlChunk firstColumnIcon;
 
 		public DocumentedRelease(ArtifactReferenceContext artifactContext, String name, Release release,
-				InterfaceAssistant interfaceAssistant, boolean linkable, @Nullable ArtifactVersion currentVersion,
-				boolean withIcons) {
+				InterfaceAssistant interfaceAssistant, boolean linkable, boolean withIcons) {
 
 			this.release = release;
 			this.key = release.unwrap().toString();
@@ -355,10 +443,6 @@ class DocumentationContext {
 			} else {
 				this.firstColumnIcon = null;
 			}
-		}
-
-		public String getKey() {
-			return key;
 		}
 
 		public StringBuilder render(ReleaseDateFormatter formatter) {

@@ -16,7 +16,10 @@
 
 package biz.paluch.dap.assistant;
 
+import javax.swing.Icon;
+
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
+import biz.paluch.dap.lookup.SiteRole;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.project.Project;
@@ -25,6 +28,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Display representation of a single located {@link DependencySiteSearchHit}
@@ -33,21 +39,28 @@ import com.intellij.psi.PsiFile;
  *
  * <p>{@link #from(DependencySiteSearchHit, Project)} performs all PSI access
  * and must be called inside a read action; the resulting value object is then
- * safe to hand to Swing rendering on the EDT.
+ * safe to hand to Swing rendering on the EDT. The located element travels as a
+ * {@link SmartPsiElementPointer} because the popup outlives the read action
+ * that produced it; navigation and Find-window handoff re-resolve the pointer
+ * and skip entries whose element did not survive.
  *
- * @param finding the located site this row presents; must not be
- * {@literal null}.
+ * @param role the site role the row is classified under.
+ * @param element pointer to the located element, resolved again at navigation
+ * time.
  * @param label the one-line display label, the version or property expression
  * trimmed to a snippet.
  * @param location the project-relative {@code path:line}, or empty when the
  * file has no backing path.
  * @param previewText the dedented declaration preview shown beside the list.
+ * @param matchRange the located element's text range within
+ * {@code previewText}, or {@literal null} when the element text does not occur
+ * verbatim in the preview.
+ * @param icon the file type icon shown in the list, may be {@literal null}.
  * @param fileType the file type used to syntax-highlight the preview.
  * @author Mark Paluch
  */
-// TODO: Polishing
-record DependencySitePresentation(DependencySiteSearchHit finding, String label, String location, String previewText,
-		FileType fileType) {
+record DependencySitePresentation(SiteRole role, SmartPsiElementPointer<PsiElement> element, String label,
+		String location, String previewText, @Nullable TextRange matchRange, @Nullable Icon icon, FileType fileType) {
 
 	private static final int SNIPPET_LIMIT = 60;
 
@@ -72,16 +85,28 @@ record DependencySitePresentation(DependencySiteSearchHit finding, String label,
 		int line = document != null ? document.getLineNumber(element.getTextOffset()) : 0;
 		String location = file != null ? relativeLocation(project, file, line) : "";
 		String preview = document != null ? dedentedLines(element, document) : element.getText();
-		return new DependencySitePresentation(hit, snippet(hit.label()), location, preview, psiFile.getFileType());
+		FileType fileType = psiFile.getFileType();
+		SmartPsiElementPointer<PsiElement> pointer = SmartPointerManager.getInstance(project)
+				.createSmartPsiElementPointer(element);
+
+		return new DependencySitePresentation(hit.role(), pointer, snippet(hit.label()), location, preview,
+				matchRange(element.getText(), preview), fileType.getIcon(), fileType);
 	}
 
 	/**
-	 * Return whether the underlying element is still valid for navigation.
-	 *
-	 * @return {@literal true} if the located element is valid.
+	 * Locate the element's own text within the preview so the popup can highlight
+	 * the match. Dedenting shifts offsets per line, so the range is recovered
+	 * textually; a multi-line element whose text no longer occurs verbatim yields
+	 * no highlight.
 	 */
-	boolean isValid() {
-		return finding.element().isValid();
+	private static @Nullable TextRange matchRange(String elementText, String preview) {
+
+		if (elementText.isBlank()) {
+			return null;
+		}
+
+		int index = preview.indexOf(elementText);
+		return index >= 0 ? TextRange.from(index, elementText.length()) : null;
 	}
 
 	/**

@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -46,8 +47,13 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.colors.EditorColors;
+import com.intellij.openapi.editor.markup.HighlighterLayer;
+import com.intellij.openapi.editor.markup.HighlighterTargetArea;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
+import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
@@ -57,6 +63,7 @@ import com.intellij.openapi.ui.popup.Balloon;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.ui.CollectionListModel;
@@ -64,9 +71,9 @@ import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBSplitter;
+import com.intellij.ui.ListSpeedSearch;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.awt.RelativePoint;
-import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.usageView.UsageInfo;
@@ -202,31 +209,29 @@ class DependencySitesPopup {
 		}
 
 		List<DependencySitePresentation> ordered = entries.stream()
-				.sorted(Comparator.comparingInt(entry -> entry.finding().role().ordinal())).toList();
+				.sorted(Comparator.comparing(DependencySitePresentation::role)
+						.thenComparing(DependencySitePresentation::location))
+				.toList();
 
-		JBList<DependencySitePresentation> list = new JBList<>(new CollectionListModel<>(ordered));
-		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		list.setCellRenderer(new DependencySitePresentationRenderer());
+		JBList<DependencySitePresentation> list = createList(ordered);
+		EditorTextField preview = createPreview(list, ordered.getFirst().fileType());
+
+		list.addListSelectionListener(event -> {
+			if (!event.getValueIsAdjusting()) {
+				updatePreview(preview, list.getSelectedValue());
+			}
+		});
 		list.setSelectedIndex(0);
-
-		EditorTextField preview = new EditorTextField("", project, ordered.getFirst().fileType());
-		preview.setViewer(true);
-		preview.setOneLineMode(false);
-		preview.setFontInheritedFromLAF(false);
-		updatePreview(preview, ordered.getFirst());
 
 		JBSplitter splitter = new JBSplitter(false, 0.4f);
 		splitter.setFirstComponent(new JBScrollPane(list));
 		splitter.setSecondComponent(preview);
 
 		JButton openInFind = new JButton(MessageBundle.message("dialog.findSites.openInFind"));
-		JBLabel openInFindHint = new JBLabel(KeymapUtil.getKeystrokeText(OPEN_IN_FIND_WINDOW));
-		openInFindHint.setEnabled(false);
 
 		JPanel content = new JPanel(new BorderLayout());
 		content.add(splitter, BorderLayout.CENTER);
 		JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, JBUI.scale(8), JBUI.scale(4)));
-		actions.add(openInFindHint);
 		actions.add(openInFind);
 		content.add(actions, BorderLayout.SOUTH);
 		content.setPreferredSize(new Dimension(JBUI.scale(780), JBUI.scale(340)));
@@ -239,29 +244,14 @@ class DependencySitesPopup {
 				.setTitleIcon(new ActiveIcon(DependencyAssistantIcons.ICON))
 				.setMovable(true)
 				.setRequestFocus(true)
+				.setDimensionServiceKey(project, "DependencyAssistant.DependencySitesPopup", false)
+				.setAdText(MessageBundle.message("dialog.findSites.openInFind.ad",
+						KeymapUtil.getKeystrokeText(OPEN_IN_FIND_WINDOW)))
 				.createPopup();
 
 		openInFind.addActionListener(event -> {
 			popup.closeOk(null);
 			openInFindWindow(ordered);
-		});
-
-		list.addListSelectionListener(event -> {
-			if (!event.getValueIsAdjusting()) {
-				updatePreview(preview, list.getSelectedValue());
-			}
-		});
-
-		list.addMouseMotionListener(new MouseMotionAdapter() {
-
-			@Override
-			public void mouseMoved(MouseEvent event) {
-				int index = list.locationToIndex(event.getPoint());
-				if (index >= 0) {
-					list.setSelectedIndex(index);
-				}
-			}
-
 		});
 
 		new DoubleClickListener() {
@@ -287,6 +277,42 @@ class DependencySitesPopup {
 		popup.show(where);
 	}
 
+	private static JBList<DependencySitePresentation> createList(List<DependencySitePresentation> ordered) {
+
+		JBList<DependencySitePresentation> list = new JBList<>(new CollectionListModel<>(ordered));
+		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		list.setCellRenderer(new DependencySitePresentationRenderer());
+		ListSpeedSearch.installOn(list, entry -> entry.label() + " " + entry.location());
+
+		list.addMouseMotionListener(new MouseMotionAdapter() {
+
+			@Override
+			public void mouseMoved(MouseEvent event) {
+				int index = list.locationToIndex(event.getPoint());
+				if (index >= 0) {
+					list.setSelectedIndex(index);
+				}
+			}
+
+		});
+		return list;
+	}
+
+	/**
+	 * Create the read-only preview pane. The match highlight is applied through the
+	 * settings provider because the backing editor is created lazily when the field
+	 * is first shown, after the initial selection already set the document.
+	 */
+	private EditorTextField createPreview(JBList<DependencySitePresentation> list, FileType fileType) {
+
+		EditorTextField preview = new EditorTextField("", project, fileType);
+		preview.setViewer(true);
+		preview.setOneLineMode(false);
+		preview.setFontInheritedFromLAF(false);
+		preview.addSettingsProvider(editor -> highlightMatch(editor, list.getSelectedValue()));
+		return preview;
+	}
+
 	/**
 	 * Hand the findings to the Find tool window as usages, so the result can be
 	 * browsed and kept open like Find in Files.
@@ -295,9 +321,8 @@ class DependencySitesPopup {
 
 		Map<SiteRole, UsageType> usageTypes = new EnumMap<>(SiteRole.class);
 		Usage[] usages = ReadAction.compute(() -> entries.stream()
-				.filter(DependencySitePresentation::isValid)
-				.map(entry -> (Usage) new SiteUsage(entry,
-						usageTypes.computeIfAbsent(entry.finding().role(), DependencySitesPopup::usageType)))
+				.map(entry -> toUsage(entry, usageTypes))
+				.filter(Objects::nonNull)
 				.toArray(Usage[]::new));
 
 		if (usages.length == 0) {
@@ -313,6 +338,21 @@ class DependencySitesPopup {
 		onTransferToFindWindow.run();
 	}
 
+	/**
+	 * Adapt an entry to a role-typed usage, or {@literal null} when the located
+	 * element did not survive since the search.
+	 */
+	private static @Nullable Usage toUsage(DependencySitePresentation entry, Map<SiteRole, UsageType> usageTypes) {
+
+		PsiElement element = entry.element().getElement();
+		if (element == null) {
+			return null;
+		}
+
+		return new SiteUsage(new UsageInfo(element),
+				usageTypes.computeIfAbsent(entry.role(), DependencySitesPopup::usageType));
+	}
+
 	private static UsageType usageType(SiteRole role) {
 		return new UsageType(() -> MessageBundle.message("dialog.findSites.role." + role.name()));
 	}
@@ -325,11 +365,11 @@ class DependencySitesPopup {
 		}
 
 		popup.closeOk(null);
-		navigate(selected);
+		openInEditor(selected);
 		return true;
 	}
 
-	private void updatePreview(EditorTextField preview, @Nullable DependencySitePresentation entry) {
+	private static void updatePreview(EditorTextField preview, @Nullable DependencySitePresentation entry) {
 
 		if (entry == null) {
 			return;
@@ -337,14 +377,45 @@ class DependencySitesPopup {
 
 		Document document = EditorFactory.getInstance().createDocument(entry.previewText());
 		preview.setNewDocumentAndFileType(entry.fileType(), document);
+
+		Editor editor = preview.getEditor();
+		if (editor != null) {
+			highlightMatch(editor, entry);
+		}
 	}
 
-	private void navigate(DependencySitePresentation entry) {
+	/**
+	 * Highlight the located element's text within the preview so the user sees
+	 * which part of the statement the site refers to.
+	 */
+	private static void highlightMatch(Editor editor, @Nullable DependencySitePresentation entry) {
 
-		PsiElement element = entry.finding().element();
+		editor.getMarkupModel().removeAllHighlighters();
+
+		if (entry == null) {
+			return;
+		}
+
+		TextRange range = entry.matchRange();
+		if (range == null || range.getEndOffset() > editor.getDocument().getTextLength()) {
+			return;
+		}
+
+		editor.getMarkupModel().addRangeHighlighter(EditorColors.SEARCH_RESULT_ATTRIBUTES, range.getStartOffset(),
+				range.getEndOffset(), HighlighterLayer.SELECTION - 1, HighlighterTargetArea.EXACT_RANGE);
+	}
+
+	private void openInEditor(DependencySitePresentation entry) {
+
 		ReadAction.run(() -> {
+
+			PsiElement element = entry.element().getElement();
+			if (element == null) {
+				return;
+			}
+
 			VirtualFile file = element.getContainingFile().getVirtualFile();
-			if (element.isValid() && file != null) {
+			if (file != null) {
 				new OpenFileDescriptor(project, file, element.getTextOffset()).navigate(true);
 			}
 		});
@@ -358,7 +429,8 @@ class DependencySitesPopup {
 				DependencySitePresentation entry, int index,
 				boolean selected, boolean hasFocus) {
 
-			append(MessageBundle.message("dialog.findSites.role." + entry.finding().role().name()) + "  ",
+			setIcon(entry.icon());
+			append(MessageBundle.message("dialog.findSites.role." + entry.role().name()) + "  ",
 					SimpleTextAttributes.GRAYED_ATTRIBUTES);
 			append(entry.label());
 			if (!entry.location().isEmpty()) {
@@ -381,10 +453,6 @@ class DependencySitesPopup {
 		SiteUsage(UsageInfo usageInfo, UsageType usageType) {
 			super(usageInfo);
 			this.usageType = usageType;
-		}
-
-		public SiteUsage(DependencySitePresentation entry, UsageType usageType) {
-			this(new UsageInfo(entry.finding().element()), usageType);
 		}
 
 		@Override
