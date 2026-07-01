@@ -25,6 +25,7 @@ import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.fixtures.Inspections;
+import com.intellij.codeInspection.CommonProblemDescriptor;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
@@ -60,7 +61,7 @@ class DependencyVersionDriftInspectionTests {
 				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
-						<groupId>biz.paluch.drift</groupId>
+						<groupId>hello.world</groupId>
 						<artifactId>drift-bom</artifactId>
 						<version>6.0.0</version>
 					</dependency>
@@ -70,15 +71,15 @@ class DependencyVersionDriftInspectionTests {
 	void highlightsDriftingVersion(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.3");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.3");
 
 		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
 
-		assertThat(problems).singleElement().satisfies(problem -> {
-			assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
-			assertThat(problem.getDescriptionTemplate()).contains("drift-bom")
-					.contains("6.0.3");
-		});
+		assertThat(problems).hasSize(1);
+
+		ProblemDescriptor problem = problems.get(0);
+		assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
+		assertThat(problem.getDescriptionTemplate()).contains("drift-bom").contains("6.0.3");
 	}
 
 	@Test
@@ -89,7 +90,7 @@ class DependencyVersionDriftInspectionTests {
 				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
-						<groupId>biz.paluch.drift</groupId>
+						<groupId>hello.world</groupId>
 						<artifactId>drift-bom</artifactId>
 						<version>6.0.0</version>
 					</dependency>
@@ -99,7 +100,7 @@ class DependencyVersionDriftInspectionTests {
 	void alignToHighestRewritesToHighestDeclaredVersion(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.3");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.3");
 
 		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 
@@ -114,7 +115,7 @@ class DependencyVersionDriftInspectionTests {
 				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
-						<groupId>biz.paluch.drift</groupId>
+						<groupId>hello.world</groupId>
 						<artifactId>drift-bom</artifactId>
 						<version>6.0.0</version>
 					</dependency>
@@ -124,7 +125,7 @@ class DependencyVersionDriftInspectionTests {
 	void doesNotFlagWhenModulesAgree(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.0");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0");
 
 		assertThat(Inspections.inspect(fixture.getProject(), pomFile)).isEmpty();
 	}
@@ -137,7 +138,7 @@ class DependencyVersionDriftInspectionTests {
 				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
-						<groupId>biz.paluch.drift</groupId>
+						<groupId>hello.world</groupId>
 						<artifactId>drift-bom</artifactId>
 						<version>6.0.0</version>
 					</dependency>
@@ -147,15 +148,13 @@ class DependencyVersionDriftInspectionTests {
 	void highlightsDeclarationDriftWhenInlineAndPropertyDeclarationsAgree(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.0",
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0",
 				VersionSource.property("drift.version"));
 
 		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
 
-		assertThat(problems).singleElement().satisfies(problem -> {
-			assertThat(problem.getDescriptionTemplate()).contains("drift-bom")
-					.contains("declaration drift");
-		});
+		assertThat(problems).extracting(CommonProblemDescriptor::getDescriptionTemplate)
+				.singleElement().asString().contains("drift-bom").contains("declaration drift");
 	}
 
 	@Test
@@ -166,7 +165,7 @@ class DependencyVersionDriftInspectionTests {
 				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
-						<groupId>biz.paluch.drift</groupId>
+						<groupId>hello.world</groupId>
 						<artifactId>drift-bom</artifactId>
 						<version>6.0.3</version>
 					</dependency>
@@ -176,7 +175,7 @@ class DependencyVersionDriftInspectionTests {
 	void alignToLowestDowngradesToLowestDeclaredVersion(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.0");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0");
 
 		applyFix(pomFile, "Downgrade to lowest used version '6.0.0'");
 
@@ -191,7 +190,34 @@ class DependencyVersionDriftInspectionTests {
 				<version>1.0.0</version>
 				<dependencies>
 					<dependency>
-						<groupId>biz.paluch.drift</groupId>
+						<groupId>hello.world</groupId>
+						<artifactId>drift-bom</artifactId>
+						<version>6.0.3</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void offersOnlyFixesThatChangeTheCurrentVersion(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0");
+
+		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
+
+		assertThat(problems).flatMap(it -> List.of(it.getFixes()))
+				.extracting(QuickFix::getName).singleElement()
+				.isEqualTo("Downgrade to lowest used version '6.0.0'");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>hello.world</groupId>
 						<artifactId>drift-bom</artifactId>
 						<version>6.0.0</version>
 					</dependency>
@@ -201,7 +227,7 @@ class DependencyVersionDriftInspectionTests {
 	void clearsDriftAfterAligningCurrentFile(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "biz.paluch.drift", "drift-bom", "6.0.3");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.3");
 
 		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 

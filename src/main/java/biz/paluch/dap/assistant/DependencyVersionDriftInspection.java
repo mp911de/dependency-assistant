@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -37,7 +38,9 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.codeInsight.intention.PriorityAction;
 import com.intellij.codeInspection.LocalInspectionTool;
+import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.ProblemsHolder;
@@ -49,6 +52,7 @@ import com.intellij.openapi.util.Iconable;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * {@link LocalInspectionTool} that flags dependency drift: an artifact declared
@@ -137,9 +141,17 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 						? "inspection.version-drift.version-and-declaration.problem"
 						: "inspection.version-drift.problem", declaration.getArtifactId(), versions);
 
-				holder.registerProblem(anchor, message,
-						new AlignVersionAction(referenceContext, highest, true),
-						new AlignVersionAction(referenceContext, lowest, false));
+				System.out.println(message);
+				List<LocalQuickFix> fixes = new ArrayList<>();
+				if (!highest.equals(declaration.getVersion())) {
+					fixes.add(new AlignVersionAction(referenceContext, highest, true));
+				}
+
+				if (!lowest.equals(declaration.getVersion())) {
+					fixes.add(new AlignVersionAction(referenceContext, lowest, false));
+				}
+
+				holder.registerProblem(anchor, message, fixes.toArray(new LocalQuickFix[0]));
 			}
 
 		};
@@ -169,7 +181,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 	 * Quick fix that reconciles a drifting artifact to a chosen declared version by
 	 * rewriting every occurrence of that artifact in the file.
 	 */
-	static class AlignVersionAction extends ModCommandQuickFix {
+	static class AlignVersionAction extends ModCommandQuickFix implements PriorityAction {
 
 		private final ProjectDependencyContext context;
 
@@ -204,6 +216,11 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 		@Override
 		public @IntentionFamilyName String getFamilyName() {
 			return MessageBundle.message(messageKey() + ".family");
+		}
+
+		@Override
+		public @NotNull Priority getPriority() {
+			return highest ? Priority.HIGH : Priority.NORMAL;
 		}
 
 		private String messageKey() {
