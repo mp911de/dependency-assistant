@@ -36,6 +36,7 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.MessageBundle;
@@ -50,10 +51,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.search.DelegatingGlobalSearchScope;
-import com.intellij.psi.search.FilenameIndex;
-import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import icons.GradleIcons;
@@ -98,17 +95,8 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 	public List<PsiFile> enumerate(Project project) {
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
-
-			@Override
-			public boolean contains(VirtualFile file) {
-				return super.contains(file) && GradleWrapperUtils.isWrapperFile(file);
-			}
-
-		};
-
-		Collection<VirtualFile> files = FilenameIndex.getVirtualFilesByName(GradleWrapperUtils.WRAPPER_FILENAME,
-				scope);
+		Collection<VirtualFile> files = FileIndexLookup.getInstance(project).find(GradleWrapperUtils.WRAPPER_FILENAME,
+				GradleWrapperUtils::isWrapperFile);
 		return psiManager.stream(files).filter(this::supports).toList();
 	}
 

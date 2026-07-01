@@ -41,6 +41,7 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
@@ -55,10 +56,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.search.DelegatingGlobalSearchScope;
-import com.intellij.psi.search.FileTypeIndex;
-import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.yaml.YAMLFileType;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
@@ -122,16 +119,8 @@ public class AntoraAssistant implements DependencyAssistant {
 		}
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
-
-			@Override
-			public boolean contains(VirtualFile file) {
-				return super.contains(file) && AntoraUtils.isPlaybookFile(file);
-			}
-
-		};
-
-		Collection<VirtualFile> yamlFiles = FileTypeIndex.getFiles(YAMLFileType.YML, scope);
+		Collection<VirtualFile> yamlFiles = FileIndexLookup.getInstance(project).find(YAMLFileType.YML,
+				AntoraUtils::isPlaybookFile);
 		return psiManager.stream(yamlFiles).filter(AntoraUtils::isPlaybookFile).toList();
 	}
 

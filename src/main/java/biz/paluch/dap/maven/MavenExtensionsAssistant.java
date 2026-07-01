@@ -31,6 +31,7 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.ide.highlighter.XmlFileType;
@@ -39,10 +40,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.search.DelegatingGlobalSearchScope;
-import com.intellij.psi.search.FileTypeIndex;
-import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 
 import org.springframework.util.Assert;
@@ -83,16 +80,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	public List<PsiFile> enumerate(Project project) {
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
-
-			@Override
-			public boolean contains(VirtualFile file) {
-				return super.contains(file) && MavenUtils.isMavenExtensionsFile(file);
-			}
-
-		};
-
-		Collection<VirtualFile> xmlFiles = FileTypeIndex.getFiles(XmlFileType.INSTANCE, scope);
+		Collection<VirtualFile> xmlFiles = FileIndexLookup.getInstance(project)
+				.find(XmlFileType.INSTANCE, MavenUtils::isMavenExtensionsFile);
 		return psiManager.stream(xmlFiles).filter(MavenUtils::isMavenExtensionsFile)
 				.toList();
 	}

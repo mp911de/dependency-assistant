@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.npm;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -39,6 +38,7 @@ import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
@@ -52,10 +52,6 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.search.DelegatingGlobalSearchScope;
-import com.intellij.psi.search.FileTypeIndex;
-import com.intellij.psi.search.GlobalSearchScope;
-import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.util.CachedValuesManager;
 import org.jspecify.annotations.Nullable;
 
@@ -109,17 +105,11 @@ public class NpmAssistant implements DependencyAssistant {
 			return List.of();
 		}
 
-		List<PsiFile> anchors = new ArrayList<>();
-		GlobalSearchScope scope = new DelegatingGlobalSearchScope(ProjectScope.getProjectScope(project)) {
-
-			@Override
-			public boolean contains(VirtualFile file) {
-				return !file.getPath().contains("node_modules") && super.contains(file) && NpmUtils.isPackageJson(file);
-			}
-
-		};
+		Collection<VirtualFile> jsonFiles = FileIndexLookup.getInstance(project)
+				.find(JsonFileType.INSTANCE, it -> {
+					return !it.getPath().contains("node_modules") && NpmUtils.isPackageJson(it);
+				});
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		Collection<VirtualFile> jsonFiles = FileTypeIndex.getFiles(JsonFileType.INSTANCE, scope);
 		return psiManager.stream(jsonFiles).filter(NpmUtils::isPackageJson).toList();
 	}
 
