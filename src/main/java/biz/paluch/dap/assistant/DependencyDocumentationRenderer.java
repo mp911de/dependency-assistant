@@ -44,8 +44,8 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.lang.documentation.DocumentationMarkup;
+import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
-import com.intellij.openapi.util.text.StringUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -104,73 +104,73 @@ class DependencyDocumentationRenderer {
 	String render(ArtifactId artifactId, boolean withIcons) {
 
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
-		StringBuilder sb = new StringBuilder();
-
-		sb.append(DocumentationMarkup.DEFINITION_START);
-		sb.append(artifactId);
-		sb.append(DocumentationMarkup.DEFINITION_END);
-
-		sb.append(DocumentationMarkup.CONTENT_START);
+		HtmlBuilder content = new HtmlBuilder();
 
 		if (currentVersion != null) {
-			sb.append(renderCurrentVersion(currentVersion));
+			content.append(renderCurrentVersion(currentVersion));
 		}
 
 		Releases releases = artifactContext.getCache().getReleases(artifactId);
 
 		if (!releases.isEmpty()) {
 			ReleaseDigest digest = ReleaseDigest.of(releases, currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
-			appendVersionsTable(sb, artifactId, digest, withIcons, formatter);
+			content.append(versionsTable(artifactId, digest, withIcons, formatter));
 		}
 
-		appendSecurityAdvisories(sb);
+		content.append(securityAdvisories());
 
-		sb.append(DocumentationMarkup.CONTENT_END);
+		return document(HtmlChunk.text(artifactId.toString()), content);
+	}
 
-		return sb.toString();
+	/** Assemble the definition and content sections into the final HTML body. */
+	private static String document(HtmlChunk definition, HtmlBuilder content) {
+		return new HtmlBuilder()
+				.append(DocumentationMarkup.DEFINITION_ELEMENT
+						.child(DocumentationMarkup.PRE_ELEMENT.child(definition)))
+				.append(content.wrapWith(DocumentationMarkup.CONTENT_ELEMENT))
+				.toString();
 	}
 
 	/**
-	 * Append the security-advisories section for a vulnerable current version;
-	 * cache-only, renders nothing for clean or unscanned dependencies.
+	 * Render the security-advisories section for a vulnerable current version;
+	 * cache-only, empty for clean or unscanned dependencies.
 	 */
-	private void appendSecurityAdvisories(StringBuilder sb) {
+	private HtmlChunk securityAdvisories() {
 
 		if (currentVersion == null) {
-			return;
+			return HtmlChunk.empty();
 		}
 
 		Vulnerabilities vulnerabilities = artifactContext.getCurrentVulnerabilities();
 		if (!vulnerabilities.isVulnerable()) {
-			return;
+			return HtmlChunk.empty();
 		}
 
-		sb.append("<p><b>")
-				.append(MessageBundle.message("documentation.security-advisories"))
-				.append("</b></p>");
-		sb.append("<ul>");
-
+		HtmlBuilder advisories = new HtmlBuilder();
 		for (Vulnerability vulnerability : vulnerabilities) {
-			sb.append("<li>");
-			sb.append(Markdown.of(vulnerability.getTitle()).toHtml());
-			sb.append(" (");
-			String identifier = vulnerability.getIdentifier();
-
-			HtmlChunk identifierText = HtmlChunk.text(identifier);
-			if (isHttpLink(vulnerability.getSourceUrl())) {
-				HtmlChunk.Element link = HtmlChunk.tag("a")
-						.attr("href", vulnerability.getSourceUrl())
-						.child(identifierText);
-				sb.append(link);
-			} else {
-				sb.append(identifierText);
-			}
-
-			sb.append(", CVSS ").append(String.format(Locale.ROOT, "%.1f", vulnerability.getCvssScore()));
-			sb.append(" ").append(vulnerability.getSeverity().getLabel());
-			sb.append(")</li>");
+			advisories.append(advisory(vulnerability));
 		}
-		sb.append("</ul>");
+
+		return new HtmlBuilder()
+				.append(HtmlChunk.p()
+						.child(HtmlChunk.text(MessageBundle.message("documentation.security-advisories")).bold()))
+				.append(advisories.wrapWith("ul"))
+				.toFragment();
+	}
+
+	private static HtmlChunk advisory(Vulnerability vulnerability) {
+
+		HtmlChunk identifier = HtmlChunk.text(vulnerability.getIdentifier());
+		if (isHttpLink(vulnerability.getSourceUrl())) {
+			identifier = HtmlChunk.link(vulnerability.getSourceUrl(), identifier);
+		}
+
+		return HtmlChunk.li().children(
+				HtmlChunk.raw(Markdown.of(vulnerability.getTitle()).toHtml()),
+				HtmlChunk.text(" ("),
+				identifier,
+				HtmlChunk.text(", CVSS " + String.format(Locale.ROOT, "%.1f", vulnerability.getCvssScore()) + " "
+						+ vulnerability.getSeverity().getLabel() + ")"));
 	}
 
 	private static boolean isHttpLink(String url) {
@@ -204,108 +204,93 @@ class DependencyDocumentationRenderer {
 		}
 
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
-		StringBuilder sb = new StringBuilder();
-
-		sb.append(DocumentationMarkup.DEFINITION_START);
-		sb.append(property.name());
-		sb.append(DocumentationMarkup.DEFINITION_END);
-
-		sb.append(DocumentationMarkup.CONTENT_START);
+		HtmlBuilder content = new HtmlBuilder();
 
 		if (currentVersion != null) {
-			sb.append(renderCurrentVersion(currentVersion));
+			content.append(renderCurrentVersion(currentVersion));
 		}
 
 		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, artifactContext.getCache(), MAX_VERSIONS,
 				property.artifacts())) {
 
-			sb.append(group.renderHeader());
+			content.append(group.renderHeader());
 			if (group.hasReleases()) {
 
 				ReleaseDigest digest = group.digest(currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
-				appendVersionsTable(sb, group.artifactIds.getFirst(), digest, withIcons, formatter);
+				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter));
 			}
 
-			appendSecurityAdvisories(sb);
+			content.append(securityAdvisories());
 		}
 
-		sb.append(DocumentationMarkup.CONTENT_END);
-
-		return sb.toString();
+		return document(HtmlChunk.text(property.name()), content);
 	}
 
-	private String renderCurrentVersion(ArtifactVersion version) {
-		HtmlChunk.Element code = HtmlChunk.text(interfaceAssistant.getDocumentationText(version))
-				.code();
-		return HtmlChunk.p().addText(MessageBundle.message("documentation.current-value")).addText(": ").child(code)
-				.toString();
+	private HtmlChunk renderCurrentVersion(ArtifactVersion version) {
+		return HtmlChunk.p().addText(MessageBundle.message("documentation.current-value")).addText(": ")
+				.child(HtmlChunk.text(interfaceAssistant.getDocumentationText(version)).code());
 	}
 
 	/**
-	 * Append the release table for the {@link ReleaseDigest} rows; hidden rows are
-	 * summarized by grayed notes linking to the Dependency Check dialog so
-	 * truncation is never silent.
+	 * Render the release table for the {@link ReleaseDigest} rows; hidden rows are
+	 * summarized by notes linking to the Dependency Check dialog so truncation is
+	 * never silent.
 	 */
-	private void appendVersionsTable(StringBuilder sb, ArtifactId artifactId, ReleaseDigest digest,
-			boolean withIcons, ReleaseDateFormatter formatter) {
+	private HtmlChunk versionsTable(ArtifactId artifactId, ReleaseDigest digest, boolean withIcons,
+			ReleaseDateFormatter formatter) {
 
+		HtmlBuilder section = new HtmlBuilder();
 
 		if (!digest.previewRows().isEmpty() || !digest.releaseRows().isEmpty()) {
 
-			sb.append("<table>");
-			appendRows(sb, artifactId, digest.previewRows(), withIcons, formatter);
+			HtmlBuilder rows = new HtmlBuilder();
+			appendRows(rows, artifactId, digest.previewRows(), withIcons, formatter);
 
 			if (digest.morePreviews() > 0) {
-				sb.append("<tr>");
-				if (withIcons) {
-					sb.append("<td></td>");
-				}
-				HtmlChunk link = checkDialogLink(
-						MessageBundle.message("documentation.more-previews",
-								decimalFormat.format(digest.morePreviews())));
-				sb.append("<td colspan='2'>")
-						.append(link)
-						.append("</td></tr>");
+				rows.append(morePreviewsRow(digest.morePreviews(), withIcons));
 			}
 
-			appendRows(sb, artifactId, digest.releaseRows(), withIcons, formatter);
-			sb.append("</table>");
+			appendRows(rows, artifactId, digest.releaseRows(), withIcons, formatter);
+			section.append(rows.wrapWith("table"));
 		}
 
 		if (digest.moreReleases() > 0) {
+			section.append(HtmlChunk.p().child(checkDialogLink(MessageBundle.message("documentation.more-releases",
+					decimalFormat.format(digest.moreReleases()), digest.moreReleases()))));
+		}
 
-			String message = MessageBundle.message("documentation.more-releases",
-					decimalFormat.format(digest.moreReleases()), digest.moreReleases());
-			HtmlChunk link = checkDialogLink(message);
-			sb.append(HtmlChunk.p().child(link));
+		return section.toFragment();
+	}
+
+	private void appendRows(HtmlBuilder rows, ArtifactId artifactId, List<Release> releases, boolean withIcons,
+			ReleaseDateFormatter formatter) {
+
+		for (Release release : releases) {
+			rows.append(new DocumentedRelease(artifactContext, artifactId.toString(), release,
+					interfaceAssistant, linkable, withIcons).render(formatter));
 		}
 	}
 
-	private void appendRows(StringBuilder sb, ArtifactId artifactId, List<Release> rows, boolean withIcons,
-			ReleaseDateFormatter formatter) {
+	private HtmlChunk morePreviewsRow(int morePreviews, boolean withIcons) {
 
-		for (Release release : rows) {
-			sb.append("<tr>");
-			sb.append(new DocumentedRelease(artifactContext, artifactId.toString(), release,
-					interfaceAssistant, linkable, withIcons).render(formatter));
-			sb.append("</tr>");
-		}
+		HtmlChunk.Element note = HtmlChunk.tag("td").attr("colspan", 2)
+				.child(checkDialogLink(
+						MessageBundle.message("documentation.more-previews", decimalFormat.format(morePreviews))));
+
+		HtmlChunk.Element row = HtmlChunk.tag("tr");
+		return withIcons ? row.children(emptyCell(), note) : row.child(note);
+	}
+
+	private static HtmlChunk.Element emptyCell() {
+		return HtmlChunk.tag("td").child(HtmlChunk.empty());
 	}
 
 	/**
 	 * Wrap the text in a link opening the Dependency Check dialog focused on the
 	 * documented declaration.
 	 */
-	private HtmlChunk checkDialogLink(String text) {
-
-		HtmlChunk chunk = HtmlChunk.text(text);
-		return HtmlChunk.tag("a")
-				.attr("href", DependencyUpgradeLinkHandler.CHECK_SCHEME)
-				.child(chunk);
-	}
-
-	private static HtmlChunk grayed(HtmlChunk chunk) {
-		return DocumentationMarkup.GRAYED_ELEMENT.child(chunk);
+	private static HtmlChunk checkDialogLink(String text) {
+		return HtmlChunk.link(DependencyUpgradeLinkHandler.CHECK_SCHEME, text);
 	}
 
 	/**
@@ -433,25 +418,19 @@ class DependencyDocumentationRenderer {
 					.collect(Collectors.toCollection(LinkedHashSet::new));
 		}
 
-		String renderHeader() {
+		HtmlChunk renderHeader() {
 			return HtmlChunk.p()
 					.addText(MessageBundle.message("documentation.property-for"))
 					.addText(" ")
-					.addRaw(formatArtifactIds(assistant)).toString();
+					.child(formatArtifactIds(assistant));
 		}
 
-		private String formatArtifactIds(InterfaceAssistant assistant) {
-
-			StringBuilder sb = new StringBuilder();
-			for (ArtifactId artifactId : artifactIds) {
-				if (!sb.isEmpty()) {
-					sb.append(", ");
-				}
-				sb.append("<code>");
-				sb.append(StringUtil.escapeXmlEntities(assistant.getDisplayName(artifactId)));
-				sb.append("</code>");
-			}
-			return sb.toString();
+		private HtmlChunk formatArtifactIds(InterfaceAssistant assistant) {
+			return new HtmlBuilder()
+					.appendWithSeparators(HtmlChunk.text(", "), artifactIds.stream()
+							.map(artifactId -> HtmlChunk.text(assistant.getDisplayName(artifactId)).code())
+							.toList())
+					.toFragment();
 		}
 
 		public Releases releases() {
@@ -511,36 +490,29 @@ class DependencyDocumentationRenderer {
 			}
 		}
 
-		StringBuilder render(ReleaseDateFormatter formatter) {
+		HtmlChunk render(ReleaseDateFormatter formatter) {
 
-			StringBuilder sb = new StringBuilder();
+			HtmlChunk version = linkable
+					? HtmlChunk.link(DependencyUpgradeLinkHandler.SCHEME + key, renderVersion())
+					: renderVersion();
+			if (release.isPreview()) {
+				version = version.italic();
+			}
+
+			HtmlChunk.Element row = HtmlChunk.tag("tr");
 			if (firstColumnIcon != null) {
-				sb.append(firstColumnIcon);
+				row = row.child(firstColumnIcon);
 			}
 
-			sb.append("<td>");
-			boolean preview = release.isPreview();
-			if (preview) {
-				sb.append("<i>");
-			}
-			HtmlChunk version = renderVersion();
-			if (linkable) {
-				sb.append(HtmlChunk.tag("a")
-						.attr("href", DependencyUpgradeLinkHandler.SCHEME + key)
-						.child(version));
-			} else {
-				sb.append(version);
-			}
-			if (preview) {
-				sb.append("</i>");
-			}
-			sb.append("</td><td>");
-			if (release.releaseDate() != null) {
-				sb.append(formatter.formatLong(release.releaseDate()));
-			}
-			sb.append("</td>");
+			return row.children(HtmlChunk.tag("td").child(version), dateCell(formatter));
+		}
 
-			return sb;
+		private HtmlChunk.Element dateCell(ReleaseDateFormatter formatter) {
+
+			HtmlChunk.Element cell = HtmlChunk.tag("td");
+			return release.releaseDate() != null
+					? cell.addText(formatter.formatLong(release.releaseDate()))
+					: cell.child(HtmlChunk.empty());
 		}
 
 		private HtmlChunk renderVersion() {
