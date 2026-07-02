@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class VersionStatus {
+public class VersionStatus {
 
 	private final DependencyRuleEvaluator evaluator;
 
@@ -71,7 +71,7 @@ class VersionStatus {
 	 * @return {@literal true} when the candidate is the declared current version;
 	 * {@literal false} otherwise.
 	 */
-	boolean isCurrent() {
+	public boolean isCurrent() {
 		return candidate.equals(currentVersion);
 	}
 

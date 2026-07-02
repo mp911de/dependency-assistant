@@ -20,7 +20,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
+import biz.paluch.dap.assistant.editor.DependencyLineMarkerProvider;
 import biz.paluch.dap.maven.MavenAssistant.MavenInterface;
 import biz.paluch.dap.maven.wrapper.MavenWrapperAssistant;
 import biz.paluch.dap.util.MessageBundle;

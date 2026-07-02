@@ -20,7 +20,7 @@ import java.util.List;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.assistant.DependencyLineMarkerProvider.UpgradeDialogNavigationHandler;
+import biz.paluch.dap.assistant.editor.DependencyLineMarkerProvider.UpgradeDialogNavigationHandler;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.GutterMark;

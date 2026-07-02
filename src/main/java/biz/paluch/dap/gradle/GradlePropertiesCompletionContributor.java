@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.assistant.ReleaseCompletionProvider;
+import biz.paluch.dap.assistant.completion.ReleaseCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;

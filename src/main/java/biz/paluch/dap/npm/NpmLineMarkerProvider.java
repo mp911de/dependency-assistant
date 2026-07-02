@@ -19,7 +19,7 @@ package biz.paluch.dap.npm;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
+import biz.paluch.dap.assistant.editor.DependencyLineMarkerProvider;
 import biz.paluch.dap.npm.NpmAssistant.NpmInterface;
 import biz.paluch.dap.util.MessageBundle;
 

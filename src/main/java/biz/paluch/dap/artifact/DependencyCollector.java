@@ -44,7 +44,6 @@ import org.jspecify.annotations.Nullable;
  * @see Dependency
  * @see DeclaredDependency
  */
-// TODO: DDD review usage vs. declaration
 public class DependencyCollector {
 
 	private final Map<ArtifactId, DeclaredDependency> declarations = new TreeMap<>();

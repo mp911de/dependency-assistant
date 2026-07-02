@@ -34,8 +34,8 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
-
 import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -161,13 +161,11 @@ public class ArtifactReferenceContext {
 	}
 
 	/**
-	 * Return the {@link Cache} backing this context, for composing layers (such as
-	 * {@link DependencyUpgradeContext}) that derive further state from the same
-	 * release and vulnerability store without re-resolving the element.
+	 * Return the {@link Cache} backing.
 	 *
 	 * @return the backing cache.
 	 */
-	Cache getCache() {
+	public Cache getCache() {
 		return cache;
 	}
 
@@ -211,7 +209,7 @@ public class ArtifactReferenceContext {
 	 * @param artifactVersion the candidate version to describe.
 	 * @return the candidate version status.
 	 */
-	VersionStatus getStatus(ArtifactVersion artifactVersion) {
+	public VersionStatus getStatus(ArtifactVersion artifactVersion) {
 
 		ArtifactVersion currentVersion = null;
 		if (isPresent() && getDeclaration().isVersionDefined()) {

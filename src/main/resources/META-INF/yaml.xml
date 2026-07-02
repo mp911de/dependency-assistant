@@ -11,7 +11,7 @@
 				order="first"
 				implementationClass="biz.paluch.dap.antora.AntoraPlaybookCompletionContributor"/>
 		<annotator language="yaml"
-		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="yaml"
 				implementationClass="biz.paluch.dap.github.GitHubLineMarkerProvider"/>

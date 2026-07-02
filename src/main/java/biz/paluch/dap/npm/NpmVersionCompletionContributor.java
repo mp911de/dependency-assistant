@@ -18,7 +18,7 @@ package biz.paluch.dap.npm;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.ReleaseCompletionProvider;
+import biz.paluch.dap.assistant.completion.ReleaseCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionType;

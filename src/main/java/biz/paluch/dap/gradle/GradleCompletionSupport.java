@@ -18,7 +18,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.Locale;
 
-import biz.paluch.dap.assistant.ReleaseCompletionProvider;
+import biz.paluch.dap.assistant.completion.ReleaseCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.codeInsight.completion.InsertionContext;

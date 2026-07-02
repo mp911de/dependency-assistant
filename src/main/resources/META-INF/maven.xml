@@ -11,7 +11,7 @@
 				language="XML"
 				implementationClass="biz.paluch.dap.maven.MavenReleaseVersionCompletionContributor"/>
 		<annotator language="XML"
-		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="XML"
 				implementationClass="biz.paluch.dap.maven.MavenLineMarkerProvider"/>

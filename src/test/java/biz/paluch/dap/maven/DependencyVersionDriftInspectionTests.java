@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.DependencyVersionDriftInspection;
+import biz.paluch.dap.assistant.editor.DependencyVersionDriftInspection;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;

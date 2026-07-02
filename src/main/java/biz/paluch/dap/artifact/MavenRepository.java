@@ -39,9 +39,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.util.HttpClientUtil;
+import biz.paluch.dap.util.MavenMetadataProjection;
 import biz.paluch.dap.util.StringUtils;
-import biz.paluch.dap.xml.MavenMetadataProjection;
-import biz.paluch.dap.xml.XmlBeamProjectorFactory;
+import biz.paluch.dap.util.XmlBeamProjectorFactory;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.util.io.HttpRequests;

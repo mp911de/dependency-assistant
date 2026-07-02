@@ -9,7 +9,7 @@
 				order="first"
 				implementationClass="biz.paluch.dap.npm.NpmVersionCompletionContributor"/>
 		<annotator language="JSON"
-		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="JSON"
 				implementationClass="biz.paluch.dap.npm.NpmLineMarkerProvider"/>

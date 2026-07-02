@@ -42,11 +42,11 @@
 				order="first"
 				implementationClass="biz.paluch.dap.gradle.KotlinCompletionContributor"/>
 		<annotator language="Groovy"
-		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>
 		<annotator language="TOML"
-		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>
 		<annotator language="kotlin"
-		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>
 		<codeInsight.lineMarkerProvider
 				language="Groovy"
 				implementationClass="biz.paluch.dap.gradle.GradleLineMarkerProvider"/>

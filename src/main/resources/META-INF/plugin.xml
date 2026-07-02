@@ -63,8 +63,9 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
-		<postStartupActivity implementation="biz.paluch.dap.assistant.PostStartup"/>
-		<actionOnSave implementation="biz.paluch.dap.assistant.FlushStateOnSave"/>
+		<postStartupActivity
+				implementation="biz.paluch.dap.assistant.action.PostStartup"/>
+		<actionOnSave implementation="biz.paluch.dap.assistant.action.FlushStateOnSave"/>
 		<notificationGroup id="biz.paluch.dependency-assistant"
 		                   displayType="NONE"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
@@ -91,33 +92,34 @@
 		<severitiesProvider
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
-				implementation="biz.paluch.dap.assistant.DependencyDocumentationProvider"/>
+				implementation="biz.paluch.dap.assistant.documentation.DependencyDocumentationProvider"/>
 		<platform.backend.documentation.lookupElementTargetProvider
-				implementation="biz.paluch.dap.assistant.ReleaseLookupDocumentationProvider"/>
+				implementation="biz.paluch.dap.assistant.documentation.ReleaseLookupDocumentationProvider"/>
 		<platform.backend.documentation.linkHandler
-				implementation="biz.paluch.dap.assistant.DependencyUpgradeLinkHandler"/>
+				implementation="biz.paluch.dap.assistant.documentation.DependencyUpgradeLinkHandler"/>
 		<annotator language="Properties"
-		           implementationClass="biz.paluch.dap.assistant.DependencyVersionAnnotator"/>
+		           implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionAnnotator"/>
 		<localInspection id="dap.version-drift"
 				bundle="messages.MessageBundle"
 				groupKey="plugin.name"
 				key="inspection.version-drift.display-name"
 				level="WARNING"
 				enabledByDefault="true"
-				implementationClass="biz.paluch.dap.assistant.DependencyVersionDriftInspection"/>
+				         implementationClass="biz.paluch.dap.assistant.editor.DependencyVersionDriftInspection"/>
 		<localInspection id="dap.dependency-rule"
 		                 bundle="messages.MessageBundle"
 		                 groupKey="plugin.name"
 		                 key="inspection.dependency-rule.display-name"
 		                 level="WARNING"
 		                 enabledByDefault="true"
-		                 implementationClass="biz.paluch.dap.assistant.DependencyRuleInspection"/>
+		                 implementationClass="biz.paluch.dap.assistant.editor.DependencyRuleInspection"/>
 		<intentionAction id="dap.upgrade.dependencies">
 			<language/>
 			<skipBeforeAfter>true</skipBeforeAfter>
 			<categoryKey>intention.dap.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
-			<className>biz.paluch.dap.assistant.UpgradeDependenciesIntention</className>
+			<className>biz.paluch.dap.assistant.action.UpgradeDependenciesIntention
+			</className>
 		</intentionAction>
 	</extensions>
 
@@ -126,12 +128,12 @@
 		       text="Dependency Assistant" popup="true"	icon="biz.paluch.dap.DependencyAssistantIcons.ICON">
 			<add-to-group group-id="ToolsMenu"/>
 			<action id="biz.paluch.dap.UpgradeDependencies"
-			        class="biz.paluch.dap.assistant.UpgradeDependenciesAction"
+			        class="biz.paluch.dap.assistant.action.UpgradeDependenciesAction"
 			        text="Update Dependencies…">
 				<add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
 			</action>
 			<action id="biz.paluch.dap.RefreshReleasesMetadataAction"
-			        class="biz.paluch.dap.assistant.RefreshReleasesMetadataAction"
+			        class="biz.paluch.dap.assistant.action.RefreshReleasesMetadataAction"
 			        text="Refresh Dependency Release Metadata">
 			</action>
 			<separator/>

@@ -18,7 +18,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.List;
 
-import biz.paluch.dap.assistant.DependencyVersionDriftInspection;
+import biz.paluch.dap.assistant.editor.DependencyVersionDriftInspection;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;

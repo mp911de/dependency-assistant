@@ -17,7 +17,7 @@
 package biz.paluch.dap.maven.wrapper;
 
 import biz.paluch.dap.artifact.ArtifactRelease;
-import biz.paluch.dap.assistant.PropertyContributorSupport;
+import biz.paluch.dap.assistant.completion.PropertyContributorSupport;
 import biz.paluch.dap.state.Cache;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionResultSet;

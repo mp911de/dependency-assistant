@@ -19,7 +19,7 @@ package biz.paluch.dap.assertions;
 import java.util.ArrayList;
 import java.util.List;
 
-import biz.paluch.dap.assistant.DependencyLineMarkerProvider;
+import biz.paluch.dap.assistant.editor.DependencyLineMarkerProvider;
 import com.intellij.codeInsight.daemon.GutterMark;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.openapi.util.Key;

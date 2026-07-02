@@ -30,6 +30,7 @@ import biz.paluch.dap.util.ResolvableIcon;
  *
  * @author Mark Paluch
  */
+// TODO: Inline
 public enum ShieldStyle {
 
 	/**

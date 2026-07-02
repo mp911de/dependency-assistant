@@ -18,7 +18,7 @@ package biz.paluch.dap.gradle.wrapper;
 
 import java.util.List;
 
-import biz.paluch.dap.assistant.VersionContributorSupport;
+import biz.paluch.dap.assistant.completion.VersionContributorSupport;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.util.TextRange;

@@ -24,7 +24,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.DependencyVersionDriftInspection;
+import biz.paluch.dap.assistant.editor.DependencyVersionDriftInspection;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.codeInspection.InspectionManager;

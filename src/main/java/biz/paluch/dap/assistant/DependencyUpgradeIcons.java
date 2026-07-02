@@ -37,7 +37,7 @@ import com.intellij.openapi.util.ScalableIcon;
  *
  * @author Mark Paluch
  */
-class DependencyUpgradeIcons {
+public class DependencyUpgradeIcons {
 
 	private static final ResolvableIcon OLDER = new ResolvableIcon(AllIcons.Nodes.Library, "AllIcons.Nodes.Library");
 

@@ -19,7 +19,7 @@ package biz.paluch.dap.github;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
-import biz.paluch.dap.assistant.ReleaseCompletionProvider;
+import biz.paluch.dap.assistant.completion.ReleaseCompletionProvider;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;

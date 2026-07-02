@@ -19,7 +19,7 @@ package biz.paluch.dap.npm;
 import java.util.Collections;
 import java.util.List;
 
-import biz.paluch.dap.assistant.DependencyDocumentationProvider;
+import biz.paluch.dap.assistant.documentation.DependencyDocumentationProvider;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonStringLiteral;
