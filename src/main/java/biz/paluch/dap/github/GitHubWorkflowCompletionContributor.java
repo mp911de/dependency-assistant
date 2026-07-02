@@ -20,7 +20,6 @@ import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.assistant.ReleaseCompletionProvider;
-import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.util.PatternConditions;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
@@ -85,8 +84,15 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 			return builder.withInsertHandler((insertionContext, lookupElement) -> {
 
 				YAMLScalar toUpdate = pointer.getElement();
-				VersionText text = action.getVersion(version);
-				new UpdateGitHubWorkflowFile(project).updateVersionAndComment(toUpdate, text);
+				if (toUpdate == null) {
+					return;
+				}
+
+				YAMLScalar updated = new UpdateGitHubWorkflowFile(project).updateVersionAndComment(toUpdate,
+						action.getVersion(version));
+				if (updated != null) {
+					moveCaretTo(insertionContext, GitHubUtils.getVersionRange(updated).getEndOffset());
+				}
 			});
 		}
 

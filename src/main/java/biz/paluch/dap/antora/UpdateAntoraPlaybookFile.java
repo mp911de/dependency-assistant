@@ -29,6 +29,7 @@ import com.intellij.psi.SyntaxTraverser;
 import org.jetbrains.yaml.YAMLElementGenerator;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
+import org.jspecify.annotations.Nullable;
 
 /**
  * PSI updater for Antora playbook {@code ui.bundle.url} declarations.
@@ -112,24 +113,30 @@ class UpdateAntoraPlaybookFile {
 	 * @param scalar the scalar to replace.
 	 * @param value the original scalar text value.
 	 * @param newVersion the resolved release version to render.
+	 * @return the updated scalar so callers can continue PSI operations such as
+	 * positioning the editor caret, or {@literal null} if no safe update could be
+	 * made.
 	 */
-	void updateVersion(YAMLScalar scalar, String value, GitVersion newVersion) {
+	@Nullable
+	YAMLScalar updateVersion(YAMLScalar scalar, String value, GitVersion newVersion) {
 
 		AntoraBundleUrl bundleUrl = AntoraBundleUrl.from(value);
 		if (bundleUrl == null) {
-			return;
+			return null;
 		}
 
 		YamlVersionSite site = YamlVersionSite.locate(scalar, AntoraPlaybookParser::isBundleUrlKeyValue);
 		if (site == null) {
-			return;
+			return null;
 		}
 
 		String renderedVersion = newVersion.renderRef(RefStyle.VERSION, bundleUrl.version());
 		int versionStart = value.indexOf(RELEASE_DOWNLOAD_FRAGMENT) + RELEASE_DOWNLOAD_FRAGMENT.length();
 		int versionEnd = value.indexOf('/', versionStart);
 		String replacement = value.substring(0, versionStart) + renderedVersion + value.substring(versionEnd);
-		site.replaceRawValue(replacement, factory);
+
+		YAMLKeyValue replaced = site.replaceRawValue(replacement, factory);
+		return replaced.getValue() instanceof YAMLScalar updatedScalar ? updatedScalar : null;
 	}
 
 	private void applyUpdates(List<DependencyUpdate> updates, YAMLScalar scalar) {

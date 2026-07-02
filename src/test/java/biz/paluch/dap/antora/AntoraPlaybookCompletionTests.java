@@ -58,7 +58,8 @@ class AntoraPlaybookCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip");
+		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip")
+				.caretBetween("/download/v0.4.26", "/ui-bundle.zip");
 	}
 
 	@Test
@@ -123,7 +124,8 @@ class AntoraPlaybookCompletionTests {
 		fixture.completeBasic();
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
-		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip");
+		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip")
+				.caretBetween("/download/v0.4.26", "/ui-bundle.zip");
 	}
 
 	@Test
@@ -140,7 +142,8 @@ class AntoraPlaybookCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(playbookFile).containsText(
-				"'https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip'");
+				"'https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip'")
+				.caretBetween("/download/v0.4.26", "/ui-bundle.zip'");
 	}
 
 	@Test

@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,16 +42,20 @@ import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
+import com.intellij.codeInsight.completion.CompletionSorter;
 import com.intellij.codeInsight.completion.InsertionContext;
-import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.codeInsight.lookup.LookupElementWeigher;
+import com.intellij.openapi.actionSystem.IdeActions;
+import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -88,7 +93,6 @@ import org.jspecify.annotations.Nullable;
  * @see ArtifactReleaseRenderer
  * @see VersionUpgradeLookup
  */
-// TODO: Polishing
 public class ReleaseCompletionProvider extends CompletionProvider<CompletionParameters> {
 
 	/**
@@ -120,22 +124,25 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		RefStyle refStyle = getRefStyle(position, metadata);
 		Project project = parameters.getPosition().getProject();
-		StateService service = StateService
-				.getInstance(project);
-		List<ArtifactRelease> releases = getReleases(metadata.artifactReference().getArtifactId(), service.getCache());
+		Cache cache = StateService.getInstance(project).getCache();
+		ArtifactId artifactId = metadata.artifactReference().getArtifactId();
+		List<ArtifactRelease> releases = getReleases(artifactId, cache);
 
 		if (releases.isEmpty()) {
+			result.addLookupAdvertisement(MessageBundle.message("completion.advertisement.no-releases"));
 			return;
 		}
+
+		advertiseShowAllReleases(parameters, result);
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
 		ResolutionContext resolutionContext = ResolutionContext.forReference(metadata.artifactReference,
 				BranchSource.of(parameters.getEditor().getVirtualFile()), metadata.context().getProjectVersion());
 		DependencyRule rule = ruleService.resolve(resolutionContext);
-		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result);
-		Cache cache = service.getCache();
+		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result)
+				.withRelevanceSorter(releaseOrderSorter(releases));
+		versionsResult.restartCompletionWhenNothingMatches();
 
-		ArtifactId artifactId = metadata.artifactReference().getArtifactId();
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = cache.getVulnerabilities(artifactId);
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
 				.getInterfaceAssistant(), metadata.currentVersion(), rule,
@@ -146,7 +153,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		List<LookupElement> elements = new ArrayList<>();
-		double priority = releases.size();
 		for (ArtifactRelease release : releases) {
 
 			ArtifactVersion completionVersion = release.getVersion();
@@ -159,12 +165,47 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 								metadata.versionLiteral(), lookupElement.getLookupString()));
 			}
 			element = postProcess(parameters, element, position, release);
-			LookupElement lookupElement = PrioritizedLookupElement.withPriority(
-					element.withAutoCompletionPolicy(AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE), priority--);
-			elements.add(lookupElement);
+			elements.add(element.withAutoCompletionPolicy(AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE));
 		}
 
 		versionsResult.addAllElements(elements);
+	}
+
+	/**
+	 * Advertise repeated completion invocation as the way to see all releases
+	 * regardless of the typed prefix.
+	 */
+	private static void advertiseShowAllReleases(CompletionParameters parameters, CompletionResultSet result) {
+
+		if (parameters.getInvocationCount() > 1) {
+			return;
+		}
+
+		String shortcut = KeymapUtil.getFirstKeyboardShortcutText(IdeActions.ACTION_CODE_COMPLETION);
+		if (StringUtils.hasText(shortcut)) {
+			result.addLookupAdvertisement(MessageBundle.message("completion.advertisement.show-all", shortcut));
+		}
+	}
+
+	/**
+	 * Return a sorter that keeps the cached release order, the newest release
+	 * first, instead of letting platform relevance weighers reorder version items.
+	 */
+	private static CompletionSorter releaseOrderSorter(List<ArtifactRelease> releases) {
+
+		Map<ArtifactRelease, Integer> order = new IdentityHashMap<>();
+		for (ArtifactRelease release : releases) {
+			order.put(release, order.size());
+		}
+
+		return CompletionSorter.emptySorter().weigh(new LookupElementWeigher("dependencyAssistantReleaseOrder") {
+
+			@Override
+			public Integer weigh(LookupElement element) {
+				return element.getObject() instanceof ArtifactRelease release ? order.get(release) : null;
+			}
+
+		});
 	}
 
 	private LookupElementBuilder createLookupElement(ArtifactRelease release, ArtifactVersion completionVersion,
@@ -293,6 +334,17 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
+	 * Return whether {@code c} can be part of a version token. Version tokens may
+	 * contain letters, digits, dots, hyphens, underscores, and plus signs.
+	 * @param c the character to check.
+	 * @return {@literal true} if the character belongs to a version token;
+	 * {@literal false} otherwise.
+	 */
+	public static boolean isVersionTokenCharacter(char c) {
+		return Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_' || c == '+';
+	}
+
+	/**
 	 * Return the version-token prefix at the current completion position.
 	 *
 	 * <p>The original position is preferred when IntelliJ has inserted completion
@@ -329,15 +381,11 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		caretInScalar = Math.clamp(caretInScalar, 0, text.length());
 
 		int start = caretInScalar;
-		while (start > 0 && isVersionChar(text.charAt(start - 1))) {
+		while (start > 0 && isVersionTokenCharacter(text.charAt(start - 1))) {
 			start--;
 		}
 
 		return text.substring(start, caretInScalar);
-	}
-
-	private static boolean isVersionChar(char c) {
-		return Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_' || c == '+';
 	}
 
 	private static ProjectDependencyContext context(PsiElement element, PsiFile psiFile) {
@@ -355,7 +403,18 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			return;
 		}
 
-		context.getEditor().getCaretModel().moveToOffset(getVersionTextEndOffset(updated));
+		moveCaretTo(context, getVersionTextEndOffset(updated));
+	}
+
+	/**
+	 * Move the caret and completion tail to {@code offset} after an insert handler
+	 * rewrote the completed declaration, so completion always ends at the applied
+	 * version text.
+	 */
+	protected static void moveCaretTo(InsertionContext context, int offset) {
+
+		context.getEditor().getCaretModel().moveToOffset(offset);
+		context.setTailOffset(offset);
 	}
 
 	private static @Nullable PsiElement replaceVersion(PsiElement versionLiteral, String version) {

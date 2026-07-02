@@ -276,9 +276,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 			applyVersionUpdate(freshProperty, DependencyUpdate.create(release.artifactId(), release.getVersion()));
 
-			int newCaretOffset = caretOffsetAfterUpdate(freshProperty, caretRangeIndex);
-			context.getEditor().getCaretModel().moveToOffset(newCaretOffset);
-			context.setTailOffset(newCaretOffset);
+			moveCaretTo(context, caretOffsetAfterUpdate(freshProperty, caretRangeIndex));
 		}
 
 		private int caretRangeIndex() {

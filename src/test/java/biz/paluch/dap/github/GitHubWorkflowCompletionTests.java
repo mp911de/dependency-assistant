@@ -154,7 +154,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(workflowFile)
-				.containsText("actions/checkout@d1185ce5 # v4.2.0 # bar");
+				.containsText("actions/checkout@d1185ce5 # v4.2.0 # bar")
+				.caretBetween("@d1185ce5", " # v4.2.0");
 	}
 
 	@Test
@@ -190,7 +191,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(workflowFile)
-				.containsText("\"actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530\" # v4.2.0");
+				.containsText("\"actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530\" # v4.2.0")
+				.caretBetween("d1185ce59f7757407fe6a5febb1e03e3dba2a530", "\"");
 	}
 
 	@Test

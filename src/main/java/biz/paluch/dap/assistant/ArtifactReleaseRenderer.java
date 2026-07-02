@@ -117,6 +117,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 		VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
 				vulnerabilities.getVulnerabilities(release.getVersion()));
 		presentation.setItemTextItalic(status.isOlder());
+		presentation.setItemTextBold(status.isCurrent());
 		presentation.setStrikeout(status.isRuleViolation());
 		presentation.setIcon(status.getIcon(ShieldStyle.OUTLINE));
 

@@ -82,8 +82,14 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 			return builder.withInsertHandler((insertionContext, lookupElement) -> {
 
 				YAMLScalar toUpdate = pointer.getElement();
-				if (toUpdate != null) {
-					new UpdateAntoraPlaybookFile(project).updateVersion(toUpdate, originalValue, gitVersion);
+				if (toUpdate == null) {
+					return;
+				}
+
+				YAMLScalar updated = new UpdateAntoraPlaybookFile(project).updateVersion(toUpdate, originalValue,
+						gitVersion);
+				if (updated != null) {
+					moveCaretTo(insertionContext, AntoraUtils.getVersionRange(updated).getEndOffset());
 				}
 			});
 		}

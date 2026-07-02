@@ -18,6 +18,7 @@ package biz.paluch.dap.gradle;
 
 import java.util.Locale;
 
+import biz.paluch.dap.assistant.ReleaseCompletionProvider;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.codeInsight.completion.InsertionContext;
@@ -45,7 +46,8 @@ class GradleCompletionSupport {
 
 		int prefixStart = prefixEnd;
 		int contentStart = getStringContentStart(text);
-		while (prefixStart > contentStart && isVersionChar(text.charAt(prefixStart - 1))) {
+		while (prefixStart > contentStart
+				&& ReleaseCompletionProvider.isVersionTokenCharacter(text.charAt(prefixStart - 1))) {
 			prefixStart--;
 		}
 
@@ -66,7 +68,7 @@ class GradleCompletionSupport {
 
 		CharSequence text = document.getCharsSequence();
 		int deleteEnd = tailOffset;
-		while (deleteEnd < text.length() && isVersionChar(text.charAt(deleteEnd))) {
+		while (deleteEnd < text.length() && ReleaseCompletionProvider.isVersionTokenCharacter(text.charAt(deleteEnd))) {
 			deleteEnd++;
 		}
 
@@ -143,10 +145,6 @@ class GradleCompletionSupport {
 		}
 
 		return text.startsWith("\"") || text.startsWith("'") ? 1 : 0;
-	}
-
-	private static boolean isVersionChar(char c) {
-		return Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_' || c == '+';
 	}
 
 }
