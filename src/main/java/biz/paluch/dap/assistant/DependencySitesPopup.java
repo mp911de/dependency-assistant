@@ -173,9 +173,8 @@ class DependencySitesPopup {
 	}
 
 	/**
-	 * Resolve the entries for the query inside the non-blocking read. Returns
-	 * {@literal null} when the project entered dumb mode before the read acquired
-	 * the lock, signalling the caller to show the indexing notice instead.
+	 * Resolve the entries inside the non-blocking read; {@literal null} when dumb
+	 * mode started meanwhile, signalling the indexing notice.
 	 */
 	private @Nullable List<DependencySitePresentation> findEntries(DependencySiteQuery query) {
 
@@ -187,10 +186,7 @@ class DependencySitesPopup {
 				.map(hit -> DependencySitePresentation.from(hit, project)).toList();
 	}
 
-	/**
-	 * Show a transient warning balloon anchored at the click site telling the user
-	 * the find is unavailable while indexing runs.
-	 */
+	/** Show a transient balloon telling the user the find waits for indexing. */
 	private void showIndexingNotice(RelativePoint where) {
 
 		JBPopupFactory.getInstance()
@@ -299,9 +295,8 @@ class DependencySitesPopup {
 	}
 
 	/**
-	 * Create the read-only preview pane. The match highlight is applied through the
-	 * settings provider because the backing editor is created lazily when the field
-	 * is first shown, after the initial selection already set the document.
+	 * Create the read-only preview pane; the settings provider re-applies the match
+	 * highlight once the lazily created editor materializes.
 	 */
 	private EditorTextField createPreview(JBList<DependencySitePresentation> list, FileType fileType) {
 
@@ -329,10 +324,12 @@ class DependencySitesPopup {
 			return;
 		}
 
+		String title = MessageBundle.message("dialog.findSites.title");
 		UsageViewPresentation presentation = new UsageViewPresentation();
-		presentation.setTabText(MessageBundle.message("dialog.findSites.title"));
-		presentation.setToolwindowTitle(MessageBundle.message("dialog.findSites.title"));
-		presentation.setSearchString(MessageBundle.message("dialog.findSites.title"));
+		presentation.setTabText(title);
+		presentation.setToolwindowTitle(title);
+		presentation.setSearchString(title);
+
 		UsageViewManager.getInstance(project).showUsages(UsageTarget.EMPTY_ARRAY, usages, presentation);
 
 		onTransferToFindWindow.run();
@@ -384,10 +381,7 @@ class DependencySitesPopup {
 		}
 	}
 
-	/**
-	 * Highlight the located element's text within the preview so the user sees
-	 * which part of the statement the site refers to.
-	 */
+	/** Highlight the located element's text within the preview. */
 	private static void highlightMatch(Editor editor, @Nullable DependencySitePresentation entry) {
 
 		editor.getMarkupModel().removeAllHighlighters();

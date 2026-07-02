@@ -94,10 +94,8 @@ record DependencySitePresentation(SiteRole role, SmartPsiElementPointer<PsiEleme
 	}
 
 	/**
-	 * Locate the element's own text within the preview so the popup can highlight
-	 * the match. Dedenting shifts offsets per line, so the range is recovered
-	 * textually; a multi-line element whose text no longer occurs verbatim yields
-	 * no highlight.
+	 * Recover the element's range within the preview textually, since dedenting
+	 * shifts offsets; no verbatim occurrence yields no highlight.
 	 */
 	private static @Nullable TextRange matchRange(String elementText, String preview) {
 
