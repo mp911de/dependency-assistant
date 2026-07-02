@@ -9,13 +9,13 @@
 		<postStartupActivity
 				implementation="biz.paluch.dap.gradle.GradleInitService"/>
 		<completion.confidence language="Groovy" order="first"
-		                       implementationClass="biz.paluch.dap.gradle.GroovyCompletionConfidence"/>
+		                       implementationClass="biz.paluch.dap.gradle.GradleCompletionConfidence"/>
 		<completion.confidence language="TOML" order="first"
-		                       implementationClass="biz.paluch.dap.gradle.TomlCompletionConfidence"/>
+		                       implementationClass="biz.paluch.dap.gradle.GradleCompletionConfidence"/>
 		<completion.confidence language="Properties" order="first"
-		                       implementationClass="biz.paluch.dap.gradle.GradlePropertiesCompletionConfidence"/>
+		                       implementationClass="biz.paluch.dap.gradle.GradleCompletionConfidence"/>
 		<completion.confidence language="kotlin" order="first"
-		                       implementationClass="biz.paluch.dap.gradle.KotlinCompletionConfidence"/>
+		                       implementationClass="biz.paluch.dap.gradle.GradleCompletionConfidence"/>
 		<completion.contributor
 				id="dap.gradle.groovy.release-version-contributor"
 				language="Groovy"
