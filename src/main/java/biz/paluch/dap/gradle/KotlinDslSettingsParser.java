@@ -78,7 +78,7 @@ class KotlinDslSettingsParser {
 					parseVersionCatalogsBlock(catalogsCall, catalogs);
 				}
 				if (stmt instanceof KtBinaryExpression binary) {
-					String lhs = KtLiterals.getText(binary.getLeft());
+					String lhs = KtLiterals.nameOf(binary.getLeft());
 					if ("defaultLibrariesExtensionName".equals(lhs) && binary.getRight() instanceof KtExpression) {
 						defaultAlias.set(KtLiterals.getText(binary.getRight()));
 					}

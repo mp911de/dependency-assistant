@@ -122,7 +122,7 @@ class KtVersion {
 		}
 
 		return SyntaxTraverser.psiTraverser(element)
-				.filter(it -> !(it instanceof KtLambdaExpression))
+				.expand(it -> !(it instanceof KtLambdaExpression))
 				.filter(it -> {
 					return it instanceof KtReferenceExpression || it instanceof KtDotQualifiedExpression dotQualified
 							&& dotQualified.getSelectorExpression() instanceof KtCallExpression;
@@ -147,10 +147,6 @@ class KtVersion {
 
 		if (versionLiteral != null && versionLiterals != null) {
 
-			if (versionLiteral instanceof KtReferenceExpression ref && StringUtils.hasText(ref.getText())) {
-				return new EffectiveVersion(Expression.property(ref.getText()), versionLiteral);
-			}
-
 			if (versionLiterals.hasProperty()) {
 				return new EffectiveVersion(Expression.property(versionLiterals.getProperty()), versionLiteral);
 			}
@@ -163,14 +159,17 @@ class KtVersion {
 
 		for (Constraint constraint : constraints.values()) {
 
+			KtExpression version = constraint.version();
+			if (version == null) {
+				continue;
+			}
+
 			if (constraint.hasProperty()) {
-				return new EffectiveVersion(Expression.property(constraint.literals().getProperty()),
-						constraint.version());
+				return new EffectiveVersion(Expression.property(constraint.literals().getProperty()), version);
 			}
 
 			if (constraint.hasText() && !constraint.isRange()) {
-				return new EffectiveVersion(Expression.from(KtLiterals.getText(constraint.version())),
-						constraint.version());
+				return new EffectiveVersion(Expression.from(constraint.literals().getText()), version);
 			}
 		}
 
@@ -233,7 +232,7 @@ class KtVersion {
 	 * name, the underlying PSI elements, and the literal rendering used by
 	 * {@link GradleVersionConstraint}.
 	 */
-	record Constraint(String name, KtCallElement call, KtExpression version, KtLiterals literals)
+	record Constraint(String name, KtCallElement call, @Nullable KtExpression version, KtLiterals literals)
 			implements GradleVersionConstraint {
 
 		/**
@@ -245,9 +244,7 @@ class KtVersion {
 		 */
 		public static Constraint of(KtCallElement call) {
 			KtExpression version = KotlinDslUtils.getFirstValueArgument(call);
-			KtLiterals from = KtLiterals.from(version);
-			return new Constraint(KotlinDslUtils.getKotlinCallName(call), call, version,
-					version instanceof KtReferenceExpression ? from.asProperty() : from);
+			return new Constraint(KotlinDslUtils.getKotlinCallName(call), call, version, KtLiterals.from(version));
 		}
 
 		/**

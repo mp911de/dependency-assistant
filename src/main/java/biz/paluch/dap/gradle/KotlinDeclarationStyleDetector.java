@@ -362,7 +362,7 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 			if ("property".equals(KotlinDslUtils.getKotlinCallName(call))
 					&& isReferenceInsideSupportedVersionLiteral(call)) {
 				KtExpression argument = KotlinDslUtils.getFirstValueArgument(call);
-				String name = argument != null ? KtLiterals.getText(argument) : null;
+				String name = KtLiterals.nameOf(argument);
 				if (StringUtils.hasText(name)) {
 					names.add(name);
 				}
@@ -401,7 +401,7 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 		}
 
 		for (KtExpression indexExpression : arrayAccess.getIndexExpressions()) {
-			String key = KtLiterals.getText(indexExpression);
+			String key = KtLiterals.nameOf(indexExpression);
 			if (StringUtils.hasText(key)) {
 				return key;
 			}
