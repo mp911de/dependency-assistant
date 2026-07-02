@@ -53,7 +53,7 @@ class UpgradeScopeResolverTests {
 		UpgradeScope scope = UpgradeScopeResolver.resolve(project,
 				new UpgradeRequest(List.of(buildFile.getVirtualFile()), null));
 
-		assertThat(scope.entries()).singleElement()
+		assertThat(scope).singleElement()
 				.extracting(UpgradeScope.Entry::buildFile).isEqualTo(buildFile);
 	}
 
@@ -69,7 +69,7 @@ class UpgradeScopeResolverTests {
 		UpgradeScope scope = UpgradeScopeResolver.resolve(project,
 				new UpgradeRequest(List.of(selected.getVirtualFile()), editor));
 
-		assertThat(scope.entries()).singleElement()
+		assertThat(scope).singleElement()
 				.extracting(UpgradeScope.Entry::buildFile).isEqualTo(selected);
 	}
 
@@ -81,7 +81,7 @@ class UpgradeScopeResolverTests {
 
 		UpgradeScope scope = UpgradeScopeResolver.resolve(project, new UpgradeRequest(List.of(), editor));
 
-		assertThat(scope.entries()).singleElement()
+		assertThat(scope).singleElement()
 				.extracting(UpgradeScope.Entry::buildFile).isEqualTo(editor);
 	}
 
@@ -104,7 +104,7 @@ class UpgradeScopeResolverTests {
 		UpgradeScope scope = UpgradeScopeResolver.resolve(project,
 				new UpgradeRequest(List.of(folder, buildFile.getVirtualFile()), null));
 
-		assertThat(scope.entries()).singleElement()
+		assertThat(scope).singleElement()
 				.extracting(UpgradeScope.Entry::buildFile).isEqualTo(buildFile);
 	}
 

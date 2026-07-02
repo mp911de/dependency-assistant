@@ -112,9 +112,9 @@ class DependencyCheckAggregatorTests {
 				resolved(LETTUCE_UPDATE), BROKEN_ARTIFACT, ReleaseLookupResult.failed(BROKEN_ARTIFACT_ERROR));
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases);
 
-		assertThat(result.candidates()).extracting(candidate -> candidate.getArtifactId().artifactId())
+		assertThat(result).extracting(candidate -> candidate.getArtifactId().artifactId())
 				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());
-		assertThat(result.candidates()).extracting(UpgradeCandidate::getCurrentVersion)
+		assertThat(result).extracting(UpgradeCandidate::getCurrentVersion)
 				.containsExactly(LETTUCE_CURRENT, SPRING_CURRENT);
 		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
 		assertThat(result.files()).containsExactly(a, b);
@@ -133,7 +133,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(Map.of(SPRING_CORE,
 				resolved(SPRING_UPDATE)));
 
-		assertThat(result.candidates()).singleElement().satisfies(candidate -> {
+		assertThat(result).singleElement().satisfies(candidate -> {
 			assertThat(candidate.getDeclaredVersions().hasVersionDrift()).isFalse();
 			assertThat(candidate.getDeclaredVersions().hasDeclarationDrift()).isTrue();
 			assertThat(candidate.getDeclaredVersions().hasDrift()).isTrue();
@@ -154,7 +154,7 @@ class DependencyCheckAggregatorTests {
 				rules(Map.of(SPRING_CORE, new TestDependencyRule("Spring Framework"), SPRING_TEST,
 						new TestDependencyRule("Spring Framework"))));
 
-		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
 			assertThat(group.getDependencyName()).isEqualTo("Spring Framework");
 			assertThat(group.getCurrentVersion()).isEqualTo(SPRING_CURRENT);
 			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
@@ -180,7 +180,7 @@ class DependencyCheckAggregatorTests {
 						new TestDependencyRule("Spring Framework"), springJdbc,
 						new TestDependencyRule("Spring Framework"))));
 
-		assertThat(result.candidates()).hasSize(2);
+		assertThat(result).hasSize(2);
 		assertThat(result.getFirst()).isInstanceOfSatisfying(UpgradeGroup.class,
 				group -> assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
 						.containsExactly(SPRING_CORE, SPRING_TEST));
@@ -207,8 +207,8 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases, rules(
 				Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springAop, rule, springBeans, rule)));
 
-		assertThat(result.candidates()).hasSize(3);
-		assertThat(result.candidates()).filteredOn(UpgradeGroup.class::isInstance).singleElement()
+		assertThat(result).hasSize(3);
+		assertThat(result).filteredOn(UpgradeGroup.class::isInstance).singleElement()
 				.isInstanceOfSatisfying(UpgradeGroup.class, group -> {
 					assertThat(group.getCurrentVersion()).isEqualTo(SPRING_CURRENT);
 					assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
@@ -235,7 +235,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
 
-		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
 			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
 					springJdbc, SPRING_TEST);
 			assertThat(group.getCurrentVersion()).isEqualTo(older);
@@ -283,7 +283,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, unnamed, SPRING_TEST, unnamed)));
 
-		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
+		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
 				group -> assertThat(group.getRowLabel()).isEqualTo("spring"));
 	}
 
@@ -303,7 +303,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule)));
 
-		assertThat(result.candidates()).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
+		assertThat(result).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
 	}
 
 	@Test
@@ -321,7 +321,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule)));
 
-		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
 			Releases offered = group.getUpdateCandidate().getReleases();
 			assertThat(offered).containsRelease(SPRING_UPDATE);
 			assertThat(offered).doesNotContainRelease(next);
@@ -346,7 +346,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
 
-		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
 			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
 					springJdbc, SPRING_TEST);
 			assertThat(group.getUpdateCandidate().hasPropertyVersion()).isTrue();
@@ -374,7 +374,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
 
-		assertThat(result.candidates()).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
+		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
 			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
 					springJdbc, SPRING_TEST);
 			assertThat(group.getCurrentVersion()).isEqualTo(ArtifactVersion.of("6.0.9"));
@@ -395,7 +395,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, new TestDependencyRule("Spring Framework"))));
 
-		assertThat(result.candidates()).extracting(UpgradeCandidate::getRowLabel).containsExactly("lettuce-core",
+		assertThat(result).extracting(UpgradeCandidate::getRowLabel).containsExactly("lettuce-core",
 				"Spring Framework");
 	}
 
@@ -415,7 +415,7 @@ class DependencyCheckAggregatorTests {
 		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
 				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
 
-		assertThat(result.candidates()).extracting(UpgradeCandidate::getRowLabel).containsExactly("Spring Framework",
+		assertThat(result).extracting(UpgradeCandidate::getRowLabel).containsExactly("Spring Framework",
 				"spring-jdbc");
 	}
 

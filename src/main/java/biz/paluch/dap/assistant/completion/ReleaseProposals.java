@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersioningScheme;
+import biz.paluch.dap.util.Sequence;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,7 +56,7 @@ import org.jspecify.annotations.Nullable;
  * @see DevelopmentLines
  * @see VersionStem
  */
-class ReleaseProposals implements Iterable<Release> {
+class ReleaseProposals implements Sequence<Release> {
 
 	private static final int MAX_LINES = 8;
 
@@ -133,6 +134,7 @@ class ReleaseProposals implements Iterable<Release> {
 	 * @return {@literal true} if there are no proposals; {@literal false}
 	 * otherwise.
 	 */
+	@Override
 	public boolean isEmpty() {
 		return releases.isEmpty();
 	}
@@ -145,6 +147,7 @@ class ReleaseProposals implements Iterable<Release> {
 	/**
 	 * Return the proposed releases as a stream, in the history's canonical order.
 	 */
+	@Override
 	public Stream<Release> stream() {
 		return releases.stream();
 	}

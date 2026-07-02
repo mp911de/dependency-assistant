@@ -26,12 +26,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -59,7 +61,7 @@ import org.jspecify.annotations.Nullable;
  * @see UpgradeGroup
  */
 // TODO: Polishing
-public class UpgradeGroups implements Iterable<UpgradeCandidate> {
+public class UpgradeGroups implements Sequence<UpgradeCandidate> {
 
 	private final List<UpgradeCandidate> groups;
 
@@ -144,11 +146,17 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 		return groups.iterator();
 	}
 
+	@Override
+	public Stream<UpgradeCandidate> stream() {
+		return groups.stream();
+	}
+
 	/**
 	 * Return the collapsed rows in display order.
 	 *
 	 * @return the rows.
 	 */
+	@Override
 	public List<UpgradeCandidate> toList() {
 		return groups;
 	}
@@ -288,6 +296,7 @@ public class UpgradeGroups implements Iterable<UpgradeCandidate> {
 		return line;
 	}
 
+	@Override
 	public boolean isEmpty() {
 		return groups.isEmpty();
 	}

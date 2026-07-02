@@ -79,7 +79,7 @@ class UpgradeSuggestionsUnitTests {
 
 	@Test
 	void emptyWhenNoNewerRelease() {
-		assertThat(from("2.0.0", "1.5.0", "1.0.0").isEmpty()).isTrue();
+		assertThat(from("2.0.0", "1.5.0", "1.0.0")).isEmpty();
 	}
 
 	private static UpgradeSuggestions from(String current, String... versions) {

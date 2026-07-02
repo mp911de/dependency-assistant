@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.util.Sequence;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -34,7 +35,7 @@ import org.jspecify.annotations.Nullable;
  * @see DevelopmentLines
  * @see ArtifactVersion#hasSameMajorMinor(ArtifactVersion)
  */
-class DevelopmentLine implements Iterable<ArtifactVersion> {
+class DevelopmentLine implements Sequence<ArtifactVersion> {
 
 	private final List<ArtifactVersion> versions;
 
@@ -110,6 +111,7 @@ class DevelopmentLine implements Iterable<ArtifactVersion> {
 	/**
 	 * Return the versions of this line as a stream, newest first.
 	 */
+	@Override
 	public Stream<ArtifactVersion> stream() {
 		return versions.stream();
 	}

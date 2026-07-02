@@ -168,7 +168,7 @@ class ArchitectureTests {
 			"lookup", "support", "util", "github");
 
 	@ArchTest
-	ArchRule lookup = packageDependencies("lookup", "artifact", "state", "support");
+	ArchRule lookup = packageDependencies("lookup", "artifact", "state", "support", "util");
 
 	@ArchTest
 	ArchRule rule = packageDependencies("rule",

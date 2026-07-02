@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.util.Sequence;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,7 +56,7 @@ import org.jspecify.annotations.Nullable;
  * @see VersioningScheme
  * @see UpgradeStrategy
  */
-public class Releases implements Iterable<Release> {
+public class Releases implements Sequence<Release> {
 
 	private static final Releases EMPTY = new Releases(Map.of(), null, List.of());
 
@@ -287,6 +288,7 @@ public class Releases implements Iterable<Release> {
 	 * @return {@literal true} if this object contains no releases; {@literal false}
 	 * otherwise.
 	 */
+	@Override
 	public boolean isEmpty() {
 		return ordered.isEmpty();
 	}
@@ -325,6 +327,7 @@ public class Releases implements Iterable<Release> {
 	 *
 	 * @return a stream using the same order as {@link #toList()}.
 	 */
+	@Override
 	public Stream<Release> stream() {
 		return ordered.stream();
 	}
@@ -335,6 +338,7 @@ public class Releases implements Iterable<Release> {
 	 * @return the immutable list of ordered releases. An empty list if
 	 * {@link #isEmpty() empty}.
 	 */
+	@Override
 	public List<Release> toList() {
 		return ordered;
 	}

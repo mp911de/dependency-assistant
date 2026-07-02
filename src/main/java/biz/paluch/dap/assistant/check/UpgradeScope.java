@@ -18,8 +18,10 @@ package biz.paluch.dap.assistant.check;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -31,7 +33,7 @@ import com.intellij.psi.PsiFile;
  * @param reason the reason for resolution results.
  * @author Mark Paluch
  */
-public record UpgradeScope(List<Entry> entries, Reason reason) implements Iterable<UpgradeScope.Entry> {
+public record UpgradeScope(List<Entry> entries, Reason reason) implements Sequence<UpgradeScope.Entry> {
 
 	/**
 	 * Create a discovery scope from the given entries, gathered without an explicit
@@ -61,6 +63,7 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Iterab
 	 * @return {@literal true} if {@link #entries()} is empty; {@literal false}
 	 * otherwise.
 	 */
+	@Override
 	public boolean isEmpty() {
 		return entries.isEmpty();
 	}
@@ -76,6 +79,14 @@ public record UpgradeScope(List<Entry> entries, Reason reason) implements Iterab
 	@Override
 	public Iterator<Entry> iterator() {
 		return entries().iterator();
+	}
+
+	/**
+	 * Return the in-scope build files as a stream.
+	 */
+	@Override
+	public Stream<Entry> stream() {
+		return entries.stream();
 	}
 
 	/**

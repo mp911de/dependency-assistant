@@ -76,7 +76,7 @@ class DependencyCheckScopeTests {
 
 		DependencyUpgradeCandidates result = check(project, a, b);
 
-		assertThat(result.candidates()).singleElement().satisfies(merged -> {
+		assertThat(result).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
 			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isTrue();
 		});
@@ -94,7 +94,7 @@ class DependencyCheckScopeTests {
 
 		DependencyUpgradeCandidates result = check(project, file);
 
-		assertThat(result.candidates()).singleElement().satisfies(merged -> {
+		assertThat(result).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
 			assertThat(merged.getCurrentVersion()).isEqualTo(ArtifactVersion.of("7.4.1.RELEASE"));
 			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isFalse();

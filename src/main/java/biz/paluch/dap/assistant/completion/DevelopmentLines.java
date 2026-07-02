@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.util.Sequence;
 
 /**
  * The development lines of a version history, newest line first.
@@ -37,7 +38,7 @@ import biz.paluch.dap.artifact.Releases;
  * @author Mark Paluch
  * @see DevelopmentLine
  */
-class DevelopmentLines implements Iterable<DevelopmentLine> {
+class DevelopmentLines implements Sequence<DevelopmentLine> {
 
 	private final List<DevelopmentLine> lines;
 
@@ -93,6 +94,7 @@ class DevelopmentLines implements Iterable<DevelopmentLine> {
 	 *
 	 * @return {@literal true} if there are no lines; {@literal false} otherwise.
 	 */
+	@Override
 	public boolean isEmpty() {
 		return lines.isEmpty();
 	}
@@ -121,6 +123,7 @@ class DevelopmentLines implements Iterable<DevelopmentLine> {
 	/**
 	 * Return the development lines as a stream, newest line first.
 	 */
+	@Override
 	public Stream<DevelopmentLine> stream() {
 		return lines.stream();
 	}

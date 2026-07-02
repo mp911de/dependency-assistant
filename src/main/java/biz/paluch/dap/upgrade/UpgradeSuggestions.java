@@ -22,11 +22,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.util.Sequence;
 
 /**
  * The per-strategy upgrade targets for one dependency: a priority-ordered map
@@ -35,7 +37,7 @@ import biz.paluch.dap.support.UpgradeStrategy;
  * @author Mark Paluch
  * @see UpgradeStrategy
  */
-public class UpgradeSuggestions implements Iterable<UpgradeSuggestion> {
+public class UpgradeSuggestions implements Sequence<UpgradeSuggestion> {
 
 	private static final UpgradeSuggestions EMPTY = new UpgradeSuggestions(new LinkedHashMap<>());
 
@@ -119,10 +121,19 @@ public class UpgradeSuggestions implements Iterable<UpgradeSuggestion> {
 	}
 
 	/**
+	 * Stream over the upgrade targets in strategy priority order.
+	 */
+	@Override
+	public Stream<UpgradeSuggestion> stream() {
+		return suggestions.values().stream();
+	}
+
+	/**
 	 * Return whether no strategy carries an upgrade target.
 	 *
 	 * @return {@literal true} if no upgrade is offered; {@literal false} otherwise.
 	 */
+	@Override
 	public boolean isEmpty() {
 		return suggestions.isEmpty();
 	}

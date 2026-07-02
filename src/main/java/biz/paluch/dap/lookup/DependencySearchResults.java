@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import biz.paluch.dap.util.Sequence;
+
 /**
  * Immutable, ordered collection of the {@link DependencySiteSearchHit hits} a
  * Dependency Site Find located.
@@ -37,7 +39,7 @@ import java.util.stream.Stream;
  * @see DependencySiteSearchHit
  * @see ArtifactReferenceResolver#search(DependencySiteQuery)
  */
-public class DependencySearchResults implements Iterable<DependencySiteSearchHit> {
+public class DependencySearchResults implements Sequence<DependencySiteSearchHit> {
 
 	private static final DependencySearchResults EMPTY = new DependencySearchResults(List.of());
 
@@ -96,6 +98,7 @@ public class DependencySearchResults implements Iterable<DependencySiteSearchHit
 	 *
 	 * @return {@literal true} if there are no hits; {@literal false} otherwise.
 	 */
+	@Override
 	public boolean isEmpty() {
 		return hits.isEmpty();
 	}
@@ -110,6 +113,7 @@ public class DependencySearchResults implements Iterable<DependencySiteSearchHit
 	 *
 	 * @return a stream over the hits.
 	 */
+	@Override
 	public Stream<DependencySiteSearchHit> stream() {
 		return hits.stream();
 	}

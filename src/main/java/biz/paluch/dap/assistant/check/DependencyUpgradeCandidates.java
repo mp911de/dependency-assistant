@@ -19,7 +19,9 @@ package biz.paluch.dap.assistant.check;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -36,7 +38,7 @@ import com.intellij.openapi.vfs.VirtualFile;
  * succeeded.
  */
 public record DependencyUpgradeCandidates(UpgradeGroups candidates, Collection<VirtualFile> files,
-		List<String> errors) implements Iterable<UpgradeCandidate> {
+		List<String> errors) implements Sequence<UpgradeCandidate> {
 
 	public UpgradeCandidate getFirst() {
 		return candidates.toList().getFirst();
@@ -51,6 +53,12 @@ public record DependencyUpgradeCandidates(UpgradeGroups candidates, Collection<V
 		return candidates.iterator();
 	}
 
+	@Override
+	public Stream<UpgradeCandidate> stream() {
+		return candidates.stream();
+	}
+
+	@Override
 	public boolean isEmpty() {
 		return candidates.isEmpty();
 	}

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.stream.Stream;
 
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -47,6 +48,7 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.upgrade.DependencyUpgradeSubject;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -62,7 +64,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Mark Paluch
  */
-class DependencyCheckAggregator implements Iterable<DependencyCheckAggregator.ArtifactPackage> {
+class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.ArtifactPackage> {
 
 	private final Map<ArtifactPackage, Entry> entries = new LinkedHashMap<>();
 
@@ -110,6 +112,14 @@ class DependencyCheckAggregator implements Iterable<DependencyCheckAggregator.Ar
 	@Override
 	public Iterator<ArtifactPackage> iterator() {
 		return entries.keySet().iterator();
+	}
+
+	/**
+	 * Stream over the unique artifacts in encounter order.
+	 */
+	@Override
+	public Stream<ArtifactPackage> stream() {
+		return entries.keySet().stream();
 	}
 
 	/**
