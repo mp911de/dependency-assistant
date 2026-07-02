@@ -64,11 +64,11 @@ class MavenWrapperUrlAnalyzer {
 		}
 
 		if (shouldSkipWholeValueClassification(decodedValue, rawText)) {
-			return List.copyOf(problems);
+			return problems;
 		}
 
 		classifyCoordinates(property, decodedValue, problems);
-		return List.copyOf(problems);
+		return problems;
 	}
 
 	static boolean isChecksumCandidate(String decodedValue, String rawText) {

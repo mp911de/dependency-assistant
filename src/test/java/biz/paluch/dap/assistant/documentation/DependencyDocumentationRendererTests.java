@@ -410,7 +410,7 @@ class DependencyDocumentationRendererTests {
 
 		};
 		return DependencyRuleEvaluator.create(rule, Releases.LETTUCE_CORE.toArtifactId(),
-				ArtifactVersion.of("7.4.1.RELEASE"), TestInterfaceAssistant.INSTANCE);
+				ArtifactVersion.of("7.4.1.RELEASE"));
 	}
 
 }

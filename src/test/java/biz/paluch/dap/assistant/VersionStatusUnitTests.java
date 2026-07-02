@@ -27,7 +27,6 @@ import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.ShieldStyle;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.Generations;
@@ -177,8 +176,7 @@ class VersionStatusUnitTests {
 			}
 
 		};
-		return DependencyRuleEvaluator.create(rule, ArtifactId.of("com.example", "demo"), CURRENT,
-				TestInterfaceAssistant.INSTANCE);
+		return DependencyRuleEvaluator.create(rule, ArtifactId.of("com.example", "demo"), CURRENT);
 	}
 
 }

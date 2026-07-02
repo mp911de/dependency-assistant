@@ -63,8 +63,7 @@ class GradleWrapperUtils {
 				.getReleases(artifactId);
 
 		for (Release release : releases) {
-			if (release.getVersion().getVersion()
-					.equals(version.getVersion().getVersion())) {
+			if (release.getVersion().unwrap().equals(version.unwrap())) {
 				if (release.getVersion() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
 					return gitVersion.getRequiredSha();
 				}

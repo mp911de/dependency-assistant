@@ -139,6 +139,7 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	 * Return a string suitable for documentation containing the version and
 	 * {@link #getShortSha() short SHA} if present.
 	 */
+	@Override
 	public String toDocumentationString() {
 
 		if (StringUtils.hasText(sha)) {

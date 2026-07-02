@@ -70,7 +70,7 @@ class GroovyDslFileParser {
 		SyntaxTraverser.psiTraverser(file).filter(GrMethodCall.class)
 				.filterMap(this::parse)
 				.forEach(declarations::add);
-		return List.copyOf(declarations);
+		return declarations;
 	}
 
 	Set<String> getDeclaredPropertyNames() {

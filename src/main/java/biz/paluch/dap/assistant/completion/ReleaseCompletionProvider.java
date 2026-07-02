@@ -29,7 +29,6 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
@@ -151,8 +150,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		versionsResult.restartCompletionWhenNothingMatches();
 
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = cache.getVulnerabilities(artifactId);
-		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.context()
-				.getInterfaceAssistant(), metadata.currentVersion(), rule,
+		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.currentVersion(), rule,
 				key -> vulnerabilities.getOrDefault(key, Vulnerabilities.absent()));
 
 		for (ArtifactRelease release : proposals) {
@@ -260,20 +258,19 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		String completion;
 		Set<String> lookupStrings = new LinkedHashSet<>();
-		lookupStrings.add(completionVersion.toString());
-		lookupStrings.add(completionVersion.getVersion().toString());
-		lookupStrings.add(completionVersion.getVersion().getVersion().toString());
+
+		ArtifactVersion form = completionVersion;
+		lookupStrings.add(form.toString());
+		while (form.isWrapped()) {
+			form = form.getVersion();
+			lookupStrings.add(form.toString());
+		}
 
 		if (completionVersion instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())
 				&& refStyle == RefStyle.SHA) {
 			completion = gitVersion.getSha();
 			lookupStrings.add(gitVersion.getSha());
 			lookupStrings.add(gitVersion.getShortSha());
-		} else if (completionVersion instanceof GitRef gitRef
-				&& StringUtils.hasText(gitRef.getRef())
-				&& refStyle == RefStyle.SHA) {
-			completion = gitRef.toString();
-			lookupStrings.add(gitRef.toString());
 		} else {
 			completion = completionVersion.toString();
 		}

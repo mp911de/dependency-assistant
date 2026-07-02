@@ -763,8 +763,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			}
 
 			String prefix = MessageBundle.message("dialog.upgradeTarget." + strategy.name());
-			String suffix = candidate.getInterfaceAssistant()
-					.getDocumentationText(target.getVersion());
+			String suffix = target.getVersion().toDocumentationString();
 			return MessageBundle.message("dialog.upgradeTarget.tooltip", prefix, suffix);
 		}
 

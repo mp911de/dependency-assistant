@@ -27,11 +27,9 @@ import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.lookup.LookupContext;
@@ -272,12 +270,6 @@ public class AntoraAssistant implements DependencyAssistant {
 		@Override
 		public Icon getTableIcon(Dependency dependency) {
 			return AllIcons.Vcs.Vendors.Github;
-		}
-
-		@Override
-		public String getDocumentationText(ArtifactVersion artifactVersion) {
-			return artifactVersion instanceof GitVersion gitVersion ? gitVersion.toDocumentationString()
-					: InterfaceAssistant.super.getDocumentationText(artifactVersion);
 		}
 
 		@Override

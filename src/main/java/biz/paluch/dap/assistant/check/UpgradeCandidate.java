@@ -79,8 +79,7 @@ public class UpgradeCandidate implements HasArtifactId {
 		this.interfaceAssistant = assistant;
 		this.declaredVersions = declaredVersions;
 
-		this.evaluator = DependencyRuleEvaluator.create(this.candidate.getRule(), getArtifactId(), getCurrentVersion(),
-				assistant);
+		this.evaluator = DependencyRuleEvaluator.create(this.candidate.getRule(), getArtifactId(), getCurrentVersion());
 		this.tableIcon = createTableIcon();
 		this.toolTipText = createToolTipText();
 	}
@@ -296,7 +295,7 @@ public class UpgradeCandidate implements HasArtifactId {
 	 * @return the evaluation outcome.
 	 */
 	public DependencyRuleEvaluator evaluate(ArtifactVersion version) {
-		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version, interfaceAssistant);
+		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version);
 	}
 
 	@Override

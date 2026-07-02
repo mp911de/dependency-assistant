@@ -183,6 +183,20 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	}
 
 	/**
+	 * Return a human-readable rendering of this version for documentation and popup
+	 * display.
+	 *
+	 * <p>The default returns {@link #toString()}. Versions carrying additional
+	 * resolution metadata (such as a resolved commit hash) enrich the rendering.
+	 *
+	 * @return the documentation display string; guaranteed to be not
+	 * {@literal null}.
+	 */
+	default String toDocumentationString() {
+		return toString();
+	}
+
+	/**
 	 * Return whether this version is wrapped.
 	 * @return {@literal true} if this version carries a prefix; {@literal false}
 	 * otherwise.
@@ -193,6 +207,23 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 
 	default ArtifactVersion getVersion() {
 		return this;
+	}
+
+	/**
+	 * Traverse the wrapper chain and return the innermost version.
+	 *
+	 * <p>Follows {@link #getVersion()} while {@link #isWrapped()} returns
+	 * {@literal true}. Unwrapped versions return themselves.
+	 *
+	 * @return the innermost artifact version; guaranteed to be not {@literal null}.
+	 */
+	default ArtifactVersion unwrap() {
+
+		ArtifactVersion version = this;
+		while (version.isWrapped()) {
+			version = version.getVersion();
+		}
+		return version;
 	}
 
 

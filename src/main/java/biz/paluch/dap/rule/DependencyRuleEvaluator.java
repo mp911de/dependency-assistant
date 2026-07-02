@@ -23,7 +23,6 @@ import java.util.function.Predicate;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -79,11 +78,6 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	private final EvaluationState result;
 
 	private DependencyRuleEvaluator(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
-			InterfaceAssistant assistant) {
-		this(rule, artifactId, version, assistant.getDocumentationText(version));
-	}
-
-	private DependencyRuleEvaluator(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
 			String renderedVersion) {
 		this.rule = rule;
 		this.hasDependencyName = StringUtils.hasText(rule.getDependencyName());
@@ -102,9 +96,8 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * version.
 	 * @return the evaluation outcome for the candidate's current version.
 	 */
-	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
-			InterfaceAssistant assistant) {
-		return new DependencyRuleEvaluator(rule, artifactId, version, assistant);
+	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version) {
+		return new DependencyRuleEvaluator(rule, artifactId, version, version.toDocumentationString());
 	}
 
 	/**
@@ -124,14 +117,13 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * @param rules the rule service.
 	 * @param context the rule resolution context.
 	 * @param version the version to evaluate.
-	 * @param assistant the interface assistant used to render version text.
 	 * @return the evaluation outcome for the supplied version.
 	 */
 	public static DependencyRuleEvaluator evaluate(DependencyRuleService rules, ResolutionContext context,
-			ArtifactVersion version, InterfaceAssistant assistant) {
+			ArtifactVersion version) {
 
 		DependencyRule rule = rules.resolve(context);
-		return DependencyRuleEvaluator.create(rule, context.getArtifactId(), version, assistant);
+		return DependencyRuleEvaluator.create(rule, context.getArtifactId(), version);
 	}
 
 	@Override

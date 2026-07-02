@@ -354,7 +354,7 @@ class DependencyDocumentationRenderer {
 	}
 
 	private HtmlChunk versionCode(ArtifactVersion version) {
-		return HtmlChunk.text(interfaceAssistant.getDocumentationText(version)).code();
+		return HtmlChunk.text(version.toDocumentationString()).code();
 	}
 
 	private static HtmlChunk section(String labelKey, HtmlChunk value) {
@@ -497,7 +497,7 @@ class DependencyDocumentationRenderer {
 
 	private HtmlChunk renderCurrentVersion(ArtifactVersion version) {
 		return HtmlChunk.p().addText(MessageBundle.message("documentation.current-value")).addText(": ")
-				.child(HtmlChunk.text(interfaceAssistant.getDocumentationText(version)).code());
+				.child(versionCode(version));
 	}
 
 	/**
@@ -538,8 +538,8 @@ class DependencyDocumentationRenderer {
 
 			VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
 					cache.getVulnerabilities(artifactId, release.getVersion()));
-			rows.append(new DocumentedRelease(status, artifactId.toString(), release,
-					interfaceAssistant, linkable, withIcons).render(formatter));
+			rows.append(new DocumentedRelease(status, artifactId.toString(), release, linkable, withIcons)
+					.render(formatter));
 		}
 	}
 
@@ -728,20 +728,16 @@ class DependencyDocumentationRenderer {
 
 		private final String key;
 
-		private final InterfaceAssistant interfaceAssistant;
-
 		private final boolean current;
 
 		private final boolean linkable;
 
 		private final @Nullable HtmlChunk firstColumnIcon;
 
-		DocumentedRelease(VersionStatus status, String name, Release release,
-				InterfaceAssistant interfaceAssistant, boolean linkable, boolean withIcons) {
+		DocumentedRelease(VersionStatus status, String name, Release release, boolean linkable, boolean withIcons) {
 
 			this.release = release;
 			this.key = release.unwrap().toString();
-			this.interfaceAssistant = interfaceAssistant;
 			this.current = status.isCurrent();
 			this.linkable = linkable && !current;
 
@@ -786,7 +782,7 @@ class DependencyDocumentationRenderer {
 		}
 
 		private HtmlChunk renderVersion() {
-			HtmlChunk text = HtmlChunk.text(interfaceAssistant.getDocumentationText(release.version()));
+			HtmlChunk text = HtmlChunk.text(release.version().toDocumentationString());
 			return current ? text.bold() : text;
 		}
 

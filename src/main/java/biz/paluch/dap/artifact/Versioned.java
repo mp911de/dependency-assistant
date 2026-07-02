@@ -100,18 +100,13 @@ public interface Versioned extends VersionAware {
 	/**
 	 * Traverse the wrapper chain and return the innermost {@link ArtifactVersion}.
 	 *
-	 * <p>Delegates to {@link ArtifactVersion#getVersion()} until
-	 * {@link ArtifactVersion#isWrapped()} returns {@literal false}.
+	 * <p>Delegates to {@link ArtifactVersion#unwrap()}.
 	 *
 	 * @return the unwrapped artifact version.
 	 * @throws IllegalStateException if no version is present.
 	 */
 	default ArtifactVersion unwrap() {
-		ArtifactVersion version = getVersion();
-		while (version.isWrapped()) {
-			version = version.getVersion();
-		}
-		return version;
+		return getVersion().unwrap();
 	}
 
 	/**

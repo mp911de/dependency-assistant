@@ -79,4 +79,16 @@ class GitVersionUnitTests {
 		assertThat(version.renderRef(RefStyle.SHA, "")).isEqualTo(SHA);
 	}
 
+	@Test
+	void documentationStringContainsShortSha() {
+		GitVersion version = GitVersion.of(SHA, ArtifactVersion.of("v4.2.0"));
+		assertThat(version.toDocumentationString()).isEqualTo("v4.2.0 (d1185ce5)");
+	}
+
+	@Test
+	void documentationStringWithoutShaRendersVersionOnly() {
+		GitVersion version = GitVersion.of(ArtifactVersion.of("v4.2.0"));
+		assertThat(version.toDocumentationString()).isEqualTo("v4.2.0");
+	}
+
 }

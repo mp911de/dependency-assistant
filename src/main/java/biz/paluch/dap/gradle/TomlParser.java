@@ -127,7 +127,7 @@ class TomlParser {
 			}
 		}
 
-		return List.copyOf(declarations);
+		return declarations;
 	}
 
 	/**

@@ -19,12 +19,11 @@ package biz.paluch.dap.assistant.completion;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.artifact.VersioningScheme;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.ShieldStyle;
 import biz.paluch.dap.checker.VulnerabilityRepository;
@@ -48,8 +47,6 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 
 	private final ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 
-	private final InterfaceAssistant assistant;
-
 	private final @Nullable ArtifactVersion currentVersion;
 
 	private final DependencyRule rule;
@@ -62,17 +59,16 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 	 * Create a renderer that decorates vulnerable candidate rows by reading the
 	 * cache.
 	 *
-	 * @param assistant the format-specific assistant.
 	 * @param currentVersion the currently declared version, or {@literal null}.
 	 * @param rule the dependency rule governing the artifact; must not be
 	 * {@literal null}.
 	 * @param vulnerabilities the per-version vulnerabilities, read from the cache
 	 * and never blocking.
 	 */
-	public ArtifactReleaseRenderer(InterfaceAssistant assistant, @Nullable ArtifactVersion currentVersion,
-			DependencyRule rule, VulnerabilityRepository vulnerabilities) {
-		this.assistant = assistant;
-		this.currentVersion = currentVersion instanceof GitRef ? null : currentVersion;
+	public ArtifactReleaseRenderer(@Nullable ArtifactVersion currentVersion, DependencyRule rule,
+			VulnerabilityRepository vulnerabilities) {
+		this.currentVersion = currentVersion != null && currentVersion.scheme() == VersioningScheme.OPAQUE ? null
+				: currentVersion;
 		this.rule = rule;
 		this.vulnerabilities = vulnerabilities;
 	}
@@ -93,9 +89,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 		String itemText = version.toString();
 		presentation.setItemText(itemText);
 
-		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.create(rule, release.artifactId(), version,
-				assistant);
-
+		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.create(rule, release.artifactId(), version);
 
 		String typeText = "";
 		LocalDateTime releaseDate = release.getReleaseDate();

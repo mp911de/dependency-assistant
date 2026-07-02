@@ -164,7 +164,7 @@ public class GitVersionResolver {
 
 		Set<String> versions = new HashSet<>();
 		for (GitVersion candidate : candidates) {
-			versions.add(candidate.getVersion().getVersion().toString());
+			versions.add(candidate.unwrap().toString());
 		}
 
 		return versions.size() == 1 ? candidates.getFirst() : null;

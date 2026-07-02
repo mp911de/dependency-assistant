@@ -84,7 +84,7 @@ public class Generations implements Predicate<String> {
 				result.add(parsed);
 			}
 		}
-		return result.isEmpty() ? UNCONSTRAINED : new Generations(List.copyOf(result));
+		return result.isEmpty() ? UNCONSTRAINED : new Generations(result);
 	}
 
 	/**

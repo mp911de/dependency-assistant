@@ -70,7 +70,7 @@ public class DependencySearchResults implements Iterable<DependencySiteSearchHit
 			copy.add(hit);
 		}
 
-		return copy.isEmpty() ? EMPTY : new DependencySearchResults(List.copyOf(copy));
+		return copy.isEmpty() ? EMPTY : new DependencySearchResults(copy);
 	}
 
 	/**

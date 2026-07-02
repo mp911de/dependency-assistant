@@ -19,7 +19,6 @@ package biz.paluch.dap;
 import javax.swing.Icon;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import com.intellij.openapi.util.TextRange;
@@ -69,16 +68,6 @@ public interface InterfaceAssistant {
 	 * @param dependency the dependency for which to return the icon.
 	 */
 	Icon getTableIcon(Dependency dependency);
-
-	/**
-	 * Return the documentation text for the given {@link ArtifactVersion} for usage
-	 * in a documentation popup.
-	 * @param artifactVersion the version to get the documentation text for.
-	 * @return the rendered (pretty) documentation text.
-	 */
-	default String getDocumentationText(ArtifactVersion artifactVersion) {
-		return artifactVersion.toString();
-	}
 
 	/**
 	 * Return the document range used by the annotator and gutter line marker to

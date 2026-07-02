@@ -74,7 +74,7 @@ class KotlinDslFileParser {
 		SyntaxTraverser.psiTraverser(file).filter(KtCallElement.class)
 				.filterMap(this::parse)
 				.forEach(declarations::add);
-		return List.copyOf(declarations);
+		return declarations;
 	}
 
 	Set<String> getExtraPropertyNames() {

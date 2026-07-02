@@ -488,7 +488,7 @@ public class ProbingProgressIndicator extends AbstractProgressIndicatorBase impl
 			}
 
 			Duration duration = elapsed(finishedAtNanos != null ? finishedAtNanos : now);
-			return new Snapshot(duration, List.copyOf(captured), List.copyOf(segments),
+			return new Snapshot(duration, captured, List.copyOf(segments),
 					List.copyOf(fractionRegressions), cancellationRequest, List.copyOf(cancellationObservations));
 		}
 	}

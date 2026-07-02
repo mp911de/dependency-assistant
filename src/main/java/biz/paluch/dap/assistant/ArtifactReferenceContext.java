@@ -118,7 +118,7 @@ public class ArtifactReferenceContext {
 				BranchSource.of(element),
 				context.getProjectVersion());
 		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.evaluate(ruleService, resolutionContext,
-				artifactReference.getDeclaration().getVersion(), context.getInterfaceAssistant());
+				artifactReference.getDeclaration().getVersion());
 
 		return new ArtifactReferenceContext(context, lookup.getCache(), artifactReference, evaluator);
 	}
