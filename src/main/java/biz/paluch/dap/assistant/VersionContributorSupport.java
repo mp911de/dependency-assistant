@@ -75,7 +75,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	@Override
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
 
-		if (parameters.getInvocationCount() > 1) {
+		if (showsFullHistory(parameters)) {
 			return result.withPrefixMatcher("");
 		}
 
@@ -276,7 +276,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 			applyVersionUpdate(freshProperty, DependencyUpdate.create(release.artifactId(), release.getVersion()));
 
-			moveCaretTo(context, caretOffsetAfterUpdate(freshProperty, caretRangeIndex));
+			LookupElementInsertHandler.moveCaretTo(context, caretOffsetAfterUpdate(freshProperty, caretRangeIndex));
 		}
 
 		private int caretRangeIndex() {

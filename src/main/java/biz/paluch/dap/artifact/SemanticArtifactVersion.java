@@ -359,8 +359,12 @@ class SemanticArtifactVersion implements NumericVersion {
 		if (that.isWrapped()) {
 			return compareTo(that.getVersion());
 		}
-		return that instanceof SemanticArtifactVersion sav ? compareTo(sav)
-				: toString().compareToIgnoreCase(that.toString());
+		if (that instanceof SemanticArtifactVersion sav) {
+			return compareTo(sav);
+		}
+
+		int era = VersioningScheme.compareEra(scheme(), that.scheme());
+		return era != 0 ? era : toString().compareToIgnoreCase(that.toString());
 	}
 
 	/**

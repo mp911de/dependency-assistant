@@ -17,6 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.Suffix.Release;
 import biz.paluch.dap.artifact.Suffix.SemVerSuffix;
@@ -25,29 +26,47 @@ import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link ArtifactVersion} for release-train style versions such as {@code Aluminium-M1}, {@code Aluminium-RELEASE}, or
- * {@code Bismuth-SR1}, where the first part is the train name and the second is a {@link Suffix}.
+ * {@link ArtifactVersion} for release-train style versions such as
+ * {@code Aluminium-M1}, {@code Aluminium-RELEASE}, or {@code Bismuth-SR1},
+ * where the first part is the train name and the second is a {@link Suffix}.
+ * Dot-separated trains such as {@code Hoxton.SR12} (Spring Cloud style) are
+ * supported for the classic train qualifiers; the original separator is
+ * preserved when rendering.
  *
  * @author Mark Paluch
  */
 class ReleaseTrainArtifactVersion implements ArtifactVersion {
 
+	/**
+	 * Qualifiers accepted behind a dot separator. Restricted to the classic train
+	 * qualifiers so arbitrary dotted words (property names, file names) do not
+	 * classify as versions; this parser also gates cache admission.
+	 */
+	private static final Pattern DOT_QUALIFIER = Pattern.compile("(SR|RC|M)\\d+|RELEASE|BUILD-SNAPSHOT");
+
 	private final String trainName;
+
+	private final String separator;
 	private final Suffix suffix;
 
 	ReleaseTrainArtifactVersion(String trainName, Suffix suffix) {
+		this(trainName, "-", suffix);
+	}
+
+	private ReleaseTrainArtifactVersion(String trainName, String separator, Suffix suffix) {
 		this.trainName = trainName;
+		this.separator = separator;
 		this.suffix = suffix;
 	}
 
 	/**
-	 * Try to parse a release-train version without throwing. Returns {@literal null}
-	 * if the string does not match the train-name-suffix pattern.
+	 * Try to parse a release-train version without throwing. Returns
+	 * {@literal null} if the string does not match the train-name-suffix pattern.
 	 *
 	 * @param source the version string (e.g. {@code Aluminium-M1},
-	 * {@code Bismuth-SR1}).
-	 * @return a new {@link ArtifactVersion} or {@literal null} if not a release-train
-	 * version.
+	 * {@code Bismuth-SR1}, {@code Hoxton.SR12}).
+	 * @return a new {@link ArtifactVersion} or {@literal null} if not a
+	 * release-train version.
 	 */
 	@Nullable
 	static ArtifactVersion tryParse(String source) {
@@ -57,12 +76,13 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 		}
 
 		String trimmed = source.trim();
-		int hyphen = trimmed.indexOf('-');
-		if (hyphen < 1 || hyphen == trimmed.length() - 1) {
+		int separatorIndex = separatorIndex(trimmed);
+		if (separatorIndex < 1 || separatorIndex == trimmed.length() - 1) {
 			return null;
 		}
-		String train = trimmed.substring(0, hyphen);
-		String suffixPart = trimmed.substring(hyphen + 1);
+
+		String train = trimmed.substring(0, separatorIndex);
+		String suffixPart = trimmed.substring(separatorIndex + 1);
 		if (StringUtils.isEmpty(train) || StringUtils.isEmpty(suffixPart)) {
 			return null;
 		}
@@ -70,7 +90,25 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 		if (!Character.isLetter(train.charAt(0))) {
 			return null;
 		}
-		return new ReleaseTrainArtifactVersion(train, Suffix.parse(suffixPart));
+
+		String separator = trimmed.substring(separatorIndex, separatorIndex + 1);
+		if (".".equals(separator) && !DOT_QUALIFIER.matcher(suffixPart).matches()) {
+			return null;
+		}
+
+		return new ReleaseTrainArtifactVersion(train, separator, Suffix.parse(suffixPart));
+	}
+
+	private static int separatorIndex(String source) {
+
+		for (int i = 0; i < source.length(); i++) {
+
+			char c = source.charAt(i);
+			if (c == '-' || c == '.') {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	/**
@@ -88,7 +126,8 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 			return v;
 		}
 		throw new IllegalArgumentException("Version '" + source
-				+ "' does not match release-train pattern <train>-<suffix> (e.g. Aluminium-M1, Bismuth-SR1)");
+				+ "' does not match release-train pattern <train>-<suffix> or <train>.<suffix>"
+				+ " (e.g. Aluminium-M1, Hoxton.SR12)");
 	}
 
 	/**
@@ -179,7 +218,8 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 			return trainCompare != 0 ? trainCompare : suffix.compareTo(other.suffix);
 		}
 
-		return toString().compareToIgnoreCase(that.toString());
+		int era = VersioningScheme.compareEra(scheme(), that.scheme());
+		return era != 0 ? era : toString().compareToIgnoreCase(that.toString());
 	}
 
 	@Override
@@ -206,7 +246,7 @@ class ReleaseTrainArtifactVersion implements ArtifactVersion {
 
 	@Override
 	public String toString() {
-		return trainName + "-" + suffix.canonical();
+		return trainName + separator + suffix.canonical();
 	}
 
 }

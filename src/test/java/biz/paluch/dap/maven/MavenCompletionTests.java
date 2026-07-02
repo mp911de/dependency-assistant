@@ -89,6 +89,11 @@ class MavenCompletionTests {
 		MavenFixtures.analyze(pomFile);
 
 		fixture.completeBasic();
+		// Stage one proposes the corridor: newer lines and the current 6.0 line's
+		// latest; the declared 6.0.0 itself is not a cached release.
+		assertThat(fixture.getLookupElementStrings()).containsExactly("6.1.0-M1", "6.0.3");
+
+		fixture.completeBasic();
 		List<String> releases = List.of("6.1.0-M1", "6.0.3", "6.0.2", "5.14.3", "5.14.2", "5.14.1",
 				"5.14.0");
 		List<String> actual = fixture.getLookupElementStrings().stream().filter(releases::contains).toList();

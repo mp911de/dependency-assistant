@@ -62,7 +62,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 		@Override
 		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
-			if (parameters.getInvocationCount() > 1 || isCaretInsideRef(parameters)) {
+			if (showsFullHistory(parameters) || isCaretInsideRef(parameters)) {
 				return result.withPrefixMatcher("");
 			}
 
@@ -91,7 +91,8 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 				YAMLScalar updated = new UpdateGitHubWorkflowFile(project).updateVersionAndComment(toUpdate,
 						action.getVersion(version));
 				if (updated != null) {
-					moveCaretTo(insertionContext, GitHubUtils.getVersionRange(updated).getEndOffset());
+					LookupElementInsertHandler.moveCaretTo(insertionContext,
+							GitHubUtils.getVersionRange(updated).getEndOffset());
 				}
 			});
 		}

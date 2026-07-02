@@ -141,7 +141,6 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 						? "inspection.version-drift.version-and-declaration.problem"
 						: "inspection.version-drift.problem", declaration.getArtifactId(), versions);
 
-				System.out.println(message);
 				List<LocalQuickFix> fixes = new ArrayList<>();
 				if (!highest.equals(declaration.getVersion())) {
 					fixes.add(new AlignVersionAction(referenceContext, highest, true));

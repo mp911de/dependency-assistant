@@ -53,9 +53,10 @@ class AntoraPlaybookCompletionTests {
 		AntoraFixtures.analyze(playbookFile);
 
 		fixture.completeBasic();
-		assertThat(fixture).completionSuggests("v0.4.26", "v0.4.25", "v0.3.0");
+		assertThat(fixture).completionSuggests("v0.4.26", "v0.3.0").completionExcludes("v0.4.25");
 
 		fixture.completeBasic();
+		assertThat(fixture).completionSuggests("v0.4.26", "v0.4.25", "v0.3.0");
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip")
@@ -73,9 +74,10 @@ class AntoraPlaybookCompletionTests {
 		AntoraFixtures.analyze(playbookFile);
 
 		fixture.completeBasic();
-		assertThat(fixture).completionSuggests("v0.4.26", "v0.4.25", "v0.3.0");
+		assertThat(fixture).completionSuggests("v0.4.26", "v0.3.0").completionExcludes("v0.4.25");
 
 		fixture.completeBasic();
+		assertThat(fixture).completionSuggests("v0.4.26", "v0.4.25", "v0.3.0");
 		fixture.finishLookup(Lookup.REPLACE_SELECT_CHAR);
 
 		assertThat(playbookFile).containsText("/download/v0.4.26/ui-bundle.zip");

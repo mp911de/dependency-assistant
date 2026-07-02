@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant;
 
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
@@ -49,6 +50,7 @@ import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionSorter;
+import com.intellij.codeInsight.completion.InsertHandler;
 import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElement;
@@ -63,6 +65,8 @@ import com.intellij.psi.ElementManipulator;
 import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.util.ProcessingContext;
 import org.jspecify.annotations.Nullable;
 
@@ -126,21 +130,24 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		Project project = parameters.getPosition().getProject();
 		Cache cache = StateService.getInstance(project).getCache();
 		ArtifactId artifactId = metadata.artifactReference().getArtifactId();
-		List<ArtifactRelease> releases = getReleases(artifactId, cache);
+		Releases history = cache.getReleases(artifactId);
 
-		if (releases.isEmpty()) {
+		if (history.isEmpty()) {
 			result.addLookupAdvertisement(MessageBundle.message("completion.advertisement.no-releases"));
 			return;
 		}
-
-		advertiseShowAllReleases(parameters, result);
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
 		ResolutionContext resolutionContext = ResolutionContext.forReference(metadata.artifactReference,
 				BranchSource.of(parameters.getEditor().getVirtualFile()), metadata.context().getProjectVersion());
 		DependencyRule rule = ruleService.resolve(resolutionContext);
-		CompletionResultSet versionsResult = getPrefixMatcher(parameters, result)
-				.withRelevanceSorter(releaseOrderSorter(releases));
+
+		CompletionResultSet prefixed = getPrefixMatcher(parameters, result);
+		List<ArtifactRelease> proposals = proposals(parameters, history, metadata, rule, artifactId);
+
+		advertiseShowAllReleases(parameters, result, history.size(), proposals.size());
+
+		CompletionResultSet versionsResult = prefixed.withRelevanceSorter(releaseOrderSorter(proposals));
 		versionsResult.restartCompletionWhenNothingMatches();
 
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = cache.getVulnerabilities(artifactId);
@@ -148,12 +155,19 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 				.getInterfaceAssistant(), metadata.currentVersion(), rule,
 				key -> vulnerabilities.getOrDefault(key, Vulnerabilities.absent()));
 
-		for (ArtifactRelease release : releases) {
+		for (ArtifactRelease release : proposals) {
 			renderer.withVersion(release);
 		}
 
+		// Auto-inserting a single match is only safe when nothing is hidden;
+		// a curated selection must keep the lookup open so the advertisement can
+		// point at the full history.
+		AutoCompletionPolicy autoCompletionPolicy = proposals.size() < history.size()
+				? AutoCompletionPolicy.NEVER_AUTOCOMPLETE
+				: AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE;
+
 		List<LookupElement> elements = new ArrayList<>();
-		for (ArtifactRelease release : releases) {
+		for (ArtifactRelease release : proposals) {
 
 			ArtifactVersion completionVersion = release.getVersion();
 			LookupElementBuilder element = createLookupElement(release, completionVersion, refStyle)
@@ -161,30 +175,63 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 			if (metadata.versionLiteral() != null) {
 				element = element
-						.withInsertHandler((insertionContext, lookupElement) -> replaceVersion(insertionContext,
-								metadata.versionLiteral(), lookupElement.getLookupString()));
+						.withInsertHandler(new LookupElementInsertHandler(metadata.versionLiteral()));
 			}
 			element = postProcess(parameters, element, position, release);
-			elements.add(element.withAutoCompletionPolicy(AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE));
+			elements.add(element.withAutoCompletionPolicy(autoCompletionPolicy));
 		}
 
 		versionsResult.addAllElements(elements);
 	}
 
 	/**
-	 * Advertise repeated completion invocation as the way to see all releases
-	 * regardless of the typed prefix.
+	 * Return the releases to contribute: the full history when
+	 * {@link #showsFullHistory(CompletionParameters)} applies, otherwise the
+	 * curated {@link ReleaseProposals} selection steered by the typed version
+	 * prefix and unioned with the governing rule's remediation target.
 	 */
-	private static void advertiseShowAllReleases(CompletionParameters parameters, CompletionResultSet result) {
+	private static List<ArtifactRelease> proposals(CompletionParameters parameters, Releases history,
+			CompletionMetadata metadata, DependencyRule rule, ArtifactId artifactId) {
 
-		if (parameters.getInvocationCount() > 1) {
+		if (showsFullHistory(parameters)) {
+			return history.stream().map(release -> new ArtifactRelease(artifactId, release)).toList();
+		}
+
+		// The stem derives from the typed text, not the prefix matcher: several
+		// contributors deliberately match with an empty prefix.
+		VersionStem stem = VersionStem.from(getPrefix(parameters));
+		ReleaseProposals proposals = ReleaseProposals.select(history, metadata.currentVersion(), stem);
+
+		Release remediation = rule.suggestRemediation(history);
+		if (remediation != null) {
+			proposals = proposals.with(remediation);
+		}
+
+		return proposals.stream().map(release -> new ArtifactRelease(artifactId, release)).toList();
+	}
+
+	/**
+	 * Advertise repeated completion invocation as the way to see the full release
+	 * history regardless of the typed prefix, including the history size when the
+	 * curated first invocation hides releases.
+	 */
+	private static void advertiseShowAllReleases(CompletionParameters parameters,
+			CompletionResultSet result, int total, int shown) {
+
+		if (showsFullHistory(parameters)) {
 			return;
 		}
 
 		String shortcut = KeymapUtil.getFirstKeyboardShortcutText(IdeActions.ACTION_CODE_COMPLETION);
-		if (StringUtils.hasText(shortcut)) {
-			result.addLookupAdvertisement(MessageBundle.message("completion.advertisement.show-all", shortcut));
+		if (!StringUtils.hasText(shortcut)) {
+			return;
 		}
+
+		NumberFormat format = NumberFormat.getIntegerInstance();
+
+		result.addLookupAdvertisement(shown < total
+				? MessageBundle.message("completion.advertisement.show-all-count", shortcut, format.format(total))
+				: MessageBundle.message("completion.advertisement.show-all", shortcut));
 	}
 
 	/**
@@ -273,20 +320,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
-	 * Return cached release options for the given artifact ordered by version, the
-	 * newest version first.
-	 */
-	private List<ArtifactRelease> getReleases(ArtifactId artifactId, Cache cache) {
-
-		Releases releases = cache.getReleases(artifactId);
-		List<ArtifactRelease> result = new ArrayList<>();
-		for (Release release : releases) {
-			result.add(new ArtifactRelease(artifactId, release));
-		}
-		return result;
-	}
-
-	/**
 	 * Customize the lookup element for a release option.
 	 *
 	 * <p>The builder already has the release renderer, lookup strings, and default
@@ -308,8 +341,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Return the result set with the prefix matcher used for release lookup
 	 * elements.
 	 *
-	 * <p>The default matcher uses an empty prefix after explicit repeated
-	 * completion invocation and otherwise uses
+	 * <p>The default matcher uses an empty prefix on full-history invocations (see
+	 * {@link #showsFullHistory(CompletionParameters)}) and otherwise uses
 	 * {@link #getPrefix(CompletionParameters)}. Contributors with larger
 	 * surrounding syntaxes, such as URLs or dependency notations, can override this
 	 * method to calculate the prefix from a format-specific version range.
@@ -318,8 +351,26 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * @return the result set to receive release lookup elements.
 	 */
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
-		return parameters.getInvocationCount() > 1 ? result.withPrefixMatcher("")
+		return showsFullHistory(parameters) ? result.withPrefixMatcher("")
 				: result.withPrefixMatcher(getPrefix(parameters));
+	}
+
+	/**
+	 * Return whether this invocation shows the full release history instead of the
+	 * curated proposals.
+	 *
+	 * <p>Repeated completion cycles between the two stages: autopopup and the first
+	 * explicit invocation show the curated proposals, every second explicit
+	 * invocation shows the full history, and one more invocation returns to the
+	 * proposals.
+	 * @param parameters the IntelliJ completion parameters.
+	 * @return {@literal true} if this invocation shows the full history;
+	 * {@literal false} if it shows the curated proposals.
+	 */
+	protected static boolean showsFullHistory(CompletionParameters parameters) {
+
+		int invocationCount = parameters.getInvocationCount();
+		return invocationCount > 1 && invocationCount % 2 == 0;
 	}
 
 	/**
@@ -392,53 +443,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), psiFile);
 	}
 
-	private static void replaceVersion(InsertionContext context, PsiElement versionLiteral, String version) {
-
-		if (!versionLiteral.isValid()) {
-			return;
-		}
-
-		PsiElement updated = replaceVersion(versionLiteral, version);
-		if (updated == null || !updated.isValid()) {
-			return;
-		}
-
-		moveCaretTo(context, getVersionTextEndOffset(updated));
-	}
-
-	/**
-	 * Move the caret and completion tail to {@code offset} after an insert handler
-	 * rewrote the completed declaration, so completion always ends at the applied
-	 * version text.
-	 */
-	protected static void moveCaretTo(InsertionContext context, int offset) {
-
-		context.getEditor().getCaretModel().moveToOffset(offset);
-		context.setTailOffset(offset);
-	}
-
-	private static @Nullable PsiElement replaceVersion(PsiElement versionLiteral, String version) {
-
-		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
-		if (manipulator == null) {
-			return null;
-		}
-
-		TextRange valueTextRange = ElementManipulators.getValueTextRange(versionLiteral);
-		return ElementManipulators.handleContentChange(versionLiteral, valueTextRange, version);
-	}
-
-	private static int getVersionTextEndOffset(PsiElement versionLiteral) {
-
-		ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
-		if (manipulator != null) {
-			return versionLiteral.getTextRange().getStartOffset()
-					+ ElementManipulators.getValueTextRange(versionLiteral).getEndOffset();
-		}
-
-		return versionLiteral.getTextRange().getEndOffset();
-	}
-
 	/**
 	 * Artifact metadata needed to build release completion suggestions.
 	 *
@@ -452,7 +456,66 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 */
 	public record CompletionMetadata(ArtifactReference artifactReference, @Nullable ArtifactVersion currentVersion,
 			@Nullable PsiElement versionLiteral, ProjectDependencyContext context) {
-
 	}
 
+	public static class LookupElementInsertHandler implements InsertHandler<LookupElement> {
+
+		private final SmartPsiElementPointer<PsiElement> pointer;
+
+		public LookupElementInsertHandler(PsiElement pointer) {
+			this.pointer = SmartPointerManager.createPointer(pointer);
+		}
+
+		@Override
+		public void handleInsert(InsertionContext insertionContext, LookupElement lookupElement) {
+
+			String version = lookupElement.getLookupString();
+			PsiElement element = pointer.getElement();
+
+			if (element == null || !element.isValid()) {
+				return;
+			}
+
+			PsiElement updated = replaceVersion(element, version);
+			if (updated == null || !updated.isValid()) {
+				return;
+			}
+
+			moveCaretTo(insertionContext, getVersionTextEndOffset(updated));
+		}
+
+		/**
+		 * Move the caret and completion tail to {@code offset} after an insert handler
+		 * rewrote the completed declaration, so completion always ends at the applied
+		 * version text.
+		 */
+		public static void moveCaretTo(InsertionContext context, int offset) {
+
+			context.getEditor().getCaretModel().moveToOffset(offset);
+			context.setTailOffset(offset);
+		}
+
+		private static @Nullable PsiElement replaceVersion(PsiElement versionLiteral, String version) {
+
+			ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(versionLiteral);
+			if (manipulator == null) {
+				return null;
+			}
+
+			TextRange valueTextRange = ElementManipulators.getValueTextRange(versionLiteral);
+			return ElementManipulators.handleContentChange(versionLiteral, valueTextRange, version);
+		}
+
+		private int getVersionTextEndOffset(PsiElement updated) {
+
+			ElementManipulator<PsiElement> manipulator = ElementManipulators.getManipulator(updated);
+			if (manipulator != null) {
+				return updated.getTextRange().getStartOffset()
+						+ ElementManipulators.getValueTextRange(updated).getEndOffset();
+			}
+
+			return updated.getTextRange().getEndOffset();
+		}
+
+	}
 }

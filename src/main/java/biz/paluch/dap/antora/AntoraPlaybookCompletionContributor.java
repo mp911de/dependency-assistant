@@ -55,7 +55,7 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 		@Override
 		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
 
-			if (parameters.getInvocationCount() > 1 || isCaretInsideVersion(parameters)) {
+			if (showsFullHistory(parameters) || isCaretInsideVersion(parameters)) {
 				return result.withPrefixMatcher("");
 			}
 			return super.getPrefixMatcher(parameters, result);
@@ -89,7 +89,8 @@ public class AntoraPlaybookCompletionContributor extends CompletionContributor {
 				YAMLScalar updated = new UpdateAntoraPlaybookFile(project).updateVersion(toUpdate, originalValue,
 						gitVersion);
 				if (updated != null) {
-					moveCaretTo(insertionContext, AntoraUtils.getVersionRange(updated).getEndOffset());
+					LookupElementInsertHandler.moveCaretTo(insertionContext,
+							AntoraUtils.getVersionRange(updated).getEndOffset());
 				}
 			});
 		}

@@ -25,6 +25,12 @@ package biz.paluch.dap.artifact;
  * {@link #NUMERIC} deliberately treats semantic and calendar versions as one
  * comparable family.
  *
+ * <p>For total ordering of mixed histories,
+ * {@link #compareEra(VersioningScheme, VersioningScheme) era precedence} places
+ * the {@link #RELEASE_TRAIN} era below the {@link #NUMERIC} era: projects that
+ * renamed their versioning moved from named trains to semantic or calendar
+ * versions, never back.
+ *
  * @author Mark Paluch
  * @see ArtifactVersion#scheme()
  * @see ArtifactVersion#canCompare(ArtifactVersion)
@@ -46,5 +52,23 @@ public enum VersioningScheme {
 	 * ordering. Comparable to nothing, not even another opaque ref.
 	 */
 	OPAQUE;
+
+	/**
+	 * Compare two schemes by era precedence for ordering mixed release histories:
+	 * the {@link #RELEASE_TRAIN} era predates the {@link #NUMERIC} era.
+	 *
+	 * @param left the first scheme.
+	 * @param right the second scheme.
+	 * @return a negative value when {@code left} belongs to an earlier era, a
+	 * positive value when it belongs to a later era, and {@code 0} for equal
+	 * schemes or when either scheme is {@link #OPAQUE} (no era relation).
+	 */
+	public static int compareEra(VersioningScheme left, VersioningScheme right) {
+
+		if (left == right || left == OPAQUE || right == OPAQUE) {
+			return 0;
+		}
+		return left == RELEASE_TRAIN ? -1 : 1;
+	}
 
 }

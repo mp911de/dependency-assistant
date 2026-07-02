@@ -101,7 +101,10 @@ class GitHubWorkflowCompletionTests {
 		GitHubFixtures.analyze(workflowFile);
 
 		fixture.completeBasic();
+		// The corridor hides v3.6.0 as a downgrade below the current 4.1.0 ref.
+		assertThat(fixture).completionSuggests("v4.2.0", "v4.1.0").completionExcludes("v3.6.0");
 
+		fixture.completeBasic();
 		assertThat(fixture).completionSuggests("v4.2.0", "v4.1.0", "v3.6.0");
 	}
 

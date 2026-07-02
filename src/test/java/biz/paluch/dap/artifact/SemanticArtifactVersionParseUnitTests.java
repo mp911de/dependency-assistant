@@ -53,7 +53,8 @@ class SemanticArtifactVersionParseUnitTests {
 
 	@ParameterizedTest(name = "{0}")
 	@ValueSource(strings = {"5.0.0-B02", "1.4.5.M1", "1.0.0-alpha-1", "2.1.0-alpha0", "2.0.64-beta",
-			"1.0.0-beta.11", "1.0.0-dev", "1.0.0-dev.5", "1.0.0-nightly.20260426", "1.0.0-canary", "1.0.0-pre",
+			"1.0.0-beta.11", "1.0.0-BETA2", "7.4.0.BETA1", "7.4.0.ALPHA1", "1.0.0-dev", "1.0.0-dev.5",
+			"1.0.0-nightly.20260426", "1.0.0-canary", "1.0.0-pre",
 			"1.0.0-pre.1", "1.0.0-next", "1.0.0-next.20260426", "1.0.0-preview", "1.0.0-preview.3",
 			"0.0.0-experimental", "1.0.0-0", "1.0.0-1", "1.0.0-0.3.7", "1.0.0-alpha.0.3", "1.0.0-alpha.20260426.1"})
 	void parsesMilestone(String version) {
