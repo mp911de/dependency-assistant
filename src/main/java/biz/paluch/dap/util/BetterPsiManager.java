@@ -42,9 +42,8 @@ public class BetterPsiManager {
 	/**
 	 * Create a facade backed by the {@link PsiManager} of the given project.
 	 *
-	 * @param project the project whose {@link PsiManager} backs the facade; must
-	 * not be {@literal null}.
-	 * @return a new facade instance; guaranteed to be not {@literal null}.
+	 * @param project the project whose {@link PsiManager} backs the facade.
+	 * @return a new facade instance.
 	 */
 	public static BetterPsiManager getInstance(Project project) {
 		return getInstance(PsiManager.getInstance(project));
@@ -53,9 +52,8 @@ public class BetterPsiManager {
 	/**
 	 * Create a facade wrapping the given {@link PsiManager}.
 	 *
-	 * @param delegate the {@link PsiManager} to delegate lookups to; must not be
-	 * {@literal null}.
-	 * @return a new facade instance; guaranteed to be not {@literal null}.
+	 * @param delegate the {@link PsiManager} to delegate lookups to.
+	 * @return a new facade instance.
 	 */
 	public static BetterPsiManager getInstance(PsiManager delegate) {
 		return new BetterPsiManager(delegate);

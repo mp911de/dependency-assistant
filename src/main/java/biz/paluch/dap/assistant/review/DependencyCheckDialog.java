@@ -44,7 +44,6 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
@@ -1392,7 +1391,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				return;
 			}
 
-			String text = Versioned.of(value.getVersion()).getVersion().toString();
+			String text = value.getVersion().toString();
 			if (value.releaseDate() != null) {
 				text += " (" + formatter.format(value.releaseDate()) + ")";
 			}

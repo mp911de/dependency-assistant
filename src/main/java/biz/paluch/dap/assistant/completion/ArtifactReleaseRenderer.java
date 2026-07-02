@@ -22,7 +22,6 @@ import java.time.LocalDateTime;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
-import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.artifact.VersioningScheme;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.ShieldStyle;
@@ -85,7 +84,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 			return;
 		}
 
-		ArtifactVersion version = Versioned.of(release).unwrap();
+		ArtifactVersion version = release.getVersion().unwrap();
 		String itemText = version.toString();
 		presentation.setItemText(itemText);
 
@@ -137,7 +136,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 
 	public void withVersion(ArtifactRelease release) {
 
-		ArtifactVersion version = Versioned.of(release).unwrap();
+		ArtifactVersion version = release.getVersion().unwrap();
 		this.versionLength = Math.max(version.toString().length(), versionLength);
 	}
 

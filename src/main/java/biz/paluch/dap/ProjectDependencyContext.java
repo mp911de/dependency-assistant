@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -71,6 +72,11 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	/**
 	 * Resolve the given declared dependency to a concrete dependency by providing
 	 * the current list of releases.
+	 * <p>The default matches the declared ref against the Git-resolved releases
+	 * through
+	 * {@link GitVersionResolver#resolveDependency(DeclaredDependency, Iterable)}.
+	 * For release lists without Git versions this yields {@literal null}, so
+	 * integrations resolving by other means override this method.
 	 * @param declaredDependency the declared dependency to resolve; must not be
 	 * {@literal null}.
 	 * @param releases current list of releases.
@@ -78,7 +84,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext {
 	 * not be resolved.
 	 */
 	default @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
-		return null;
+		return GitVersionResolver.resolveDependency(declaredDependency, releases);
 	}
 
 	/**

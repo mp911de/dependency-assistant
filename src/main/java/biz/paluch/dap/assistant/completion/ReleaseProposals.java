@@ -27,7 +27,6 @@ import java.util.stream.Stream;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.artifact.VersioningScheme;
 import org.jspecify.annotations.Nullable;
 
@@ -166,7 +165,7 @@ class ReleaseProposals implements Iterable<Release> {
 			return null;
 		}
 
-		ArtifactVersion unwrapped = Versioned.of(currentVersion).unwrap();
+		ArtifactVersion unwrapped = currentVersion.unwrap();
 		return unwrapped.scheme() == VersioningScheme.OPAQUE ? null : unwrapped;
 	}
 
@@ -321,7 +320,7 @@ class ReleaseProposals implements Iterable<Release> {
 
 		boolean admitStableLine(ArtifactVersion version) {
 
-			ArtifactVersion unwrapped = Versioned.of(version).unwrap();
+			ArtifactVersion unwrapped = version.unwrap();
 			if (major == null || !major.hasSameMajor(unwrapped)) {
 				major = unwrapped;
 				majorLines = 0;

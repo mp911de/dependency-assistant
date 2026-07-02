@@ -265,7 +265,7 @@ class DependencyfileArtifactWriter {
 	/**
 	 * Open the project-local descriptor when it already exists, otherwise create a
 	 * starter {@code .idea/dependencyfile.json} populated with the given artifact
-	 * ids as unconstrained rules. Backs the "Create Dependencyfile" action.
+	 * ids as unconstrained rules.
 	 *
 	 * @param artifactIds the project's known artifact ids to seed the descriptor
 	 * with.

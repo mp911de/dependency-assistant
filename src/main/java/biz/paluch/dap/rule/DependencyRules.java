@@ -27,7 +27,6 @@ import java.util.function.Consumer;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.NumericVersion;
-import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
@@ -217,7 +216,7 @@ public class DependencyRules implements Rules {
 
 	private @Nullable BranchRule selectBranchRule(ArtifactVersion version) {
 
-		ArtifactVersion unwrapped = Versioned.of(version).unwrap();
+		ArtifactVersion unwrapped = version.unwrap();
 		String displayVersion = version.toString();
 		String innerMostVersion = unwrapped.toString();
 		return branches.stream()
@@ -236,7 +235,7 @@ public class DependencyRules implements Rules {
 
 	private static Set<UpgradeStrategy> upgradeStrategies(ArtifactVersion projectVersion) {
 
-		ArtifactVersion candidate = Versioned.of(projectVersion).unwrap();
+		ArtifactVersion candidate = projectVersion.unwrap();
 		if (!(candidate instanceof NumericVersion numericVersion) || numericVersion.size() != 3) {
 			return Set.of();
 		}

@@ -27,14 +27,11 @@ import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
-import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
@@ -58,7 +55,6 @@ import com.intellij.psi.util.CachedValuesManager;
 import org.jetbrains.yaml.YAMLFileType;
 import org.jetbrains.yaml.psi.YAMLQuotedText;
 import org.jetbrains.yaml.psi.YAMLScalar;
-import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -197,11 +193,6 @@ public class AntoraAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public @Nullable Dependency resolveDependency(DeclaredDependency declaredDependency, List<Release> releases) {
-			return GitVersionResolver.resolveDependency(declaredDependency, releases);
-		}
-
-		@Override
 		public boolean isVersionElement(PsiElement element) {
 
 			if (!AntoraUtils.isPlaybookFile(element.getContainingFile())) {
@@ -250,11 +241,6 @@ public class AntoraAssistant implements DependencyAssistant {
 		@Override
 		public String getDisplayName() {
 			return MessageBundle.message("assistant.antora");
-		}
-
-		@Override
-		public String getDisplayName(VirtualFile file) {
-			return getDisplayName();
 		}
 
 		@Override

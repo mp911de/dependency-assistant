@@ -21,7 +21,6 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitRef;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -76,8 +75,8 @@ class NpmDependencyCollector {
 
 			if (dependency.version() instanceof NpmVersionExpression.Git git) {
 
-				GitVersion resolved = gitVersionResolver.resolve(dependency.artifactId(), git.text()).orElse(null);
-				ArtifactVersion gitVersion = resolved != null ? resolved : new GitRef(git.text());
+				ArtifactVersion gitVersion = gitVersionResolver.resolve(dependency.artifactId(), git.text())
+						.orElseGet(() -> new GitRef(git.text()));
 				collector.registerUsage(dependency.artifactId(), gitVersion, dependency.declarationSource(),
 						versionSource);
 			} else {

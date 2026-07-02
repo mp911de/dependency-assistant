@@ -38,7 +38,6 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.Vulnerabilities;
@@ -167,7 +166,7 @@ class DependencyDocumentationRenderer {
 	String render(ArtifactRelease release) {
 
 		ArtifactId artifactId = release.artifactId();
-		ArtifactVersion version = Versioned.of(release).unwrap();
+		ArtifactVersion version = release.getVersion().unwrap();
 		Vulnerabilities vulnerabilities = cache.getVulnerabilities(artifactId, release.getVersion());
 		VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(), vulnerabilities);
 
@@ -234,7 +233,7 @@ class DependencyDocumentationRenderer {
 			return HtmlChunk.p().addText(MessageBundle.message("documentation.release.current"));
 		}
 
-		VersionAge age = VersionAge.between(currentVersion, Versioned.of(release).unwrap());
+		VersionAge age = VersionAge.between(currentVersion, release.getVersion().unwrap());
 		if (age == VersionAge.SAME_OR_UNKNOWN) {
 			return HtmlChunk.empty();
 		}

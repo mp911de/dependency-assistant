@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Versioned;
 import com.intellij.openapi.util.Predicates;
 
 /**
@@ -55,7 +54,7 @@ public class Generations implements Predicate<String> {
 		default -> String.join(", ", values.subList(0, values.size() - 1)) + ", or " + values.getLast();
 		};
 		this.versionPredicate = generations.isEmpty() ? Predicates.alwaysTrue()
-				: version -> test(Versioned.of(version).unwrap().toString());
+				: version -> test(version.unwrap().toString());
 	}
 
 	/**

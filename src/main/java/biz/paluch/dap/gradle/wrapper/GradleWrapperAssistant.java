@@ -218,11 +218,6 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public String getDisplayName(VirtualFile file) {
-			return getDisplayName();
-		}
-
-		@Override
 		public Icon getGutterIcon(ArtifactDeclaration declaration) {
 			return DependencyAssistantIcons.UPGRADE_GRADLE_ICON;
 		}

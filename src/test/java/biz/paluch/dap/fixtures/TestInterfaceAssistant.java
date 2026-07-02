@@ -22,7 +22,6 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import com.intellij.openapi.vfs.VirtualFile;
 
 public class TestInterfaceAssistant implements InterfaceAssistant {
 
@@ -31,11 +30,6 @@ public class TestInterfaceAssistant implements InterfaceAssistant {
 	@Override
 	public String getDisplayName() {
 		return "Test";
-	}
-
-	@Override
-	public String getDisplayName(VirtualFile file) {
-		return getDisplayName();
 	}
 
 	@Override

@@ -19,7 +19,6 @@ package biz.paluch.dap.assistant.completion;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -106,7 +105,7 @@ class VersionStem {
 			return true;
 		}
 
-		ArtifactVersion unwrapped = Versioned.of(version).unwrap();
+		ArtifactVersion unwrapped = version.unwrap();
 		return unwrapped != version && matches(unwrapped.toString());
 	}
 

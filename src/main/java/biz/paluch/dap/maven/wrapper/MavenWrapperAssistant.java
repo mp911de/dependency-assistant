@@ -246,11 +246,6 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public String getDisplayName(VirtualFile file) {
-			return getDisplayName();
-		}
-
-		@Override
 		public Icon getGutterIcon(ArtifactDeclaration declaration) {
 			return DependencyAssistantIcons.UPGRADE_MAVEN_ICON;
 		}

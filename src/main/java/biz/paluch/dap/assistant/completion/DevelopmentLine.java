@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Versioned;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -89,7 +88,7 @@ class DevelopmentLine implements Iterable<ArtifactVersion> {
 	 * {@literal false} otherwise.
 	 */
 	public boolean contains(ArtifactVersion version) {
-		return Versioned.of(getLatest()).unwrap().hasSameMajorMinor(version);
+		return getLatest().unwrap().hasSameMajorMinor(version);
 	}
 
 	/**

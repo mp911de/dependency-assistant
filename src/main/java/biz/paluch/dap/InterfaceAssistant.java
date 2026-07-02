@@ -39,9 +39,14 @@ public interface InterfaceAssistant {
 
 	/**
 	 * Return the human-readable integration name for the given file.
+	 * <p>The default returns {@link #getDisplayName()}; integrations whose name
+	 * depends on the concrete file (such as Gradle Groovy vs Kotlin DSL) override
+	 * this method.
 	 * @param file the file to get the display name for.
 	 */
-	String getDisplayName(VirtualFile file);
+	default String getDisplayName(VirtualFile file) {
+		return getDisplayName();
+	}
 
 	/**
 	 * Return the human-readable name for an {@link ArtifactId}.

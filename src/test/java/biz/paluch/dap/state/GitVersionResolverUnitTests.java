@@ -22,6 +22,7 @@ import java.util.Optional;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.fixtures.ReleaseBuilder;
 import org.junit.jupiter.api.Test;
 
@@ -61,9 +62,9 @@ class GitVersionResolverUnitTests {
 	void resolvesBySha() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Optional<GitVersion> result = resolver.resolve(ARTIFACT, SHA_V2);
+		Versioned result = resolver.resolve(ARTIFACT, SHA_V2);
 
-		assertThat(result).hasValueSatisfying(v -> {
+		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, v -> {
 			assertThat(v.getSha()).isEqualTo(SHA_V2);
 			assertThat(v.toString()).isEqualTo("2.0.0");
 		});
@@ -73,48 +74,49 @@ class GitVersionResolverUnitTests {
 	void resolvesByPlainVersion() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Optional<GitVersion> result = resolver.resolve(ARTIFACT, "2.0.0");
+		Versioned result = resolver.resolve(ARTIFACT, "2.0.0");
 
-		assertThat(result).hasValueSatisfying(v -> {
+		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, v -> {
 			assertThat(v.getSha()).isEqualTo(SHA_V2);
 			assertThat(v.toString()).isEqualTo("2.0.0");
 		});
 	}
 
 	@Test
-	void returnsEmptyForUnknownSha() {
+	void returnsUnversionedForUnknownSha() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Optional<GitVersion> result = resolver.resolve(ARTIFACT, "0000000000000000000000000000000000000000");
+		Versioned result = resolver.resolve(ARTIFACT, "0000000000000000000000000000000000000000");
 
-		assertThat(result).isEmpty();
+		assertThat(result.isVersioned()).isFalse();
 	}
 
 	@Test
-	void returnsEmptyForUnknownVersion() {
+	void returnsUnversionedForUnknownVersion() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Optional<GitVersion> result = resolver.resolve(ARTIFACT, "99.0.0");
+		Versioned result = resolver.resolve(ARTIFACT, "99.0.0");
 
-		assertThat(result).isEmpty();
+		assertThat(result.isVersioned()).isFalse();
 	}
 
 	@Test
 	void resolvesUnambiguousAbbreviatedSha() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Optional<GitVersion> result = resolver.resolve(ARTIFACT, "11223344");
+		Versioned result = resolver.resolve(ARTIFACT, "11223344");
 
-		assertThat(result).hasValueSatisfying(v -> assertThat(v.getSha()).isEqualTo(SHA_V2));
+		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class,
+				v -> assertThat(v.getSha()).isEqualTo(SHA_V2));
 	}
 
 	@Test
-	void returnsEmptyWhenCacheEmpty() {
+	void returnsUnversionedWhenCacheEmpty() {
 
 		GitVersionResolver resolver = new GitVersionResolver(new Cache());
-		Optional<GitVersion> result = resolver.resolve(ARTIFACT, "1.0.0");
+		Versioned result = resolver.resolve(ARTIFACT, "1.0.0");
 
-		assertThat(result).isEmpty();
+		assertThat(result.isVersioned()).isFalse();
 	}
 
 	@Test

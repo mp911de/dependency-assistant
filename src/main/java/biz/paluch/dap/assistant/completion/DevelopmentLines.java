@@ -26,7 +26,6 @@ import java.util.stream.Stream;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.Versioned;
 
 /**
  * The development lines of a version history, newest line first.
@@ -70,13 +69,13 @@ class DevelopmentLines implements Iterable<DevelopmentLine> {
 
 		for (ArtifactVersion version : versions) {
 
-			ArtifactVersion unwrapped = Versioned.of(version).unwrap();
+			ArtifactVersion unwrapped = version.unwrap();
 			if (!seen.add(unwrapped.toString())) {
 				continue;
 			}
 
 			if (!current.isEmpty()
-					&& !Versioned.of(current.getFirst()).unwrap().hasSameMajorMinor(unwrapped)) {
+					&& !current.getFirst().unwrap().hasSameMajorMinor(unwrapped)) {
 				lines.add(new DevelopmentLine(current));
 				current = new ArrayList<>();
 			}

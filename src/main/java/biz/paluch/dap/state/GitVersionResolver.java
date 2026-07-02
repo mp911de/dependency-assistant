@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -49,6 +50,7 @@ public class GitVersionResolver {
 	public GitVersionResolver(Cache cache) {
 		this.cache = cache;
 	}
+
 	/**
 	 * Resolve the given ref against cached releases for the given artifact.
 	 * <p>This is the cache-only path used by dependency collectors that need to
@@ -57,16 +59,18 @@ public class GitVersionResolver {
 	 * @param artifactId the artifact whose cached releases to inspect.
 	 * @param lookupString the raw commit SHA (full or abbreviated) or version
 	 * string.
-	 * @return the resolved version, or {@link Optional#empty()} if unresolvable.
+	 * @return the resolved version, or {@link Versioned#unversioned()} if
+	 * unresolvable.
 	 */
-	public Optional<GitVersion> resolve(ArtifactId artifactId, String lookupString) {
+	public Versioned resolve(ArtifactId artifactId, String lookupString) {
 
 		Releases releases = cache.getReleases(artifactId);
 		if (releases.isEmpty()) {
-			return Optional.empty();
+			return Versioned.unversioned();
 		}
 
-		return Optional.ofNullable(resolveVersion(lookupString, releases));
+		GitVersion gitVersion = resolveVersion(lookupString, releases);
+		return gitVersion != null ? Versioned.of(gitVersion) : Versioned.unversioned();
 	}
 
 	/**
@@ -84,7 +88,6 @@ public class GitVersionResolver {
 	 * @return the resolved current version, or {@link Optional#empty()} when none
 	 * of the branches yields a value.
 	 */
-	// TODO: Versioned
 	public Optional<ArtifactVersion> resolveCurrent(ArtifactId artifactId, String rawRef) {
 
 		Releases releases = cache.getReleases(artifactId);
@@ -99,9 +102,6 @@ public class GitVersionResolver {
 	/**
 	 * Resolve a {@link DeclaredDependency} to a {@link Dependency} using the
 	 * cache-only matching on the supplied release list.
-	 * <p>Shared delegation for build-tool integrations whose
-	 * {@link biz.paluch.dap.ProjectDependencyContext#resolveDependency(DeclaredDependency, List)}
-	 * implementation only needs cache matching.
 	 * @param declaredDependency the declared dependency to resolve; must not be
 	 * {@literal null}.
 	 * @param releases the releases to inspect.
