@@ -20,19 +20,8 @@ import java.util.List;
 
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.containers.JBIterable;
-import org.jetbrains.kotlin.psi.KtArrayAccessExpression;
-import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtCallExpression;
-import org.jetbrains.kotlin.psi.KtDotQualifiedExpression;
-import org.jetbrains.kotlin.psi.KtElement;
-import org.jetbrains.kotlin.psi.KtExpression;
-import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
-import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
-import org.jetbrains.kotlin.psi.KtReferenceExpression;
-import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -43,9 +32,16 @@ import org.springframework.util.Assert;
  * references.
  *
  * <p>Supported inputs include plain string literals, interpolated fragments,
- * direct property references, {@code property(...)} lookups, and
- * {@code extra["..."]} access. Unsupported PSI shapes are represented as an
- * empty instance.
+ * bare property references, {@code property(...)} lookups, {@code extra["..."]}
+ * access (also qualified as {@code project.extra["..."]}), and argument lists
+ * whose arguments are of the former shapes. Unsupported PSI shapes are
+ * represented as an empty instance.
+ *
+ * <p>The value position is served by {@link #from(KtElement)} and
+ * {@link #getText(KtElement)}, rendering property references as {@code ${name}}
+ * placeholders. Name positions (property keys, {@code extra} indices) are
+ * served by {@link #nameOf(KtElement)}, rendering property references as their
+ * bare identifier.
  *
  * @author Mark Paluch
  */
@@ -90,7 +86,10 @@ class KtLiterals {
 	}
 
 	/**
-	 * Create a {@link KtLiterals} view for the supplied Kotlin PSI element.
+	 * Create a {@link KtLiterals} view for the supplied Kotlin PSI element in value
+	 * position: references, {@code property(...)} lookups, and {@code extra["..."]}
+	 * access contribute property fragments; string-template text contributes
+	 * literal fragments. Unsupported shapes yield {@link #empty()}.
 	 * @param element the Kotlin PSI element to inspect.
 	 * @return a {@link KtLiterals} representing the supported fragments contained
 	 * in the element.
@@ -101,104 +100,64 @@ class KtLiterals {
 		case null -> {
 			return EMPTY;
 		}
-		case KtCallExpression call when "property".equals(KotlinDslUtils.getKotlinCallName(call)) -> {
-			return KtLiterals.fromPropertyCall(call);
-		}
-		case KtStringTemplateExpression expression -> {
+		case KtStringTemplateExpression template -> {
 
-			List<Segment> segments = JBIterable.of(expression.getEntries())
-					.map(KtLiterals::fromPropertyCandidate)
-					.flatMap(KtLiterals::getSegments).toList();
+			List<Segment> segments = JBIterable.of(template.getEntries())
+					.flatMap(entry -> from(entry).segments).toList();
 			return new KtLiterals(segments);
 		}
 		case KtBlockStringTemplateEntry block -> {
+
 			List<Segment> segments = JBIterable.from(block.getExpressions())
-					.map(KtLiterals::fromPropertyCandidate)
-					.flatMap(KtLiterals::getSegments).toList();
+					.flatMap(expression -> from(expression).segments).toList();
 			return new KtLiterals(segments);
+		}
+		case KtStringTemplateEntryWithExpression entry -> {
+			return from(entry.getExpression());
 		}
 		case KtLiteralStringTemplateEntry entry -> {
 			return new KtLiterals(new TextSegment(entry.getText(), entry));
 		}
+		case KtEscapeStringTemplateEntry entry -> {
+			return new KtLiterals(new TextSegment(entry.getUnescapedValue(), entry));
+		}
+		case KtCallExpression call when isPropertyCall(call) -> {
+			return fromPropertyCall(call);
+		}
+		case KtDotQualifiedExpression dotQualified when dotQualified
+				.getSelectorExpression() instanceof KtCallExpression selector
+				&& isPropertyCall(selector) -> {
+			return fromPropertyCall(selector);
+		}
+		case KtArrayAccessExpression arrayAccess when isExtraAccess(arrayAccess) -> {
+			return fromExtraAccess(arrayAccess);
+		}
+		case KtParenthesizedExpression parenthesized -> {
+			return from(parenthesized.getExpression());
+		}
 		case KtNameReferenceExpression nameRef -> {
-			if (StringUtils.isEmpty(nameRef.getReferencedName())) {
-				return KtLiterals.empty();
-			}
-
-			return new KtLiterals(new TextSegment(nameRef.getReferencedName(), nameRef));
+			return property(nameRef.getReferencedName(), nameRef);
 		}
-		case KtArrayAccessExpression arrayAccess when arrayAccess.getArrayExpression() != null
-				&& "extra".equals(arrayAccess.getArrayExpression().getText()) -> {
-			List<KtExpression> indices = arrayAccess.getIndexExpressions();
-
-			for (KtExpression index : indices) {
-				KtLiterals literals = from(index);
-				if (literals.hasText()) {
-					return literals.asProperty();
-				}
-			}
+		case KtReferenceExpression reference -> {
+			return property(reference.getName(), reference);
 		}
-		case KtReferenceExpression nameRef -> {
-			if (StringUtils.isEmpty(nameRef.getName())) {
-				return KtLiterals.empty();
-			}
+		case KtValueArgumentList argumentList -> {
 
-			return KtLiterals.fromProperty(nameRef);
+			List<Segment> segments = JBIterable.from(argumentList.getArguments())
+					.map(KtValueArgument::getArgumentExpression)
+					.flatMap(expression -> from(expression).segments).toList();
+			return new KtLiterals(segments);
 		}
 		default -> {
+			return EMPTY;
 		}
 		}
-
-		if (element instanceof KtDotQualifiedExpression dotQualified
-				&& dotQualified.getSelectorExpression() instanceof KtCallExpression selectorCall
-				&& "property".equals(KotlinDslUtils.getKotlinCallName(selectorCall))) {
-			return KtLiterals.from(selectorCall);
-		}
-
-		List<Segment> segments = SyntaxTraverser.psiTraverser(element)
-				.expand(it -> !(it instanceof KtStringTemplateExpression
-						|| it instanceof KtNameReferenceExpression))
-				.filter(KtElement.class)
-				.flatMap(it -> {
-
-					if (it instanceof KtNameReferenceExpression referenceExpression) {
-						if (StringUtils.hasText(referenceExpression.getReferencedName())) {
-							return KtLiterals.property(referenceExpression.getReferencedName(),
-									referenceExpression).getSegments();
-						}
-
-						if (StringUtils.hasText(referenceExpression.getName())) {
-							return KtLiterals.property(referenceExpression.getName(), referenceExpression)
-									.getSegments();
-						}
-					}
-
-					if (it instanceof KtStringTemplateExpression kse) {
-
-						KtStringTemplateExpression parentOfType = PsiTreeUtil.getParentOfType(it,
-								KtStringTemplateExpression.class);
-						if (parentOfType == null) {
-							return from(kse).getSegments();
-						}
-						return JBIterable.empty();
-					}
-
-					return JBIterable.empty();
-				}).toList();
-
-		return new KtLiterals(segments);
-	}
-
-	private static KtLiterals fromPropertyCandidate(KtElement it) {
-		KtLiterals inner = from(it);
-		return it instanceof KtReferenceExpression ? inner.asProperty() : inner;
 	}
 
 	/**
-	 * Extract text from supported Kotlin DSL literal forms.
-	 * <p>Used for property keys, dependency coordinates, and simple synthesized
-	 * string values. Unsupported element shapes yield an empty string rather than
-	 * an exception.
+	 * Extract text from supported Kotlin DSL literal forms in value position,
+	 * rendering property references as {@code ${name}} placeholders.
+	 * <p>Unsupported element shapes yield an empty string rather than an exception.
 	 * @param element the Kotlin PSI element to inspect; must not be
 	 * {@literal null}.
 	 * @return the rendered text, or the empty string for unsupported shapes.
@@ -210,48 +169,73 @@ class KtLiterals {
 	}
 
 	/**
-	 * Create a property-backed {@link KtLiterals} from a Kotlin DSL
-	 * {@code property(...)} call.
-	 *
-	 * @param call the {@code property(...)} call to inspect.
-	 * @return a {@link KtLiterals} containing a single property fragment.
+	 * Extract a property name or key from a Kotlin DSL name position such as a
+	 * {@code property(...)} argument, an {@code extra["..."]} index, or an
+	 * assignment target. References render as their bare identifier instead of a
+	 * {@code ${name}} placeholder.
+	 * @param element the Kotlin PSI element to inspect.
+	 * @return the extracted name, or the empty string for unsupported shapes.
 	 */
-	public static KtLiterals fromPropertyCall(KtCallExpression call) {
-		KtExpression arg = KotlinDslUtils.getFirstValueArgument(call);
-		if (arg == null) {
-			return KtLiterals.empty();
+	public static String nameOf(@Nullable KtElement element) {
+
+		if (element == null) {
+			return "";
 		}
-		String propertyName = getText(arg);
-		return property(propertyName, arg);
+
+		StringBuilder builder = new StringBuilder();
+		for (Segment segment : from(element).segments) {
+			builder.append(segment instanceof PropertySegment property ? property.name() : segment.render());
+		}
+
+		return builder.toString();
 	}
 
-	/**
-	 * Create a {@link KtLiterals} instance representing a single property
-	 * placeholder.
-	 *
-	 * @param propertyName the property name to expose.
-	 * @param element the source element associated with the property.
-	 * @return a {@link KtLiterals} containing one property fragment.
-	 */
-	public static KtLiterals property(String propertyName, KtElement element) {
+	private static boolean isPropertyCall(KtCallExpression call) {
+		return "property".equals(KotlinDslUtils.getKotlinCallName(call));
+	}
+
+	private static KtLiterals fromPropertyCall(KtCallExpression call) {
+
+		KtExpression argument = KotlinDslUtils.getFirstValueArgument(call);
+		if (argument == null) {
+			return EMPTY;
+		}
+
+		return property(nameOf(argument), argument);
+	}
+
+	private static boolean isExtraAccess(KtArrayAccessExpression arrayAccess) {
+
+		KtExpression array = arrayAccess.getArrayExpression();
+		if (array instanceof KtNameReferenceExpression reference) {
+			return "extra".equals(reference.getReferencedName());
+		}
+
+		return array instanceof KtDotQualifiedExpression dotQualified
+				&& dotQualified.getSelectorExpression() instanceof KtNameReferenceExpression selector
+				&& "extra".equals(selector.getReferencedName());
+	}
+
+	private static KtLiterals fromExtraAccess(KtArrayAccessExpression arrayAccess) {
+
+		for (KtExpression index : arrayAccess.getIndexExpressions()) {
+
+			String propertyName = nameOf(index);
+			if (StringUtils.hasText(propertyName)) {
+				return new KtLiterals(new PropertySegment(propertyName, index));
+			}
+		}
+
+		return EMPTY;
+	}
+
+	private static KtLiterals property(@Nullable String propertyName, KtElement element) {
+
+		if (StringUtils.isEmpty(propertyName)) {
+			return EMPTY;
+		}
+
 		return new KtLiterals(new PropertySegment(propertyName, element));
-	}
-
-	/**
-	 * Create a property-backed {@link KtLiterals} from a Kotlin reference
-	 * expression.
-	 *
-	 * @param ref the property reference.
-	 * @return a {@link KtLiterals} containing a single property fragment.
-	 */
-	public static KtLiterals fromProperty(KtReferenceExpression ref) {
-		String name = ref.getName();
-		Assert.hasText(name, "Reference must have a name");
-		return KtLiterals.property(name, ref);
-	}
-
-	private List<Segment> getSegments() {
-		return segments;
 	}
 
 	/**
@@ -305,23 +289,6 @@ class KtLiterals {
 	 */
 	public String getText() {
 		return text;
-	}
-
-	/**
-	 * Create a {@link KtLiterals} instance that represents a single property.
-	 */
-	public KtLiterals asProperty() {
-		if (property != null) {
-			return new KtLiterals(property);
-		}
-		if (segments.isEmpty()) {
-			return EMPTY;
-		}
-		Segment first = segments.getFirst();
-		if (first instanceof TextSegment(String text, KtElement element)) {
-			return new KtLiterals(new PropertySegment(text, element));
-		}
-		return new KtLiterals(first);
 	}
 
 	/**

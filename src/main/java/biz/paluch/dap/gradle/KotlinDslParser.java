@@ -123,7 +123,9 @@ class KotlinDslParser {
 
 		static @Nullable KotlinDeclarationCall from(@Nullable KtCallElement call) {
 
-			if (call == null) {
+			// A call inside a string interpolation contributes a value and is never
+			// a declaration call itself.
+			if (call == null || PsiTreeUtil.getParentOfType(call, KtStringTemplateExpression.class) != null) {
 				return null;
 			}
 
@@ -680,7 +682,7 @@ class KotlinDslParser {
 		return SyntaxTraverser.psiTraverser(dots)
 				.expand(it -> !(it instanceof KtNameReferenceExpression))
 				.filter(KtNameReferenceExpression.class)
-				.map(it -> KtLiterals.from(it).toString())
+				.map(KtNameReferenceExpression::getReferencedName)
 				.toList();
 	}
 

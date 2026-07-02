@@ -221,7 +221,7 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 			return null;
 		}
 
-		String key = KtLiterals.getText(keyTemplate);
+		String key = KtLiterals.nameOf(keyTemplate);
 		return StringUtils.hasText(key) ? key : null;
 	}
 
