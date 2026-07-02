@@ -19,7 +19,8 @@ package biz.paluch.dap.assistant;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.DocumentationContext.ReleaseDigest;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.assistant.DependencyDocumentationRenderer.ReleaseDigest;
 import biz.paluch.dap.fixtures.TestReleases;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -27,79 +28,84 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link DocumentationContext.ReleaseDigest}.
+ * Unit tests for {@link DependencyDocumentationRenderer.ReleaseDigest}.
  *
  * @author Mark Paluch
  */
 class ReleaseDigestTests {
 
 	@Test
-	void previewTrainCollapsesToNewestPreview() {
+	void newerPreviewsFillTopSectionUpToLimit() {
 
 		ReleaseDigest digest = digest("3.9.4", "4.0.0-alpha.13", "4.0.0-alpha.12", "4.0.0-alpha.11",
 				"4.0.0-alpha.10", "3.9.4", "3.9.3");
 
-		assertThat(versions(digest)).containsExactly("4.0.0-alpha.13", "3.9.4");
-		assertThat(digest.hiddenPreviews()).isEqualTo(3);
-		assertThat(digest.hiddenReleases()).isEqualTo(1);
+		assertThat(versions(digest.previewRows())).containsExactly("4.0.0-alpha.13", "4.0.0-alpha.12");
+		assertThat(digest.morePreviews()).isEqualTo(2);
+		assertThat(versions(digest.releaseRows())).containsExactly("3.9.4", "3.9.3");
+		assertThat(digest.moreReleases()).isZero();
 	}
 
 	@Test
-	void stableReleasesNewerThanCurrentPrecedeCurrentAnchor() {
+	void stableReleasesAreNotLimitedToNewerThanCurrent() {
 
-		ReleaseDigest digest = digest("6.2.0", "6.3.0", "6.2.1", "6.2.0", "6.1.0");
+		ReleaseDigest digest = digest("6.2.0", "6.3.0", "6.2.1", "6.2.0", "6.1.0", "6.0.0");
 
-		assertThat(versions(digest)).containsExactly("6.3.0", "6.2.1", "6.2.0");
-		assertThat(digest.hiddenPreviews()).isZero();
-		assertThat(digest.hiddenReleases()).isEqualTo(1);
+		assertThat(digest.previewRows()).isEmpty();
+		assertThat(versions(digest.releaseRows())).containsExactly("6.3.0", "6.2.1", "6.2.0", "6.1.0", "6.0.0");
+		assertThat(digest.moreReleases()).isZero();
 	}
 
 	@Test
 	void stableRowsBeyondLimitAreCounted() {
 
+		ReleaseDigest digest = ReleaseDigest.of(TestReleases.from("6.5.0", "6.4.0", "6.3.0", "6.2.0", "6.1.0"),
+				ArtifactVersion.of("6.4.0"), 2, 3);
+
+		assertThat(versions(digest.releaseRows())).containsExactly("6.5.0", "6.4.0", "6.3.0");
+		assertThat(digest.moreReleases()).isEqualTo(2);
+	}
+
+	@Test
+	void previewsAtOrBelowCurrentFoldIntoMoreReleases() {
+
+		ReleaseDigest digest = digest("6.2.0", "6.3.0", "6.2.0", "6.1.0-RC1", "6.1.0");
+
+		assertThat(digest.previewRows()).isEmpty();
+		assertThat(digest.morePreviews()).isZero();
+		assertThat(versions(digest.releaseRows())).containsExactly("6.3.0", "6.2.0", "6.1.0");
+		assertThat(digest.moreReleases()).isEqualTo(1);
+	}
+
+	@Test
+	void currentPreviewAnchorsTheReleaseSection() {
+
 		ReleaseDigest digest = ReleaseDigest.of(
-				TestReleases.from("6.5.0", "6.4.0", "6.3.0", "6.2.1", "6.2.0"), ArtifactVersion.of("6.2.0"), 2);
+				TestReleases.from("4.0.0-alpha.13", "4.0.0-alpha.12", "4.0.0-alpha.11", "4.0.0-alpha.10", "3.9.4"),
+				ArtifactVersion.of("4.0.0-alpha.10"), 2, 10);
 
-		assertThat(versions(digest)).containsExactly("6.5.0", "6.4.0", "6.2.0");
-		assertThat(digest.hiddenReleases()).isEqualTo(2);
+		assertThat(versions(digest.previewRows())).containsExactly("4.0.0-alpha.13", "4.0.0-alpha.12");
+		assertThat(digest.morePreviews()).isEqualTo(1);
+		assertThat(versions(digest.releaseRows())).containsExactly("4.0.0-alpha.10", "3.9.4");
 	}
 
 	@Test
-	void withoutCurrentVersionListsStableAndNewestPreview() {
+	void withoutCurrentVersionEveryPreviewIsNewer() {
 
-		ReleaseDigest digest = digest(null, "4.0.0-alpha.2", "4.0.0-alpha.1", "3.9.4", "3.9.3");
+		ReleaseDigest digest = digest(null, "4.0.0-alpha.3", "4.0.0-alpha.2", "4.0.0-alpha.1", "3.9.4", "3.9.3");
 
-		assertThat(versions(digest)).containsExactly("4.0.0-alpha.2", "3.9.4", "3.9.3");
-		assertThat(digest.hiddenPreviews()).isEqualTo(1);
-		assertThat(digest.hiddenReleases()).isZero();
-	}
-
-	@Test
-	void currentPreviewAnchorsBesideNewerPreview() {
-
-		ReleaseDigest digest = digest("4.0.0-alpha.10", "4.0.0-alpha.13", "4.0.0-alpha.10", "3.9.4");
-
-		assertThat(versions(digest)).containsExactly("4.0.0-alpha.13", "4.0.0-alpha.10");
-		assertThat(digest.hiddenPreviews()).isZero();
-		assertThat(digest.hiddenReleases()).isEqualTo(1);
-	}
-
-	@Test
-	void upToDateDependencyShowsOnlyCurrentAnchor() {
-
-		ReleaseDigest digest = digest("6.3.0", "6.3.0", "6.2.0", "6.1.0");
-
-		assertThat(versions(digest)).containsExactly("6.3.0");
-		assertThat(digest.hiddenReleases()).isEqualTo(2);
+		assertThat(versions(digest.previewRows())).containsExactly("4.0.0-alpha.3", "4.0.0-alpha.2");
+		assertThat(digest.morePreviews()).isEqualTo(1);
+		assertThat(versions(digest.releaseRows())).containsExactly("3.9.4", "3.9.3");
 	}
 
 	private static ReleaseDigest digest(@Nullable String currentVersion, String... versions) {
 		return ReleaseDigest.of(TestReleases.from(versions),
-				currentVersion == null ? null : ArtifactVersion.of(currentVersion), 10);
+				currentVersion == null ? null : ArtifactVersion.of(currentVersion), 2, 10);
 	}
 
-	private static List<String> versions(ReleaseDigest digest) {
-		return digest.rows().stream().map(release -> release.version().toString()).toList();
+	private static List<String> versions(List<Release> rows) {
+		return rows.stream().map(release -> release.version().toString()).toList();
 	}
 
 }

@@ -39,11 +39,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link DocumentationContext}.
+ * Unit tests for {@link DependencyDocumentationRenderer}.
  *
  * @author Mark Paluch
  */
-class DocumentationContextTests {
+class DependencyDocumentationRendererTests {
 
 	static final Vulnerability CVE = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd", "Remote code execution",
 			9.8, CvssSeverity.CRITICAL, "https://example.com/advisory");
@@ -86,7 +86,8 @@ class DocumentationContextTests {
 
 		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", CVE);
 
-		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+		String html = new DependencyDocumentationRenderer(
+				context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
 				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
 
 		assertThat(html)
@@ -105,7 +106,8 @@ class DocumentationContextTests {
 				9.8, CvssSeverity.CRITICAL, "javascript:alert(1)");
 		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
 
-		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+		String html = new DependencyDocumentationRenderer(
+				context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
 				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
 
 		assertThat(html)
@@ -131,7 +133,7 @@ class DocumentationContextTests {
 
 		};
 
-		String html = new DocumentationContext(context(artifactId), true).render(artifactId, false);
+		String html = new DependencyDocumentationRenderer(context(artifactId), true).render(artifactId, false);
 
 		assertThat(html)
 				.contains(
@@ -147,7 +149,8 @@ class DocumentationContextTests {
 				"https://example.com/advisory");
 		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
 
-		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+		String html = new DependencyDocumentationRenderer(
+				context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
 				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
 
 		assertThat(html).contains("Remote <code>foo</code> execution in <code>bar</code>");
@@ -161,7 +164,8 @@ class DocumentationContextTests {
 				"https://example.com/advisory");
 		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
 
-		String html = new DocumentationContext(context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
+		String html = new DependencyDocumentationRenderer(
+				context(Releases.LETTUCE_CORE.toArtifactId(), "7.5.1.RELEASE"), false)
 				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
 
 		assertThat(html).contains("Remote `foo execution").doesNotContain("Remote <code>foo");
@@ -173,7 +177,8 @@ class DocumentationContextTests {
 		ArtifactId lettuce = Releases.LETTUCE_CORE.toArtifactId();
 		cache.addVulnerabilities(lettuce, "7.5.1.RELEASE");
 
-		String html = new DocumentationContext(context(lettuce, "7.5.1.RELEASE"), false).render(lettuce, false);
+		String html = new DependencyDocumentationRenderer(context(lettuce, "7.5.1.RELEASE"), false).render(lettuce,
+				false);
 
 		assertThat(html).contains("Current value").doesNotContain("Security advisories");
 	}
@@ -183,13 +188,14 @@ class DocumentationContextTests {
 
 		ArtifactId lettuce = Releases.LETTUCE_CORE.toArtifactId();
 
-		String html = new DocumentationContext(context(lettuce, "7.5.1.RELEASE"), false).render(lettuce, false);
+		String html = new DependencyDocumentationRenderer(context(lettuce, "7.5.1.RELEASE"), false).render(lettuce,
+				false);
 
 		assertThat(html).contains("Current value").doesNotContain("Security advisories");
 	}
 
-	private DocumentationContext documentation() {
-		return new DocumentationContext(context(Releases.VAVR.toArtifactId()), false);
+	private DependencyDocumentationRenderer documentation() {
+		return new DependencyDocumentationRenderer(context(Releases.VAVR.toArtifactId()), false);
 	}
 
 	private ArtifactReferenceContext context(ArtifactId artifactId) {

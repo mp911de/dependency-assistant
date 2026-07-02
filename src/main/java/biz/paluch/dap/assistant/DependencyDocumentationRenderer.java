@@ -17,9 +17,9 @@
 package biz.paluch.dap.assistant;
 
 import java.net.URI;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Formatter;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -48,13 +49,19 @@ import com.intellij.openapi.util.text.StringUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Immutable rendering context for dependency Quick Documentation.
+ * Renders the Quick Documentation HTML body for one dependency declaration: the
+ * coordinate header, the current value, the {@link ReleaseDigest} release
+ * table, and known security advisories. Immutable and bound to one resolved
+ * {@link ArtifactReferenceContext}; resolution and target lifecycle live in
+ * {@link DependencyDocumentationProvider}.
  *
  * @author Mark Paluch
  */
-class DocumentationContext {
+class DependencyDocumentationRenderer {
 
-	private static final int MAX_VERSIONS = 10;
+	private static final int MAX_VERSIONS = 6;
+
+	private static final int MAX_PREVIEWS = 2;
 
 	private final ArtifactReferenceContext artifactContext;
 
@@ -64,28 +71,25 @@ class DocumentationContext {
 
 	private final boolean linkable;
 
-	DocumentationContext(ArtifactReferenceContext artifactContext, boolean linkable) {
+	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
+
+	/**
+	 * Create a renderer from a resolved {@link ArtifactReferenceContext}, reusing
+	 * its interface assistant, cache, and current version rather than re-resolving
+	 * the element.
+	 *
+	 * @param artifactContext a {@link ArtifactReferenceContext#isPresent() present}
+	 * reference context.
+	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
+	 * links.
+	 */
+	DependencyDocumentationRenderer(ArtifactReferenceContext artifactContext, boolean linkable) {
 		this.artifactContext = artifactContext;
 		this.interfaceAssistant = artifactContext.getDependencyContext()
 				.getInterfaceAssistant();
 		ArtifactDeclaration declaration = artifactContext.getDeclaration();
 		this.currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
 		this.linkable = linkable;
-	}
-
-	/**
-	 * Create a rendering context from a resolved {@link ArtifactReferenceContext},
-	 * reusing its interface assistant, cache, and current version rather than
-	 * re-resolving the element.
-	 *
-	 * @param context a {@link ArtifactReferenceContext#isPresent() present}
-	 * reference context.
-	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
-	 * links.
-	 * @return the documentation context.
-	 */
-	static DocumentationContext create(ArtifactReferenceContext context, boolean linkable) {
-		return new DocumentationContext(context, linkable);
 	}
 
 	/**
@@ -112,7 +116,12 @@ class DocumentationContext {
 			sb.append(renderCurrentVersion(currentVersion));
 		}
 
-		appendVersionsTable(sb, artifactId, artifactContext.getCache().getReleases(artifactId), withIcons, formatter);
+		Releases releases = artifactContext.getCache().getReleases(artifactId);
+
+		if (!releases.isEmpty()) {
+			ReleaseDigest digest = ReleaseDigest.of(releases, currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
+			appendVersionsTable(sb, artifactId, digest, withIcons, formatter);
+		}
 
 		appendSecurityAdvisories(sb);
 
@@ -122,10 +131,8 @@ class DocumentationContext {
 	}
 
 	/**
-	 * Append a "Security advisories" section for the current version when the cache
-	 * holds vulnerabilities for it. Renders nothing when no current version is
-	 * resolved or vulnerabilities are absent or clean, so an unscanned dependency
-	 * shows no section. Reads the cache only and never fetches.
+	 * Append the security-advisories section for a vulnerable current version;
+	 * cache-only, renders nothing for clean or unscanned dependencies.
 	 */
 	private void appendSecurityAdvisories(StringBuilder sb) {
 
@@ -159,8 +166,7 @@ class DocumentationContext {
 				sb.append(identifierText);
 			}
 
-			Formatter format = new Formatter(Locale.ROOT).format("%1.1f", vulnerability.getCvssScore());
-			sb.append(", CVSS ").append(format);
+			sb.append(", CVSS ").append(String.format(Locale.ROOT, "%.1f", vulnerability.getCvssScore()));
 			sb.append(" ").append(vulnerability.getSeverity().getLabel());
 			sb.append(")</li>");
 		}
@@ -210,10 +216,15 @@ class DocumentationContext {
 			sb.append(renderCurrentVersion(currentVersion));
 		}
 
-		for (ReleaseGroup group : ReleaseGroup.group(artifactContext.getCache(), MAX_VERSIONS, property.artifacts())) {
+		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, artifactContext.getCache(), MAX_VERSIONS,
+				property.artifacts())) {
 
 			sb.append(group.renderHeader());
-			appendVersionsTable(sb, group.artifactIds.getFirst(), group.releases(), withIcons, formatter);
+			if (group.hasReleases()) {
+
+				ReleaseDigest digest = group.digest(currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
+				appendVersionsTable(sb, group.artifactIds.getFirst(), digest, withIcons, formatter);
+			}
 
 			appendSecurityAdvisories(sb);
 		}
@@ -224,100 +235,120 @@ class DocumentationContext {
 	}
 
 	private String renderCurrentVersion(ArtifactVersion version) {
-		return "<p>%s: <code>%s</code></p>".formatted(MessageBundle.message("documentation.current-value"),
-				StringUtil.escapeXmlEntities(interfaceAssistant.getDocumentationText(version)));
+		HtmlChunk.Element code = HtmlChunk.text(interfaceAssistant.getDocumentationText(version))
+				.code();
+		return HtmlChunk.p().addText(MessageBundle.message("documentation.current-value")).addText(": ").child(code)
+				.toString();
 	}
 
 	/**
-	 * Appends the release table for the rows a {@link ReleaseDigest} selects.
-	 * Renders nothing when {@code releases} is empty. When {@link #linkable} and
-	 * icons are rendered, every non-current row wraps its age icon in an upgrade
-	 * link handled by {@link DependencyUpgradeLinkHandler}. Rows the digest hides
-	 * are summarized in a grayed note, so truncation is never silent.
+	 * Append the release table for the {@link ReleaseDigest} rows; hidden rows are
+	 * summarized by grayed notes linking to the Dependency Check dialog so
+	 * truncation is never silent.
 	 */
-	private void appendVersionsTable(StringBuilder sb, ArtifactId artifactId, Releases releases,
+	private void appendVersionsTable(StringBuilder sb, ArtifactId artifactId, ReleaseDigest digest,
 			boolean withIcons, ReleaseDateFormatter formatter) {
 
-		if (releases.isEmpty()) {
-			return;
-		}
 
-		ReleaseDigest digest = ReleaseDigest.of(releases, currentVersion, MAX_VERSIONS);
+		if (!digest.previewRows().isEmpty() || !digest.releaseRows().isEmpty()) {
 
-		if (!digest.rows().isEmpty()) {
 			sb.append("<table>");
-			for (Release release : digest.rows()) {
+			appendRows(sb, artifactId, digest.previewRows(), withIcons, formatter);
+
+			if (digest.morePreviews() > 0) {
 				sb.append("<tr>");
-				sb.append(new DocumentedRelease(artifactContext, artifactId.toString(), release,
-						interfaceAssistant, linkable, withIcons).render(formatter));
-				sb.append("</tr>");
+				if (withIcons) {
+					sb.append("<td></td>");
+				}
+				HtmlChunk link = checkDialogLink(
+						MessageBundle.message("documentation.more-previews",
+								decimalFormat.format(digest.morePreviews())));
+				sb.append("<td colspan='2'>")
+						.append(link)
+						.append("</td></tr>");
 			}
+
+			appendRows(sb, artifactId, digest.releaseRows(), withIcons, formatter);
 			sb.append("</table>");
 		}
 
-		appendHiddenNote(sb, digest);
+		if (digest.moreReleases() > 0) {
+
+			String message = MessageBundle.message("documentation.more-releases",
+					decimalFormat.format(digest.moreReleases()), digest.moreReleases());
+			HtmlChunk link = checkDialogLink(message);
+			sb.append(HtmlChunk.p().child(link));
+		}
 	}
 
-	private static void appendHiddenNote(StringBuilder sb, ReleaseDigest digest) {
+	private void appendRows(StringBuilder sb, ArtifactId artifactId, List<Release> rows, boolean withIcons,
+			ReleaseDateFormatter formatter) {
 
-		List<String> fragments = new ArrayList<>(2);
-		if (digest.hiddenPreviews() > 0) {
-			fragments.add(MessageBundle.message("documentation.hidden.previews", digest.hiddenPreviews()));
+		for (Release release : rows) {
+			sb.append("<tr>");
+			sb.append(new DocumentedRelease(artifactContext, artifactId.toString(), release,
+					interfaceAssistant, linkable, withIcons).render(formatter));
+			sb.append("</tr>");
 		}
-		if (digest.hiddenReleases() > 0) {
-			fragments.add(MessageBundle.message("documentation.hidden.releases", digest.hiddenReleases()));
-		}
-
-		if (fragments.isEmpty()) {
-			return;
-		}
-
-		sb.append("<p>")
-				.append(DocumentationMarkup.GRAYED_START)
-				.append(MessageBundle.message("documentation.hidden", String.join(", ", fragments)))
-				.append(DocumentationMarkup.GRAYED_END)
-				.append("</p>");
-	}
-
-	public @Nullable ArtifactVersion currentVersion() {
-		return currentVersion;
 	}
 
 	/**
-	 * Bounded selection of the release rows the popup renders for one artifact: the
-	 * stable releases newer than the current version (capped at a limit), the
-	 * newest preview, and the current version as the anchor row. Everything else is
-	 * carried as hidden counts, keeping the popup an upgrade decision aid rather
-	 * than a release changelog.
-	 *
-	 * @param rows the releases to render, in the authoritative newest-first order
-	 * of {@link Releases}.
-	 * @param hiddenPreviews the number of distinct preview releases not rendered.
-	 * @param hiddenReleases the number of distinct stable releases not rendered.
+	 * Wrap the text in a link opening the Dependency Check dialog focused on the
+	 * documented declaration.
 	 */
-	record ReleaseDigest(List<Release> rows, int hiddenPreviews, int hiddenReleases) {
+	private HtmlChunk checkDialogLink(String text) {
+
+		HtmlChunk chunk = HtmlChunk.text(text);
+		return HtmlChunk.tag("a")
+				.attr("href", DependencyUpgradeLinkHandler.CHECK_SCHEME)
+				.child(chunk);
+	}
+
+	private static HtmlChunk grayed(HtmlChunk chunk) {
+		return DocumentationMarkup.GRAYED_ELEMENT.child(chunk);
+	}
+
+	/**
+	 * Bounded selection of the release rows the popup renders for one artifact,
+	 * keeping the popup an upgrade decision aid rather than a release changelog.
+	 * Previews newer than the current version fill a top section capped at a few
+	 * rows; every other release, stable or the current anchor, fills the release
+	 * section capped separately. Rows beyond the caps are carried as counts.
+	 *
+	 * @param previewRows the previews newer than the current version, newest first.
+	 * @param releaseRows the stable releases and the current-version anchor, newest
+	 * first.
+	 * @param morePreviews the number of newer previews beyond {@code previewRows}.
+	 * @param moreReleases the number of releases hidden from the release section,
+	 * including previews at or below the current version.
+	 */
+	record ReleaseDigest(List<Release> previewRows, List<Release> releaseRows, int morePreviews, int moreReleases) {
 
 		/**
-		 * Select the rows to render from the given releases. Without a current version
-		 * every stable release qualifies; otherwise only releases newer than current
-		 * qualify, and the current version itself is kept as the anchor row. Duplicate
-		 * versions are skipped entirely, matching the release table's previous
-		 * de-duplication.
+		 * Select the rows to render from the given releases. Previews count against
+		 * {@code previewLimit} only when newer than the current version; previews at or
+		 * below the current version are folded into {@link #moreReleases()}. Stable
+		 * releases fill up to {@code releaseLimit} rows regardless of the current
+		 * version, and the release matching the current version is always kept as the
+		 * anchor row. Duplicate versions are skipped entirely, matching the release
+		 * table's previous de-duplication.
 		 *
 		 * @param releases the artifact's analyzed release history.
 		 * @param currentVersion the declared version, or {@literal null} when
 		 * unresolved.
-		 * @param limit the maximum number of stable rows.
+		 * @param previewLimit the maximum number of newer-preview rows.
+		 * @param releaseLimit the maximum number of stable rows.
 		 * @return the digest.
 		 */
-		static ReleaseDigest of(Releases releases, @Nullable ArtifactVersion currentVersion, int limit) {
+		static ReleaseDigest of(Releases releases, @Nullable ArtifactVersion currentVersion, int previewLimit,
+				int releaseLimit) {
 
-			List<Release> rows = new ArrayList<>();
+			List<Release> previewRows = new ArrayList<>();
+			List<Release> releaseRows = new ArrayList<>();
 			Set<String> seen = new HashSet<>();
-			boolean previewShown = false;
-			int stableShown = 0;
-			int hiddenPreviews = 0;
-			int hiddenReleases = 0;
+			int shownReleases = 0;
+			int morePreviews = 0;
+			int moreReleases = 0;
 
 			for (Release release : releases) {
 
@@ -325,39 +356,59 @@ class DocumentationContext {
 					continue;
 				}
 
-				if (currentVersion != null && release.getVersion().matches(currentVersion)) {
-					rows.add(release);
-					continue;
-				}
-
-				boolean newer = currentVersion == null || release.isNewer(currentVersion);
-
-				if (release.isPreview()) {
-					if (newer && !previewShown) {
-						previewShown = true;
-						rows.add(release);
-					} else {
-						hiddenPreviews++;
+				if (release.getVersion().matches(currentVersion)) {
+					releaseRows.add(release);
+					if (!release.isPreview()) {
+						shownReleases++;
 					}
 					continue;
 				}
 
-				if (newer && stableShown < limit) {
-					stableShown++;
-					rows.add(release);
+				if (release.isPreview()) {
+
+					boolean newer = currentVersion == null || release.isNewer(currentVersion);
+					if (!newer) {
+						moreReleases++;
+					} else if (previewRows.size() < previewLimit) {
+						previewRows.add(release);
+					} else {
+						morePreviews++;
+					}
+					continue;
+				}
+
+				if (shownReleases < releaseLimit) {
+					shownReleases++;
+					releaseRows.add(release);
 				} else {
-					hiddenReleases++;
+					moreReleases++;
 				}
 			}
 
-			return new ReleaseDigest(List.copyOf(rows), hiddenPreviews, hiddenReleases);
+			return new ReleaseDigest(previewRows, releaseRows, morePreviews, moreReleases);
 		}
 
 	}
 
-	record ReleaseGroup(List<ArtifactId> artifactIds, Releases releases) {
+	static class ReleaseGroup {
 
-		public static Collection<ReleaseGroup> group(Cache cache, int limit, List<CachedArtifact> artifacts) {
+		private final List<ArtifactId> artifactIds = new ArrayList<>();
+
+		private final InterfaceAssistant assistant;
+
+		private final Releases releases;
+
+		ReleaseGroup(InterfaceAssistant assistant, Releases releases) {
+			this.assistant = assistant;
+			this.releases = releases;
+		}
+
+		public boolean hasReleases() {
+			return !releases.isEmpty();
+		}
+
+		static Collection<ReleaseGroup> group(InterfaceAssistant assistant, Cache cache, int limit,
+				List<CachedArtifact> artifacts) {
 
 			Map<Set<String>, ReleaseGroup> groups = new LinkedHashMap<>();
 			for (CachedArtifact artifact : artifacts) {
@@ -365,31 +416,31 @@ class DocumentationContext {
 				Releases releases = cache.getReleases(artifactId);
 				Set<String> versionKeys = releaseVersionKeys(releases, limit);
 
-				ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(new ArrayList<>(),
-						releases));
-				group.artifactIds().add(artifactId);
+				ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(assistant, releases));
+				group.add(artifactId);
 			}
 			return groups.values();
 		}
 
+		private void add(ArtifactId artifactId) {
+			this.artifactIds.add(artifactId);
+		}
+
 		private static Set<String> releaseVersionKeys(Releases releases, int limit) {
-
-			Set<String> versions = new LinkedHashSet<>();
-			for (Release release : releases) {
-				versions.add(release.unwrap().toString());
-				if (versions.size() >= limit) {
-					break;
-				}
-			}
-			return versions;
+			return releases.stream().limit(limit)
+					.map(Release::unwrap)
+					.map(Object::toString)
+					.collect(Collectors.toCollection(LinkedHashSet::new));
 		}
 
-		public String renderHeader() {
-			return "<p>%s %s</p>".formatted(MessageBundle.message("documentation.property-for"),
-					formatArtifactIds(artifactIds()));
+		String renderHeader() {
+			return HtmlChunk.p()
+					.addText(MessageBundle.message("documentation.property-for"))
+					.addText(" ")
+					.addRaw(formatArtifactIds(assistant)).toString();
 		}
 
-		private static String formatArtifactIds(List<ArtifactId> artifactIds) {
+		private String formatArtifactIds(InterfaceAssistant assistant) {
 
 			StringBuilder sb = new StringBuilder();
 			for (ArtifactId artifactId : artifactIds) {
@@ -397,10 +448,25 @@ class DocumentationContext {
 					sb.append(", ");
 				}
 				sb.append("<code>");
-				sb.append(StringUtil.escapeXmlEntities(artifactId.toString()));
+				sb.append(StringUtil.escapeXmlEntities(assistant.getDisplayName(artifactId)));
 				sb.append("</code>");
 			}
 			return sb.toString();
+		}
+
+		public Releases releases() {
+			return releases;
+		}
+
+		public ReleaseDigest digest(@Nullable ArtifactVersion currentVersion, int maxPreviews, int maxVersions) {
+			return ReleaseDigest.of(releases, currentVersion, maxPreviews, maxVersions);
+		}
+
+		@Override
+		public String toString() {
+			return "ReleaseGroup[" +
+					"artifactIds=" + artifactIds + ", " +
+					"releases=" + releases + ']';
 		}
 
 	}
@@ -419,7 +485,7 @@ class DocumentationContext {
 
 		private final @Nullable HtmlChunk firstColumnIcon;
 
-		public DocumentedRelease(ArtifactReferenceContext artifactContext, String name, Release release,
+		DocumentedRelease(ArtifactReferenceContext artifactContext, String name, Release release,
 				InterfaceAssistant interfaceAssistant, boolean linkable, boolean withIcons) {
 
 			this.release = release;
@@ -445,7 +511,7 @@ class DocumentationContext {
 			}
 		}
 
-		public StringBuilder render(ReleaseDateFormatter formatter) {
+		StringBuilder render(ReleaseDateFormatter formatter) {
 
 			StringBuilder sb = new StringBuilder();
 			if (firstColumnIcon != null) {
@@ -481,6 +547,7 @@ class DocumentationContext {
 			HtmlChunk text = HtmlChunk.text(interfaceAssistant.getDocumentationText(release.version()));
 			return current ? text.bold() : text;
 		}
+
 	}
 
 }
