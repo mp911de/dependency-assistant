@@ -28,6 +28,7 @@ import biz.paluch.dap.GitRefIntrospectedDependencies;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -263,6 +264,11 @@ public class GitHubAssistant implements DependencyAssistant {
 		@Override
 		public String getDisplayName(VirtualFile file) {
 			return getDisplayName();
+		}
+
+		@Override
+		public String getDisplayName(ArtifactId artifactId) {
+			return GitHubUtils.toString(artifactId);
 		}
 
 		@Override

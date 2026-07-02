@@ -25,6 +25,7 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
@@ -246,6 +247,11 @@ public class NpmAssistant implements DependencyAssistant {
 		@Override
 		public String getDisplayName(VirtualFile file) {
 			return getDisplayName();
+		}
+
+		@Override
+		public String getDisplayName(ArtifactId artifactId) {
+			return NpmUtils.toString(artifactId);
 		}
 
 		@Override
