@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant;
 
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 import javax.swing.Icon;
 
@@ -24,6 +25,7 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
@@ -38,13 +40,13 @@ import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.GutterName;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor;
-import com.intellij.openapi.actionSystem.ActionManager;
-import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
@@ -94,20 +96,22 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		Icon gutterIcon = ui.getGutterIcon(declaration);
 		Icon transparentIcon = evaluated.isPresent() ? gutterIcon : IconLoader.getTransparentIcon(gutterIcon, 0.7f);
 
+		ArtifactId artifactId = artifactReference.getArtifactId();
+
 		if (suggestions.isEmpty()) {
 
 			if (vulnerable) {
 
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						getRuleIcon(transparentIcon, evaluated), e -> vulnerability.getText(),
-						new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
+						new UpgradeDialogNavigationHandler(artifactId),
 						GutterIconRenderer.Alignment.LEFT, vulnerability::getText);
 
 			} else if (evaluated.isPresent() && evaluated.isLocked()) {
 
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						getRuleIcon(transparentIcon, evaluated), e -> evaluated.getToolTipText(),
-						new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
+						new UpgradeDialogNavigationHandler(artifactId),
 						GutterIconRenderer.Alignment.LEFT, evaluated::getAccessibleName);
 			}
 			return null;
@@ -175,7 +179,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 		return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 				icon, e -> tooltipToUse,
-				new ActionNavigationHandler("biz.paluch.dap.UpgradeDependencies"),
+				new UpgradeDialogNavigationHandler(artifactId),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 	}
 
@@ -196,16 +200,19 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	}
 
 	/**
-	 * Navigation handler that invokes the configured action id.
+	 * Navigation handler that opens the Dependency Check dialog scoped to the
+	 * clicked declaration's build file, with the artifact's row selected and
+	 * revealed.
 	 */
-	public record ActionNavigationHandler(String actionId) implements GutterIconNavigationHandler<PsiElement> {
+	public record UpgradeDialogNavigationHandler(ArtifactId artifactId)
+			implements GutterIconNavigationHandler<PsiElement> {
 
 		@Override
 		public void navigate(MouseEvent mouseEvent, PsiElement psiElement) {
-			AnAction action = ActionManager.getInstance().getAction(actionId);
-			if (action != null) {
-				ActionManager.getInstance().tryToExecute(action, mouseEvent, null, null, true);
-			}
+
+			PsiFile file = psiElement.getContainingFile();
+			ProgressManager.getInstance().run(new DependencyCheckTask(file.getProject(),
+					new UpgradeRequest(List.of(), file, artifactId)));
 		}
 
 	}

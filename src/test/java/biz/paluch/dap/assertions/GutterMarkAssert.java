@@ -20,7 +20,7 @@ import java.util.List;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.assistant.DependencyLineMarkerProvider.ActionNavigationHandler;
+import biz.paluch.dap.assistant.DependencyLineMarkerProvider.UpgradeDialogNavigationHandler;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.GutterMark;
@@ -311,7 +311,7 @@ public class GutterMarkAssert
 	private boolean isNavigateAction(LineMarkerGutterIconRenderer<?> renderer) {
 
 		GutterIconNavigationHandler<?> navigationHandler = renderer.getLineMarkerInfo().getNavigationHandler();
-		if (navigationHandler instanceof ActionNavigationHandler) {
+		if (navigationHandler instanceof UpgradeDialogNavigationHandler) {
 			return false;
 		}
 		return renderer.isNavigateAction();

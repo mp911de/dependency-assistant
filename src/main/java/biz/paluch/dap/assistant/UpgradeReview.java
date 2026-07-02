@@ -185,10 +185,10 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Return the number of candidates regardless of the active visibility filter.
+	 * Return all candidates regardless of the active visibility filter.
 	 */
-	int getTotalCandidateCount() {
-		return candidates.size();
+	List<UpgradeCandidate> getAllCandidates() {
+		return candidates;
 	}
 
 	private boolean isVisible(UpgradeCandidate candidate) {

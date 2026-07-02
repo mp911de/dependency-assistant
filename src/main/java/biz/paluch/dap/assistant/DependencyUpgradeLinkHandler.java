@@ -16,25 +16,33 @@
 
 package biz.paluch.dap.assistant;
 
+import java.util.List;
+
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.platform.backend.documentation.DocumentationLinkHandler;
 import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.documentation.LinkResolveResult;
+import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Applies a dependency upgrade when a version link in the Quick Documentation
- * popup is clicked.
+ * Handles Dependency Assistant links in the Quick Documentation popup.
  *
  * <p>Version icons rendered by {@link DependencyDocumentationProvider} carry a
  * {@link #SCHEME}-prefixed link whose remainder is the target version. This
  * handler recognizes the scheme, applies the encoded version through the same
  * update path used by the upgrade quick-fix, and re-renders the popup against
  * the updated declaration.
+ *
+ * <p>The hidden-release notes carry a {@link #CHECK_SCHEME} link that opens the
+ * Dependency Check dialog scoped to the documented declaration's build file,
+ * with the artifact's row selected, so the full release history is one click
+ * away from the digest.
  *
  * @author Mark Paluch
  * @see DependencyUpgradeTarget
@@ -47,14 +55,33 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 	 */
 	static final String SCHEME = "dependency-assistant-upgrade:";
 
+	/**
+	 * URL identifying an open-the-Dependency-Check-dialog link. The artifact and
+	 * scope derive from the documentation target; the URL carries no payload.
+	 */
+	static final String CHECK_SCHEME = "dependency-assistant-check:";
+
 	@Override
 	public @Nullable LinkResolveResult resolveLink(DocumentationTarget target, String url) {
 
-		if (!url.startsWith(SCHEME) || !(target instanceof DependencyUpgradeTarget upgradeTarget)) {
+		if (!(target instanceof DependencyUpgradeTarget upgradeTarget)) {
 			return null;
 		}
 
-		String version = url.substring(SCHEME.length());
+		if (url.startsWith(CHECK_SCHEME)) {
+			return openUpgradeDialog(target, upgradeTarget);
+		}
+
+		if (url.startsWith(SCHEME)) {
+			return applyVersion(target, upgradeTarget, url.substring(SCHEME.length()));
+		}
+
+		return null;
+	}
+
+	private static LinkResolveResult applyVersion(DocumentationTarget target, DependencyUpgradeTarget upgradeTarget,
+			String version) {
+
 		Project project = upgradeTarget.getProject();
 
 		return LinkResolveResult.asyncResult(() -> {
@@ -66,6 +93,32 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 			ApplicationManager.getApplication().invokeAndWait(() -> WriteCommandAction.writeCommandAction(project)
 					.withName(MessageBundle.message("documentation.upgrade-to", upgradeTarget.getArtifactId(), version))
 					.run(() -> upgradeTarget.applyVersion(version)));
+
+			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));
+		});
+	}
+
+	/**
+	 * Launch a Dependency Check focused on the documented artifact; resolves back
+	 * to the unchanged target so the popup stays intact.
+	 */
+	private static LinkResolveResult openUpgradeDialog(DocumentationTarget target,
+			DependencyUpgradeTarget upgradeTarget) {
+
+		Project project = upgradeTarget.getProject();
+
+		return LinkResolveResult.asyncResult(() -> {
+
+			if (project.isDisposed()) {
+				return null;
+			}
+
+			PsiFile declarationFile = ReadAction.compute(upgradeTarget::getDeclarationFile);
+			if (declarationFile != null) {
+				ApplicationManager.getApplication()
+						.invokeLater(() -> ProgressManager.getInstance().run(new DependencyCheckTask(project,
+								new UpgradeRequest(List.of(), declarationFile, upgradeTarget.getArtifactId()))));
+			}
 
 			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));
 		});

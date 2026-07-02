@@ -18,6 +18,7 @@ package biz.paluch.dap.assistant;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
@@ -96,7 +97,13 @@ class DependencyCheckTask extends Task.Backgroundable {
 			return;
 		}
 
-		new DependencyCheckDialog(project, result, getTitle(scope)).show();
+		DependencyCheckDialog dialog = new DependencyCheckDialog(project, result, getTitle(scope));
+		dialog.show();
+
+		ArtifactId focusArtifact = request.focusArtifact();
+		if (focusArtifact != null) {
+			dialog.selectCandidate(focusArtifact);
+		}
 	}
 
 	@Override

@@ -18,6 +18,8 @@ package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiFile;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Documentation target that can apply a dependency version upgrade in response
@@ -40,6 +42,18 @@ interface DependencyUpgradeTarget {
 	 * @return the artifact identity; never {@literal null}.
 	 */
 	ArtifactId getArtifactId();
+
+	/**
+	 * Return the build file containing the documented declaration, used to scope a
+	 * Dependency Check launched from a documentation link.
+	 *
+	 * <p>Must be called inside a read action.
+	 *
+	 * @return the declaring file, or {@literal null} when the declaration is no
+	 * longer live.
+	 */
+	@Nullable
+	PsiFile getDeclarationFile();
 
 	/**
 	 * Apply the given version to the documented declaration.

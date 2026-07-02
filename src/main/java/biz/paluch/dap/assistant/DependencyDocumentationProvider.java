@@ -33,6 +33,7 @@ import com.intellij.platform.backend.documentation.DocumentationTarget;
 import com.intellij.platform.backend.documentation.PsiDocumentationTargetProvider;
 import com.intellij.platform.backend.presentation.TargetPresentation;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import org.jspecify.annotations.Nullable;
@@ -41,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  * Provides Quick Documentation for supported dependency build files.
  *
  * <p>Resolution and target lifecycle live here; HTML rendering is owned by
- * {@link DocumentationContext}.
+ * {@link DependencyDocumentationRenderer}.
  *
  * @author Mark Paluch
  */
@@ -69,7 +70,7 @@ public class DependencyDocumentationProvider
 
 		ArtifactDeclaration declaration = context.getDeclaration();
 		boolean linkable = declaration.getVersionLiteral() != null;
-		DocumentationContext documentation = DocumentationContext.create(context, linkable);
+		DependencyDocumentationRenderer documentation = new DependencyDocumentationRenderer(context, linkable);
 
 		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
 
@@ -92,9 +93,9 @@ public class DependencyDocumentationProvider
 
 		final SmartPsiElementPointer<PsiElement> pointer;
 
-		final DocumentationContext documentation;
+		final DependencyDocumentationRenderer documentation;
 
-		DocumentationTargetSupport(PsiElement target, DocumentationContext documentation) {
+		DocumentationTargetSupport(PsiElement target, DependencyDocumentationRenderer documentation) {
 			this.target = target;
 			this.pointer = SmartPointerManager.createPointer(target);
 			this.documentation = documentation;
@@ -108,6 +109,13 @@ public class DependencyDocumentationProvider
 		@Override
 		public Project getProject() {
 			return target.getProject();
+		}
+
+		@Override
+		public @Nullable PsiFile getDeclarationFile() {
+
+			PsiElement element = pointer.getElement();
+			return element != null ? element.getContainingFile() : null;
 		}
 
 		@Override
@@ -190,7 +198,8 @@ public class DependencyDocumentationProvider
 
 		private final VersionProperty property;
 
-		PropertyDocumentationTarget(PsiElement target, DocumentationContext documentation, VersionProperty property) {
+		PropertyDocumentationTarget(PsiElement target, DependencyDocumentationRenderer documentation,
+				VersionProperty property) {
 			super(target, documentation);
 			this.property = property;
 		}
@@ -214,7 +223,8 @@ public class DependencyDocumentationProvider
 
 		private final ArtifactId artifactId;
 
-		DependencyVersionTarget(PsiElement target, DocumentationContext documentation, ArtifactId artifactId) {
+		DependencyVersionTarget(PsiElement target, DependencyDocumentationRenderer documentation,
+				ArtifactId artifactId) {
 			super(target, documentation);
 			this.artifactId = artifactId;
 		}

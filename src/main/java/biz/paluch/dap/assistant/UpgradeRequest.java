@@ -18,6 +18,7 @@ package biz.paluch.dap.assistant;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
@@ -32,10 +33,18 @@ import org.springframework.util.Assert;
  * selection.
  * @param editorFile the build file open in the active editor, or
  * {@literal null} when no editor is open.
+ * @param focusArtifact the artifact whose dialog row to select and reveal after
+ * the check, or {@literal null} when the request does not originate from a
+ * single declaration (e.g. a plain menu action).
  * @author Mark Paluch
  * @see UpgradeScopeResolver
  */
-record UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile) {
+record UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile,
+		@Nullable ArtifactId focusArtifact) {
+
+	UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile) {
+		this(selection, editorFile, null);
+	}
 
 	public boolean hasSingleSource() {
 		return selection.size() == 1 || (selection().isEmpty() && editorFile != null);

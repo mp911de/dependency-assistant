@@ -146,10 +146,8 @@ class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	/**
-	 * Reflect the number of dependencies selected for update in the OK button so
-	 * the scale of the apply is visible before confirming. When every shown row is
-	 * selected the count collapses to "All"; with an active filter hiding rows,
-	 * "All Shown" avoids overstating what gets applied.
+	 * Reflect the selected-row count in the OK button; collapses to "All", or "All
+	 * Shown" when a filter hides rows.
 	 */
 	private void updateOkButtonText() {
 
@@ -162,13 +160,55 @@ class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		if (selected == visible.size()) {
-			setOKButtonText(MessageBundle.message(visible.size() == review.getTotalCandidateCount()
+			setOKButtonText(MessageBundle.message(visible.size() == review.getAllCandidates().size()
 					? "dialog.ok.update.all"
 					: "dialog.ok.update.all-shown"));
 			return;
 		}
 
 		setOKButtonText(MessageBundle.message("dialog.ok.update", selected));
+	}
+
+	/**
+	 * Select and reveal the table row for the given artifact, e.g. when the dialog
+	 * was opened from a gutter icon or a documentation link. When the visibility
+	 * filter hides the row, the filter is cleared first so the row can show.
+	 *
+	 * @param artifactId the artifact whose row to select; group rows match through
+	 * their members.
+	 */
+	void selectCandidate(ArtifactId artifactId) {
+
+		UpgradeCandidate candidate = findCandidate(artifactId);
+		if (candidate == null) {
+			return;
+		}
+
+		if (!review.getCandidates().contains(candidate)) {
+			this.components.clearVersionFilter();
+		}
+
+		this.components.select(candidate);
+	}
+
+	private @Nullable UpgradeCandidate findCandidate(ArtifactId artifactId) {
+
+		for (UpgradeCandidate candidate : review.getAllCandidates()) {
+			if (represents(candidate, artifactId)) {
+				return candidate;
+			}
+		}
+		return null;
+	}
+
+	private static boolean represents(UpgradeCandidate candidate, ArtifactId artifactId) {
+
+		if (candidate.getArtifactId().equals(artifactId)) {
+			return true;
+		}
+
+		return candidate instanceof UpgradeGroup group
+				&& group.getMembers().stream().anyMatch(member -> member.getArtifactId().equals(artifactId));
 	}
 
 	/**
@@ -430,6 +470,29 @@ class DependencyCheckDialog extends DialogWrapper {
 			TableUtil.stopEditing(table);
 		}
 
+		/**
+		 * Clear the version-suggestion filter through the checkbox so the control state
+		 * and the review stay in sync.
+		 */
+		void clearVersionFilter() {
+			filterVersionsCheckBox.setSelected(false);
+		}
+
+		/**
+		 * Select and reveal the row of the given candidate.
+		 */
+		void select(UpgradeCandidate candidate) {
+
+			int modelRow = tableModel.indexOf(candidate);
+			if (modelRow < 0) {
+				return;
+			}
+
+			int viewRow = table.convertRowIndexToView(modelRow);
+			table.setRowSelectionInterval(viewRow, viewRow);
+			table.scrollRectToVisible(table.getCellRect(viewRow, 0, true));
+		}
+
 		void setControlsEnabled(boolean enabled) {
 			UIUtil.setEnabled(this.table, enabled, true);
 			UIUtil.setEnabled(this.filterVersionsCheckBox, enabled, true);
@@ -550,9 +613,8 @@ class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	/**
-	 * Apply the file's updates through every assistant that supports the file and
-	 * produces an available context, invoking {@code afterApply} with each context
-	 * that applied.
+	 * Apply the file's updates through every supporting assistant with an available
+	 * context, invoking {@code afterApply} per applied context.
 	 */
 	private static void applyToSupportingContexts(List<DependencyAssistant> assistants, PsiFile file,
 			List<DependencyUpdate> fileUpdates, Consumer<ProjectDependencyContext> afterApply) {
@@ -806,10 +868,7 @@ class DependencyCheckDialog extends DialogWrapper {
 			repaint(getCellRect(row, convertColumnIndexToView(UPGRADE_TARGETS_COLUMN_INDEX), true));
 		}
 
-		/**
-		 * Clear the strategy-strip hover state, e.g. when the rows are replaced and the
-		 * hovered view row no longer refers to the same candidate.
-		 */
+		/** Clear the strategy-strip hover state, e.g. when rows are replaced. */
 		void clearStrategyHover() {
 			setHoveredStrategy(-1, null);
 		}
