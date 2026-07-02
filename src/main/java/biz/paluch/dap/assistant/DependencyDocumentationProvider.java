@@ -70,7 +70,7 @@ public class DependencyDocumentationProvider
 
 		ArtifactDeclaration declaration = context.getDeclaration();
 		boolean linkable = declaration.getVersionLiteral() != null;
-		DependencyDocumentationRenderer documentation = new DependencyDocumentationRenderer(context, linkable);
+		DependencyDocumentationRenderer documentation = DependencyDocumentationRenderer.from(context, linkable);
 
 		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
 

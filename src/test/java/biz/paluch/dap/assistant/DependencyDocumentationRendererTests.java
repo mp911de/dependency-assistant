@@ -27,9 +27,12 @@ import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
+import biz.paluch.dap.rule.Generations;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.VersionProperty;
+import biz.paluch.dap.support.UpgradeStrategy;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -204,10 +207,11 @@ class DependencyDocumentationRendererTests {
 		assertThat(html)
 				.contains("io.lettuce:lettuce-core 7.5.1.RELEASE")
 				.contains("Released")
-				.contains("Newer than the current version")
+				.contains("upgrade over the current version")
 				.contains("7.4.1.RELEASE")
 				.contains("Security advisories")
-				.contains("CVE-2026-1");
+				.contains("CVE-2026-1")
+				.doesNotContain("Violates the dependency rule");
 	}
 
 	@Test
@@ -216,7 +220,7 @@ class DependencyDocumentationRendererTests {
 		String html = renderer("7.5.1.RELEASE").render(release(Releases.LETTUCE_CORE, "7.4.1.RELEASE"));
 
 		assertThat(html)
-				.contains("Older than the current version").contains("7.5.1.RELEASE")
+				.contains("Downgrade below the current version").contains("7.5.1.RELEASE")
 				.doesNotContain("Security advisories");
 	}
 
@@ -227,8 +231,8 @@ class DependencyDocumentationRendererTests {
 
 		assertThat(html)
 				.contains("Currently declared version")
-				.doesNotContain("Newer than")
-				.doesNotContain("Older than");
+				.doesNotContain("upgrade")
+				.doesNotContain("Downgrade");
 	}
 
 	@Test
@@ -238,17 +242,18 @@ class DependencyDocumentationRendererTests {
 
 		assertThat(html)
 				.contains("io.lettuce:lettuce-core 7.4.1.RELEASE")
-				.doesNotContain("Newer than")
-				.doesNotContain("Older than")
+				.doesNotContain("upgrade over")
+				.doesNotContain("Downgrade")
 				.doesNotContain("Currently declared version");
 	}
 
 	@Test
-	void shouldDocumentReleaseAgeInMonths() {
+	void shouldFuseUpgradeKindWithReleaseAge() {
 
 		String html = renderer("7.5.0.RELEASE").render(release(Releases.LETTUCE_CORE, "7.5.1.RELEASE"));
 
-		assertThat(html).contains("1 month newer than the current version").contains("7.5.0.RELEASE");
+		assertThat(html).contains("Patch upgrade, released 1 month <i>after</i> the current version")
+				.contains("7.5.0.RELEASE");
 	}
 
 	@Test
@@ -256,7 +261,23 @@ class DependencyDocumentationRendererTests {
 
 		String html = renderer("5.14.0").render(release(Releases.JUNIT_BOM, "5.14.3"));
 
-		assertThat(html).contains("3 days newer than the current version");
+		assertThat(html).contains("Patch upgrade, released 3 days <i>after</i> the current version");
+	}
+
+	@Test
+	void shouldClassifyMajorUpgrade() {
+
+		String html = renderer("5.14.0").render(release(Releases.JUNIT_BOM, "6.0.3"));
+
+		assertThat(html).contains("Major upgrade, released 3 days <i>after</i> the current version");
+	}
+
+	@Test
+	void shouldClassifyPreviewUpgradeReleasedBeforeCurrent() {
+
+		String html = renderer("6.0.3").render(release(Releases.JUNIT_BOM, "6.1.0-M1"));
+
+		assertThat(html).contains("Preview upgrade, released 3 months <i>before</i> the current version");
 	}
 
 	@Test
@@ -264,7 +285,15 @@ class DependencyDocumentationRendererTests {
 
 		String html = renderer("7.5.1.RELEASE").render(release(Releases.LETTUCE_CORE, "7.5.0.RELEASE"));
 
-		assertThat(html).contains("1 month older than the current version");
+		assertThat(html).contains("Downgrade, released 1 month <i>before</i> the current version");
+	}
+
+	@Test
+	void shouldFlagDowngradeReleasedAfterCurrent() {
+
+		String html = renderer("7.5.0.RELEASE").render(release(Releases.LETTUCE_CORE, "7.4.1.RELEASE"));
+
+		assertThat(html).contains("Downgrade, but released 1 month <i>after</i> the current version");
 	}
 
 	@Test
@@ -273,8 +302,46 @@ class DependencyDocumentationRendererTests {
 		String html = renderer("4.0.4").render(release(Releases.SPRING_BOOT, "4.0.5"));
 
 		assertThat(html)
-				.contains("Newer than the current version")
+				.contains("Patch upgrade over the current version")
 				.doesNotContain("Released");
+	}
+
+	@Test
+	void shouldListFixedVulnerabilities() {
+
+		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.4.1.RELEASE", CVE);
+
+		String html = renderer("7.4.1.RELEASE").render(release(Releases.LETTUCE_CORE, "7.5.1.RELEASE"));
+
+		assertThat(html)
+				.contains("Fixes")
+				.contains("<a href=\"https://example.com/advisory\">CVE-2026-1</a> (Critical) "
+						+ "affecting the current version")
+				.contains("7.4.1.RELEASE")
+				.doesNotContain("Security advisories");
+	}
+
+	@Test
+	void shouldNoteUnchangedAdvisories() {
+
+		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.4.1.RELEASE", CVE);
+		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", CVE);
+
+		String html = renderer("7.4.1.RELEASE").render(release(Releases.LETTUCE_CORE, "7.5.1.RELEASE"));
+
+		assertThat(html)
+				.contains("Security advisories")
+				.contains("(same as the current version)")
+				.doesNotContain("Fixes");
+	}
+
+	@Test
+	void shouldRenderRuleViolationForGoverningRule() {
+
+		String html = renderer("7.4.1.RELEASE", rejectingRule())
+				.render(release(Releases.LETTUCE_CORE, "7.5.1.RELEASE"));
+
+		assertThat(html).contains("Rule").contains("Violates the dependency rule");
 	}
 
 	private ArtifactRelease release(CachedArtifact artifact, String version) {
@@ -295,6 +362,55 @@ class DependencyDocumentationRendererTests {
 		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, cache,
 				DependencyRuleEvaluator.absent(),
 				currentVersion != null ? ArtifactVersion.of(currentVersion) : null, linkable);
+	}
+
+	private DependencyDocumentationRenderer renderer(String currentVersion, DependencyRuleEvaluator evaluator) {
+		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, cache, evaluator,
+				ArtifactVersion.of(currentVersion), false);
+	}
+
+	private static DependencyRuleEvaluator rejectingRule() {
+
+		DependencyRule rule = new DependencyRule() {
+
+			@Override
+			public boolean test(ArtifactVersion version) {
+				return false;
+			}
+
+			@Override
+			public boolean isPresent() {
+				return true;
+			}
+
+			@Override
+			public boolean isSemanticUpgradingEnabled() {
+				return false;
+			}
+
+			@Override
+			public Generations getGenerations() {
+				return Generations.unconstrained();
+			}
+
+			@Override
+			public String getDependencyName() {
+				return "";
+			}
+
+			@Override
+			public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
+				return true;
+			}
+
+			@Override
+			public @Nullable Release suggestRemediation(biz.paluch.dap.artifact.Releases releases) {
+				return null;
+			}
+
+		};
+		return DependencyRuleEvaluator.create(rule, Releases.LETTUCE_CORE.toArtifactId(),
+				ArtifactVersion.of("7.4.1.RELEASE"), TestInterfaceAssistant.INSTANCE);
 	}
 
 }

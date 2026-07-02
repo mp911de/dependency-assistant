@@ -92,6 +92,8 @@
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
 				implementation="biz.paluch.dap.assistant.DependencyDocumentationProvider"/>
+		<platform.backend.documentation.lookupElementTargetProvider
+				implementation="biz.paluch.dap.assistant.ReleaseLookupDocumentationProvider"/>
 		<platform.backend.documentation.linkHandler
 				implementation="biz.paluch.dap.assistant.DependencyUpgradeLinkHandler"/>
 		<annotator language="Properties"

@@ -18,6 +18,7 @@ package biz.paluch.dap.assistant;
 
 import java.net.URI;
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -31,29 +32,34 @@ import java.util.stream.Collectors;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Renders the Quick Documentation HTML body for one dependency declaration: the
- * coordinate header, the current value, the {@link ReleaseDigest} release
- * table, and known security advisories. Immutable and bound to one resolved
- * {@link ArtifactReferenceContext}; resolution and target lifecycle live in
- * {@link DependencyDocumentationProvider}.
+ * Renders the Quick Documentation HTML body for one dependency declaration or
+ * release lookup item: the coordinate header, the current value, the
+ * {@link ReleaseDigest} release table, and known security advisories. Immutable
+ * and constructed from its rendering inputs; resolution and target lifecycle
+ * live in {@link DependencyDocumentationProvider}.
  *
  * @author Mark Paluch
  */
@@ -63,9 +69,11 @@ class DependencyDocumentationRenderer {
 
 	private static final int MAX_PREVIEWS = 2;
 
-	private final ArtifactReferenceContext artifactContext;
-
 	private final InterfaceAssistant interfaceAssistant;
+
+	private final Cache cache;
+
+	private final DependencyRuleEvaluator evaluator;
 
 	private final @Nullable ArtifactVersion currentVersion;
 
@@ -74,22 +82,43 @@ class DependencyDocumentationRenderer {
 	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
 
 	/**
-	 * Create a renderer from a resolved {@link ArtifactReferenceContext}, reusing
-	 * its interface assistant, cache, and current version rather than re-resolving
-	 * the element.
+	 * Create a renderer from its rendering inputs.
 	 *
-	 * @param artifactContext a {@link ArtifactReferenceContext#isPresent() present}
-	 * reference context.
+	 * @param interfaceAssistant the format-specific assistant providing display
+	 * text.
+	 * @param cache the release and vulnerability cache.
+	 * @param evaluator the rule evaluator governing the documented declaration.
+	 * @param currentVersion the currently declared version, or {@literal null} if
+	 * no current version is available.
 	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
 	 * links.
 	 */
-	DependencyDocumentationRenderer(ArtifactReferenceContext artifactContext, boolean linkable) {
-		this.artifactContext = artifactContext;
-		this.interfaceAssistant = artifactContext.getDependencyContext()
-				.getInterfaceAssistant();
-		ArtifactDeclaration declaration = artifactContext.getDeclaration();
-		this.currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
+	DependencyDocumentationRenderer(InterfaceAssistant interfaceAssistant, Cache cache,
+			DependencyRuleEvaluator evaluator, @Nullable ArtifactVersion currentVersion, boolean linkable) {
+		this.interfaceAssistant = interfaceAssistant;
+		this.cache = cache;
+		this.evaluator = evaluator;
+		this.currentVersion = currentVersion;
 		this.linkable = linkable;
+	}
+
+	/**
+	 * Create a renderer from a resolved {@link ArtifactReferenceContext}, reusing
+	 * its interface assistant, cache, rule evaluator, and current version rather
+	 * than re-resolving the element.
+	 *
+	 * @param context a {@link ArtifactReferenceContext#isPresent() present}
+	 * reference context.
+	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
+	 * links.
+	 * @return the renderer.
+	 */
+	static DependencyDocumentationRenderer from(ArtifactReferenceContext context, boolean linkable) {
+
+		ArtifactDeclaration declaration = context.getDeclaration();
+		return new DependencyDocumentationRenderer(context.getDependencyContext().getInterfaceAssistant(),
+				context.getCache(), context.getEvaluator(),
+				declaration.isVersionDefined() ? declaration.getVersion() : null, linkable);
 	}
 
 	/**
@@ -110,19 +139,228 @@ class DependencyDocumentationRenderer {
 			content.append(renderCurrentVersion(currentVersion));
 		}
 
-		Releases releases = artifactContext.getCache().getReleases(artifactId);
+		Releases releases = cache.getReleases(artifactId);
 
 		if (!releases.isEmpty()) {
 			ReleaseDigest digest = ReleaseDigest.of(releases, currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
 			content.append(versionsTable(artifactId, digest, withIcons, formatter));
 		}
 
-		content.append(securityAdvisories());
+		content.append(securityAdvisories(artifactId));
 
 		return document(HtmlChunk.text(artifactId.toString()), content);
 	}
 
-	/** Assemble the definition and content sections into the final HTML body. */
+	/**
+	 * Render the documentation body for a single release lookup item: the upgrade
+	 * or downgrade relation fused with the release-date distance, followed by a
+	 * sections table with the release date, the commit for SHA-backed releases,
+	 * advisories the release fixes over the current version, and the rule verdict
+	 * when a governing rule is violated, closing with security advisories affecting
+	 * that release.
+	 *
+	 * @param release the release represented by the lookup item.
+	 * @return the HTML body.
+	 */
+	String render(ArtifactRelease release) {
+
+		ArtifactId artifactId = release.artifactId();
+		ArtifactVersion version = Versioned.of(release).unwrap();
+		Vulnerabilities vulnerabilities = cache.getVulnerabilities(artifactId, release.getVersion());
+		VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(), vulnerabilities);
+
+		HtmlBuilder content = new HtmlBuilder();
+		content.append(releaseRelation(release));
+
+		List<HtmlChunk> sections = new ArrayList<>();
+		LocalDateTime releaseDate = release.getReleaseDate();
+		if (releaseDate != null) {
+			sections.add(section("documentation.release.released",
+					HtmlChunk.text(ReleaseDateFormatter.create().formatDetailed(releaseDate))));
+		}
+
+		if (release.getVersion() instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())) {
+			sections.add(section("documentation.release.commit", HtmlChunk.text(gitVersion.getShortSha()).code()));
+		}
+
+		String advisoriesNote = null;
+		if (currentVersion != null && !release.getVersion().matches(currentVersion)) {
+
+			Vulnerabilities currentVulnerabilities = cache.getVulnerabilities(artifactId, currentVersion);
+			List<Vulnerability> fixed = fixedVulnerabilities(currentVulnerabilities, vulnerabilities);
+			if (!fixed.isEmpty()) {
+				sections.add(section("documentation.release.fixes", fixesCell(fixed, currentVersion)));
+			}
+
+			if (hasSameAdvisories(currentVulnerabilities, vulnerabilities)) {
+				advisoriesNote = MessageBundle.message("documentation.release.advisories.same");
+			}
+		}
+
+		if (evaluator.isPresent() && status.isRuleViolation()) {
+			sections.add(section("documentation.release.rule",
+					HtmlChunk.text(MessageBundle.message("documentation.release.rule-violation"))));
+		}
+
+		if (!sections.isEmpty()) {
+
+			HtmlBuilder rows = new HtmlBuilder();
+			sections.forEach(rows::append);
+			content.append(rows.wrapWith(DocumentationMarkup.SECTIONS_TABLE));
+		}
+
+		content.append(securityAdvisories(vulnerabilities, advisoriesNote));
+
+		return document(HtmlChunk.text(artifactId + " " + version), content);
+	}
+
+	/**
+	 * Render how the release relates to the current version: the upgrade kind
+	 * (patch, minor, major, preview) or a downgrade, fused with the release-date
+	 * distance when both release dates are known. The date direction is reported
+	 * honestly, so a version-older maintenance release published after the current
+	 * version reads as released after it.
+	 */
+	private HtmlChunk releaseRelation(ArtifactRelease release) {
+
+		ArtifactVersion currentVersion = this.currentVersion;
+		if (currentVersion == null) {
+			return HtmlChunk.empty();
+		}
+
+		if (release.getVersion().matches(currentVersion)) {
+			return HtmlChunk.p().addText(MessageBundle.message("documentation.release.current"));
+		}
+
+		VersionAge age = VersionAge.between(currentVersion, Versioned.of(release).unwrap());
+		if (age == VersionAge.SAME_OR_UNKNOWN) {
+			return HtmlChunk.empty();
+		}
+
+		// Relation messages carry inline <i> emphasis on the date direction, so they
+		// render raw; all interpolated values are plugin-generated.
+		return HtmlChunk.p().child(HtmlChunk.raw(relationMessage(release, age, currentVersion))).addText(" ")
+				.child(versionCode(currentVersion));
+	}
+
+	private String relationMessage(ArtifactRelease release, VersionAge age, ArtifactVersion currentVersion) {
+
+		String distance = null;
+		boolean releasedAfterCurrent = false;
+		LocalDateTime releaseDate = release.getReleaseDate();
+		Release currentRelease = findRelease(release.artifactId(), currentVersion);
+		LocalDateTime currentDate = currentRelease != null ? currentRelease.releaseDate() : null;
+
+		if (releaseDate != null && currentDate != null) {
+			distance = ReleaseDateFormatter.create().formatAge(currentDate, releaseDate);
+			releasedAfterCurrent = releaseDate.isAfter(currentDate);
+		}
+
+		if (age == VersionAge.OLDER) {
+
+			if (distance == null) {
+				return MessageBundle.message("documentation.release.downgrade");
+			}
+			return MessageBundle.message(releasedAfterCurrent ? "documentation.release.downgrade.after"
+					: "documentation.release.downgrade.before", distance);
+		}
+
+		String kind = upgradeKind(age);
+		if (distance == null) {
+			return MessageBundle.message("documentation.release.upgrade", kind);
+		}
+		return MessageBundle.message(releasedAfterCurrent ? "documentation.release.upgrade.after"
+				: "documentation.release.upgrade.before", kind, distance);
+	}
+
+	private static String upgradeKind(VersionAge age) {
+		return switch (age) {
+		case NEWER_PATCH -> MessageBundle.message("upgrade-strategy.PATCH");
+		case NEWER_MINOR -> MessageBundle.message("upgrade-strategy.MINOR");
+		case NEWER_MAJOR -> MessageBundle.message("upgrade-strategy.MAJOR");
+		case PREVIEW -> MessageBundle.message("upgrade-strategy.PREVIEW");
+		default -> throw new IllegalStateException("Unexpected version age %s".formatted(age));
+		};
+	}
+
+	private @Nullable Release findRelease(ArtifactId artifactId, ArtifactVersion version) {
+
+		for (Release release : cache.getReleases(artifactId)) {
+			if (release.getVersion().matches(version)) {
+				return release;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Return the advisories affecting the current version that no longer affect the
+	 * candidate release.
+	 */
+	private static List<Vulnerability> fixedVulnerabilities(Vulnerabilities current, Vulnerabilities candidate) {
+
+		if (!current.isVulnerable()) {
+			return List.of();
+		}
+
+		Set<String> remaining = identifiers(candidate);
+		List<Vulnerability> fixed = new ArrayList<>();
+		for (Vulnerability vulnerability : current) {
+
+			if (!remaining.contains(vulnerability.getIdentifier())) {
+				fixed.add(vulnerability);
+			}
+		}
+		return fixed;
+	}
+
+	private static boolean hasSameAdvisories(Vulnerabilities current, Vulnerabilities candidate) {
+
+		if (!current.isVulnerable() || !candidate.isVulnerable()) {
+			return false;
+		}
+		return identifiers(current).equals(identifiers(candidate));
+	}
+
+	private static Set<String> identifiers(Vulnerabilities vulnerabilities) {
+
+		if (!vulnerabilities.isVulnerable()) {
+			return Set.of();
+		}
+
+		Set<String> identifiers = new HashSet<>();
+		for (Vulnerability vulnerability : vulnerabilities) {
+			identifiers.add(vulnerability.getIdentifier());
+		}
+		return identifiers;
+	}
+
+	private HtmlChunk fixesCell(List<Vulnerability> fixed, ArtifactVersion currentVersion) {
+
+		List<HtmlChunk> advisories = fixed.stream()
+				.map(vulnerability -> new HtmlBuilder()
+						.append(advisoryIdentifier(vulnerability))
+						.append(" (" + vulnerability.getSeverity().getLabel() + ")")
+						.toFragment())
+				.toList();
+
+		return new HtmlBuilder()
+				.appendWithSeparators(HtmlChunk.text(", "), advisories)
+				.append(" " + MessageBundle.message("documentation.release.fixes.affecting") + " ")
+				.append(versionCode(currentVersion))
+				.toFragment();
+	}
+
+	private HtmlChunk versionCode(ArtifactVersion version) {
+		return HtmlChunk.text(interfaceAssistant.getDocumentationText(version)).code();
+	}
+
+	private static HtmlChunk section(String labelKey, HtmlChunk value) {
+		return HtmlChunk.tag("tr").children(
+				DocumentationMarkup.SECTION_HEADER_CELL.child(HtmlChunk.p().addText(MessageBundle.message(labelKey))),
+				DocumentationMarkup.SECTION_CONTENT_CELL.child(value));
+	}
+
 	private static String document(HtmlChunk definition, HtmlBuilder content) {
 		return new HtmlBuilder()
 				.append(DocumentationMarkup.DEFINITION_ELEMENT
@@ -132,16 +370,33 @@ class DependencyDocumentationRenderer {
 	}
 
 	/**
-	 * Render the security-advisories section for a vulnerable current version;
-	 * cache-only, empty for clean or unscanned dependencies.
+	 * Render the security-advisories section for the current version of the given
+	 * artifact; cache-only, empty for clean or unscanned dependencies.
 	 */
-	private HtmlChunk securityAdvisories() {
+	private HtmlChunk securityAdvisories(ArtifactId artifactId) {
 
 		if (currentVersion == null) {
 			return HtmlChunk.empty();
 		}
 
-		Vulnerabilities vulnerabilities = artifactContext.getCurrentVulnerabilities();
+		return securityAdvisories(cache.getVulnerabilities(artifactId, currentVersion));
+	}
+
+	/**
+	 * Render the security-advisories section for the given vulnerabilities; empty
+	 * for clean or unscanned versions.
+	 */
+	private static HtmlChunk securityAdvisories(Vulnerabilities vulnerabilities) {
+		return securityAdvisories(vulnerabilities, null);
+	}
+
+	/**
+	 * Render the security-advisories section for the given vulnerabilities, with an
+	 * optional plain-text note behind the section header; empty for clean or
+	 * unscanned versions.
+	 */
+	private static HtmlChunk securityAdvisories(Vulnerabilities vulnerabilities, @Nullable String note) {
+
 		if (!vulnerabilities.isVulnerable()) {
 			return HtmlChunk.empty();
 		}
@@ -151,26 +406,38 @@ class DependencyDocumentationRenderer {
 			advisories.append(advisory(vulnerability));
 		}
 
+		HtmlChunk.Element headline = HtmlChunk.p()
+				.child(HtmlChunk.text(MessageBundle.message("documentation.security-advisories")).bold());
+		if (note != null) {
+			headline = headline.addText(" " + note);
+		}
+
 		return new HtmlBuilder()
-				.append(HtmlChunk.p()
-						.child(HtmlChunk.text(MessageBundle.message("documentation.security-advisories")).bold()))
+				.append(headline)
 				.append(advisories.wrapWith("ul"))
 				.toFragment();
 	}
 
 	private static HtmlChunk advisory(Vulnerability vulnerability) {
 
-		HtmlChunk identifier = HtmlChunk.text(vulnerability.getIdentifier());
-		if (isHttpLink(vulnerability.getSourceUrl())) {
-			identifier = HtmlChunk.link(vulnerability.getSourceUrl(), identifier);
-		}
-
 		return HtmlChunk.li().children(
 				HtmlChunk.raw(Markdown.of(vulnerability.getTitle()).toHtml()),
 				HtmlChunk.text(" ("),
-				identifier,
+				advisoryIdentifier(vulnerability),
 				HtmlChunk.text(", CVSS " + String.format(Locale.ROOT, "%.1f", vulnerability.getCvssScore()) + " "
 						+ vulnerability.getSeverity().getLabel() + ")"));
+	}
+
+	/**
+	 * Render the advisory identifier, linked to its source when the source URL uses
+	 * a supported scheme.
+	 */
+	private static HtmlChunk advisoryIdentifier(Vulnerability vulnerability) {
+
+		HtmlChunk identifier = HtmlChunk.text(vulnerability.getIdentifier());
+		return isHttpLink(vulnerability.getSourceUrl())
+				? HtmlChunk.link(vulnerability.getSourceUrl(), identifier)
+				: identifier;
 	}
 
 	private static boolean isHttpLink(String url) {
@@ -210,7 +477,7 @@ class DependencyDocumentationRenderer {
 			content.append(renderCurrentVersion(currentVersion));
 		}
 
-		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, artifactContext.getCache(), MAX_VERSIONS,
+		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, cache, MAX_VERSIONS,
 				property.artifacts())) {
 
 			content.append(group.renderHeader());
@@ -220,7 +487,7 @@ class DependencyDocumentationRenderer {
 				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter));
 			}
 
-			content.append(securityAdvisories());
+			content.append(securityAdvisories(group.artifactIds.getFirst()));
 		}
 
 		return document(HtmlChunk.text(property.name()), content);
@@ -266,7 +533,10 @@ class DependencyDocumentationRenderer {
 			ReleaseDateFormatter formatter) {
 
 		for (Release release : releases) {
-			rows.append(new DocumentedRelease(artifactContext, artifactId.toString(), release,
+
+			VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
+					cache.getVulnerabilities(artifactId, release.getVersion()));
+			rows.append(new DocumentedRelease(status, artifactId.toString(), release,
 					interfaceAssistant, linkable, withIcons).render(formatter));
 		}
 	}
@@ -464,14 +734,12 @@ class DependencyDocumentationRenderer {
 
 		private final @Nullable HtmlChunk firstColumnIcon;
 
-		DocumentedRelease(ArtifactReferenceContext artifactContext, String name, Release release,
+		DocumentedRelease(VersionStatus status, String name, Release release,
 				InterfaceAssistant interfaceAssistant, boolean linkable, boolean withIcons) {
 
 			this.release = release;
 			this.key = release.unwrap().toString();
 			this.interfaceAssistant = interfaceAssistant;
-
-			VersionStatus status = artifactContext.getStatus(release.getVersion());
 			this.current = status.isCurrent();
 			this.linkable = linkable && !current;
 
