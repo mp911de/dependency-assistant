@@ -34,7 +34,6 @@
 	]]></description>
 
 	<depends>com.intellij.modules.xml</depends>
-	<depends>com.intellij.modules.java</depends>
 	<depends>com.intellij.modules.vcs</depends>
 	<depends optional="true" config-file="maven.xml">org.jetbrains.idea.maven</depends>
 	<depends optional="true" config-file="kotlin.xml">org.jetbrains.kotlin</depends>
