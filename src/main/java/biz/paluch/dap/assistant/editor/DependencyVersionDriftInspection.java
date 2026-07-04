@@ -61,9 +61,14 @@ import org.jetbrains.annotations.NotNull;
  * at more than one distinct version or through mixed declaration styles across
  * the project's modules.
  *
+ * <p>The current file's declaration is read live from PSI; cross-module
+ * versions come from the runtime dependency state.
+ * {@link biz.paluch.dap.assistant.action.StateRefresher} keeps that state fresh
+ * on edits and saves of build files and restarts highlighting afterwards, so
+ * open editors re-run this inspection against the latest declarations.
+ *
  * @author Mark Paluch
  */
-// TODO: Re-check for file save refresh and cross-trigger
 public class DependencyVersionDriftInspection extends LocalInspectionTool implements Iconable {
 
 	@Override

@@ -65,6 +65,8 @@
 		<postStartupActivity
 				implementation="biz.paluch.dap.assistant.action.PostStartup"/>
 		<actionOnSave implementation="biz.paluch.dap.assistant.action.FlushStateOnSave"/>
+		<psi.treeChangeListener
+				implementation="biz.paluch.dap.assistant.action.FlushStateOnEdit"/>
 		<notificationGroup id="biz.paluch.dependency-assistant"
 		                   displayType="NONE"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>

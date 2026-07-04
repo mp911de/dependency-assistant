@@ -17,28 +17,22 @@
 package biz.paluch.dap.assistant.action;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
-import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.ProjectStateIndexer;
-import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.ide.actionsOnSave.impl.ActionsOnSaveFileDocumentManagerListener;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiFile;
-import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
- * Listener that re-collects dependency state when supported build files change.
+ * Listener that re-collects dependency state when build files are saved,
+ * complementing {@link FlushStateOnEdit} as a safety net for changes that reach
+ * a document without firing PSI change events.
  *
  * @author Mark Paluch
+ * @see StateRefresher
  */
 public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.ActionOnSave {
 
@@ -52,6 +46,21 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 	@Override
 	public void processDocuments(Project project, Document[] documents) {
 
+		StateRefresher refresher = StateRefresher.getInstance(project);
+
+		if (documents.length == 0) {
+			return;
+		}
+
+		if (documents.length == 1) {
+
+			VirtualFile virtualFile = documentManager.getFile(documents[0]);
+			if (virtualFile != null) {
+				refresher.refresh(virtualFile);
+			}
+			return;
+		}
+
 		List<VirtualFile> files = new ArrayList<>(documents.length);
 		for (Document document : documents) {
 			VirtualFile virtualFile = documentManager.getFile(document);
@@ -60,59 +69,8 @@ public class FlushStateOnSave extends ActionsOnSaveFileDocumentManagerListener.A
 			}
 			files.add(virtualFile);
 		}
-		invalidateState(project, files);
-	}
 
-	private void invalidateState(Project project, List<VirtualFile> files) {
-
-		if (files.isEmpty()) {
-			return;
-		}
-		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-
-		ReadAction.nonBlocking(() -> {
-
-			List<PsiFile> psiFiles = new ArrayList<>(files.size());
-			for (VirtualFile file : files) {
-				psiManager.doWithFile(file, psiFiles::add);
-			}
-
-			Map<DependencyAssistant, List<PsiFile>> grouped = groupByOwner(project, psiFiles);
-			if (grouped.isEmpty()) {
-				return;
-			}
-
-			ProjectStateIndexer indexer = new ProjectStateIndexer(project, new EmptyProgressIndicator());
-			grouped.forEach((assistant, buildFiles) -> {
-
-				if (buildFiles.size() > 10) {
-					indexer.readAndUpdateAll(assistant);
-				} else {
-					for (PsiFile buildFile : buildFiles) {
-						indexer.invalidate(assistant, buildFile);
-					}
-				}
-			});
-
-		}).inSmartMode(project).submit(AppExecutorUtil.getAppExecutorService());
-	}
-
-	/**
-	 * Group the given files under the assistants that support them.
-	 */
-	public static Map<DependencyAssistant, List<PsiFile>> groupByOwner(Project project,
-			List<PsiFile> files) {
-
-		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
-		Map<DependencyAssistant, List<PsiFile>> grouped = new LinkedHashMap<>();
-		for (PsiFile file : files) {
-			for (DependencyAssistant assistant : assistants) {
-				if (assistant.supports(file)) {
-					grouped.computeIfAbsent(assistant, k -> new ArrayList<>()).add(file);
-				}
-			}
-		}
-		return grouped;
+		refresher.refresh(files);
 	}
 
 }

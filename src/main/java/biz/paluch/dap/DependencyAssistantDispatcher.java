@@ -101,6 +101,14 @@ public class DependencyAssistantDispatcher {
 	}
 
 	/**
+	 * Return all registered integrations.
+	 * @return the registered integrations in registration order.
+	 */
+	public static List<DependencyAssistant> findAll() {
+		return INTEGRATIONS.getExtensionList();
+	}
+
+	/**
 	 * Return all integrations that apply to the given project.
 	 * @param project the project to collect integrations for.
 	 * @return the applicable integrations in registration order.
