@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.support.ArtifactReference;
@@ -86,10 +87,9 @@ class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 			if (expression instanceof NpmVersionExpression.Git(
 					NpmVersionExpression.NpmGitRef ref
 			)) {
-				Optional<ArtifactVersion> version = context.versionResolver().resolveCurrent(artifactId,
-						ref.committish().text());
-				if (version.isPresent()) {
-					version.ifPresent(builder::version);
+				Versioned version = context.versionResolver().resolveCurrent(artifactId, ref.committish().text());
+				if (version.isVersioned()) {
+					builder.version(version.getVersion());
 					return;
 				}
 			}

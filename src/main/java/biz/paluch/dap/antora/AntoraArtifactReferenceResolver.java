@@ -19,6 +19,7 @@ package biz.paluch.dap.antora;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -36,9 +37,9 @@ import org.jspecify.annotations.Nullable;
  * <p>Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
  * an {@link ArtifactReference}. The declared version is resolved through the
  * canonical chain of
- * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}: the shared
- * release cache, then a raw {@link ArtifactVersion#from(String)} parse. Remote
- * API access is never triggered.
+ * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}: cached Git ref
+ * matching, then a raw {@link ArtifactVersion#from(String)} parse. Remote API
+ * access is never triggered.
  *
  * @author Mark Paluch
  */
@@ -83,7 +84,10 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 					.declarationElement(scalar)
 					.versionLiteral(scalar);
 
-			context.versionResolver().resolveCurrent(artifactId, bundleUrl.version()).ifPresent(builder::version);
+			Versioned version = context.versionResolver().resolveCurrent(artifactId, bundleUrl.version());
+			if (version.isVersioned()) {
+				builder.version(version.getVersion());
+			}
 		});
 	}
 

@@ -98,6 +98,24 @@ class UnpinnedGitHubActionInspectionTests {
 	}
 
 	@Test
+	@ProjectFile(name = ".github/workflows/ci.yml", content = """
+			jobs:
+			  build:
+			    steps:
+			      - uses: actions/checkout@v4
+			""")
+	void pinsVersionLineRefToNewestStableShaBackedRelease(PsiFile workflowFile) {
+
+		GitHubFixtures.analyze(workflowFile);
+
+		applyFix(workflowFile);
+
+		assertThat(workflowFile)
+				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
+				.doesNotContainText("@v4");
+	}
+
+	@Test
 	@EditorFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:

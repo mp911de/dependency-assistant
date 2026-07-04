@@ -20,10 +20,10 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.ArtifactReferenceContextVisitor;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
+import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.LocalInspectionTool;
@@ -43,14 +43,16 @@ import org.jspecify.annotations.Nullable;
 /**
  * {@link LocalInspectionTool} that flags a GitHub Actions {@code uses:}
  * reference pinned to a mutable symbolic ref (a tag or version) when an
- * immutable commit SHA is already known for that exact ref.
+ * immutable commit SHA is already known for the canonical Git ref resolution
+ * target.
  *
  * <p>Pinning third-party actions to a tag is a supply-chain risk: a tag can be
  * moved to point at different code after review. The inspection reports a
  * version-style ref only when the project's release cache already holds a SHA
- * for that exact ref, so every finding is directly fixable without a network
- * lookup. The exact ref is pinned as written, so {@code @v4} pins to the SHA of
- * {@code v4} and never to a newer {@code v4.2.0}.
+ * for the canonical Git ref resolution target, so every finding is directly
+ * fixable without a network lookup. For example, {@code @v4} pins to an exact
+ * {@code v4} tag when one exists, otherwise to the newest stable SHA-backed
+ * {@code v4.x} release.
  *
  * <p>Already-SHA refs (including short SHAs) and branch refs are not flagged:
  * the former are already immutable, the latter never resolve to a cached
@@ -109,13 +111,8 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
 
 			private @Nullable GitVersion findPinTarget(ArtifactReferenceContext referenceContext, String ref) {
 
-				for (Release release : referenceContext.getReleases()) {
-					if (release.getVersion() instanceof GitVersion gitVersion && gitVersion.hasSha()
-							&& ref.equals(gitVersion.toString())) {
-						return gitVersion;
-					}
-				}
-				return null;
+				GitVersion gitVersion = GitVersionResolver.resolveVersion(ref, referenceContext.getReleases());
+				return gitVersion != null && gitVersion.hasSha() ? gitVersion : null;
 			}
 
 		};

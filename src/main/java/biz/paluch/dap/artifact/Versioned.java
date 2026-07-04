@@ -18,10 +18,9 @@ package biz.paluch.dap.artifact;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -85,6 +84,18 @@ public interface Versioned extends VersionAware {
 	boolean isVersioned();
 
 	/**
+	 * If a versio is present, perform the given action with the value, otherwise
+	 * does nothing.
+	 *
+	 * @param action the action to be performed if a version is present.
+	 */
+	default void ifPresent(Consumer<? super ArtifactVersion> action) {
+		if (isVersioned()) {
+			action.accept(getVersion());
+		}
+	}
+
+	/**
 	 * Return the artifact version held by this container.
 	 *
 	 * <p>Callers must check {@link #isVersioned()} before invoking this method. The
@@ -125,7 +136,7 @@ public interface Versioned extends VersionAware {
 	 * or an empty {@link Optional} when this container is unversioned or the mapper
 	 * returns {@literal null}.
 	 */
-	default <U> @Nullable Optional<U> map(Function<? super ArtifactVersion, ? extends U> mapper) {
+	default <U> Optional<U> map(Function<? super ArtifactVersion, ? extends U> mapper) {
 		Assert.notNull(mapper, "Mapper must not be null");
 		return isVersioned() ? Optional.ofNullable(mapper.apply(getVersion())) : Optional.empty();
 	}

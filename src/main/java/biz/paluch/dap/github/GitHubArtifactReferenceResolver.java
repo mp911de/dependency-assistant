@@ -19,6 +19,7 @@ package biz.paluch.dap.github;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -37,9 +38,9 @@ import org.jspecify.annotations.Nullable;
  * <p>Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
  * parsing the scalar text and resolving the ref through
  * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}. The canonical
- * chain consults the shared release cache, then a raw
- * {@link ArtifactVersion#from(String)} parse, in that order. Remote API access
- * is never triggered.
+ * chain applies cached Git ref matching, then a raw
+ * {@link ArtifactVersion#from(String)} parse. Remote API access is never
+ * triggered.
  *
  * <p>Only elements inside the scalar value of a {@code uses:}
  * {@link YAMLKeyValue} are considered. All other elements resolve to
@@ -92,7 +93,10 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 				return;
 			}
 
-			context.versionResolver().resolveCurrent(artifactId, ref.version()).ifPresent(builder::version);
+			Versioned version = context.versionResolver().resolveCurrent(artifactId, ref.version());
+			if (version.isVersioned()) {
+				builder.version(version.getVersion());
+			}
 		});
 	}
 

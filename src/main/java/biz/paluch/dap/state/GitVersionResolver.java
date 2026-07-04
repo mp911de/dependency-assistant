@@ -16,11 +16,10 @@
 
 package biz.paluch.dap.state;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -40,6 +39,10 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 public class GitVersionResolver {
+
+	private static final Pattern VERSION_LINE_REF = Pattern.compile("v\\d+");
+
+	private static final int MIN_SHA_PREFIX_LENGTH = 7;
 
 	private final Cache cache;
 
@@ -78,25 +81,25 @@ public class GitVersionResolver {
 	 * and raw ref using the canonical chain.
 	 * <p>Resolution order:
 	 * <ol>
-	 * <li>Cached releases.
+	 * <li>Cached releases through {@link #resolveVersion(String, Iterable)}.</li>
 	 * <li>Otherwise return {@link ArtifactVersion#from(String)} of the raw
 	 * ref.</li>
 	 * </ol>
 	 * @param artifactId the artifact to resolve.
 	 * @param rawRef the raw Git ref (tag, SHA, branch); must not be
 	 * {@literal null}.
-	 * @return the resolved current version, or {@link Optional#empty()} when none
-	 * of the branches yields a value.
+	 * @return the resolved current version, or {@link Versioned#unversioned()} when
+	 * none of the branches yields a value.
 	 */
-	public Optional<ArtifactVersion> resolveCurrent(ArtifactId artifactId, String rawRef) {
+	public Versioned resolveCurrent(ArtifactId artifactId, String rawRef) {
 
 		Releases releases = cache.getReleases(artifactId);
 		GitVersion gitVersion = releases.isEmpty() ? null : resolveVersion(rawRef, releases);
 		if (gitVersion != null) {
-			return Optional.of(gitVersion);
+			return Versioned.of(gitVersion);
 		}
 
-		return ArtifactVersion.from(rawRef);
+		return ArtifactVersion.from(rawRef).map(Versioned::of).orElse(Versioned.unversioned());
 	}
 
 	/**
@@ -126,15 +129,45 @@ public class GitVersionResolver {
 
 	/**
 	 * Resolve a ref against the given release list.
-	 * <p>Exact version matches win. Otherwise, a unique version or SHA prefix match
-	 * is accepted; ambiguous prefixes are unresolved.
-	 * @param versionRef the raw workflow ref
-	 * @param releases the releases to inspect
-	 * @return the matching version, or {@literal null} if no unique match exists
+	 * <p>The canonical matching order is:
+	 * <ol>
+	 * <li>Exact rendered version match.</li>
+	 * <li>Unique SHA prefix match, accepting abbreviated commit hashes of at least
+	 * 7 characters and leaving ambiguous prefixes unresolved.</li>
+	 * <li>Lowercase {@code vN} version-line ref match, selecting the newest stable
+	 * SHA-backed release in that major version line.</li>
+	 * <li>Parsed-version comparison fallback, matching cached Git versions whose
+	 * delegate compares equal to the parsed ref.</li>
+	 * </ol>
+	 * <p>Broad rendered-version prefix matching is deliberately not part of this
+	 * contract.
+	 * @param versionRef the raw workflow ref.
+	 * @param releases the releases to inspect.
+	 * @return the matching version, or {@literal null} if no unique match exists.
 	 */
 	public static @Nullable GitVersion resolveVersion(String versionRef, Iterable<Release> releases) {
 
-		List<GitVersion> candidates = new ArrayList<>();
+		GitVersion exact = findExactVersion(versionRef, releases);
+		if (exact != null) {
+			return exact;
+		}
+
+		GitVersion sha = findShaPrefix(versionRef, releases);
+		if (sha != null) {
+			return sha;
+		}
+
+		GitVersion line = findVersionLineRef(versionRef, releases);
+		if (line != null) {
+			return line;
+		}
+
+		ArtifactVersion version = ArtifactVersion.from(versionRef).orElse(null);
+		return version != null ? findComparableVersion(version, releases) : null;
+	}
+
+	private static @Nullable GitVersion findExactVersion(String versionRef, Iterable<Release> releases) {
+
 		for (Release release : releases) {
 
 			if (!(release.getVersion() instanceof GitVersion version)) {
@@ -144,9 +177,22 @@ public class GitVersionResolver {
 			if (versionRef.equals(version.toString())) {
 				return version;
 			}
+		}
 
-			if (version.toString().startsWith(versionRef)) {
-				candidates.add(version);
+		return null;
+	}
+
+	private static @Nullable GitVersion findShaPrefix(String versionRef, Iterable<Release> releases) {
+
+		if (versionRef.length() < MIN_SHA_PREFIX_LENGTH) {
+			return null;
+		}
+
+		Set<GitVersion> candidates = new HashSet<>();
+		for (Release release : releases) {
+
+			if (!(release.getVersion() instanceof GitVersion version)) {
+				continue;
 			}
 
 			if (StringUtils.hasText(version.getSha()) && version.getSha().startsWith(versionRef)) {
@@ -154,12 +200,48 @@ public class GitVersionResolver {
 			}
 		}
 
-		if (candidates.isEmpty()) {
+		return candidates.size() == 1 ? candidates.iterator().next() : null;
+	}
+
+	private static @Nullable GitVersion findVersionLineRef(String versionRef, Iterable<Release> releases) {
+
+		if (!VERSION_LINE_REF.matcher(versionRef).matches()) {
 			return null;
 		}
 
-		if (candidates.size() == 1) {
-			return candidates.getFirst();
+		ArtifactVersion line = ArtifactVersion.of(versionRef.substring(1));
+		GitVersion newest = null;
+		for (Release release : releases) {
+
+			if (!(release.getVersion() instanceof GitVersion version)) {
+				continue;
+			}
+
+			if (!version.hasSha() || !version.isReleaseVersion() || !version.hasSameMajor(line)) {
+				continue;
+			}
+
+			if (newest == null || version.compareTo(newest) > 0) {
+				newest = version;
+			}
+		}
+
+		return newest;
+	}
+
+	private static @Nullable GitVersion findComparableVersion(ArtifactVersion versionRef,
+			Iterable<Release> releases) {
+
+		Set<GitVersion> candidates = new LinkedHashSet<>();
+		for (Release release : releases) {
+
+			if (!(release.getVersion() instanceof GitVersion version)) {
+				continue;
+			}
+
+			if (version.canCompare(versionRef) && version.compareTo(versionRef) == 0) {
+				candidates.add(version);
+			}
 		}
 
 		Set<String> versions = new HashSet<>();
@@ -167,7 +249,7 @@ public class GitVersionResolver {
 			versions.add(candidate.unwrap().toString());
 		}
 
-		return versions.size() == 1 ? candidates.getFirst() : null;
+		return versions.size() == 1 ? candidates.iterator().next() : null;
 	}
 
 }
