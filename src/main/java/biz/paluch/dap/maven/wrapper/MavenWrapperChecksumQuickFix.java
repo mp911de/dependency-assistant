@@ -25,7 +25,6 @@ import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.command.WriteCommandAction;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -84,7 +83,7 @@ class MavenWrapperChecksumQuickFix implements LocalQuickFix {
 		String sha;
 		try {
 			sha = checksumComputer.compute(project, url);
-		} catch (ProcessCanceledException | IOException ex) {
+		} catch (IOException ex) {
 			Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
 					MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(ex)));
 			return;
