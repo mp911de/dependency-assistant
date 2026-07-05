@@ -162,7 +162,7 @@ public class CachedBom {
 		}
 
 		@Override
-		public @Nullable PackageSystem getEcosystem() {
+		public @Nullable PackageSystem getPackageSystem() {
 			return packageSystem;
 		}
 

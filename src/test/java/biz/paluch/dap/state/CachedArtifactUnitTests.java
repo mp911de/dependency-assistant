@@ -19,9 +19,12 @@ package biz.paluch.dap.state;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import com.intellij.util.xmlb.XmlSerializer;
@@ -38,6 +41,54 @@ import static org.assertj.core.api.Assertions.*;
 class CachedArtifactUnitTests {
 
 	private static final ArtifactId ARTIFACT_ID = ArtifactId.of("io.lettuce", "lettuce-core");
+
+	private static final ArtifactId NETTY_BOM = ArtifactId.of("io.netty", "netty-bom");
+
+	private static final ArtifactId CODEC_HTTP = ArtifactId.of("io.netty", "netty-codec-http");
+
+	@Test
+	void predictsReleaseTrainMembersForUnknownBomVersion() {
+
+		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
+		bom.setBillOfMaterials(BillOfMaterials.of(NETTY_BOM, ArtifactVersion.of("4.1.100"), Map.of(
+				CODEC_HTTP, ArtifactVersion.of("4.1.100"),
+				ArtifactId.of("io.netty.incubator", "netty-incubator-codec-quic"), ArtifactVersion.of("4.1.100"),
+				ArtifactId.of("io.netty", "netty-tcnative"), ArtifactVersion.of("2.0.61"),
+				ArtifactId.of("org.example", "coincidence"), ArtifactVersion.of("4.1.100"))));
+
+		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108"))).containsOnly(
+				entry(CODEC_HTTP, ArtifactVersion.of("4.1.108")),
+				entry(ArtifactId.of("io.netty.incubator", "netty-incubator-codec-quic"),
+						ArtifactVersion.of("4.1.108")));
+	}
+
+	@Test
+	void predictBomReturnsEmptyWithoutCachedMembership() {
+
+		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
+
+		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108"))).isEmpty();
+	}
+
+	@Test
+	void predictBomUsesNearestCachedMembership() {
+
+		ArtifactId oldMember = ArtifactId.of("io.netty", "netty-old");
+		ArtifactId newMember = ArtifactId.of("io.netty", "netty-new");
+
+		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
+		bom.setBillOfMaterials(BillOfMaterials.of(NETTY_BOM, ArtifactVersion.of("1.0.0"),
+				Map.of(oldMember, ArtifactVersion.of("1.0.0"))));
+		bom.setBillOfMaterials(BillOfMaterials.of(NETTY_BOM, ArtifactVersion.of("2.0.0"),
+				Map.of(newMember, ArtifactVersion.of("2.0.0"))));
+
+		assertThat(bom.predictBom(ArtifactVersion.of("1.5.0")))
+				.containsOnly(entry(oldMember, ArtifactVersion.of("1.5.0")));
+		assertThat(bom.predictBom(ArtifactVersion.of("3.0.0")))
+				.containsOnly(entry(newMember, ArtifactVersion.of("3.0.0")));
+		assertThat(bom.predictBom(ArtifactVersion.of("0.5.0")))
+				.containsOnly(entry(oldMember, ArtifactVersion.of("0.5.0")));
+	}
 
 	@Test
 	void updateCachedReleasesRetainsReleasesAbsentFromTheFetch() {
@@ -162,12 +213,12 @@ class CachedArtifactUnitTests {
 	void roundTripsEcosystemThroughXmlSerialization() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		artifact.setEcosystem(PackageSystem.NPM);
+		artifact.setPackageSystem(PackageSystem.NPM);
 
 		Element element = XmlSerializer.serialize(artifact);
 		CachedArtifact deserialized = XmlSerializer.deserialize(element, CachedArtifact.class);
 
-		assertThat(deserialized.getEcosystem()).isEqualTo(PackageSystem.NPM);
+		assertThat(deserialized.getPackageSystem()).isEqualTo(PackageSystem.NPM);
 	}
 
 	@Test
@@ -176,16 +227,16 @@ class CachedArtifactUnitTests {
 		Element element = XmlSerializer.serialize(new CachedArtifact(ARTIFACT_ID));
 		CachedArtifact deserialized = XmlSerializer.deserialize(element, CachedArtifact.class);
 
-		assertThat(deserialized.getEcosystem()).isNull();
+		assertThat(deserialized.getPackageSystem()).isNull();
 	}
 
 	@Test
 	void carriesEcosystemIntoSnapshot() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		artifact.setEcosystem(PackageSystem.MAVEN);
+		artifact.setPackageSystem(PackageSystem.MAVEN);
 
-		assertThat(artifact.snapshot().getEcosystem()).isEqualTo(PackageSystem.MAVEN);
+		assertThat(artifact.snapshot().getPackageSystem()).isEqualTo(PackageSystem.MAVEN);
 	}
 
 	@Test

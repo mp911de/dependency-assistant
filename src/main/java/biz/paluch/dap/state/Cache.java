@@ -199,7 +199,6 @@ public class Cache {
 	 * @param artifacts the artifact entries to append.
 	 */
 	public void addArtifacts(Collection<CachedArtifact> artifacts) {
-
 		synchronized (this.artifacts) {
 			this.artifacts.addAll(artifacts);
 		}
@@ -225,7 +224,7 @@ public class Cache {
 		}
 	}
 
-	public void putBillOfMaterials(DependencyCollector collector) {
+	public void putBillOfMaterials(DependencyCollector collector, PackageSystem packageSystem) {
 
 		collector.getUsages().forEach(it -> {
 
@@ -241,19 +240,20 @@ public class Cache {
 			}
 			BillOfMaterials billOfMaterials = BillOfMaterials.of(it.getArtifactId(),
 					it.getCurrentVersion(), members);
-			putBillOfMaterials(billOfMaterials);
+			putBillOfMaterials(billOfMaterials, packageSystem);
 		});
 	}
 
-	public void putBillOfMaterials(BillOfMaterials bom) {
+	public void putBillOfMaterials(BillOfMaterials bom, PackageSystem packageSystem) {
 
 		ArtifactId artifactId = bom.getArtifactId();
 		synchronized (artifacts) {
-			CachedArtifact artifactToUse = findCachedArtifact(artifactId);
+			CachedArtifact artifactToUse = findCachedArtifact(artifactId, packageSystem);
 			if (artifactToUse == null) {
 				artifactToUse = new CachedArtifact(artifactId);
 				artifacts.add(artifactToUse);
 			}
+			artifactToUse.setPackageSystem(packageSystem);
 			artifactToUse.setBillOfMaterials(bom);
 		}
 	}
@@ -299,7 +299,7 @@ public class Cache {
 			CachedArtifact artifactToUse = findCachedArtifact(artifactId, packageSystem);
 			if (artifactToUse == null) {
 				artifactToUse = new CachedArtifact(artifactId);
-				artifactToUse.setEcosystem(packageSystem);
+				artifactToUse.setPackageSystem(packageSystem);
 				artifacts.add(artifactToUse);
 			}
 
@@ -386,7 +386,7 @@ public class Cache {
 	 * Return a snapshot of the cached artifact entries.
 	 * <p>The list is a copy taken under the artifacts lock; the entries themselves
 	 * are the live instances. The background scan walks this snapshot to read each
-	 * artifact's persisted {@link CachedArtifact#getEcosystem() ecosystem} and
+	 * artifact's persisted {@link CachedArtifact#getPackageSystem() ecosystem} and
 	 * cached releases so it can build the correct vulnerability query from the
 	 * cache alone.
 	 *

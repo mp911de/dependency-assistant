@@ -18,8 +18,12 @@ package biz.paluch.dap;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import com.intellij.openapi.project.Project;
@@ -88,6 +92,24 @@ public interface DependencyAssistant {
 	 * @param project the IntelliJ project.
 	 */
 	default void prepare(Project project) {
+	}
+
+	/**
+	 * Resolve the managed member map of a Bill of Materials from local build-tool
+	 * storage such as the local Maven repository or the Gradle module cache.
+	 * <p>Implementations consult caches and local storage only and must not issue
+	 * network requests. Resolution may parse the BOM POM, so callers must invoke
+	 * this method from a background thread inside a read action.
+	 *
+	 * @param project the project providing repository configuration.
+	 * @param pkg the BOM package identity.
+	 * @param version the BOM version.
+	 * @return the managed members keyed by artifact coordinates; empty when this
+	 * integration cannot resolve the BOM.
+	 */
+	default Map<ArtifactId, ArtifactVersion> resolveBillOfMaterials(Project project, PackageIdentity pkg,
+			ArtifactVersion version) {
+		return Map.of();
 	}
 
 	/**

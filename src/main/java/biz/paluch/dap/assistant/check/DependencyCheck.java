@@ -28,6 +28,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import biz.paluch.dap.BomMembershipResolver;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -264,6 +265,15 @@ public class DependencyCheck {
 			if (abort) {
 				break;
 			}
+		}
+
+		List<ArtifactId> artifactIds = results.entrySet().stream()
+				.filter(e -> !e.getValue().newReleases().isEmpty())
+				.map(Map.Entry::getKey).toList();
+		indicator.checkCanceled();
+		if (!artifactIds.isEmpty()) {
+			BomMembershipResolver.create(project, cache)
+					.resolve(artifactIds, indicator);
 		}
 
 		if (scanner.isPresent()) {

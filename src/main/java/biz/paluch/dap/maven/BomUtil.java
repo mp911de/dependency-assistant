@@ -55,7 +55,7 @@ public class BomUtil {
 			ArtifactVersion version) {
 
 		CachedArtifact cachedArtifact = cache.findCachedArtifact(pkg);
-		if (cachedArtifact != null && cachedArtifact.hasBom(version.toString())) {
+		if (cachedArtifact != null && cachedArtifact.hasBom(version)) {
 			return cachedArtifact.getBom(version);
 		}
 

@@ -146,6 +146,10 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 	 * {@link BomAggregate} over the BOM itself and all used members whose effective
 	 * version is managed by the BOM. Without vulnerable members, the artifact's own
 	 * scan result is returned.
+	 * <p>For a BOM version without cached membership, the membership is predicted
+	 * through {@link CachedArtifact#predictBom}: members following the BOM's
+	 * release train are assumed at the requested version, members with independent
+	 * versioning are left out of the aggregate.
 	 *
 	 * @param artifactId the artifact to look up.
 	 * @param artifactVersion the exact version whose scan is requested.
@@ -162,7 +166,9 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 			return vulnerabilities;
 		}
 
-		Map<ArtifactId, ArtifactVersion> bom = cachedArtifact.getBom(artifactVersion);
+		Map<ArtifactId, ArtifactVersion> cachedBom = cachedArtifact.getBom(artifactVersion);
+		Map<ArtifactId, ArtifactVersion> bom = cachedBom.isEmpty() ? cachedArtifact.predictBom(artifactVersion)
+				: cachedBom;
 		if (bom.isEmpty()) {
 			return vulnerabilities;
 		}
@@ -301,7 +307,7 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		public void setDependencies(DependencyCollector collector, PackageSystem packageSystem) {
 			dependencies.put(identity, collector);
 			getCache().getProject(identity).setProperties(collector, getCache().now());
-			getCache().putBillOfMaterials(collector);
+			getCache().putBillOfMaterials(collector, packageSystem);
 		}
 
 		@Override

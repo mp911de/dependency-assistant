@@ -20,9 +20,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -63,7 +65,6 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * the correct vulnerability query without re-reading the build files.
 	 */
 	private @Nullable @Attribute PackageSystem packageSystem;
-
 
 	private @Nullable @Attribute String preferredSource;
 
@@ -168,11 +169,11 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	}
 
 	@Override
-	public @Nullable PackageSystem getEcosystem() {
+	public @Nullable PackageSystem getPackageSystem() {
 		return this.packageSystem;
 	}
 
-	public void setEcosystem(@Nullable PackageSystem packageSystem) {
+	public void setPackageSystem(@Nullable PackageSystem packageSystem) {
 		this.packageSystem = packageSystem;
 	}
 
@@ -200,6 +201,23 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 	public long getLastSeen() {
 		return lastSeen;
+	}
+
+	/**
+	 * Return whether this entry has any cached Bill of Materials membership.
+	 */
+	public boolean hasBoms() {
+		synchronized (boms) {
+			return !boms.isEmpty();
+		}
+	}
+
+	/**
+	 * Return whether a Bill of Materials membership is cached for the given BOM
+	 * version.
+	 */
+	public boolean hasBom(ArtifactVersion version) {
+		return hasBom(version.toString());
 	}
 
 	/**
@@ -263,6 +281,74 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 				boms.add(CachedBom.from(version, bom.getMembers()));
 				boms.sort(Comparator.comparing(it -> ArtifactVersion.of(it.getVersion())));
 			}
+		}
+	}
+
+	/**
+	 * Predict the managed members of a BOM version that has no cached membership,
+	 * based on the release-train heuristic: a member of the nearest cached
+	 * membership whose group id matches this BOM's group id (equal or a subgroup)
+	 * and whose managed version equals that membership's BOM version is assumed to
+	 * follow the BOM's release train, so its pin for {@code version} is predicted
+	 * as {@code version} itself. Members with independent versioning are omitted
+	 * rather than guessed.
+	 *
+	 * @param version the BOM version to predict members for.
+	 * @return the predicted members keyed by artifact coordinates; empty when no
+	 * membership is cached at all or no member follows the release train.
+	 */
+	public Map<ArtifactId, ArtifactVersion> predictBom(ArtifactVersion version) {
+
+		String bomGroupId = getGroupId();
+		if (bomGroupId == null) {
+			return Map.of();
+		}
+
+		CachedBom reference = getNearestBomMembership(version);
+		if (reference == null) {
+			return Map.of();
+		}
+
+		Map<ArtifactId, ArtifactVersion> predicted = new LinkedHashMap<>();
+		for (CachedBom.CachedBomMember member : reference.getMembers()) {
+
+			String memberGroupId = member.getGroupId();
+			if (memberGroupId == null || member.getArtifactId() == null) {
+				continue;
+			}
+
+			boolean releaseTrainVersion = Objects.equals(member.getVersion(), reference.getVersion());
+			boolean groupAffinity = memberGroupId.equals(bomGroupId)
+					|| memberGroupId.startsWith(bomGroupId + ".");
+			if (releaseTrainVersion && groupAffinity) {
+				predicted.put(member.toArtifactId(), version);
+			}
+		}
+		return predicted;
+	}
+
+	/**
+	 * Return the cached membership closest to the given version: the highest cached
+	 * version at or below it, or the lowest cached one when all cached memberships
+	 * are newer.
+	 */
+	private @Nullable CachedBom getNearestBomMembership(ArtifactVersion version) {
+
+		synchronized (boms) {
+
+			CachedBom nearest = null;
+			for (CachedBom membership : boms) {
+
+				String membershipVersion = membership.getVersion();
+				if (membershipVersion == null) {
+					continue;
+				}
+
+				if (nearest == null || !ArtifactVersion.of(membershipVersion).isNewer(version)) {
+					nearest = membership;
+				}
+			}
+			return nearest;
 		}
 	}
 
@@ -467,7 +553,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 	public CachedArtifact snapshot() {
 		CachedArtifact copy = new CachedArtifact(getGroupId(), getArtifactId());
-		copy.setEcosystem(getEcosystem());
+		copy.setPackageSystem(getPackageSystem());
 		copy.lastSeen = lastSeen;
 		synchronized (releases) {
 			for (CachedRelease release : releases) {

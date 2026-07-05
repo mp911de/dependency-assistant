@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.swing.Icon;
@@ -28,13 +29,18 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.maven.BomUtil;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -101,6 +107,12 @@ class GradleAssistant implements DependencyAssistant {
 	@Override
 	public void prepare(Project project) {
 		new GradleInitService().execute(project, null);
+	}
+
+	@Override
+	public Map<ArtifactId, ArtifactVersion> resolveBillOfMaterials(Project project, PackageIdentity pkg,
+			ArtifactVersion version) {
+		return BomUtil.resolveBom(StateService.getInstance(project).getCache(), project, pkg, version);
 	}
 
 	@Override

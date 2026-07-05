@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import biz.paluch.dap.BomMembershipResolver;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectStateIndexer;
@@ -70,7 +71,7 @@ public class PostStartup implements ProjectActivity {
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		VulnerabilityScanner scanner = VulnerabilityScanner.create(project);
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator,
-				assistants.size() + (scanner.isPresent() ? 1 : 0));
+				assistants.size() + (scanner.isPresent() ? 1 : 0) + 1);
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, steps);
 		steps.setIndeterminate(false);
 
@@ -83,6 +84,9 @@ public class PostStartup implements ProjectActivity {
 		}
 
 		StateService service = indexer.getService();
+
+		new BomMembershipResolver(project, assistants, service.getCache()).resolveAll(indicator);
+		steps.nextStep();
 
 		if (scanner.isPresent()) {
 			scanVulnerabilities(scanner, indicator, project, service);

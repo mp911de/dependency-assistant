@@ -60,7 +60,7 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 		return getArtifactId();
 	}
 
-	public abstract @Nullable PackageSystem getEcosystem();
+	public abstract @Nullable PackageSystem getPackageSystem();
 
 	/**
 	 * Return whether this cache entry refers to the given artifact.
@@ -82,7 +82,7 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 	 * @return {@literal true} if the entry matches; {@literal false} otherwise.
 	 */
 	public boolean matches(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
-		PackageSystem ecosystem = getEcosystem();
+		PackageSystem ecosystem = getPackageSystem();
 		return matches(artifactId) && (ecosystem == null || packageSystem == null || ecosystem == packageSystem);
 	}
 
@@ -104,8 +104,8 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 	 */
 	@Transient
 	public PackageIdentity toPackageIdentity() {
-		Assert.state(getEcosystem() != null, "Package ecosystem not set");
-		return PackageIdentity.of(toArtifactId(), getEcosystem());
+		Assert.state(getPackageSystem() != null, "Package ecosystem not set");
+		return PackageIdentity.of(toArtifactId(), getPackageSystem());
 	}
 
 	@Override
