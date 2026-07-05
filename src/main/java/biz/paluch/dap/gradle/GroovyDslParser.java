@@ -161,7 +161,8 @@ class GroovyDslParser {
 
 		private static @Nullable DeclarationSource declarationSource(GrMethodCall call, String configurationName) {
 
-			boolean platform = GradleUtils.isPlatformSection(configurationName);
+			boolean platform = GradleUtils.isPlatformSection(configurationName)
+					|| GroovyDslUtils.isInsidePlatformBlock(call);
 			boolean dependency = GradleUtils.isDependencySection(configurationName);
 			boolean plugin = GradleUtils.isPlugin(configurationName) && GroovyDslUtils.isInsidePluginsBlock(call);
 

@@ -68,6 +68,10 @@ class GroovyDslUtils {
 				PsiElement blockParent = parent.getParent();
 				return blockParent instanceof GrMethodCall call && predicate.test(getGroovyMethodName(call));
 			}
+
+			if (parent instanceof GrMethodCall methodCall) {
+				return predicate.test(getGroovyMethodName(methodCall));
+			}
 			return false;
 		}) != null;
 	}

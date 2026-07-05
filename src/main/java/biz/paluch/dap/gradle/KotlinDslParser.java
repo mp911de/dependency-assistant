@@ -141,7 +141,8 @@ class KotlinDslParser {
 		private static @Nullable DeclarationSource declarationSource(KtCallElement call, String configurationName) {
 
 			boolean dependency = GradleUtils.isDependencySection(configurationName);
-			boolean platform = GradleUtils.isPlatformSection(configurationName);
+			boolean platform = GradleUtils.isPlatformSection(configurationName)
+					|| KotlinDslUtils.isInsidePlatformBlock(call);
 			boolean plugin = KotlinDslUtils.isInsidePluginsBlock(call);
 
 			if (plugin) {
