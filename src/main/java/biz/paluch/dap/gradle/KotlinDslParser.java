@@ -33,7 +33,16 @@ import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.PsiTreeUtil;
-import org.jetbrains.kotlin.psi.*;
+import org.jetbrains.kotlin.psi.KtBinaryExpression;
+import org.jetbrains.kotlin.psi.KtCallElement;
+import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtDotQualifiedExpression;
+import org.jetbrains.kotlin.psi.KtExpression;
+import org.jetbrains.kotlin.psi.KtLambdaArgument;
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression;
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.kotlin.psi.KtValueArgumentList;
+import org.jetbrains.kotlin.psi.ValueArgument;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -344,22 +353,12 @@ class KotlinDslParser {
 		private static @Nullable KtStringTemplateExpression findVersionLiteral(
 				@Nullable KtBinaryExpression expression) {
 
-			if (expression == null) {
+			if (expression == null
+					|| !GradleUtils.VERSION.equals(expression.getOperationReference().getReferencedName())) {
 				return null;
 			}
 
-			PsiElement[] children = expression.getChildren();
-			for (int i = 0; i < children.length; i++) {
-				PsiElement child = children[i];
-				if (child instanceof KtOperationReferenceExpression ops
-						&& GradleUtils.VERSION.equals(ops.getReferencedName())
-						&& children.length > i + 1
-						&& children[i + 1] instanceof KtStringTemplateExpression versionExpr) {
-					return versionExpr;
-				}
-			}
-
-			return null;
+			return expression.getRight() instanceof KtStringTemplateExpression versionExpr ? versionExpr : null;
 		}
 
 	}
@@ -496,133 +495,17 @@ class KotlinDslParser {
 			return site != null ? dependency(site) : null;
 		}
 
-		/**
-		 * Parse a version-block dependency, resolving bare version-property references
-		 * against the file-scoped property resolver.
-		 */
 		@Nullable
 		private DependencySite parseVersionBlockDeclaration(KtCallElement call,
 				DeclarationSource declarationSource) {
 
-			KtStringTemplateExpression gavTemplate = null;
-			KtLambdaExpression trailingLambda = null;
-
-			for (ValueArgument argument : call.getValueArguments()) {
-				if (argument instanceof KtLambdaArgument lambdaArgument
-						&& lambdaArgument.getArgumentExpression() instanceof KtLambdaExpression lambda) {
-					trailingLambda = lambda;
-					continue;
-				}
-				if (gavTemplate == null
-						&& argument.getArgumentExpression() instanceof KtStringTemplateExpression expression) {
-					String text = KtLiterals.from(expression).toString(propertyResolver);
-					if (GradleArtifactId.isValid(text)) {
-						gavTemplate = expression;
-					}
-				}
-			}
-
-			if (gavTemplate == null || trailingLambda == null) {
+			KtStringTemplateExpression gavTemplate = findArtifactLiteral(call);
+			if (gavTemplate == null) {
 				return null;
 			}
 
-			KtCallExpression versionCall = null;
-			if (trailingLambda.getBodyExpression() != null) {
-				for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(trailingLambda.getBodyExpression(),
-						KtCallExpression.class)) {
-					if (GradleUtils.VERSION.equals(KotlinDslUtils.getKotlinCallName(inner))) {
-						versionCall = inner;
-						break;
-					}
-				}
-			}
-
-			if (versionCall == null) {
-				return null;
-			}
-
-			KtLambdaExpression versionLambda = null;
-			for (ValueArgument argument : versionCall.getValueArguments()) {
-				if (argument instanceof KtLambdaArgument lambdaArgument
-						&& lambdaArgument.getArgumentExpression() instanceof KtLambdaExpression lambda) {
-					versionLambda = lambda;
-					break;
-				}
-			}
-
-			if (versionLambda == null) {
-				return null;
-			}
-
-			KtStringTemplateExpression preferTemplate = null;
-			KtStringTemplateExpression strictlyTemplate = null;
-			KtNameReferenceExpression preferNameRef = null;
-			KtNameReferenceExpression strictlyNameRef = null;
-
-			if (versionLambda.getBodyExpression() != null) {
-				for (KtCallExpression inner : PsiTreeUtil.collectElementsOfType(versionLambda.getBodyExpression(),
-						KtCallExpression.class)) {
-					String name = KotlinDslUtils.getKotlinCallName(inner);
-					for (ValueArgument argument : inner.getValueArguments()) {
-						KtExpression expression = argument.getArgumentExpression();
-						if (expression instanceof KtStringTemplateExpression template) {
-							if (GradleVersionConstraint.PREFER.equals(name) && preferTemplate == null) {
-								preferTemplate = template;
-							} else if (GradleVersionConstraint.STRICTLY.equals(name) && strictlyTemplate == null) {
-								strictlyTemplate = template;
-							}
-						} else if (expression instanceof KtNameReferenceExpression reference) {
-							if (GradleVersionConstraint.PREFER.equals(name) && preferNameRef == null) {
-								preferNameRef = reference;
-							} else if (GradleVersionConstraint.STRICTLY.equals(name) && strictlyNameRef == null) {
-								strictlyNameRef = reference;
-							}
-						}
-					}
-				}
-			}
-
-			PsiElement versionLiteralElement;
-			String versionProperty;
-			String version;
-
-			if (preferTemplate != null) {
-				KtLiterals literals = KtLiterals.from(preferTemplate);
-				version = KtLiterals.from(preferTemplate).toString(propertyResolver);
-				versionLiteralElement = preferTemplate;
-				versionProperty = literals.hasProperty() ? literals.getProperty() : null;
-			} else if (preferNameRef != null) {
-				String refName = preferNameRef.getReferencedName();
-				Property resolved = resolveVersionProperty(refName);
-				if (resolved == null) {
-					return null;
-				}
-				version = resolved.getValue();
-				versionLiteralElement = resolved.getValueLiteral();
-				versionProperty = refName;
-			} else if (strictlyTemplate != null) {
-				KtLiterals literals = KtLiterals.from(strictlyTemplate);
-				String strictlyText = KtLiterals.from(strictlyTemplate).toString(propertyResolver);
-				if (GradleUtils.isVersionRange(literals.toString())) {
-					return null;
-				}
-				version = strictlyText;
-				versionLiteralElement = strictlyTemplate;
-				versionProperty = literals.hasProperty() ? literals.getProperty() : null;
-			} else if (strictlyNameRef != null) {
-				String refName = strictlyNameRef.getReferencedName();
-				Property resolved = resolveVersionProperty(refName);
-				if (resolved == null) {
-					return null;
-				}
-				version = resolved.getValue();
-				versionLiteralElement = resolved.getValueLiteral();
-				versionProperty = refName;
-			} else {
-				return null;
-			}
-
-			if (StringUtils.isEmpty(version)) {
+			KtVersion version = KtVersion.fromDependency(call);
+			if (version == null || version.getVersionExpression() == null || version.getVersionElement() == null) {
 				return null;
 			}
 
@@ -632,11 +515,25 @@ class KotlinDslParser {
 			}
 
 			ArtifactId artifactId = GradleArtifactId.from(gavText);
+			return GradleDependency.of(artifactId, version.getVersionExpression(), declarationSource)
+					.toDependencySite(call, version.getVersionElement());
+		}
 
-			Expression expression = StringUtils.hasText(versionProperty) ? Expression.property(versionProperty)
-					: Expression.from(version);
-			return GradleDependency.of(artifactId, expression, declarationSource)
-					.toDependencySite(call, versionLiteralElement);
+		private @Nullable KtStringTemplateExpression findArtifactLiteral(KtCallElement call) {
+
+			for (ValueArgument argument : call.getValueArguments()) {
+				if (argument instanceof KtLambdaArgument) {
+					continue;
+				}
+				if (argument.getArgumentExpression() instanceof KtStringTemplateExpression expression) {
+					String text = KtLiterals.from(expression).toString(propertyResolver);
+					if (GradleArtifactId.isValid(text)) {
+						return expression;
+					}
+				}
+			}
+
+			return null;
 		}
 
 	}
@@ -664,15 +561,6 @@ class KotlinDslParser {
 		}
 
 		return false;
-	}
-
-	private @Nullable Property resolveVersionProperty(String refName) {
-
-		if (!StringUtils.hasText(refName)) {
-			return null;
-		}
-
-		return propertyResolver.getPropertyValue(refName);
 	}
 
 	private static @Nullable KtDotQualifiedExpression findCatalogAccessor(KtCallElement call) {

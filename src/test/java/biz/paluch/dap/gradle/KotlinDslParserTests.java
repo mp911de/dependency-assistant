@@ -548,6 +548,22 @@ class KotlinDslParserTests {
 				.hasPropertyVersion("junit");
 	}
 
+	@Test
+	@ProjectFile(name = "build.gradle.kts", content = """
+			tasks.register("sample") {
+			    val junit = "6.0.0"
+			}
+			dependencies {
+			    implementation("org.junit:junit-bom:$junit")
+			}
+			""")
+	void blockLocalValIsNotResolvedAsFileProperty(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasUsageCount(0);
+	}
+
 	// -------------------------------------------------------------------------
 	// Constraints + Properties
 	// -------------------------------------------------------------------------

@@ -16,12 +16,17 @@
 
 package biz.paluch.dap.gradle;
 
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -32,6 +37,7 @@ import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.plugins.gradle.service.resolve.VersionCatalogsLocator;
 import org.jspecify.annotations.Nullable;
 import org.toml.lang.psi.TomlFile;
 import org.toml.lang.psi.TomlTable;
@@ -91,6 +97,11 @@ class VersionCatalogRegistry {
 			}
 
 			VirtualFile projectRoot = GradleUtils.findProjectRoot(it);
+			VersionCatalogRegistry imported = fromImportedCatalogs(project, virtualFile, projectRoot);
+			if (imported != null) {
+				return imported.withContext(project, projectRoot);
+			}
+
 			VirtualFile kotlin = projectRoot.findChild(GradleUtils.KOTLIN_SETTINGS);
 			VirtualFile groovy = projectRoot.findChild(GradleUtils.GROOVY_SETTINGS);
 
@@ -110,6 +121,58 @@ class VersionCatalogRegistry {
 
 			return defaults().withContext(project, projectRoot);
 		});
+	}
+
+	private static @Nullable VersionCatalogRegistry fromImportedCatalogs(Project project, VirtualFile file,
+			VirtualFile projectRoot) {
+
+		Module module = ModuleUtilCore.findModuleForFile(file, project);
+		if (module == null) {
+			return null;
+		}
+
+		VersionCatalogsLocator locator = new VersionCatalogsLocator(project);
+		Map<String, Path> importedCatalogs = locator.getVersionCatalogsForModule(module);
+		if (importedCatalogs.isEmpty()) {
+			return null;
+		}
+
+		Map<String, String> catalogPaths = new LinkedHashMap<>();
+		for (Map.Entry<String, Path> entry : importedCatalogs.entrySet()) {
+			String alias = entry.getKey();
+			String path = catalogPath(projectRoot, entry.getValue());
+			if (StringUtils.hasText(alias) && StringUtils.hasText(path)) {
+				catalogPaths.put(alias, path);
+			}
+		}
+
+		if (catalogPaths.isEmpty()) {
+			return null;
+		}
+
+		String defaultAlias = catalogPaths.containsKey(TomlParser.LIBS)
+				? TomlParser.LIBS
+				: catalogPaths.keySet().iterator().next();
+		return new VersionCatalogRegistry(Map.copyOf(catalogPaths), defaultAlias);
+	}
+
+	private static String catalogPath(VirtualFile projectRoot, Path path) {
+
+		if (!path.isAbsolute()) {
+			return normalizePath(path.normalize());
+		}
+
+		Path rootPath = Path.of(projectRoot.getPath()).toAbsolutePath().normalize();
+		Path catalogPath = path.toAbsolutePath().normalize();
+		if (catalogPath.startsWith(rootPath)) {
+			return normalizePath(rootPath.relativize(catalogPath));
+		}
+
+		return "";
+	}
+
+	private static String normalizePath(Path path) {
+		return path.toString().replace('\\', '/');
 	}
 
 	private VersionCatalogRegistry withContext(Project project, VirtualFile projectRoot) {

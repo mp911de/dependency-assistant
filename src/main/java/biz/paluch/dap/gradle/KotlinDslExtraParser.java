@@ -24,9 +24,13 @@ import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtBinaryExpression;
 import org.jetbrains.kotlin.psi.KtCallExpression;
+import org.jetbrains.kotlin.psi.KtClassOrObject;
 import org.jetbrains.kotlin.psi.KtExpression;
+import org.jetbrains.kotlin.psi.KtLambdaExpression;
+import org.jetbrains.kotlin.psi.KtNamedFunction;
 import org.jetbrains.kotlin.psi.KtProperty;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
 import org.jetbrains.kotlin.psi.ValueArgument;
@@ -86,47 +90,10 @@ class KotlinDslExtraParser {
 	public static Map<String, PropertyValue> parseValProperties(PsiFile file) {
 
 		Map<String, PropertyValue> result = new HashMap<>();
-
 		SyntaxTraverser.psiTraverser(file)
 				.filter(KtProperty.class)
-				.forEach(property -> {
-
-					String name = property.getName();
-					if (StringUtils.isEmpty(name)) {
-						return;
-					}
-
-					KtExpression initializer = property.getInitializer();
-					if (initializer instanceof KtStringTemplateExpression st) {
-						String value = KtLiterals.getText(st);
-						if (StringUtils.isEmpty(value)) {
-							return;
-						}
-
-						result.put(name, new PropertyValue(name, value, st));
-						return;
-					}
-
-					if (!property.hasDelegateExpression()
-							|| !(property.getDelegateExpression() instanceof KtCallExpression delegateCall)
-							|| !"extra".equals(KotlinDslUtils.getKotlinCallName(delegateCall))) {
-						return;
-					}
-
-					for (ValueArgument argument : delegateCall.getValueArguments()) {
-						if (!(argument.getArgumentExpression() instanceof KtStringTemplateExpression argTemplate)) {
-							continue;
-						}
-
-						String value = KtLiterals.getText(argTemplate);
-						if (StringUtils.isEmpty(value)) {
-							return;
-						}
-
-						result.put(name, new PropertyValue(name, value, argTemplate));
-						return;
-					}
-				});
+				.filter(KotlinDslExtraParser::isFileScopedProperty)
+				.forEach(property -> parseValProperty(property, result));
 
 		return result;
 	}
@@ -152,10 +119,49 @@ class KotlinDslExtraParser {
 		return KotlinExtraAssignment.from(expression) != null;
 	}
 
-	private static PropertyValue toPropertyValue(KotlinExtraAssignment assignment) {
+	private static boolean isFileScopedProperty(KtProperty property) {
+		return PsiTreeUtil.getParentOfType(property, KtLambdaExpression.class, true) == null
+				&& PsiTreeUtil.getParentOfType(property, KtNamedFunction.class, true) == null
+				&& PsiTreeUtil.getParentOfType(property, KtClassOrObject.class, true) == null;
+	}
 
-		String value = assignment.getValue();
-		return new PropertyValue(assignment.getKey(), value, assignment.getValueLiteral());
+	private static void parseValProperty(KtProperty property, Map<String, PropertyValue> result) {
+
+		String name = property.getName();
+		if (StringUtils.isEmpty(name)) {
+			return;
+		}
+
+		KtExpression initializer = property.getInitializer();
+		if (initializer instanceof KtStringTemplateExpression st) {
+			String value = KtLiterals.getText(st);
+			if (StringUtils.isEmpty(value)) {
+				return;
+			}
+
+			result.put(name, new PropertyValue(name, value, st));
+			return;
+		}
+
+		if (!property.hasDelegateExpression()
+				|| !(property.getDelegateExpression() instanceof KtCallExpression delegateCall)
+				|| !"extra".equals(KotlinDslUtils.getKotlinCallName(delegateCall))) {
+			return;
+		}
+
+		for (ValueArgument argument : delegateCall.getValueArguments()) {
+			if (!(argument.getArgumentExpression() instanceof KtStringTemplateExpression argTemplate)) {
+				continue;
+			}
+
+			String value = KtLiterals.getText(argTemplate);
+			if (StringUtils.isEmpty(value)) {
+				return;
+			}
+
+			result.put(name, new PropertyValue(name, value, argTemplate));
+			return;
+		}
 	}
 
 }
