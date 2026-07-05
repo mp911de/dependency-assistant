@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 
@@ -33,13 +33,13 @@ import biz.paluch.dap.support.ArtifactReference;
  */
 public class UpgradeSuggestionsFactory {
 
-	private final Cache cache;
-
-	private final UpgradeSuggestionsFilter filters = SuggestionFilters.of(new SafeUpgradeSuggestionsFilter(),
+	private static final UpgradeSuggestionsFilter FILTERS = SuggestionFilters.of(new SafeUpgradeSuggestionsFilter(),
 			new ComplianceUpgradeSuggestionsFilter());
 
-	public UpgradeSuggestionsFactory(Cache cache) {
-		this.cache = cache;
+	private final StateService stateService;
+
+	public UpgradeSuggestionsFactory(StateService stateService) {
+		this.stateService = stateService;
 	}
 
 	public UpgradeSuggestions createSuggestions(ArtifactReference artifactReference,
@@ -59,13 +59,13 @@ public class UpgradeSuggestionsFactory {
 
 	public UpgradeSuggestions createSuggestions(Dependency dependency, DependencyRule rule) {
 
-		Releases releases = cache.getReleases(dependency.getArtifactId());
+		Releases releases = stateService.getCache().getReleases(dependency.getArtifactId());
 		if (releases.isEmpty()) {
 			return UpgradeSuggestions.empty();
 		}
 
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository
-				.of(cache.getVulnerabilities(dependency.getArtifactId()));
+		VulnerabilityRepository vulnerabilities = version -> stateService.getVulnerabilities(dependency.getArtifactId(),
+				version);
 		return createSuggestions(dependency, releases, vulnerabilities, rule);
 	}
 
@@ -74,7 +74,11 @@ public class UpgradeSuggestionsFactory {
 		return createSuggestions(DependencyUpgradeSubject.of(dependency, releases, vulnerabilities, rule));
 	}
 
-	public UpgradeSuggestions createSuggestions(DependencyUpgradeSubject subject) {
+	/**
+	 * Create the suggestions for a fully materialized subject. The subject carries
+	 * releases, vulnerabilities, and rule, so no state lookup is involved.
+	 */
+	public static UpgradeSuggestions createSuggestions(DependencyUpgradeSubject subject) {
 
 		Releases releases = subject.getReleases();
 		if (releases.isEmpty()) {
@@ -82,7 +86,7 @@ public class UpgradeSuggestionsFactory {
 		}
 
 		UpgradeSuggestions suggestions = UpgradeSuggestions.from(subject.getDependency().getCurrentVersion(), releases);
-		return filters.filter(subject, suggestions);
+		return FILTERS.filter(subject, suggestions);
 	}
 
 }

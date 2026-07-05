@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -41,6 +42,7 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.checker.VulnerabilitiesRepository;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.Cache;
@@ -72,6 +74,8 @@ class DependencyDocumentationRenderer {
 
 	private final InterfaceAssistant interfaceAssistant;
 
+	private final VulnerabilitiesRepository advisories;
+
 	private final Cache cache;
 
 	private final DependencyRuleEvaluator evaluator;
@@ -82,21 +86,11 @@ class DependencyDocumentationRenderer {
 
 	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
 
-	/**
-	 * Create a renderer from its rendering inputs.
-	 *
-	 * @param interfaceAssistant the format-specific assistant providing display
-	 * text.
-	 * @param cache the release and vulnerability cache.
-	 * @param evaluator the rule evaluator governing the documented declaration.
-	 * @param currentVersion the currently declared version, or {@literal null} if
-	 * no current version is available.
-	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
-	 * links.
-	 */
-	DependencyDocumentationRenderer(InterfaceAssistant interfaceAssistant, Cache cache,
+	DependencyDocumentationRenderer(InterfaceAssistant interfaceAssistant,
+			VulnerabilitiesRepository advisories, Cache cache,
 			DependencyRuleEvaluator evaluator, @Nullable ArtifactVersion currentVersion, boolean linkable) {
 		this.interfaceAssistant = interfaceAssistant;
+		this.advisories = advisories;
 		this.cache = cache;
 		this.evaluator = evaluator;
 		this.currentVersion = currentVersion;
@@ -104,9 +98,7 @@ class DependencyDocumentationRenderer {
 	}
 
 	/**
-	 * Create a renderer from a resolved {@link ArtifactReferenceContext}, reusing
-	 * its interface assistant, cache, rule evaluator, and current version rather
-	 * than re-resolving the element.
+	 * Create a renderer from a resolved {@link ArtifactReferenceContext}.
 	 *
 	 * @param context a {@link ArtifactReferenceContext#isPresent() present}
 	 * reference context.
@@ -117,9 +109,11 @@ class DependencyDocumentationRenderer {
 	static DependencyDocumentationRenderer from(ArtifactReferenceContext context, boolean linkable) {
 
 		ArtifactDeclaration declaration = context.getDeclaration();
-		return new DependencyDocumentationRenderer(context.getDependencyContext().getInterfaceAssistant(),
-				context.getCache(), context.getEvaluator(),
-				declaration.isVersionDefined() ? declaration.getVersion() : null, linkable);
+		ProjectDependencyContext dependencyContext = context.getDependencyContext();
+		ArtifactVersion currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
+		return new DependencyDocumentationRenderer(dependencyContext.getInterfaceAssistant(),
+				context.getStateService(), context.getCache(), context.getEvaluator(),
+				currentVersion, linkable);
 	}
 
 	/**
@@ -153,12 +147,7 @@ class DependencyDocumentationRenderer {
 	}
 
 	/**
-	 * Render the documentation body for a single release lookup item: the upgrade
-	 * or downgrade relation fused with the release-date distance, followed by a
-	 * sections table with the release date, the commit for SHA-backed releases,
-	 * advisories the release fixes over the current version, and the rule verdict
-	 * when a governing rule is violated, closing with security advisories affecting
-	 * that release.
+	 * Render the documentation body for a single release lookup item.
 	 *
 	 * @param release the release represented by the lookup item.
 	 * @return the HTML body.
@@ -167,7 +156,8 @@ class DependencyDocumentationRenderer {
 
 		ArtifactId artifactId = release.artifactId();
 		ArtifactVersion version = release.getVersion().unwrap();
-		Vulnerabilities vulnerabilities = cache.getVulnerabilities(artifactId, release.getVersion());
+		Vulnerabilities vulnerabilities = advisories.getVulnerabilities(artifactId,
+				release.getVersion());
 		VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(), vulnerabilities);
 
 		HtmlBuilder content = new HtmlBuilder();
@@ -187,7 +177,7 @@ class DependencyDocumentationRenderer {
 		String advisoriesNote = null;
 		if (currentVersion != null && !release.getVersion().matches(currentVersion)) {
 
-			Vulnerabilities currentVulnerabilities = cache.getVulnerabilities(artifactId, currentVersion);
+			Vulnerabilities currentVulnerabilities = advisories.getVulnerabilities(artifactId, currentVersion);
 			List<Vulnerability> fixed = fixedVulnerabilities(currentVulnerabilities, vulnerabilities);
 			if (!fixed.isEmpty()) {
 				sections.add(section("documentation.release.fixes", fixesCell(fixed, currentVersion)));
@@ -380,7 +370,8 @@ class DependencyDocumentationRenderer {
 			return HtmlChunk.empty();
 		}
 
-		return securityAdvisories(cache.getVulnerabilities(artifactId, currentVersion));
+		Vulnerabilities vulnerabilities = advisories.getVulnerabilities(artifactId, currentVersion);
+		return securityAdvisories(vulnerabilities);
 	}
 
 	/**
@@ -456,8 +447,7 @@ class DependencyDocumentationRenderer {
 	 * Render the documentation body for a version property, with one release table
 	 * per group of artifacts sharing the same available versions.
 	 *
-	 * @param property the version property to document; must not be
-	 * {@literal null}.
+	 * @param property the version property to document .
 	 * @param withIcons {@literal true} to render the full body with
 	 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
 	 * without icons or links (hover hint).
@@ -535,8 +525,9 @@ class DependencyDocumentationRenderer {
 
 		for (Release release : releases) {
 
+			Vulnerabilities vulnerabilities = advisories.getVulnerabilities(artifactId, release.getVersion());
 			VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
-					cache.getVulnerabilities(artifactId, release.getVersion()));
+					vulnerabilities);
 			rows.append(new DocumentedRelease(status, artifactId.toString(), release, linkable, withIcons)
 					.render(formatter));
 		}

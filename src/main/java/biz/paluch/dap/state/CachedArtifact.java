@@ -18,14 +18,17 @@ package biz.paluch.dap.state;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.checker.Vulnerability;
@@ -46,15 +49,13 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 @Tag("artifact")
-public class CachedArtifact implements ArtifactId {
+public class CachedArtifact extends CachedArtifactSupport implements ArtifactId {
 
 	private static final Logger LOG = Logger.getInstance(CachedArtifact.class);
 
-	private @Attribute String groupId;
+	private @Nullable @Attribute String groupId;
 
-	private @Attribute String artifactId;
-
-	private @Nullable @Attribute String preferredSource;
+	private @Nullable @Attribute String artifactId;
 
 	/**
 	 * Package ecosystem this artifact belongs to, or {@literal null} for entries
@@ -62,6 +63,9 @@ public class CachedArtifact implements ArtifactId {
 	 * the correct vulnerability query without re-reading the build files.
 	 */
 	private @Nullable @Attribute PackageSystem packageSystem;
+
+
+	private @Nullable @Attribute String preferredSource;
 
 	/**
 	 * Number of consecutive lookups that returned no releases at all, reset to
@@ -103,6 +107,8 @@ public class CachedArtifact implements ArtifactId {
 
 	private final @XCollection(propertyElementName = "releases", elementName = "release", style = XCollection.Style.v2) List<CachedRelease> releases = new ArrayList<>();
 
+	private final @XCollection(propertyElementName = "boms", elementName = "bom", style = XCollection.Style.v2) List<CachedBom> boms = new ArrayList<>();
+
 	/**
 	 * Create an empty cache entry for XML deserialization.
 	 */
@@ -115,7 +121,7 @@ public class CachedArtifact implements ArtifactId {
 	 * @param groupId the artifact group identifier.
 	 * @param artifactId the artifact identifier.
 	 */
-	public CachedArtifact(String groupId, String artifactId) {
+	public CachedArtifact(@Nullable String groupId, @Nullable String artifactId) {
 		this.groupId = groupId;
 		this.artifactId = artifactId;
 	}
@@ -134,8 +140,9 @@ public class CachedArtifact implements ArtifactId {
 	 *
 	 * @return the group identifier.
 	 */
-	public String getGroupId() {
-		return groupId;
+	@Override
+	public @Nullable String getGroupId() {
+		return this.groupId;
 	}
 
 	@Override
@@ -149,14 +156,24 @@ public class CachedArtifact implements ArtifactId {
 	 *
 	 * @return the artifact identifier.
 	 */
-	public String getArtifactId() {
-		return artifactId;
+	@Override
+	public @Nullable String getArtifactId() {
+		return this.artifactId;
 	}
 
 	@Override
 	@Transient
 	public String artifactId() {
 		return getArtifactId();
+	}
+
+	@Override
+	public @Nullable PackageSystem getEcosystem() {
+		return this.packageSystem;
+	}
+
+	public void setEcosystem(@Nullable PackageSystem packageSystem) {
+		this.packageSystem = packageSystem;
 	}
 
 	/**
@@ -172,32 +189,81 @@ public class CachedArtifact implements ArtifactId {
 		}
 	}
 
+	/**
+	 * Return whether this entry has any cached releases.
+	 */
+	public boolean hasReleases() {
+		synchronized (releases) {
+			return !releases.isEmpty();
+		}
+	}
+
 	public long getLastSeen() {
 		return lastSeen;
 	}
 
 	/**
-	 * Return whether this cache entry refers to the given artifact.
-	 *
-	 * @param artifactId the artifact to compare with.
-	 * @return {@literal true} if both group and artifact identifiers match.
+	 * Return whether a Bill of Materials membership is cached for the given BOM
+	 * version.
 	 */
-	public boolean matches(ArtifactId artifactId) {
-		return getArtifactId().equals(artifactId.artifactId()) && getGroupId().equals(artifactId.groupId());
+	public boolean hasBom(String version) {
+		return getBomMembership(version) != null;
 	}
 
 	/**
-	 * Return whether this entry matches the given coordinates and ecosystem. A
-	 * {@literal null} ecosystem on either side is treated as a wildcard so entries
-	 * persisted before ecosystem tracking still match.
+	 * Return the managed members cached for the given BOM version.
 	 *
-	 * @param artifactId the artifact to compare with.
-	 * @param packageSystem the ecosystem to compare; may be {@literal null}.
-	 * @return {@literal true} if the entry matches; {@literal false} otherwise.
+	 * @return the members keyed by artifact coordinates; empty when no membership
+	 * is cached for the version.
 	 */
-	public boolean matches(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
-		PackageSystem ecosystem = getEcosystem();
-		return matches(artifactId) && (ecosystem == null || packageSystem == null || ecosystem == packageSystem);
+	public Map<ArtifactId, ArtifactVersion> getBom(ArtifactVersion version) {
+		return getBom(version.toString());
+	}
+
+	/**
+	 * Return the managed members cached for the given BOM version string.
+	 *
+	 * @return the members keyed by artifact coordinates; empty when no membership
+	 * is cached for the version.
+	 */
+	public Map<ArtifactId, ArtifactVersion> getBom(String version) {
+		CachedBom membership = getBomMembership(version);
+		return membership != null ? membership.toMembers() : Map.of();
+	}
+
+	/**
+	 * Return the Bill of Materials membership for the given BOM version.
+	 *
+	 * @param version the BOM version string.
+	 * @return the membership, or {@literal null} if no membership is cached for the
+	 * version.
+	 */
+	public @Nullable CachedBom getBomMembership(String version) {
+
+		synchronized (boms) {
+			for (CachedBom membership : boms) {
+				if (version.equals(membership.getVersion())) {
+					return membership;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Cache the given Bill of Materials membership. Released BOM contents are
+	 * immutable, so an already-cached version is left unchanged.
+	 */
+	public void setBillOfMaterials(BillOfMaterials bom) {
+
+		String version = bom.getVersion().toString();
+		synchronized (boms) {
+
+			if (getBomMembership(version) == null) {
+				boms.add(CachedBom.from(version, bom.getMembers()));
+				boms.sort(Comparator.comparing(it -> ArtifactVersion.of(it.getVersion())));
+			}
+		}
 	}
 
 	/**
@@ -232,24 +298,6 @@ public class CachedArtifact implements ArtifactId {
 
 	public void setPreferredSource(@Nullable String preferredSource) {
 		this.preferredSource = preferredSource;
-	}
-
-	/**
-	 * Return the package ecosystem this artifact belongs to.
-	 *
-	 * @return the ecosystem, or {@literal null} when not yet known.
-	 */
-	public @Nullable PackageSystem getEcosystem() {
-		return packageSystem;
-	}
-
-	/**
-	 * Record the package ecosystem this artifact belongs to.
-	 *
-	 * @param packageSystem the ecosystem to store; may be {@literal null}.
-	 */
-	public void setEcosystem(@Nullable PackageSystem packageSystem) {
-		this.packageSystem = packageSystem;
 	}
 
 	public int getEmptyLookups() {
@@ -351,8 +399,7 @@ public class CachedArtifact implements ArtifactId {
 	 *
 	 * @param fetchedReleases the fetched releases.
 	 * @param timestamp current timestamp for expiry tracking.
-	 * @param onNewRelease invoked once per newly added release; must not be
-	 * {@literal null}.
+	 * @param onNewRelease invoked once per newly added release .
 	 */
 	public void updateCachedReleases(FetchedReleases fetchedReleases, long timestamp,
 			BiConsumer<Release, CachedRelease> onNewRelease) {
@@ -418,34 +465,31 @@ public class CachedArtifact implements ArtifactId {
 		}
 	}
 
-	/**
-	 * Return the artifact coordinates represented by this cache entry.
-	 *
-	 * @return the artifact identifier.
-	 */
-	public ArtifactId toArtifactId() {
-		return ArtifactId.of(getGroupId(), getArtifactId());
-	}
-
 	public CachedArtifact snapshot() {
-		CachedArtifact copy = new CachedArtifact(groupId, artifactId);
+		CachedArtifact copy = new CachedArtifact(getGroupId(), getArtifactId());
+		copy.setEcosystem(getEcosystem());
 		copy.lastSeen = lastSeen;
 		synchronized (releases) {
 			for (CachedRelease release : releases) {
 				copy.releases.add(release.snapshot());
 			}
 		}
+		synchronized (boms) {
+			for (CachedBom membership : boms) {
+				copy.boms.add(membership.snapshot());
+			}
+		}
 		copy.preferredSource = preferredSource;
 		copy.emptyLookups = emptyLookups;
 		copy.sourcesCheckedSince = sourcesCheckedSince;
 		copy.emptyReleaseSources = emptyReleaseSources;
-		copy.packageSystem = packageSystem;
+
 		return copy;
 	}
 
 	@Override
 	public String toString() {
-		return groupId + ":" + artifactId + ", Release count: " + releases.size();
+		return getGroupId() + ":" + getArtifactId() + ", Release count: " + releases.size();
 	}
 
 }

@@ -1,8 +1,14 @@
 <idea-plugin>
+	<projectListeners>
+		<listener class="biz.paluch.dap.maven.MavenImportRefreshListener"
+		          topic="org.jetbrains.idea.maven.project.MavenImportListener"/>
+	</projectListeners>
+
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.maven.MavenAssistant"/>
 		<assistant implementation="biz.paluch.dap.maven.MavenExtensionsAssistant"/>
 		<assistant implementation="biz.paluch.dap.maven.wrapper.MavenWrapperAssistant"/>
+		<bomLocator implementation="biz.paluch.dap.maven.MavenBomLocator"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">

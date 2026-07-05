@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
@@ -41,7 +42,10 @@ import static biz.paluch.dap.assertions.Assertions.*;
  */
 class ReleaseResolverUnitTests {
 
-	private static final ArtifactId LETTUCE = ArtifactId.of("io.lettuce", "lettuce-core");
+	private static final ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
+
+	static final PackageIdentity LETTUCE = PackageIdentity.of(LETTUCE_CORE, PackageSystem.MAVEN);
+
 
 	@Test
 	void keepsCompletedReleasesWhenSiblingSourceTimesOut() {
@@ -50,7 +54,7 @@ class ReleaseResolverUnitTests {
 		try {
 			ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(),
 					new Cache(), 50, TimeUnit.MILLISECONDS);
-			ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+			ReleaseSources sources = new ReleaseSources(LETTUCE,
 					List.of(new ReleasingSource("central", "1.0.0"), new BlockingSource("slow")));
 
 			ReleaseLookupResult result = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
@@ -70,7 +74,7 @@ class ReleaseResolverUnitTests {
 		try {
 			ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(),
 					new Cache(), 50, TimeUnit.MILLISECONDS);
-			ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+			ReleaseSources sources = new ReleaseSources(LETTUCE,
 					List.of(new BlockingSource("slow")));
 
 			ReleaseLookupResult result = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(

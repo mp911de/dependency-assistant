@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,9 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.TestCache;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VulnerabilityScannerPolicy;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
@@ -47,8 +49,7 @@ import static org.assertj.core.api.Assertions.*;
  */
 class SafeVersionScanEndToEndUnitTests {
 
-	Vulnerability CVE = new Vulnerability("GHSA-1", "CVE-2026-1", "GHSA-1", "Boom", 9.8, CvssSeverity.CRITICAL,
-			"https://example.com");
+	Vulnerability CVE = TestVulnerabilities.CRITICAL_VULNERABILITY;
 
 	ArtifactId ARTIFACT = ArtifactId.of("io.example", "core");
 
@@ -64,7 +65,7 @@ class SafeVersionScanEndToEndUnitTests {
 
 		scanCandidates(releases, current, vulnerableVersions("5.0.10", "5.0.11", "5.0.12", "5.1.0", "5.1.1"));
 
-		UpgradeSuggestions suggestions = new UpgradeSuggestionsFactory(cache).createSuggestions(
+		UpgradeSuggestions suggestions = new UpgradeSuggestionsFactory(new StateService(cache)).createSuggestions(
 				new Dependency(ARTIFACT, current), releases,
 				VulnerabilityRepository.of(cache.getVulnerabilities(ARTIFACT)),
 				DependencyRule.absent());

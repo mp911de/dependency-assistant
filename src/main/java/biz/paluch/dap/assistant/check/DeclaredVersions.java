@@ -391,9 +391,8 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 *
 	 * @param projectId the project identity associated with the declaration.
 	 * @param file the file containing the declaration.
-	 * @param project the project used for base-path resolution; can be
-	 * {@literal null}.
-	 * @return the declaration location, never {@literal null}.
+	 * @param project the project used for base-path resolution; can be .
+	 * @return the declaration location.
 	 */
 	private static String getDisplayLocation(ProjectId projectId, VirtualFile file, @Nullable Project project) {
 

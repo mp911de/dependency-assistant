@@ -27,11 +27,11 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
@@ -116,10 +116,9 @@ class UpgradeGroupUnitTests {
 		ArtifactVersion vulnerableVersion = ArtifactVersion.of("1.0.0");
 		ArtifactVersion cleanVersion = ArtifactVersion.of("1.0.1");
 		VulnerabilityRepository first = VulnerabilityRepository.of(Map.of(vulnerableVersion,
-				Vulnerabilities.of(vulnerability("CVE-2026-1"), vulnerability("CVE-2026-2")), cleanVersion,
-				Vulnerabilities.clean()));
+				TestVulnerabilities.CRITICAL_AND_HIGH, cleanVersion, Vulnerabilities.clean()));
 		VulnerabilityRepository second = VulnerabilityRepository.of(Map.of(vulnerableVersion,
-				Vulnerabilities.of(vulnerability("CVE-2026-1"))));
+				TestVulnerabilities.CRITICAL));
 		UpgradeGroup group = UpgradeGroup.of(member("core", first), member("support", second));
 
 		assertThat(group.getVulnerabilities(vulnerableVersion)).extracting(Vulnerability::getIdentifier)
@@ -148,11 +147,6 @@ class UpgradeGroupUnitTests {
 		return new UpgradeCandidate(
 				new DependencyUpdateCandidate(dependency, Releases.of(Release.of("1.0.0")), vulnerabilities),
 				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null));
-	}
-
-	private static Vulnerability vulnerability(String identifier) {
-		return new Vulnerability(identifier, identifier, "GHSA-x", "Remote code execution", 9.8, CvssSeverity.CRITICAL,
-				"https://example.com/" + identifier);
 	}
 
 }

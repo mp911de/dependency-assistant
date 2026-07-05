@@ -191,7 +191,6 @@ public class ProjectCache {
 	@Transient
 	public synchronized void setProperties(DependencyCollector collector, long timestamp) {
 
-
 		this.properties.clear();
 		this.propertyMap.clear();
 

@@ -19,6 +19,7 @@ package biz.paluch.dap.maven;
 import java.util.Map;
 
 import biz.paluch.dap.IntrospectedDependencies;
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
@@ -58,6 +59,32 @@ public class MavenFixtures {
 	}
 
 	/**
+	 * Install a Maven project context on the given POM file and return it.
+	 */
+	public static MavenProjectContext installProjectContext(PsiFile file) {
+
+		MavenProject mavenProject = new MavenProject(file.getVirtualFile());
+		mavenProject.updateMavenId(MAVEN_ID);
+
+		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(file.getProject());
+		BetterPsiManager psiManager = BetterPsiManager.getInstance(file.getProject());
+		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), projectsManager, psiManager,
+				mavenProject);
+		file.putUserData(MavenProjectContext.KEY, projectContext);
+		return projectContext;
+	}
+
+	/**
+	 * Create a Maven dependency context for the given POM file, installing the
+	 * Maven project context first.
+	 */
+	public static ProjectDependencyContext createContext(PsiFile file) {
+
+		installProjectContext(file);
+		return new MavenAssistant().createContext(file.getProject(), file);
+	}
+
+	/**
 	 * Analyze the given POM file, store the dependency state for annotators and
 	 * completion contributors, and return the dependency collector.
 	 */
@@ -78,14 +105,7 @@ public class MavenFixtures {
 			return collector;
 		}
 
-		MavenProject mavenProject = new MavenProject(file.getVirtualFile());
-		mavenProject.updateMavenId(MAVEN_ID);
-
-		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(file.getProject());
-		BetterPsiManager psiManager = BetterPsiManager.getInstance(file.getProject());
-		MavenProjectContext projectContext = new MavenContextImpl(file.getProject(), projectsManager, psiManager,
-				mavenProject);
-		file.putUserData(MavenProjectContext.KEY, projectContext);
+		MavenProjectContext projectContext = installProjectContext(file);
 
 		MavenAssistant assistant = new MavenAssistant();
 		DependencyCollector collector = new DependencyCollector();

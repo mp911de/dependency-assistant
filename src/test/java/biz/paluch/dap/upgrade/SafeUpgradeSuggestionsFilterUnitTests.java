@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,11 +25,10 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
@@ -53,7 +52,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 		Releases releases = TestReleases.from("5.0.10", "5.0.11", "5.0.12", "5.1.0");
 
 		UpgradeSuggestions filtered = safeVersions(releases, "5.0.10",
-				vulnerable(releases, "5.0.10", "5.0.11"), UpgradeSuggestions.from(version("5.0.10"), releases));
+				scanResults(releases, "5.0.10", "5.0.11"), UpgradeSuggestions.from(version("5.0.10"), releases));
 
 		assertThat(filtered.get(UpgradeStrategy.SAFE).getVersion()).isEqualTo(version("5.0.12"));
 		assertThat(filtered.get(UpgradeStrategy.MINOR).getVersion()).isEqualTo(version("5.1.0"));
@@ -66,7 +65,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 
 		Releases releases = TestReleases.from("5.0.10", "5.0.11", "6.0.0");
 
-		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.10", "5.0.11"));
+		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", scanResults(releases, "5.0.10", "5.0.11"));
 
 		assertThat(safe.getVersion()).isEqualTo(version("6.0.0"));
 	}
@@ -76,7 +75,8 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 
 		Releases releases = TestReleases.from("5.0.10", "5.0.11", "6.0.0");
 
-		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.10", "5.0.11", "6.0.0"));
+		UpgradeSuggestion safe = safeVersion(releases, "5.0.10",
+				scanResults(releases, "5.0.10", "5.0.11", "6.0.0"));
 
 		assertThat(safe.isPresent()).isFalse();
 	}
@@ -86,7 +86,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 
 		Releases releases = TestReleases.from("5.0.10", "5.0.11");
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new LinkedHashMap<>();
-		vulnerabilities.put(version("5.0.10"), Vulnerabilities.of(cve()));
+		vulnerabilities.put(version("5.0.10"), TestVulnerabilities.CRITICAL);
 		vulnerabilities.put(version("5.0.11"), Vulnerabilities.absent());
 
 		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", VulnerabilityRepository.of(vulnerabilities));
@@ -99,7 +99,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 
 		Releases releases = TestReleases.from("5.0.10", "5.0.11");
 
-		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.11"));
+		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", scanResults(releases, "5.0.11"));
 
 		assertThat(safe.isPresent()).isFalse();
 	}
@@ -109,7 +109,7 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 
 		Releases releases = TestReleases.from("5.0.8", "5.0.9", "5.0.10");
 
-		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", vulnerable(releases, "5.0.10"));
+		UpgradeSuggestion safe = safeVersion(releases, "5.0.10", scanResults(releases, "5.0.10"));
 
 		assertThat(safe.isPresent()).isFalse();
 	}
@@ -128,13 +128,13 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 		return filter.filter(subject, suggestions);
 	}
 
-	private static VulnerabilityRepository vulnerable(Releases releases, String... vulnerable) {
+	private static VulnerabilityRepository scanResults(Releases releases, String... vulnerable) {
 
 		Set<String> vulnerableVersions = Set.of(vulnerable);
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new LinkedHashMap<>();
 		for (Release release : releases) {
 			vulnerabilities.put(release.version(), vulnerableVersions.contains(release.version().toString())
-					? Vulnerabilities.of(cve())
+					? TestVulnerabilities.CRITICAL
 					: Vulnerabilities.clean());
 		}
 		return VulnerabilityRepository.of(vulnerabilities);
@@ -142,11 +142,6 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 
 	private static ArtifactVersion version(String version) {
 		return ArtifactVersion.of(version);
-	}
-
-	private static Vulnerability cve() {
-		return new Vulnerability("GHSA-1", "CVE-2026-1", "GHSA-1", "Boom", 9.8, CvssSeverity.CRITICAL,
-				"https://example.com");
 	}
 
 }

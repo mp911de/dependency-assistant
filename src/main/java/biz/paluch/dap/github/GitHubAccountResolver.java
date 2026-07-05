@@ -124,12 +124,11 @@ class GitHubAccountResolver {
 	/**
 	 * Resolve the most appropriate GitHub account for the given
 	 * {@code remoteOriginHost}.
-	 * <p>
-	 * The host-specific variant does not fall back to an unrelated first
+	 * <p>The host-specific variant does not fall back to an unrelated first
 	 * account. If no authenticated exact host match is available, the project
 	 * default account is used when present; otherwise resolution is anonymous.
 	 *
-	 * @return the resolved account, never {@literal null}; the result may be
+	 * @return the resolved account; the result may be
 	 * {@link ResolvedAccount#anonymous() anonymous} when no usable account is
 	 * configured.
 	 */
@@ -219,7 +218,7 @@ class GitHubAccountResolver {
 	 * Result of an account-resolution attempt, carrying the resolved server along
 	 * with the matched account and its bearer token (if any).
 	 *
-	 * @param server the GitHub server path, never {@literal null}.
+	 * @param server the GitHub server path.
 	 * @param account the resolved account; {@literal null} for anonymous access.
 	 * @param token the bearer token; {@literal null} for anonymous access.
 	 */

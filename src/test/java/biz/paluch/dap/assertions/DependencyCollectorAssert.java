@@ -289,17 +289,40 @@ public class DependencyCollectorAssert
 
 		/**
 		 * Verifies that at least one {@link DeclarationSource} in the actual dependency
-		 * is an instance of the given type.
-		 * @param type the declaration source type expected to be present.
+		 * is an instance of the given type. Accepts concrete source types and marker
+		 * interfaces such as {@link DeclarationSource.Managed} or
+		 * {@link DeclarationSource.Bom}.
+		 * @param type the declaration source type or marker expected to be present.
 		 * @return this assertion object.
 		 */
-		public SELF hasDeclaration(Class<? extends DeclarationSource> type) {
+		public SELF hasDeclaration(Class<?> type) {
 			isNotNull();
 			boolean found = this.actual.getDeclarationSources().stream()
 					.anyMatch(type::isInstance);
 			if (!found) {
 				failWithMessage(
 						"Expected dependency '%s' to have a declaration of type %s "
+								+ "but declaration sources were: %s",
+						this.actual.getArtifactId(), type.getSimpleName(),
+						this.actual.getDeclarationSources());
+			}
+			return myself;
+		}
+
+		/**
+		 * Verifies that no {@link DeclarationSource} in the actual dependency is an
+		 * instance of the given type. Accepts concrete source types and marker
+		 * interfaces such as {@link DeclarationSource.Bom}.
+		 * @param type the declaration source type or marker expected to be absent.
+		 * @return this assertion object.
+		 */
+		public SELF hasNoDeclaration(Class<?> type) {
+			isNotNull();
+			boolean found = this.actual.getDeclarationSources().stream()
+					.anyMatch(type::isInstance);
+			if (found) {
+				failWithMessage(
+						"Expected dependency '%s' to have no declaration of type %s "
 								+ "but declaration sources were: %s",
 						this.actual.getArtifactId(), type.getSimpleName(),
 						this.actual.getDeclarationSources());
@@ -369,6 +392,26 @@ public class DependencyCollectorAssert
 						"Expected dependency '%s' to have version source '%s' "
 								+ "but version sources were: %s",
 						this.actual.getArtifactId(), expected,
+						this.actual.getVersionSources());
+			}
+			return myself;
+		}
+
+		/**
+		 * Verifies that no {@link VersionSource} in the actual dependency equals the
+		 * given value.
+		 * @param unexpected the version source expected to be absent.
+		 * @return this assertion object.
+		 */
+		public SELF hasNoVersionSource(VersionSource unexpected) {
+			isNotNull();
+			boolean found = this.actual.getVersionSources().stream()
+					.anyMatch(unexpected::equals);
+			if (found) {
+				failWithMessage(
+						"Expected dependency '%s' to have no version source '%s' "
+								+ "but version sources were: %s",
+						this.actual.getArtifactId(), unexpected,
 						this.actual.getVersionSources());
 			}
 			return myself;

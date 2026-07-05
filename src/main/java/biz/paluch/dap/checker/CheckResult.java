@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -85,7 +85,20 @@ public class CheckResult {
 	 * @return {@literal true} if nothing was checked; {@literal false} otherwise.
 	 */
 	public boolean isEmpty() {
-		return vulnerabilities.isEmpty();
+
+		if (this.vulnerabilities.isEmpty()) {
+			return true;
+		}
+
+		for (Map<ArtifactVersion, Vulnerabilities> value : this.vulnerabilities.values()) {
+			for (Vulnerabilities vulnerabilities : value.values()) {
+				if (!vulnerabilities.isUnknown()) {
+					return false;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	/**

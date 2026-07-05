@@ -18,9 +18,15 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.DeclaredVersion;
+import biz.paluch.dap.maven.BomUtil;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.PropertyResolver;
@@ -42,6 +48,8 @@ class GradleDependencyCollector {
 
 	private final Map<String, String> properties;
 
+	private final Project project;
+
 	private final StateService service;
 
 	/**
@@ -55,8 +63,9 @@ class GradleDependencyCollector {
 	 * Create a collector using properties already known for the project.
 	 */
 	public GradleDependencyCollector(Project project, Map<String, String> properties) {
-		this.service = StateService.getInstance(project);
 		this.properties = properties;
+		this.project = project;
+		this.service = StateService.getInstance(project);
 	}
 
 	/**
@@ -65,9 +74,8 @@ class GradleDependencyCollector {
 	 * resolves visible Gradle properties and version-catalog accessors through the
 	 * project root.
 	 *
-	 * @param buildFile the Gradle file, must not be {@literal null}.
-	 * @return a populated {@link DependencyCollector}, guaranteed to be not
-	 * {@literal null}.
+	 * @param buildFile the Gradle file.
+	 * @return a populated {@link DependencyCollector}, guaranteed to be not .
 	 */
 	public DependencyCollector collect(PsiFile buildFile) {
 
@@ -82,9 +90,8 @@ class GradleDependencyCollector {
 	 * <p>Script anchors resolve project-root Gradle properties and version-catalog
 	 * accessors without treating unused catalog entries as dependency usages.
 	 *
-	 * @param buildFile the Gradle file, must not be {@literal null}.
-	 * @param collector the collector to populate in place, must not be
-	 * {@literal null}.
+	 * @param buildFile the Gradle file.
+	 * @param collector the collector to populate in place, must not be .
 	 */
 	public void collect(PsiFile buildFile, DependencyCollector collector) {
 		doCollect(buildFile, collector);
@@ -117,22 +124,38 @@ class GradleDependencyCollector {
 	/**
 	 * Register the given artifact declaration with the dependency collector.
 	 */
-	static void register(DependencyCollector collector, ArtifactDeclaration declaration) {
+	void register(DependencyCollector collector, ArtifactDeclaration declaration) {
 
 		VersionSource versionSource = declaration.getVersionSource();
 		boolean concreteDeclaration = !(versionSource instanceof DeclaredVersion declared)
 				|| GradleRichVersion.parse(declared.getVersion()).isPresent();
+		DeclarationSource declarationSource = getDeclarationSource(declaration);
+
 		if (declaration.isVersionDefined() && concreteDeclaration && !versionSource.isPrefix()
 				&& !(versionSource instanceof VersionSource.VersionCatalog)) {
 			collector.registerUsage(declaration.getArtifactId(), declaration.getVersion(),
-					declaration.getDeclarationSource(), versionSource);
+					declarationSource, versionSource);
 		}
 
-		collector.registerDeclaration(declaration.getArtifactId(), declaration.getDeclarationSource(),
+		collector.registerDeclaration(declaration.getArtifactId(), declarationSource,
 				versionSource);
 	}
 
-	private static void registerCatalog(DependencyCollector collector, ArtifactDeclaration declaration) {
+	private DeclarationSource getDeclarationSource(ArtifactDeclaration declaration) {
+
+		DeclarationSource declarationSource = declaration.getDeclarationSource();
+
+		if (declarationSource instanceof DeclarationSource.Bom && declaration.isVersionDefined()) {
+
+			Map<ArtifactId, ArtifactVersion> bom = BomUtil.resolveBom(service.getCache(), project,
+					PackageIdentity.of(declaration.getArtifactId(), PackageSystem.MAVEN), declaration.getVersion());
+			return DeclarationSource.bom(bom);
+		}
+
+		return declarationSource;
+	}
+
+	void registerCatalog(DependencyCollector collector, ArtifactDeclaration declaration) {
 
 		if (declaration.isVersionDefined()) {
 			collector.registerUsage(declaration.getArtifactId(), declaration.getVersion(),

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.time.Clock;
 import java.util.Collection;
 import java.util.List;
 
+import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
@@ -104,6 +105,20 @@ public class TestCache extends Cache {
 	}
 
 	/**
+	 * Record vulnerability results for a version parsed from the given string.
+	 *
+	 * @param artifactId the cached artifact to update.
+	 * @param version the version text to update.
+	 * @param vulnerabilities the scan result to store.
+	 * @throws IllegalStateException if no cached artifact exists for
+	 * {@code artifactId}.
+	 * @see #addVulnerabilities(ArtifactId, ArtifactVersion, Vulnerabilities)
+	 */
+	public void addVulnerabilities(ArtifactId artifactId, String version, Vulnerabilities vulnerabilities) {
+		addVulnerabilities(artifactId, ArtifactVersion.of(version), vulnerabilities);
+	}
+
+	/**
 	 * Record vulnerability results for a cached artifact version.
 	 *
 	 * @param artifactId the cached artifact to update.
@@ -115,6 +130,33 @@ public class TestCache extends Cache {
 	 */
 	public void addVulnerabilities(ArtifactId artifactId, ArtifactVersion version, Vulnerability... vulnerabilities) {
 		addVulnerabilities(artifactId, version, List.of(vulnerabilities));
+	}
+
+	/**
+	 * Record vulnerability results for a cached artifact version.
+	 *
+	 * @param artifactId the cached artifact to update.
+	 * @param version the cached version to update.
+	 * @param vulnerabilities the scan result to store.
+	 * @throws IllegalStateException if no cached artifact exists for
+	 * {@code artifactId}.
+	 * @see #addVulnerabilities(ArtifactId, ArtifactVersion, Collection)
+	 */
+	public void addVulnerabilities(ArtifactId artifactId, ArtifactVersion version, Vulnerabilities vulnerabilities) {
+		addVulnerabilities(artifactId, version, vulnerabilities.get());
+	}
+
+	/**
+	 * Seed a vulnerable release in one step: cache the release for the artifact and
+	 * record the given vulnerabilities for it.
+	 *
+	 * @param artifactId the artifact to seed.
+	 * @param version the vulnerable version.
+	 * @param vulnerabilities the advisories affecting the version.
+	 */
+	public void vulnerable(ArtifactId artifactId, String version, Vulnerability... vulnerabilities) {
+		putVersionOptions(artifactId, List.of(Release.of(version)));
+		addVulnerabilities(artifactId, version, vulnerabilities);
 	}
 
 	/**

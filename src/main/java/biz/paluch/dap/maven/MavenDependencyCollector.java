@@ -18,7 +18,9 @@ package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.PropertyResolver;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 
@@ -32,10 +34,18 @@ class MavenDependencyCollector {
 	private final Cache cache;
 
 	/**
+	 * Create a collector using the given {@link Project}.
+	 *
+	 * @param project the associated project.
+	 */
+	public MavenDependencyCollector(Project project) {
+		this(StateService.getInstance(project).getCache());
+	}
+
+	/**
 	 * Create a collector using the given cache.
 	 *
-	 * @param cache the cache used while parsing POM files; must not be
-	 * {@literal null}.
+	 * @param cache the cache used while parsing POM files.
 	 */
 	public MavenDependencyCollector(Cache cache) {
 		this.cache = cache;
@@ -57,12 +67,12 @@ class MavenDependencyCollector {
 	protected void doCollect(PsiFile psiFile, PropertyResolver propertyResolver, DependencyCollector collector) {
 
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenParser parser = new MavenParser(collector, propertyResolver);
-			parser.parsePomFile(cache, xmlFile);
+			MavenParser parser = new MavenParser(collector, cache, propertyResolver);
+			parser.parsePomFile(xmlFile);
 		}
 
 		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenParser parser = new MavenParser(collector, propertyResolver);
+			MavenParser parser = new MavenParser(collector, cache, propertyResolver);
 			parser.parseExtensionsFile(xmlFile);
 		}
 	}

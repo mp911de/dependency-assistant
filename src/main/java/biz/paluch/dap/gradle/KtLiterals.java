@@ -79,7 +79,7 @@ class KtLiterals {
 	 * Return the shared instance that carries no fragments and renders to the empty
 	 * string.
 	 *
-	 * @return the empty {@link KtLiterals} instance, never {@literal null}.
+	 * @return the empty {@link KtLiterals} instance.
 	 */
 	public static KtLiterals empty() {
 		return EMPTY;
@@ -158,8 +158,7 @@ class KtLiterals {
 	 * Extract text from supported Kotlin DSL literal forms in value position,
 	 * rendering property references as {@code ${name}} placeholders.
 	 * <p>Unsupported element shapes yield an empty string rather than an exception.
-	 * @param element the Kotlin PSI element to inspect; must not be
-	 * {@literal null}.
+	 * @param element the Kotlin PSI element to inspect .
 	 * @return the rendered text, or the empty string for unsupported shapes.
 	 * @throws IllegalArgumentException if {@code element} is {@literal null}.
 	 */

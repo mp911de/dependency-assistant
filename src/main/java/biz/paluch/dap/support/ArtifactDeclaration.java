@@ -80,6 +80,21 @@ public class ArtifactDeclaration implements DependencySite {
 	 */
 	// TODO: introduce mutate() method
 	public ArtifactDeclaration at(PsiElement declarationElement) {
+		return at(declarationElement, declarationSource);
+	}
+
+	/**
+	 * Return this declaration re-anchored at the given declaration element,
+	 * carrying the given declaration source.
+	 * <p>The artifact, version, and version literal remain unchanged. This is used
+	 * when the consuming call site refines the declaration classification, such as
+	 * a Gradle {@code platform(...)} call consuming a version-catalog entry.
+	 * @param declarationElement the consuming declaration element.
+	 * @param declarationSource the declaration source describing the consuming call
+	 * site.
+	 * @return the re-anchored artifact declaration.
+	 */
+	public ArtifactDeclaration at(PsiElement declarationElement, DeclarationSource declarationSource) {
 
 		Builder builder = builder().artifact(artifactId)
 				.versionSource(versionSource)
@@ -153,7 +168,7 @@ public class ArtifactDeclaration implements DependencySite {
 	/**
 	 * Return the PSI element representing the declaration.
 	 *
-	 * @return the declaration element, never {@literal null}.
+	 * @return the declaration element.
 	 */
 	public PsiElement getDeclarationElement() {
 		return declarationElement;
@@ -171,7 +186,7 @@ public class ArtifactDeclaration implements DependencySite {
 	/**
 	 * Return the PSI element representing the version, failing if none is present.
 	 *
-	 * @return the version element, never {@literal null}.
+	 * @return the version element.
 	 * @throws IllegalStateException if no version literal is present.
 	 */
 	public PsiElement getRequiredVersionLiteral() {
@@ -328,8 +343,7 @@ public class ArtifactDeclaration implements DependencySite {
 		 * configured.
 		 *
 		 * @return a new {@link ArtifactDeclaration}.
-		 * @throws IllegalArgumentException if {@code id} or {@code versionSource} is
-		 * {@literal null}.
+		 * @throws IllegalArgumentException if {@code id} or {@code versionSource} is .
 		 */
 		public ArtifactDeclaration build() {
 

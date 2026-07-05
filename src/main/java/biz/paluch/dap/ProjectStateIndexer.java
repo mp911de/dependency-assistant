@@ -24,12 +24,17 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ProjectBuildContext;
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
  * Cross-ecosystem coordinator that owns the collect-complete-store flow for one
@@ -60,8 +65,7 @@ public class ProjectStateIndexer {
 	 * Create an indexer for the given project, using the project-scoped
 	 * {@link StateService}.
 	 * @param project the IntelliJ project.
-	 * @param indicator the progress indicator to report to; must not be
-	 * {@literal null}.
+	 * @param indicator the progress indicator to report to .
 	 */
 	public ProjectStateIndexer(Project project, ProgressIndicator indicator) {
 		this(project, StateService.getInstance(project), indicator);
@@ -71,10 +75,8 @@ public class ProjectStateIndexer {
 	 * Create an indexer for the given project, state service, and progress
 	 * indicator.
 	 * @param project the IntelliJ project.
-	 * @param service the state service backing this run; must not be
-	 * {@literal null}.
-	 * @param indicator the progress indicator to report to; must not be
-	 * {@literal null}.
+	 * @param service the state service backing this run .
+	 * @param indicator the progress indicator to report to .
 	 */
 	public ProjectStateIndexer(Project project, StateService service, ProgressIndicator indicator) {
 		this.project = project;
@@ -91,7 +93,31 @@ public class ProjectStateIndexer {
 	}
 
 	/**
-	 * Run a full population pass wrapped in a read action.
+	 * Re-run the collect-complete-store flow for the given assistant after a
+	 * build-system import and restart highlighting so state derived from the import
+	 * model surfaces without plugin-side scheduling.
+	 * <p>The re-index runs as a non-blocking read action in smart mode, coalesced
+	 * per assistant so bursts of import events collapse into one pass.
+	 * @param assistant the assistant whose project state is re-indexed.
+	 */
+	public void refreshAfterImport(DependencyAssistant assistant) {
+
+		ReadAction.nonBlocking(() -> {
+			updateAll(assistant);
+			return assistant;
+		})
+				.inSmartMode(project)
+				.coalesceBy(project, ProjectStateIndexer.class, assistant.getId())
+				.expireWhen(project::isDisposed)
+				.finishOnUiThread(ModalityState.nonModal(),
+						completed -> DaemonCodeAnalyzer.getInstance(project).restart("Build system import finished"))
+				.submit(AppExecutorUtil.getAppExecutorService());
+	}
+
+	/**
+	 * Run a full population pass with only the PSI-touching collect phase wrapped
+	 * in a read action. Completion and storing run on the calling thread so a
+	 * background task never holds the read lock for phase two.
 	 * @param assistant the assistant to run.
 	 */
 	public void readAndUpdateAll(DependencyAssistant assistant) {
@@ -101,18 +127,29 @@ public class ProjectStateIndexer {
 			updateAll(assistant);
 			return;
 		}
-		application.runReadAction(() -> updateAll(assistant));
+
+
+		// TODO: ReadAction.run(() -> updateAll(assistant)); ??
+		IntrospectedDependencies introspected = assistant.introspect(project);
+		List<ActiveScan> active = application
+				.runReadAction((Computable<List<ActiveScan>>) () -> collectPhase(assistant, introspected));
+		completeAndStore(assistant, introspected, active);
 	}
 
 	/**
 	 * Run a full population pass: enumerate, collect, complete, invalidate, and
-	 * store.
+	 * store. The caller is responsible for read-action wrapping of the PSI-touching
+	 * collect phase.
 	 * @param assistant the assistant to run.
 	 */
 	public void updateAll(DependencyAssistant assistant) {
 
 		IntrospectedDependencies introspected = assistant.introspect(project);
-		List<ActiveScan> active = collectPhase(assistant, introspected);
+		completeAndStore(assistant, introspected, collectPhase(assistant, introspected));
+	}
+
+	private void completeAndStore(DependencyAssistant assistant, IntrospectedDependencies introspected,
+			List<ActiveScan> active) {
 
 		for (ActiveScan scan : active) {
 			introspected.complete(scan.collector());
@@ -160,8 +197,7 @@ public class ProjectStateIndexer {
 	/**
 	 * Run a file-scoped invalidation: re-collect the state owned by the given file
 	 * and route it through the same complete-store flow.
-	 * @param assistant the assistant that owns the file; must not be
-	 * {@literal null}.
+	 * @param assistant the assistant that owns the file .
 	 * @param file the saved PSI file.
 	 */
 	public void invalidate(DependencyAssistant assistant, PsiFile file) {

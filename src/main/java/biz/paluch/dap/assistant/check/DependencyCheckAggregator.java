@@ -33,7 +33,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Versioned;
@@ -64,9 +64,9 @@ import org.springframework.util.StringUtils;
  *
  * @author Mark Paluch
  */
-class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.ArtifactPackage> {
+class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
-	private final Map<ArtifactPackage, Entry> entries = new LinkedHashMap<>();
+	private final Map<PackageIdentity, Entry> entries = new LinkedHashMap<>();
 
 	private final Set<VirtualFile> files = new LinkedHashSet<>();
 
@@ -97,7 +97,7 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 			Collection<ReleaseSource> releaseSources) {
 
 		files.add(virtualFile);
-		ArtifactPackage pkg = new ArtifactPackage(dependency.getArtifactId(), context.getPackageSystem());
+		PackageIdentity pkg = PackageIdentity.of(dependency.getArtifactId(), context.getPackageSystem());
 		Entry entry = entries.computeIfAbsent(pkg,
 				it -> new Entry(new LinkedHashSet<>(), new ArrayList<>(), new ArrayList<>()));
 		entry.releaseSources.addAll(releaseSources);
@@ -110,7 +110,7 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 	 * Iterate over the unique artifacts in encounter order.
 	 */
 	@Override
-	public Iterator<ArtifactPackage> iterator() {
+	public Iterator<PackageIdentity> iterator() {
 		return entries.keySet().iterator();
 	}
 
@@ -118,7 +118,7 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 	 * Stream over the unique artifacts in encounter order.
 	 */
 	@Override
-	public Stream<ArtifactPackage> stream() {
+	public Stream<PackageIdentity> stream() {
 		return entries.keySet().stream();
 	}
 
@@ -128,8 +128,8 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 	 * @param consumer the consumer receiving artifact identifiers and release
 	 * sources in encounter order.
 	 */
-	public void forEachArtifact(BiConsumer<ArtifactPackage, Collection<ReleaseSource>> consumer) {
-		entries.forEach((artifactId, entry) -> consumer.accept(artifactId, entry.releaseSources));
+	public void forEachArtifact(BiConsumer<PackageIdentity, Collection<ReleaseSource>> consumer) {
+		entries.forEach((pkg, entry) -> consumer.accept(pkg, entry.releaseSources));
 	}
 
 	/**
@@ -144,7 +144,7 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 	public List<ReleaseSources> getReleaseSources() {
 		List<ReleaseSources> sources = new ArrayList<>();
 		forEachArtifact((pkg, releaseSources) -> {
-			sources.add(new ReleaseSources(pkg.artifactId(), pkg.packageSystem(), releaseSources));
+			sources.add(new ReleaseSources(pkg, releaseSources));
 		});
 		return sources;
 	}
@@ -200,9 +200,7 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 		}
 
 		for (DeclaredDependency declaration : collector.getDeclarations()) {
-			if (declaration.hasDefinedVersion()) {
-				add(declaration, context, buildFile, sources);
-			}
+			add(declaration, context, buildFile, sources);
 		}
 	}
 
@@ -237,11 +235,11 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 		List<UpgradeCandidate> candidates = new ArrayList<>();
 		List<String> errors = getErrors(releases);
 		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, service);
-		UpgradeSuggestionsFactory suggestionsFactory = new UpgradeSuggestionsFactory(service.getCache());
+		UpgradeSuggestionsFactory suggestionsFactory = new UpgradeSuggestionsFactory(service);
 
 		entries.forEach((pkg, entry) -> {
 
-			ArtifactId artifactId = pkg.artifactId();
+			ArtifactId artifactId = pkg.getArtifactId();
 			ReleaseLookupResult lookup = releases.get(artifactId);
 			if (lookup == null) {
 				return;
@@ -285,15 +283,14 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 		return new DependencyUpgradeCandidates(UpgradeGroups.of(candidates), files, errors);
 	}
 
-	private VulnerabilityRepository getVulnerabilities(ArtifactPackage artifactPackage,
+	private VulnerabilityRepository getVulnerabilities(PackageIdentity pkg,
 			VulnerabilityScanner scanner) {
 
 		if (!scanner.isPresent()) {
 			return VulnerabilityRepository.empty();
 		}
 
-		return VulnerabilityRepository
-				.of(scanner.getVulnerabilities(artifactPackage.artifactId, artifactPackage.packageSystem));
+		return version -> service.getVulnerabilities(pkg, version);
 	}
 
 	private static List<String> getErrors(Map<?, ReleaseLookupResult> map) {
@@ -305,10 +302,6 @@ class DependencyCheckAggregator implements Sequence<DependencyCheckAggregator.Ar
 			}
 		});
 		return errors;
-	}
-
-	record ArtifactPackage(ArtifactId artifactId, PackageSystem packageSystem) {
-
 	}
 
 	/**

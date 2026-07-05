@@ -186,17 +186,21 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		GradleProjectContext context = GradleProjectContext.of(project, anchor);
-		return new GradleDependencyContext(project, anchor.getVirtualFile(), context);
+		return new GradleDependencyContext(this, project, anchor.getVirtualFile(), context);
 	}
 
 	static class GradleDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
+
+		private final GradleAssistant assistant;
 
 		private final DependencyFileDelegate delegate;
 
 		private final GradleProjectContext projectContext;
 
-		GradleDependencyContext(Project project, VirtualFile file, GradleProjectContext projectContext) {
+		GradleDependencyContext(GradleAssistant assistant, Project project, VirtualFile file,
+				GradleProjectContext projectContext) {
 			super(projectContext);
+			this.assistant = assistant;
 			this.delegate = DependencyFileDelegate.of(project, file);
 			this.projectContext = projectContext;
 		}
@@ -213,11 +217,8 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-			return delegate.collectDependencies(it -> {
-				DependencyCollector collector = new GradleDependencyCollector(delegate.getProject()).collect(it);
-				collector.addAllReleaseSources(projectContext.getReleaseSources());
-				return collector;
-			});
+			return delegate.collectDependencies(
+					it -> assistant.collectCompleted(it, projectContext.getReleaseSources()));
 		}
 
 		@Override

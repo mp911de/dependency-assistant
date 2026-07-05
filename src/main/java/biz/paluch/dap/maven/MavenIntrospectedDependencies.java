@@ -36,18 +36,6 @@ import biz.paluch.dap.util.StringUtils;
  * Phase-scoped {@link IntrospectedDependencies} for Maven that promotes
  * property-backed declarations using scan-derived property metadata.
  *
- * <p>Maven's two-phase population first collects a {@link DependencyCollector}
- * instance per POM and registers each through
- * {@link #register(DependencyCollector)}. Once all collectors are known, the
- * shared indexer invokes {@link #complete(DependencyCollector)} for each
- * collector. Completion walks the union of declarations across the scan to
- * derive property-to-artifact associations and uses each collector's effective
- * property values to register usages for property-backed declarations,
- * including parent/child POM cases.
- *
- * <p>Instances are scoped to a single Maven assistant run and are not shared
- * with other assistants.
- *
  * @author Mark Paluch
  */
 class MavenIntrospectedDependencies implements IntrospectedDependencies {
@@ -57,8 +45,7 @@ class MavenIntrospectedDependencies implements IntrospectedDependencies {
 	/**
 	 * Register a phase-one collector with this run so its declarations and
 	 * effective property values contribute to scan-wide promotion.
-	 * @param collector the phase-one collector to track; must not be
-	 * {@literal null}.
+	 * @param collector the phase-one collector to track .
 	 */
 	void register(DependencyCollector collector) {
 		collectors.add(collector);

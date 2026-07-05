@@ -170,7 +170,7 @@ class GroovyDslParser {
 			}
 
 			if (platform || dependency) {
-				return platform ? DeclarationSource.managed() : DeclarationSource.dependency();
+				return platform ? DeclarationSource.bom() : DeclarationSource.dependency();
 			}
 
 			return null;
@@ -218,7 +218,14 @@ class GroovyDslParser {
 			}
 
 			ArtifactReference resolved = registry.resolve(reference);
-			return resolved.isResolved() ? resolved.getDeclaration().at(call) : null;
+			if (!resolved.isResolved()) {
+				return null;
+			}
+
+			// A platform(libs.x) consumer refines the catalog entry to a BOM import.
+			return declarationSource instanceof DeclarationSource.Bom
+					? resolved.getDeclaration().at(call, declarationSource)
+					: resolved.getDeclaration().at(call);
 		}
 
 	}

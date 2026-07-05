@@ -50,6 +50,7 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
+// TODO: overly complex
 class DependencyCheckAggregatorTests {
 
 	ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
@@ -89,7 +90,7 @@ class DependencyCheckAggregatorTests {
 		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_UPDATE), context(ACME_LIB), b, List.of(pluginPortal));
 
 		List<ArtifactId> artifacts = new ArrayList<>();
-		aggregator.forEach(pkg -> artifacts.add(pkg.artifactId()));
+		aggregator.forEach(pkg -> artifacts.add(pkg.getArtifactId()));
 		List<Collection<ReleaseSource>> releaseSources = new ArrayList<>();
 		aggregator.forEachArtifact((artifactId, sources) -> releaseSources.add(sources));
 

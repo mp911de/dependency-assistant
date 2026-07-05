@@ -55,7 +55,14 @@
 		<extensionPoint qualifiedName="biz.paluch.dap.vulnerabilitySource"
 		                interface="biz.paluch.dap.checker.VulnerabilitySource"
 		                dynamic="true"/>
+		<extensionPoint qualifiedName="biz.paluch.dap.bomLocator"
+		                interface="biz.paluch.dap.artifact.BomLocator"
+		                dynamic="true"/>
 	</extensionPoints>
+
+	<extensions defaultExtensionNs="biz.paluch.dap">
+		<bomLocator implementation="biz.paluch.dap.maven.SimpleMavenBomLocator"/>
+	</extensions>
 
 	<extensions defaultExtensionNs="org.jetbrains.kotlin">
 		<supportsKotlinPluginMode supportsK1="true" supportsK2="true"/>

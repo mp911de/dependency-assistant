@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
@@ -210,7 +211,7 @@ class FetchPlanUnitTests {
 	}
 
 	private static ReleaseSources releaseSources(String... ids) {
-		return new ReleaseSources(ARTIFACT_ID, PackageSystem.MAVEN,
+		return new ReleaseSources(PackageIdentity.of(ARTIFACT_ID, PackageSystem.MAVEN),
 				Arrays.stream(ids).<ReleaseSource>map(TestReleaseSource::new).toList());
 	}
 

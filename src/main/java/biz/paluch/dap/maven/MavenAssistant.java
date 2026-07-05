@@ -34,7 +34,6 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -114,7 +113,7 @@ class MavenAssistant implements DependencyAssistant {
 		MavenProjectContext context = MavenProjectContext.of(project, anchor);
 		PropertyResolver propertyResolver = MavenPropertyResolver.create(context, anchor);
 
-		new MavenDependencyCollector(StateService.getInstance(project).getCache())
+		new MavenDependencyCollector(project)
 				.doCollect(anchor, propertyResolver, collector);
 		collector.addPropertyValues(localPropertyValues(anchor, propertyResolver));
 	}
@@ -147,7 +146,7 @@ class MavenAssistant implements DependencyAssistant {
 			context = MavenProjectContext.of(project, anchor.getVirtualFile());
 		}
 
-		return new MavenDependencyContext(project, anchor, anchor.getVirtualFile(), context);
+		return new MavenDependencyContext(this, project, anchor, anchor.getVirtualFile(), context);
 	}
 
 	private static Map<String, String> localPropertyValues(PsiFile anchor, PropertyResolver propertyResolver) {
@@ -169,15 +168,18 @@ class MavenAssistant implements DependencyAssistant {
 
 	static class MavenDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
+		private final MavenAssistant assistant;
+
 		private final MavenProjectContext projectContext;
 
 		private final MavenPropertyResolver propertyResolver;
 
 		private final DependencyFileDelegate delegate;
 
-		MavenDependencyContext(Project project, PsiFile pomFile, VirtualFile anchor,
+		MavenDependencyContext(MavenAssistant assistant, Project project, PsiFile pomFile, VirtualFile anchor,
 				MavenProjectContext projectContext) {
 			super(projectContext);
+			this.assistant = assistant;
 			this.propertyResolver = MavenPropertyResolver.create(projectContext, pomFile);
 			this.projectContext = projectContext;
 			this.delegate = DependencyFileDelegate.of(project, anchor);
@@ -195,7 +197,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-			return delegate.collectDependencies(this::collect);
+			return delegate.collectDependencies(file -> assistant.collectCompleted(file, getReleaseSources()));
 		}
 
 		@Override
@@ -225,14 +227,6 @@ class MavenAssistant implements DependencyAssistant {
 		@Override
 		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 			new UpdatePomFile(propertyResolver).applyUpdates(psiFile, updates);
-		}
-
-		private DependencyCollector collect(PsiFile file) {
-
-			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(delegate.getCache());
-			DependencyCollector collector = dependencyCollector.collect(file, propertyResolver);
-			collector.addAllReleaseSources(getReleaseSources());
-			return collector;
 		}
 
 		@Override

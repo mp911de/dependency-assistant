@@ -1,3 +1,4 @@
+import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 
 plugins {
@@ -92,6 +93,10 @@ tasks {
 	withType<Test>().configureEach {
 		useJUnitPlatform()
 		failOnNoDiscoveredTests = true
+	}
+
+	withType<RunIdeTask>().configureEach {
+		systemProperty("idea.log.debug.categories", "biz.paluch.dap")
 	}
 }
 

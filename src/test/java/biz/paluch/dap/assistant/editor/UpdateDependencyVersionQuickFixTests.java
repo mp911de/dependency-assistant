@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,10 @@ import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.maven.MavenFixtures;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -90,98 +90,11 @@ class UpdateDependencyVersionQuickFixTests {
 
 		MavenFixtures.analyze(pomFile);
 		UpdateDependencyVersionQuickFix fix = fix(pomFile, UpgradeStrategy.PATCH, "6.0.3",
-				Vulnerabilities.of(cve(CvssSeverity.HIGH)));
+				TestVulnerabilities.HIGH);
 
-		assertThat(fix.getText()).isEqualTo("Upgrade to 6.0.3 (High: CVE-2026-1)");
+		assertThat(fix.getText()).isEqualTo("Upgrade to 6.0.3 (High: CVE-2026-2)");
 		assertThat(fix.getIcon(Iconable.ICON_FLAG_VISIBILITY))
 				.isSameAs(SecurityShieldIcons.filled(CvssSeverity.HIGH).getIcon());
-	}
-
-	@Test
-	void vulnerableSuggestionDetailShowsSingleIdentifierAndSeverity() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(cve(CvssSeverity.CRITICAL));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("Critical: CVE-2026-1");
-	}
-
-	@Test
-	void vulnerableSuggestionDetailCountsHighestSeverity() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(
-				cve("CVE-2026-1", "GHSA-1", CvssSeverity.CRITICAL),
-				cve("CVE-2026-2", "GHSA-2", CvssSeverity.CRITICAL));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("2 Critical");
-	}
-
-	@Test
-	void vulnerableSuggestionDetailCountsOtherSeverities() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(
-				cve("CVE-2026-1", "GHSA-1", CvssSeverity.CRITICAL),
-				cve("CVE-2026-2", "GHSA-2", CvssSeverity.HIGH),
-				cve("CVE-2026-3", "GHSA-3", CvssSeverity.MEDIUM),
-				cve("CVE-2026-4", "GHSA-4", CvssSeverity.LOW),
-				cve("CVE-2026-5", "GHSA-5", CvssSeverity.HIGH),
-				cve("CVE-2026-6", "GHSA-6", CvssSeverity.MEDIUM));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("1 Critical and 5 others");
-	}
-
-	@Test
-	void vulnerableSuggestionDetailPluralizesSingleOtherSeverity() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(
-				cve("CVE-2026-1", "GHSA-1", CvssSeverity.CRITICAL),
-				cve("CVE-2026-2", "GHSA-2", CvssSeverity.HIGH));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("1 Critical and 1 other");
-	}
-
-	@Test
-	void vulnerableSuggestionDetailPrefersGhsaWhenCveIsAbsent() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(cve(null, "GHSA-2026-1", CvssSeverity.HIGH));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("High: GHSA-2026-1");
-	}
-
-	@Test
-	void vulnerableSuggestionDetailFallsBackToAdvisoryId() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(cve(null, null, CvssSeverity.MEDIUM));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("Medium: GHSA-1");
-	}
-
-	@Test
-	void vulnerableSuggestionDetailSkipsUnratedSeverities() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(
-				cve("CVE-2026-1", "GHSA-1", CvssSeverity.CRITICAL),
-				cve("CVE-2026-2", "GHSA-2", CvssSeverity.UNKNOWN),
-				cve("CVE-2026-3", "GHSA-3", CvssSeverity.NONE));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("Critical: CVE-2026-1");
-	}
-
-	@Test
-	void vulnerableSuggestionDetailFallsBackWhenOnlyUnratedSeveritiesRemain() {
-
-		Vulnerabilities vulnerabilities = Vulnerabilities.of(
-				cve("CVE-2026-1", "GHSA-1", CvssSeverity.UNKNOWN),
-				cve("CVE-2026-2", "GHSA-2", CvssSeverity.NONE));
-
-		assertThat(VulnerabilitiesPresentation.of(vulnerabilities).getDetail())
-				.isEqualTo("known vulnerabilities");
 	}
 
 	@Test
@@ -209,14 +122,6 @@ class UpdateDependencyVersionQuickFixTests {
 				update.version(), targetVulnerabilities);
 		return new UpdateDependencyVersionQuickFix(reference.getDeclaration().getVersionLiteral(), strategy, context,
 				update, reference.getDeclaration(), status);
-	}
-
-	private static Vulnerability cve(CvssSeverity severity) {
-		return cve("CVE-2026-1", "GHSA-1", severity);
-	}
-
-	private static Vulnerability cve(String cveId, String ghsaId, CvssSeverity severity) {
-		return new Vulnerability("GHSA-1", cveId, ghsaId, "Boom", 7.5, severity, "https://example.com");
 	}
 
 }

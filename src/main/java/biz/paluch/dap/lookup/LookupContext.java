@@ -32,20 +32,25 @@ import org.jspecify.annotations.Nullable;
 /**
  * Value object capturing resolution environment.
  *
- * @param project the IntelliJ project that owns the lookup; must not be
- * {@literal null}.
- * @param buildContext the build context for the anchored file; must not be
- * {@literal null}.
- * @param cache the shared release cache.
+ * @param project the IntelliJ project that owns the lookup.
+ * @param buildContext the build context for the anchored file.
+ * @param service the state service exposing the shared cache.
  * @param projectState the cached project state; can be {@literal null} when no
  * state is available for the build context.
- * @param versionResolver the Git-ref resolver bound to {@code cache}.
+ * @param versionResolver the Git-ref resolver bound to the shared cache.
  * @author Mark Paluch
  * @see VersionUpgradeLookup
  * @see ArtifactReferenceResolver
  */
-public record LookupContext(Project project, ProjectBuildContext buildContext, Cache cache,
+public record LookupContext(Project project, ProjectBuildContext buildContext, StateService service,
 		@Nullable ProjectState projectState, GitVersionResolver versionResolver) {
+
+	/**
+	 * Return the shared release cache backing {@link #service()}.
+	 */
+	public Cache cache() {
+		return service.getCache();
+	}
 
 	/**
 	 * Create a {@code LookupContext} for the given project and build context,
@@ -58,17 +63,15 @@ public record LookupContext(Project project, ProjectBuildContext buildContext, C
 	public static LookupContext create(Project project, ProjectBuildContext buildContext) {
 
 		StateService service = StateService.getInstance(project);
-		Cache cache = service.getCache();
 		ProjectState projectState = service.getProjectState(buildContext.getProjectId());
-		return new LookupContext(project, buildContext, cache, projectState,
-				new GitVersionResolver(cache));
+		return new LookupContext(project, buildContext, service, projectState,
+				new GitVersionResolver(service.getCache()));
 	}
 
 	/**
 	 * Create a {@code LookupContext} for the project behind the given
 	 * {@link DependencyFileDelegate} and build context.
-	 * @param delegate the delegate whose project owns the lookup; must not be
-	 * {@literal null}.
+	 * @param delegate the delegate whose project owns the lookup {@literal null}.
 	 * @param buildContext the build context.
 	 * @return a context bound to the project's shared cache and, when the context
 	 * is available, its project state.

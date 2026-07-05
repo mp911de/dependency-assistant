@@ -27,10 +27,12 @@ import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.Generations;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.apache.commons.lang3.StringUtils;
@@ -46,8 +48,8 @@ import static org.assertj.core.api.Assertions.*;
  */
 class DependencyDocumentationRendererTests {
 
-	static final Vulnerability CVE = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd", "Remote code execution",
-			9.8, CvssSeverity.CRITICAL, "https://example.com/advisory");
+	static final Vulnerability CVE = TestVulnerabilities.cve("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
+			"Remote code execution", 9.8, CvssSeverity.CRITICAL, "https://example.com/advisory");
 
 	TestCache cache = DependencyAssistantFixtures.createCache();
 
@@ -101,8 +103,8 @@ class DependencyDocumentationRendererTests {
 	@Test
 	void shouldOmitSecurityAdvisoryLinkForUnsupportedScheme() {
 
-		Vulnerability cve = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd", "Remote code execution",
-				9.8, CvssSeverity.CRITICAL, "javascript:alert(1)");
+		Vulnerability cve = TestVulnerabilities.cve("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
+				"Remote code execution", 9.8, CvssSeverity.CRITICAL, "javascript:alert(1)");
 		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
 
 		String html = renderer("7.5.1.RELEASE").render(Releases.LETTUCE_CORE.toArtifactId(), false);
@@ -141,7 +143,7 @@ class DependencyDocumentationRendererTests {
 	@Test
 	void shouldRenderSecurityAdvisoryCodeFences() {
 
-		Vulnerability cve = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
+		Vulnerability cve = TestVulnerabilities.cve("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
 				"Remote `foo` execution in `bar`", 9.8, CvssSeverity.CRITICAL,
 				"https://example.com/advisory");
 		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
@@ -154,7 +156,7 @@ class DependencyDocumentationRendererTests {
 	@Test
 	void shouldEscapeUnbalancedSecurityAdvisoryCodeFences() {
 
-		Vulnerability cve = new Vulnerability("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
+		Vulnerability cve = TestVulnerabilities.cve("GHSA-abcd", "CVE-2026-1", "GHSA-abcd",
 				"Remote `foo execution", 9.8, CvssSeverity.CRITICAL,
 				"https://example.com/advisory");
 		cache.addVulnerabilities(Releases.LETTUCE_CORE, "7.5.1.RELEASE", cve);
@@ -359,14 +361,14 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private DependencyDocumentationRenderer renderer(@Nullable String currentVersion, boolean linkable) {
-		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, cache,
-				DependencyRuleEvaluator.absent(),
-				currentVersion != null ? ArtifactVersion.of(currentVersion) : null, linkable);
+		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache), cache,
+				DependencyRuleEvaluator.absent(), currentVersion != null ? ArtifactVersion.of(currentVersion) : null,
+				linkable);
 	}
 
 	private DependencyDocumentationRenderer renderer(String currentVersion, DependencyRuleEvaluator evaluator) {
-		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, cache, evaluator,
-				ArtifactVersion.of(currentVersion), false);
+		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache), cache,
+				evaluator, ArtifactVersion.of(currentVersion), false);
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {

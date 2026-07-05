@@ -190,7 +190,7 @@ class GroovyArtifactReferenceLocator {
 			return ArtifactReference.unresolved();
 		}
 
-		GradleDependency dependency = GradleDependency.parse(text, DeclarationSource.managed(), propertyResolver);
+		GradleDependency dependency = GradleDependency.parse(text, DeclarationSource.bom(), propertyResolver);
 		if (dependency == null) {
 			return ArtifactReference.unresolved();
 		}

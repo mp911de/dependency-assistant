@@ -33,7 +33,6 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
@@ -102,12 +101,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * Add release completions for the artifact resolved at the current completion
 	 * position.
 	 *
-	 * @param parameters the IntelliJ completion parameters; must not be
-	 * {@literal null}.
-	 * @param context the processing context supplied by IntelliJ; must not be
-	 * {@literal null}.
-	 * @param result the result set to receive release lookup elements; must not be
-	 * {@literal null}.
+	 * @param parameters the IntelliJ completion parameters .
+	 * @param context the processing context supplied by IntelliJ .
+	 * @param result the result set to receive release lookup elements .
 	 */
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
@@ -127,7 +123,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		RefStyle refStyle = getRefStyle(position, metadata);
 		Project project = parameters.getPosition().getProject();
-		Cache cache = StateService.getInstance(project).getCache();
+		StateService stateService = StateService.getInstance(project);
+		Cache cache = stateService.getCache();
 		ArtifactId artifactId = metadata.artifactReference().getArtifactId();
 		Releases history = cache.getReleases(artifactId);
 
@@ -149,9 +146,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		CompletionResultSet versionsResult = prefixed.withRelevanceSorter(releaseOrderSorter(proposals));
 		versionsResult.restartCompletionWhenNothingMatches();
 
-		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = cache.getVulnerabilities(artifactId);
+
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.currentVersion(), rule,
-				key -> vulnerabilities.getOrDefault(key, Vulnerabilities.absent()));
+				version -> stateService.getVulnerabilities(artifactId, version));
 
 		for (ArtifactRelease release : proposals) {
 			renderer.withVersion(release);

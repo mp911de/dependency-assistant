@@ -21,6 +21,7 @@ import java.util.Arrays;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -59,6 +60,7 @@ class ArchitectureTests {
 	private SliceAssignment CLASSES_AND_HIERARCHIES = SliceRules.classes(
 			it -> {
 				it.withClosedHierarchy(ArtifactVersion.class)
+						.withClosedHierarchy(BillOfMaterials.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
 						.withStrictClosedHierarchy(VulnerabilityRepository.class)
@@ -142,7 +144,7 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule gradle = packageDependencies("gradle",
-			"biz.paluch.dap", "artifact", "assistant.completion", "assistant.editor", "state",
+			"biz.paluch.dap", "artifact", "assistant.completion", "assistant.editor", "maven", "state",
 			"lookup", "support", "util");
 
 	@ArchTest

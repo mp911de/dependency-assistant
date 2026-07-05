@@ -30,6 +30,7 @@ import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.openapi.util.TextRange;
@@ -47,12 +48,12 @@ import org.springframework.util.Assert;
 public class ArtifactReferenceContext {
 
 	private static final ArtifactReferenceContext ABSENT = new ArtifactReferenceContext(
-			ProjectDependencyContext.absent(), new Cache(), ArtifactReference.unresolved(),
+			ProjectDependencyContext.absent(), new StateService(), ArtifactReference.unresolved(),
 			DependencyRuleEvaluator.absent());
 
 	private final ProjectDependencyContext dependencyContext;
 
-	private final Cache cache;
+	private final StateService stateService;
 
 	private final @Nullable ArtifactDeclaration declaration;
 
@@ -62,14 +63,15 @@ public class ArtifactReferenceContext {
 
 	private final Releases releases;
 
-	ArtifactReferenceContext(ProjectDependencyContext dependencyContext, Cache cache,
+	ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,
 			ArtifactReference artifactReference, DependencyRuleEvaluator evaluator) {
 		this.dependencyContext = dependencyContext;
-		this.cache = cache;
+		this.stateService = stateService;
 		this.declaration = artifactReference.isResolved() ? artifactReference.getDeclaration() : null;
 		this.artifactReference = artifactReference;
 		this.evaluator = evaluator;
-		this.releases = artifactReference.isResolved() ? cache.getReleases(artifactReference.getArtifactId())
+		this.releases = artifactReference.isResolved()
+				? stateService.getCache().getReleases(artifactReference.getArtifactId())
 				: Releases.empty();
 	}
 
@@ -119,8 +121,8 @@ public class ArtifactReferenceContext {
 				context.getProjectVersion());
 		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.evaluate(ruleService, resolutionContext,
 				artifactReference.getDeclaration().getVersion());
-
-		return new ArtifactReferenceContext(context, lookup.getCache(), artifactReference, evaluator);
+		StateService stateService = lookup.getStateService();
+		return new ArtifactReferenceContext(context, stateService, artifactReference, evaluator);
 	}
 
 	/**
@@ -166,7 +168,18 @@ public class ArtifactReferenceContext {
 	 * @return the backing cache.
 	 */
 	public Cache getCache() {
-		return cache;
+		return stateService.getCache();
+	}
+
+	/**
+	 * Return the {@link StateService} backing this context. The service also serves
+	 * as the advisory lookup, aggregating BOM member advisories on top of the raw
+	 * cache state.
+	 *
+	 * @return the backing state service.
+	 */
+	public StateService getStateService() {
+		return stateService;
 	}
 
 	/**
@@ -200,7 +213,7 @@ public class ArtifactReferenceContext {
 		if (!artifactReference.isResolved()) {
 			return Vulnerabilities.absent();
 		}
-		return cache.getVulnerabilities(artifactReference.getArtifactId(), artifactVersion);
+		return stateService.getVulnerabilities(artifactReference.getArtifactId(), artifactVersion);
 	}
 
 	/**

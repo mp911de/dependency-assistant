@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,7 +97,7 @@ class DependencyUpgradeContext {
 	 */
 	public static DependencyUpgradeContext of(ArtifactReferenceContext reference) {
 
-		UpgradeSuggestions suggestions = new UpgradeSuggestionsFactory(reference.getCache())
+		UpgradeSuggestions suggestions = new UpgradeSuggestionsFactory(reference.getStateService())
 				.createSuggestions(reference.getArtifactReference(), reference.getEvaluator());
 		return new DependencyUpgradeContext(reference, suggestions);
 	}

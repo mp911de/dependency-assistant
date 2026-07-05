@@ -26,25 +26,38 @@ import java.util.function.Predicate;
  * with the sources that can provide its versions.
  *
  * @author Mark Paluch
- * @param artifactId the artifact whose releases should be resolved.
+ * @param pkg the package identity whose releases should be resolved.
  * @param sources the release sources that can provide versions for the
  * artifact.
  * @see ReleaseSource
  */
-public record ReleaseSources(ArtifactId artifactId, PackageSystem packageSystem, Collection<ReleaseSource> sources) {
+public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sources) {
+
+	/**
+	 * Return the artifact coordinates of {@link #pkg()}.
+	 */
+	public ArtifactId artifactId() {
+		return pkg.getArtifactId();
+	}
+
+	/**
+	 * Return the package ecosystem of {@link #pkg()}.
+	 */
+	public PackageSystem packageSystem() {
+		return pkg.getPackageSystem();
+	}
 
 	/**
 	 * Retain only the sources accepted by the given predicate. If the predicate
 	 * would reject every source, the original sources are kept so the artifact is
 	 * still queried rather than starved.
-	 * @param predicate the predicate selecting the sources to query; must not be
-	 * {@literal null}.
+	 * @param predicate the predicate selecting the sources to query .
 	 * @return release sources narrowed to the accepted sources, or {@code this}
 	 * when none would remain.
 	 */
 	public ReleaseSources filter(Predicate<ReleaseSource> predicate) {
 		List<ReleaseSource> filtered = sources.stream().filter(predicate).toList();
-		return filtered.isEmpty() ? this : new ReleaseSources(artifactId, packageSystem, filtered);
+		return filtered.isEmpty() ? this : new ReleaseSources(pkg, filtered);
 	}
 
 	/**

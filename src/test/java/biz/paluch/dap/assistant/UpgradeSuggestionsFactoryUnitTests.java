@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,14 +23,13 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.Generations;
-import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
@@ -53,8 +52,9 @@ class UpgradeSuggestionsFactoryUnitTests {
 
 		Dependency dependency = dependency("1.0.0");
 		Releases releases = TestReleases.from("1.0.0", "1.0.1", "1.0.2", "1.1.0");
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"), vulnerable(),
-				version("1.0.1"), vulnerable(), version("1.0.2"), Vulnerabilities.clean()));
+		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
+				TestVulnerabilities.HIGH, version("1.0.1"), TestVulnerabilities.HIGH, version("1.0.2"),
+				Vulnerabilities.clean()));
 
 		UpgradeSuggestions suggestions = factory().createSuggestions(dependency, releases, vulnerabilities,
 				DependencyRule.absent());
@@ -81,8 +81,8 @@ class UpgradeSuggestionsFactoryUnitTests {
 
 		Dependency dependency = dependency("1.0.0");
 		Releases releases = TestReleases.from("1.0.0", "1.0.1", "1.1.0");
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"), vulnerable(),
-				version("1.0.1"), Vulnerabilities.clean()));
+		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
+				TestVulnerabilities.HIGH, version("1.0.1"), Vulnerabilities.clean()));
 
 		UpgradeSuggestions suggestions = factory().createSuggestions(dependency, releases, vulnerabilities,
 				new PatchOnlyRule());
@@ -105,7 +105,7 @@ class UpgradeSuggestionsFactoryUnitTests {
 	}
 
 	private static UpgradeSuggestionsFactory factory() {
-		return new UpgradeSuggestionsFactory(new Cache());
+		return new UpgradeSuggestionsFactory(new StateService());
 	}
 
 	private static Dependency dependency(String version) {
@@ -114,11 +114,6 @@ class UpgradeSuggestionsFactoryUnitTests {
 
 	private static ArtifactVersion version(String version) {
 		return ArtifactVersion.of(version);
-	}
-
-	private static Vulnerabilities vulnerable() {
-		return Vulnerabilities.of(new Vulnerability("GHSA-x", "CVE-2026-1", "GHSA-x", "Boom", 8.1,
-				CvssSeverity.HIGH, "https://example.com"));
 	}
 
 	private static class PatchOnlyRule implements DependencyRule {

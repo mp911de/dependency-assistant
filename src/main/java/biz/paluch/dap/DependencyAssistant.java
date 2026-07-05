@@ -16,10 +16,12 @@
 
 package biz.paluch.dap;
 
+import java.util.Collection;
 import java.util.List;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.ReleaseSource;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
@@ -122,6 +124,26 @@ public interface DependencyAssistant {
 	 */
 	default void collect(PsiFile anchor, DependencyCollector collector, IntrospectedDependencies introspected) {
 		collect(anchor, collector);
+	}
+
+	/**
+	 * Collect the given anchor file into a fresh, completed
+	 * {@link DependencyCollector}: run a single-file introspection, collect, attach
+	 * the given release sources, and complete the introspection.
+	 * <p>This is the single-file counterpart of the indexer's collect-complete
+	 * flow, used by file-scoped contexts that scan one build file on demand.
+	 * @param anchor the anchor file to collect for.
+	 * @param releaseSources the release sources to attach to the collector.
+	 * @return the completed collector; guaranteed to be not {@literal null}.
+	 */
+	default DependencyCollector collectCompleted(PsiFile anchor, Collection<? extends ReleaseSource> releaseSources) {
+
+		IntrospectedDependencies introspected = introspect(anchor.getProject());
+		DependencyCollector collector = new DependencyCollector();
+		collect(anchor, collector, introspected);
+		collector.addAllReleaseSources(releaseSources);
+		introspected.complete(collector);
+		return collector;
 	}
 
 	/**

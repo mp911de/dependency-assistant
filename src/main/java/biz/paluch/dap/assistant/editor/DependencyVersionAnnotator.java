@@ -146,5 +146,4 @@ public class DependencyVersionAnnotator implements Annotator {
 		builder.create();
 	}
 
-
 }

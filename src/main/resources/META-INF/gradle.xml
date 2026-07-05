@@ -1,7 +1,13 @@
 <idea-plugin>
+	<projectListeners>
+		<listener class="biz.paluch.dap.gradle.GradleDataImportListener"
+		          topic="com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener"/>
+	</projectListeners>
+
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.gradle.GradleAssistant"/>
 		<assistant implementation="biz.paluch.dap.gradle.wrapper.GradleWrapperAssistant"/>
+		<bomLocator implementation="biz.paluch.dap.gradle.GradleBomLocator"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">

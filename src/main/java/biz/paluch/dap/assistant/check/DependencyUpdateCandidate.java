@@ -30,7 +30,6 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.DependencyUpgradeSubject;
 import biz.paluch.dap.upgrade.UpgradeSuggestion;
@@ -76,11 +75,7 @@ public class DependencyUpdateCandidate implements HasArtifactId {
 	 * Create an update candidate from the given subject, computing its targets.
 	 */
 	public DependencyUpdateCandidate(DependencyUpgradeSubject subject) {
-		this(subject, suggestions(subject));
-	}
-
-	private static UpgradeSuggestions suggestions(DependencyUpgradeSubject subject) {
-		return new UpgradeSuggestionsFactory(new Cache()).createSuggestions(subject);
+		this(subject, UpgradeSuggestionsFactory.createSuggestions(subject));
 	}
 
 	/**

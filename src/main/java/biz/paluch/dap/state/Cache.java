@@ -30,14 +30,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.GitArtifactId;
-import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.ReleaseSources;
-import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.checker.Vulnerabilities;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
@@ -232,6 +225,62 @@ public class Cache {
 		}
 	}
 
+	public void putBillOfMaterials(DependencyCollector collector) {
+
+		collector.getUsages().forEach(it -> {
+
+			DeclarationSource.Bom bom = it.getDeclarationSource(DeclarationSource.Bom.class);
+
+			if (bom == null) {
+				return;
+			}
+
+			Map<ArtifactId, ArtifactVersion> members = bom.getArtifacts();
+			if (members.isEmpty()) {
+				return;
+			}
+			BillOfMaterials billOfMaterials = BillOfMaterials.of(it.getArtifactId(),
+					it.getCurrentVersion(), members);
+			putBillOfMaterials(billOfMaterials);
+		});
+	}
+
+	public void putBillOfMaterials(BillOfMaterials bom) {
+
+		ArtifactId artifactId = bom.getArtifactId();
+		synchronized (artifacts) {
+			CachedArtifact artifactToUse = findCachedArtifact(artifactId);
+			if (artifactToUse == null) {
+				artifactToUse = new CachedArtifact(artifactId);
+				artifacts.add(artifactToUse);
+			}
+			artifactToUse.setBillOfMaterials(bom);
+		}
+	}
+
+	/**
+	 * Return the cached Bill of Materials for the given BOM coordinates and
+	 * version.
+	 * <p>Released BOM contents are immutable, so entries never expire by age; the
+	 * containing artifact's last-seen eviction bounds their lifetime.
+	 *
+	 * @param artifactId the BOM artifact coordinates.
+	 * @param version the BOM version.
+	 * @return the Bill of Materials, or {@literal null} if no membership is cached
+	 * for the version.
+	 */
+	@Transient
+	public @Nullable BillOfMaterials getBillOfMaterials(ArtifactId artifactId, ArtifactVersion version) {
+
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
+		if (cachedArtifact == null) {
+			return null;
+		}
+
+		CachedBom membership = cachedArtifact.getBomMembership(version.toString());
+		return membership != null ? BillOfMaterials.of(artifactId, version, membership.toMembers()) : null;
+	}
+
 	/**
 	 * Update the cached releases using the given {@link FetchedReleases}, notifying
 	 * {@code onNewRelease} for each release added that was not previously cached.
@@ -239,8 +288,7 @@ public class Cache {
 	 * @param releases the fetched releases.
 	 * @param packageSystem the ecosystem the fetched artifact belongs to; stored on
 	 * a freshly created entry.
-	 * @param onNewRelease invoked once per newly cached release; must not be
-	 * {@literal null}.
+	 * @param onNewRelease invoked once per newly cached release .
 	 */
 	public void updateVersionOptions(FetchedReleases releases, PackageSystem packageSystem,
 			BiConsumer<Release, CachedRelease> onNewRelease) {
@@ -403,7 +451,7 @@ public class Cache {
 	 *
 	 * @param artifactId the artifact to look up.
 	 * @param version the exact version whose scan is requested.
-	 * @return the vulnerability scan; never {@literal null}.
+	 * @return the vulnerability scan.
 	 */
 	@Transient
 	public Vulnerabilities getVulnerabilities(ArtifactId artifactId, ArtifactVersion version) {
@@ -415,6 +463,7 @@ public class Cache {
 		if (cachedRelease == null) {
 			return Vulnerabilities.absent();
 		}
+
 		return cachedRelease.toVulnerabilities();
 	}
 
@@ -472,22 +521,6 @@ public class Cache {
 	}
 
 	/**
-	 * Return whether the bulk scan should re-query the given version, per the
-	 * {@link VulnerabilityScannerPolicy} scan-state and re-scan interval rules.
-	 *
-	 * @param artifact the artifact.
-	 * @param version the exact version.
-	 * @return {@literal true} if the version needs a scan; {@literal false}
-	 * otherwise.
-	 */
-	public boolean needsScan(@Nullable CachedArtifact artifact, ArtifactVersion version) {
-		if (artifact == null) {
-			return true;
-		}
-		return new VulnerabilityScannerPolicy(clock).scanRequired(artifact.getCachedRelease(version));
-	}
-
-	/**
 	 * Find a cached artifact.
 	 * @param artifactId the artifact to look up.
 	 * @return the cached artifact or {@literal null} if none found.
@@ -541,7 +574,7 @@ public class Cache {
 	 */
 	public FetchPlan createFetchPlan(ReleaseSources sources) {
 
-		CachedArtifact cached = findCachedArtifact(sources.artifactId());
+		CachedArtifact cached = findCachedArtifact(sources.pkg());
 
 		if (cached == null) {
 			return FetchPlan.fullFetch();
@@ -579,13 +612,21 @@ public class Cache {
 
 	/**
 	 * Return whether this cache contains any cached release entries.
+	 * <p>Artifact entries carrying only Bill of Materials membership do not count;
+	 * the release store is considered empty until a release fetch produced results.
 	 *
-	 * @return {@literal true} if at least one artifact entry is present.
+	 * @return {@literal true} if at least one artifact entry has cached releases.
 	 */
 	public boolean hasReleases() {
+
 		synchronized (artifacts) {
-			return !artifacts.isEmpty();
+			for (CachedArtifact artifact : artifacts) {
+				if (artifact.hasReleases()) {
+					return true;
+				}
+			}
 		}
+		return false;
 	}
 
 	/**

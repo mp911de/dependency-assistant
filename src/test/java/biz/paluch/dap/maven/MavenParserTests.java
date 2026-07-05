@@ -96,8 +96,6 @@ class MavenParserTests {
 							<groupId>org.springframework.boot</groupId>
 							<artifactId>spring-boot-dependencies</artifactId>
 							<version>3.5.0</version>
-							<type>pom</type>
-							<scope>import</scope>
 						</dependency>
 					</dependencies>
 				</dependencyManagement>
@@ -111,6 +109,98 @@ class MavenParserTests {
 				.hasDependencyUsage("spring-boot-dependencies")
 				.hasVersion("3.5.0")
 				.hasDeclaration(DeclarationSource.managed());
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencyManagement>
+					<dependencies>
+						<dependency>
+							<groupId>org.springframework.boot</groupId>
+							<artifactId>spring-boot-dependencies</artifactId>
+							<version>3.5.0</version>
+							<type>pom</type>
+							<scope>import</scope>
+						</dependency>
+					</dependencies>
+				</dependencyManagement>
+			</project>
+			""")
+	void bomImportRegistersBomDeclaration(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyDeclaration("org.springframework.boot", "spring-boot-dependencies")
+				.hasDeclaration(DeclarationSource.Bom.class)
+				.hasDeclaration(DeclarationSource.Managed.class);
+		assertThat(collector)
+				.hasDependencyUsage("spring-boot-dependencies")
+				.hasVersion("3.5.0")
+				.hasDeclaration(DeclarationSource.Bom.class);
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<profiles>
+					<profile>
+						<id>foo</id>
+						<dependencyManagement>
+							<dependencies>
+								<dependency>
+									<groupId>org.springframework.boot</groupId>
+									<artifactId>spring-boot-dependencies</artifactId>
+									<version>3.5.0</version>
+									<type>pom</type>
+									<scope>import</scope>
+								</dependency>
+							</dependencies>
+						</dependencyManagement>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void profileBomImportRegistersProfileBomDeclaration(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyDeclaration("org.springframework.boot", "spring-boot-dependencies")
+				.hasDeclaration(DeclarationSource.profileBom("foo"))
+				.hasDeclaration(DeclarationSource.Bom.class)
+				.hasDeclaration(DeclarationSource.Managed.class);
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.springframework</groupId>
+						<artifactId>spring-core</artifactId>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void versionlessDependencyRegistersDeclaration(XmlFile file) {
+
+		DependencyCollector collector = MavenFixtures.analyze(file);
+
+		assertThat(collector)
+				.hasDependencyDeclaration("org.springframework", "spring-core")
+				.hasDeclaration(DeclarationSource.dependency());
+		assertThat(collector).hasUsageCount(0);
 	}
 
 	@Test
@@ -180,9 +270,9 @@ class MavenParserTests {
 	void multiModuleChildAddsDependenciesAlongsideParent(XmlFile parent, XmlFile child) {
 
 		DependencyCollector collector = new DependencyCollector();
-		MavenParser parser = new MavenParser(collector);
-		parser.parsePomFile(new Cache(), parent);
-		parser.parsePomFile(new Cache(), child);
+		MavenParser parser = new MavenParser(collector, new Cache());
+		parser.parsePomFile(parent);
+		parser.parsePomFile(child);
 
 		assertThat(collector).hasDependencyUsage("assertj-core");
 		assertThat(collector).hasDependencyUsage("commons-lang3");
@@ -203,8 +293,8 @@ class MavenParserTests {
 	void parsesParentAsDependency(XmlFile pomFile) {
 
 		DependencyCollector collector = new DependencyCollector();
-		MavenParser parser = new MavenParser(collector);
-		parser.parsePomFile(new Cache(), pomFile);
+		MavenParser parser = new MavenParser(collector, new Cache());
+		parser.parsePomFile(pomFile);
 
 		assertThat(collector)
 				.hasDependencyUsage("junit-jupiter")
@@ -619,13 +709,13 @@ class MavenParserTests {
 
 		Cache cache = new Cache();
 		DependencyCollector propertyCollector = new DependencyCollector();
-		MavenParser parser = new MavenParser(propertyCollector);
-		parser.parsePomFile(cache, child);
+		MavenParser parser = new MavenParser(propertyCollector, cache);
+		parser.parsePomFile(child);
 		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector, 0);
 
 		DependencyCollector collector = new DependencyCollector();
-		parser = new MavenParser(collector);
-		parser.parsePomFile(cache, parent);
+		parser = new MavenParser(collector, cache);
+		parser.parsePomFile(parent);
 
 		assertThat(collector)
 				.hasDependencyUsage("junit-jupiter")

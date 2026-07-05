@@ -72,6 +72,22 @@ public class DeclaredDependency implements HasArtifactId {
 	}
 
 	/**
+	 * Return the first declaration source that is an instance of the given type.
+	 * Accepts concrete source types and marker interfaces such as
+	 * {@link DeclarationSource.Bom}.
+	 * @param declarationSource the declaration source type or marker to look up.
+	 * @return the first matching declaration source; may be {@literal null}.
+	 */
+	public <T> @Nullable T getDeclarationSource(Class<T> declarationSource) {
+		for (DeclarationSource source : declarationSources) {
+			if (declarationSource.isInstance(source)) {
+				return declarationSource.cast(source);
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Add a version source to this dependency.
 	 * @param versionSource the version source to add.
 	 * @return this instance for method chaining.

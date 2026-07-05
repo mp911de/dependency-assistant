@@ -84,10 +84,8 @@ public class ReleaseResolver {
 	/**
 	 * Create a resolver fetching through the given executor, honoring the given
 	 * progress indicator for cancellation, and backed by the given cache.
-	 * @param executor the executor used to query sources in parallel; must not be
-	 * {@literal null}.
-	 * @param indicator the progress indicator used for cancellation; must not be
-	 * {@literal null}.
+	 * @param executor the executor used to query sources in parallel .
+	 * @param indicator the progress indicator used for cancellation .
 	 * @param cache the release cache consulted and updated by the resolver; must
 	 * not be {@literal null}.
 	 */
@@ -125,10 +123,8 @@ public class ReleaseResolver {
 	 * returned {@link ReleaseLookupResult}; {@link ProcessCanceledException}
 	 * propagates.
 	 *
-	 * @param sources the artifact and its candidate release sources; must not be
-	 * {@literal null}.
-	 * @param consistency the release-cache consistency to use; must not be
-	 * {@literal null}.
+	 * @param sources the artifact and its candidate release sources .
+	 * @param consistency the release-cache consistency to use .
 	 * @return the lookup result, carrying the resolved releases or a failure
 	 * message.
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package biz.paluch.dap.checker;
 
 import java.util.List;
 
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -28,10 +29,6 @@ import static org.assertj.core.api.Assertions.*;
  * @author Mark Paluch
  */
 class VulnerabilitiesUnitTests {
-
-	private static final Vulnerability CVE = new Vulnerability("GHSA-xxxx", "CVE-2026-1", "GHSA-xxxx",
-			"Remote code execution",
-			9.8, CvssSeverity.CRITICAL, "https://example.com/advisory");
 
 	@Test
 	void absentIsNeitherCleanNorVulnerable() {
@@ -57,12 +54,12 @@ class VulnerabilitiesUnitTests {
 	@Test
 	void vulnerableExposesTheVulnerabilities() {
 
-		Vulnerabilities vulnerable = Vulnerabilities.of(List.of(CVE));
+		Vulnerabilities vulnerable = Vulnerabilities.of(List.of(TestVulnerabilities.CRITICAL_VULNERABILITY));
 
 		assertThat(vulnerable.isUnknown()).isFalse();
 		assertThat(vulnerable.isClean()).isFalse();
 		assertThat(vulnerable.isVulnerable()).isTrue();
-		assertThat(vulnerable).containsExactly(CVE);
+		assertThat(vulnerable).containsExactly(TestVulnerabilities.CRITICAL_VULNERABILITY);
 	}
 
 	@Test
@@ -73,16 +70,7 @@ class VulnerabilitiesUnitTests {
 	@Test
 	void highestSeverityPicksMostSevereAdvisory() {
 
-		Vulnerabilities vulnerable = Vulnerabilities.of(List.of(cve(CvssSeverity.LOW), cve(CvssSeverity.HIGH),
-				cve(CvssSeverity.MEDIUM)));
-
-		assertThat(vulnerable.getHighestSeverity()).isEqualTo(CvssSeverity.HIGH);
-	}
-
-	@Test
-	void highestSeverityRanksCriticalAboveHigh() {
-
-		Vulnerabilities vulnerable = Vulnerabilities.of(List.of(cve(CvssSeverity.HIGH), cve(CvssSeverity.CRITICAL)));
+		Vulnerabilities vulnerable = TestVulnerabilities.CRITICAL_HIGH_LOW;
 
 		assertThat(vulnerable.getHighestSeverity()).isEqualTo(CvssSeverity.CRITICAL);
 	}
@@ -90,7 +78,7 @@ class VulnerabilitiesUnitTests {
 	@Test
 	void highestSeverityFallsBackToUnknownForUnratedAdvisory() {
 
-		Vulnerabilities vulnerable = Vulnerabilities.of(List.of(cve(CvssSeverity.UNKNOWN)));
+		Vulnerabilities vulnerable = TestVulnerabilities.UNKNOWN;
 
 		assertThat(vulnerable.getHighestSeverity()).isEqualTo(CvssSeverity.UNKNOWN);
 	}
@@ -103,11 +91,6 @@ class VulnerabilitiesUnitTests {
 	@Test
 	void highestSeverityThrowsWhenAbsent() {
 		assertThatIllegalStateException().isThrownBy(() -> Vulnerabilities.absent().getHighestSeverity());
-	}
-
-	private static Vulnerability cve(CvssSeverity severity) {
-		return new Vulnerability("GHSA-" + severity, "CVE-2026-1", "GHSA-" + severity, "Boom", 5.0, severity,
-				"https://example.com");
 	}
 
 }

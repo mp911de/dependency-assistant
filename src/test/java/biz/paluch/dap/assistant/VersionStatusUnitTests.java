@@ -26,12 +26,11 @@ import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.ShieldStyle;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.Vulnerability;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.Generations;
 import biz.paluch.dap.support.UpgradeStrategy;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -50,12 +49,12 @@ class VersionStatusUnitTests {
 	@Test
 	void vulnerableCandidateUsesRequestedShieldStyle() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(cve(CvssSeverity.HIGH)));
+		VersionStatus status = status(PATCH, TestVulnerabilities.HIGH);
 
 		assertThat(status.isVulnerable()).isTrue();
 		assertThat(status.getVersionAge()).isEqualTo(VersionAge.NEWER_PATCH);
 		assertThat(status.getIcon(ShieldStyle.FILLED)).isSameAs(CheckerIcons.HIGH);
-		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-1");
+		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-2026-2");
 	}
 
 	@Test
@@ -102,39 +101,33 @@ class VersionStatusUnitTests {
 	@Test
 	void tailLabelHeadsWithHighestSeverityAdvisory() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(cve("CVE-LOW", "GHSA-LOW", CvssSeverity.LOW),
-				cve("CVE-CRIT", "GHSA-CRIT", CvssSeverity.CRITICAL)));
+		Vulnerabilities LOW_AND_CRITICAL = Vulnerabilities.of(TestVulnerabilities.LOW_VULNERABILITY,
+				TestVulnerabilities.CRITICAL_VULNERABILITY);
+		VersionStatus status = status(PATCH, LOW_AND_CRITICAL);
 
-		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-CRIT + 1");
+		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-2026-1 + 1");
 	}
 
 	@Test
 	void tailLabelSuffixesRemainingAdvisoryCount() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(cve("CVE-A", "GHSA-A", CvssSeverity.CRITICAL),
-				cve("CVE-B", "GHSA-B", CvssSeverity.HIGH), cve("CVE-C", "GHSA-C", CvssSeverity.LOW)));
+		VersionStatus status = status(PATCH, TestVulnerabilities.CRITICAL_HIGH_LOW);
 
-		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-A + 2");
+		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-2026-1 + 2");
 	}
 
 	@Test
 	void tailLabelFallsBackToGhsaIdWhenNoCveId() {
 
-		VersionStatus status = status(PATCH, Vulnerabilities.of(cve(null, "GHSA-xyz", CvssSeverity.HIGH)));
+		VersionStatus status = status(PATCH,
+				Vulnerabilities.of(TestVulnerabilities.create("ADV-GHSA-xyz", null, "GHSA-xyz",
+						CvssSeverity.HIGH)));
 
 		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("GHSA-xyz");
 	}
 
 	private static VersionStatus status(ArtifactVersion candidate, Vulnerabilities vulnerabilities) {
 		return VersionStatus.of(DependencyRuleEvaluator.absent(), CURRENT, candidate, vulnerabilities);
-	}
-
-	private static Vulnerability cve(CvssSeverity severity) {
-		return new Vulnerability("ADV-1", "CVE-1", "GHSA-1", "title", 9.0, severity, "https://example.com");
-	}
-
-	private static Vulnerability cve(@Nullable String cveId, String ghsaId, CvssSeverity severity) {
-		return new Vulnerability("ADV-" + ghsaId, cveId, ghsaId, "title", 9.0, severity, "https://example.com");
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {

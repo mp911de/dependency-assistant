@@ -23,11 +23,14 @@ import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.KtElement;
 import org.jetbrains.kotlin.psi.KtLiteralStringTemplateEntry;
 import org.jetbrains.kotlin.psi.KtStringTemplateExpression;
+import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.literals.GrLiteral;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -91,6 +94,21 @@ class GradleArtifactReferenceLocatorTests {
 	}
 
 	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform 'org.springframework.boot:spring-boot-dependencies:3.3.2'
+			}
+			""")
+	void resolvesGroovyCommandPlatformAsBom(PsiFile file) {
+
+		ArtifactDeclaration declaration = locateGroovyCommandPlatform(file).getDeclaration();
+
+		assertThat(declaration.getArtifactId())
+				.isEqualTo(ArtifactId.of("org.springframework.boot", "spring-boot-dependencies"));
+		assertThat(declaration.getDeclarationSource()).isEqualTo(DeclarationSource.bom());
+	}
+
+	@Test
 	@ProjectFile(name = "build.gradle.kts", content = """
 			dependencies {
 			    implementation("org.springframework:spring-core:6.2.0")
@@ -136,6 +154,18 @@ class GradleArtifactReferenceLocatorTests {
 				.orElseThrow(() -> new IllegalStateException("No Groovy literal '" + literalText + "'"));
 
 		return new GroovyArtifactReferenceLocator(GradlePropertyResolver.create(file)).locate(literal);
+	}
+
+	private ArtifactReference locateGroovyCommandPlatform(PsiFile file) {
+
+		for (GrMethodCall call : PsiTreeUtil.findChildrenOfType(file, GrMethodCall.class)) {
+			PsiElement element = GroovyDeclarationStyleDetector.getInstance().findCommandPlatformString(call);
+			if (element instanceof GroovyPsiElement groovyElement) {
+				return new GroovyArtifactReferenceLocator(GradlePropertyResolver.create(file)).locate(groovyElement);
+			}
+		}
+
+		throw new IllegalStateException("No Groovy command platform element");
 	}
 
 	private ArtifactReference locateKotlinLiteral(PsiFile file, String literalText) {

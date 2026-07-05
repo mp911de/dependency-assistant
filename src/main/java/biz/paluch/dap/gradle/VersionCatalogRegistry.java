@@ -77,7 +77,7 @@ class VersionCatalogRegistry {
 	 *
 	 * @param file the Gradle build or settings file to anchor the registry at; must
 	 * not be {@literal null}.
-	 * @return the version-catalog registry for the file, never {@literal null}.
+	 * @return the version-catalog registry for the file.
 	 */
 	public static VersionCatalogRegistry from(PsiFile file) {
 

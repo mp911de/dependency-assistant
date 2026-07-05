@@ -17,6 +17,7 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -35,42 +36,6 @@ import org.jspecify.annotations.Nullable;
  * @see DeclaredDependency
  */
 public abstract class DeclarationSource {
-
-	/**
-	 * Marker interface for a build plugin declaration (e.g. Maven
-	 * {@code <build><plugins>} or Gradle {@code plugins {}}).
-	 */
-	public interface Plugin {
-
-	}
-
-	/**
-	 * Marker interface for a library dependency declaration (e.g. Maven
-	 * {@code <dependencies>} or a Gradle dependency configuration).
-	 */
-	public interface Dependency {
-
-	}
-
-	/**
-	 * Marker interface for a version-constraint entry in a management section
-	 * rather than an active dependency or plugin use.
-	 */
-	public interface Managed {
-
-	}
-
-	/**
-	 * Marker interface for a declaration scoped to a named Maven profile.
-	 */
-	public interface Profile {
-
-		/**
-		 * Return the identifier of the Maven profile that contains this declaration.
-		 */
-		String getProfileId();
-
-	}
 
 	/**
 	 * Return the source for a direct library dependency
@@ -104,6 +69,40 @@ public abstract class DeclarationSource {
 	 */
 	public static DeclarationSource profileManaged(String id) {
 		return new ProfileDependencyManagement(id);
+	}
+
+	/**
+	 * Return the source for a Bill of Materials import
+	 * ({@code project/dependencyManagement} with {@code scope=import} and
+	 * {@code type=pom}, or a Gradle platform dependency).
+	 */
+	public static DeclarationSource bom() {
+		return BomImport.INSTANCE;
+	}
+
+	/**
+	 * Return the source for a Bill of Materials or a Gradle platform dependency.
+	 */
+	public static DeclarationSource bom(Map<ArtifactId, ArtifactVersion> artifacts) {
+		return new BomImport(artifacts);
+	}
+
+	/**
+	 * Return the source for a Bill of Materials import within the named Maven
+	 * profile.
+	 * @param id the profile identifier.
+	 */
+	public static DeclarationSource profileBom(String id) {
+		return new ProfileBomImport(id, Map.of());
+	}
+
+	/**
+	 * Return the source for a Bill of Materials import within the named Maven
+	 * profile.
+	 * @param id the profile identifier.
+	 */
+	public static DeclarationSource profileBom(String id, Map<ArtifactId, ArtifactVersion> artifacts) {
+		return new ProfileBomImport(id, artifacts);
 	}
 
 	/**
@@ -168,6 +167,56 @@ public abstract class DeclarationSource {
 
 	@Override
 	public abstract String toString();
+
+	/**
+	 * Marker interface for a build plugin declaration (e.g. Maven
+	 * {@code <build><plugins>} or Gradle {@code plugins {}}).
+	 */
+	public interface Plugin {
+
+	}
+
+	/**
+	 * Marker interface for a library dependency declaration (e.g. Maven
+	 * {@code <dependencies>} or a Gradle dependency configuration).
+	 */
+	public interface Dependency {
+
+	}
+
+	/**
+	 * Marker interface for a version-constraint entry in a management section
+	 * rather than an active dependency or plugin use.
+	 */
+	public interface Managed {
+
+	}
+
+	/**
+	 * Marker interface for a Bill of Materials import declaration (e.g. Maven
+	 * {@code dependencyManagement} entries with {@code scope=import} and
+	 * {@code type=pom}, or Gradle {@code platform(...)} dependencies).
+	 *
+	 * <p>A BOM source is definitionally a managed dependency source, so every
+	 * {@code instanceof Managed} check keeps matching.
+	 */
+	public interface Bom extends Managed {
+
+		Map<ArtifactId, ArtifactVersion> getArtifacts();
+
+	}
+
+	/**
+	 * Marker interface for a declaration scoped to a named Maven profile.
+	 */
+	public interface Profile {
+
+		/**
+		 * Return the identifier of the Maven profile that contains this declaration.
+		 */
+		String getProfileId();
+
+	}
 
 	/**
 	 * Dependencies under project/dependencies.
@@ -281,6 +330,92 @@ public abstract class DeclarationSource {
 		@Override
 		public String toString() {
 			return "profile:" + profileId + "/DM";
+		}
+
+	}
+
+	/**
+	 * Bill of Materials imports under project/dependencyManagement.
+	 */
+	private static class BomImport extends DeclarationSource implements Dependency, Bom {
+
+		/**
+		 * Shared BOM import source.
+		 */
+		public static final BomImport INSTANCE = new BomImport(Map.of());
+
+		private final Map<ArtifactId, ArtifactVersion> artifacts;
+
+		BomImport(Map<ArtifactId, ArtifactVersion> artifacts) {
+			this.artifacts = artifacts;
+		}
+
+		@Override
+		public Map<ArtifactId, ArtifactVersion> getArtifacts() {
+			return artifacts;
+		}
+
+		@Override
+		public boolean equals(@Nullable Object o) {
+			// identity is the source kind; the member map is metadata, as with
+			// ProfileBomImport
+			return o != null && getClass() == o.getClass();
+		}
+
+		@Override
+		public int hashCode() {
+			return getClass().hashCode();
+		}
+
+		@Override
+		public String toString() {
+			return "BOM";
+		}
+
+	}
+
+	/**
+	 * Bill of Materials imports under a profile's dependencyManagement.
+	 */
+	private static class ProfileBomImport extends DeclarationSource implements Dependency, Profile, Bom {
+
+		private final String profileId;
+
+		private final Map<ArtifactId, ArtifactVersion> artifacts;
+
+		ProfileBomImport(String profileId, Map<ArtifactId, ArtifactVersion> artifacts) {
+			this.profileId = profileId;
+			this.artifacts = artifacts;
+		}
+
+		/**
+		 * Return the Maven profile id.
+		 */
+		public String getProfileId() {
+			return profileId;
+		}
+
+		@Override
+		public Map<ArtifactId, ArtifactVersion> getArtifacts() {
+			return artifacts;
+		}
+
+		@Override
+		public boolean equals(@Nullable Object o) {
+			if (o == null || getClass() != o.getClass())
+				return false;
+			ProfileBomImport that = (ProfileBomImport) o;
+			return Objects.equals(profileId, that.profileId);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hashCode(profileId);
+		}
+
+		@Override
+		public String toString() {
+			return "profile:" + profileId + "/BOM";
 		}
 
 	}

@@ -19,6 +19,7 @@ package biz.paluch.dap.lookup;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
@@ -51,10 +52,8 @@ public class VersionUpgradeLookup {
 	/**
 	 * Create a {@code VersionUpgradeLookup} bound to the given context and
 	 * resolver.
-	 * @param context the shared per-file resolution environment; must not be
-	 * {@literal null}.
-	 * @param resolver the build-tool-specific reference resolver; must not be
-	 * {@literal null}.
+	 * @param context the shared per-file resolution environment .
+	 * @param resolver the build-tool-specific reference resolver .
 	 */
 	public VersionUpgradeLookup(LookupContext context, ArtifactReferenceResolver resolver) {
 		this.context = context;
@@ -66,6 +65,13 @@ public class VersionUpgradeLookup {
 	 */
 	public Cache getCache() {
 		return this.context.cache();
+	}
+
+	/**
+	 * Return the state service backing this lookup.
+	 */
+	public StateService getStateService() {
+		return this.context.service();
 	}
 
 	/**
@@ -81,10 +87,8 @@ public class VersionUpgradeLookup {
 	/**
 	 * Locate every site in this lookup's file that participates in the given
 	 * query's version, for a Dependency Site Find.
-	 * @param query the version this find is centered on; must not be
-	 * {@literal null}.
-	 * @return the hits in this lookup's file, never {@literal null}, possibly
-	 * empty.
+	 * @param query the version this find is centered on .
+	 * @return the hits in this lookup's file, possibly empty.
 	 */
 	public DependencySearchResults search(DependencySiteQuery query) {
 		return resolver.search(query);

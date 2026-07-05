@@ -30,12 +30,14 @@ import static org.assertj.core.api.Assertions.*;
  */
 class ReleaseSourcesUnitTests {
 
-	private static final ArtifactId LETTUCE = ArtifactId.of("io.lettuce", "lettuce-core");
+	private static final ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
+
+	static final PackageIdentity LETTUCE = PackageIdentity.of(LETTUCE_CORE, PackageSystem.MAVEN);
 
 	@Test
 	void exposesSourceIdentifiersInOrder() {
 
-		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+		ReleaseSources sources = new ReleaseSources(LETTUCE,
 				List.of(new TestReleaseSource("central"), new TestReleaseSource("portal")));
 
 		assertThat(sources.sourceIds()).containsExactly("central", "portal");
@@ -44,7 +46,7 @@ class ReleaseSourcesUnitTests {
 	@Test
 	void retainsSourcesAcceptedByPredicate() {
 
-		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+		ReleaseSources sources = new ReleaseSources(LETTUCE,
 				List.of(new TestReleaseSource("central"), new TestReleaseSource("github")));
 
 		assertThat(sources.filter(source -> source.getId().equals("github")).sourceIds()).containsExactly("github");
@@ -53,7 +55,7 @@ class ReleaseSourcesUnitTests {
 	@Test
 	void keepsAllSourcesWhenPredicateRejectsEveryone() {
 
-		ReleaseSources sources = new ReleaseSources(LETTUCE, PackageSystem.MAVEN,
+		ReleaseSources sources = new ReleaseSources(LETTUCE,
 				List.of(new TestReleaseSource("central"), new TestReleaseSource("portal")));
 
 		assertThat(sources.filter(source -> false).sourceIds()).containsExactly("central", "portal");

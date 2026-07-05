@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,19 +45,19 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 
 	private static final Vulnerabilities CLEAN = new Vulnerabilities(List.of());
 
-	private final @Nullable List<Vulnerability> vulnerabilities;
+	private final @Nullable Collection<Vulnerability> vulnerabilities;
 
 	private final @Nullable Vulnerability topVulnerability;
 
-	private Vulnerabilities(@Nullable List<Vulnerability> vulnerabilities) {
+	protected Vulnerabilities(@Nullable Collection<Vulnerability> vulnerabilities) {
 		this.vulnerabilities = vulnerabilities;
 		this.topVulnerability = vulnerabilities == null || vulnerabilities.isEmpty() ? null
 				: findMostSevereVulnerability(vulnerabilities);
 	}
 
-	private static Vulnerability findMostSevereVulnerability(List<Vulnerability> found) {
+	private static Vulnerability findMostSevereVulnerability(Collection<Vulnerability> found) {
 
-		Vulnerability top = found.getFirst();
+		Vulnerability top = found.iterator().next();
 		for (Vulnerability vulnerability : found) {
 			if (vulnerability.getSeverity().rank() > top.getSeverity().rank()) {
 				top = vulnerability;
@@ -88,8 +88,7 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	 * Return the result for a scanned version, deriving clean from an empty list
 	 * and vulnerable otherwise.
 	 *
-	 * @param vulnerabilities the vulnerabilities found, must not be
-	 * {@literal null}.
+	 * @param vulnerabilities the vulnerabilities found.
 	 * @return a clean result when the list is empty, a vulnerable result otherwise.
 	 */
 	public static Vulnerabilities of(Vulnerability... vulnerabilities) {
@@ -100,8 +99,7 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	 * Return the result for a scanned version, deriving clean from an empty list
 	 * and vulnerable otherwise.
 	 *
-	 * @param vulnerabilities the vulnerabilities found, must not be
-	 * {@literal null}.
+	 * @param vulnerabilities the vulnerabilities found.
 	 * @return a clean result when the list is empty, a vulnerable result otherwise.
 	 */
 	public static Vulnerabilities of(Collection<Vulnerability> vulnerabilities) {
@@ -139,11 +137,10 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	/**
 	 * Return the known vulnerabilities.
 	 *
-	 * @return an empty list when clean, the found vulnerabilities when vulnerable;
-	 * never {@literal null}.
+	 * @return an empty list when clean, the found vulnerabilities when vulnerable.
 	 * @throws IllegalStateException if the result is absent.
 	 */
-	public List<Vulnerability> get() {
+	public Collection<Vulnerability> get() {
 		Assert.state(vulnerabilities != null, "No vulnerabilities");
 		return vulnerabilities;
 	}
@@ -154,8 +151,7 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	 * an unrated advisory never outranks a rated one. Surfaces use the result to
 	 * choose the security-shield icon.
 	 *
-	 * @return the highest severity among the known vulnerabilities; never
-	 * {@literal null}.
+	 * @return the highest severity among the known vulnerabilities.
 	 * @throws IllegalStateException if the result is absent or clean.
 	 */
 	public CvssSeverity getHighestSeverity() {

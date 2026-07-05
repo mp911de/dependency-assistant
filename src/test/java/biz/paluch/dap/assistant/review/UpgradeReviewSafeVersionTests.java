@@ -29,13 +29,12 @@ import biz.paluch.dap.assistant.check.DeclarationSite;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
 import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
@@ -71,7 +70,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void safeStrategyShownWhenAnUnfilteredCandidateIsVulnerable() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, vulnerable("6.0.1"), "6.0.0", "6.0.1");
+		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 
 		assertThat(review(List.of(vulnerable)).isSafeStrategyAvailable()).isTrue();
 	}
@@ -79,7 +78,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void safeStrategyShownEvenWhenVulnerableRowIsFilteredOut() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, vulnerable(), "6.0.0");
+		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.setHideUpToDate(true);
@@ -90,7 +89,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void applyStrategyToAllSafeSelectsVulnerableRowsWithSafeVersion() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, vulnerable("6.0.1"), "6.0.0", "6.0.1");
+		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 		UpgradeCandidate clean = candidate(SPRING, CURRENT, VulnerabilityRepository.empty(), "6.0.0", "6.0.1");
 
 		UpgradeReview review = review(List.of(vulnerable, clean));
@@ -103,7 +102,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void applyStrategyToAllSafeSkipsVulnerableRowWithoutSafeVersion() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, vulnerable(), "6.0.0");
+		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
@@ -114,7 +113,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void hideUpToDateKeepsVulnerableRowWithoutRemediationVisible() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, vulnerable(), "6.0.0");
+		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.setHideUpToDate(true);
@@ -136,7 +135,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void hideUpToDatePinsSafeTargetSoSafeStrategyResolves() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, vulnerable("6.0.1"), "6.0.0", "6.0.1");
+		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.setHideUpToDate(true);
@@ -155,10 +154,10 @@ class UpgradeReviewSafeVersionTests {
 	 * Mark the current version vulnerable and each given newer version clean, so a
 	 * Safe Version resolves to the lowest clean newer release.
 	 */
-	private static VulnerabilityRepository vulnerable(String... cleanNewer) {
+	private static VulnerabilityRepository scanResults(String... cleanNewer) {
 
 		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new HashMap<>();
-		vulnerabilities.put(CURRENT, Vulnerabilities.of(cve()));
+		vulnerabilities.put(CURRENT, TestVulnerabilities.CRITICAL);
 		for (String version : cleanNewer) {
 			vulnerabilities.put(ArtifactVersion.of(version), Vulnerabilities.clean());
 		}
@@ -181,11 +180,6 @@ class UpgradeReviewSafeVersionTests {
 	private static DeclarationSite site(ArtifactId artifactId, ArtifactVersion version) {
 		return new DeclarationSite(new MockVirtualFile("review/pom.xml", "// test"), ProjectId.of("com.acme", "app"),
 				new Dependency(artifactId, version));
-	}
-
-	private static Vulnerability cve() {
-		return new Vulnerability("GHSA-x", "CVE-2026-1", "GHSA-x", "Remote code execution", 9.8, CvssSeverity.CRITICAL,
-				"https://example.com/advisory");
 	}
 
 }

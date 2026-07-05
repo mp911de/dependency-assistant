@@ -21,6 +21,7 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.openapi.project.Project;
@@ -562,7 +563,7 @@ class GradleParserTests {
 		assertThat(collector)
 				.hasDependencyUsage("org.junit", "junit-bom")
 				.hasVersion("6.0.0")
-				.hasDeclaration(DeclarationSource.managed())
+				.hasDeclaration(DeclarationSource.bom())
 				.hasPropertyVersion("junit");
 	}
 
@@ -581,7 +582,7 @@ class GradleParserTests {
 		assertThat(collector)
 				.hasDependencyUsage("org.junit", "junit-bom")
 				.hasVersion("6.0.0")
-				.hasDeclaration(DeclarationSource.managed())
+				.hasDeclaration(DeclarationSource.bom())
 				.hasPropertyVersion("junit");
 	}
 
@@ -603,7 +604,7 @@ class GradleParserTests {
 		assertThat(collector)
 				.hasDependencyUsage("org.junit", "junit-bom")
 				.hasVersion("6.0.0")
-				.hasDeclaration(DeclarationSource.managed());
+				.hasDeclaration(DeclarationSource.bom());
 	}
 
 	@Test
@@ -623,7 +624,54 @@ class GradleParserTests {
 		assertThat(collector)
 				.hasDependencyUsage("org.junit", "junit-bom")
 				.hasVersion("6.0.0")
-				.hasDeclaration(DeclarationSource.managed());
+				.hasDeclaration(DeclarationSource.bom());
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform('org.springframework.boot:spring-boot-dependencies:3.3.2')
+			}
+			""")
+	void platformDependencyRegistersBomDeclaration(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyDeclaration("org.springframework.boot", "spring-boot-dependencies")
+				.hasDeclaration(DeclarationSource.bom())
+				.hasDeclaration(DeclarationSource.Managed.class);
+		assertThat(collector)
+				.hasDependencyUsage("spring-boot-dependencies")
+				.hasVersion("3.3.2");
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    api enforcedPlatform('org.junit:junit-bom:6.0.0')
+			}
+			""")
+	void enforcedPlatformDependencyRegistersBomDeclaration(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyDeclaration("org.junit", "junit-bom")
+				.hasDeclaration(DeclarationSource.bom());
+	}
+
+	@Test
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform(project(':core'))
+			}
+			""")
+	void projectPlatformIsNotRegistered(PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector).hasDeclarationCount(0).hasUsageCount(0);
 	}
 
 	@Test
@@ -750,7 +798,7 @@ class GradleParserTests {
 		assertThat(collector)
 				.hasDependencyUsage("org.springframework.boot", "spring-boot-dependencies")
 				.hasVersion("3.3.2")
-				.hasDeclaration(DeclarationSource.managed())
+				.hasDeclaration(DeclarationSource.bom())
 				.hasPropertyVersion("bomVersion");
 	}
 
@@ -1060,6 +1108,45 @@ class GradleParserTests {
 
 		assertThat(collector).hasDependencyDeclaration("org.springframework", "spring-core");
 		assertThat(collector).hasUsageCount(0);
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+			spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version = "3.3.2" }
+			""")
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation platform(libs.spring.boot.bom)
+			}
+			""")
+	void catalogPlatformRegistersBomDeclaration(@ProjectFile("build.gradle") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyDeclaration("org.springframework.boot", "spring-boot-dependencies")
+				.hasDeclaration(DeclarationSource.Bom.class)
+				.hasVersionSource(VersionSource.versionCatalog("3.3.2"));
+	}
+
+	@Test
+	@ProjectFile(name = "gradle/libs.versions.toml", content = """
+			[libraries]
+			spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version = "3.3.2" }
+			""")
+	@ProjectFile(name = "build.gradle", content = """
+			dependencies {
+			    implementation(libs.spring.boot.bom)
+			}
+			""")
+	void catalogConsumptionWithoutPlatformCarriesNoBomSource(@ProjectFile("build.gradle") PsiFile buildFile) {
+
+		DependencyCollector collector = GradleFixtures.analyze(buildFile);
+
+		assertThat(collector)
+				.hasDependencyDeclaration("org.springframework.boot", "spring-boot-dependencies")
+				.hasNoDeclaration(DeclarationSource.Bom.class);
 	}
 
 	// -------------------------------------------------------------------------

@@ -28,7 +28,6 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileIndexLookup;
@@ -90,7 +89,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	public void collect(PsiFile anchor, DependencyCollector collector) {
 
 		MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(
-				StateService.getInstance(anchor.getProject()).getCache());
+				anchor.getProject());
 		dependencyCollector.doCollect(anchor, PropertyResolver.empty(), collector);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026-present the original author or authors.
+ * Copyright 2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
@@ -71,8 +70,7 @@ public class CheckRequest {
 	/**
 	 * Apply the given action to each package and its versions to check.
 	 *
-	 * @param consumer the action to apply to each package; must not be
-	 * {@literal null}.
+	 * @param consumer the action to apply to each package .
 	 */
 	public void forEach(BiConsumer<PackageIdentity, List<ArtifactVersion>> consumer) {
 		packages.forEach(consumer);
@@ -128,13 +126,12 @@ public class CheckRequest {
 		 * Add an artifact and the versions to check for it.
 		 *
 		 * @param artifactId the artifact coordinate.
-		 * @param packageSystem the ecosystem the artifact belongs to; must not be
-		 * {@literal null}.
+		 * @param packageSystem the ecosystem the artifact belongs to .
 		 * @param versions the exact versions to check.
 		 * @return this builder.
 		 */
-		public Builder add(ArtifactId artifactId, PackageSystem packageSystem, List<ArtifactVersion> versions) {
-			packages.put(PackageIdentity.of(artifactId, packageSystem), versions);
+		public Builder add(PackageIdentity pkg, List<ArtifactVersion> versions) {
+			packages.put(pkg, versions);
 			return this;
 		}
 

@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant.check;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -41,6 +42,7 @@ import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.google.common.base.Supplier;
 import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -57,6 +59,8 @@ import com.intellij.openapi.project.Project;
  * @author Mark Paluch
  */
 public class DependencyCheck {
+
+	private static final Logger LOG = Logger.getInstance(DependencyCheck.class);
 
 	private final Project project;
 
@@ -264,7 +268,22 @@ public class DependencyCheck {
 
 		if (scanner.isPresent()) {
 			indicator.setText(MessageBundle.message("action.check.dependency.vulnerability-scan"));
-			scanner.scanNewReleasesBestEffort(artifactSources, results);
+			indicator.checkCanceled();
+			CompletableFuture<Void> scanFuture = scanner.scanNewReleasesBestEffort(artifactSources, results);
+			indicator.checkCanceled();
+			try {
+				scanFuture.get(VulnerabilityScanner.VULNERABILITY_SCAN_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return results;
+			} catch (ExecutionException e) {
+				if (e.getCause() instanceof ProcessCanceledException c) {
+					throw c;
+				}
+				LOG.warn("Vulnerability scan failed", e);
+			} catch (TimeoutException e) {
+				LOG.warn("Vulnerability scan timed out", e);
+			}
 		}
 		steps.nextStep();
 
