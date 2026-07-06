@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class UpgradeSelection {
+public class UpgradeSelection {
 
 	private final ArtifactVersion currentVersion;
 
@@ -49,9 +49,11 @@ class UpgradeSelection {
 
 	/**
 	 * Return the selected target version, or {@literal null} if cleared.
+	 *
+	 * @return the selected target version, or {@literal null}.
 	 */
 	@Nullable
-	ArtifactVersion getTargetVersion() {
+	public ArtifactVersion getTargetVersion() {
 		return targetVersion;
 	}
 

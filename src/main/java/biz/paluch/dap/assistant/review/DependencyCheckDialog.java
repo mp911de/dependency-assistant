@@ -18,7 +18,9 @@ package biz.paluch.dap.assistant.review;
 
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -27,6 +29,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +50,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
+import biz.paluch.dap.assistant.check.DependencySitesPopup;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
 import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.assistant.check.UpgradeGroup;
@@ -62,30 +66,27 @@ import com.intellij.CommonBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
 import com.intellij.icons.AllIcons;
+import com.intellij.ide.CopyProvider;
 import com.intellij.ide.DataManager;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.ActionGroup;
-import com.intellij.openapi.actionSystem.ActionManager;
-import com.intellij.openapi.actionSystem.ActionToolbar;
-import com.intellij.openapi.actionSystem.ActionUpdateThread;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.DataContext;
-import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.actionSystem.ex.ActionButtonLook;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
+import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.*;
 import com.intellij.ui.awt.RelativePoint;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.render.RenderingUtil;
 import com.intellij.ui.table.TableView;
@@ -116,15 +117,26 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private static final int SUGGESTED_VERSION_CELL_PADDING = 6;
 
+	/**
+	 * Unscaled width of the suggested-version combo; also anchors the right-aligned
+	 * release date in its dropdown.
+	 */
+	private static final int SUGGESTED_VERSION_WIDTH = 170;
+
+	private static final KeyStroke TRANSFER_SHORTCUT = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,
+			SystemInfo.isMac ? InputEvent.META_DOWN_MASK : InputEvent.CTRL_DOWN_MASK);
+
 	private final Project project;
 
 	private final UpgradeReview review;
 
-	private final Collection<VirtualFile> files;
+	private final List<VirtualFile> files;
 
 	private final ReviewActions actions;
 
 	private final DependencyCheckComponents components;
+
+	private final Action openInPlanAction;
 
 	private volatile boolean applyingUpdates;
 
@@ -140,19 +152,31 @@ public class DependencyCheckDialog extends DialogWrapper {
 		this.components = new DependencyCheckComponents(this.review, getDisposable(), this::navigateToSites,
 				this::showContextMenu);
 		setTitle(title);
+		this.openInPlanAction = createOpenInPlanAction();
 		init();
-		review.addListener(change -> updateOkButtonText(), getDisposable());
-		updateOkButtonText();
+		installTransferShortcut();
+		review.addListener(change -> updateActions(), getDisposable());
+		updateActions();
+	}
+
+	/**
+	 * Reflect the armed-row count in the OK button text and enable the transfer
+	 * action, in one pass over the visible candidates.
+	 */
+	private void updateActions() {
+
+		List<UpgradeCandidate> visible = review.getCandidates();
+		long selected = visible.stream().filter(review::isApplyUpdate).count();
+
+		openInPlanAction.setEnabled(selected > 0);
+		updateOkButtonText(visible, selected);
 	}
 
 	/**
 	 * Reflect the selected-row count in the OK button; collapses to "All", or "All
 	 * Shown" when a filter hides rows.
 	 */
-	private void updateOkButtonText() {
-
-		List<UpgradeCandidate> visible = review.getCandidates();
-		long selected = visible.stream().filter(review::isApplyUpdate).count();
+	private void updateOkButtonText(List<UpgradeCandidate> visible, long selected) {
 
 		if (selected == 0) {
 			setOKButtonText(CommonBundle.getOkButtonText());
@@ -167,6 +191,95 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		setOKButtonText(MessageBundle.message("dialog.ok.update", selected));
+	}
+
+	/**
+	 * OK and Cancel stay on the right; OK still applies the armed updates directly.
+	 * The transfer button is left-aligned via {@link #createLeftSideActions()}.
+	 */
+	@Override
+	protected Action[] createActions() {
+		return new Action[] {getOKAction(), getCancelAction()};
+	}
+
+	/**
+	 * Left-align the transfer button with a muted shortcut hint beside it, like the
+	 * "Open in Find Window" button of the Find in Files dialog. OK and Cancel stay on
+	 * the right.
+	 */
+	@Override
+	protected JPanel createSouthAdditionalPanel() {
+
+		JBLabel shortcutHint = new JBLabel(KeymapUtil.getKeystrokeText(TRANSFER_SHORTCUT));
+		shortcutHint.setEnabled(false);
+		shortcutHint.setBorder(JBUI.Borders.emptyLeft(6));
+
+		JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+		panel.add(new JButton(openInPlanAction));
+		panel.add(shortcutHint);
+		return panel;
+	}
+
+	private Action createOpenInPlanAction() {
+
+		AbstractAction action = new AbstractAction(MessageBundle.message("dialog.openInPlan")) {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				openInUpgradePlan();
+			}
+
+		};
+		action.setEnabled(false);
+		action.putValue(Action.SHORT_DESCRIPTION, MessageBundle.message("dialog.openInPlan.description"));
+		return action;
+	}
+
+	/**
+	 * Bind the transfer shortcut (Cmd+Enter on macOS, Ctrl+Enter elsewhere), matching
+	 * the Find in Files dialog's "Open in Find Window"; the disabled action stays
+	 * inert until a row is armed.
+	 */
+	private void installTransferShortcut() {
+
+		getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+				.put(TRANSFER_SHORTCUT, "openInUpgradePlan");
+		getRootPane().getActionMap().put("openInUpgradePlan", openInPlanAction);
+	}
+
+	/**
+	 * Transfer the armed rows into the Upgrade Plan tool window and close the dialog
+	 * without touching build files; OK remains the direct-apply path.
+	 */
+	private void openInUpgradePlan() {
+
+		if (applyingUpdates) {
+			return;
+		}
+
+		this.components.stopEditing();
+
+		Map<UpgradeCandidate, UpgradeSelection> selection = getSelection();
+		if (selection.isEmpty()) {
+			return;
+		}
+
+		actions.openInUpgradePlan(selection, files);
+		restartHighlighting();
+		close(OK_EXIT_CODE);
+	}
+
+	private Map<UpgradeCandidate, UpgradeSelection> getSelection() {
+
+		Map<UpgradeCandidate, UpgradeSelection> result = new LinkedHashMap<>();
+		for (UpgradeCandidate candidate : review.getCandidates()) {
+			UpgradeSelection selection = review.getSelection(candidate);
+			if (selection.isApplyUpdate()) {
+				result.put(candidate, selection);
+			}
+		}
+
+		return result;
 	}
 
 	/**
@@ -216,7 +329,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * for navigation.
 	 */
 	private void navigateToSites(UpgradeCandidate candidate, RelativePoint where) {
-		new DependencySitesPopup(project, getDisposable(), this::doCancelAction, files).navigate(candidate, where);
+		new DependencySitesPopup(project, getDisposable(), this::doCancelAction, () -> files).navigate(candidate,
+				where);
 	}
 
 	/**
@@ -272,7 +386,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * Components panel for the dependency check dialog, containing the table and
 	 * related controls.
 	 */
-	static class DependencyCheckComponents extends JPanel {
+	static class DependencyCheckComponents extends JPanel implements UiDataProvider {
 
 		private static final int STRATEGY_STRIP_HEIGHT = getStrategyStripHeight();
 
@@ -287,6 +401,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private final ComboBox<UpgradeReview.UpgradeStrategies> strategyComboBox;
 
 		private final JCheckBox filterVersionsCheckBox;
+
+		private @Nullable CopyProvider copyProvider;
 
 		DependencyCheckComponents(UpgradeReview review, Disposable parent,
 				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate,
@@ -307,6 +423,23 @@ public class DependencyCheckDialog extends DialogWrapper {
 					true);
 
 			initialize(parent);
+		}
+
+		void setCopyProvider(CopyProvider copyProvider) {
+			this.copyProvider = copyProvider;
+		}
+
+		@Override
+		public void uiDataSnapshot(DataSink sink) {
+
+			if (copyProvider != null) {
+				sink.set(PlatformDataKeys.COPY_PROVIDER, copyProvider);
+			}
+		}
+
+		@Nullable
+		UpgradeCandidate getSelectedCandidate() {
+			return table.getSelectedObject();
 		}
 
 		private void initialize(Disposable parent) {
@@ -1288,7 +1421,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			combo.registerTableCellEditor(this);
 			combo.setRenderer(optionRenderer);
 			combo.setBorder(JBUI.Borders.empty(0, SUGGESTED_VERSION_CELL_PADDING));
-			combo.setMinimumAndPreferredWidth(JBUI.scale(170));
+			combo.setMinimumAndPreferredWidth(JBUI.scale(SUGGESTED_VERSION_WIDTH));
 			combo.addActionListener(e -> {
 				if (!refreshing) {
 					stopCellEditing();
@@ -1342,7 +1475,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			combo.setModel(model);
 			combo.setRenderer(optionRenderer);
 			combo.setBorder(JBUI.Borders.empty(0, SUGGESTED_VERSION_CELL_PADDING));
-			combo.setMinimumAndPreferredWidth(JBUI.scale(170));
+			combo.setMinimumAndPreferredWidth(JBUI.scale(SUGGESTED_VERSION_WIDTH));
 		}
 
 		@Override
@@ -1391,14 +1524,17 @@ public class DependencyCheckDialog extends DialogWrapper {
 				return;
 			}
 
-			String text = value.getVersion().toString();
-			if (value.releaseDate() != null) {
-				text += " (" + formatter.format(value.releaseDate()) + ")";
-			}
-
 			VersionStatus status = candidate.getStatus(value.getVersion());
-			append(text, status.isRuleViolation() ? SimpleTextAttributes.GRAYED_ATTRIBUTES
+			append(value.getVersion().toString(), status.isRuleViolation() ? SimpleTextAttributes.GRAYED_ATTRIBUTES
 					: SimpleTextAttributes.REGULAR_ATTRIBUTES);
+
+			// dropdown rows only (index >= 0): the collapsed combo and the table
+			// stamp show the bare version. The right-align padding must be a fixed
+			// offset: a padding derived from the live list width feeds back into
+			// the renderer's preferred width and grows the popup on every opening.
+			if (value.releaseDate() != null) {
+				append("  " + formatter.format(value.releaseDate()), SimpleTextAttributes.GRAYED_ATTRIBUTES);
+			}
 
 			setIcon(status.getIcon(ShieldStyle.FILLED));
 		}

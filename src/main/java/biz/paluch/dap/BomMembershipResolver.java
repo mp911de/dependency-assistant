@@ -104,30 +104,30 @@ public class BomMembershipResolver {
 	 */
 	public void resolve(Collection<ArtifactId> artifactIds, ProgressIndicator indicator) {
 
-		List<CachedArtifact> artifacts = new ArrayList<>(artifactIds.size());
+		List<CachedArtifact> bomCandidates = new ArrayList<>(artifactIds.size());
 		for (ArtifactId artifactId : artifactIds) {
 
 			CachedArtifact cachedArtifact = cache.findCachedArtifact(artifactId);
 			if (cachedArtifact != null && cachedArtifact.getPackageSystem() != null) {
-				artifacts.add(cachedArtifact);
+				bomCandidates.add(cachedArtifact);
 			}
 		}
 
-		resolveMissingMemberships(artifacts, indicator);
+		resolveMissingMemberships(bomCandidates, indicator);
 	}
 
-	private void resolveMissingMemberships(List<CachedArtifact> artifacts, ProgressIndicator indicator) {
+	private void resolveMissingMemberships(List<CachedArtifact> bomCandidates, ProgressIndicator indicator) {
 
 		LocalDateTime cutoff = LocalDateTime.ofInstant(Instant.ofEpochMilli(cache.now()), ZoneOffset.UTC)
 				.minusYears(BACKFILL_MAX_AGE_YEARS);
 
-		for (CachedArtifact artifact : artifacts) {
+		for (CachedArtifact bomCandidate : bomCandidates) {
 
-			if (!artifact.hasBoms() || artifact.getPackageSystem() == null) {
+			if (!bomCandidate.hasBoms() || bomCandidate.getPackageSystem() == null) {
 				continue;
 			}
 
-			for (Release release : artifact.getVersionOptions()) {
+			for (Release release : bomCandidate.getVersionOptions()) {
 
 				indicator.checkCanceled();
 
@@ -140,18 +140,18 @@ public class BomMembershipResolver {
 					continue;
 				}
 
-				if (artifact.hasBom(release.version())) {
+				if (bomCandidate.hasBom(release.version())) {
 					continue;
 				}
 
-				Map<ArtifactId, ArtifactVersion> members = resolveBom(artifact.toPackageIdentity(),
+				Map<ArtifactId, ArtifactVersion> members = resolveBom(bomCandidate.toPackageIdentity(),
 						release.version());
 				if (members.isEmpty()) {
 					continue;
 				}
 
-				cache.putBillOfMaterials(BillOfMaterials.of(artifact.toArtifactId(), release.version(), members),
-						artifact.getPackageSystem());
+				cache.putBillOfMaterials(BillOfMaterials.of(bomCandidate, release.version(), members),
+						bomCandidate.getPackageSystem());
 			}
 		}
 	}

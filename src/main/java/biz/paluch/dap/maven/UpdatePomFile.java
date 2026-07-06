@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
@@ -51,20 +52,22 @@ class UpdatePomFile {
 	/**
 	 * Apply updates to the POM.
 	 */
-	public void applyUpdates(PsiFile pomFile, List<DependencyUpdate> updates) {
+	public UpgradeResult applyUpdates(PsiFile pomFile, List<DependencyUpdate> updates) {
 
 		if (!(pomFile instanceof XmlFile file)) {
 			LOG.warn("Cannot update POM: PSI file is not XmlFile for " + pomFile.getName());
-			return;
+			return UpgradeResult.none();
 		}
 		XmlTag root = file.getDocument() != null ? file.getDocument().getRootTag() : null;
 		if (root == null || !MavenUtils.isMavenPomFile(file)) {
-			return;
+			return UpgradeResult.none();
 		}
 
+		String before = file.getText();
 		for (DependencyUpdate update : updates) {
 			apply(root, update);
 		}
+		return before.equals(file.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	/**

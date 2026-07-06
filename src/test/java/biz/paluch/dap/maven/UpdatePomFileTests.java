@@ -21,6 +21,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +35,67 @@ import static biz.paluch.dap.maven.UpdateTestSupport.*;
  */
 @IdeaProjectTests
 class UpdatePomFileTests {
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-lang3</artifactId>
+						<version>3.20.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void reportsNoChangeWhenTargetIsAlreadyApplied(PsiFile pom) {
+
+		UpgradeResult result = applyUpdateResult(pom, "org.apache.commons", "commons-lang3", "3.20.0", "3.20.0");
+
+		assertThat(result.hasChanges()).isFalse();
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-lang3</artifactId>
+						<version>3.19.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void reportsChangeWhenTargetIsApplied(PsiFile pom) {
+
+		UpgradeResult result = applyUpdateResult(pom, "org.apache.commons", "commons-lang3", "3.19.0", "3.20.0");
+
+		assertThat(result.getChangeCount()).isOne();
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-lang3</artifactId>
+						<version>3.19.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void appliesUpdateToNonPhysicalCopyLeavingOriginalUntouched(PsiFile pom) {
+
+		PsiFile copy = (PsiFile) pom.copy();
+
+		UpgradeResult result = applyUpdateDirect(copy, "org.apache.commons", "commons-lang3", "3.19.0", "3.20.0");
+
+		assertThat(result.getChangeCount()).isOne();
+		assertThat(copy).containsText("3.20.0");
+		assertThat(pom).containsText("3.19.0").doesNotContainText("3.20.0");
+	}
 
 	@Test
 	@ProjectFile(name = "pom.xml", content = """

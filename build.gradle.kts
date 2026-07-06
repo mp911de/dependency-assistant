@@ -19,11 +19,12 @@ repositories {
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
 	intellijPlatform {
-		intellijIdea("2025.3.1")
+		intellijIdea("2026.1.3")
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.JUnit5)
 		bundledPlugin("org.jetbrains.idea.maven")
 		bundledPlugin("org.jetbrains.plugins.gradle")
+		bundledPlugin("com.intellij.gradle")
 		bundledPlugin("org.intellij.groovy")
 		bundledPlugin("org.jetbrains.kotlin")
 		bundledPlugin("org.toml.lang")
@@ -41,6 +42,7 @@ dependencies {
 
 	testImplementation("org.assertj:assertj-core:3.27.7")
 	testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
+	testImplementation("org.wiremock:wiremock-standalone:3.13.1")
 
 	// https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase
 	testImplementation("junit:junit:4.13.2")
@@ -54,7 +56,7 @@ dependencies {
 intellijPlatform {
 	pluginConfiguration {
 		ideaVersion {
-			sinceBuild = "253"
+			sinceBuild = "261"
 		}
 
 		name = "Dependency Assistant"
@@ -99,4 +101,3 @@ tasks {
 		systemProperty("idea.log.debug.categories", "biz.paluch.dap")
 	}
 }
-

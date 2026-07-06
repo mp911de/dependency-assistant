@@ -102,7 +102,7 @@ public class DependencyCheckTask extends Task.Backgroundable {
 		}
 
 		DependencyCheckDialog dialog = new DependencyCheckDialog(project, result, getTitle(scope),
-				new AssistantReviewActions(project));
+				new AssistantReviewActions(project, request.hasEditorFile()));
 		dialog.show();
 
 		ArtifactId focusArtifact = request.focusArtifact();

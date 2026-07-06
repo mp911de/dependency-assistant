@@ -17,7 +17,6 @@
 package biz.paluch.dap.lookup;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -50,9 +49,9 @@ public class DependencySiteSearch {
 	 * @param files the files to search.
 	 * @return the deduplicated results in file order.
 	 */
-	public DependencySearchResults find(DependencySiteQuery query, Collection<VirtualFile> files) {
+	public DependencySearchResults find(DependencySiteQuery query, Iterable<VirtualFile> files) {
 
-		List<DependencySearchResults> perFile = new ArrayList<>(files.size());
+		List<DependencySearchResults> perFile = new ArrayList<>();
 		for (VirtualFile file : files) {
 			perFile.add(perFileSearch.apply(file, query));
 		}

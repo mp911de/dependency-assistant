@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -64,8 +65,9 @@ class UpdateAntoraPlaybookFile {
 	 * @param psiFile the Antora playbook PSI file.
 	 * @param updates the dependency updates to apply.
 	 */
-	void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 
+		String before = psiFile.getText();
 		SyntaxTraverser.psiTraverser(psiFile)
 				.filter(YAMLKeyValue.class)
 				.filter(AntoraPlaybookParser::isBundleUrlKeyValue)
@@ -73,6 +75,7 @@ class UpdateAntoraPlaybookFile {
 				.map(it -> (YAMLScalar) it.getValue())
 				.filter(YAMLScalar::isValid)
 				.forEach(scalar -> applyUpdates(updates, scalar));
+		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	/**

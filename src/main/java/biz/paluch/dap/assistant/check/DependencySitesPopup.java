@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.review;
+package biz.paluch.dap.assistant.check;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -24,12 +24,13 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -39,7 +40,6 @@ import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearch;
 import biz.paluch.dap.lookup.SiteRole;
@@ -90,14 +90,19 @@ import com.intellij.util.ui.JBUI;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Drives a Dependency Site popup from a {@code DependencyCheck} dialog row:
- * narrows the files to search, runs the {@link DependencySiteSearch}, and
- * presents the result for navigation. The multi-result popup shows a read-only
- * preview of the focused declaration site beside the list.
+ * Drives a Dependency Site popup from an {@link UpgradeCandidate}: narrows the
+ * files to search, runs the {@link DependencySiteSearch}, and presents the
+ * result for navigation. The multi-result popup shows a read-only preview of
+ * the focused declaration site beside the list.
+ *
+ * <p>Entry points differ by presentation: {@link #navigate} always shows the
+ * popup, {@link #jumpTo} opens a single result directly in the editor, and
+ * {@link #showUsages} hands the results to the Find tool window. The upgrade
+ * review dialog and the Upgrade Plan tool window share this component.
  *
  * @author Mark Paluch
  */
-class DependencySitesPopup {
+public class DependencySitesPopup {
 
 	private static final long INDEXING_NOTICE_FADEOUT_MILLIS = 5000;
 
@@ -115,7 +120,7 @@ class DependencySitesPopup {
 
 	private final Runnable onTransferToFindWindow;
 
-	private final Collection<VirtualFile> files;
+	private final Supplier<? extends Iterable<VirtualFile>> files;
 
 	/**
 	 * @param onTransferToFindWindow invoked when the user hands the results to the
@@ -124,8 +129,8 @@ class DependencySitesPopup {
 	 * @param files the build files to search, the same set the upgrade scan
 	 * produced.
 	 */
-	DependencySitesPopup(Project project, Disposable parentDisposable, Runnable onTransferToFindWindow,
-			Collection<VirtualFile> files) {
+	public DependencySitesPopup(Project project, Disposable parentDisposable, Runnable onTransferToFindWindow,
+			Supplier<? extends Iterable<VirtualFile>> files) {
 		this.project = project;
 		this.parentDisposable = parentDisposable;
 		this.onTransferToFindWindow = onTransferToFindWindow;
@@ -143,11 +148,62 @@ class DependencySitesPopup {
 	 * lightweight notice anchored at {@code where} and returns. The read expires
 	 * with {@code parentDisposable} so a closed dialog aborts a pending find.
 	 *
-	 * @param candidate the double-clicked row.
+	 * @param candidate the candidate whose sites to find.
 	 * @param where the screen anchor for the popup or notice; must not be
 	 * {@literal null}.
 	 */
-	void navigate(UpgradeCandidate candidate, RelativePoint where) {
+	public void navigate(UpgradeCandidate candidate, RelativePoint where) {
+		find(candidate, where, entries -> present(entries, where));
+	}
+
+	/**
+	 * Find every site backing the candidate's version and open a single result
+	 * directly in the editor; several results are presented like {@link #navigate}.
+	 * Runs and fails fast like {@link #navigate}.
+	 *
+	 * @param candidate the candidate whose sites to find.
+	 * @param where the screen anchor for the popup or notice; must not be
+	 * {@literal null}.
+	 */
+	public void jumpTo(UpgradeCandidate candidate, RelativePoint where) {
+
+		find(candidate, where, entries -> {
+
+			if (entries.size() == 1) {
+				openInEditor(entries.getFirst());
+				return;
+			}
+			present(entries, where);
+		});
+	}
+
+	/**
+	 * Find every site backing the candidate's version and hand the results to the
+	 * Find tool window, skipping the intermediate popup. An empty result shows the
+	 * no-sites message at the anchor. Runs and fails fast like {@link #navigate}.
+	 *
+	 * @param candidate the candidate whose sites to find.
+	 * @param where the screen anchor for the empty message or notice; must not be
+	 * {@literal null}.
+	 */
+	public void showUsages(UpgradeCandidate candidate, RelativePoint where) {
+
+		find(candidate, where, entries -> {
+
+			if (entries.isEmpty()) {
+				present(entries, where);
+				return;
+			}
+			openInFindWindow(ordered(entries));
+		});
+	}
+
+	/**
+	 * Shared async skeleton: dumb-mode fail-fast, non-blocking search, and the
+	 * anchor-still-showing guard before the presenter runs on the UI thread.
+	 */
+	private void find(UpgradeCandidate candidate, RelativePoint where,
+			Consumer<List<DependencySitePresentation>> presenter) {
 
 		if (DumbService.getInstance(project).isDumb()) {
 			showIndexingNotice(where);
@@ -155,7 +211,7 @@ class DependencySitesPopup {
 		}
 
 		DependencySiteQuery query = candidate.toQuery();
-		ReadAction.nonBlocking(() -> findEntries(query))
+		ReadAction.nonBlocking(() -> findEntries(query, files.get()))
 				.expireWith(parentDisposable)
 				.finishOnUiThread(ModalityState.stateForComponent(where.getComponent()), entries -> {
 
@@ -168,7 +224,7 @@ class DependencySitesPopup {
 						return;
 					}
 
-					present(entries, where);
+					presenter.accept(entries);
 				})
 				.submit(AppExecutorUtil.getAppExecutorService());
 	}
@@ -177,7 +233,8 @@ class DependencySitesPopup {
 	 * Resolve the entries inside the non-blocking read; {@literal null} when dumb
 	 * mode started meanwhile, signalling the indexing notice.
 	 */
-	private @Nullable List<DependencySitePresentation> findEntries(DependencySiteQuery query) {
+	private @Nullable List<DependencySitePresentation> findEntries(DependencySiteQuery query,
+			Iterable<VirtualFile> files) {
 
 		if (DumbService.getInstance(project).isDumb()) {
 			return null;
@@ -205,10 +262,7 @@ class DependencySitesPopup {
 			return;
 		}
 
-		List<DependencySitePresentation> ordered = entries.stream()
-				.sorted(Comparator.comparing(DependencySitePresentation::role)
-						.thenComparing(DependencySitePresentation::location))
-				.toList();
+		List<DependencySitePresentation> ordered = ordered(entries);
 
 		JBList<DependencySitePresentation> list = createList(ordered);
 		EditorTextField preview = createPreview(list, ordered.getFirst().fileType());
@@ -272,6 +326,15 @@ class DependencySitesPopup {
 		});
 
 		popup.show(where);
+	}
+
+	/** Order entries by role, then by location, for stable presentation. */
+	private static List<DependencySitePresentation> ordered(List<DependencySitePresentation> entries) {
+
+		return entries.stream()
+				.sorted(Comparator.comparing(DependencySitePresentation::role)
+						.thenComparing(DependencySitePresentation::location))
+				.toList();
 	}
 
 	private static JBList<DependencySitePresentation> createList(List<DependencySitePresentation> ordered) {

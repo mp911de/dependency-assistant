@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.json.psi.JsonElementGenerator;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
@@ -62,12 +63,13 @@ class UpdatePackageJsonFile {
 	 * @param psiFile the {@code package.json} PSI file.
 	 * @param updates the dependency updates to apply.
 	 */
-	public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 
 		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
-			return;
+			return UpgradeResult.none();
 		}
 
+		String before = psiFile.getText();
 		for (String key : List.of("dependencies", "devDependencies")) {
 
 			JsonProperty property = root.findProperty(key);
@@ -79,6 +81,7 @@ class UpdatePackageJsonFile {
 				applyUpdates(entry, updates);
 			}
 		}
+		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	/**

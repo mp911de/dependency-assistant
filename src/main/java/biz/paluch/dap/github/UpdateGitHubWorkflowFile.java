@@ -23,6 +23,7 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
@@ -68,14 +69,16 @@ class UpdateGitHubWorkflowFile {
 	 * @param psiFile the GitHub Actions YAML PSI file
 	 * @param updates the dependency updates to apply
 	 */
-	public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 
+		String before = psiFile.getText();
 		SyntaxTraverser.psiTraverser(psiFile).filter(YAMLKeyValue.class)
 				.filter(it -> "uses".equals(it.getKeyText()))
 				.map(YAMLKeyValue::getValue)
 				.filter(YAMLScalar.class)
 				.filter(YAMLScalar::isValid)
 				.forEach(it -> applyUpdates(updates, it));
+		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	private void applyUpdates(List<DependencyUpdate> updates, YAMLScalar scalar) {

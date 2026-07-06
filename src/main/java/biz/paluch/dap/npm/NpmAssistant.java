@@ -36,6 +36,7 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.plugins.PluginManagerCore;
@@ -81,6 +82,11 @@ public class NpmAssistant implements DependencyAssistant {
 	@Override
 	public PackageSystem getPackageSystem() {
 		return PackageSystem.NPM;
+	}
+
+	@Override
+	public InterfaceAssistant getInterfaceAssistant() {
+		return NpmInterface.INSTANCE;
 	}
 
 	@Override
@@ -211,8 +217,8 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdatePackageJsonFile(project).applyUpdates(psiFile, updates);
+		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+			return new UpdatePackageJsonFile(project).applyUpdates(psiFile, updates);
 		}
 
 		@Override

@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.support;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import org.jspecify.annotations.Nullable;
@@ -67,10 +68,33 @@ class ReleaseDateFormatterTests {
 		assertThat(age(-40)).isEqualTo("1 month");
 	}
 
+	@Test
+	void formatsDueDatesRelativeInBothDirections() {
+
+		assertThat(due(0)).startsWith("today (");
+		assertThat(due(1)).startsWith("tomorrow (");
+		assertThat(due(-1)).startsWith("yesterday (");
+		assertThat(due(6)).startsWith("in 6 days (");
+		assertThat(due(-3)).startsWith("3 days ago (");
+		assertThat(due(8)).startsWith("next week (");
+		assertThat(due(-10)).startsWith("last week (");
+	}
+
+	@Test
+	void formatsFarDueDatesAbsoluteOnly() {
+
+		assertThat(due(30)).doesNotContain("(");
+		assertThat(due(-30)).doesNotContain("(");
+	}
+
 	private static @Nullable String age(int days) {
 
 		LocalDateTime from = LocalDateTime.of(2026, 1, 1, 0, 0);
 		return ReleaseDateFormatter.create().formatAge(from, from.plusDays(days));
+	}
+
+	private static String due(int daysFromToday) {
+		return ReleaseDateFormatter.create().formatDue(LocalDate.now().plusDays(daysFromToday));
 	}
 
 }

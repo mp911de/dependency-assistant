@@ -18,9 +18,12 @@ package biz.paluch.dap.checker;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
+import org.jetbrains.annotations.CheckReturnValue;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -104,6 +107,23 @@ public class Vulnerabilities implements Iterable<Vulnerability> {
 	 */
 	public static Vulnerabilities of(Collection<Vulnerability> vulnerabilities) {
 		return vulnerabilities.isEmpty() ? CLEAN : new Vulnerabilities(List.copyOf(vulnerabilities));
+	}
+
+	/**
+	 * Adds all vulnerabilities in the given {@code Vulnerabilities} to a new
+	 * {@code Vulnerabilities} object if they're not already present (optional
+	 * operation). This operation effectively creates a <i>union</i> of the two
+	 * sets.
+	 * @param v the vulnerabilities to add.
+	 * @return the union vulnerabilities object.
+	 */
+	@CheckReturnValue
+	public Vulnerabilities addAll(Vulnerabilities v) {
+		Set<Vulnerability> set = new LinkedHashSet<>(this.vulnerabilities != null ? this.vulnerabilities : Set.of());
+		if (v.vulnerabilities != null) {
+			set.addAll(v.vulnerabilities);
+		}
+		return new Vulnerabilities(set);
 	}
 
 	/**

@@ -17,20 +17,28 @@
 package biz.paluch.dap.assistant.action;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.assistant.review.ReviewActions;
+import biz.paluch.dap.assistant.review.UpgradeSelection;
+import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.openapi.command.UndoConfirmationPolicy;
+import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -45,8 +53,11 @@ class AssistantReviewActions implements ReviewActions {
 
 	private final Project project;
 
-	AssistantReviewActions(Project project) {
+	private final boolean fromEditor;
+
+	AssistantReviewActions(Project project, boolean fromEditor) {
 		this.project = project;
+		this.fromEditor = fromEditor;
 	}
 
 	@Override
@@ -66,11 +77,19 @@ class AssistantReviewActions implements ReviewActions {
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
 		AppliedUpdates applied = new AppliedUpdates();
+
+		// the platform asks before undoing when the batch spans several files or
+		// the review was not opened from the editor; an editor-local single-file
+		// apply undoes silently like any edit
+		UndoConfirmationPolicy undoConfirmationPolicy = files.size() > 1 || !fromEditor
+				? UndoConfirmationPolicy.REQUEST_CONFIRMATION
+				: UndoConfirmationPolicy.DO_NOT_REQUEST_CONFIRMATION;
+
 		new BuildActionDelegate(project, (file, fileUpdates) -> {
 
 			indicator.checkCanceled();
 			indicator.setText2(file.getName());
-			applyToSupportingContexts(assistants, file, fileUpdates, context -> {
+			return applyToSupportingContexts(assistants, file, fileUpdates, context -> {
 
 				for (DependencyUpdate fileUpdate : fileUpdates) {
 
@@ -80,13 +99,23 @@ class AssistantReviewActions implements ReviewActions {
 					applied.record(file.getVirtualFile(), fileUpdate, rule);
 				}
 			});
-		}).updateBuildFiles(files, updates);
+		}).withGlobalUndo(undoConfirmationPolicy).updateBuildFiles(files, updates);
 
-		Runnable undo = () -> new BuildActionDelegate(project,
+		Runnable undoFlagged = () -> new BuildActionDelegate(project,
 				(file, fileUpdates) -> applyToSupportingContexts(assistants, file, fileUpdates, context -> {
 				})).updateBuildFiles(applied.getReverseFiles(), applied.getReverse());
 
-		Notifications.updatesApplied(project, applied.applied(), undo);
+		// the balloon undo triggers the platform undo of the global apply command:
+		// no confirmation of our own, only the platform's per the command's policy
+		Runnable undo = () -> {
+
+			UndoManager undoManager = UndoManager.getInstance(project);
+			if (undoManager.isUndoAvailable(null)) {
+				undoManager.undo(null);
+			}
+		};
+
+		Notifications.updatesApplied(project, applied.applied(), undo, undoFlagged);
 	}
 
 	@Override
@@ -96,12 +125,31 @@ class AssistantReviewActions implements ReviewActions {
 				Notifications.errorMessage(error));
 	}
 
+	@Override
+	public void openInUpgradePlan(Map<UpgradeCandidate, UpgradeSelection> upgrades, List<VirtualFile> files) {
+
+		Map<UpgradeCandidate, ArtifactVersion> targets = new LinkedHashMap<>();
+		for (Map.Entry<UpgradeCandidate, UpgradeSelection> entry : upgrades.entrySet()) {
+			ArtifactVersion target = entry.getValue().getTargetVersion();
+			if (target == null) {
+				throw new IllegalStateException(
+						"Target version for " + entry.getKey().getArtifactId() + " is required");
+			}
+			targets.put(entry.getKey(), target);
+		}
+
+		UpgradePlanToolWindowFactory.openWith(project, targets, files);
+	}
+
+
 	/**
 	 * Apply the file's updates through every supporting assistant with an available
 	 * context, invoking {@code afterApply} per applied context.
 	 */
-	private static void applyToSupportingContexts(List<DependencyAssistant> assistants, PsiFile file,
+	private static UpgradeResult applyToSupportingContexts(List<DependencyAssistant> assistants, PsiFile file,
 			List<DependencyUpdate> fileUpdates, Consumer<ProjectDependencyContext> afterApply) {
+
+		UpgradeResult result = UpgradeResult.none();
 
 		for (DependencyAssistant assistant : assistants) {
 
@@ -114,9 +162,10 @@ class AssistantReviewActions implements ReviewActions {
 				continue;
 			}
 
-			context.applyUpdates(file, fileUpdates);
+			result = result.merge(context.applyUpdates(file, fileUpdates));
 			afterApply.accept(context);
 		}
+		return result;
 	}
 
 }

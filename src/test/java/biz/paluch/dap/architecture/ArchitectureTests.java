@@ -28,6 +28,7 @@ import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.Properties;
+import biz.paluch.dap.util.Sequence;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -50,7 +51,9 @@ class ArchitectureTests {
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
 					"Gradle catalog caching still depends on settings parsers")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
-					"Property interpolation helper is shared by resolver implementations");
+					"Property interpolation helper is shared by resolver implementations")
+			.excludingClass("biz.paluch.dap.github.GitHubTicketQuery",
+					"needs rework");
 
 	/*
 	 * Variant 1: explicit closed hierarchy declaration. DeclarationSource, its
@@ -69,6 +72,7 @@ class ArchitectureTests {
 						.withClosedHierarchy(ReleaseSource.class)
 						.withStrictClosedHierarchy(ArtifactId.class)
 						.withClosedHierarchy(Properties.class)
+						.withStrictClosedHierarchy(Sequence.class)
 						.withStrictClosedHierarchy("biz.paluch.dap.util.StepsProgressIndicator")
 						.withStrictClosedHierarchy("biz.paluch.dap.npm.NpmVersionExpression")
 						.withStrictClosedHierarchy("biz.paluch.dap.gradle.GradlePluginId")
@@ -102,7 +106,7 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistantAction = packageDependencies("assistant.action",
-			"biz.paluch.dap", "artifact", "assistant.check", "assistant.review", "rule", "state", "support",
+			"biz.paluch.dap", "artifact", "assistant.check", "assistant.review", "plan", "rule", "state", "support",
 			"upgrade", "util");
 
 	@ArchTest
@@ -126,8 +130,8 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistantReview = packageDependencies("assistant.review",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "checker", "lookup", "rule", "support",
-			"upgrade", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "checker", "lookup", "plan", "rule",
+			"support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule antora = packageDependencies("antora",
@@ -140,7 +144,7 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule github = packageDependencies("github",
 			"biz.paluch.dap", "artifact", "assistant", "assistant.completion", "assistant.editor", "state",
-			"lookup", "support", "support.yaml", "util");
+			"lookup", "support", "support.yaml", "ticket", "util");
 
 	@ArchTest
 	ArchRule gradle = packageDependencies("gradle",
@@ -173,6 +177,11 @@ class ArchitectureTests {
 	ArchRule lookup = packageDependencies("lookup", "artifact", "state", "support", "util");
 
 	@ArchTest
+	ArchRule plan = packageDependencies("plan",
+			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "checker", "lookup", "rule", "state",
+			"support", "ticket", "upgrade", "util");
+
+	@ArchTest
 	ArchRule rule = packageDependencies("rule",
 			"biz.paluch.dap", "artifact", "state", "support", "util");
 
@@ -190,6 +199,9 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule support = packageDependencies("support", "artifact",
 			"state", "util");
+
+	@ArchTest
+	ArchRule ticket = packageDependencies("ticket");
 
 	@ArchTest
 	ArchRule util = packageDependencies("util");

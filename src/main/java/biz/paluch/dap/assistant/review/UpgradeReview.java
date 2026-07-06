@@ -163,7 +163,7 @@ class UpgradeReview {
 		return sharedPropertyPeers.getOrDefault(candidate, List.of());
 	}
 
-	private UpgradeSelection selection(UpgradeCandidate candidate) {
+	public UpgradeSelection getSelection(UpgradeCandidate candidate) {
 		return selections.computeIfAbsent(candidate, it -> new UpgradeSelection(it.getCurrentVersion()));
 	}
 
@@ -177,11 +177,6 @@ class UpgradeReview {
 
 	/**
 	 * Return the candidates currently shown by the dialog under the active filter.
-	 *
-	 * <p>Under {@link VisibilityFilter#HIDE_UP_TO_DATE} a row whose declared
-	 * version is vulnerable always stays visible, even with no clean target, so the
-	 * developer is never left unaware of a vulnerability the gutter stays quiet
-	 * about (Issue 03).
 	 */
 	List<UpgradeCandidate> getCandidates() {
 		return candidates.stream().filter(this::isVisible).toList();
@@ -268,7 +263,7 @@ class UpgradeReview {
 	 */
 	@Nullable
 	ArtifactVersion getUpdateTo(UpgradeCandidate candidate) {
-		return selection(candidate).getTargetVersion();
+		return getSelection(candidate).getTargetVersion();
 	}
 
 	/**
@@ -290,7 +285,7 @@ class UpgradeReview {
 	 */
 	ArtifactVersion getRequiredUpdateTo(UpgradeCandidate candidate) {
 
-		ArtifactVersion updateTo = selection(candidate).getTargetVersion();
+		ArtifactVersion updateTo = getSelection(candidate).getTargetVersion();
 		if (updateTo == null) {
 			throw new IllegalStateException(
 					"Update version for " + candidate.getArtifactId().artifactId() + " is required but not set");
@@ -302,7 +297,7 @@ class UpgradeReview {
 	 * Return whether the candidate is selected to be applied.
 	 */
 	boolean isApplyUpdate(UpgradeCandidate candidate) {
-		return selection(candidate).isApplyUpdate();
+		return getSelection(candidate).isApplyUpdate();
 	}
 
 	/**
@@ -328,7 +323,7 @@ class UpgradeReview {
 	 * Select the given target version for the candidate.
 	 */
 	void selectTarget(UpgradeCandidate candidate, ArtifactVersion version) {
-		selection(candidate).selectTarget(version);
+		getSelection(candidate).selectTarget(version);
 		listeners.getMulticaster().changed(ReviewChange.row(candidate));
 	}
 
@@ -370,7 +365,7 @@ class UpgradeReview {
 	 * Set whether the candidate should be applied.
 	 */
 	void setSelected(UpgradeCandidate candidate, boolean apply) {
-		selection(candidate).setApplyUpdate(apply);
+		getSelection(candidate).setApplyUpdate(apply);
 		listeners.getMulticaster().changed(ReviewChange.row(candidate));
 	}
 
@@ -380,7 +375,7 @@ class UpgradeReview {
 	void selectAll(boolean apply) {
 
 		for (UpgradeCandidate candidate : getCandidates()) {
-			selection(candidate).setApplyUpdate(apply);
+			getSelection(candidate).setApplyUpdate(apply);
 		}
 		listeners.getMulticaster().changed(ReviewChange.allRows());
 	}
@@ -392,7 +387,7 @@ class UpgradeReview {
 			return false;
 		}
 
-		selection(candidate).selectTarget(target.version());
+		getSelection(candidate).selectTarget(target.version());
 		return true;
 	}
 

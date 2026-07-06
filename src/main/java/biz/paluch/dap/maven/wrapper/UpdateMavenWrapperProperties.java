@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.lang.ASTNode;
@@ -68,12 +69,13 @@ class UpdateMavenWrapperProperties {
 	 * @param psiFile the wrapper PSI file.
 	 * @param updates the updates to apply.
 	 */
-	public static void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public static UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 
 		if (!(psiFile instanceof PropertiesFile properties)) {
-			return;
+			return UpgradeResult.none();
 		}
 
+		String before = psiFile.getText();
 		Set<String> toCommentOut = new HashSet<>();
 		Properties.from(properties).filterMap(MavenWrapperParser::parse).toList().forEach(it -> {
 			for (DependencyUpdate update : updates) {
@@ -82,6 +84,7 @@ class UpdateMavenWrapperProperties {
 		});
 
 		postProcess(psiFile, new HashSet<>(toCommentOut));
+		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	private static void applyUpdate(PropertyImpl property, WrapperEntry entry, DependencyUpdate update,
