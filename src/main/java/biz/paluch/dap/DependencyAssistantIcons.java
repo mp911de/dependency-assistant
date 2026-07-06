@@ -111,6 +111,41 @@ public class DependencyAssistantIcons {
 	public static final Icon DEPENDENCY_LOCK = load("/META-INF/icons/dependencyLock.svg");
 
 	/**
+	 * Upgrade Plan: apply all planned upgrades (monotone variant of the platform's
+	 * run-all icon).
+	 */
+	public static final Icon PLAN_APPLY_ALL = load("/META-INF/icons/plan/applyAll.svg");
+
+	/**
+	 * Upgrade Plan: create tickets for planned upgrades (stacked all-mode variant).
+	 */
+	public static final Icon PLAN_CREATE_TICKETS = load("/META-INF/icons/plan/createTickets.svg");
+
+	/**
+	 * Upgrade Plan: milestone selector (GitHub Octicon "milestone").
+	 */
+	public static final Icon PLAN_MILESTONE = load("/META-INF/icons/plan/milestone.svg");
+
+	/**
+	 * Upgrade Plan: label selector (GitHub Octicon "tag").
+	 */
+	public static final Icon PLAN_LABEL = load("/META-INF/icons/plan/label.svg");
+
+	/**
+	 * Upgrade Plan tool window.
+	 */
+	public static final Icon TOOL_WINDOW_UPGRADE_PLAN = load("/META-INF/icons/plan/toolWindow.svg");
+
+	public static final Icon PLAN_MILESTONE_OPEN = load("/META-INF/icons/plan/milestone-open.svg");
+
+	public static final Icon PLAN_MILESTONE_CLOSED = load("/META-INF/icons/plan/milestone-closed.svg");
+
+	/**
+	 * Upgrade Plan: open milestone without a due date (lighter gray variant).
+	 */
+	public static final Icon PLAN_MILESTONE_UNSCHEDULED = load("/META-INF/icons/plan/milestone-unscheduled.svg");
+
+	/**
 	 * Compose a dependency upgrade icon: the assistant gutter icon scaled into the
 	 * lower-left corner with the target status overlay layered onto the lower-right
 	 * quadrant.

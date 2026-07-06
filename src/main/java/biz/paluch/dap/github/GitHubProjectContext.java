@@ -26,6 +26,7 @@ import biz.paluch.dap.support.ProjectBuildContext;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link ProjectBuildContext} for a single supported GitHub Actions YAML file.
@@ -45,7 +46,9 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 	 */
 	static final Key<GitHubProjectContext> KEY = Key.create("GitHubProjectContext");
 
-	private final GithubApiRequestExecutorFactory factory;
+	private final @Nullable GithubApiRequestExecutorFactory factory;
+
+	private final List<ReleaseSource> releaseSources;
 
 	/**
 	 * Create a context for the given project identity and release source.
@@ -55,6 +58,13 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 	GitHubProjectContext(Project project, ProjectId projectId) {
 		super(projectId);
 		this.factory = GithubApiRequestExecutorFactory.getInstance(project);
+		this.releaseSources = List.of();
+	}
+
+	GitHubProjectContext(ProjectId projectId, ReleaseSource releaseSource) {
+		super(projectId);
+		this.factory = null;
+		this.releaseSources = List.of(releaseSource);
 	}
 
 	/**
@@ -80,6 +90,10 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 	@Override
 	public List<ReleaseSource> getReleaseSources() {
 
+		if (factory == null) {
+			return releaseSources;
+		}
+
 		GithubApiRequestExecutorFactory.ExecutorResult executor = factory.getExecutor();
 		if (executor.hasExecutor()) {
 			GitHubReleases gitHubReleases = new GitHubReleases(executor.getDecision()
@@ -87,6 +101,6 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 			return List.of(gitHubReleases);
 		}
 
-		return List.of();
+		return releaseSources;
 	}
 }

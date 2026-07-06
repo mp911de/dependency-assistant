@@ -38,6 +38,7 @@ import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiElements;
@@ -96,6 +97,11 @@ public class AntoraAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public InterfaceAssistant getInterfaceAssistant() {
+		return AntoraInterface.INSTANCE;
+	}
+
+	@Override
 	public boolean supports(Project project) {
 		return AVAILABLE;
 	}
@@ -113,8 +119,8 @@ public class AntoraAssistant implements DependencyAssistant {
 		}
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		Collection<VirtualFile> yamlFiles = FileIndexLookup.getInstance(project).find(YAMLFileType.YML,
-				AntoraUtils::isPlaybookFile);
+		Collection<VirtualFile> yamlFiles = FileIndexLookup.getInstance(project)
+				.find(YAMLFileType.YML, AntoraUtils::isPlaybookFile);
 		return psiManager.stream(yamlFiles).filter(AntoraUtils::isPlaybookFile).toList();
 	}
 
@@ -125,7 +131,8 @@ public class AntoraAssistant implements DependencyAssistant {
 
 	@Override
 	public IntrospectedDependencies introspect(Project project) {
-		return new GitRefIntrospectedDependencies(StateService.getInstance(project).getCache());
+		return new GitRefIntrospectedDependencies(StateService.getInstance(project)
+				.getCache());
 	}
 
 	@Override
@@ -140,33 +147,29 @@ public class AntoraAssistant implements DependencyAssistant {
 			return new AntoraDependencyContext(this, project, anchor.getVirtualFile(), injected);
 		}
 
-		return CachedValuesManager.getProjectPsiDependentCache(anchor,
-				it -> createContext(this, project, it.getVirtualFile()));
+		return CachedValuesManager.getProjectPsiDependentCache(anchor, it -> createContext(this, project, it.getVirtualFile()));
 	}
 
-	private static ProjectDependencyContext createContext(AntoraAssistant assistant, Project project,
-			VirtualFile anchor) {
+	private static ProjectDependencyContext createContext(AntoraAssistant assistant, Project project, VirtualFile anchor) {
 		return new AntoraDependencyContext(assistant, project, anchor, AntoraProjectContext.of(project, anchor));
 	}
 
 	private static boolean isYamlAvailable() {
-		return PluginManagerCore.isPluginInstalled(YAML) && !PluginManagerCore.isDisabled(YAML)
-				&& FileTypeManager.getInstance().findFileTypeByName("YAML") != null;
+		return PluginManagerCore.isPluginInstalled(YAML) && !PluginManagerCore.isDisabled(YAML) && FileTypeManager.getInstance()
+																										   .findFileTypeByName("YAML") != null;
 	}
 
 	private static boolean isGitHubAvailable() {
 		return PluginManagerCore.isPluginInstalled(GITHUB) && !PluginManagerCore.isDisabled(GITHUB);
 	}
 
-	private static class AntoraDependencyContext extends ProjectBuildContextWrapper
-			implements ProjectDependencyContext {
+	private static class AntoraDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final DependencyFileDelegate delegate;
 
 		private final AntoraProjectContext projectContext;
 
-		AntoraDependencyContext(AntoraAssistant assistant, Project project, VirtualFile file,
-				AntoraProjectContext projectContext) {
+		AntoraDependencyContext(AntoraAssistant assistant, Project project, VirtualFile file, AntoraProjectContext projectContext) {
 			super(projectContext);
 			this.delegate = DependencyFileDelegate.of(project, file);
 			this.projectContext = projectContext;
@@ -218,8 +221,8 @@ public class AntoraAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateAntoraPlaybookFile(delegate.getProject()).applyUpdates(psiFile, updates);
+		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+			return new UpdateAntoraPlaybookFile(delegate.getProject()).applyUpdates(psiFile, updates);
 		}
 
 		@Override

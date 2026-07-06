@@ -43,6 +43,7 @@ import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
@@ -79,6 +80,11 @@ class MavenAssistant implements DependencyAssistant {
 	@Override
 	public PackageSystem getPackageSystem() {
 		return PackageSystem.MAVEN;
+	}
+
+	@Override
+	public InterfaceAssistant getInterfaceAssistant() {
+		return MavenInterface.INSTANCE;
 	}
 
 	@Override
@@ -235,8 +241,8 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdatePomFile(propertyResolver).applyUpdates(psiFile, updates);
+		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+			return new UpdatePomFile(propertyResolver).applyUpdates(psiFile, updates);
 		}
 
 		@Override

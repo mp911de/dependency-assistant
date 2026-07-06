@@ -18,6 +18,7 @@ package biz.paluch.dap.assistant.review;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -52,5 +53,15 @@ public interface ReviewActions {
 	 * Report a failure from the review apply task.
 	 */
 	void reportApplyError(Throwable error);
+
+	/**
+	 * Transfer the armed review rows into the Upgrade Plan tool window, replacing any
+	 * previously planned upgrade and revealing the tool window.
+	 *
+	 * @param upgrades the upgrades armed in the review, each with its pinned target.
+	 * @param files    the build files in the reviewed scope, as paths, that
+	 *                 become the plan's scope.
+	 */
+	void openInUpgradePlan(Map<UpgradeCandidate, UpgradeSelection> upgrades, List<VirtualFile> files);
 
 }

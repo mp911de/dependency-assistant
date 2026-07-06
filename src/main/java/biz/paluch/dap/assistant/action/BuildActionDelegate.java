@@ -18,19 +18,23 @@ package biz.paluch.dap.assistant.action;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.upgrade.BuildFileUpdater;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
@@ -49,13 +53,15 @@ public class BuildActionDelegate implements BuildFileUpdater {
 
 	private static final Logger LOG = Logger.getInstance(BuildActionDelegate.class);
 
-	private static final String COMMAND_GROUP = "biz.paluch.dap.UpdateDependencies";
-
 	private final Project project;
 
-	private final BiConsumer<PsiFile, List<DependencyUpdate>> updateAction;
+	private final BiFunction<PsiFile, List<DependencyUpdate>, UpgradeResult> updateAction;
 
 	private final BetterPsiManager psiManager;
+
+	private UndoConfirmationPolicy undoConfirmationPolicy = UndoConfirmationPolicy.DEFAULT;
+
+	private boolean globalUndo;
 
 	/**
 	 * Create a delegate using the update action from the given dependency context.
@@ -64,42 +70,69 @@ public class BuildActionDelegate implements BuildFileUpdater {
 		this(project, dependencyContext::applyUpdates);
 	}
 
-	public BuildActionDelegate(Project project, BiConsumer<PsiFile, List<DependencyUpdate>> updateAction) {
+	public BuildActionDelegate(Project project,
+			BiFunction<PsiFile, List<DependencyUpdate>, UpgradeResult> updateAction) {
 		this.project = project;
 		this.updateAction = updateAction;
 		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
-	@Override
-	public void updateBuildFile(VirtualFile file, List<DependencyUpdate> updates) {
-
-		if (updates.isEmpty()) {
-			return;
-		}
-
-		runCommand(() -> applyToFile(file, updates));
+	/**
+	 * Configure the write commands for a batch driven from outside a single editor:
+	 * global undo so the whole batch reverts as one step from any undo context,
+	 * with the given policy deciding whether the platform asks for confirmation
+	 * before undoing.
+	 *
+	 * @param undoConfirmationPolicy the confirmation policy applied on undo.
+	 * @return {@code this} delegate.
+	 */
+	public BuildActionDelegate withGlobalUndo(UndoConfirmationPolicy undoConfirmationPolicy) {
+		this.undoConfirmationPolicy = undoConfirmationPolicy;
+		this.globalUndo = true;
+		return this;
 	}
 
 	@Override
-	public void updateBuildFiles(Collection<VirtualFile> files, List<DependencyUpdate> updates) {
+	public UpgradeResult updateBuildFile(VirtualFile file, List<DependencyUpdate> updates) {
 
-		if (files.isEmpty() || updates.isEmpty()) {
-			return;
+		if (updates.isEmpty()) {
+			return UpgradeResult.none();
 		}
 
-		runCommand(() -> {
+		return runCommand(() -> applyToFile(file, updates));
+	}
+
+	@Override
+	public UpgradeResult updateBuildFiles(Collection<VirtualFile> files, List<DependencyUpdate> updates) {
+
+		if (files.isEmpty() || updates.isEmpty()) {
+			return UpgradeResult.none();
+		}
+
+		return runCommand(() -> {
+			UpgradeResult result = UpgradeResult.none();
 			for (VirtualFile file : files) {
-				applyToFile(file, updates);
+				result = result.merge(applyToFile(file, updates));
 			}
+			return result;
 		});
 	}
 
-	private void runCommand(Runnable command) {
-		WriteCommandAction.runWriteCommandAction(project, MessageBundle.message("UpdateBuildFile.title"), COMMAND_GROUP,
-				command);
+	private UpgradeResult runCommand(Supplier<UpgradeResult> command) {
+
+		Ref<UpgradeResult> result = Ref.create(UpgradeResult.none());
+		WriteCommandAction.Builder action = WriteCommandAction.writeCommandAction(project)
+				.withName(MessageBundle.message("UpdateBuildFile.title"))
+				.withGroupId(UPDATE_COMMAND_GROUP)
+				.withUndoConfirmationPolicy(undoConfirmationPolicy);
+		if (globalUndo) {
+			action = action.withGlobalUndo();
+		}
+		action.run(() -> result.set(command.get()));
+		return result.get();
 	}
 
-	private void applyToFile(VirtualFile file, List<DependencyUpdate> updates) {
+	private UpgradeResult applyToFile(VirtualFile file, List<DependencyUpdate> updates) {
 
 		Document document = FileDocumentManager.getInstance().getDocument(file);
 		if (document != null) {
@@ -110,11 +143,11 @@ public class BuildActionDelegate implements BuildFileUpdater {
 		if (psiFile == null) {
 			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
 					MessageBundle.message("UpdateBuildFile.notification.no-file", file.getPresentableUrl()));
-			return;
+			return UpgradeResult.none();
 		}
 
 		try {
-			updateAction.accept(psiFile, updates);
+			return updateAction.apply(psiFile, updates);
 		} catch (ProcessCanceledException ex) {
 			throw ex;
 		} catch (Exception ex) {
@@ -122,6 +155,7 @@ public class BuildActionDelegate implements BuildFileUpdater {
 			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
 					MessageBundle.message("UpdateBuildFile.notification.failed", file.getPresentableUrl(),
 							Notifications.errorMessage(ex)));
+			return UpgradeResult.none();
 		}
 	}
 

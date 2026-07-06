@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.review;
+package biz.paluch.dap.assistant.check;
 
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;

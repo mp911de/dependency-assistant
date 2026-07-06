@@ -72,6 +72,18 @@ public interface DependencyAssistant {
 	PackageSystem getPackageSystem();
 
 	/**
+	 * Return the user-interface metadata for this integration.
+	 * <p>The returned {@link InterfaceAssistant} is a stateless, shared instance
+	 * supplying icons and display names, reachable without a
+	 * {@link ProjectDependencyContext}. Persisted references such as the Upgrade
+	 * Plan resolve it from a stored integration class name to recover the correct
+	 * row icon.
+	 *
+	 * @return the interface metadata; guaranteed to be not {@literal null}.
+	 */
+	InterfaceAssistant getInterfaceAssistant();
+
+	/**
 	 * Return whether this integration applies to the given project.
 	 * <p>This conditional must not trigger I/O or PSI access.
 	 * @param project the IntelliJ project to inspect.

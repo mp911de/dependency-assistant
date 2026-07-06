@@ -108,6 +108,25 @@ class GitRepositoryResolver {
 		return null;
 	}
 
+	/**
+	 * Resolve repository metadata for the project without a file anchor.
+	 * <p>The first repository whose preferred remote parses as a GitHub or GitHub
+	 * Enterprise URL provides the metadata. A {@literal null} result means no
+	 * configured Git remote could be interpreted that way.
+	 */
+	@Nullable
+	GitRepositoryMetadata resolveProjectRepository() {
+
+		for (GitRepository repository : repositoryManager.getRepositories()) {
+			GitRepositoryMetadata parsed = preferredRemoteCoordinates(repository);
+			if (parsed != null) {
+				return parsed;
+			}
+		}
+
+		return null;
+	}
+
 	private static @Nullable GitRepositoryMetadata preferredRemoteCoordinates(
 			GitRepository repository) {
 

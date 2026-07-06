@@ -91,9 +91,13 @@ public class GitHubReleases implements ReleaseSource {
 	 * @param executor the API request executor.
 	 */
 	GitHubReleases(GithubServerPath server, GithubApiRequestExecutor executor) {
+		this(server, executor, DEFAULT_TAGS_PAGE_SIZE);
+	}
+
+	GitHubReleases(GithubServerPath server, GithubApiRequestExecutor executor, int pageSize) {
 		this.server = server;
 		this.executor = executor;
-		this.pageSize = DEFAULT_TAGS_PAGE_SIZE;
+		this.pageSize = pageSize;
 	}
 
 	@Override

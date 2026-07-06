@@ -2,11 +2,13 @@
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.antora.AntoraAssistant"/>
 		<assistant implementation="biz.paluch.dap.github.GitHubAssistant"/>
+		<ticketSystem implementation="biz.paluch.dap.github.GitHubTicketSystemProvider"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
 		<projectService
 				serviceImplementation="biz.paluch.dap.github.GithubApiRequestExecutorFactory"/>
+		<projectService serviceImplementation="biz.paluch.dap.github.GitHubTicketCache"/>
 		<localInspection id="dap.github.unpinned-action"
 				language="yaml"
 				bundle="messages.MessageBundle"

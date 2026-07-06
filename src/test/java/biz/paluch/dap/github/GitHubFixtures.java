@@ -16,15 +16,19 @@
 
 package biz.paluch.dap.github;
 
-import biz.paluch.dap.artifact.DeclarationSource;
+import java.util.List;
+
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.fixtures.TestProjects;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
+import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
@@ -35,14 +39,19 @@ import com.intellij.psi.PsiFile;
  */
 class GitHubFixtures {
 
+	static final String SHA_V3 = "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1";
+
+	static final String SHA_V4 = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
+
+	static final ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
+
 	/**
 	 * Set up a cache with GitHub Actions releases and register contexts for the
 	 * given project.
 	 */
 	static void setup(Project project) {
 
-		Cache cache = new Cache();
-		cache.addArtifacts(TestGitHubReleases.actions());
+		Cache cache = buildCache();
 		StateService service = StateService.getInstance(project);
 		service.setCache(cache);
 	}
@@ -54,10 +63,11 @@ class GitHubFixtures {
 
 		StateService service = StateService.getInstance(file.getProject());
 
+		ReleaseSource releaseSource = new EmptyReleaseSource();
 		DependencyCollector collector = new GitHubDependencyCollector(file.getProject()).collect(file);
 
 		GitHubProjectContext projectContext = new GitHubProjectContext(
-				TestProjects.PROJECT, new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()));
+				new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()), releaseSource);
 		file.putUserData(GitHubProjectContext.KEY, projectContext);
 
 		service.getProjectState(projectContext.getProjectId()).setDependencies(collector, PackageSystem.GITHUB);
@@ -66,15 +76,42 @@ class GitHubFixtures {
 	}
 
 	static void registerSetupJavaShaDependency(Project project) {
+		StateService.getInstance(project).getCache().addArtifacts(TestGitHubReleases.SETUP_JAVA.snapshot());
+	}
 
-		DependencyCollector collector = new DependencyCollector();
-		collector.registerUsage(TestGitHubReleases.SETUP_JAVA,
-				new GitRef("1bcf9fb12cf4aa7d266a90ae39939e61372fe520"), DeclarationSource.dependency(),
-				VersionSource.declared("1bcf9fb12cf4aa7d266a90ae39939e61372fe520"));
+	private static Cache buildCache() {
 
-		StateService.getInstance(project)
-				.getProjectState(ProjectId.of("github:actions", "stale-workflow"))
-				.setDependencies(collector, PackageSystem.GITHUB);
+		Cache cache = new Cache();
+
+		CachedArtifact checkout = new CachedArtifact(CHECKOUT);
+		checkout.addRelease(new CachedRelease("v4.2.0", "2024-10-01", SHA_V4));
+		checkout.addRelease(new CachedRelease("v4.1.0", "2024-05-01", null));
+		checkout.addRelease(new CachedRelease("v3.6.0", "2024-01-01", SHA_V3));
+		cache.addArtifacts(List.of(checkout));
+
+		return cache;
+	}
+
+	/**
+	 * Release source used by workflow fixtures whose cache is already populated.
+	 */
+	static class EmptyReleaseSource implements ReleaseSource {
+
+		@Override
+		public String getId() {
+			return "GitHub[github.com]";
+		}
+
+		@Override
+		public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+			return List.of();
+		}
+
+		@Override
+		public String toString(ArtifactId artifactId) {
+			return GitHubUtils.toString(artifactId);
+		}
+
 	}
 
 }

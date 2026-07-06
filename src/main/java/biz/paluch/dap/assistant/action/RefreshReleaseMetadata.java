@@ -43,6 +43,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
+// TODO: progress bar indeterminate?
 class RefreshReleaseMetadata extends Task.Backgroundable {
 
 	private static final Logger LOG = Logger.getInstance(RefreshReleaseMetadata.class);

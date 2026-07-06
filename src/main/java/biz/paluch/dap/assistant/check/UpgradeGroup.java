@@ -124,8 +124,16 @@ public class UpgradeGroup extends UpgradeCandidate {
 	 * @param displayName the derived group name shown as the row label.
 	 * @return the group row aggregating the members.
 	 */
-	static UpgradeGroup inferred(List<UpgradeCandidate> members, String displayName) {
+	public static UpgradeGroup inferred(List<UpgradeCandidate> members, String displayName) {
 		return create(members, displayName);
+	}
+
+	/**
+	 * Return the derived group name of an inferred group, or {@literal null} when
+	 * the group is labeled by its governing rule's dependency name.
+	 */
+	public @Nullable String getDerivedLabel() {
+		return derivedLabel;
 	}
 
 	private static UpgradeGroup create(List<UpgradeCandidate> members, @Nullable String derivedLabel) {

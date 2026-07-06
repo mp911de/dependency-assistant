@@ -58,10 +58,15 @@
 		<extensionPoint qualifiedName="biz.paluch.dap.bomLocator"
 		                interface="biz.paluch.dap.artifact.BomLocator"
 		                dynamic="true"/>
+		<extensionPoint qualifiedName="biz.paluch.dap.ticketSystem"
+		                interface="biz.paluch.dap.ticket.TicketSystemProvider"
+		                dynamic="true"/>
 	</extensionPoints>
 
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<bomLocator implementation="biz.paluch.dap.maven.SimpleMavenBomLocator"/>
+		<!-- Development/offline ticket system; remove or guard before release. -->
+		<ticketSystem implementation="biz.paluch.dap.plan.InMemoryTicketSystemProvider"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="org.jetbrains.kotlin">
@@ -69,6 +74,10 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<fileTemplateGroup implementation="biz.paluch.dap.plan.UpgradePlanTemplateGroup"/>
+		<toolWindow id="Upgrade Plan" anchor="bottom" doNotActivateOnStart="true"
+		            factoryClass="biz.paluch.dap.plan.UpgradePlanToolWindowFactory"
+		            icon="biz.paluch.dap.DependencyAssistantIcons.TOOL_WINDOW_UPGRADE_PLAN"/>
 		<postStartupActivity
 				implementation="biz.paluch.dap.assistant.action.PostStartup"/>
 		<actionOnSave implementation="biz.paluch.dap.assistant.action.FlushStateOnSave"/>
@@ -87,6 +96,9 @@
 		                   displayType="NONE"
 		                   isLogByDefault="true"
 		                   bundle="messages.MessageBundle" key="notification.dependencies-updates"/>
+		<notificationGroup id="biz.paluch.dependency-assistant.plan"
+		                   displayType="BALLOON"
+		                   bundle="messages.MessageBundle" key="plan.notification.group"/>
 		<additionalTextAttributes scheme="Default"
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
 		<additionalTextAttributes scheme="Darcula"
@@ -132,6 +144,47 @@
 	</extensions>
 
 	<actions>
+		<group id="DependencyAssistant.UpgradePlan.Toolbar">
+			<action id="DependencyAssistant.UpgradePlan.ApplyAll"
+			        class="biz.paluch.dap.plan.ApplyAllAction"
+			        icon="biz.paluch.dap.DependencyAssistantIcons.PLAN_APPLY_ALL"/>
+			<action id="DependencyAssistant.UpgradePlan.ApplyAllAndCommit"
+			        class="biz.paluch.dap.plan.ApplyAllAndCommitAction"
+			        icon="AllIcons.Actions.Commit"/>
+			<action id="DependencyAssistant.UpgradePlan.PreviewChanges"
+			        class="biz.paluch.dap.plan.PreviewChangesAction"
+			        icon="AllIcons.Actions.Preview"/>
+			<separator/>
+			<action id="DependencyAssistant.UpgradePlan.CreateTickets"
+			        class="biz.paluch.dap.plan.CreateTicketsAction"
+			        icon="biz.paluch.dap.DependencyAssistantIcons.PLAN_CREATE_TICKETS"/>
+			<separator/>
+			<action id="DependencyAssistant.UpgradePlan.Refresh"
+			        class="biz.paluch.dap.plan.RefreshPlanAction"
+			        icon="AllIcons.Actions.Refresh"/>
+			<action id="DependencyAssistant.UpgradePlan.Discard"
+			        class="biz.paluch.dap.plan.DiscardPlanAction"
+			        icon="AllIcons.Actions.GC"/>
+		</group>
+		<group id="DependencyAssistant.UpgradePlan.Popup">
+			<reference ref="DependencyAssistant.UpgradePlan.PreviewChanges"/>
+			<reference ref="EditSource"/>
+			<action id="DependencyAssistant.UpgradePlan.FindUsages"
+			        class="biz.paluch.dap.plan.FindUsagesAction"
+			        icon="AllIcons.Actions.Find"/>
+			<separator/>
+			<reference ref="DependencyAssistant.UpgradePlan.CreateTickets"/>
+			<action id="DependencyAssistant.UpgradePlan.OpenTicket"
+			        class="biz.paluch.dap.plan.OpenTicketInBrowserAction"
+			        icon="AllIcons.General.Web"/>
+			<action id="DependencyAssistant.UpgradePlan.UnlinkTicket"
+			        class="biz.paluch.dap.plan.UnlinkTicketAction"
+			        icon="AllIcons.General.Remove"/>
+			<separator/>
+			<reference ref="$Copy"/>
+			<reference ref="$Paste"/>
+			<reference ref="$Delete"/>
+		</group>
 		<group id="biz.paluch.dap.DependencyAssistant"
 		       text="Dependency Assistant" popup="true"	icon="biz.paluch.dap.DependencyAssistantIcons.ICON">
 			<add-to-group group-id="ToolsMenu"/>

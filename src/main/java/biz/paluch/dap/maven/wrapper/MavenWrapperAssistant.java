@@ -41,6 +41,7 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileIndexLookup;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.MessageBundle;
@@ -76,6 +77,11 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	@Override
 	public PackageSystem getPackageSystem() {
 		return PackageSystem.MAVEN;
+	}
+
+	@Override
+	public InterfaceAssistant getInterfaceAssistant() {
+		return MavenWrapperInterface.INSTANCE;
 	}
 
 	@Override
@@ -229,8 +235,8 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			UpdateMavenWrapperProperties.applyUpdates(psiFile, updates);
+		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+			return UpdateMavenWrapperProperties.applyUpdates(psiFile, updates);
 		}
 
 		@Override

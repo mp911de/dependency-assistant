@@ -32,6 +32,7 @@ import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -63,6 +64,11 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	@Override
 	public PackageSystem getPackageSystem() {
 		return PackageSystem.MAVEN;
+	}
+
+	@Override
+	public InterfaceAssistant getInterfaceAssistant() {
+		return MavenAssistant.MavenInterface.INSTANCE;
 	}
 
 	@Override
@@ -167,8 +173,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			new UpdateExtensionsFile().applyUpdates(psiFile, updates);
+		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+			return new UpdateExtensionsFile().applyUpdates(psiFile, updates);
 		}
 
 		private DependencyCollector collect(PsiFile file) {

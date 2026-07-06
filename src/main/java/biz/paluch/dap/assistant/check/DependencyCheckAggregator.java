@@ -275,13 +275,14 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			UpgradeSuggestions suggestions = suggestionsFactory.createSuggestions(subject);
 
 			DependencyUpdateCandidate option = new DependencyUpdateCandidate(subject, suggestions);
-			candidates.add(new UpgradeCandidate(option, entry.contexts().iterator().next()
-					.getInterfaceAssistant(), declaredVersions));
+			candidates.add(new UpgradeCandidate(option,
+					entry.contexts().iterator().next()
+							.getInterfaceAssistant(), declaredVersions));
 		});
 
 		candidates.sort(Comparator.comparing(UpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
-		return new DependencyUpgradeCandidates(UpgradeGroups.of(candidates), files, errors);
+		return new DependencyUpgradeCandidates(UpgradeGroups.of(candidates), new ArrayList<>(files), errors);
 	}
 
 	private VulnerabilityRepository getVulnerabilities(PackageIdentity pkg,

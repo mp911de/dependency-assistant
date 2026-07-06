@@ -26,6 +26,7 @@ import biz.paluch.dap.gradle.TomlParser.TomlCatalogDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
@@ -65,13 +66,15 @@ class UpdateGradleFile {
 	 * @param buildFile the Gradle file to update.
 	 * @param updates dependency updates to apply.
 	 */
-	public void applyUpdates(PsiFile buildFile, List<DependencyUpdate> updates) {
+	public UpgradeResult applyUpdates(PsiFile buildFile, List<DependencyUpdate> updates) {
 
+		String before = buildFile.getText();
 		GradlePropertyResolver propertyResolver = GradlePropertyResolver.create(buildFile);
 
 		for (DependencyUpdate update : updates) {
 			applyUpdate(buildFile, propertyResolver, update);
 		}
+		return before.equals(buildFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	private void applyUpdate(PsiFile buildFile, GradlePropertyResolver propertyResolver, DependencyUpdate update) {

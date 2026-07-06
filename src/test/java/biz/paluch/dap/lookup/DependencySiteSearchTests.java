@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.assistant.review.DependencySiteSearchFunction;
+import biz.paluch.dap.assistant.check.DependencySiteSearchFunction;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;

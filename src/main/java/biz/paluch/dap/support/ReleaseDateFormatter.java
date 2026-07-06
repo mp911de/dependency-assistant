@@ -18,11 +18,13 @@ package biz.paluch.dap.support;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.time.temporal.ChronoUnit;
 
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.util.text.DateFormatUtil;
@@ -122,6 +124,50 @@ public class ReleaseDateFormatter {
 
 	private String formatDateTime(ZonedDateTime zonedDateTime) {
 		return formatter.format(zonedDateTime) + " " + timeFormatter.format(zonedDateTime);
+	}
+
+	/**
+	 * Format the given due date at day granularity, combining a relative
+	 * description that extends the relative ladder into the future ("today",
+	 * "tomorrow", "in 6 days", "next week") with the absolute medium-style date
+	 * (e.g. "in 6 days (Jul 16, 2026)"); beyond {@link #DETAIL_LIMIT_DAYS} in
+	 * either direction the absolute date stands alone.
+	 *
+	 * @param dueDate the due date to format.
+	 * @return the formatted due date.
+	 */
+	public String formatDue(LocalDate dueDate) {
+
+		String relative = formatRelativeDay(dueDate);
+		String absolute = formatter.format(dueDate);
+		return relative != null ? relative + " (" + absolute + ")" : absolute;
+	}
+
+	private @Nullable String formatRelativeDay(LocalDate dueDate) {
+
+		long days = ChronoUnit.DAYS.between(LocalDate.ofInstant(now, ZoneId.systemDefault()), dueDate);
+		if (Math.abs(days) > DETAIL_LIMIT_DAYS) {
+			return null;
+		}
+
+		if (days == 0) {
+			return MessageBundle.message("date.relative.today");
+		}
+		if (days == 1) {
+			return MessageBundle.message("date.relative.tomorrow");
+		}
+		if (days == -1) {
+			return MessageBundle.message("date.relative.yesterday");
+		}
+		if (days >= 7) {
+			return MessageBundle.message("date.relative.next-week");
+		}
+		if (days <= -7) {
+			return MessageBundle.message("date.relative.last-week");
+		}
+
+		return days > 0 ? MessageBundle.message("date.relative.in-days", days)
+				: MessageBundle.message("date.relative.days-ago", -days);
 	}
 
 	/**

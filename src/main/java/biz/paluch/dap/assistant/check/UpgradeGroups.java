@@ -86,7 +86,7 @@ public class UpgradeGroups implements Sequence<UpgradeCandidate> {
 	 * @return the rows with each group replacing its members at the position of the
 	 * first member.
 	 */
-	static UpgradeGroups of(List<UpgradeCandidate> candidates) {
+	public static UpgradeGroups of(List<UpgradeCandidate> candidates) {
 
 		Map<GroupKey, List<UpgradeCandidate>> governed = new LinkedHashMap<>();
 		Map<String, List<UpgradeCandidate>> governedByName = new LinkedHashMap<>();

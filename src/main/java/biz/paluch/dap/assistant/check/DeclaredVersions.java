@@ -79,6 +79,23 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
+	 * Return a result declaring the artifact at a single version, with no drift.
+	 *
+	 * <p>Used when reconstructing an upgrade candidate from a persisted plan, where
+	 * only the effective current version is known and no declaration sites are
+	 * available for drift reporting.
+	 *
+	 * @param version the single declared version.
+	 * @return a result carrying the one version.
+	 */
+	public static DeclaredVersions of(ArtifactVersion version) {
+
+		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
+		versions.add(version);
+		return new DeclaredVersions(versions, Set.of(), Set.of());
+	}
+
+	/**
 	 * Collect the declared versions across the given dependency sites.
 	 *
 	 * <p>Git references are resolved through the supplied resolver before they are

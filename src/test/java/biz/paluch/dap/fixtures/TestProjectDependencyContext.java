@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
@@ -84,7 +85,7 @@ public class TestProjectDependencyContext implements ProjectDependencyContext {
 	}
 
 	@Override
-	public void applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
 		throw new UnsupportedOperationException();
 	}
 

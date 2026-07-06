@@ -139,10 +139,11 @@ public class Notifications {
 	 * is flagged.
 	 *
 	 * @param updates the applied updates; an empty collection is a no-op.
+	 * @param undo reverses the whole batch through the platform undo.
 	 * @param undoFlagged reverse-applies only the flagged entries.
 	 */
 	static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates,
-			Runnable undoFlagged) {
+			Runnable undo, Runnable undoFlagged) {
 
 		if (updates.isEmpty()) {
 			return;
@@ -151,11 +152,11 @@ public class Notifications {
 		List<AppliedDependencyUpdate> flagged = updates.stream().filter(AppliedDependencyUpdate::isFlagged)
 				.toList();
 
-		if (flagged.isEmpty()) {
-			updatesApplied(updates).notify(project);
-		} else {
-			updatesAppliedFlagged(updates, flagged, undoFlagged).notify(project);
-		}
+		Notification notification = flagged.isEmpty() ? updatesApplied(updates)
+				: updatesAppliedFlagged(updates, flagged, undoFlagged);
+		notification.addAction(NotificationAction.createSimpleExpiring(
+				MessageBundle.message("notification.dependencies-updates.undo"), undo));
+		notification.notify(project);
 	}
 
 	private static Notification updatesApplied(Collection<AppliedDependencyUpdate> updates) {

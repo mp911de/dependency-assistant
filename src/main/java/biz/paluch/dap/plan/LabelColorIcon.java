@@ -1,0 +1,73 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package biz.paluch.dap.plan;
+
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+
+import javax.swing.Icon;
+
+import com.intellij.ui.scale.JBUIScale;
+import com.intellij.util.ui.GraphicsUtil;
+
+/**
+ * Round color swatch for a GitHub label, shown in the label selector popup the
+ * way GitHub renders label dots. Sized on the 16x16 icon grid with a centered
+ * filled circle.
+ *
+ * @author Mark Paluch
+ */
+class LabelColorIcon implements Icon {
+
+	private static final int GRID = 16;
+
+	private static final int DIAMETER = 10;
+
+	private final Color color;
+
+	LabelColorIcon(Color color) {
+		this.color = color;
+	}
+
+	@Override
+	public void paintIcon(Component component, Graphics g, int x, int y) {
+
+		Graphics2D graphics = (Graphics2D) g.create();
+		try {
+			GraphicsUtil.setupAAPainting(graphics);
+			int diameter = JBUIScale.scale(DIAMETER);
+			int inset = (getIconWidth() - diameter) / 2;
+			graphics.setColor(color);
+			graphics.fillOval(x + inset, y + inset, diameter, diameter);
+		} finally {
+			graphics.dispose();
+		}
+	}
+
+	@Override
+	public int getIconWidth() {
+		return JBUIScale.scale(GRID);
+	}
+
+	@Override
+	public int getIconHeight() {
+		return JBUIScale.scale(GRID);
+	}
+
+}

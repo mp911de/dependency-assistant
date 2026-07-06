@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant.check;
 
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -37,7 +36,8 @@ import com.intellij.openapi.vfs.VirtualFile;
  * @param errors non-fatal release lookup errors; empty when all lookups
  * succeeded.
  */
-public record DependencyUpgradeCandidates(UpgradeGroups candidates, Collection<VirtualFile> files,
+public record DependencyUpgradeCandidates(UpgradeGroups candidates,
+                                          List<VirtualFile> files,
 		List<String> errors) implements Sequence<UpgradeCandidate> {
 
 	public UpgradeCandidate getFirst() {

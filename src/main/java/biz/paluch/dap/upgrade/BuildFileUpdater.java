@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -30,12 +31,19 @@ import com.intellij.openapi.vfs.VirtualFile;
 public interface BuildFileUpdater {
 
 	/**
+	 * Command group shared by every dependency-update write command, so writes
+	 * issued back-to-back coalesce into a single undoable step regardless of which
+	 * surface (review dialog, upgrade plan) issued them.
+	 */
+	String UPDATE_COMMAND_GROUP = "biz.paluch.dap.UpdateDependencies";
+
+	/**
 	 * Apply the given updates to a single build file inside one undoable command.
 	 *
 	 * @param file the build file to write.
 	 * @param updates the updates to apply; an empty list is a no-op.
 	 */
-	void updateBuildFile(VirtualFile file, List<DependencyUpdate> updates);
+	UpgradeResult updateBuildFile(VirtualFile file, List<DependencyUpdate> updates);
 
 	/**
 	 * Apply the given updates to every build file in {@code files} inside one
@@ -48,6 +56,6 @@ public interface BuildFileUpdater {
 	 * @param files the build files to write; an empty collection is a no-op.
 	 * @param updates the updates to apply to each file; an empty list is a no-op.
 	 */
-	void updateBuildFiles(Collection<VirtualFile> files, List<DependencyUpdate> updates);
+	UpgradeResult updateBuildFiles(Collection<VirtualFile> files, List<DependencyUpdate> updates);
 
 }

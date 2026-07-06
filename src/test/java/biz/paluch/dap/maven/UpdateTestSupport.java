@@ -29,6 +29,7 @@ import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.assistant.action.BuildActionDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 
@@ -70,6 +71,41 @@ class UpdateTestSupport {
 				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates))
 						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
 		return UpdateTestSupport.of(targetFile);
+	}
+
+	/**
+	 * Apply the update by calling the writer directly, without the build-action
+	 * delegate. Works on non-physical files (such as preview copies) that have no
+	 * virtual file.
+	 */
+	static UpgradeResult applyUpdateDirect(PsiFile targetFile, String groupId, String artifactId,
+			String fromVersion, String toVersion) {
+
+		ArtifactId id = ArtifactId.of(groupId, artifactId);
+		ArtifactVersion current = ArtifactVersion.of(fromVersion);
+		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
+		Dependency dependency = new Dependency(id, current);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.declared(fromVersion));
+		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
+
+		return new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, List.of(update));
+	}
+
+	static UpgradeResult applyUpdateResult(PsiFile targetFile, String groupId, String artifactId,
+			String fromVersion, String toVersion) {
+
+		ArtifactId id = ArtifactId.of(groupId, artifactId);
+		ArtifactVersion current = ArtifactVersion.of(fromVersion);
+		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
+		Dependency dependency = new Dependency(id, current);
+		dependency.addDeclarationSource(DeclarationSource.dependency());
+		dependency.addVersionSource(VersionSource.declared(fromVersion));
+		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
+
+		return new BuildActionDelegate(targetFile.getProject(),
+				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates))
+						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
 	}
 
 	/**
