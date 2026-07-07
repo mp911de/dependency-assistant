@@ -32,9 +32,13 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.ArtifactReferenceContextVisitor;
+import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -69,6 +73,7 @@ import org.jetbrains.annotations.NotNull;
  *
  * @author Mark Paluch
  */
+// TODO: Show all dependency drift in find window
 public class DependencyVersionDriftInspection extends LocalInspectionTool implements Iconable {
 
 	@Override
@@ -120,11 +125,14 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 				Set<VersionSource> versionSources = new LinkedHashSet<>();
 				state.doWithDependencies(projectId -> !projectId.equals(excludedModule), dependency -> {
 					if (dependency.getArtifactId().equals(artifactId)) {
-						declaredVersions.add(dependency.getCurrentVersion());
+						declaredVersions.add(resolveGitRef(dependency.getCurrentVersion(),
+								referenceContext.getReleases()));
 						versionSources.addAll(dependency.getVersionSources());
 					}
 				});
-				declaredVersions.add(declaration.getVersion());
+				ArtifactVersion currentVersion = resolveGitRef(declaration.getVersion(),
+						referenceContext.getReleases());
+				declaredVersions.add(currentVersion);
 				versionSources.add(declaration.getVersionSource());
 
 				boolean versionDrift = declaredVersions.size() > 1;
@@ -150,11 +158,11 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 						: "inspection.version-drift.problem", declaration.getArtifactId(), versions);
 
 				List<LocalQuickFix> fixes = new ArrayList<>();
-				if (!highest.equals(declaration.getVersion())) {
+				if (!highest.equals(currentVersion)) {
 					fixes.add(new AlignVersionAction(referenceContext, highest, true));
 				}
 
-				if (!lowest.equals(declaration.getVersion())) {
+				if (!lowest.equals(currentVersion)) {
 					fixes.add(new AlignVersionAction(referenceContext, lowest, false));
 				}
 
@@ -162,6 +170,17 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 			}
 
 		};
+	}
+
+	private static ArtifactVersion resolveGitRef(ArtifactVersion version, Releases releases) {
+
+		if (version instanceof GitRef gitRef) {
+			GitVersion gitVersion = GitVersionResolver.resolveVersion(gitRef.getRef(), releases);
+			if (gitVersion != null) {
+				return gitVersion;
+			}
+		}
+		return version;
 	}
 
 	private static boolean hasDeclarationDrift(Iterable<VersionSource> versionSources) {

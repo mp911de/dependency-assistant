@@ -193,7 +193,8 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 		DependencyCollector collector = context.scanDependencies(indicator);
 		projectState.setDependencies(collector, context.getPackageSystem());
 
-		Collection<ReleaseSource> sources = collector.getReleaseSources();
+		Collection<ReleaseSource> sources = new LinkedHashSet<>(collector.getReleaseSources());
+		sources.addAll(context.getReleaseSources());
 
 		for (Dependency usage : collector.getUsages()) {
 			add(usage, context, buildFile, sources);

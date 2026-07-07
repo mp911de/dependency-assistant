@@ -25,7 +25,9 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.Versioned;
@@ -55,7 +57,8 @@ public class GitVersionResolver {
 	}
 
 	/**
-	 * Resolve the given ref against cached releases for the given artifact.
+	 * Resolve the given ref strictly against cached releases for the given
+	 * artifact.
 	 * <p>This is the cache-only path used by dependency collectors that need to
 	 * pair a declared SHA or tag with a known release. The Project-State branch is
 	 * intentionally not consulted here.
@@ -99,7 +102,20 @@ public class GitVersionResolver {
 			return Versioned.of(gitVersion);
 		}
 
-		return ArtifactVersion.from(rawRef).map(Versioned::of).orElse(Versioned.unversioned());
+		return resolveUnmatchedRef(rawRef);
+	}
+
+	private static Versioned resolveUnmatchedRef(String rawRef) {
+
+		if (!StringUtils.hasText(rawRef)) {
+			return Versioned.unversioned();
+		}
+
+		if (RefStyle.from(rawRef) == RefStyle.SHA) {
+			return Versioned.of(new GitRef(rawRef));
+		}
+
+		return ArtifactVersion.from(rawRef).map(Versioned::of).orElseGet(() -> Versioned.of(new GitRef(rawRef)));
 	}
 
 	/**
