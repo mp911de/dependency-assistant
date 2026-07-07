@@ -33,12 +33,12 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestProjectDependencyContext;
+import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestReleaseSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
-import com.intellij.mock.MockProjectEx;
 import com.intellij.mock.MockVirtualFile;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.junit.jupiter.api.Test;
@@ -75,8 +75,7 @@ class DependencyCheckAggregatorTests {
 
 	String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
 
-	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(new MockProjectEx(() -> {
-	}), new StateService());
+	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(TestProjects.PROJECT, new StateService());
 
 	@Test
 	void groupsDeclarationsByArtifact() {

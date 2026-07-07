@@ -127,8 +127,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		Project project = anchor.getProject();
 		ProjectId projectId = GradleWrapperUtils.createProjectId(virtualFile);
-		return new GradleWrapperDependencyContext(project, virtualFile, projectId,
-				List.of(GradleDistributionService.INSTANCE));
+		return new GradleWrapperDependencyContext(project, virtualFile, projectId);
 	}
 
 	public static class GradleWrapperDependencyContext extends AbstractProjectBuildContext
@@ -140,9 +139,8 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		private final BetterPsiManager psiManager;
 
-		GradleWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId,
-				List<ReleaseSource> releaseSources) {
-			super(projectId, releaseSources);
+		GradleWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId) {
+			super(projectId);
 			this.project = project;
 			this.anchor = anchor;
 			this.psiManager = BetterPsiManager.getInstance(project);
@@ -167,6 +165,11 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 				new GradleWrapperParser(collector).collect(propertiesFile);
 			}
 			return collector;
+		}
+
+		@Override
+		public List<ReleaseSource> getReleaseSources() {
+			return List.of(GradleDistributionService.INSTANCE);
 		}
 
 		@Override

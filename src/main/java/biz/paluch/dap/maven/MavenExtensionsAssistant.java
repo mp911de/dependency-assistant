@@ -174,9 +174,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		private DependencyCollector collect(PsiFile file) {
 
 			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(delegate.getCache());
-			DependencyCollector collector = dependencyCollector.collect(file, PropertyResolver.empty());
-			collector.addAllReleaseSources(getReleaseSources());
-			return collector;
+			return dependencyCollector.collect(file, PropertyResolver.empty());
 		}
 
 		@Override

@@ -161,9 +161,12 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		private final DependencyFileDelegate delegate;
 
+		private final List<ReleaseSource> releaseSources;
+
 		MavenWrapperDependencyContext(Project project, VirtualFile file, ProjectId projectId,
 				List<ReleaseSource> releaseSources) {
-			super(projectId, releaseSources);
+			super(projectId);
+			this.releaseSources = releaseSources;
 
 			this.delegate = DependencyFileDelegate.of(project, file);
 		}
@@ -213,6 +216,11 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 			Assert.state(isAvailable(), "Project context is not available");
 			LookupContext context = LookupContext.create(delegate, this);
 			return new VersionUpgradeLookup(context, new MavenWrapperArtifactReferenceResolver());
+		}
+
+		@Override
+		public List<ReleaseSource> getReleaseSources() {
+			return this.releaseSources;
 		}
 
 		@Override

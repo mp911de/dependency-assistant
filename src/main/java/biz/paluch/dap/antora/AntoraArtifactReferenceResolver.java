@@ -37,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Resolves the {@link YAMLScalar} value of a {@code ui.bundle.url} key into
  * an {@link ArtifactReference}. The declared version is resolved through the
  * canonical chain of
- * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}: cached Git ref
+ * {@link GitVersionResolver#resolveLenient(ArtifactId, String)}: cached Git ref
  * matching, then a raw {@link ArtifactVersion#from(String)} parse. Remote API
  * access is never triggered.
  *
@@ -84,7 +84,7 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 					.declarationElement(scalar)
 					.versionLiteral(scalar);
 
-			Versioned version = context.versionResolver().resolveCurrent(artifactId, bundleUrl.version());
+			Versioned version = context.versionResolver().resolveLenient(artifactId, bundleUrl.version());
 			if (version.isVersioned()) {
 				builder.version(version.getVersion());
 			}

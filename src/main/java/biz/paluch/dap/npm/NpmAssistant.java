@@ -183,9 +183,7 @@ public class NpmAssistant implements DependencyAssistant {
 				return new DependencyCollector();
 			}
 
-			DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(psiFile);
-			collector.addAllReleaseSources(getReleaseSources());
-			return collector;
+			return new NpmDependencyCollector(service.getCache()).collect(psiFile);
 		}
 
 		@Override

@@ -207,7 +207,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-			return delegate.collectDependencies(file -> assistant.collectCompleted(file, getReleaseSources()));
+			return delegate.collectDependencies(file -> assistant.collectCompleted(file));
 		}
 
 		@Override

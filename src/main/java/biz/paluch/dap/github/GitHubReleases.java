@@ -37,11 +37,11 @@ import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubApiRequest;
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
 import org.jetbrains.plugins.github.api.GithubServerPath;
 import org.jetbrains.plugins.github.api.data.GithubResponsePage;
+import org.jetbrains.plugins.github.api.util.GithubApiPagesLoader;
 import org.jetbrains.plugins.github.exceptions.GithubStatusCodeException;
 import org.jspecify.annotations.Nullable;
 
@@ -61,7 +61,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Many projects do not publish GitHub Releases; the tag fallback ensures
  * those still expose update candidates. Tag entries without a release
- * contribute a version with {@literal null} date and currently no cached SHA.
+ * contribute a version with {@literal null} date and the tag's commit SHA.
  * Release entries without a matching fetched tag contribute a version with
  * {@literal null} SHA.
  *
@@ -70,7 +70,6 @@ import org.jspecify.annotations.Nullable;
  * field.
  *
  * @author Mark Paluch
- * @see GitHubAccountResolver
  */
 public class GitHubReleases implements ReleaseSource {
 
@@ -80,7 +79,7 @@ public class GitHubReleases implements ReleaseSource {
 
 	private final GithubServerPath server;
 
-	private final GitHubApiClient client;
+	private final GithubApiRequestExecutor executor;
 
 	private final int pageSize;
 
@@ -92,35 +91,9 @@ public class GitHubReleases implements ReleaseSource {
 	 * @param executor the API request executor.
 	 */
 	GitHubReleases(GithubServerPath server, GithubApiRequestExecutor executor) {
-		this(server, new ExecutorBackedClient(executor), DEFAULT_TAGS_PAGE_SIZE);
-	}
-
-	GitHubReleases(GithubServerPath server, GitHubApiClient client, int pageSize) {
 		this.server = server;
-		this.client = client;
-		this.pageSize = pageSize;
-	}
-
-	/**
-	 * Create a release source for the given project.
-	 */
-	public static GitHubReleases from(Project project) {
-		return from(project, "");
-	}
-
-	/**
-	 * Create a release source for the given project and git host.
-	 */
-	public static GitHubReleases from(Project project, String gitHost) {
-
-		GitHubAccountResolver resolver = new GitHubAccountResolver(project);
-		GitHubAccountResolver.ResolvedAccount resolved = StringUtils.hasText(gitHost) ? resolver.resolve(gitHost)
-				: resolver.resolve();
-		GithubApiRequestExecutor.Factory factory = GithubApiRequestExecutor.Factory.getInstance();
-		GithubApiRequestExecutor executor = resolved.isAuthenticated()
-				? factory.create(resolved.server(), resolved.token())
-				: factory.create();
-		return new GitHubReleases(resolved.server(), executor);
+		this.executor = executor;
+		this.pageSize = DEFAULT_TAGS_PAGE_SIZE;
 	}
 
 	@Override
@@ -131,11 +104,6 @@ public class GitHubReleases implements ReleaseSource {
 	@Override
 	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 		return fetchAllReleases(artifactId, indicator);
-	}
-
-	@Override
-	public String toString(ArtifactId artifactId) {
-		return GitHubUtils.toString(artifactId);
 	}
 
 	/**
@@ -186,7 +154,7 @@ public class GitHubReleases implements ReleaseSource {
 				return;
 			}
 
-			Release.tryFrom(tag, null, null).ifPresent(result::add);
+			Release.tryFrom(tag, null, sha).ifPresent(result::add);
 		});
 
 		return result;
@@ -200,7 +168,7 @@ public class GitHubReleases implements ReleaseSource {
 				server.toApiUrl() + url, GitHubTagDto.class, "application/vnd.github+json");
 
 		try {
-			List<GitHubTagDto> tags = client.loadOne(indicator, request).getItems();
+			List<GitHubTagDto> tags = executor.execute(indicator, request).getItems();
 			Map<String, String> shaByTag = new LinkedHashMap<>();
 			for (GitHubTagDto tag : tags) {
 
@@ -245,7 +213,7 @@ public class GitHubReleases implements ReleaseSource {
 							"application/vnd.github+json");
 				});
 		try {
-			return client.loadAll(indicator, pages);
+			return GithubApiPagesLoader.loadAll(executor, indicator, pages);
 		} catch (GithubStatusCodeException ex) {
 			handleException(ex, artifactId, initial.getUrl());
 			return List.of();
@@ -268,6 +236,11 @@ public class GitHubReleases implements ReleaseSource {
 	}
 
 	@Override
+	public String toString(ArtifactId artifactId) {
+		return GitHubUtils.toString(artifactId);
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (!(o instanceof GitHubReleases that)) {
 			return false;
@@ -278,29 +251,6 @@ public class GitHubReleases implements ReleaseSource {
 	@Override
 	public int hashCode() {
 		return Objects.hashCode(server);
-	}
-
-	interface GitHubApiClient {
-
-		<T> List<T> loadAll(ProgressIndicator indicator, GithubApiPagesLoader.Request<T> request) throws IOException;
-
-		<T> T loadOne(ProgressIndicator indicator, GithubApiRequest<T> request) throws IOException;
-
-	}
-
-	private record ExecutorBackedClient(GithubApiRequestExecutor executor) implements GitHubApiClient {
-
-		@Override
-		public <T> List<T> loadAll(ProgressIndicator indicator, GithubApiPagesLoader.Request<T> request)
-				throws IOException {
-			return GithubApiPagesLoader.loadAll(executor, indicator, request);
-		}
-
-		@Override
-		public <T> T loadOne(ProgressIndicator indicator, GithubApiRequest<T> request) throws IOException {
-			return executor.execute(indicator, request);
-		}
-
 	}
 
 	/**

@@ -46,13 +46,17 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 	 */
 	static final Key<AntoraProjectContext> KEY = Key.create("AntoraProjectContext");
 
+	private final Project project;
+
 	/**
 	 * Create a context for the given project identity and release sources.
+	 *
+	 * @param project
 	 * @param projectId the project identity.
-	 * @param releaseSources the release sources for this Antora playbook.
 	 */
-	AntoraProjectContext(ProjectId projectId, List<ReleaseSource> releaseSources) {
-		super(projectId, releaseSources);
+	AntoraProjectContext(Project project, ProjectId projectId) {
+		super(projectId);
+		this.project = project;
 	}
 
 	/**
@@ -64,20 +68,17 @@ class AntoraProjectContext extends AbstractProjectBuildContext {
 	static AntoraProjectContext of(Project project, VirtualFile anchor) {
 
 		ProjectId projectId = ProjectId.of("antora", anchor.getNameWithoutExtension(), anchor.getPath());
-		return new AntoraProjectContext(projectId, getReleaseSources(project));
-	}
-
-	/**
-	 * Return the project-scoped Antora release sources.
-	 * @param project the IntelliJ project.
-	 */
-	static List<ReleaseSource> getReleaseSources(Project project) {
-		return List.of(new GitHubReleaseSourceRouter(project, true));
+		return new AntoraProjectContext(project, projectId);
 	}
 
 	@Override
 	public PackageSystem getPackageSystem() {
 		return PackageSystem.OTHER;
+	}
+
+	@Override
+	public List<ReleaseSource> getReleaseSources() {
+		return List.of(new GitHubReleaseSourceRouter(project, true));
 	}
 
 }

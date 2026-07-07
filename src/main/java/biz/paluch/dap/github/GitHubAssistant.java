@@ -193,9 +193,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 			return psiManager.optional(anchor).map(psiFile -> {
 				GitHubDependencyCollector collector = new GitHubDependencyCollector(project);
-				DependencyCollector result = collector.collect(psiFile);
-				result.addAllReleaseSources(getReleaseSources());
-				return result;
+				return collector.collect(psiFile);
 			}).orElseGet(DependencyCollector::new);
 		}
 

@@ -230,7 +230,7 @@ class GradleAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 			return delegate.collectDependencies(
-					it -> assistant.collectCompleted(it, projectContext.getReleaseSources()));
+					it -> assistant.collectCompleted(it));
 		}
 
 		@Override

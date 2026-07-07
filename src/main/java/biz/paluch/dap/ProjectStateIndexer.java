@@ -181,7 +181,6 @@ public class ProjectStateIndexer {
 		forEachAvailableEntry(assistant, (anchor, context) -> {
 			DependencyCollector collector = new DependencyCollector();
 			assistant.collect(anchor, collector, introspected);
-			collector.addAllReleaseSources(context.getReleaseSources());
 			active.add(new Entry(anchor.getVirtualFile(), collector));
 		});
 

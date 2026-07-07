@@ -16,9 +16,6 @@
 
 package biz.paluch.dap.support;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 
 /**
@@ -36,18 +33,12 @@ public abstract class AbstractProjectBuildContext implements ProjectBuildContext
 
 	private final ProjectId projectId;
 
-	private final List<ReleaseSource> releaseSources;
-
 	/**
 	 * Create a context for the given identity and release sources.
-	 * @param projectId the build-tool-agnostic identity; must not be
-	 * {@literal null}.
-	 * @param releaseSources the release sources for this dependency domain; must
-	 * not be {@literal null}. The list is retained as given.
+	 * @param projectId the build-tool-agnostic identity.
 	 */
-	protected AbstractProjectBuildContext(ProjectId projectId, List<ReleaseSource> releaseSources) {
+	protected AbstractProjectBuildContext(ProjectId projectId) {
 		this.projectId = projectId;
-		this.releaseSources = releaseSources;
 	}
 
 	@Override
@@ -60,14 +51,10 @@ public abstract class AbstractProjectBuildContext implements ProjectBuildContext
 		return projectId;
 	}
 
-	@Override
-	public List<ReleaseSource> getReleaseSources() {
-		return releaseSources;
-	}
 
 	@Override
 	public String toString() {
-		return "%s, ReleaseSources: %s".formatted(projectId, releaseSources);
+		return "%s,".formatted(projectId);
 	}
 
 }

@@ -1,7 +1,5 @@
 <idea-plugin>
 	<extensions defaultExtensionNs="com.intellij">
-		<projectService
-				serviceImplementation="biz.paluch.dap.github.GitHubAccountResolver"/>
 		<completion.contributor
 				language="yaml"
 				order="first"

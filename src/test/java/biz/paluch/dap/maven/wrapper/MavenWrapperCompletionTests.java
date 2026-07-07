@@ -126,7 +126,7 @@ class MavenWrapperCompletionTests {
 		CachedArtifact artifact = new CachedArtifact("org.apache.maven", "apache-maven");
 		artifact.addRelease(new CachedRelease("4.0.0-rc-1", "2026-03-01"));
 		Cache cache = new Cache();
-		cache.addArtifacts(List.of(artifact));
+		cache.addArtifacts(artifact);
 		StateService.getInstance(fixture.getProject()).setCache(cache);
 
 		fixture.completeBasic();

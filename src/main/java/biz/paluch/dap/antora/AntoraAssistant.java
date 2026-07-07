@@ -186,9 +186,7 @@ public class AntoraAssistant implements DependencyAssistant {
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
 			return delegate.collectDependencies(it -> {
-				DependencyCollector collector = new AntoraDependencyCollector().collect(it);
-				collector.addAllReleaseSources(getReleaseSources());
-				return collector;
+				return new AntoraDependencyCollector().collect(it);
 			});
 		}
 

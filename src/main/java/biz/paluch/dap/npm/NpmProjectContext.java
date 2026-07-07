@@ -52,10 +52,13 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	 */
 	static final Key<NpmProjectContext> KEY = Key.create("NpmProjectContext");
 
+	private final Project project;
+
 	private final Versioned projectVersion;
 
 	NpmProjectContext(Project project, ProjectId projectId, Versioned projectVersion) {
-		super(projectId, getReleaseSources(project));
+		super(projectId);
+		this.project = project;
 		this.projectVersion = projectVersion;
 	}
 
@@ -112,6 +115,11 @@ class NpmProjectContext extends AbstractProjectBuildContext {
 	@Override
 	public PackageSystem getPackageSystem() {
 		return PackageSystem.NPM;
+	}
+
+	@Override
+	public List<ReleaseSource> getReleaseSources() {
+		return getReleaseSources(project);
 	}
 
 	@Override

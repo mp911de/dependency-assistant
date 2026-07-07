@@ -18,8 +18,8 @@ package biz.paluch.dap.github;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ProjectBuildContext;
@@ -45,13 +45,16 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 	 */
 	static final Key<GitHubProjectContext> KEY = Key.create("GitHubProjectContext");
 
+	private final GithubApiRequestExecutorFactory factory;
+
 	/**
 	 * Create a context for the given project identity and release source.
+	 * @param project the project identity.
 	 * @param projectId the project identity.
-	 * @param releaseSource the release source for this GitHub Actions file.
 	 */
-	GitHubProjectContext(ProjectId projectId, GitHubReleases releaseSource) {
-		super(projectId, List.of(releaseSource));
+	GitHubProjectContext(Project project, ProjectId projectId) {
+		super(projectId);
+		this.factory = GithubApiRequestExecutorFactory.getInstance(project);
 	}
 
 	/**
@@ -63,27 +66,10 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 	public static GitHubProjectContext of(Project project, VirtualFile anchor) {
 
 		GitHubProjectContext cached = anchor.getUserData(KEY);
-
 		if (cached != null) {
 			return cached;
 		}
-		cached = create(project, anchor);
-
-		return cached;
-	}
-
-	private static GitHubProjectContext create(Project project, VirtualFile anchor) {
-
-		GitRepositoryResolver repositoryResolver = new GitRepositoryResolver(project);
-		GitRepositoryMetadata gitRepository = repositoryResolver.resolveOwnerAndRepository(anchor);
-		GitHubReleases releaseSource = gitRepository != null
-				? GitHubReleases.from(project, gitRepository.host())
-				: GitHubReleases.from(project);
-
-		ProjectId projectId = gitRepository != null
-				? ProjectId.of(gitRepository.owner(), gitRepository.repository(), anchor.getPath())
-				: ProjectId.of(anchor);
-		return new GitHubProjectContext(projectId, releaseSource);
+		return new GitHubProjectContext(project, ProjectId.of(anchor));
 	}
 
 	@Override
@@ -91,4 +77,16 @@ class GitHubProjectContext extends AbstractProjectBuildContext {
 		return PackageSystem.GITHUB;
 	}
 
+	@Override
+	public List<ReleaseSource> getReleaseSources() {
+
+		GithubApiRequestExecutorFactory.ExecutorResult executor = factory.getExecutor();
+		if (executor.hasExecutor()) {
+			GitHubReleases gitHubReleases = new GitHubReleases(executor.getDecision()
+					.getServer(), executor.getRequiredExecutor());
+			return List.of(gitHubReleases);
+		}
+
+		return List.of();
+	}
 }
