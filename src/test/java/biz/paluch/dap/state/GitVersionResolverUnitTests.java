@@ -16,15 +16,15 @@
 
 package biz.paluch.dap.state;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.fixtures.ReleaseBuilder;
+import biz.paluch.dap.github.TestGitHubReleases;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -36,46 +36,29 @@ import static org.assertj.core.api.Assertions.*;
  */
 class GitVersionResolverUnitTests {
 
-	static final String SHA_V1 = "aabbccddeeff00112233445566778899aabbccdd";
-
-	static final String SHA_V1_FORK = "aabbccddffffffffffffffffffffffffffffffff";
-
 	static final String SHA_V2 = "11223344556677889900aabbccddeeff11223344";
 
-	static final String SHA_V4 = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
+	static final ArtifactId ARTIFACT = TestGitHubReleases.CHECKOUT;
 
-	static final String SHA_V4_LINE = "f1185ce59f7757407fe6a5febb1e03e3dba2a530";
-
-	static final String SHA_V4_PREVIEW = "e1185ce59f7757407fe6a5febb1e03e3dba2a530";
-
-	static final ArtifactId ARTIFACT = ArtifactId.of("github:actions", "checkout");
-
-	static final ArtifactId OTHER_ARTIFACT = ArtifactId.of("github:actions", "setup-node");
+	static final ArtifactId OTHER_ARTIFACT = TestGitHubReleases.SETUP_JAVA;
 
 	private static Cache cacheWithReleases() {
 
 		CachedArtifact artifact = ReleaseBuilder.artifact(ARTIFACT, releases -> releases
-				.add("1.0.0", null, SHA_V1)
-				.add("1.5.0", null, SHA_V1_FORK)
+				.addWithSha("1.0.0", "aabbccddeeff00112233445566778899aabbccdd")
+				.addWithSha("1.5.0", "aabbccddffffffffffffffffffffffffffffffff")
 				.add("2.0.0", "2026-01-01", SHA_V2)
 				.add("3.0.0"));
 
 		Cache cache = new Cache();
-		cache.addArtifacts(List.of(artifact));
+		cache.addArtifacts(artifact);
 		return cache;
 	}
 
-	private static Cache cacheWithPrefixedReleases() {
-
-		CachedArtifact artifact = ReleaseBuilder.artifact(ARTIFACT, releases -> releases
-				.add("v4.3.0-M1", "2026-03-01", SHA_V4_PREVIEW)
-				.add("v4.2.0", "2026-02-01", SHA_V4)
-				.add("v4.1.0", "2026-01-01", SHA_V4_LINE)
-				.add("v4.0.0", "2025-12-01")
-				.add("v3.6.0", "2025-11-01", SHA_V1));
+	private static Cache cacheWithCheckoutReleases() {
 
 		Cache cache = new Cache();
-		cache.addArtifacts(List.of(artifact));
+		cache.addArtifacts(TestGitHubReleases.CHECKOUT);
 		return cache;
 	}
 
@@ -83,31 +66,25 @@ class GitVersionResolverUnitTests {
 	void resolvesBySha() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolve(ARTIFACT, SHA_V2);
+		Versioned result = resolver.resolveStrict(ARTIFACT, SHA_V2);
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, v -> {
-			assertThat(v.getSha()).isEqualTo(SHA_V2);
-			assertThat(v.toString()).isEqualTo("2.0.0");
-		});
+		assertGitVersion(result, SHA_V2, "2.0.0");
 	}
 
 	@Test
 	void resolvesByPlainVersion() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolve(ARTIFACT, "2.0.0");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "2.0.0");
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, v -> {
-			assertThat(v.getSha()).isEqualTo(SHA_V2);
-			assertThat(v.toString()).isEqualTo("2.0.0");
-		});
+		assertGitVersion(result, SHA_V2, "2.0.0");
 	}
 
 	@Test
 	void returnsUnversionedForUnknownSha() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolve(ARTIFACT, "0000000000000000000000000000000000000000");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "0000000000000000000000000000000000000000");
 
 		assertThat(result.isVersioned()).isFalse();
 	}
@@ -116,7 +93,7 @@ class GitVersionResolverUnitTests {
 	void returnsUnversionedForUnknownVersion() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolve(ARTIFACT, "99.0.0");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "99.0.0");
 
 		assertThat(result.isVersioned()).isFalse();
 	}
@@ -125,17 +102,16 @@ class GitVersionResolverUnitTests {
 	void resolvesUnambiguousAbbreviatedSha() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolve(ARTIFACT, "11223344");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "11223344");
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class,
-				v -> assertThat(v.getSha()).isEqualTo(SHA_V2));
+		assertGitVersion(result, SHA_V2);
 	}
 
 	@Test
 	void returnsUnversionedWhenCacheEmpty() {
 
 		GitVersionResolver resolver = new GitVersionResolver(new Cache());
-		Versioned result = resolver.resolve(ARTIFACT, "1.0.0");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "1.0.0");
 
 		assertThat(result.isVersioned()).isFalse();
 	}
@@ -144,20 +120,18 @@ class GitVersionResolverUnitTests {
 	void fallsBackToCacheForExactTagMatch() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolveCurrent(ARTIFACT, "2.0.0");
+		Versioned result = resolver.resolveLenient(ARTIFACT, "2.0.0");
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class,
-				v -> assertThat(v.getSha()).isEqualTo(SHA_V2));
+		assertGitVersion(result, SHA_V2);
 	}
 
 	@Test
 	void matchesShaPrefix() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolveCurrent(ARTIFACT, "11223344");
+		Versioned result = resolver.resolveLenient(ARTIFACT, "11223344");
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class,
-				v -> assertThat(v.getSha()).isEqualTo(SHA_V2));
+		assertGitVersion(result, SHA_V2);
 	}
 
 	@Test
@@ -165,36 +139,55 @@ class GitVersionResolverUnitTests {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 
-		Versioned result = resolver.resolve(ARTIFACT, "112233");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "112233");
 
 		assertThat(result.isVersioned()).isFalse();
 	}
 
 	@Test
-	void fallsBackToUnversionedForAmbiguousPrefixThatIsNotParseable() {
+	void keepsAmbiguousShaPrefixAsGitRef() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
 
-		Versioned result = resolver.resolveCurrent(ARTIFACT, "aabbccdd");
+		Versioned result = resolver.resolveLenient(ARTIFACT, "aabbccdd");
 
-		assertThat(result.isVersioned()).isFalse();
+		assertGitRef(result, "aabbccdd");
 	}
 
 	@Test
 	void fallsBackToRawParseForUnknownRef() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolveCurrent(ARTIFACT, "4.5.6");
+		Versioned result = resolver.resolveLenient(ARTIFACT, "4.5.6");
 
 		assertThat(result.getVersion()).isNotInstanceOf(GitVersion.class);
 		assertThat(result.getVersion()).hasToString("4.5.6");
 	}
 
 	@Test
-	void returnsUnversionedForUnparseableUnknownRef() {
+	void keepsUnresolvedFullShaAsGitRef() {
+
+		GitVersionResolver resolver = new GitVersionResolver(new Cache());
+
+		Versioned result = resolver.resolveLenient(ARTIFACT, "1bcf9fb12cf4aa7d266a90ae39939e61372fe520");
+
+		assertGitRef(result, "1bcf9fb12cf4aa7d266a90ae39939e61372fe520");
+	}
+
+	@Test
+	void keepsUnparseableUnknownRefAsGitRef() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolveCurrent(ARTIFACT, "");
+		Versioned result = resolver.resolveLenient(ARTIFACT, "main");
+
+		assertGitRef(result, "main");
+	}
+
+	@Test
+	void returnsUnversionedForEmptyRef() {
+
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
+		Versioned result = resolver.resolveLenient(ARTIFACT, "");
 
 		assertThat(result.isVersioned()).isFalse();
 	}
@@ -203,7 +196,7 @@ class GitVersionResolverUnitTests {
 	void ignoresCacheForDifferentArtifactId() {
 
 		GitVersionResolver resolver = new GitVersionResolver(cacheWithReleases());
-		Versioned result = resolver.resolveCurrent(OTHER_ARTIFACT, "2.0.0");
+		Versioned result = resolver.resolveLenient(OTHER_ARTIFACT, "2.0.0");
 
 		assertThat(result.getVersion()).isNotInstanceOf(GitVersion.class);
 		assertThat(result.getVersion()).hasToString("2.0.0");
@@ -213,33 +206,31 @@ class GitVersionResolverUnitTests {
 	void exactTagMatchWinsBeforeVersionLineRef() {
 
 		Releases releases = Releases.of(
-				Release.of(GitVersion.of(SHA_V4_LINE, ArtifactVersion.of("v4"))),
-				Release.of(GitVersion.of(SHA_V4, ArtifactVersion.of("v4.2.0"))));
+				Release.of(GitVersion.of("f1185ce59f7757407fe6a5febb1e03e3dba2a530", ArtifactVersion.of("v4"))),
+				Release.of(GitVersion.of(TestGitHubReleases.CHECKOUT_SHA_LATEST, ArtifactVersion.of("v4.2.0"))));
 
 		GitVersion result = GitVersionResolver.resolveVersion("v4", releases);
 
 		assertThat(result).isNotNull();
-		assertThat(result.getSha()).isEqualTo(SHA_V4_LINE);
+		assertThat(result.getSha()).isEqualTo("f1185ce59f7757407fe6a5febb1e03e3dba2a530");
 		assertThat(result).hasToString("v4");
 	}
 
 	@Test
 	void resolvesVersionLineRefToNewestStableShaBackedRelease() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithPrefixedReleases());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithCheckoutReleases());
 
-		Versioned result = resolver.resolve(ARTIFACT, "v4");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "v4");
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, v -> {
-			assertThat(v.getSha()).isEqualTo(SHA_V4);
-			assertThat(v).hasToString("v4.2.0");
-		});
+		assertGitVersion(result, TestGitHubReleases.CHECKOUT_SHA_LATEST, "v4.2.0");
 	}
 
 	@Test
 	void resolvesMultiDigitVersionLineRef() {
 
-		Releases releases = Releases.just(Release.of(GitVersion.of(SHA_V4, ArtifactVersion.of("v444.1.0"))));
+		Releases releases = Releases.just(Release.of(GitVersion.of(TestGitHubReleases.CHECKOUT_SHA_LATEST,
+				ArtifactVersion.of("v444.1.0"))));
 
 		GitVersion result = GitVersionResolver.resolveVersion("v444", releases);
 
@@ -252,12 +243,12 @@ class GitVersionResolverUnitTests {
 
 		Releases releases = Releases.of(
 				Release.of(GitVersion.of(ArtifactVersion.of("v4.3.0"))),
-				Release.of(GitVersion.of(SHA_V4, ArtifactVersion.of("v4.2.0"))));
+				Release.of(GitVersion.of(TestGitHubReleases.CHECKOUT_SHA_LATEST, ArtifactVersion.of("v4.2.0"))));
 
 		GitVersion result = GitVersionResolver.resolveVersion("v4", releases);
 
 		assertThat(result).isNotNull();
-		assertThat(result.getSha()).isEqualTo(SHA_V4);
+		assertThat(result.getSha()).isEqualTo(TestGitHubReleases.CHECKOUT_SHA_LATEST);
 		assertThat(result).hasToString("v4.2.0");
 	}
 
@@ -278,9 +269,9 @@ class GitVersionResolverUnitTests {
 	@Test
 	void uppercaseVersionLineRefDoesNotMatchLine() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithPrefixedReleases());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithCheckoutReleases());
 
-		Versioned result = resolver.resolve(ARTIFACT, "V4");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "V4");
 
 		assertThat(result.isVersioned()).isFalse();
 	}
@@ -288,9 +279,9 @@ class GitVersionResolverUnitTests {
 	@Test
 	void bareMajorDoesNotMatchLine() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithPrefixedReleases());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithCheckoutReleases());
 
-		Versioned result = resolver.resolve(ARTIFACT, "4");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "4");
 
 		assertThat(result.isVersioned()).isFalse();
 	}
@@ -298,7 +289,8 @@ class GitVersionResolverUnitTests {
 	@Test
 	void doesNotUseRenderedVersionPrefixMatching() {
 
-		Releases releases = Releases.just(Release.of(GitVersion.of(SHA_V4, ArtifactVersion.of("v4.20.0"))));
+		Releases releases = Releases.just(Release.of(GitVersion.of(TestGitHubReleases.CHECKOUT_SHA_LATEST,
+				ArtifactVersion.of("v4.20.0"))));
 
 		GitVersion result = GitVersionResolver.resolveVersion("v4.2", releases);
 
@@ -308,27 +300,46 @@ class GitVersionResolverUnitTests {
 	@Test
 	void compareFallbackMatchesUnprefixedVersionToPrefixedGitVersion() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithPrefixedReleases());
+		GitVersionResolver resolver = new GitVersionResolver(cacheWithCheckoutReleases());
 
-		Versioned result = resolver.resolve(ARTIFACT, "4.2.0");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "4.2.0");
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, v -> {
-			assertThat(v.getSha()).isEqualTo(SHA_V4);
-			assertThat(v).hasToString("v4.2.0");
-		});
+		assertGitVersion(result, TestGitHubReleases.CHECKOUT_SHA_LATEST, "v4.2.0");
 	}
 
 	@Test
 	void exactPreviewRefResolvesBeforeStableLineSelection() {
 
-		GitVersionResolver resolver = new GitVersionResolver(cacheWithPrefixedReleases());
+		CachedArtifact artifact = ReleaseBuilder.artifact(ARTIFACT, releases -> releases
+				.addWithSha("v4.3.0-M1", "e1185ce59f7757407fe6a5febb1e03e3dba2a530")
+				.addWithSha("v4.2.0", TestGitHubReleases.CHECKOUT_SHA_LATEST));
+		Cache cache = new Cache();
+		cache.addArtifacts(artifact);
+		GitVersionResolver resolver = new GitVersionResolver(cache);
 
-		Versioned result = resolver.resolve(ARTIFACT, "v4.3.0-M1");
+		Versioned result = resolver.resolveStrict(ARTIFACT, "v4.3.0-M1");
 
-		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, v -> {
-			assertThat(v.getSha()).isEqualTo(SHA_V4_PREVIEW);
-			assertThat(v).hasToString("v4.3.0-M1");
+		assertGitVersion(result, "e1185ce59f7757407fe6a5febb1e03e3dba2a530", "v4.3.0-M1");
+	}
+
+	private static void assertGitVersion(Versioned result, String sha) {
+
+		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class,
+				version -> assertThat(version.getSha()).isEqualTo(sha));
+	}
+
+	private static void assertGitVersion(Versioned result, String sha, String version) {
+
+		assertThat(result.getVersion()).isInstanceOfSatisfying(GitVersion.class, gitVersion -> {
+			assertThat(gitVersion.getSha()).isEqualTo(sha);
+			assertThat(gitVersion).hasToString(version);
 		});
+	}
+
+	private static void assertGitRef(Versioned result, String ref) {
+
+		assertThat(result.getVersion()).isInstanceOfSatisfying(GitRef.class,
+				gitRef -> assertThat(gitRef.getRef()).isEqualTo(ref));
 	}
 
 }

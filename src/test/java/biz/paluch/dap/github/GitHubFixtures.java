@@ -16,21 +16,17 @@
 
 package biz.paluch.dap.github;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
-import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.plugins.github.api.GithubApiRequest;
-import org.jetbrains.plugins.github.api.GithubServerPath;
 
 /**
  * Fixtures for GitHub Actions workflow tests.
@@ -39,19 +35,14 @@ import org.jetbrains.plugins.github.api.GithubServerPath;
  */
 class GitHubFixtures {
 
-	static final String SHA_V3 = "7b4f3880ef3a2616e5c519a35b7a4f07f7b3b2a1";
-
-		static final String SHA_V4 = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
-
-		static final ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
-
 	/**
 	 * Set up a cache with GitHub Actions releases and register contexts for the
 	 * given project.
 	 */
 	static void setup(Project project) {
 
-		Cache cache = buildCache();
+		Cache cache = new Cache();
+		cache.addArtifacts(TestGitHubReleases.actions());
 		StateService service = StateService.getInstance(project);
 		service.setCache(cache);
 	}
@@ -63,12 +54,10 @@ class GitHubFixtures {
 
 		StateService service = StateService.getInstance(file.getProject());
 
-		GitHubReleases releaseSource = new GitHubReleases(
-				GithubServerPath.DEFAULT_SERVER, new EmptyApiClient(), 100);
 		DependencyCollector collector = new GitHubDependencyCollector(file.getProject()).collect(file);
 
 		GitHubProjectContext projectContext = new GitHubProjectContext(
-				new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()), releaseSource);
+				TestProjects.PROJECT, new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()));
 		file.putUserData(GitHubProjectContext.KEY, projectContext);
 
 		service.getProjectState(projectContext.getProjectId()).setDependencies(collector, PackageSystem.GITHUB);
@@ -76,38 +65,16 @@ class GitHubFixtures {
 		return collector;
 	}
 
-	private static Cache buildCache() {
+	static void registerSetupJavaShaDependency(Project project) {
 
-		Cache cache = new Cache();
+		DependencyCollector collector = new DependencyCollector();
+		collector.registerUsage(TestGitHubReleases.SETUP_JAVA,
+				new GitRef("1bcf9fb12cf4aa7d266a90ae39939e61372fe520"), DeclarationSource.dependency(),
+				VersionSource.declared("1bcf9fb12cf4aa7d266a90ae39939e61372fe520"));
 
-		CachedArtifact checkout = new CachedArtifact(CHECKOUT);
-		checkout.addRelease(new CachedRelease("v4.2.0", "2024-10-01", SHA_V4));
-		checkout.addRelease(new CachedRelease("v4.1.0", "2024-05-01", null));
-		checkout.addRelease(new CachedRelease("v3.6.0", "2024-01-01", SHA_V3));
-		cache.addArtifacts(List.of(checkout));
-
-		return cache;
-	}
-
-	/**
-	 * Test component {@link GitHubReleases.GitHubApiClient} that never makes a
-	 * network call: the fixture cache is pre-populated, so any release-source
-	 * lookup at test time yields an empty list.
-	 */
-	static class EmptyApiClient implements GitHubReleases.GitHubApiClient {
-
-		@Override
-		public <T> List<T> loadAll(ProgressIndicator indicator, GithubApiPagesLoader.Request<T> request) {
-			return List.of();
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public <T> T loadOne(ProgressIndicator indicator, GithubApiRequest<T> request) {
-			return (T) new org.jetbrains.plugins.github.api.data.GithubResponsePage<>(List.of(), null, null, null,
-					null);
-		}
-
+		StateService.getInstance(project)
+				.getProjectState(ProjectId.of("github:actions", "stale-workflow"))
+				.setDependencies(collector, PackageSystem.GITHUB);
 	}
 
 }

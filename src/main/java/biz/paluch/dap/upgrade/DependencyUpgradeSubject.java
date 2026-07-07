@@ -48,6 +48,9 @@ public class DependencyUpgradeSubject {
 		this.rule = rule;
 	}
 
+	/**
+	 * Create a new subject for upgrading the given dependency.
+	 */
 	public static DependencyUpgradeSubject of(Dependency dependency, Releases releases,
 			VulnerabilityRepository vulnerabilities, DependencyRule rule) {
 		return new DependencyUpgradeSubject(dependency, releases.withVersion(dependency.getCurrentVersion()),
@@ -58,7 +61,7 @@ public class DependencyUpgradeSubject {
 		return getVulnerabilities(getDependency().getCurrentVersion()).isVulnerable();
 	}
 
-	Vulnerabilities getVulnerabilities(ArtifactVersion version) {
+	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
 		return vulnerabilities.getVulnerabilities(version);
 	}
 

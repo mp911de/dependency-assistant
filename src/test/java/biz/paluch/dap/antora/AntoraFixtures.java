@@ -16,15 +16,11 @@
 
 package biz.paluch.dap.antora;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.fixtures.TestProjects;
+import biz.paluch.dap.github.TestGitHubReleases;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
@@ -37,14 +33,13 @@ import com.intellij.psi.PsiFile;
  */
 class AntoraFixtures {
 
-	GitArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
-
 	/**
 	 * Set up a cache pre-populated with Antora UI releases for the given project.
 	 */
 	static void setup(Project project) {
 
-		Cache cache = buildCache();
+		Cache cache = new Cache();
+		cache.addArtifacts(TestGitHubReleases.ANTORA_UI);
 		StateService service = StateService.getInstance(project);
 		service.setCache(cache);
 	}
@@ -58,29 +53,13 @@ class AntoraFixtures {
 
 		DependencyCollector collector = new AntoraDependencyCollector().collect(file);
 
-		AntoraProjectContext projectContext = new AntoraProjectContext(
-				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()), List.of());
+		AntoraProjectContext projectContext = new AntoraProjectContext(TestProjects.PROJECT,
+				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()));
 		file.putUserData(AntoraProjectContext.KEY, projectContext);
 
 		service.getProjectState(projectContext.getProjectId()).setDependencies(collector, PackageSystem.OTHER);
 
 		return collector;
-	}
-
-	private static Cache buildCache() {
-
-		Cache cache = new Cache();
-
-		CachedArtifact ui = new CachedArtifact(ArtifactId.of("spring-io", "antora-ui-spring"));
-		ui.addRelease(new CachedRelease("v0.4.26", "2025-01-01",
-				"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
-		ui.addRelease(new CachedRelease("v0.4.25", "2024-12-01",
-				"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
-		ui.addRelease(new CachedRelease("v0.3.0", "2024-06-01",
-				"cccccccccccccccccccccccccccccccccccccccc"));
-		cache.addArtifacts(List.of(ui));
-
-		return cache;
 	}
 
 }

@@ -75,7 +75,7 @@ class NpmDependencyCollector {
 
 			if (dependency.version() instanceof NpmVersionExpression.Git git) {
 
-				ArtifactVersion gitVersion = gitVersionResolver.resolve(dependency.artifactId(), git.text())
+				ArtifactVersion gitVersion = gitVersionResolver.resolveStrict(dependency.artifactId(), git.text())
 						.orElseGet(() -> new GitRef(git.text()));
 				collector.registerUsage(dependency.artifactId(), gitVersion, dependency.declarationSource(),
 						versionSource);

@@ -68,7 +68,7 @@ public class GitVersionResolver {
 	 * @return the resolved version, or {@link Versioned#unversioned()} if
 	 * unresolvable.
 	 */
-	public Versioned resolve(ArtifactId artifactId, String lookupString) {
+	public Versioned resolveStrict(ArtifactId artifactId, String lookupString) {
 
 		Releases releases = cache.getReleases(artifactId);
 		if (releases.isEmpty()) {
@@ -85,8 +85,8 @@ public class GitVersionResolver {
 	 * <p>Resolution order:
 	 * <ol>
 	 * <li>Cached releases through {@link #resolveVersion(String, Iterable)}.</li>
-	 * <li>Otherwise return {@link ArtifactVersion#from(String)} of the raw
-	 * ref.</li>
+	 * <li>Otherwise return {@link ArtifactVersion#from(String)} of the raw ref, or
+	 * a {@link GitRef} when the ref is opaque.</li>
 	 * </ol>
 	 * @param artifactId the artifact to resolve.
 	 * @param rawRef the raw Git ref (tag, SHA, branch); must not be
@@ -94,21 +94,63 @@ public class GitVersionResolver {
 	 * @return the resolved current version, or {@link Versioned#unversioned()} when
 	 * none of the branches yields a value.
 	 */
-	public Versioned resolveCurrent(ArtifactId artifactId, String rawRef) {
-
-		Releases releases = cache.getReleases(artifactId);
-		GitVersion gitVersion = releases.isEmpty() ? null : resolveVersion(rawRef, releases);
-		if (gitVersion != null) {
-			return Versioned.of(gitVersion);
-		}
-
-		return resolveUnmatchedRef(rawRef);
+	public Versioned resolveLenient(ArtifactId artifactId, String rawRef) {
+		return resolveLenient(cache.getReleases(artifactId), rawRef);
 	}
 
-	private static Versioned resolveUnmatchedRef(String rawRef) {
+	/**
+	 * Resolve the current effective {@link ArtifactVersion} for the given artifact
+	 * and raw ref using the canonical chain.
+	 * <p>Resolution order:
+	 * <ol>
+	 * <li>Cached releases through {@link #resolveVersion(String, Iterable)}.</li>
+	 * <li>Otherwise return {@link ArtifactVersion#from(String)} of the raw ref, or
+	 * a {@link GitRef} when the ref is opaque.</li>
+	 * </ol>
+	 */
+	public Versioned resolveLenient(ArtifactVersion version, Releases releases) {
 
-		if (!StringUtils.hasText(rawRef)) {
+		if (version instanceof GitRef ref) {
+			GitVersion gitVersion = resolveVersion(ref.getRef(), releases);
+			if (gitVersion != null) {
+				return Versioned.of(gitVersion);
+			}
+			return Versioned.of(ref);
+		}
+
+		if (RefStyle.from(version.toString()) == RefStyle.SHA) {
+			return Versioned.of(new GitRef(version.toString()));
+		}
+
+		return Versioned.of(version);
+	}
+
+	/**
+	 * Resolve the current effective {@link ArtifactVersion} for the given artifact
+	 * and raw ref using the canonical chain.
+	 * <p>Resolution order:
+	 * <ol>
+	 * <li>Cached releases through {@link #resolveVersion(String, Iterable)}.</li>
+	 * <li>Otherwise return {@link ArtifactVersion#from(String)} of the raw ref, or
+	 * a {@link GitRef} when the ref is opaque.</li>
+	 * </ol>
+	 * @param artifactId the artifact to resolve.
+	 * @param rawRef the raw Git ref (tag, SHA, branch); must not be
+	 * {@literal null}.
+	 * @return the resolved current version, or {@link Versioned#unversioned()} when
+	 * none of the branches yields a value.
+	 */
+	public Versioned resolveLenient(Releases releases, String rawRef) {
+
+		if (StringUtils.isEmpty(rawRef)) {
 			return Versioned.unversioned();
+		}
+
+		if (!releases.isEmpty()) {
+			GitVersion gitVersion = resolveVersion(rawRef, releases);
+			if (gitVersion != null) {
+				return Versioned.of(gitVersion);
+			}
 		}
 
 		if (RefStyle.from(rawRef) == RefStyle.SHA) {

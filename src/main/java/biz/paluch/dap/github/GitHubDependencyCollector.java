@@ -19,10 +19,8 @@ package biz.paluch.dap.github;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -90,14 +88,10 @@ class GitHubDependencyCollector {
 				continue;
 			}
 
-			Versioned resolved = versionResolver.resolve(artifactId, ref.version());
+			Versioned resolved = versionResolver.resolveLenient(artifactId, ref.version());
 			if (resolved.isVersioned()) {
 				collector.registerUsage(artifactId, resolved.getVersion(), DeclarationSource.dependency(),
 						versionSource);
-			} else {
-				ArtifactVersion version = ArtifactVersion.from(ref.version())
-						.orElseGet(() -> new GitRef(ref.version()));
-				collector.registerUsage(artifactId, version, DeclarationSource.dependency(), versionSource);
 			}
 		}
 	}

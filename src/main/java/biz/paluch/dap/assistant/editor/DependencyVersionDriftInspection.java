@@ -36,6 +36,7 @@ import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.ArtifactReferenceContextVisitor;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -87,6 +88,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 		}
 
 		StateService state = StateService.getInstance(project);
+		GitVersionResolver versionResolver = new GitVersionResolver(state.getCache());
 		Set<PsiElement> reported = new HashSet<>();
 
 		return new ArtifactReferenceContextVisitor(context, file) {
@@ -125,13 +127,15 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 				Set<VersionSource> versionSources = new LinkedHashSet<>();
 				state.doWithDependencies(projectId -> !projectId.equals(excludedModule), dependency -> {
 					if (dependency.getArtifactId().equals(artifactId)) {
-						declaredVersions.add(resolveGitRef(dependency.getCurrentVersion(),
-								referenceContext.getReleases()));
+						Versioned versioned = versionResolver.resolveLenient(dependency.getCurrentVersion(),
+								referenceContext.getReleases());
+						versioned.ifPresent(declaredVersions::add);
 						versionSources.addAll(dependency.getVersionSources());
 					}
 				});
-				ArtifactVersion currentVersion = resolveGitRef(declaration.getVersion(),
-						referenceContext.getReleases());
+
+				ArtifactVersion currentVersion = versionResolver
+						.resolveLenient(declaration.getVersion(), referenceContext.getReleases()).getVersion();
 				declaredVersions.add(currentVersion);
 				versionSources.add(declaration.getVersionSource());
 

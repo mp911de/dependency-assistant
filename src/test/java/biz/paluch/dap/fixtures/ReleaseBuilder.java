@@ -82,6 +82,7 @@ public class ReleaseBuilder {
 	 * @param version the release version string.
 	 * @return this builder.
 	 * @see #add(String, String, String)
+	 * @see #addWithSha(String, String)
 	 */
 	public ReleaseBuilder add(String version) {
 		return add(version, null);
@@ -94,10 +95,23 @@ public class ReleaseBuilder {
 	 * @param date the release date; can be {@literal null}.
 	 * @return this builder.
 	 * @see #add(String, String, String)
+	 * @see #addWithSha(String, String)
 	 */
 	public ReleaseBuilder add(String version, @Nullable String date) {
 		releases.add(new CachedRelease(version, date));
 		return this;
+	}
+
+	/**
+	 * Add a release with the given version and commit SHA, without release date
+	 * metadata.
+	 *
+	 * @param version the release version string.
+	 * @param sha the commit SHA associated with the release.
+	 * @return this builder.
+	 */
+	public ReleaseBuilder addWithSha(String version, String sha) {
+		return add(version, null, sha);
 	}
 
 	/**

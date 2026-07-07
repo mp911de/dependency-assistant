@@ -54,7 +54,8 @@ class GitHubWorkflowParserUnitTests {
 	void parsesShaRef() {
 
 		String sha = "aabbccddeeff001122334455667788990011aabb";
-		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses("actions/checkout@" + sha);
+		UsesRepositoryAction ref = GitHubWorkflowParser
+				.parseUses("actions/checkout@aabbccddeeff001122334455667788990011aabb");
 
 		assertThat(ref).isNotNull();
 		assertThat(ref.version()).isEqualTo(sha);

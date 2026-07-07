@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
 
-
 /**
  * PSI-level integration tests for GitHub Actions workflow completion.
  *
@@ -58,11 +57,13 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 		// Empty ref after `@` is SHA-style per `RefStyle.from(...)`, so SHA-aware
 		// releases insert their SHA. v4.1.0 has no SHA metadata and falls through.
-		assertThat(fixture).completionSuggests(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
+		assertThat(fixture).completionSuggests(TestGitHubReleases.CHECKOUT_SHA_LATEST,
+				"v4.1.0", TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR);
 
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 		assertThat(workflowFile).caretAfter("d1185ce59f7757407fe6a5febb1e03e3dba2a530");
-		assertThat(workflowFile).containsText("actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0");
+		assertThat(workflowFile)
+				.containsText("actions/checkout@" + "d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0");
 	}
 
 	@Test
@@ -84,7 +85,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(workflowFile)
-				.containsText("uses: actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530 # v4.2.0")
+				.containsText("uses: actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # v4.2.0")
 				.containsText("ref: 'main'\n")
 				.doesNotContainText("ref: 'main'# v4.2.0");
 	}
@@ -122,7 +123,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 
 		// Full-SHA ref selects SHA insertion for SHA-aware releases.
-		assertThat(fixture).completionSuggests(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
+		assertThat(fixture).completionSuggests(TestGitHubReleases.CHECKOUT_SHA_LATEST,
+				"v4.1.0", TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR);
 	}
 
 	@Test
@@ -139,7 +141,8 @@ class GitHubWorkflowCompletionTests {
 		fixture.completeBasic();
 
 		// Full-SHA ref selects SHA insertion for SHA-aware releases.
-		assertThat(fixture).completionSuggests(GitHubFixtures.SHA_V4, "v4.1.0", GitHubFixtures.SHA_V3);
+		assertThat(fixture).completionSuggests(TestGitHubReleases.CHECKOUT_SHA_LATEST,
+				"v4.1.0", TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR);
 	}
 
 	@Test
@@ -157,7 +160,7 @@ class GitHubWorkflowCompletionTests {
 		fixture.finishLookup(Lookup.NORMAL_SELECT_CHAR);
 
 		assertThat(workflowFile)
-				.containsText("actions/checkout@d1185ce5 # v4.2.0 # bar")
+				.containsText("actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST_SHORT + " # v4.2.0 # bar")
 				.caretBetween("@d1185ce5", " # v4.2.0");
 	}
 

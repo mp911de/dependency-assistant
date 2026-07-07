@@ -37,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Resolves {@code uses:} scalar values into an {@link ArtifactReference} by
  * parsing the scalar text and resolving the ref through
- * {@link GitVersionResolver#resolveCurrent(ArtifactId, String)}. The canonical
+ * {@link GitVersionResolver#resolveLenient(ArtifactId, String)}. The canonical
  * chain applies cached Git ref matching, then a raw
  * {@link ArtifactVersion#from(String)} parse. Remote API access is never
  * triggered.
@@ -93,7 +93,7 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 				return;
 			}
 
-			Versioned version = context.versionResolver().resolveCurrent(artifactId, ref.version());
+			Versioned version = context.versionResolver().resolveLenient(artifactId, ref.version());
 			if (version.isVersioned()) {
 				builder.version(version.getVersion());
 			}

@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.github;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.GitVersion;
@@ -54,7 +53,7 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void updatesVersionRefWithoutVPrefix(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", "4.1.0", "4.2.0");
+		applyUpdate(workflowFile, "4.1.0", "4.2.0");
 
 		assertThat(workflowFile).containsText("actions/checkout@4.2.0 # here to stay")
 				.doesNotContainText("@v");
@@ -69,10 +68,11 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void updatesShaRefAndAddsVersionComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
+		applyUpdate(workflowFile, TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR, "v4.2.0");
 
 		assertThat(workflowFile)
-				.containsText("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # here to stay");
+				.containsText(
+						"actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # v4.2.0 # here to stay");
 	}
 
 	@Test
@@ -88,10 +88,11 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void addsVersionCommentBehindShaRefWhenStepHasNestedMapping(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
+		applyUpdate(workflowFile, TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR, "v4.2.0");
 
 		assertThat(workflowFile)
-				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
+				.containsText("uses: actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # "
+						+ "v4.2.0")
 				.containsText("ref: 'main'\n")
 				.doesNotContainText("ref: 'main'# v4.2.0");
 	}
@@ -108,10 +109,10 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void leavesNestedMappingCommentsUnchangedWhenAddingVersionComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
+		applyUpdate(workflowFile, TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR, "v4.2.0");
 
 		assertThat(workflowFile)
-				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
+				.containsText("uses: actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # v4.2.0")
 				.containsText("ref: 'main' # keep branch")
 				.doesNotContainText("ref: 'main' # v4.2.0");
 	}
@@ -125,9 +126,10 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void refreshesExistingManagedComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
+		applyUpdate(workflowFile, TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR, "v4.2.0");
 
-		assertThat(workflowFile).containsText("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0 # foo")
+		assertThat(workflowFile)
+				.containsText("actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # v4.2.0 # foo")
 				.doesNotContainText("v3.6.0");
 	}
 
@@ -140,10 +142,10 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void preservesUnmanagedTrailingComment(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", GitHubFixtures.SHA_V3, "v4.2.0");
+		applyUpdate(workflowFile, TestGitHubReleases.CHECKOUT_SHA_OLDER_MAJOR, "v4.2.0");
 
 		assertThat(workflowFile)
-				.containsText("actions/checkout@" + GitHubFixtures.SHA_V4 + "   # v4.2.0")
+				.containsText("actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + "   # v4.2.0")
 				.doesNotContainText("# custom note");
 	}
 
@@ -173,7 +175,7 @@ class UpdateGitHubWorkflowFileTests {
 
 		String originalText = workflowFile.getText();
 
-		applyUpdate(workflowFile, "actions", "checkout", "v4.1.0", "v4.2.0");
+		applyUpdate(workflowFile, "v4.1.0", "v4.2.0");
 
 		String updatedText = workflowFile.getText();
 
@@ -199,18 +201,18 @@ class UpdateGitHubWorkflowFileTests {
 			""")
 	void updatesQuotedScalarPreservingQuotes(PsiFile workflowFile) {
 
-		applyUpdate(workflowFile, "actions", "checkout", "v4.1.0", "v4.2.0");
+		applyUpdate(workflowFile, "v4.1.0", "v4.2.0");
 
 		assertThat(workflowFile).containsText("\"actions/checkout@v4.2.0\"");
 	}
 
-	private void applyUpdate(PsiFile file, String groupId, String artifactId, String fromRef, String toTag) {
+	private void applyUpdate(PsiFile file, String fromRef, String toTag) {
 
-		ArtifactId id = ArtifactId.of(groupId, artifactId);
-		GitVersion targetVersion = GitVersion.of(GitHubFixtures.SHA_V4, ArtifactVersion.of(toTag));
+		GitVersion targetVersion = GitVersion.of(TestGitHubReleases.CHECKOUT_SHA_LATEST,
+				ArtifactVersion.of(toTag));
 
-		DependencyUpdate update = DependencyUpdate.create(id, targetVersion, DeclarationSource.dependency(),
-				VersionSource.declared(fromRef));
+		DependencyUpdate update = DependencyUpdate.create(TestGitHubReleases.CHECKOUT.toArtifactId(), targetVersion,
+				DeclarationSource.dependency(), VersionSource.declared(fromRef));
 		UpdateGitHubWorkflowFile updater = new UpdateGitHubWorkflowFile(file.getProject());
 
 		BuildFileUpdates.applyUpdate(file, update, updater::applyUpdates);

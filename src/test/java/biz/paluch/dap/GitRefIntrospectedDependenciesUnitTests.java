@@ -16,19 +16,14 @@
 
 package biz.paluch.dap;
 
-import java.util.List;
-
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.fixtures.ReleaseBuilder;
+import biz.paluch.dap.github.TestGitHubReleases;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -40,59 +35,52 @@ import static biz.paluch.dap.assertions.Assertions.*;
  */
 class GitRefIntrospectedDependenciesUnitTests {
 
-	static final ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
 
-	static final String SHA_V4 = "d1185ce59f7757407fe6a5febb1e03e3dba2a530";
-
-	static final GitArtifactId ANTORA_UI = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
-
-	static final ArtifactId ANTORA_UI_CACHE_KEY = ArtifactId.of("spring-io", "antora-ui-spring");
+	Cache cache = new Cache();
 
 	@Test
 	void completePromotesDeclarationWhenCacheMatchesVersion() {
 
-		Cache cache = cacheWith(ReleaseBuilder.artifact(CHECKOUT, releases -> releases
-				.add("v4.2.0", "2024-10-01", SHA_V4)));
+		cache.addArtifacts(TestGitHubReleases.CHECKOUT);
 
 		DependencyCollector collector = new DependencyCollector();
-		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), VersionSource.declared("v4.2.0"));
+		collector.registerDeclaration(TestGitHubReleases.CHECKOUT.toArtifactId(), DeclarationSource.dependency(),
+				VersionSource.declared("v4.2.0"));
 
 		new GitRefIntrospectedDependencies(cache).complete(collector);
 
-		Dependency usage = collector.getUsage(CHECKOUT);
+		Dependency usage = collector.getUsage(TestGitHubReleases.CHECKOUT.toArtifactId());
 		assertThat(usage).isNotNull();
 		assertThat(usage.getCurrentVersion()).isInstanceOfSatisfying(GitVersion.class, version -> {
 			assertThat(version).hasToString("v4.2.0");
-			assertThat(version.getSha()).isEqualTo(SHA_V4);
+			assertThat(version.getSha()).isEqualTo(TestGitHubReleases.CHECKOUT_SHA_LATEST);
 		});
 	}
 
 	@Test
 	void completePromotesGitArtifactIdDeclarationWhenCacheMatchesByOwnerAndRepository() {
 
-		Cache cache = cacheWith(ReleaseBuilder.artifact(ANTORA_UI_CACHE_KEY, releases -> releases
-				.add("v0.4.26", "2025-01-01", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")));
+		cache.addArtifacts(TestGitHubReleases.ANTORA_UI);
 
 		DependencyCollector collector = new DependencyCollector();
-		collector.registerDeclaration(ANTORA_UI, DeclarationSource.dependency(), VersionSource.declared("v0.4.26"));
+		collector.registerDeclaration(TestGitHubReleases.GIT_ANTORA_UI, DeclarationSource.dependency(),
+				VersionSource.declared("v0.4.26"));
 
 		new GitRefIntrospectedDependencies(cache).complete(collector);
 
-		Dependency usage = collector.getUsage(ANTORA_UI);
+		Dependency usage = collector.getUsage(TestGitHubReleases.GIT_ANTORA_UI);
 		assertThat(usage).isNotNull();
-		assertThat(usage.getCurrentVersion()).isInstanceOfSatisfying(GitVersion.class, version -> {
-			assertThat(version).hasToString("v0.4.26");
-			assertThat(version.getSha()).isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-		});
+		GitVersion version = (GitVersion) usage.getCurrentVersion();
+		assertThat(version).hasToString("v0.4.26");
+		assertThat(version.getSha()).isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 	}
 
 	@Test
 	void completeLeavesDeclarationUnresolvedWhenCacheIsCold() {
 
-		Cache cache = new Cache();
-
 		DependencyCollector collector = new DependencyCollector();
-		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), VersionSource.declared("v4.2.0"));
+		collector.registerDeclaration(TestGitHubReleases.CHECKOUT.toArtifactId(), DeclarationSource.dependency(),
+				VersionSource.declared("v4.2.0"));
 
 		new GitRefIntrospectedDependencies(cache).complete(collector);
 
@@ -102,24 +90,19 @@ class GitRefIntrospectedDependenciesUnitTests {
 	@Test
 	void completeDoesNotDisturbAlreadyResolvedUsage() {
 
-		Cache cache = cacheWith(ReleaseBuilder.artifact(CHECKOUT, releases -> releases
-				.add("v4.2.0", "2024-10-01", SHA_V4)));
+		cache.addArtifacts(TestGitHubReleases.CHECKOUT);
 
 		DependencyCollector collector = new DependencyCollector();
 		VersionSource version = VersionSource.declared("v3.6.0");
-		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), version);
-		collector.registerUsage(CHECKOUT, ArtifactVersion.of("v3.6.0"), DeclarationSource.dependency(), version);
+		collector.registerDeclaration(TestGitHubReleases.CHECKOUT.toArtifactId(), DeclarationSource.dependency(),
+				version);
+		collector.registerUsage(TestGitHubReleases.CHECKOUT.toArtifactId(),
+				ArtifactVersion.of("v3.6.0"), DeclarationSource.dependency(), version);
 
 		new GitRefIntrospectedDependencies(cache).complete(collector);
 
-		assertThat(collector).hasDependencyUsage("actions", "checkout").hasVersion("v3.6.0");
-	}
-
-	private static Cache cacheWith(CachedArtifact artifact) {
-
-		Cache cache = new Cache();
-		cache.addArtifacts(List.of(artifact));
-		return cache;
+		assertThat(collector).hasDependencyUsage("checkout")
+				.hasVersion("v3.6.0");
 	}
 
 }

@@ -87,7 +87,7 @@ class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 			if (expression instanceof NpmVersionExpression.Git(
 					NpmVersionExpression.NpmGitRef ref
 			)) {
-				Versioned version = context.versionResolver().resolveCurrent(artifactId, ref.committish().text());
+				Versioned version = context.versionResolver().resolveLenient(artifactId, ref.committish().text());
 				if (version.isVersioned()) {
 					builder.version(version.getVersion());
 					return;

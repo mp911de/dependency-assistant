@@ -74,7 +74,7 @@ class UnpinnedGitHubActionInspectionTests {
 			assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
 			assertThat(highlightText(workflowFile, problem)).isEqualTo("v4.2.0");
 			assertThat(problem.getFixes()).extracting(QuickFix::getName)
-					.containsExactly("Pin to commit SHA " + GitHubFixtures.SHA_V4.substring(0, 8) + "…");
+					.containsExactly("Pin to commit SHA " + TestGitHubReleases.CHECKOUT_SHA_LATEST_SHORT + "…");
 			assertThat(problem.getFixes()).extracting(QuickFix::getFamilyName).containsExactly("Pin to commit SHA");
 		});
 	}
@@ -93,7 +93,7 @@ class UnpinnedGitHubActionInspectionTests {
 		applyFix(workflowFile);
 
 		assertThat(workflowFile)
-				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
+				.containsText("uses: actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # v4.2.0")
 				.doesNotContainText("@v4.2.0");
 	}
 
@@ -111,7 +111,7 @@ class UnpinnedGitHubActionInspectionTests {
 		applyFix(workflowFile);
 
 		assertThat(workflowFile)
-				.containsText("uses: actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
+				.containsText("uses: actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # v4.2.0")
 				.doesNotContainText("@v4");
 	}
 
@@ -129,8 +129,8 @@ class UnpinnedGitHubActionInspectionTests {
 		applyFixInEditor(workflowFile);
 
 		assertThat(workflowFile)
-				.containsText("actions/checkout@" + GitHubFixtures.SHA_V4 + " # v4.2.0")
-				.caretAfter("actions/checkout@" + GitHubFixtures.SHA_V4);
+				.containsText("actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST + " # v4.2.0")
+				.caretAfter("actions/checkout@" + TestGitHubReleases.CHECKOUT_SHA_LATEST);
 	}
 
 	@Test
