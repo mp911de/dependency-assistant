@@ -29,7 +29,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.concurrency.annotations.RequiresReadLock;
 import org.jetbrains.idea.maven.dom.MavenDomUtil;
 import org.jetbrains.idea.maven.dom.MavenPropertyResolver;
@@ -43,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class MavenBomParser {
+public class MavenBomParser extends MavenPomSupport {
 
 	private final @Nullable XmlFile pomFile;
 
@@ -76,53 +75,42 @@ public class MavenBomParser {
 		if (!(pomFile instanceof XmlFile xmlFile)) {
 			return null;
 		}
-
-		XmlTag root = xmlFile.getDocument() != null ? xmlFile.getDocument().getRootTag() : null;
-		if (root == null) {
-			return null;
-		}
-
 		Map<ArtifactId, ArtifactVersion> members = new LinkedHashMap<>();
-		for (XmlTag dependencyManagement : root.findSubTags("dependencyManagement")) {
-			for (XmlTag dependencies : dependencyManagement.findSubTags("dependencies")) {
-				for (XmlTag dependency : dependencies.findSubTags("dependency")) {
-					collectMember(dependency, members);
-				}
-			}
-		}
+		doWithRoot(xmlFile, root -> {
+			PomTag.of(root)
+					.subtags(DEPENDENCY_MANAGEMENT)
+					.subtags(DEPENDENCIES)
+					.subtags(DEPENDENCY).forEach(it -> {
+						collectMember(it, members);
+					});
+		});
+
 		return members;
 	}
 
-	private void collectMember(XmlTag dependency, Map<ArtifactId, ArtifactVersion> members) {
+	private void collectMember(PomTag dependency, Map<ArtifactId, ArtifactVersion> members) {
 
-		if ("import".equals(text(dependency, "scope"))) {
+		if ("import".equals(dependency.getText("scope"))) {
 			return;
 		}
+		ArtifactId artifactId = parseArtifactId(dependency, propertyResolver);
+		String version = resolve(dependency.getText("version"));
 
-		String groupId = resolve(text(dependency, "groupId"));
-		String artifactId = resolve(text(dependency, "artifactId"));
-		String version = resolve(text(dependency, "version"));
-
-		if (groupId == null || artifactId == null || version == null) {
+		if (artifactId == null || version == null) {
 			return;
 		}
 
 		ArtifactVersion.from(version)
-				.ifPresent(memberVersion -> members.putIfAbsent(ArtifactId.of(groupId, artifactId), memberVersion));
+				.ifPresent(memberVersion -> members.putIfAbsent(artifactId, memberVersion));
 	}
 
-	private @Nullable String resolve(String value) {
+	private @Nullable String resolve(@Nullable String value) {
 
 		if (!StringUtils.hasText(value)) {
 			return null;
 		}
 
 		return Expression.from(value).resolve(propertyResolver);
-	}
-
-	private static String text(XmlTag tag, String subTag) {
-		String value = tag.getSubTagText(subTag);
-		return value != null ? value.trim() : "";
 	}
 
 	/**
@@ -135,10 +123,13 @@ public class MavenBomParser {
 
 		private final MavenDomProjectModel model;
 
+		private final PropertyResolver localResolver;
+
 		private final MavenProjectMetadataPropertyResolver projectPropertyResolver;
 
 		DomPropertyResolver(XmlFile xmlFile, MavenDomProjectModel model) {
 			this.model = model;
+			this.localResolver = PropertyResolver.fromMap(parseProperties(xmlFile));
 			this.projectPropertyResolver = new MavenProjectMetadataPropertyResolver(
 					xmlFile);
 		}
@@ -148,6 +139,10 @@ public class MavenBomParser {
 
 			if (projectPropertyResolver.containsProperty(key)) {
 				return projectPropertyResolver.getProperty(key);
+			}
+
+			if (localResolver.containsProperty(key)) {
+				return localResolver.getProperty(key);
 			}
 
 			return MavenPropertyResolver.resolve("${" + key + "}", model);
