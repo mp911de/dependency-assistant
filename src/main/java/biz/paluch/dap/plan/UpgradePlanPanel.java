@@ -25,8 +25,8 @@ import java.util.concurrent.Callable;
 
 import javax.swing.JComponent;
 import javax.swing.JPanel;
-import javax.swing.JTree;
 
+import biz.paluch.dap.assistant.check.DependencySiteNavigator;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.CopyProvider;
 import com.intellij.ide.DataManager;
@@ -182,7 +182,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 					}
 
 				});
-		this.treeExpander = new DefaultTreeExpander((JTree) tree.focusTarget());
+		this.treeExpander = new DefaultTreeExpander(tree.focusTarget());
 
 		this.deleteProvider = new DeleteProvider() {
 
@@ -206,7 +206,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 		this.summaryLine = new SummaryLine();
 
 		JComponent treeComponent = tree.component();
-		((JTree) tree.focusTarget()).addTreeSelectionListener(event -> {
+		tree.focusTarget().addTreeSelectionListener(event -> {
 			toolbar.updateActionsAsync();
 			summaryLine.update(service.getUpgradePlan());
 		});
@@ -495,7 +495,8 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 		public void navigate(boolean requestFocus) {
 			RelativePoint where = factory
 					.guessBestPopupLocation(tree.component());
-			FindUsagesAction.findUsages(getProject(), where, item);
+			new DependencySiteNavigator(getProject(), service, FileScope.from(service.affectedFiles()))
+					.navigate(item.getUpgradeCandidate().toQuery(), where);
 		}
 
 		@Override

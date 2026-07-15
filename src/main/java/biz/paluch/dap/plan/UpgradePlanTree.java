@@ -20,9 +20,9 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -37,6 +37,7 @@ import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
+import javax.swing.JViewport;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
@@ -52,6 +53,7 @@ import com.intellij.openapi.actionSystem.CommonShortcuts;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.keymap.KeymapUtil;
 import com.intellij.ui.ClickListener;
+import com.intellij.ui.ComponentUtil;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.PopupHandler;
 import com.intellij.ui.ScrollPaneFactory;
@@ -127,8 +129,6 @@ class UpgradePlanTree {
 
 		TreeSpeedSearch.installOn(tree, false, UpgradePlanTree::nodeText);
 
-		// the platform Tree selects the node under a right-click before the popup
-		// shows, so no manual selection handling is needed here
 		PopupHandler.installPopupMenu(tree, "DependencyAssistant.UpgradePlan.Popup",
 				"DependencyAssistant.UpgradePlanPopup");
 
@@ -150,8 +150,6 @@ class UpgradePlanTree {
 
 		}.installOn(tree);
 
-		// StatusText owns the cursor while the tree is empty. With rows present, this
-		// listener owns the ticket-badge cursor and resets it outside the badge.
 		tree.addMouseMotionListener(new MouseAdapter() {
 
 			@Override
@@ -159,7 +157,7 @@ class UpgradePlanTree {
 				if (shownItems.isEmpty()) {
 					return;
 				}
-				tree.setCursor(isTicketBadgeHit(event) ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+				tree.setCursor(ticketAt(event) != null ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
 						: Cursor.getDefaultCursor());
 			}
 
@@ -174,7 +172,7 @@ class UpgradePlanTree {
 	 * Return the component that takes focus for the tree, anchoring the plan action
 	 * context in the tool window even while the plan is empty.
 	 */
-	JComponent focusTarget() {
+	JTree focusTarget() {
 		return tree;
 	}
 
@@ -218,8 +216,8 @@ class UpgradePlanTree {
 	/**
 	 * Replace the item values held by the existing tree nodes after an item-scoped
 	 * change such as linking a ticket. Keeping the nodes preserves expansion and
-	 * selection while every renderer, hit test, and action sees the current
-	 * immutable item instance.
+	 * selection while every renderer, hit test, and action sees the current item
+	 * state.
 	 */
 	void refreshItems(List<UpgradePlanItem> planItems) {
 
@@ -231,7 +229,7 @@ class UpgradePlanTree {
 		}
 
 		for (int i = 0; i < shownItems.size(); i++) {
-			DefaultMutableTreeNode node = (DefaultMutableTreeNode) root.getChildAt(i);
+			PlanTreeNode node = (PlanTreeNode) root.getChildAt(i);
 			if (!shownItems.get(i).equals(node.getUserObject())) {
 				rebuild();
 				return;
@@ -239,9 +237,10 @@ class UpgradePlanTree {
 		}
 
 		this.shownItems = shownItems;
+		BadgeColumns badgeColumns = new BadgeColumns(shownItems);
 		for (int i = 0; i < shownItems.size(); i++) {
-			DefaultMutableTreeNode node = (DefaultMutableTreeNode) root.getChildAt(i);
-			node.setUserObject(shownItems.get(i));
+			PlanTreeNode node = (PlanTreeNode) root.getChildAt(i);
+			node.setItem(shownItems.get(i), badgeColumns);
 			model.nodeChanged(node);
 		}
 	}
@@ -300,8 +299,8 @@ class UpgradePlanTree {
 		}
 	}
 
-	boolean requestFocusInWindow() {
-		return tree.requestFocusInWindow();
+	void requestFocusInWindow() {
+		tree.requestFocusInWindow();
 	}
 
 	private void rebuild() {
@@ -312,14 +311,13 @@ class UpgradePlanTree {
 			tree.setCursor(Cursor.getDefaultCursor());
 		}
 
-		// preserve expansion and selection by item identity across the rebuild;
-		// the panel overrides the selection afterwards when a reload demands it
 		TreeState state = TreeState.createOn(tree, root);
 
 		root.removeAllChildren();
+		BadgeColumns badgeColumns = new BadgeColumns(shownItems);
 		for (UpgradePlanItem item : shownItems) {
 
-			DefaultMutableTreeNode node = new DefaultMutableTreeNode(item, !item.getMembers().isEmpty());
+			PlanTreeNode node = new PlanTreeNode(item, badgeColumns);
 			for (UpgradeCandidate member : item.getMembers()) {
 				node.add(new DefaultMutableTreeNode(member, false));
 			}
@@ -351,38 +349,45 @@ class UpgradePlanTree {
 
 	private boolean openTicketAt(MouseEvent event) {
 
-		if (event.getButton() != MouseEvent.BUTTON1 || !isTicketBadgeHit(event)) {
+		if (event.getButton() != MouseEvent.BUTTON1) {
 			return false;
 		}
-		UpgradePlanItem item = itemAtRow(rowAt(event));
-		UpgradeTicket ticket = item != null ? item.getTicket() : null;
-		if (ticket != null) {
-			BrowserUtil.browse(ticket.getUrl());
-			return true;
+
+		UpgradeTicket ticket = ticketAt(event);
+		if (ticket == null) {
+			return false;
 		}
-		return false;
+
+		BrowserUtil.browse(ticket.getUrl());
+		return true;
 	}
 
-	/**
-	 * Return whether the mouse is over the ticket badge of a row that carries a
-	 * linked ticket. Shared by the click handler and the hand-cursor feedback.
-	 */
-	private boolean isTicketBadgeHit(MouseEvent event) {
+	private @Nullable UpgradeTicket ticketAt(MouseEvent event) {
 
 		int row = rowAt(event);
-		UpgradePlanItem item = itemAtRow(row);
-		if (item == null || ticketBadge(item) == null) {
-			return false;
+		PlanTreeNode node = planNodeAtRow(row);
+		Rectangle rowBounds = node != null ? tree.getRowBounds(row) : null;
+		if (rowBounds == null) {
+			return null;
 		}
-		return ticketSlot(tree.getRowBounds(row)).contains(event.getPoint());
+
+		UpgradePlanItem item = node.getItem();
+		Badge ticket = ticketBadge(item);
+		return ticket != null && badgeAt(node, rowBounds, event.getPoint()) == ticket
+				? item.getTicket()
+				: null;
 	}
 
-	/**
-	 * Return the ticket badge shown for the given item: the item's own badge, or
-	 * {@literal null} when it carries no ticket or the project binds no ticket
-	 * system. The single gate deciding whether a ticket badge exists for a row, so
-	 * the renderer, the hit test, and the tooltip cannot disagree.
-	 */
+	private @Nullable Badge badgeAt(PlanTreeNode node, Rectangle rowBounds, Point point) {
+
+		BadgeGutter gutter = node.getBadgeGutter();
+		JViewport viewport = ComponentUtil.getViewport(tree);
+		int visibleRight = viewport != null ? viewport.getWidth() - tree.getX() : tree.getWidth();
+		int originX = Math.max(visibleRight, rowBounds.x + rowBounds.width) - gutter.getPreferredSize().width;
+		Point local = new Point(point.x - originX, point.y - rowBounds.y);
+		return gutter.badgeAt(rowBounds.height, local);
+	}
+
 	private @Nullable Badge ticketBadge(UpgradePlanItem item) {
 		return service.hasTicketSystem() ? item.getTicketBadge() : null;
 	}
@@ -397,12 +402,6 @@ class UpgradePlanTree {
 		return false;
 	}
 
-	/**
-	 * Resolve the row under the pointer by vertical position: the badges paint in
-	 * the renderer's stretched right gutter, which lies outside the node's path
-	 * bounds, so {@code getRowForLocation} (which requires the pointer inside those
-	 * bounds) misses them. The closest row by y with an in-bounds check does not.
-	 */
 	private int rowAt(MouseEvent event) {
 
 		int row = tree.getClosestRowForLocation(event.getX(), event.getY());
@@ -414,21 +413,10 @@ class UpgradePlanTree {
 		return bounds != null && event.getY() >= bounds.y && event.getY() < bounds.y + bounds.height ? row : -1;
 	}
 
-	/**
-	 * Locate a badge slot of the given row in tree coordinates. The renderer's
-	 * gutter is not in the tree's component hierarchy (it is stamped through a
-	 * {@code CellRendererPane} and its bounds are only valid while painting), so
-	 * the slot is re-derived here from the tree's right edge through the same
-	 * {@link BadgeSlots} layout the gutter paints with.
-	 */
-	private Rectangle ticketSlot(@Nullable Rectangle rowBounds) {
-		return rowBounds == null ? new Rectangle()
-				: BadgeSlots.ticket(BadgeSlots.gutterX(tree.getWidth()), rowBounds.y, rowBounds.height);
-	}
+	private @Nullable PlanTreeNode planNodeAtRow(int row) {
 
-	private Rectangle attentionSlot(@Nullable Rectangle rowBounds) {
-		return rowBounds == null ? new Rectangle()
-				: BadgeSlots.attention(BadgeSlots.gutterX(tree.getWidth()), rowBounds.y, rowBounds.height);
+		TreePath path = row >= 0 ? tree.getPathForRow(row) : null;
+		return path != null && path.getLastPathComponent() instanceof PlanTreeNode node ? node : null;
 	}
 
 	private @Nullable UpgradePlanItem itemAtRow(int row) {
@@ -491,20 +479,14 @@ class UpgradePlanTree {
 		public @Nullable String getToolTipText(MouseEvent event) {
 
 			int row = rowAt(event);
-			UpgradePlanItem item = itemAtRow(row);
-			if (item == null) {
+			PlanTreeNode node = planNodeAtRow(row);
+			Rectangle rowBounds = node != null ? getRowBounds(row) : null;
+			if (rowBounds == null) {
 				return null;
 			}
 
-			Rectangle bounds = getRowBounds(row);
-			Badge ticket = ticketBadge(item);
-			if (ticket != null && ticketSlot(bounds).contains(event.getPoint())) {
-				return ticket.tooltip();
-			}
-			if (attentionSlot(bounds).contains(event.getPoint())) {
-				return item.getAttentionBadge().tooltip();
-			}
-			return null;
+			Badge badge = badgeAt(node, rowBounds, event.getPoint());
+			return badge != null ? badge.tooltip() : null;
 		}
 
 	}
@@ -520,14 +502,10 @@ class UpgradePlanTree {
 
 		private final SimpleColoredComponent text = new SimpleColoredComponent();
 
-		private final BadgeGutter gutter = new BadgeGutter();
-
 		PlanCellRenderer() {
 
 			panel.setOpaque(false);
 			text.setOpaque(false);
-			panel.add(text, BorderLayout.CENTER);
-			panel.add(gutter, BorderLayout.EAST);
 		}
 
 		@Override
@@ -536,10 +514,12 @@ class UpgradePlanTree {
 
 			text.clear();
 			text.setForeground(RenderingUtil.getForeground(tree, selected));
+			panel.removeAll();
+			panel.add(text, BorderLayout.CENTER);
 
-			Object node = ((DefaultMutableTreeNode) value).getUserObject();
-			if (node instanceof UpgradePlanItem item) {
+			if (value instanceof PlanTreeNode node) {
 
+				UpgradePlanItem item = node.getItem();
 				text.setIcon(item.getIcon());
 				text.append(item.getDisplayName(), item.isGroup()
 						? new SimpleTextAttributes(SimpleTextAttributes.STYLE_BOLD, null)
@@ -547,13 +527,12 @@ class UpgradePlanTree {
 				text.append("   " + item.getFromVersion() + " -> " + item.getToVersion(),
 						SimpleTextAttributes.GRAYED_ATTRIBUTES);
 
-				gutter.setBadges(ticketBadge(item), item.getAttentionBadge());
-			} else if (node instanceof UpgradeCandidate member) {
+				panel.add(node.getBadgeGutter(), BorderLayout.EAST);
+			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof UpgradeCandidate member) {
 
 				text.setIcon(AllIcons.Nodes.Library);
 				text.append(member.getRowLabel(), SimpleTextAttributes.REGULAR_ATTRIBUTES);
 				text.append("   " + member.getCurrentVersion(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
-				gutter.setBadges(null, null);
 			}
 
 			SpeedSearchUtil.applySpeedSearchHighlighting(tree, text, true, selected);
@@ -563,128 +542,208 @@ class UpgradePlanTree {
 	}
 
 	/**
-	 * Fixed-width right gutter painting the ticket and attention badge pills in
-	 * aligned slots.
+	 * Tree node for a plan item and its row-local badge presentation.
 	 */
-	private static class BadgeGutter extends JComponent {
+	private static class PlanTreeNode extends DefaultMutableTreeNode {
 
-		private static final int MIN_PILL_WIDTH = 50;
+		private final BadgeGutter badgeGutter;
 
-		private @Nullable Badge ticket;
-
-		private @Nullable Badge attention;
-
-		BadgeGutter() {
-
-			setOpaque(false);
-			setPreferredSize(new Dimension(BadgeSlots.width(), 0));
+		PlanTreeNode(UpgradePlanItem item, BadgeColumns badgeColumns) {
+			super(item, !item.getMembers().isEmpty());
+			this.badgeGutter = new BadgeGutter(badgeColumns, item.getTicketBadge(), item.getAttentionBadge());
 		}
 
-		void setBadges(@Nullable Badge ticket, @Nullable Badge attention) {
-			this.ticket = ticket;
-			this.attention = attention;
+		UpgradePlanItem getItem() {
+			return (UpgradePlanItem) getUserObject();
 		}
 
-		@Override
-		protected void paintComponent(Graphics g) {
-
-			GraphicsUtil.setupAAPainting(g);
-			paintBadge(g, ticket, BadgeSlots.ticket(0, 0, getHeight()));
-			paintBadge(g, attention, BadgeSlots.attention(0, 0, getHeight()));
+		BadgeGutter getBadgeGutter() {
+			return badgeGutter;
 		}
 
-		private static void paintBadge(Graphics g, @Nullable Badge badge, Rectangle slot) {
-
-			if (badge == null) {
-				return;
-			}
-
-			Font font = JBFont.small();
-			FontMetrics metrics = g.getFontMetrics(font);
-			int hPadding = JBUI.scale(12);
-			int vPadding = JBUI.scale(1);
-
-			String label = badge.text();
-			int textWidth = metrics.stringWidth(label);
-			// a minimum pill width so short badges (single-digit issue numbers) keep a
-			// consistent, unfussy size instead of hugging the digits
-			int pillWidth = Math.min(Math.max(textWidth + 2 * hPadding, JBUI.scale(MIN_PILL_WIDTH)), slot.width);
-			int pillHeight = metrics.getHeight() + 2 * vPadding;
-			int x = slot.x + (slot.width - pillWidth) / 2;
-			int y = slot.y + (slot.height - pillHeight) / 2;
-
-			g.setColor(badge.colorType().background());
-			g.fillRoundRect(x, y, pillWidth, pillHeight, pillHeight, pillHeight);
-
-			g.setColor(badge.colorType().foreground());
-			g.setFont(font);
-			int textX = x + (pillWidth - textWidth) / 2;
-			int textY = y + (pillHeight - metrics.getHeight()) / 2 + metrics.getAscent();
-			g.drawString(label, textX, textY);
+		void setItem(UpgradePlanItem item, BadgeColumns badgeColumns) {
+			setUserObject(item);
+			badgeGutter.setBadges(badgeColumns, item.getTicketBadge(), item.getAttentionBadge());
 		}
 
 	}
 
 	/**
-	 * Geometry of the badge gutter: a ticket slot and an attention slot laid out
-	 * left to right, followed by a trailing right margin. The gutter is anchored to
-	 * the right edge of the row.
+	 * Measured-width right gutter of a plan row: the ticket badge, the attention
+	 * badge, and a trailing margin.
 	 */
-	static class BadgeSlots {
+	private static class BadgeGutter extends JComponent {
 
-		private static final int TICKET_SLOT = 70;
+		private BadgeColumns badgeColumns;
 
-		private static final int ATTENTION_SLOT = 80;
+		private final BadgeComponent ticket = new BadgeComponent();
+
+		private final BadgeComponent attention = new BadgeComponent();
+
+		BadgeGutter(BadgeColumns badgeColumns, @Nullable Badge ticket, Badge attention) {
+
+			setOpaque(false);
+			add(this.ticket);
+			add(this.attention);
+			setBadges(badgeColumns, ticket, attention);
+		}
+
+		void setBadges(BadgeColumns badgeColumns, @Nullable Badge ticket, Badge attention) {
+
+			this.badgeColumns = badgeColumns;
+			this.ticket.setBadge(ticket);
+			this.attention.setBadge(attention);
+		}
+
+		@Override
+		public Dimension getPreferredSize() {
+			return new Dimension(badgeColumns.width(), 0);
+		}
+
+		/**
+		 * Return the badge drawn under the given gutter-local point, or {@literal null}
+		 * where the row draws none.
+		 */
+		@Nullable
+		Badge badgeAt(int rowHeight, Point point) {
+
+			setSize(badgeColumns.width(), rowHeight);
+			doLayout();
+			if (ticket.getBounds().contains(point)) {
+				return ticket.getBadge();
+			}
+			return attention.getBounds().contains(point) ? attention.getBadge() : null;
+		}
+
+		@Override
+		protected void paintChildren(Graphics g) {
+
+			doLayout();
+			super.paintChildren(g);
+		}
+
+		@Override
+		public void doLayout() {
+			badgeColumns.layout(ticket, attention, getHeight());
+		}
+
+	}
+
+	/**
+	 * Measured badge columns shared by every displayed plan row. Ticket badges
+	 * align towards the attention column and attention badges align towards the
+	 * ticket column, keeping exactly one deliberate gap between their inner edges.
+	 */
+	private static class BadgeColumns {
 
 		private static final int BADGE_GAP = 6;
 
 		private static final int RIGHT_MARGIN = 14;
 
-		private BadgeSlots() {
+		private final int ticketWidth;
+
+		private final int attentionWidth;
+
+		private final int gap;
+
+		BadgeColumns(List<UpgradePlanItem> items) {
+
+			BadgeComponent measurer = new BadgeComponent();
+			int ticketWidth = 0;
+			int attentionWidth = 0;
+			for (UpgradePlanItem item : items) {
+				measurer.setBadge(item.getTicketBadge());
+				ticketWidth = Math.max(ticketWidth, measurer.getPreferredSize().width);
+				measurer.setBadge(item.getAttentionBadge());
+				attentionWidth = Math.max(attentionWidth, measurer.getPreferredSize().width);
+			}
+			this.ticketWidth = ticketWidth;
+			this.attentionWidth = attentionWidth;
+			this.gap = ticketWidth > 0 && attentionWidth > 0 ? JBUI.scale(BADGE_GAP) : 0;
 		}
 
-		/**
-		 * Return the scaled total width the gutter occupies, both slots, the gap
-		 * between them, and the trailing margin.
-		 */
-		static int width() {
-			return JBUI.scale(TICKET_SLOT + BADGE_GAP + ATTENTION_SLOT + RIGHT_MARGIN);
+		int width() {
+			return ticketWidth + gap + attentionWidth + JBUI.scale(RIGHT_MARGIN);
 		}
 
-		/**
-		 * Return the gutter's left edge within a component of the given width, the
-		 * origin the slot methods expect.
-		 *
-		 * @param componentWidth the width of the component the gutter is right-aligned
-		 * in.
-		 * @return the gutter's left edge.
-		 */
-		static int gutterX(int componentWidth) {
-			return componentWidth - width();
+		void layout(BadgeComponent ticket, BadgeComponent attention, int height) {
+
+			Dimension ticketSize = ticket.getPreferredSize();
+			ticket.setBounds(ticketWidth - ticketSize.width, (height - ticketSize.height) / 2,
+					ticketSize.width, ticketSize.height);
+
+			Dimension attentionSize = attention.getPreferredSize();
+			attention.setBounds(ticketWidth + gap, (height - attentionSize.height) / 2,
+					attentionSize.width, attentionSize.height);
 		}
 
-		/**
-		 * Return the ticket slot rectangle.
-		 *
-		 * @param gutterX the gutter's left edge in the caller's coordinates.
-		 * @param y the row's top edge.
-		 * @param height the row's height.
-		 * @return the slot rectangle.
-		 */
-		static Rectangle ticket(int gutterX, int y, int height) {
-			return new Rectangle(gutterX, y, JBUI.scale(TICKET_SLOT), height);
+	}
+
+	/**
+	 * One badge, hugging its label down to {@link #MIN_WIDTH} so short labels keep
+	 * a consistent size. Without a badge it measures empty and paints nothing.
+	 */
+	static class BadgeComponent extends JComponent {
+
+		private static final int MIN_WIDTH = 50;
+
+		private static final int H_PADDING = 12;
+
+		private static final int V_PADDING = 1;
+
+		private @Nullable Badge badge;
+
+		private @Nullable Dimension dimension;
+
+		BadgeComponent() {
+
+			setOpaque(false);
+			setFont(JBFont.small());
 		}
 
-		/**
-		 * Return the attention slot rectangle.
-		 *
-		 * @param gutterX the gutter's left edge in the caller's coordinates.
-		 * @param y the row's top edge.
-		 * @param height the row's height.
-		 * @return the slot rectangle.
-		 */
-		static Rectangle attention(int gutterX, int y, int height) {
-			return new Rectangle(gutterX + JBUI.scale(TICKET_SLOT + BADGE_GAP), y, JBUI.scale(ATTENTION_SLOT), height);
+		void setBadge(@Nullable Badge badge) {
+			this.badge = badge;
+			this.dimension = null;
+		}
+
+		@Nullable
+		Badge getBadge() {
+			return badge;
+		}
+
+		@Override
+		public Dimension getPreferredSize() {
+
+			if (badge == null) {
+				return new Dimension();
+			}
+
+			if (dimension == null) {
+				FontMetrics metrics = getFontMetrics(getFont());
+				dimension = new Dimension(
+						Math.max(metrics.stringWidth(badge.text()) + 2 * JBUI.scale(H_PADDING), JBUI.scale(MIN_WIDTH)),
+						metrics.getHeight() + 2 * JBUI.scale(V_PADDING));
+			}
+			return dimension;
+		}
+
+		@Override
+		protected void paintComponent(Graphics g) {
+
+			if (badge == null) {
+				return;
+			}
+
+			GraphicsUtil.setupAAPainting(g);
+			int height = getHeight();
+			g.setColor(badge.colorType().background());
+			g.fillRoundRect(0, 0, getWidth(), height, height, height);
+
+			FontMetrics metrics = getFontMetrics(getFont());
+			g.setColor(badge.colorType().foreground());
+			g.setFont(getFont());
+			g.drawString(badge.text(), (getWidth() - metrics.stringWidth(badge.text())) / 2,
+					(height - metrics.getHeight()) / 2 + metrics.getAscent());
 		}
 
 	}
