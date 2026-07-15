@@ -50,7 +50,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencySitesPopup;
+import biz.paluch.dap.assistant.check.DependencySiteNavigator;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
 import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.assistant.check.UpgradeGroup;
@@ -329,8 +329,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * for navigation.
 	 */
 	private void navigateToSites(UpgradeCandidate candidate, RelativePoint where) {
-		new DependencySitesPopup(project, getDisposable(), this::doCancelAction, () -> files).navigate(candidate,
-				where);
+		new DependencySiteNavigator(project, getDisposable(), this::doCancelAction, files)
+				.browse(candidate.toQuery(), where);
 	}
 
 	/**

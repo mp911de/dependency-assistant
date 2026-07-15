@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.plan;
 
-import biz.paluch.dap.assistant.check.DependencySitesPopup;
+import biz.paluch.dap.assistant.check.DependencySiteNavigator;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.DumbAwareAction;
@@ -63,8 +63,8 @@ public class FindUsagesAction extends DumbAwareAction {
 
 	static void findUsages(Project project, RelativePoint where, UpgradePlanItem item) {
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
-		new DependencySitesPopup(project, service, () -> {
-		}, service::getScope).showUsages(item.getUpgradeCandidate(), where);
+		new DependencySiteNavigator(project, service, service.getScope())
+				.openInFindWindow(item.getUpgradeCandidate().toQuery(), where);
 	}
 
 }
