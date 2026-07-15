@@ -22,6 +22,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import com.intellij.psi.xml.XmlText;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
@@ -97,7 +98,7 @@ class MavenUtils {
 	@Contract("null -> false")
 	public static boolean isVersionElement(@Nullable PsiElement element) {
 
-		if (element == null) {
+		if (element == null || !(element instanceof XmlText)) {
 			return false;
 		}
 

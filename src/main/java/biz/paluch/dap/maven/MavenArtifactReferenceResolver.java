@@ -192,8 +192,12 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	 * them. Completion and documentation resolve against this same text node.
 	 */
 	private boolean isResolvableElement(PsiElement element) {
-		return element.isValid() && (element instanceof XmlText
-				|| element instanceof XmlTag tag && StringUtils.isEmpty(tag.getValue().getText()));
+
+		if (!element.isValid()) {
+			return false;
+		}
+
+		return (element instanceof XmlText || element instanceof XmlTag tag);
 	}
 
 	private ArtifactReference resolveDirect(XmlTag versionTag) {
