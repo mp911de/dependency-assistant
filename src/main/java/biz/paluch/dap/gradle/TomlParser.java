@@ -74,7 +74,7 @@ class TomlParser {
 	/**
 	 * TOML table name for bundles.
 	 */
-	public static final String BUNDLES = GradleUtils.BUNDLES;
+	public static final String BUNDLES = "bundles";
 
 	/**
 	 * TOML key name for inline versions.
@@ -84,22 +84,27 @@ class TomlParser {
 	/**
 	 * TOML key name for referenced versions.
 	 */
-	public static final String VERSION_REF = GradleUtils.VERSION_REF;
+	public static final String VERSION_REF = "version.ref";
 
 	/**
 	 * TOML table name for version aliases.
 	 */
-	public static final String VERSIONS = GradleUtils.VERSIONS;
+	public static final String VERSIONS = "versions";
 
 	/**
 	 * Default Gradle version catalog accessor root.
 	 */
-	public static final String LIBS = GradleUtils.LIBS;
+	public static final String LIBS = "libs";
 
 	/**
 	 * TOML table name for library aliases.
 	 */
-	public static final String LIBRARIES = GradleUtils.LIBRARIES;
+	public static final String LIBRARIES = "libraries";
+
+	/**
+	 * TOML key name for module coordinates.
+	 */
+	public static final String MODULE = "module";
 
 	/**
 	 * Parse a {@code libs.versions.toml} version catalog into artifact
@@ -286,10 +291,10 @@ class TomlParser {
 			String val = getText(inner.getValue());
 			switch (key) {
 			case GradleUtils.ID -> id = val;
-			case GradleUtils.MODULE -> module = val;
+			case MODULE -> module = val;
 			case GradleUtils.GROUP -> group = val;
 			case GradleUtils.NAME -> name = val;
-			case GradleUtils.VERSION_REF -> versionRef = val;
+			case VERSION_REF -> versionRef = val;
 			case GradleUtils.VERSION -> {
 				version = val;
 				versionLiteral = inner.getValue();

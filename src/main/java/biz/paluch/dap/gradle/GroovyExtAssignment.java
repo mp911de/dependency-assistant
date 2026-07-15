@@ -47,6 +47,16 @@ import org.jspecify.annotations.Nullable;
 sealed interface GroovyExtAssignment extends ExtraDeclaration {
 
 	/**
+	 * Name of the Groovy {@code ext} property block/qualifier.
+	 */
+	String EXT = "ext";
+
+	/**
+	 * Name of the Groovy {@code set} property method.
+	 */
+	String SET = "set";
+
+	/**
 	 * Return the Groovy literal that holds the assigned value, serving as the
 	 * editable anchor when the property value is rewritten.
 	 *
@@ -91,7 +101,7 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 		static @Nullable SetCall from(GrLiteral literal) {
 
 			GrMethodCall setCall = PsiTreeUtil.getParentOfType(literal, GrMethodCall.class);
-			if (setCall == null || !GradleUtils.SET.equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
+			if (setCall == null || !SET.equals(GroovyDslUtils.getGroovyMethodName(setCall))) {
 				return null;
 			}
 
@@ -157,12 +167,12 @@ sealed interface GroovyExtAssignment extends ExtraDeclaration {
 			GrExpression qualifier = ref.getQualifierExpression();
 			PsiElement anchor = valueContext != null ? valueContext : lhs;
 
-			if (qualifier == null && GroovyDslUtils.isInsideGroovyBlock(anchor, GradleUtils.EXT::equals)) {
+			if (qualifier == null && GroovyDslUtils.isInsideGroovyBlock(anchor, EXT::equals)) {
 				return ref.getReferenceName();
 			}
 
 			if (qualifier instanceof GrReferenceExpression qualRef
-					&& GradleUtils.EXT.equals(qualRef.getReferenceName())) {
+					&& EXT.equals(qualRef.getReferenceName())) {
 				return ref.getReferenceName();
 			}
 

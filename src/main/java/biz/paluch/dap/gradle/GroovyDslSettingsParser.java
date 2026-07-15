@@ -84,7 +84,7 @@ class GroovyDslSettingsParser {
 			catalogs.put(alias, GradleUtils.DEFAULT_TOML_LOCATION);
 		}
 
-		return new VersionCatalogRegistry(Map.copyOf(catalogs), alias);
+		return new VersionCatalogRegistry(catalogs, alias);
 	}
 
 	private static void parseVersionCatalogsBlock(GrMethodCall catalogsCall, Map<String, String> catalogs) {

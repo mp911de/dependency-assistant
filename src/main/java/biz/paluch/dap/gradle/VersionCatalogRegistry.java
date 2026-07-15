@@ -153,7 +153,7 @@ class VersionCatalogRegistry {
 		String defaultAlias = catalogPaths.containsKey(TomlParser.LIBS)
 				? TomlParser.LIBS
 				: catalogPaths.keySet().iterator().next();
-		return new VersionCatalogRegistry(Map.copyOf(catalogPaths), defaultAlias);
+		return new VersionCatalogRegistry(catalogPaths, defaultAlias);
 	}
 
 	private static String catalogPath(VirtualFile projectRoot, Path path) {

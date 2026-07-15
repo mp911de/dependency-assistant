@@ -173,7 +173,7 @@ class UpdateGradleFile {
 		for (TomlTable table : PsiTreeUtil.getChildrenOfTypeAsList(file, TomlTable.class)) {
 			String tableName = table.getHeader().getKey() != null ? table.getHeader().getKey().getText().trim() : null;
 
-			if (!GradleUtils.VERSIONS.equals(tableName)) {
+			if (!TomlParser.VERSIONS.equals(tableName)) {
 				continue;
 			}
 

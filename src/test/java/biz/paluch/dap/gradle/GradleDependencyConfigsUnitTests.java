@@ -18,8 +18,8 @@ package biz.paluch.dap.gradle;
 
 import java.util.Set;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.*;
@@ -35,13 +35,13 @@ class GradleDependencyConfigsUnitTests {
 	@ValueSource(strings = { "implementation", "api", "runtimeOnly", "compileOnly", "testImplementation",
 			"testRuntimeOnly", "testCompileOnly", "annotationProcessor", "kapt", "ksp", "classpath" })
 	void supportsCommonDependencyConfigs(String config) {
-		assertThat(GradleUtils.DEPENDENCY_CONFIGS).contains(config);
+		assertThat(GradleUtils.isDependencySection(config)).isTrue();
 	}
 
 	@ParameterizedTest(name = "supports platform: {0}")
 	@ValueSource(strings = { "platform", "enforcedPlatform" })
-	void supportsPlatformFunctions(String func) {
-		assertThat(GradleUtils.PLATFORM_FUNCTIONS).contains(func);
+	void supportsPlatformFunctions(String config) {
+		assertThat(GradleUtils.isPlatformSection(config)).isTrue();
 	}
 
 	@ParameterizedTest(name = "supports custom config: {0}")
@@ -57,11 +57,14 @@ class GradleDependencyConfigsUnitTests {
 		assertThat(GradleUtils.isDependencySection(name)).isFalse();
 	}
 
-	@Test
-	void dependencyConfigsDoNotOverlapWithPlatformFunctions() {
-		Set<String> overlap = new java.util.HashSet<>(GradleUtils.DEPENDENCY_CONFIGS);
-		overlap.retainAll(GradleUtils.PLATFORM_FUNCTIONS);
-		assertThat(overlap).isEmpty();
+	@ParameterizedTest(name = "platform function is not a dependency config: {0}")
+	@MethodSource("platformFunctions")
+	void platformFunctionsAreNotDependencyConfigs(String config) {
+		assertThat(GradleUtils.isDependencySection(config)).isFalse();
+	}
+
+	static Set<String> platformFunctions() {
+		return GradleUtils.PLATFORM_FUNCTIONS;
 	}
 
 }
