@@ -16,16 +16,10 @@
 
 package biz.paluch.dap.plan;
 
-import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import biz.paluch.dap.util.MessageBundle;
@@ -40,8 +34,6 @@ import biz.paluch.dap.util.Sequence;
  */
 class UpgradePlan implements Sequence<UpgradePlanItem> {
 
-	private static final UpgradePlan EMPTY = new UpgradePlan(FileScope.of(), List.of());
-
 	private final FileScope scope;
 
 	private final List<UpgradePlanItem> items;
@@ -49,13 +41,6 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 	private UpgradePlan(FileScope scope, List<UpgradePlanItem> items) {
 		this.scope = scope;
 		this.items = List.copyOf(items);
-	}
-
-	/**
-	 * Return the empty plan: no items, no scope.
-	 */
-	static UpgradePlan empty() {
-		return EMPTY;
 	}
 
 	/**
@@ -95,67 +80,6 @@ class UpgradePlan implements Sequence<UpgradePlanItem> {
 	@Override
 	public boolean isEmpty() {
 		return items.isEmpty();
-	}
-
-	/**
-	 * Return a plan holding only the items matching the predicate, keeping this
-	 * plan's scope. Returns this same plan when every item matches, so callers can
-	 * compare by identity to detect a no-op.
-	 *
-	 * @param predicate the retention test applied to each item.
-	 * @return the filtered plan, or this plan when nothing was removed.
-	 */
-	public UpgradePlan filter(Predicate<? super UpgradePlanItem> predicate) {
-		List<UpgradePlanItem> filtered = stream().filter(predicate).toList();
-		return filtered.size() == items.size() ? this : withItems(filtered);
-	}
-
-	/**
-	 * Return a plan with each matching item replaced by the replacement result,
-	 * preserving item order and scope. Returns this same plan when no item matches,
-	 * so callers can compare by identity to detect a no-op.
-	 *
-	 * @param predicate selects the items to replace.
-	 * @param replacement maps a matched item to its replacement.
-	 * @return the derived plan, or this plan when nothing matched.
-	 */
-	public UpgradePlan replace(Predicate<? super UpgradePlanItem> predicate,
-			Function<? super UpgradePlanItem, ? extends UpgradePlanItem> replacement) {
-
-		List<UpgradePlanItem> replaced = new ArrayList<>(items.size());
-		boolean matched = false;
-		for (UpgradePlanItem item : items) {
-			if (predicate.test(item)) {
-				replaced.add(replacement.apply(item));
-				matched = true;
-			} else {
-				replaced.add(item);
-			}
-		}
-		return matched ? withItems(replaced) : this;
-	}
-
-	/**
-	 * Merge a plan fragment into this plan, appending fragment items not already
-	 * present by {@link UpgradePlanItem#equals(Object) item identity} and unioning
-	 * the two build-file scopes with this plan's paths first.
-	 *
-	 * @param fragment the plan fragment to fold in.
-	 * @return the merged plan.
-	 */
-	UpgradePlan merge(UpgradePlan fragment) {
-
-		List<UpgradePlanItem> merged = new ArrayList<>(items);
-		Set<UpgradePlanItem> seen = new HashSet<>(items);
-		for (UpgradePlanItem item : fragment) {
-			if (seen.add(item)) {
-				merged.add(item);
-			}
-		}
-
-		LinkedHashSet<String> paths = new LinkedHashSet<>(scope.getPaths());
-		paths.addAll(fragment.scope.getPaths());
-		return new UpgradePlan(FileScope.from(paths), merged);
 	}
 
 	/**

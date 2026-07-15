@@ -18,6 +18,8 @@ package biz.paluch.dap.plan;
 
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.ticket.TicketSystemProvider;
+import com.intellij.ide.util.ProjectPropertyService;
+import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.project.Project;
 
 /**
@@ -31,7 +33,9 @@ public class InMemoryTicketSystemProvider implements TicketSystemProvider {
 
 	@Override
 	public boolean supports(Project project) {
-		return true;
+		PropertiesComponent properties = ProjectPropertyService.getInstance(project);
+		boolean enabled = properties.getBoolean("InMemoryTicketSystemProvider.enabled", false);
+		return enabled;
 	}
 
 	@Override

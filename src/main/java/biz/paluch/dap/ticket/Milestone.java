@@ -71,16 +71,28 @@ public interface Milestone {
 	LocalDateTime getReleaseDate();
 
 	/**
-	 * Return whether the milestone {@link #isOpen()} and overdue (i.e. the release
-	 * date is on the past).
-	 * @return
+	 * Return the day of the {@link #getReleaseDate() release date}, the resolution
+	 * milestone scheduling is presented and ordered at.
+	 * @return the release day, or {@literal null} if the milestone is unscheduled.
+	 */
+	@Nullable
+	default LocalDate getReleaseDay() {
+
+		LocalDateTime releaseDate = getReleaseDate();
+		return releaseDate != null ? releaseDate.toLocalDate() : null;
+	}
+
+	/**
+	 * Return whether the milestone {@link #isOpen()} and its
+	 * {@link #getReleaseDay() release day} lies in the past.
+	 *
+	 * @return {@literal true} if the milestone is open and overdue;
+	 * {@literal false} otherwise, including for an unscheduled milestone.
 	 */
 	default boolean isOverdue() {
-		if (isOpen()) {
-			LocalDateTime releaseDate = getReleaseDate();
-			return isOpen() && releaseDate != null && releaseDate.toLocalDate().isBefore(LocalDate.now());
-		}
-		return false;
+
+		LocalDate releaseDay = getReleaseDay();
+		return isOpen() && releaseDay != null && releaseDay.isBefore(LocalDate.now());
 	}
 
 }

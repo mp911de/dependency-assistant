@@ -16,19 +16,12 @@
 
 package biz.paluch.dap.github;
 
-import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketSystem;
-import com.intellij.openapi.project.Project;
-import org.jetbrains.plugins.github.api.GHRepositoryCoordinates;
-import org.jetbrains.plugins.github.api.GHRepositoryPath;
-import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
-import org.jetbrains.plugins.github.api.GithubServerPath;
 
 /**
- * {@link TicketSystem} bound to the GitHub repository resolved from the
- * project's Git remotes.
+ * {@link TicketSystem} bound to a concrete GitHub ticket repository.
  *
  * @author Mark Paluch
  * @see GitHubTicketSystemProvider
@@ -36,16 +29,6 @@ import org.jetbrains.plugins.github.api.GithubServerPath;
 class GitHubTicketSystem implements TicketSystem {
 
 	private final GitHubTicketRepository repository;
-
-	GitHubTicketSystem(Project project, GitRepositoryMetadata coordinates) {
-		this(new GitHubTicketRepository(coordinates, createExecutor(project, toRepositoryCoordinates(coordinates)),
-				GitHubTicketCache.getInstance(project)));
-	}
-
-	GitHubTicketSystem(Project project, GHRepositoryCoordinates repository) {
-		this(new GitHubTicketRepository(repository, createExecutor(project, repository),
-				GitHubTicketCache.getInstance(project)));
-	}
 
 	GitHubTicketSystem(GitHubTicketRepository repository) {
 		this.repository = repository;
@@ -58,29 +41,17 @@ class GitHubTicketSystem implements TicketSystem {
 
 	@Override
 	public String getDisplayReference(TicketKey key) {
-		return "#" + key;
+		return GitHubConventions.INSTANCE.getDisplayReference(key);
 	}
 
 	@Override
 	public String getCloseReference(TicketKey key) {
-		return "Closes " + getDisplayReference(key);
+		return GitHubConventions.INSTANCE.getCloseReference(key);
 	}
 
 	@Override
 	public String toString() {
 		return repository.toString();
-	}
-
-	private static GithubApiRequestExecutor createExecutor(Project project, GHRepositoryCoordinates repository) {
-
-		GithubApiRequestExecutorFactory.ExecutorResult result = GithubApiRequestExecutorFactory.getInstance(project)
-				.getExecutor(repository);
-		return result.getRequiredExecutor();
-	}
-
-	private static GHRepositoryCoordinates toRepositoryCoordinates(GitRepositoryMetadata coordinates) {
-		return new GHRepositoryCoordinates(GithubServerPath.from(coordinates.host()),
-				new GHRepositoryPath(coordinates.owner(), coordinates.repository()));
 	}
 
 }

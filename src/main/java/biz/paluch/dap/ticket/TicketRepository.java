@@ -119,4 +119,28 @@ public interface TicketRepository {
 	 */
 	TicketRepository cached();
 
+
+	/**
+	 * Return the display reference for the given ticket key.
+	 *
+	 * <p>Examples include {@code #1234} on GitHub and {@code PROJ-123} on Jira.
+	 *
+	 * @param key the persisted or live ticket key to render.
+	 * @return the user-facing ticket reference for IDE presentation.
+	 */
+	String getDisplayReference(TicketKey key);
+
+	/**
+	 * Return the commit-message reference for the given ticket key.
+	 *
+	 * <p>Systems with close keywords may return a closing phrase, for example
+	 * {@code Closes #1234}. Systems without commit-based closing can return a plain
+	 * display reference; an empty string means that no meaningful commit reference
+	 * exists for the key.
+	 *
+	 * @param key the persisted or live ticket key to render.
+	 * @return the commit-message fragment for referencing the ticket.
+	 */
+	String getCloseReference(TicketKey key);
+
 }

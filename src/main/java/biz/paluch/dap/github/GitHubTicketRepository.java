@@ -245,7 +245,26 @@ class GitHubTicketRepository implements TicketRepository {
 				return this;
 			}
 
+			@Override
+			public String getDisplayReference(TicketKey key) {
+				return GitHubTicketRepository.this.getDisplayReference(key);
+			}
+
+			@Override
+			public String getCloseReference(TicketKey key) {
+				return GitHubTicketRepository.this.getCloseReference(key);
+			}
 		};
+	}
+
+	@Override
+	public String getDisplayReference(TicketKey key) {
+		return GitHubConventions.INSTANCE.getDisplayReference(key);
+	}
+
+	@Override
+	public String getCloseReference(TicketKey key) {
+		return GitHubConventions.INSTANCE.getCloseReference(key);
 	}
 
 	private GHRepositoryPath repositoryPath() {

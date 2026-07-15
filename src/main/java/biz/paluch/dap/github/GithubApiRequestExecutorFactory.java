@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
@@ -69,7 +70,7 @@ class GithubApiRequestExecutorFactory {
 	GithubApiRequestExecutorFactory(Project project) {
 		this.project = project;
 		this.repositoriesManager = project.getService(GHHostedRepositoriesManager.class);
-		this.accountManager = project.getService(GHAccountManager.class);
+		this.accountManager = ApplicationManager.getApplication().getService(GHAccountManager.class);
 		this.defaultAccountHolder = project.getService(GithubProjectDefaultAccountHolder.class);
 	}
 
@@ -143,12 +144,8 @@ class GithubApiRequestExecutorFactory {
 
 	/**
 	 * Create an executor from a selection made by a future UI adapter.
-	 * @param selection the selected repository and account.
-	 * @return the executor resolution result.
 	 */
-	ExecutorResult getExecutor(Selection selection) {
-		GHGitRepositoryMapping repository = selection.getRepository();
-		GithubAccount account = selection.getAccount();
+	ExecutorResult getExecutor(GHGitRepositoryMapping repository, GithubAccount account) {
 		GithubServerPath server = repository.getRepository().getServerPath();
 		SelectionDetails selectionDetails = getSelectionDetails(server, repository);
 		return createAuthenticated(server, repository, account, selectionDetails, Reason.EXPLICIT_SELECTION);
@@ -448,26 +445,7 @@ class GithubApiRequestExecutorFactory {
 
 	}
 
-	static class Selection {
 
-		private final GHGitRepositoryMapping repository;
-
-		private final GithubAccount account;
-
-		Selection(GHGitRepositoryMapping repository, GithubAccount account) {
-			this.repository = repository;
-			this.account = account;
-		}
-
-		GHGitRepositoryMapping getRepository() {
-			return repository;
-		}
-
-		GithubAccount getAccount() {
-			return account;
-		}
-
-	}
 
 	static class SelectionDetails {
 

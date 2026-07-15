@@ -20,7 +20,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,13 +29,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.Box;
 import javax.swing.Icon;
+import javax.swing.JComponent;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.actionSystem.ex.DefaultCustomComponentAction;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
@@ -59,10 +62,6 @@ class UpgradePlanTabActions {
 
 	private static final int SECONDARY_TEXT_GAP = 5;
 
-	private static final AnAction SELECTOR_GAP = gap(4);
-
-	private static final AnAction REFRESH_GAP = gap(6);
-
 	private final UpgradePlanService service;
 
 	private final SelectorAction.SelectorModel<Milestone> milestonesModel;
@@ -75,6 +74,10 @@ class UpgradePlanTabActions {
 
 	private final RefreshMilestonesAction refreshAction;
 
+	private final AnAction selectorGap;
+
+	private final AnAction refreshGap;
+
 	UpgradePlanTabActions(UpgradePlanService service, Component parent) {
 
 		this.service = service;
@@ -85,18 +88,37 @@ class UpgradePlanTabActions {
 		this.labelSelector = new SelectorAction<>(service, parent, "plan.selector.label",
 				DependencyAssistantIcons.PLAN_LABEL, labelsModel);
 		this.refreshAction = new RefreshMilestonesAction(service, this::refreshSelectors);
+		this.selectorGap = gap(service, 4);
+		this.refreshGap = gap(service, 6);
 	}
 
 	AnAction[] getActions() {
-		return new AnAction[] {milestoneSelector, SELECTOR_GAP, labelSelector, REFRESH_GAP, refreshAction};
+		return new AnAction[] {milestoneSelector, selectorGap, labelSelector, refreshGap, refreshAction};
 	}
 
-	private static AnAction gap(int width) {
+	private static AnAction gap(UpgradePlanService service, int width) {
 
 		return new DefaultCustomComponentAction(() -> {
 			Dimension size = JBUI.size(width, 0);
 			return new Box.Filler(size, size, size);
-		});
+		}) {
+
+			@Override
+			public void update(AnActionEvent event) {
+				event.getPresentation().setVisible(service.hasTicketSystem());
+			}
+
+			@Override
+			public void updateCustomComponent(JComponent component, Presentation presentation) {
+				component.setVisible(presentation.isVisible());
+			}
+
+			@Override
+			public ActionUpdateThread getActionUpdateThread() {
+				return ActionUpdateThread.EDT;
+			}
+
+		};
 	}
 
 	void restore() {
@@ -114,6 +136,11 @@ class UpgradePlanTabActions {
 		List<Label> labels = new ArrayList<>(service.getLabels());
 		labels.sort(Comparator.comparing(Label::getName, String.CASE_INSENSITIVE_ORDER));
 		labelsModel.setValues(labels, service.getLabel());
+	}
+
+	void ticketSystemChanged() {
+		milestonesModel.setValues(List.of(), null);
+		labelsModel.setValues(List.of(), null);
 	}
 
 	private void refreshSelectors() {
@@ -176,7 +203,7 @@ class UpgradePlanTabActions {
 				return DependencyAssistantIcons.PLAN_MILESTONE_CLOSED;
 			}
 
-			return dueDate(value) != null ? DependencyAssistantIcons.PLAN_MILESTONE_OPEN
+			return value.getReleaseDay() != null ? DependencyAssistantIcons.PLAN_MILESTONE_OPEN
 					: DependencyAssistantIcons.PLAN_MILESTONE_UNSCHEDULED;
 		}
 
@@ -184,7 +211,7 @@ class UpgradePlanTabActions {
 		@Nullable
 		String getSecondaryText(Milestone value) {
 
-			LocalDate dueDate = dueDate(value);
+			LocalDate dueDate = value.getReleaseDay();
 			if (dueDate == null) {
 				return null;
 			}
@@ -207,21 +234,12 @@ class UpgradePlanTabActions {
 
 		@Override
 		boolean startsNewGroup(Milestone previous, Milestone value) {
-
-			// scheduled milestones sort before unscheduled ones; the separator
-			// marks the boundary when the list mixes both
-			return dueDate(previous) != null && dueDate(value) == null;
+			return MilestoneComparator.startsNewGroup(previous, value);
 		}
 
 		@Override
 		void selectionChanged(@Nullable Milestone selection) {
 			service.setSelectedMilestone(selection);
-		}
-
-		private @Nullable LocalDate dueDate(Milestone value) {
-
-			LocalDateTime releaseDate = value.getReleaseDate();
-			return releaseDate != null ? releaseDate.toLocalDate() : null;
 		}
 
 		/**

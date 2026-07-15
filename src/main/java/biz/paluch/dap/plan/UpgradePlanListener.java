@@ -43,6 +43,13 @@ interface UpgradePlanListener extends EventListener {
 	}
 
 	/**
+	 * Notified after the ticket system bound to the plan changed or became
+	 * unavailable.
+	 */
+	default void ticketSystemChanged() {
+	}
+
+	/**
 	 * Notified when the persisted plan was replaced from outside the plan command
 	 * model. UI listeners reload as for a structural change; the plan service also
 	 * terminates the preceding undo history.

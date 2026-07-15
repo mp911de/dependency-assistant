@@ -62,10 +62,10 @@ class PlanNotifications {
 					.createNotification(MessageBundle.message(commit ? "plan.apply.summary.committed"
 							: "plan.apply.summary.applied", applied), NotificationType.INFORMATION)
 					.setImportant(true);
+			addAction(notification, "plan.apply.push", push);
+			addAction(notification, "plan.apply.unshelve", unshelve);
 		}
 
-		addAction(notification, "plan.apply.push", push);
-		addAction(notification, "plan.apply.unshelve", unshelve);
 		notification.notify(project);
 	}
 

@@ -16,6 +16,9 @@
 
 package biz.paluch.dap.plan;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.diagnostic.Logger;
@@ -78,8 +81,8 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 
 	@Override
 	void finishRun(UpgradePlanService service, UpgradePlan attempted) {
-		UpgradePlan remaining = service.getUpgradePlan();
-		if (attempted.stream().anyMatch(item -> !remaining.getItems().contains(item))) {
+		Set<UpgradePlanItem> remaining = new HashSet<>(service.getUpgradePlan().getItems());
+		if (attempted.stream().anyMatch(item -> !remaining.contains(item))) {
 			service.vcsApplied(attempted.getScope());
 		}
 	}

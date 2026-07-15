@@ -16,8 +16,11 @@
 
 package biz.paluch.dap.plan;
 
+import java.util.List;
+
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
@@ -41,22 +44,31 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 	private static final Logger LOG = Logger.getInstance(ApplyAllAction.class);
 
+
 	@Override
 	void perform(Project project) {
+		// no-op
+	}
 
-		UpgradePlanService service = UpgradePlanService.getInstance(project);
-		UpgradePlan plan = service.getUpgradePlan();
-		if (service.isBusy() || plan.isEmpty()) {
+	@Override
+	public void actionPerformed(AnActionEvent e) {
+
+		Project project = e.getProject();
+		if (project == null) {
 			return;
 		}
 
-		run(service, plan);
-	}
+		UpgradePlanService service = UpgradePlanService.getInstance(project);
+		if (service.isBusy()) {
+			return;
+		}
 
-	private void run(UpgradePlanService service, UpgradePlan plan) {
+		UpgradePlan plan = service.getUpgradePlan().rebuild();
+		List<UpgradePlanItem> items = PlanSelection.from(e)
+				.orElseGet(plan::getItems);
+		UpgradePlan toApply = plan.withItems(items);
 
-		UpgradePlan rebuilt = plan.rebuild();
-		FileScope scope = rebuilt.getScope();
+		FileScope scope = toApply.getScope();
 		if (scope.hasMissingFiles()) {
 			new PlanNotifications().warning(service.getProject(), MessageBundle.message("plan.apply.missing.title"),
 					MessageBundle.message("plan.apply.missing.message", scope.getMissingPaths()));
@@ -64,13 +76,11 @@ public class ApplyAllAction extends UpgradePlanAction {
 		}
 		FileScope dirty = service.getVcs().dirtyInScope(scope);
 
-		ApplyDecision decision = confirm(service.getProject(), rebuilt.size(), dirty);
+		ApplyDecision decision = confirm(service.getProject(), items.size(), dirty);
 		if (decision == ApplyDecision.CANCEL) {
 			return;
 		}
 		boolean shelve = decision == ApplyDecision.SHELVE_AND_APPLY;
-
-		Project project = service.getProject();
 		PlanUpdateApplier applier = createApplier(service);
 
 		Task.Modal task = new Task.Modal(project, MessageBundle.message("plan.apply.progress"), true) {
@@ -92,7 +102,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 							unshelve = () -> service.getVcs().unshelve(shelf);
 						}
 					}
-					applied = applier.apply(rebuilt, indicator);
+					applied = applier.apply(toApply, indicator);
 				} catch (VcsException e) {
 					throw new RuntimeException(e);
 				}
@@ -118,7 +128,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 			@Override
 			public void onFinished() {
 				try {
-					finishRun(service, rebuilt);
+					finishRun(service, toApply);
 				} finally {
 					service.setBusy(false);
 				}
@@ -129,9 +139,9 @@ public class ApplyAllAction extends UpgradePlanAction {
 		service.setBusy(true);
 		try {
 			task.queue();
-		} catch (RuntimeException e) {
+		} catch (RuntimeException ex) {
 			service.setBusy(false);
-			throw e;
+			throw ex;
 		}
 	}
 

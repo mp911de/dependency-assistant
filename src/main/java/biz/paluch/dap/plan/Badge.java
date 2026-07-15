@@ -29,12 +29,6 @@ import org.jspecify.annotations.Nullable;
  */
 class Badge {
 
-	private static final Color BLUE_FOREGROUND = JBColor.namedColor("Badge.blueForeground",
-			new JBColor(0xFFFFFF, 0x212326));
-
-	private static final Color BLUE_BACKGROUND = JBColor.namedColor("Badge.blueBackground",
-			new JBColor(0x3871E1, 0x538AF9));
-
 	private static final Color BLUE_SECONDARY_FOREGROUND = JBColor.namedColor("Badge.blueSecondaryForeground",
 			new JBColor(0x2F5EB9, 0xD0DFFE));
 
@@ -53,12 +47,6 @@ class Badge {
 	private static final Color GREEN_SECONDARY_BACKGROUND = JBColor.namedColor("Badge.greenSecondaryBackground",
 			new JBColor(new Color(0x29338555, true), new Color(0xCC29583C, true)));
 
-	private static final Color PURPLE_SECONDARY_FOREGROUND = JBColor.namedColor("Badge.purpleSecondaryForeground",
-			new JBColor(0x6C4EBB, 0xE2DBFC));
-
-	private static final Color PURPLE_SECONDARY_BACKGROUND = JBColor.namedColor("Badge.purpleSecondaryBackground",
-			new JBColor(new Color(0x298060DB, true), new Color(0xCC574092, true)));
-
 	private static final Color GRAY_SECONDARY_FOREGROUND = JBColor.namedColor("Badge.graySecondaryForeground",
 			new JBColor(0x73767C, 0xB5B7BD));
 
@@ -74,15 +62,11 @@ class Badge {
 
 	enum ColorType {
 
-		BLUE(BLUE_FOREGROUND, BLUE_BACKGROUND),
-
 		BLUE_SECONDARY(BLUE_SECONDARY_FOREGROUND, BLUE_SECONDARY_BACKGROUND),
 
 		GREEN(GREEN_FOREGROUND, GREEN_BACKGROUND),
 
 		GREEN_SECONDARY(GREEN_SECONDARY_FOREGROUND, GREEN_SECONDARY_BACKGROUND),
-
-		PURPLE_SECONDARY(PURPLE_SECONDARY_FOREGROUND, PURPLE_SECONDARY_BACKGROUND),
 
 		GRAY_SECONDARY(GRAY_SECONDARY_FOREGROUND, GRAY_SECONDARY_BACKGROUND),
 

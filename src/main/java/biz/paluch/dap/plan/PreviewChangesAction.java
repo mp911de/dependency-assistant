@@ -104,11 +104,6 @@ public class PreviewChangesAction extends UpgradePlanAction {
 
 	private static void show(Project project, List<FileChange> changes) {
 
-		if (changes.isEmpty()) {
-			new PlanNotifications().info(project, MessageBundle.message("plan.preview.none"));
-			return;
-		}
-
 		DiffContentFactory factory = DiffContentFactory.getInstance();
 		List<DiffRequest> requests = new ArrayList<>(changes.size());
 		for (FileChange change : changes) {

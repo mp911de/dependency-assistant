@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.Ticket;
+import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.ticket.TicketQuery;
 import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketSpec;
@@ -72,4 +73,13 @@ class TicketRepositoryWrapper implements TicketRepository {
 		return delegate.cached();
 	}
 
+	@Override
+	public String getDisplayReference(TicketKey key) {
+		return delegate.getDisplayReference(key);
+	}
+
+	@Override
+	public String getCloseReference(TicketKey key) {
+		return delegate.getCloseReference(key);
+	}
 }

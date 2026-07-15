@@ -34,7 +34,6 @@ import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -157,8 +156,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		String title = service.getTicketTitle(item);
 		try {
 			indicator.checkCanceled();
-			indicator
-					.setText(MessageBundle.message("plan.tickets.progress.item", item.getDisplayName(),
+			indicator.setText(MessageBundle.message("plan.tickets.progress.item", item.getDisplayName(),
 							item.getToVersion()));
 
 			Ticket ticket = findExisting(repository, openStates, indicator, title);
@@ -169,8 +167,8 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 				created.incrementAndGet();
 			}
 			Ticket linkedTicket = ticket;
-			ApplicationManager.getApplication()
-					.invokeAndWait(() -> service.linkTicket(item, repository, linkedTicket));
+
+			service.linkTicket(item, repository, linkedTicket);
 		} catch (ProcessCanceledException e) {
 			throw e;
 		} catch (IOException | RuntimeException e) {

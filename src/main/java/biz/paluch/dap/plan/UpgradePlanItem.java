@@ -59,7 +59,7 @@ class UpgradePlanItem {
 
 	private final int vulnerabilityCount;
 
-	private final @Nullable CvssSeverity highestRatedVulnerabilitySeverity;
+	private final CvssSeverity highestRatedVulnerabilitySeverity;
 
 	private final ArtifactVersion from;
 
@@ -125,7 +125,8 @@ class UpgradePlanItem {
 
 		return switch (this.getAttentionLevel()) {
 		case VULNERABILITY_FIX -> new Badge(MessageBundle.message("plan.badge.cve"), Badge.ColorType.GREEN,
-				getVulnerabilityFixTooltip());
+				MessageBundle.message("plan.badge.cve.tooltip", vulnerabilityCount,
+						highestRatedVulnerabilitySeverity.getLabel()));
 		case MAJOR -> new Badge(MessageBundle.message("upgrade-strategy.MAJOR"), Badge.ColorType.AMBER_SECONDARY,
 				MessageBundle.message("plan.badge.major.tooltip"));
 		case MINOR -> new Badge(MessageBundle.message("upgrade-strategy.MINOR"), Badge.ColorType.BLUE_SECONDARY,
@@ -135,14 +136,6 @@ class UpgradePlanItem {
 		case DOWNGRADE -> new Badge(MessageBundle.message("upgrade-strategy.DOWNGRADE"), Badge.ColorType.GRAY_SECONDARY,
 				MessageBundle.message("plan.badge.downgrade.tooltip"));
 		};
-	}
-
-	private String getVulnerabilityFixTooltip() {
-		if (highestRatedVulnerabilitySeverity == null) {
-			return MessageBundle.message("plan.badge.cve.tooltip.unrated", vulnerabilityCount);
-		}
-		return MessageBundle.message("plan.badge.cve.tooltip", vulnerabilityCount,
-				highestRatedVulnerabilitySeverity.getLabel());
 	}
 
 	private AttentionLevel determineAttentionLevel(boolean vulnerabilityFix) {
@@ -276,13 +269,13 @@ class UpgradePlanItem {
 
 		VULNERABILITY_FIX,
 
+		DOWNGRADE,
+
 		MAJOR,
 
 		MINOR,
 
 		PATCH,
-
-		DOWNGRADE
 
 	}
 

@@ -65,7 +65,6 @@
 
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<bomLocator implementation="biz.paluch.dap.maven.SimpleMavenBomLocator"/>
-		<!-- Development/offline ticket system; remove or guard before release. -->
 		<ticketSystem implementation="biz.paluch.dap.plan.InMemoryTicketSystemProvider"/>
 	</extensions>
 

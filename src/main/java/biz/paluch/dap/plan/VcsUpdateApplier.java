@@ -21,15 +21,15 @@ import java.util.List;
 
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.MessageBundle;
-import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vcs.VcsException;
 
 /**
- * Apply-and-commit transaction that creates one commit per changed plan item. A
- * failed commit compensates its plain file write from a guarded before-state
- * before the error escapes.
+ * Apply-and-commit transaction that creates one commit per changed plan item.
+ *
+ * <p>Items are applied in plan order, ticketed ones first.
  *
  * @author Mark Paluch
  */
@@ -57,13 +57,34 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 		List<UpgradePlanItem> ordered = ticketedFirst(plan);
 		return doWithItems(ordered, indicator, it -> {
 
-			UpgradeResult result = ApplicationManager.getApplication()
-					.runWriteAction(
-							(Computable<UpgradeResult>) () -> engine.apply(plan.getScope(), it.createUpdates()));
+			UpgradeResult result = applyItem(plan.getScope(), it);
 			if (result.hasChanges()) {
 				commit(plan.getScope(), it);
 			}
 			return result;
+		});
+	}
+
+	/**
+	 * Apply one item's updates, on the EDT and without an undo boundary.
+	 *
+	 * <p>The write action must be taken on the EDT because saving a document fires
+	 * {@code beforeAnyDocumentSaving}, which posts to the EDT and waits for it;
+	 * holding the write lock on the calling background thread meanwhile dead-locks
+	 * against an EDT that wants the write-intent lock. The command is
+	 * undo-transparent: the PSI mutation needs a command, but the item is committed
+	 * right after, so an undo entry would only offer to desynchronize the working
+	 * tree from the commit.
+	 */
+	private UpgradeResult applyItem(FileScope scope, UpgradePlanItem item) {
+
+		return WriteAction.computeAndWait(() -> {
+			CommandProcessor instance = CommandProcessor.getInstance();
+			try (AutoCloseable c = instance.withUndoTransparentAction()) {
+				return engine.apply(scope, item.createUpdates());
+			} catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
 		});
 	}
 
@@ -72,18 +93,16 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 		boolean committed;
 		try {
 			committed = vcs.commit(scope, service.getCommitMessage(item));
-			complete(item);
 		} catch (VcsException commitFailure) {
+			// Some VCS implementations can report an error after creating the commit.
+			// Keep the plan aligned with the repository in that case.
 			if (!vcs.hasChanges(scope)) {
-				// Some VCS implementations can report an error after creating the commit.
-				// Keep the plan aligned with the repository in that case.
 				complete(item);
-				throw commitFailure;
 			}
-
 			throw commitFailure;
 		}
 
+		complete(item);
 		if (!committed) {
 			throw new VcsException(MessageBundle.message("plan.vcs.commit.no-changes"));
 		}

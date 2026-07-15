@@ -18,7 +18,6 @@ package biz.paluch.dap.ticket;
 
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
-import org.jetbrains.annotations.NonBlocking;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -44,17 +43,17 @@ public interface TicketSystemProvider {
 	ExtensionPointName<TicketSystemProvider> EP_NAME = ExtensionPointName.create("biz.paluch.dap.ticketSystem");
 
 	/**
-	 * Find the ticket system bound to the given project by consulting the registered
-	 * providers in order and creating the first that supports the project.
+	 * Find the ticket system bound to the given project by consulting the
+	 * registered providers in order and creating the first that supports the
+	 * project.
 	 *
-	 * <p>Non-blocking; the returned system's repository operations may block and
-	 * belong on background work.
+	 * <p>Provider resolution may access credentials and block. The returned
+	 * system's repository operations may also block and belong on background work.
 	 *
 	 * @param project the project to resolve against.
 	 * @return the bound ticket system, or {@literal null} when no provider supports
 	 * the project.
 	 */
-	@NonBlocking
 	static @Nullable TicketSystem find(Project project) {
 
 		for (TicketSystemProvider provider : EP_NAME.getExtensionList()) {
@@ -70,21 +69,19 @@ public interface TicketSystemProvider {
 	 * Determine whether this provider can create a usable ticket system for the
 	 * given project.
 	 *
-	 * <p>This method can be called from UI-sensitive paths and must not block.
+	 * <p>This method may access credentials and block.
 	 *
 	 * @param project the project to probe.
 	 * @return {@code true} if {@link #create(Project)} may be called; {@code false}
 	 * otherwise.
 	 */
-	@NonBlocking
 	boolean supports(Project project);
 
 	/**
 	 * Create the ticket system bound to the given project's resolved target.
 	 *
 	 * <p>Callers must invoke this method only after {@link #supports(Project)}
-	 * returned {@code true}. This method can be called from UI-sensitive paths and
-	 * must not block.
+	 * returned {@code true}. This method may access credentials and block.
 	 *
 	 * @param project the project to bind against.
 	 * @return the project-scoped ticket system.
@@ -92,7 +89,6 @@ public interface TicketSystemProvider {
 	 * {@code false} for the project.
 	 * @see #supports(Project)
 	 */
-	@NonBlocking
 	TicketSystem create(Project project);
 
 }

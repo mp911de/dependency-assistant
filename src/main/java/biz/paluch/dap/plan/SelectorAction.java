@@ -95,6 +95,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 
 	private void updateButton(SelectorButton button, Presentation presentation) {
 		button.setText(shownText());
+		button.setVisible(presentation.isVisible());
 		button.setEnabled(service.isRefreshingListsEnabled() && presentation.isEnabled());
 		button.setClearVisible(model.getSelected() != null);
 		button.setTooltips(tooltipText(), MessageBundle.message(tooltipKey + ".clear"));
@@ -222,11 +223,10 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 	@Override
 	public void update(AnActionEvent e) {
 
-		// tab-row elements never toggle visibility, matching the Git, Terminal,
-		// and Debug tool windows whose tab elements stay in place; the empty
-		// plan communicates through the tree placeholder instead
+		boolean visible = service.hasTicketSystem();
 		String shown = shownText();
-		e.getPresentation().setEnabled(service.isRefreshingListsEnabled());
+		e.getPresentation().setVisible(visible);
+		e.getPresentation().setEnabled(visible && service.isRefreshingListsEnabled());
 		e.getPresentation().setText(shown, false);
 		e.getPresentation().setDescription(tooltipText());
 	}

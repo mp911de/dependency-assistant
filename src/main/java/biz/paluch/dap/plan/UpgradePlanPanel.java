@@ -51,7 +51,6 @@ import com.intellij.openapi.ui.SimpleToolWindowPanel;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.pom.Navigatable;
-import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.ActionLink;
 import com.intellij.ui.components.JBLabel;
@@ -69,6 +68,8 @@ import org.jspecify.annotations.Nullable;
 class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, UpgradePlanListener {
 
 	private static final String EMPTY_STATE_PLACE = "DependencyAssistant.UpgradePlanEmptyState";
+
+	private static final String SUMMARY_LINK_PLACE = "DependencyAssistant.UpgradePlanSummaryLink";
 
 	private static final String SORT_BY_ATTENTION_PROPERTY = "DependencyAssistant.UpgradePlan.SortByAttention";
 
@@ -139,14 +140,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 	};
 
-	private final JPanel summaryLine;
-
-	private final JBLabel summaryText = new JBLabel();
-
-	private final ActionLink createTicketsLink = new ActionLink(MessageBundle.message("plan.summary.create-tickets", 0),
-			event -> {
-				new CreateTicketsAction().perform(getProject());
-			});
+	private final SummaryLine summaryLine;
 
 	private final UpgradePlanTabActions tabActions;
 
@@ -209,10 +203,13 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 		};
 
-		this.summaryLine = createSummaryLine();
+		this.summaryLine = new SummaryLine();
 
 		JComponent treeComponent = tree.component();
-		((JTree) tree.focusTarget()).addTreeSelectionListener(event -> toolbar.updateActionsAsync());
+		((JTree) tree.focusTarget()).addTreeSelectionListener(event -> {
+			toolbar.updateActionsAsync();
+			summaryLine.update(service.getUpgradePlan());
+		});
 		DumbAwareAction upgradeDependencies = DumbAwareAction.create(event -> runDependencyCheck());
 		upgradeDependencies.registerCustomShortcutSet(CommonShortcuts.getNew(), treeComponent, this);
 
@@ -234,20 +231,6 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 				.createActionToolbar("DependencyAssistant.UpgradePlan", group, false);
 		toolbar.setTargetComponent(this);
 		return toolbar;
-	}
-
-	private JPanel createSummaryLine() {
-
-		summaryText.setForeground(NamedColorUtil.getInactiveTextColor());
-		summaryText.setFont(JBUI.Fonts.smallFont());
-		createTicketsLink.setFont(JBUI.Fonts.smallFont());
-
-		JPanel line = new JPanel(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
-		line.setBorder(JBUI.Borders.compound(JBUI.Borders.customLineTop(JBColor.border()),
-				JBUI.Borders.empty(3, 8)));
-		line.add(summaryText);
-		line.add(createTicketsLink);
-		return line;
 	}
 
 	private Project getProject() {
@@ -318,9 +301,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 		tree.component().revalidate();
 		tree.component().repaint();
-
-		summaryLine.setVisible(!plan.isEmpty());
-		updateSummary(plan);
+		summaryLine.update(plan);
 
 		revalidate();
 		repaint();
@@ -332,31 +313,37 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	}
 
 	@Override
+	public void ticketSystemChanged() {
+		application.invokeLater(() -> {
+			tabActions.ticketSystemChanged();
+			reload(service::reloadPlan);
+		});
+	}
+
+	@Override
 	public void planItemChanged() {
 
 		UpgradePlan plan = service.getUpgradePlan();
 		application.invokeLater(() -> {
 			tree.refreshItems(plan.getItems());
 			summaryLine.setVisible(!plan.isEmpty());
-			updateSummary(plan);
+			summaryLine.update(plan);
 		});
 	}
 
-	/**
-	 * Run a dependency check for the project, the empty-state entry point into the
-	 * plan. Invokes the registered action by id so the plan stays decoupled from the
-	 * action module.
-	 */
 	private void runDependencyCheck() {
+		performAction("biz.paluch.dap.UpgradeDependencies", EMPTY_STATE_PLACE);
+	}
 
-		AnAction action = ActionManager.getInstance()
-				.getAction("biz.paluch.dap.UpgradeDependencies");
+	private void performAction(String actionId, String place) {
+
+		AnAction action = ActionManager.getInstance().getAction(actionId);
 		if (action == null) {
 			return;
 		}
 
 		DataContext context = DataManager.getInstance().getDataContext(this);
-		ActionUtil.performAction(action, AnActionEvent.createEvent(context, null, EMPTY_STATE_PLACE, ActionUiKind.NONE, null));
+		ActionUtil.performAction(action, AnActionEvent.createEvent(context, null, place, ActionUiKind.NONE, null));
 	}
 
 	private void updatePasteAvailable() {
@@ -398,12 +385,12 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	/**
 	 * Actions for the tool window tab row, next to the title: the milestone and
 	 * label selectors (tab-like popup combos with a filterable chooser), their
-	 * clear actions, and the list refresh. Empty when no ticket system is bound to
-	 * the project, so the selector bar is absent; the milestone and label options
-	 * are loaded from the ticket system in the background.
+	 * clear actions, and the list refresh. The actions control their visibility
+	 * from the currently bound ticket system; milestone and label options are
+	 * loaded from that system in the background.
 	 */
 	AnAction[] createTabActions() {
-		return service.hasTicketSystem() ? tabActions.getActions() : AnAction.EMPTY_ARRAY;
+		return tabActions.getActions();
 	}
 
 	ActionGroup createGearActions() {
@@ -451,15 +438,41 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 		return actions;
 	}
 
-	private void updateSummary(UpgradePlan plan) {
+	class SummaryLine extends JPanel {
 
-		boolean ticketing = service.hasTicketSystem();
-		long missing = plan.stream().filter(item -> !item.hasTicket()).count();
+		private final JBLabel summaryText = new JBLabel();
 
-		String text = plan.getSummary();
-		summaryText.setText(ticketing && missing > 0 ? text + " ·" : text);
-		createTicketsLink.setText(MessageBundle.message("plan.summary.create-tickets", missing));
-		createTicketsLink.setVisible(ticketing && missing > 0);
+		private final ActionLink createTicketsLink;
+
+		public SummaryLine() {
+
+			super(new FlowLayout(FlowLayout.LEFT, JBUI.scale(4), 0));
+
+			createTicketsLink = new ActionLink(MessageBundle.message("plan.summary.create-tickets", 0),
+					event -> {
+						performAction("DependencyAssistant.UpgradePlan.CreateTickets", SUMMARY_LINK_PLACE);
+					});
+
+			summaryText.setForeground(NamedColorUtil.getInactiveTextColor());
+			summaryText.setFont(JBUI.Fonts.smallFont());
+			createTicketsLink.setFont(JBUI.Fonts.smallFont());
+
+			add(summaryText);
+			add(createTicketsLink);
+		}
+
+		void update(UpgradePlan plan) {
+
+			boolean ticketing = service.hasTicketSystem();
+			long missing = plan.stream().filter(item -> !item.hasTicket()).count();
+
+			String text = plan.getSummary();
+			summaryText.setText(ticketing && missing > 0 ? text + " ·" : text);
+			createTicketsLink.setText(MessageBundle.message("plan.summary.create-tickets", missing));
+			createTicketsLink.setVisible(ticketing && missing > 0);
+			summaryLine.setVisible(!plan.isEmpty());
+		}
+
 	}
 
 	/**
@@ -471,6 +484,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	private class PlanItemNavigatable implements Navigatable {
 
 		private final JBPopupFactory factory = JBPopupFactory.getInstance();
+
 		private final UpgradePlanItem item;
 
 		PlanItemNavigatable(UpgradePlanItem item) {

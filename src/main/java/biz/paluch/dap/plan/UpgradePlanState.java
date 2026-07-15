@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -172,10 +171,6 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		return tracker.tryAdvance(expected, target, callback);
 	}
 
-	synchronized boolean hasItems() {
-		return !state.content.isEmpty();
-	}
-
 	/**
 	 * Persisted upgrade plan.
 	 */
@@ -243,6 +238,11 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			setLabel(label != null ? label.getName() : null);
 		}
 
+		void clearSelectedTicketValues() {
+			this.selectedMilestone = null;
+			this.selectedLabel = null;
+		}
+
 		@Override
 		protected Plan clone() {
 			try {
@@ -264,7 +264,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	 * The persisted and optionally materialized content of an Upgrade Plan.
 	 */
 	@Tag("content")
-	static class Content implements Cloneable, Iterable<Item> {
+	static class Content implements Iterable<Item> {
 
 		@XCollection(propertyElementName = "items", elementName = "item", style = XCollection.Style.v2)
 		private List<Item> items = new ArrayList<>();
@@ -302,19 +302,6 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		@Override
 		public Iterator<Item> iterator() {
 			return items.iterator();
-		}
-
-		public synchronized void apply(Consumer<Content> callback) {
-			callback.accept(this);
-		}
-
-		@Override
-		protected Content clone() {
-			try {
-				return (Content) super.clone();
-			} catch (CloneNotSupportedException e) {
-				throw new UnsupportedOperationException(e);
-			}
 		}
 
 		public synchronized Content snapshot() {

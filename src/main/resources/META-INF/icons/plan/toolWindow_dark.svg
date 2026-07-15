@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Ebene_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 20 20">
-	<path stroke="#CED0D6" stroke-width="1.1" stroke-linecap="round" fill="none"
-	      stroke-linejoin="round"
-	      d="M6.68,18.67V4.03c0-.41.33-.74.74-.74h4.46c.41,0,.74.33.74.74v14.63h-5.94Z"/>
-	<path class="st0"
-	      d="M12.61,17.92V1.48c0-.41.33-.74.74-.74h4.45c.41,0,.74.33.74.74v16.44c0,.41-.33.74-.74.74H5.94s-4.46,0-4.46,0c-.41,0-.74-.33-.74-.74V7.52c0-.41.33-.74.74-.74h4.46c.41,0,.74.33.74.74"
-	      fill="none" stroke="#CED0D6" stroke-width="1.1" stroke-linecap="round"
-	      stroke-linejoin="round"/>
+<svg id="Ebene_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 16 16">
+  <defs>
+    <style>
+      .st0 {
+      fill: none;
+      }
+    </style>
+  </defs>
+  <path class="st0"
+        d="M5.5,14.33V2.94c0-.41.26-.44.6-.44h3.79c.33,0,.6.27.6.6v11.39l-4.99.02v-.18Z"
+        stroke-width="1" stroke="#ced0d6"/>
+  <path class="st0"
+        d="M10.49,13.9V1.1c0-.33.27-.6.6-.6h3.79c.33,0,.6.27.6.6v12.79c0,.33-.27.6-.62.62H1.09c-.32-.02-.59-.29-.59-.62v-7.79c0-.33.27-.6.6-.6h3.79c.33,0,.6.27.6.6"
+        stroke-width="1" stroke="#ced0d6"/>
 </svg>

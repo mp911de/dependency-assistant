@@ -72,6 +72,7 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 	public void createToolWindowContent(Project project, ToolWindow toolWindow) {
 
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
+		service.refreshTicketSystem();
 		UpgradePlanPanel panel = new UpgradePlanPanel(service);
 		Content content = ContentFactory.getInstance().createContent(panel, null, false);
 		content.setDisposer(panel);
@@ -87,11 +88,7 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 
 		if (toolWindow instanceof ToolWindowEx toolWindowEx) {
 			toolWindowEx.setAdditionalGearActions(panel.createGearActions());
-
-			// no ticket system means no milestone/label selector bar
-			if (service.hasTicketSystem()) {
-				toolWindowEx.setTabActions(panel.createTabActions());
-			}
+			toolWindowEx.setTabActions(panel.createTabActions());
 		}
 
 		panel.restore();

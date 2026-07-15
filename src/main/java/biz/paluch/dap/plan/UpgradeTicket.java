@@ -20,7 +20,6 @@ import java.util.Objects;
 
 import biz.paluch.dap.ticket.Ticket;
 import biz.paluch.dap.ticket.TicketRepository;
-import biz.paluch.dap.ticket.TicketSystem;
 
 /**
  * Dependency upgrade ticket.
@@ -37,8 +36,9 @@ class UpgradeTicket {
 
 	private final String repository;
 
-	UpgradeTicket(TicketSystem system, TicketRepository repository, Ticket ticket) {
-		this(ticket.getKey().getValue(), system.getDisplayReference(ticket.getKey()), ticket.getWebLink().toString(),
+	UpgradeTicket(TicketRepository repository, Ticket ticket) {
+		this(ticket.getKey().getValue(), repository.getDisplayReference(ticket.getKey()),
+				ticket.getWebLink().toString(),
 				repository.getClass().getName());
 	}
 

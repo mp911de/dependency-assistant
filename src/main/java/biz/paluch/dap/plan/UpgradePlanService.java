@@ -31,10 +31,12 @@ import biz.paluch.dap.ticket.Ticket;
 import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketSystem;
+import biz.paluch.dap.ticket.TicketSystemInvalidationListener;
 import biz.paluch.dap.ticket.TicketSystemProvider;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.ActivityTracker;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.undo.DocumentReferenceManager;
@@ -45,9 +47,8 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.messages.MessageBusConnection;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.Assert;
 
 /**
  * Aggregate front door for the Upgrade Plan: the single domain writer of the
@@ -74,7 +75,7 @@ public final class UpgradePlanService implements Disposable {
 
 	private final UpgradePlanState state;
 
-	private final @Nullable TicketSystem ticketSystem;
+	private volatile @Nullable TicketSystem ticketSystem;
 
 	private final UndoManager undoManager;
 
@@ -100,6 +101,9 @@ public final class UpgradePlanService implements Disposable {
 		this.events = project.getMessageBus().syncPublisher(UpgradePlanListener.TOPIC);
 		this.textTemplates = new PlanTextTemplates(project);
 		this.state = UpgradePlanState.getInstance(project);
+		MessageBusConnection connection = project.getMessageBus().connect(this);
+		connection.subscribe(TicketSystemInvalidationListener.TOPIC,
+				(TicketSystemInvalidationListener) () -> replaceTicketSystem(null));
 		this.ticketSystem = TicketSystemProvider.find(project);
 		this.undoManager = UndoManager.getInstance(project);
 		this.commandProcessor = CommandProcessor.getInstance();
@@ -137,6 +141,31 @@ public final class UpgradePlanService implements Disposable {
 			throw new IllegalStateException("No ticket system available");
 		}
 		return this.ticketSystem;
+	}
+
+	void refreshTicketSystem() {
+		replaceTicketSystem(TicketSystemProvider.find(project));
+	}
+
+	boolean isTicketSystem(TicketSystem candidate) {
+		return this.ticketSystem == candidate;
+	}
+
+	private void replaceTicketSystem(@Nullable TicketSystem replacement) {
+
+		TicketSystem previous = this.ticketSystem;
+		if (previous == replacement) {
+			return;
+		}
+
+		this.ticketSystem = replacement;
+		this.milestones = List.of();
+		this.labels = List.of();
+		this.refreshingMilestones = false;
+		this.versionedPlan = null;
+		this.state.getPlan().clearSelectedTicketValues();
+		ActivityTracker.getInstance().inc();
+		events.ticketSystemChanged();
 	}
 
 	void setMilestonesLabels(List<? extends Milestone> milestones, List<? extends Label> labels) {
@@ -237,7 +266,7 @@ public final class UpgradePlanService implements Disposable {
 	 * Return whether the plan currently holds any item.
 	 */
 	boolean hasItems() {
-		return state.hasItems();
+		return !getContent().isEmpty();
 	}
 
 	/**
@@ -348,9 +377,9 @@ public final class UpgradePlanService implements Disposable {
 	 * system.
 	 */
 	void linkTicket(UpgradePlanItem item, TicketRepository repository, Ticket ticket) {
-		Assert.state(ticketSystem != null, "ticketSystem must not be null");
-
-		execute(PlanAction.linkTicket(getContent(), item, new UpgradeTicket(ticketSystem, repository, ticket)));
+		ApplicationManager.getApplication().invokeLater(() -> {
+			execute(PlanAction.linkTicket(getContent(), item, new UpgradeTicket(repository, ticket)));
+		});
 	}
 
 	/**
@@ -450,6 +479,7 @@ public final class UpgradePlanService implements Disposable {
 	 * on the EDT.
 	 */
 	private void execute(PlanAction action) {
+
 		commandProcessor.executeCommand(project, () -> {
 			Pair<PlanGeneration, PlanGeneration> transition = apply(action);
 			registerUndoable(transition.first, transition.second, action);

@@ -288,19 +288,18 @@ interface PlanAction {
 		}
 
 		private void update(@Nullable UpgradeTicket ticket) {
-			content.apply(it -> {
-				for (Item item : it) {
-					if (this.item.getId().equals(item.getId())) {
-						item.setTicket(UpgradePlanState.Ticket.from(ticket));
-						UpgradePlanItem materialized = item.getMaterialized();
-						if (materialized != null) {
-							materialized.setTicket(ticket);
-						}
+
+			for (Item item : content) {
+				if (this.item.getId().equals(item.getId())) {
+					item.setTicket(UpgradePlanState.Ticket.from(ticket));
+					UpgradePlanItem materialized = item.getMaterialized();
+					if (materialized != null) {
+						materialized.setTicket(ticket);
 					}
 				}
+			}
 
-				this.item.setTicket(ticket);
-			});
+			this.item.setTicket(ticket);
 		}
 
 	}
@@ -356,19 +355,19 @@ interface PlanAction {
 
 		@Override
 		public void apply() {
-			content.apply(it -> {
-				oldItems.clear();
-				oldItems.addAll(it.getItems());
-				it.getItems().removeIf(item -> toRemove.contains(item.getId()));
-			});
+
+			oldItems.clear();
+			List<Item> items = content.getItems();
+			oldItems.addAll(items);
+			items.removeIf(item -> toRemove.contains(item.getId()));
 		}
 
 		@Override
 		public void undo() {
-			content.apply(it -> {
-				it.getItems().clear();
-				it.getItems().addAll(oldItems);
-			});
+
+			List<Item> items = content.getItems();
+			items.clear();
+			items.addAll(oldItems);
 		}
 
 	}
@@ -501,37 +500,32 @@ interface PlanAction {
 		@Override
 		public void apply() {
 
-			content.apply(it -> {
+			newFiles.clear();
+			newItems.clear();
 
-				newFiles.clear();
-				newItems.clear();
+			Set<String> paths = new LinkedHashSet<>(content.getAffectedFiles());
+			paths.addAll(pasteContent.getAffectedFiles());
+			newFiles.addAll(paths);
+			content.setAffectedFiles(new ArrayList<>(newFiles));
 
-				Set<String> paths = new LinkedHashSet<>(it.getAffectedFiles());
-				paths.addAll(pasteContent.getAffectedFiles());
-				newFiles.addAll(paths);
-				it.setAffectedFiles(new ArrayList<>(newFiles));
+			Set<Item> items = new LinkedHashSet<>(content.getItems());
+			items.removeAll(pasteContent.getItems());
+			items.addAll(pasteContent.getItems());
+			newItems.addAll(items);
 
-				Set<Item> items = new LinkedHashSet<>(it.getItems());
-				items.removeAll(pasteContent.getItems());
-				items.addAll(pasteContent.getItems());
-
-				newItems.addAll(items);
-
-				it.setItems(new ArrayList<>(newItems));
-			});
+			content.setItems(new ArrayList<>(newItems));
 		}
 
 		@Override
 		public void undo() {
 
-			content.apply(it -> {
+			List<String> affectedFiles = content.getAffectedFiles();
+			affectedFiles.clear();
+			affectedFiles.addAll(oldFiles);
 
-				it.getAffectedFiles().clear();
-				it.getAffectedFiles().addAll(oldFiles);
-
-				it.getItems().clear();
-				it.getItems().addAll(oldItems);
-			});
+			List<Item> items = content.getItems();
+			items.clear();
+			items.addAll(oldItems);
 		}
 
 	}

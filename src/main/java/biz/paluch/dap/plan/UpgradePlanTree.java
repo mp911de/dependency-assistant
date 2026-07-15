@@ -77,14 +77,6 @@ import org.jspecify.annotations.Nullable;
  */
 class UpgradePlanTree {
 
-	private static final int TICKET_SLOT = 70;
-
-	private static final int ATTENTION_SLOT = 80;
-
-	private static final int BADGE_GAP = 6;
-
-	private static final int RIGHT_MARGIN = 14;
-
 	private final UpgradePlanService service;
 
 	private final Runnable emptyAction;
@@ -377,16 +369,22 @@ class UpgradePlanTree {
 	 */
 	private boolean isTicketBadgeHit(MouseEvent event) {
 
-		if (!service.hasTicketSystem()) {
-			return false;
-		}
-
 		int row = rowAt(event);
 		UpgradePlanItem item = itemAtRow(row);
-		if (item == null || !item.hasTicket()) {
+		if (item == null || ticketBadge(item) == null) {
 			return false;
 		}
 		return ticketSlot(tree.getRowBounds(row)).contains(event.getPoint());
+	}
+
+	/**
+	 * Return the ticket badge shown for the given item: the item's own badge, or
+	 * {@literal null} when it carries no ticket or the project binds no ticket
+	 * system. The single gate deciding whether a ticket badge exists for a row, so
+	 * the renderer, the hit test, and the tooltip cannot disagree.
+	 */
+	private @Nullable Badge ticketBadge(UpgradePlanItem item) {
+		return service.hasTicketSystem() ? item.getTicketBadge() : null;
 	}
 
 	private boolean previewAt(MouseEvent event) {
@@ -416,27 +414,21 @@ class UpgradePlanTree {
 		return bounds != null && event.getY() >= bounds.y && event.getY() < bounds.y + bounds.height ? row : -1;
 	}
 
+	/**
+	 * Locate a badge slot of the given row in tree coordinates. The renderer's
+	 * gutter is not in the tree's component hierarchy (it is stamped through a
+	 * {@code CellRendererPane} and its bounds are only valid while painting), so
+	 * the slot is re-derived here from the tree's right edge through the same
+	 * {@link BadgeSlots} layout the gutter paints with.
+	 */
 	private Rectangle ticketSlot(@Nullable Rectangle rowBounds) {
-		return badgeSlot(rowBounds, TICKET_SLOT + BADGE_GAP + ATTENTION_SLOT, TICKET_SLOT);
+		return rowBounds == null ? new Rectangle()
+				: BadgeSlots.ticket(BadgeSlots.gutterX(tree.getWidth()), rowBounds.y, rowBounds.height);
 	}
 
 	private Rectangle attentionSlot(@Nullable Rectangle rowBounds) {
-		return badgeSlot(rowBounds, ATTENTION_SLOT, ATTENTION_SLOT);
-	}
-
-	/**
-	 * Compute a badge slot rectangle anchored to the tree's right edge (past the
-	 * right margin) for the given row, mirroring the renderer's gutter layout.
-	 */
-	private Rectangle badgeSlot(@Nullable Rectangle rowBounds, int offsetFromMargin, int slotWidth) {
-
-		if (rowBounds == null) {
-			return new Rectangle();
-		}
-
-		int right = tree.getWidth() - JBUI.scale(RIGHT_MARGIN) - JBUI.scale(offsetFromMargin - slotWidth);
-		int left = right - JBUI.scale(slotWidth);
-		return new Rectangle(left, rowBounds.y, JBUI.scale(slotWidth), rowBounds.height);
+		return rowBounds == null ? new Rectangle()
+				: BadgeSlots.attention(BadgeSlots.gutterX(tree.getWidth()), rowBounds.y, rowBounds.height);
 	}
 
 	private @Nullable UpgradePlanItem itemAtRow(int row) {
@@ -505,11 +497,9 @@ class UpgradePlanTree {
 			}
 
 			Rectangle bounds = getRowBounds(row);
-			if (item.getTicketKey() != null && service.hasTicketSystem()
-					&& ticketSlot(bounds).contains(event.getPoint())) {
-				String displayReference = service.getTicketSystem()
-						.getDisplayReference(item.getTicketKey());
-				return MessageBundle.message("plan.badge.ticket.tooltip", displayReference);
+			Badge ticket = ticketBadge(item);
+			if (ticket != null && ticketSlot(bounds).contains(event.getPoint())) {
+				return ticket.tooltip();
 			}
 			if (attentionSlot(bounds).contains(event.getPoint())) {
 				return item.getAttentionBadge().tooltip();
@@ -560,7 +550,7 @@ class UpgradePlanTree {
 				gutter.setBadges(ticketBadge(item), item.getAttentionBadge());
 			} else if (node instanceof UpgradeCandidate member) {
 
-				text.setIcon(AllIcons.Nodes.PpLib);
+				text.setIcon(AllIcons.Nodes.Library);
 				text.append(member.getRowLabel(), SimpleTextAttributes.REGULAR_ATTRIBUTES);
 				text.append("   " + member.getCurrentVersion(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
 				gutter.setBadges(null, null);
@@ -568,12 +558,6 @@ class UpgradePlanTree {
 
 			SpeedSearchUtil.applySpeedSearchHighlighting(tree, text, true, selected);
 			return panel;
-		}
-
-		private @Nullable Badge ticketBadge(UpgradePlanItem item) {
-
-			Badge ticket = item.getTicketBadge();
-			return service.hasTicketSystem() ? ticket : null;
 		}
 
 	}
@@ -593,8 +577,7 @@ class UpgradePlanTree {
 		BadgeGutter() {
 
 			setOpaque(false);
-			int width = JBUI.scale(TICKET_SLOT + BADGE_GAP + ATTENTION_SLOT + RIGHT_MARGIN);
-			setPreferredSize(new Dimension(width, 0));
+			setPreferredSize(new Dimension(BadgeSlots.width(), 0));
 		}
 
 		void setBadges(@Nullable Badge ticket, @Nullable Badge attention) {
@@ -606,11 +589,11 @@ class UpgradePlanTree {
 		protected void paintComponent(Graphics g) {
 
 			GraphicsUtil.setupAAPainting(g);
-			paintBadge(g, ticket, 0, JBUI.scale(TICKET_SLOT));
-			paintBadge(g, attention, JBUI.scale(TICKET_SLOT + BADGE_GAP), JBUI.scale(ATTENTION_SLOT));
+			paintBadge(g, ticket, BadgeSlots.ticket(0, 0, getHeight()));
+			paintBadge(g, attention, BadgeSlots.attention(0, 0, getHeight()));
 		}
 
-		private void paintBadge(Graphics g, @Nullable Badge badge, int slotX, int slotWidth) {
+		private static void paintBadge(Graphics g, @Nullable Badge badge, Rectangle slot) {
 
 			if (badge == null) {
 				return;
@@ -625,10 +608,10 @@ class UpgradePlanTree {
 			int textWidth = metrics.stringWidth(label);
 			// a minimum pill width so short badges (single-digit issue numbers) keep a
 			// consistent, unfussy size instead of hugging the digits
-			int pillWidth = Math.min(Math.max(textWidth + 2 * hPadding, JBUI.scale(MIN_PILL_WIDTH)), slotWidth);
+			int pillWidth = Math.min(Math.max(textWidth + 2 * hPadding, JBUI.scale(MIN_PILL_WIDTH)), slot.width);
 			int pillHeight = metrics.getHeight() + 2 * vPadding;
-			int x = slotX + (slotWidth - pillWidth) / 2;
-			int y = (getHeight() - pillHeight) / 2;
+			int x = slot.x + (slot.width - pillWidth) / 2;
+			int y = slot.y + (slot.height - pillHeight) / 2;
 
 			g.setColor(badge.colorType().background());
 			g.fillRoundRect(x, y, pillWidth, pillHeight, pillHeight, pillHeight);
@@ -638,6 +621,70 @@ class UpgradePlanTree {
 			int textX = x + (pillWidth - textWidth) / 2;
 			int textY = y + (pillHeight - metrics.getHeight()) / 2 + metrics.getAscent();
 			g.drawString(label, textX, textY);
+		}
+
+	}
+
+	/**
+	 * Geometry of the badge gutter: a ticket slot and an attention slot laid out
+	 * left to right, followed by a trailing right margin. The gutter is anchored to
+	 * the right edge of the row.
+	 */
+	static class BadgeSlots {
+
+		private static final int TICKET_SLOT = 70;
+
+		private static final int ATTENTION_SLOT = 80;
+
+		private static final int BADGE_GAP = 6;
+
+		private static final int RIGHT_MARGIN = 14;
+
+		private BadgeSlots() {
+		}
+
+		/**
+		 * Return the scaled total width the gutter occupies, both slots, the gap
+		 * between them, and the trailing margin.
+		 */
+		static int width() {
+			return JBUI.scale(TICKET_SLOT + BADGE_GAP + ATTENTION_SLOT + RIGHT_MARGIN);
+		}
+
+		/**
+		 * Return the gutter's left edge within a component of the given width, the
+		 * origin the slot methods expect.
+		 *
+		 * @param componentWidth the width of the component the gutter is right-aligned
+		 * in.
+		 * @return the gutter's left edge.
+		 */
+		static int gutterX(int componentWidth) {
+			return componentWidth - width();
+		}
+
+		/**
+		 * Return the ticket slot rectangle.
+		 *
+		 * @param gutterX the gutter's left edge in the caller's coordinates.
+		 * @param y the row's top edge.
+		 * @param height the row's height.
+		 * @return the slot rectangle.
+		 */
+		static Rectangle ticket(int gutterX, int y, int height) {
+			return new Rectangle(gutterX, y, JBUI.scale(TICKET_SLOT), height);
+		}
+
+		/**
+		 * Return the attention slot rectangle.
+		 *
+		 * @param gutterX the gutter's left edge in the caller's coordinates.
+		 * @param y the row's top edge.
+		 * @param height the row's height.
+		 * @return the slot rectangle.
+		 */
+		static Rectangle attention(int gutterX, int y, int height) {
+			return new Rectangle(gutterX + JBUI.scale(TICKET_SLOT + BADGE_GAP), y, JBUI.scale(ATTENTION_SLOT), height);
 		}
 
 	}

@@ -80,7 +80,9 @@ public class CreateTicketsAction extends UpgradePlanAction {
 	}
 
 	/**
-	 * Selection-less entry for the summary-line link: covers the whole plan.
+	 * Selection-less entry required by {@link UpgradePlanAction}: covers the whole
+	 * plan. Invocations that carry a data context go through
+	 * {@link #actionPerformed} instead, which honours the selection.
 	 */
 	@Override
 	void perform(Project project) {

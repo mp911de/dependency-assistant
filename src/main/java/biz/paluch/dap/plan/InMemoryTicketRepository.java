@@ -152,6 +152,16 @@ public enum InMemoryTicketRepository implements TicketRepository {
 		};
 	}
 
+	@Override
+	public String getDisplayReference(TicketKey key) {
+		return "#" + key.getValue();
+	}
+
+	@Override
+	public String getCloseReference(TicketKey key) {
+		return "Closes " + getDisplayReference(key);
+	}
+
 	private InMemoryTicket create(String title, @Nullable Milestone milestone, List<? extends Label> labels) {
 
 		TicketKey key = TicketKey.of(Long.toString(sequence.incrementAndGet()));

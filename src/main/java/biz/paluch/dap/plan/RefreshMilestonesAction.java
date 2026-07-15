@@ -68,7 +68,9 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 
 	@Override
 	void update(AnActionEvent e, @Nullable UpgradePlanService service) {
-		e.getPresentation().setEnabled(this.service.isRefreshingListsEnabled());
+		boolean visible = this.service.hasTicketSystem();
+		e.getPresentation().setVisible(visible);
+		e.getPresentation().setEnabled(visible && this.service.isRefreshingListsEnabled());
 	}
 
 	@Override
@@ -78,6 +80,7 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 
 	void perform(Project project, boolean forceReload) {
 
+		TicketSystem ticketSystem = service.getTicketSystem();
 		service.setRefreshingMilestones(true);
 		controlsChanged.run();
 
@@ -96,7 +99,6 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 			@Override
 			public void run(ProgressIndicator indicator) {
 
-				TicketSystem ticketSystem = service.getTicketSystem();
 				try {
 
 					TicketRepository repository = ticketSystem.getRepository();
@@ -133,6 +135,9 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 
 			@Override
 			public void onSuccess() {
+				if (!service.isTicketSystem(ticketSystem)) {
+					return;
+				}
 
 				Labels labels = new Labels(this.labels);
 				service.setLabel(labels.getSelection(service.getLabelName()));

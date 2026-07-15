@@ -17,7 +17,6 @@
 package biz.paluch.dap.plan;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,32 +27,27 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Canonical milestone ordering, used by the milestone selector and the
- * default-milestone choice: milestones with a release date sort by day, dated
- * before undated; same-day and undated milestones sort by the version extracted
- * from their title; titles without a comparable version fall back to
- * case-insensitive title order.
+ * default-milestone choice: scheduled milestones sort by
+ * {@link Milestone#getReleaseDay() release day}, scheduled before unscheduled;
+ * same-day and unscheduled milestones sort by their {@link MilestoneVersion};
+ * titles the version step cannot tell apart fall back to case-insensitive title
+ * order.
  *
- * <p>Milestone titles are free-form, so version extraction is a heuristic: the
- * first digit-or-{@code v}-led run up to whitespace, parsed through
- * {@link ArtifactVersion#from}. Parsing milestones is not an exact science; an
- * unparsable or incomparable candidate simply disqualifies the version step.
+ * <p>This enum owns the scheduled-before-unscheduled rule. Views that visualize
+ * the resulting order ask {@link #startsNewGroup} rather than re-deriving it.
  *
  * @author Mark Paluch
+ * @see MilestoneVersion
  */
 enum MilestoneComparator implements Comparator<Milestone> {
 
 	INSTANCE;
 
-	// first whitespace-delimited token led by a digit or v-prefix, mirroring the
-	// shapes ArtifactVersion parses (1.2.3, 4.0.0-RC1, v2.1, 2025.0.0); anchoring
-	// on the token start keeps digits inside words (Turing-SR1) from matching
-	private static final Pattern VERSION_CANDIDATE = Pattern.compile("(?:^|\\s)(v?\\d\\S*)");
-
 	@Override
 	public int compare(Milestone left, Milestone right) {
 
-		LocalDate leftDay = releaseDay(left);
-		LocalDate rightDay = releaseDay(right);
+		LocalDate leftDay = left.getReleaseDay();
+		LocalDate rightDay = right.getReleaseDay();
 
 		if (leftDay != null && rightDay != null) {
 
@@ -68,36 +62,81 @@ enum MilestoneComparator implements Comparator<Milestone> {
 		return compareByVersion(left, right);
 	}
 
+	/**
+	 * Return whether this ordering crosses the scheduled-to-unscheduled boundary
+	 * between two milestones adjacent in a sorted list, the one discontinuity a
+	 * view can render as a group separator.
+	 *
+	 * @param previous the milestone preceding {@code next} in the sorted list.
+	 * @param next the milestone following {@code previous} in the sorted list.
+	 * @return {@literal true} if {@code next} opens the unscheduled group;
+	 * {@literal false} otherwise.
+	 */
+	static boolean startsNewGroup(Milestone previous, Milestone next) {
+		return previous.getReleaseDay() != null && next.getReleaseDay() == null;
+	}
+
 	private static int compareByVersion(Milestone left, Milestone right) {
 
-		ArtifactVersion leftVersion = versionOf(left);
-		ArtifactVersion rightVersion = versionOf(right);
+		int byVersion = MilestoneVersion.of(left.getTitle()).compareTo(MilestoneVersion.of(right.getTitle()));
+		return byVersion != 0 ? byVersion : String.CASE_INSENSITIVE_ORDER.compare(left.getTitle(), right.getTitle());
+	}
 
-		if (leftVersion != null && rightVersion != null && leftVersion.canCompare(rightVersion)) {
+	static class MilestoneVersion {
 
-			int byVersion = leftVersion.compareTo(rightVersion);
-			if (byVersion != 0) {
-				return byVersion;
+		private static final Pattern VERSION_CANDIDATE = Pattern.compile("(?:^|\\s)(v?\\d\\S*)");
+
+		private static final MilestoneVersion ABSENT = new MilestoneVersion(null);
+
+		private final @Nullable ArtifactVersion version;
+
+		private MilestoneVersion(@Nullable ArtifactVersion version) {
+			this.version = version;
+		}
+
+		/**
+		 * Read the version out of the given milestone's title.
+		 *
+		 * @param title the milestone title to read.
+		 * @return the extracted version; one that compares equal to everything when the
+		 * title carries none or carries one that does not parse.
+		 */
+		static MilestoneVersion of(String title) {
+
+			Matcher matcher = VERSION_CANDIDATE.matcher(title);
+			if (!matcher.find()) {
+				return ABSENT;
 			}
+
+			return ArtifactVersion.from(matcher.group(1)).map(MilestoneVersion::new).orElse(ABSENT);
 		}
 
-		return String.CASE_INSENSITIVE_ORDER.compare(left.getTitle(), right.getTitle());
-	}
+		/**
+		 * Compare this version to another, ordering older before newer.
+		 *
+		 * <p>The order is partial: {@code 0} means the two cannot be told apart by
+		 * version, either because they are equal, because either title carries no
+		 * readable version, or because they follow version schemes that do not compare
+		 * (a calendar version against a semantic one). Callers must break a {@code 0}
+		 * with a total fallback of their own; this type intentionally does not
+		 * implement {@link Comparable}, because its order is not one.
+		 *
+		 * @param other the version to compare against.
+		 * @return a negative value if this version is older, a positive value if it is
+		 * newer, {@code 0} if the two are indistinguishable by version.
+		 */
+		int compareTo(MilestoneVersion other) {
 
-	private static @Nullable LocalDate releaseDay(Milestone milestone) {
-
-		LocalDateTime releaseDate = milestone.getReleaseDate();
-		return releaseDate != null ? releaseDate.toLocalDate() : null;
-	}
-
-	private static @Nullable ArtifactVersion versionOf(Milestone milestone) {
-
-		Matcher matcher = VERSION_CANDIDATE.matcher(milestone.getTitle());
-		if (!matcher.find()) {
-			return null;
+			if (version == null || other.version == null || !version.canCompare(other.version)) {
+				return 0;
+			}
+			return version.compareTo(other.version);
 		}
 
-		return ArtifactVersion.from(matcher.group(1)).orElse(null);
-	}
+		@Override
+		public String toString() {
+			return version != null ? version.toString() : "<none>";
+		}
 
+	}
 }

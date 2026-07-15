@@ -58,8 +58,9 @@ class FileUpdateEngine {
 	}
 
 	/**
-	 * Apply one update set inside the caller's write action. No IDE command, thread
-	 * switch, save, or undo boundary is created.
+	 * Apply one update set inside the caller's write action. No IDE command or undo
+	 * boundary is created. Changed documents are saved, so the caller's write
+	 * action must be held on the EDT: saving posts to the EDT and waits for it.
 	 */
 	UpgradeResult apply(FileScope scope, List<DependencyUpdate> updates) {
 

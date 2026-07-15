@@ -8,6 +8,8 @@
 	<extensions defaultExtensionNs="com.intellij">
 		<projectService
 				serviceImplementation="biz.paluch.dap.github.GithubApiRequestExecutorFactory"/>
+		<projectService
+				serviceImplementation="biz.paluch.dap.github.GitHubTicketSystemAvailability"/>
 		<projectService serviceImplementation="biz.paluch.dap.github.GitHubTicketCache"/>
 		<localInspection id="dap.github.unpinned-action"
 				language="yaml"
