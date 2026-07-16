@@ -18,7 +18,6 @@ package biz.paluch.dap.assistant.review;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -30,14 +29,15 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.AppliedDependencyUpdate;
 import biz.paluch.dap.assistant.check.DeclarationSite;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
+import biz.paluch.dap.assistant.check.DependencyCheckResult;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.upgrade.UpgradeDecision;
+import biz.paluch.dap.support.FileScope;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
@@ -65,28 +65,24 @@ class UpgradeReviewTests {
 	@Test
 	void assemblesAndGroupsTransportedDecisions() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
-		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
-		DependencyUpgradeCandidates transported = new DependencyUpgradeCandidates(
-				List.of(core.getDecision(), test.getDecision()),
-				Map.of(core.getDecision(), core.getInterfaceAssistant(), test.getDecision(),
-						test.getInterfaceAssistant()),
-				Map.of(core.getDecision(), core.getDeclaredVersions(), test.getDecision(), test.getDeclaredVersions()),
-				List.of(), List.of());
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		DependencyCheckResult transported = new DependencyCheckResult(
+				List.of(core.getUpgrade(), test.getUpgrade()), FileScope.of(), List.of());
 
 		UpgradeReview review = new UpgradeReview(transported);
 
-		assertThat(review.getAllCandidates()).singleElement().isInstanceOfSatisfying(UpgradeGroupRow.class,
-				group -> assertThat(group.getMembers()).extracting(UpgradeRow::getArtifactId)
+		assertThat(review.getAllCandidates()).singleElement().isInstanceOfSatisfying(GroupRow.class,
+				group -> assertThat(group.getMembers()).extracting(TableRow::getArtifactId)
 						.containsExactly(SPRING_CORE, SPRING_TEST));
 	}
 
 	@Test
 	void groupApplyFansOutToOneUpdatePerMemberCoordinate() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
-		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
@@ -103,10 +99,10 @@ class UpgradeReviewTests {
 	@Test
 	void groupFanOutCarriesDriftingMemberCurrentVersion() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
-		UpgradeRow drifting = candidate(SPRING_TEST, "6.0.9", TestReleases.from("6.0.9", "6.2.1"), "6.2.0",
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow drifting = candidate(SPRING_TEST, "6.0.9", TestReleases.from("6.0.9", "6.2.1"), "6.2.0",
 				"6.0.9");
-		UpgradeGroupRow group = UpgradeGroupRow.governed(core, drifting);
+		GroupRow group = GroupRow.governed(core, drifting);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
@@ -121,7 +117,7 @@ class UpgradeReviewTests {
 	@Test
 	void selectedSingleCandidateProducesOneUpdate() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
@@ -136,7 +132,7 @@ class UpgradeReviewTests {
 	@Test
 	void deselectedCandidateProducesNoUpdate() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
@@ -148,9 +144,9 @@ class UpgradeReviewTests {
 	@Test
 	void strategySelectionOnGroupResolvesAgainstIntersectionReleases() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"));
-		UpgradeRow test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"));
-		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
+		TableRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"));
+		TableRow test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"));
+		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.LATEST);
@@ -161,9 +157,9 @@ class UpgradeReviewTests {
 	@Test
 	void appliedGroupUpdatesCollapseToOneNotificationEntry() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
-		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
@@ -181,9 +177,9 @@ class UpgradeReviewTests {
 	@Test
 	void ambiguityIsComputedOverFullCandidateSetRegardlessOfFilter() {
 
-		UpgradeRow driver = candidate(POSTGRESQL, "6.2.0");
-		UpgradeRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
-		UpgradeRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
+		TableRow driver = candidate(POSTGRESQL, "6.2.0");
+		TableRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
+		TableRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(driver, testcontainer, lettuce);
 
@@ -199,8 +195,8 @@ class UpgradeReviewTests {
 	@Test
 	void rowsLabeledByRuleNameDoNotMakeCoordinatesAmbiguous() {
 
-		UpgradeRow driver = candidate(POSTGRESQL, "6.2.0");
-		UpgradeRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
+		TableRow driver = candidate(POSTGRESQL, "6.2.0");
+		TableRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
 		testcontainer.labelByDependencyName();
 
 		UpgradeReview review = new UpgradeReview(driver, testcontainer);
@@ -211,9 +207,9 @@ class UpgradeReviewTests {
 	@Test
 	void sharedVersionPropertyCrossReferencesCoupledRowsByBareName() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeRow addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
-		UpgradeRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
+		TableRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon, lettuce);
 
@@ -225,10 +221,10 @@ class UpgradeReviewTests {
 	@Test
 	void groupCrossReferencesUngovernedRowSharingMemberProperty() {
 
-		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
-		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
-		UpgradeRow ungoverned = candidate(ADDON, "6.2.0", VersionSource.property("spring.version"));
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow test = candidate(SPRING_TEST, "6.2.0");
+		GroupRow group = GroupRow.governed(core, test);
+		TableRow ungoverned = candidate(ADDON, "6.2.0", VersionSource.property("spring.version"));
 
 		UpgradeReview review = new UpgradeReview(group, ungoverned);
 
@@ -244,32 +240,30 @@ class UpgradeReviewTests {
 		return dependency;
 	}
 
-	private static UpgradeRow candidate(ArtifactId artifactId, String version) {
+	private static TableRow candidate(ArtifactId artifactId, String version) {
 		return candidate(dependency(artifactId, version, VersionSource.declared(version)));
 	}
 
-	private static UpgradeRow candidate(ArtifactId artifactId, String version, VersionSource versionSource) {
+	private static TableRow candidate(ArtifactId artifactId, String version, VersionSource versionSource) {
 		return candidate(dependency(artifactId, version, versionSource));
 	}
 
-	private static UpgradeRow candidate(ArtifactId artifactId, String version, Releases releases,
+	private static TableRow candidate(ArtifactId artifactId, String version, Releases releases,
 			String... declaredVersions) {
 
 		Dependency dependency = dependency(artifactId, version, VersionSource.declared(version));
 		return candidate(dependency, releases, declaredVersions(dependency, declaredVersions));
 	}
 
-	private static UpgradeRow candidate(Dependency dependency) {
+	private static TableRow candidate(Dependency dependency) {
 		return candidate(dependency, TestReleases.from(dependency.getCurrentVersion().toString(), "6.2.1"),
 				declaredVersions(dependency));
 	}
 
-	private static UpgradeRow candidate(Dependency dependency, Releases releases,
+	private static TableRow candidate(Dependency dependency, Releases releases,
 			DeclaredVersions declaredVersions) {
-		return new UpgradeRow(
-				UpgradeDecision.create(dependency, releases, VulnerabilityRepository.empty(),
-						new TestDependencyRule("Spring Framework")),
-				TestInterfaceAssistant.INSTANCE, declaredVersions);
+		return new TableRow(DependencyUpgradeCandidate.create(dependency, releases, VulnerabilityRepository.empty(),
+				new TestDependencyRule("Spring Framework"), TestInterfaceAssistant.INSTANCE, declaredVersions));
 	}
 
 	private static DeclaredVersions declaredVersions(Dependency dependency, String... versions) {

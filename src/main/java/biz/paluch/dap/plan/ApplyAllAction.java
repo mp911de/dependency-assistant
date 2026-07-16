@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.actionSystem.AnActionEvent;

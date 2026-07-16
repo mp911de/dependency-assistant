@@ -110,14 +110,14 @@ class DependencyCheckAggregatorTests {
 
 		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), LETTUCE_CORE,
 				resolved(LETTUCE_UPDATE), BROKEN_ARTIFACT, ReleaseLookupResult.failed(BROKEN_ARTIFACT_ERROR));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases);
+		DependencyCheckResult result = aggregator.toDependencyCheckResult(releases);
 
-		assertThat(result).extracting(candidate -> candidate.getArtifactId().artifactId())
+		assertThat(result).extracting(upgrade -> upgrade.getArtifactId().artifactId())
 				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());
-		assertThat(result).extracting(decision -> decision.getCurrentVersion())
+		assertThat(result).extracting(upgrade -> upgrade.getCurrentVersion())
 				.containsExactly(LETTUCE_CURRENT, SPRING_CURRENT);
 		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
-		assertThat(result.files()).containsExactly(a, b);
+		assertThat(result.scope().toList()).containsExactly(a, b);
 	}
 
 	@Test
@@ -130,11 +130,11 @@ class DependencyCheckAggregatorTests {
 				context(ACME_APP), a, List.of());
 		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_LIB), b, List.of());
 
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(Map.of(SPRING_CORE,
+		DependencyCheckResult result = aggregator.toDependencyCheckResult(Map.of(SPRING_CORE,
 				resolved(SPRING_UPDATE)));
 
-		assertThat(result).singleElement().satisfies(candidate -> {
-			DeclaredVersions declaredVersions = result.declaredVersions().get(candidate);
+		assertThat(result).singleElement().satisfies(upgrade -> {
+			DeclaredVersions declaredVersions = upgrade.getDeclaredVersions();
 			assertThat(declaredVersions.hasVersionDrift()).isFalse();
 			assertThat(declaredVersions.hasDeclarationDrift()).isTrue();
 			assertThat(declaredVersions.hasDrift()).isTrue();
@@ -158,13 +158,12 @@ class DependencyCheckAggregatorTests {
 		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), maven, buildFile("pom.xml"), List.of());
 		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), npm, buildFile("package.json"), List.of());
 
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(
+		DependencyCheckResult result = aggregator.toDependencyCheckResult(
 				Map.of(LETTUCE_CORE, resolved(LETTUCE_UPDATE)));
 
-		assertThat(result.decisions()).hasSize(2);
-		assertThat(result.assistants().keySet()).containsExactlyInAnyOrderElementsOf(result.decisions());
-		assertThat(result.declaredVersions().keySet()).containsExactlyInAnyOrderElementsOf(result.decisions());
-		assertThat(result.assistants().values()).anyMatch(OtherEcosystemAssistant.class::isInstance);
+		assertThat(result.upgrades()).hasSize(2);
+		assertThat(result.upgrades()).extracting(DependencyUpgradeCandidate::getAssistant)
+				.anyMatch(OtherEcosystemAssistant.class::isInstance);
 	}
 
 	@Test

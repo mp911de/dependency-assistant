@@ -24,6 +24,7 @@ import java.util.Map;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.Ticket;
@@ -329,11 +330,11 @@ public final class UpgradePlanService implements Disposable {
 	/**
 	 * Capture the armed upgrades into a fresh plan, discarding any previous plan.
 	 * The front door of the review transfer: the persisted shape is derived here,
-	 * so callers hand over reviewed captures and their pinned targets, not stored
+	 * so callers hand over reviewed upgrades and their pinned targets, not stored
 	 * state.
 	 */
-	void planUpgrades(Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades, List<VirtualFile> files) {
-		execute(PlanAction.planUpgrades(upgrades, files, getPlan()));
+	void planUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {
+		execute(PlanAction.planUpgrades(upgrades, scope, getPlan()));
 	}
 
 	/**

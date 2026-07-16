@@ -41,6 +41,15 @@ public interface Label {
 	String getName();
 
 	/**
+	 * Return the label description.
+	 *
+	 * @return the label description.
+	 */
+	default String getDescription() {
+		return getName();
+	}
+
+	/**
 	 * Return the display color of this label.
 	 *
 	 * @return the normalized display color, or {@literal null} if the ticket system

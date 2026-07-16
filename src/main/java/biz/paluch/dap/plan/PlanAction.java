@@ -26,8 +26,8 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
-import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -90,15 +90,14 @@ interface PlanAction {
 	 * Create the capture transition that replaces the plan with fresh content built
 	 * from the armed upgrades and the build files they were captured from.
 	 *
-	 * @param upgrades the reviewed upgrade captures mapped to their pinned target
-	 * versions.
-	 * @param files the build files the upgrades were captured from.
+	 * @param upgrades the reviewed upgrades mapped to their pinned target versions.
+	 * @param scope the build-file scope the upgrades were captured from.
 	 * @param plan the persisted plan to replace.
 	 * @return the reversible capture transition.
 	 */
-	static PlanAction planUpgrades(Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades, List<VirtualFile> files,
+	static PlanAction planUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope,
 			UpgradePlanState.Plan plan) {
-		return new PlanUpgrades(upgrades, files, plan);
+		return new PlanUpgrades(upgrades, scope, plan);
 	}
 
 	/**
@@ -384,7 +383,7 @@ interface PlanAction {
 
 		private final Content newContent;
 
-		private PlanUpgrades(Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades, List<VirtualFile> files,
+		private PlanUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope,
 				UpgradePlanState.Plan plan) {
 			this.plan = plan;
 
@@ -393,8 +392,7 @@ interface PlanAction {
 			upgrades.forEach((capture, version) -> {
 				items.add(Item.from(capture, version));
 			});
-			content.getAffectedFiles()
-					.addAll(files.stream().map(VirtualFile::getPath).toList());
+			content.getAffectedFiles().addAll(scope.getPaths());
 
 			this.oldContent = plan.getContent();
 			this.newContent = content;

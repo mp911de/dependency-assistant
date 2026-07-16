@@ -21,9 +21,8 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
+import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.assistant.check.UpgradeScope;
-import biz.paluch.dap.assistant.review.AssistantReviewActions;
 import biz.paluch.dap.assistant.review.DependencyCheckDialog;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.ReadAction;
@@ -50,7 +49,7 @@ public class DependencyCheckTask extends Task.Backgroundable {
 
 	private volatile @Nullable UpgradeScope scope;
 
-	private volatile @Nullable DependencyUpgradeCandidates resultRef;
+	private volatile @Nullable DependencyCheckResult resultRef;
 
 	public DependencyCheckTask(Project project, UpgradeRequest request) {
 		super(project, MessageBundle.message("action.check.dependencies.progress"), true);
@@ -96,7 +95,7 @@ public class DependencyCheckTask extends Task.Backgroundable {
 
 	private void showResult(UpgradeScope scope) {
 
-		DependencyUpgradeCandidates result = resultRef;
+		DependencyCheckResult result = resultRef;
 		if (result == null || result.isEmpty()) {
 			Notifications.info(project, MessageBundle.message("plugin.name"),
 					MessageBundle.message("action.check.dependencies.noUpdates"));
@@ -104,7 +103,7 @@ public class DependencyCheckTask extends Task.Backgroundable {
 		}
 
 		DependencyCheckDialog dialog = new DependencyCheckDialog(project, result, getTitle(scope),
-				new AssistantReviewActions(project, request.hasEditorFile()));
+				request.hasEditorFile());
 		dialog.show();
 
 		ArtifactId focusArtifact = request.focusArtifact();

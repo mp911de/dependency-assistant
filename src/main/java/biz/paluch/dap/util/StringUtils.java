@@ -134,4 +134,23 @@ public abstract class StringUtils {
 		}
 		return prefix;
 	}
+
+	/**
+	 * Return the longest common suffix shared by all the given values.
+	 * @param values the values to compare; must not be empty.
+	 * @return the longest shared trailing substring, or an empty string when the
+	 * values share no common suffix.
+	 */
+	public static String longestCommonSuffix(Collection<String> values) {
+		Assert.notEmpty(values, "Values must not be empty");
+		Iterator<String> iterator = values.iterator();
+		String suffix = iterator.next();
+		while (iterator.hasNext()) {
+			suffix = suffix.substring(suffix.length() - StringUtil.commonSuffixLength(suffix, iterator.next()));
+			if (suffix.isEmpty()) {
+				return "";
+			}
+		}
+		return suffix;
+	}
 }

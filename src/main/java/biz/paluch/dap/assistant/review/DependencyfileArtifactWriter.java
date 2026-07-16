@@ -27,9 +27,10 @@ import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.assistant.Notifications;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileService;
-import biz.paluch.dap.upgrade.UpgradeDecision;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.json.psi.JsonElementGenerator;
@@ -58,11 +59,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Writes artifact entries into the {@code artifacts} section of a
- * {@code dependencyfile.json}, creating the descriptor when none exists. The
- * single home for descriptor creation, entry insertion, and opening: the
- * dependency-check dialog adds reviewed decisions via
- * {@link #add(List, List, String)} and the "Create Dependencyfile" action seeds
- * a starter descriptor via {@link #createOrOpen(Collection)}.
+ * {@code dependencyfile.json}, creating the descriptor when none exists.
  *
  * <p>For a regular row the entry key is the narrowest
  * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. For an group whose
@@ -79,10 +76,13 @@ class DependencyfileArtifactWriter {
 
 	private final Project project;
 
+	private final BetterPsiManager psiManager;
+
 	private final DependencyfileService dependencyfileservice;
 
 	public DependencyfileArtifactWriter(Project project) {
 		this.project = project;
+		this.psiManager = BetterPsiManager.getInstance(project);
 		this.dependencyfileservice = DependencyfileService.getInstance(project);
 	}
 
@@ -91,11 +91,10 @@ class DependencyfileArtifactWriter {
 	 * no descriptor exists yet, or when at least one computed entry key is not
 	 * already declared in the active descriptor.
 	 *
-	 * @param candidate the right-clicked row.
 	 * @return {@literal true} if the add action has something to write;
 	 * {@literal false} otherwise.
 	 */
-	public boolean canAdd(List<UpgradeDecision> decisions, List<String> memberNames, String dependencyName) {
+	public boolean canAdd(TableRow row) {
 
 		VirtualFile descriptor = dependencyfileservice.getDescriptor();
 		if (descriptor == null) {
@@ -103,7 +102,7 @@ class DependencyfileArtifactWriter {
 		}
 
 		Set<String> existing = existingKeys(descriptor);
-		return entries(decisions, memberNames, dependencyName).stream()
+		return entries(row).stream()
 				.anyMatch(entry -> !existing.contains(entry.key()));
 	}
 
@@ -111,10 +110,8 @@ class DependencyfileArtifactWriter {
 	 * Add the candidate's entries to the active descriptor (creating it if absent),
 	 * then open it in the editor with the caret selecting the first new entry's
 	 * {@code name} value.
-	 *
-	 * @param candidate the right-clicked row.
 	 */
-	public void add(List<UpgradeDecision> decisions, List<String> memberNames, String dependencyName) {
+	public void add(TableRow row) {
 
 		try {
 			VirtualFile descriptor = findOrCreateDescriptor();
@@ -124,8 +121,8 @@ class DependencyfileArtifactWriter {
 
 			TextRange selection = WriteCommandAction.writeCommandAction(project)
 					.withName(MessageBundle.message("dialog.action.addToDependencyfile"))
-					.compute(() -> insertEntries(project, PsiManager.getInstance(project).findFile(descriptor),
-							entries(decisions, memberNames, dependencyName)));
+					.compute(() -> insertEntries(project, psiManager.findFile(descriptor),
+							entries(row)));
 
 			openInEditor(descriptor, selection);
 		} catch (IOException | IncorrectOperationException ex) {
@@ -370,7 +367,7 @@ class DependencyfileArtifactWriter {
 
 	private Set<String> existingKeys(VirtualFile descriptor) {
 
-		PsiFile psiFile = PsiManager.getInstance(project).findFile(descriptor);
+		PsiFile psiFile = psiManager.findFile(descriptor);
 		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
 			return Set.of();
 		}
@@ -410,30 +407,26 @@ class DependencyfileArtifactWriter {
 	 * group with a shared groupId and word-boundary prefix, one entry per member as
 	 * a fallback, or a single entry for a regular row.
 	 */
-	static List<ArtifactEntry> entries(List<UpgradeDecision> decisions, List<String> memberNames,
-			String dependencyName) {
+	static List<ArtifactEntry> entries(TableRow row) {
 
-		if (decisions.size() != memberNames.size() || decisions.isEmpty()) {
-			throw new IllegalArgumentException("Decisions and member names must be non-empty and have equal size");
-		}
-
-		if (decisions.size() > 1) {
-
-			String wildcardKey = wildcardKey(decisions);
+		List<DependencyUpgradeCandidate> upgrades = row.getUpgrades();
+		List<TableRow> rows = new ArrayList<>();
+		if (upgrades.size() > 1) {
+			String wildcardKey = wildcardKey(upgrades);
 			if (wildcardKey != null) {
-				return List.of(new ArtifactEntry(wildcardKey, dependencyName));
+				return List.of(new ArtifactEntry(wildcardKey, row.getName()));
 			}
-
-			List<ArtifactEntry> entries = new ArrayList<>(decisions.size());
-			for (int i = 0; i < decisions.size(); i++) {
-				entries.add(new ArtifactEntry(ArtifactPattern.keyFor(decisions.get(i).getArtifactId()),
-						memberNames.get(i)));
-			}
-			return entries;
 		}
 
-		return List.of(new ArtifactEntry(ArtifactPattern.keyFor(decisions.getFirst().getArtifactId()),
-				memberNames.getFirst()));
+		List<ArtifactEntry> entries = new ArrayList<>(upgrades.size());
+		row.doWithRow(rows::add);
+
+		for (TableRow upgradeRow : rows) {
+			entries.add(new ArtifactEntry(ArtifactPattern.keyFor(upgradeRow.getArtifactId()),
+					upgradeRow.getName()));
+		}
+
+		return entries;
 	}
 
 	/**
@@ -441,11 +434,11 @@ class DependencyfileArtifactWriter {
 	 * {@literal null} when they do not share a groupId or their artifactIds have no
 	 * common prefix ending on a {@code -} or {@code .} word boundary.
 	 */
-	private static @Nullable String wildcardKey(List<UpgradeDecision> members) {
+	private static @Nullable String wildcardKey(List<DependencyUpgradeCandidate> members) {
 
 		String groupId = members.getFirst().getArtifactId().groupId();
 		List<String> artifactIds = new ArrayList<>(members.size());
-		for (UpgradeDecision member : members) {
+		for (DependencyUpgradeCandidate member : members) {
 			if (!groupId.equals(member.getArtifactId().groupId())) {
 				return null;
 			}

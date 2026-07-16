@@ -182,7 +182,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	}
 
 	private Icon getVulnerableIcon(Vulnerabilities vulnerabilities) {
-		return SecurityShieldIcons.outline(vulnerabilities.getHighestSeverity())
+		return SecurityShieldIcons.OUTLINE.resolve(vulnerabilities.getHighestSeverity())
 				.getIcon();
 	}
 

@@ -19,6 +19,7 @@ package biz.paluch.dap.plan;
 import java.util.ArrayList;
 import java.util.List;
 
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.WriteAction;

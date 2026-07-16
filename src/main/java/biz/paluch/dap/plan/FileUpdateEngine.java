@@ -22,6 +22,7 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.application.ApplicationManager;

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 

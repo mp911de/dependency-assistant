@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.diff.DiffContentFactory;

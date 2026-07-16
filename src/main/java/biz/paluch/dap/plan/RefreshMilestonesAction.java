@@ -27,6 +27,7 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.TicketRepository;

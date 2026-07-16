@@ -16,13 +16,12 @@
 
 package biz.paluch.dap.plan;
 
-import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.support.FileScope;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ToolWindowManager;
@@ -52,14 +51,14 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 	 *
 	 * @param project the project owning the plan.
 	 * @param upgrades the armed upgrades to transfer; they become the whole plan.
-	 * @param files the build-file paths that become the plan's scope.
+	 * @param scope the build-file scope that becomes the plan's scope.
 	 */
 	// TODO: If two upgradeCandidates share the same property and the same
 	// assistant, keep only one of them.
-	public static void openWith(Project project, Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades,
-			List<VirtualFile> files) {
+	public static void openWith(Project project, Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
+			FileScope scope) {
 
-		UpgradePlanService.getInstance(project).planUpgrades(upgrades, files);
+		UpgradePlanService.getInstance(project).planUpgrades(upgrades, scope);
 
 		ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow(ID);
 		if (toolWindow != null) {

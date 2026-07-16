@@ -225,16 +225,19 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 
 		public String name = "";
 
+		public String description = "";
+
 		public @Nullable String color;
 
 		GitHubLabel toGitHubLabel() {
-			return new GitHubLabel(name, color);
+			return new GitHubLabel(name, description, color);
 		}
 
 		CachedLabel snapshot() {
 
 			CachedLabel copy = new CachedLabel();
 			copy.name = this.name;
+			copy.description = this.description;
 			copy.color = this.color;
 
 			return copy;
@@ -244,6 +247,7 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 
 			CachedLabel cachedLabel = new CachedLabel();
 			cachedLabel.name = label.getName();
+			cachedLabel.description = label.getDescription();
 			cachedLabel.color = label.getHexColor();
 
 			return cachedLabel;

@@ -27,6 +27,8 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.assistant.check.DeclaredVersions;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
@@ -34,7 +36,6 @@ import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Plan;
-import biz.paluch.dap.upgrade.UpgradeDecision;
 import com.intellij.openapi.command.impl.UndoManagerImpl;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.project.Project;
@@ -87,7 +88,7 @@ class UpgradePlanServiceUnitTests {
 		content.getAffectedFiles().add("pom.xml");
 		List<UpgradePlanItem> items = new java.util.ArrayList<>();
 		for (String name : names) {
-			TestUpgradePlanCapture candidate = candidate(name);
+			TestPlannedUpgrade candidate = candidate(name);
 			Item stored = Item.from(candidate, TARGET);
 			UpgradePlanItem item = Objects.requireNonNull(
 					new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored));
@@ -102,15 +103,16 @@ class UpgradePlanServiceUnitTests {
 		return items;
 	}
 
-	private static TestUpgradePlanCapture candidate(String name) {
+	private static TestPlannedUpgrade candidate(String name) {
 
 		Dependency dependency = new Dependency(ArtifactId.of("org.example", name), CURRENT);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(VersionSource.declared(CURRENT.toString()));
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(
 				Map.of(CURRENT, Vulnerabilities.clean(), TARGET, Vulnerabilities.clean()));
-		return new TestUpgradePlanCapture(
-				UpgradeDecision.create(dependency, Releases.just(Release.of(TARGET)), vulnerabilities));
+		return new TestPlannedUpgrade(
+				DependencyUpgradeCandidate.create(dependency, Releases.just(Release.of(TARGET)), vulnerabilities,
+						TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty()));
 	}
 
 }

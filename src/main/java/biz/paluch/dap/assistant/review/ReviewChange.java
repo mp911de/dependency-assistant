@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  * @param reload whether the visible candidate set must be reloaded.
  * @author Mark Paluch
  */
-record ReviewChange(@Nullable UpgradeRow candidate, boolean reload) {
+record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
 	/**
 	 * The visible candidate set changed and must be reloaded.
@@ -42,7 +42,7 @@ record ReviewChange(@Nullable UpgradeRow candidate, boolean reload) {
 	/**
 	 * A single candidate's selection changed; refresh its row.
 	 */
-	static ReviewChange row(UpgradeRow candidate) {
+	static ReviewChange row(TableRow candidate) {
 		return new ReviewChange(candidate, false);
 	}
 

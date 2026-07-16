@@ -21,6 +21,7 @@ import java.awt.Color;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ui.JBColor;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.jetbrains.plugins.github.api.data.GithubIssueLabel;
 import org.jspecify.annotations.Nullable;
 
@@ -33,12 +34,15 @@ class GitHubLabel implements Label {
 
 	private final String name;
 
+	private final String description;
+
 	private final @Nullable String hexColor;
 
 	private final @Nullable JBColor color;
 
-	GitHubLabel(String name, @Nullable String hexColor) {
+	GitHubLabel(String name, String description, @Nullable String hexColor) {
 		this.name = name;
+		this.description = description;
 		this.hexColor = hexColor;
 		JBColor color = null;
 		if (StringUtils.hasText(hexColor)) {
@@ -52,12 +56,25 @@ class GitHubLabel implements Label {
 	}
 
 	static GitHubLabel of(GithubIssueLabel label) {
-		return new GitHubLabel(label.getName(), label.getColor());
+
+		String description = label.getName();
+		try {
+			// 🙄
+			description = "" + FieldUtils.readDeclaredField(label, "description", true);
+		} catch (RuntimeException | ReflectiveOperationException ignore) {
+		}
+
+		return new GitHubLabel(label.getName(), description, label.getColor());
 	}
 
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public String getDescription() {
+		return StringUtils.hasText(description) ? description : name;
 	}
 
 	public @Nullable String getHexColor() {

@@ -28,15 +28,15 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.assistant.Notifications;
-import biz.paluch.dap.plan.UpgradePlanCapture;
+import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.support.UpgradeResult;
-import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.undo.UndoManager;
@@ -46,35 +46,34 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 
 /**
- * Action-side effects invoked from the dependency review dialog.
+ * Effects triggered from the dependency review dialog: applying updates to
+ * build files with undo, adding entries to {@code dependencyfile.json}, and
+ * handing the armed upgrades to the Upgrade Plan.
  *
  * @author Mark Paluch
  */
-// TODO: maybe inline?
-public class AssistantReviewActions implements ReviewActions {
+class AssistantReviewActions {
 
 	private final Project project;
 
 	private final boolean fromEditor;
 
+	private final DependencyfileArtifactWriter writer;
+
 	public AssistantReviewActions(Project project, boolean fromEditor) {
 		this.project = project;
 		this.fromEditor = fromEditor;
+		this.writer = new DependencyfileArtifactWriter(project);
 	}
 
-	@Override
-	public boolean canAddToDependencyfile(List<UpgradeDecision> decisions, List<String> memberNames,
-			String dependencyName) {
-		return new DependencyfileArtifactWriter(project).canAdd(decisions, memberNames, dependencyName);
+	public boolean canAddToDependencyfile(TableRow row) {
+		return writer.canAdd(row);
 	}
 
-	@Override
-	public void addToDependencyfile(List<UpgradeDecision> decisions, List<String> memberNames,
-			String dependencyName) {
-		new DependencyfileArtifactWriter(project).add(decisions, memberNames, dependencyName);
+	public void addToDependencyfile(TableRow row) {
+		writer.add(row);
 	}
 
-	@Override
 	public void applyUpdates(Collection<VirtualFile> files, List<DependencyUpdate> updates,
 			ProgressIndicator indicator) {
 
@@ -122,29 +121,26 @@ public class AssistantReviewActions implements ReviewActions {
 		Notifications.updatesApplied(project, applied.applied(), undo, undoFlagged);
 	}
 
-	@Override
 	public void reportApplyError(Throwable error) {
 		Notifications.error(project,
 				MessageBundle.message("UpdateBuildFile.notification.error.title"),
 				Notifications.errorMessage(error));
 	}
 
-	@Override
-	public void openInUpgradePlan(Map<UpgradePlanCapture, UpgradeSelection> upgrades, List<VirtualFile> files) {
+	public void openInUpgradePlan(Map<PlannedUpgrade, UpgradeSelection> upgrades, FileScope scope) {
 
-		Map<UpgradePlanCapture, ArtifactVersion> targets = new LinkedHashMap<>();
-		for (Map.Entry<UpgradePlanCapture, UpgradeSelection> entry : upgrades.entrySet()) {
+		Map<PlannedUpgrade, ArtifactVersion> targets = new LinkedHashMap<>();
+		for (Map.Entry<PlannedUpgrade, UpgradeSelection> entry : upgrades.entrySet()) {
 			ArtifactVersion target = entry.getValue().getTargetVersion();
 			if (target == null) {
 				throw new IllegalStateException(
-						"Target version for " + entry.getKey().getPlanName() + " is required");
+						"Target version for " + entry.getKey().getName() + " is required");
 			}
 			targets.put(entry.getKey(), target);
 		}
 
-		UpgradePlanToolWindowFactory.openWith(project, targets, files);
+		UpgradePlanToolWindowFactory.openWith(project, targets, scope);
 	}
-
 
 	/**
 	 * Apply the file's updates through every supporting assistant with an available

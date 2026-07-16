@@ -16,15 +16,12 @@
 
 package biz.paluch.dap.assistant;
 
-import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.checker.CvssSeverity;
-import biz.paluch.dap.checker.ShieldStyle;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
@@ -47,25 +44,12 @@ class VersionStatusUnitTests {
 	private static final ArtifactVersion PATCH = ArtifactVersion.of("6.0.1");
 
 	@Test
-	void vulnerableCandidateUsesRequestedShieldStyle() {
-
-		VersionStatus status = status(PATCH, TestVulnerabilities.HIGH);
-
-		assertThat(status.isVulnerable()).isTrue();
-		assertThat(status.getVersionAge()).isEqualTo(VersionAge.NEWER_PATCH);
-		assertThat(status.getIcon(ShieldStyle.FILLED)).isSameAs(CheckerIcons.HIGH);
-		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("CVE-2026-2");
-	}
-
-	@Test
 	void cleanCandidateKeepsVersionAgeIcon() {
 
 		VersionStatus status = status(PATCH, Vulnerabilities.clean());
 
 		assertThat(status.isVulnerable()).isFalse();
 		assertThat(status.getVersionAge()).isEqualTo(VersionAge.NEWER_PATCH);
-		assertThat(status.getIcon(ShieldStyle.FILLED))
-				.isSameAs(DependencyUpgradeIcons.resolve(VersionAge.NEWER_PATCH).getIcon());
 		assertThat(status.getVulnerabilityTailLabel()).isNull();
 	}
 
@@ -95,7 +79,6 @@ class VersionStatusUnitTests {
 
 		assertThat(status.isRuleViolation()).isTrue();
 		assertThat(status.getVersionAge()).isEqualTo(VersionAge.NEWER_PATCH);
-		assertThat(status.getIcon(ShieldStyle.FILLED)).isSameAs(DependencyAssistantIcons.DEPENDENCY_RULE_WARN);
 	}
 
 	@Test

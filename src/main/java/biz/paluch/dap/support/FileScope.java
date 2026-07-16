@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.plan;
+package biz.paluch.dap.support;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,9 +28,10 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
- * Build-file scope of the Upgrade Plan resolved to live files, retaining the
- * paths that could not be resolved so callers can report them. Immutable;
- * {@link #rebuild()} re-resolves against the current file system state.
+ * Build-file scope shared by the dependency check result and the Upgrade Plan,
+ * resolved to live files, retaining the paths that could not be resolved so
+ * callers can report them. Immutable; {@link #rebuild()} re-resolves against
+ * the current file system state.
  *
  * <p>Iterating or {@link #stream() streaming} a scope yields only the resolved
  * files, whereas {@link #getPaths()} returns every declared path including the
@@ -38,7 +39,7 @@ import com.intellij.openapi.vfs.VirtualFile;
  *
  * @author Mark Paluch
  */
-class FileScope implements Sequence<VirtualFile> {
+public class FileScope implements Sequence<VirtualFile> {
 
 	private final List<VirtualFile> files;
 
@@ -63,7 +64,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 * @return the scope.
 	 * @see #of(List)
 	 */
-	static FileScope of(VirtualFile... files) {
+	public static FileScope of(VirtualFile... files) {
 		return new FileScope(List.of(files));
 	}
 
@@ -73,7 +74,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 * @param files the resolved build files.
 	 * @return the scope.
 	 */
-	static FileScope of(List<VirtualFile> files) {
+	public static FileScope of(List<VirtualFile> files) {
 		return new FileScope(files);
 	}
 
@@ -85,7 +86,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 * @param paths the declared build-file paths to resolve.
 	 * @return the scope with resolved files and retained missing paths.
 	 */
-	static FileScope from(Collection<String> paths) {
+	public static FileScope from(Collection<String> paths) {
 
 		LocalFileSystem fileSystem = LocalFileSystem.getInstance();
 
@@ -108,7 +109,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 * Re-resolve the scope against the current file system state: files that
 	 * disappeared become missing paths, missing paths that reappeared become files.
 	 */
-	FileScope rebuild() {
+	public FileScope rebuild() {
 		return from(paths);
 	}
 
@@ -130,7 +131,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 *
 	 * @return the declared paths, resolved and missing alike.
 	 */
-	List<String> getPaths() {
+	public List<String> getPaths() {
 		return paths;
 	}
 
@@ -138,7 +139,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 * Return the live files' presentable URLs joined line-by-line, for dialog and
 	 * notification texts.
 	 */
-	String getPresentablePaths() {
+	public String getPresentablePaths() {
 		return files.stream().map(VirtualFile::getPresentableUrl).collect(Collectors.joining("\n"));
 	}
 
@@ -149,7 +150,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 * @return {@code true} if at least one declared path is missing; {@code false}
 	 * otherwise.
 	 */
-	boolean hasMissingFiles() {
+	public boolean hasMissingFiles() {
 		return !missingPaths.isEmpty();
 	}
 
@@ -157,7 +158,7 @@ class FileScope implements Sequence<VirtualFile> {
 	 * Return the paths that could not be resolved, joined line-by-line for dialog
 	 * and notification texts.
 	 */
-	String getMissingPaths() {
+	public String getMissingPaths() {
 		return String.join("\n", missingPaths);
 	}
 

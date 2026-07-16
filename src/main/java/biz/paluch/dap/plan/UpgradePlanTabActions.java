@@ -159,6 +159,12 @@ class UpgradePlanTabActions {
 
 		@Override
 		@Nullable
+		String getToolTip(Label value) {
+			return value.getDescription();
+		}
+
+		@Override
+		@Nullable
 		Icon getIcon(Label value) {
 			Color color = value.getColor();
 			if (color == null) {

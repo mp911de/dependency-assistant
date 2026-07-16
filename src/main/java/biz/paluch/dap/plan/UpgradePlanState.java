@@ -29,13 +29,13 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.ticket.TicketSystem;
-import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.Service;
@@ -273,10 +273,17 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		@XCollection(propertyElementName = "affectedFiles", elementName = "file", style = XCollection.Style.v2)
 		private List<String> affectedFiles = new ArrayList<>();
 
-		public static Content from(UpgradePlan plan) {
+		public static Content from(Content original, UpgradePlan plan) {
 			Content content = new Content();
-			content.setItems(plan.stream().map(Item::from).toList());
-			content.setAffectedFiles(plan.getScope().getPaths());
+			List<Item> items = new ArrayList<>();
+			for (Item item : original) {
+				if (plan.stream().anyMatch(it -> it.getId().equals(item.getId()))) {
+					items.add(item);
+				}
+			}
+
+			content.setItems(items);
+			content.setAffectedFiles(List.copyOf(original.getAffectedFiles()));
 			return content;
 		}
 
@@ -351,19 +358,19 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		@Transient
 		private @Nullable UpgradePlanItem materialized;
 
-		static Item from(UpgradePlanCapture capture, ArtifactVersion targetVersion) {
+		static Item from(PlannedUpgrade plannedUpgrade, ArtifactVersion targetVersion) {
 
 			Item item = new Item();
 			item.setToVersion(targetVersion.toString());
-			item.displayName = capture.getPlanName();
+			item.displayName = plannedUpgrade.getName();
 
 			Vulnerabilities currentVulnerabilities = Vulnerabilities.clean();
 			Vulnerabilities targetVulnerabilities = Vulnerabilities.clean();
-			for (UpgradeDecision decision : capture.getUpgradeDecisions()) {
-				item.members.add(new Member(decision.getDependency(), capture.getAssistantClassName()));
+			for (DependencyUpgradeCandidate upgrade : plannedUpgrade.getUpgrades()) {
+				item.members.add(Member.of(upgrade));
 				currentVulnerabilities = currentVulnerabilities
-						.addAll(decision.getVulnerabilities(decision.getCurrentVersion()));
-				targetVulnerabilities = targetVulnerabilities.addAll(decision.getVulnerabilities(targetVersion));
+						.addAll(upgrade.getVulnerabilities(upgrade.getCurrentVersion()));
+				targetVulnerabilities = targetVulnerabilities.addAll(upgrade.getVulnerabilities(targetVersion));
 			}
 			item.vulnerabilityFix = currentVulnerabilities.isVulnerable()
 					&& !targetVulnerabilities.isVulnerable();
@@ -372,24 +379,6 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 					? currentVulnerabilities.getHighestSeverity()
 					: CvssSeverity.NONE;
 
-			item.getId();
-			return item;
-		}
-
-		public static Item from(UpgradePlanItem planItem) {
-
-			Item item = new Item();
-			item.setDisplayName(planItem.getDisplayName());
-			item.setToVersion(planItem.getToVersion().toString());
-			item.setVulnerabilityFix(planItem.isVulnerabilityFix());
-			item.setVulnerabilityCount(planItem.getVulnerabilityCount());
-			item.setHighestVulnerabilitySeverity(planItem.getHighestVulnerabilitySeverity());
-			List<Member> members = new ArrayList<>();
-			for (int i = 0; i < planItem.getStoredMembers().size(); i++) {
-				members.add(new Member(planItem.getStoredMembers().get(i), planItem.getMemberAssistantClassName(i)));
-			}
-			item.setMembers(members);
-			item.setTicket(Ticket.from(planItem.getTicket()));
 			item.getId();
 			return item;
 		}
@@ -850,6 +839,10 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			for (DeclarationSource source : dependency.getDeclarationSources()) {
 				this.declarationSources.add(new DeclarationSourceState(source));
 			}
+		}
+
+		public static Member of(DependencyUpgradeCandidate upgrade) {
+			return new Member(upgrade.getDependency(), upgrade.getAssistant().getClass().getName());
 		}
 
 		@Override

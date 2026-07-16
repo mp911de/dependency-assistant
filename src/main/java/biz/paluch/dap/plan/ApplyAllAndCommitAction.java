@@ -19,6 +19,7 @@ package biz.paluch.dap.plan;
 import java.util.HashSet;
 import java.util.Set;
 
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.diagnostic.Logger;

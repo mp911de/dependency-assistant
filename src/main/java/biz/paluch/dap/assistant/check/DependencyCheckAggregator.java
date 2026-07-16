@@ -46,7 +46,7 @@ import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.upgrade.UpgradeDecision;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -214,7 +214,7 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 * @param releases the resolved releases keyed by artifact.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
-	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
+	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
 		return toDependencyCheckResult(releases, DependencyRuleService.absent());
 	}
 
@@ -229,12 +229,10 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 * @param evaluator the rule service used to resolve governing dependency rules.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
-	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
+	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
 			DependencyRuleService evaluator) {
 
-		List<UpgradeDecision> decisions = new ArrayList<>();
-		Map<UpgradeDecision, InterfaceAssistant> assistants = new LinkedHashMap<>();
-		Map<UpgradeDecision, DeclaredVersions> declaredVersionFacts = new LinkedHashMap<>();
+		List<DependencyUpgradeCandidate> upgrades = new ArrayList<>();
 		List<String> errors = getErrors(releases);
 		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, service);
 		entries.forEach((pkg, entry) -> {
@@ -268,17 +266,16 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			DependencyRule rule = evaluator.resolve(resolutionContext);
 
 			VulnerabilityRepository vulnerabilities = getVulnerabilities(pkg, scanner);
+			InterfaceAssistant assistant = entry.contexts().iterator().next().getInterfaceAssistant();
 
-			UpgradeDecision decision = UpgradeDecision.create(dependency, lookup.releases(), vulnerabilities, rule);
-			decisions.add(decision);
-			assistants.put(decision, entry.contexts().iterator().next().getInterfaceAssistant());
-			declaredVersionFacts.put(decision, declaredVersions);
+			upgrades.add(
+					DependencyUpgradeCandidate.create(dependency, lookup.releases(), vulnerabilities, rule, assistant,
+							declaredVersions));
 		});
 
-		decisions.sort(Comparator.comparing(UpgradeDecision::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
+		upgrades.sort(Comparator.comparing(DependencyUpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
-		return new DependencyUpgradeCandidates(decisions, assistants, declaredVersionFacts, new ArrayList<>(files),
-				errors);
+		return new DependencyCheckResult(upgrades, FileScope.of(new ArrayList<>(files)), errors);
 	}
 
 	private VulnerabilityRepository getVulnerabilities(PackageIdentity pkg,

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.dvcs.DvcsUtil;

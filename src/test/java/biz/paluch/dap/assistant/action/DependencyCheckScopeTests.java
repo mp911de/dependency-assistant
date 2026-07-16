@@ -24,7 +24,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.assistant.check.DependencyCheck;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
+import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.assistant.check.ReleaseLookupResult;
 import biz.paluch.dap.assistant.check.ReleaseResolver;
 import biz.paluch.dap.assistant.check.UpgradeScope;
@@ -74,11 +74,11 @@ class DependencyCheckScopeTests {
 		GradleFixtures.analyze(a);
 		GradleFixtures.analyze(b);
 
-		DependencyUpgradeCandidates result = check(project, a, b);
+		DependencyCheckResult result = check(project, a, b);
 
 		assertThat(result).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
-			assertThat(result.declaredVersions().get(merged).hasVersionDrift()).isTrue();
+			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isTrue();
 		});
 	}
 
@@ -92,17 +92,17 @@ class DependencyCheckScopeTests {
 
 		GradleFixtures.analyze(file);
 
-		DependencyUpgradeCandidates result = check(project, file);
+		DependencyCheckResult result = check(project, file);
 
 		assertThat(result).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
 			assertThat(merged.getCurrentVersion()).isEqualTo(ArtifactVersion.of("7.4.1.RELEASE"));
-			assertThat(result.declaredVersions().get(merged).hasVersionDrift()).isFalse();
+			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isFalse();
 			assertThat(merged.hasUpgradeTargets()).isTrue();
 		});
 	}
 
-	private static DependencyUpgradeCandidates check(Project project, PsiFile... selection) {
+	private static DependencyCheckResult check(Project project, PsiFile... selection) {
 
 		List<VirtualFile> files = Arrays.stream(selection).map(PsiFile::getVirtualFile).toList();
 		UpgradeScope scope = UpgradeScopeResolver.resolve(project, new UpgradeRequest(files, null));

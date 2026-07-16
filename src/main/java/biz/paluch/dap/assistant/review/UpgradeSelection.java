@@ -17,18 +17,18 @@
 package biz.paluch.dap.assistant.review;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.upgrade.UpgradeDecision;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The user's in-progress pick for one {@link UpgradeRow} in the review dialog:
+ * The user's in-progress pick for one {@link TableRow} in the review dialog:
  * the chosen target version and whether to apply it.
  *
  * <p>Owned by {@link UpgradeReview}, keyed by candidate. Sits between the
- * {@link UpgradeDecision} (what can be chosen) and the {@code DependencyUpdate}
- * written on confirm (what was chosen). Selecting a target other than the
- * current version arms the apply flag; reselecting the current version clears
- * it.
+ * {@link DependencyUpgradeCandidate} (what can be chosen) and the
+ * {@code DependencyUpdate} written on confirm (what was chosen). Selecting a
+ * target other than the current version arms the apply flag; reselecting the
+ * current version clears it.
  *
  * @author Mark Paluch
  */

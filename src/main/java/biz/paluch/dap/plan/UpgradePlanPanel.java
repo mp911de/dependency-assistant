@@ -27,6 +27,7 @@ import javax.swing.JComponent;
 import javax.swing.JPanel;
 
 import biz.paluch.dap.assistant.check.DependencySiteNavigator;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.CopyProvider;
 import com.intellij.ide.DataManager;

@@ -65,7 +65,7 @@ class Clipboard {
 	 * scope.
 	 */
 	Transferable copy(UpgradePlan plan) {
-		Content fragment = Content.from(plan);
+		Content fragment = Content.from(service.getPlan().getContent(), plan);
 		return new PlanTransferable(toText(plan.toList()),
 				JDOMUtil.write(XmlSerializer.serialize(fragment)));
 	}

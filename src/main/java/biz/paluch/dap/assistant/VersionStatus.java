@@ -20,7 +20,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.checker.ShieldStyle;
+import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
@@ -132,7 +132,7 @@ public class VersionStatus {
 	 * @param style the shield weight to use when the candidate is vulnerable.
 	 * @return the icon.
 	 */
-	public Icon getIcon(ShieldStyle style) {
+	public Icon getIcon(SecurityShieldIcons style) {
 		return resolveIcon(style).getIcon();
 	}
 
@@ -144,10 +144,10 @@ public class VersionStatus {
 	 * @param style the shield weight to use when the candidate is vulnerable.
 	 * @return the resolvable icon.
 	 */
-	public ResolvableIcon resolveIcon(ShieldStyle style) {
+	public ResolvableIcon resolveIcon(SecurityShieldIcons style) {
 
 		if (vulnerabilities.isVulnerable()) {
-			return style.shield(vulnerabilities.getHighestSeverity());
+			return style.resolve(vulnerabilities.getHighestSeverity());
 		}
 		if (isRuleViolation()) {
 			return DependencyUpgradeIcons.ruleWarning();
@@ -180,7 +180,7 @@ public class VersionStatus {
 	 * @return the resolvable documentation icon.
 	 */
 	public ResolvableIcon resolveFilledIcon() {
-		return resolveIcon(ShieldStyle.FILLED);
+		return resolveIcon(SecurityShieldIcons.FILLED);
 	}
 
 	/**

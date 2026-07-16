@@ -24,7 +24,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersioningScheme;
 import biz.paluch.dap.assistant.VersionStatus;
-import biz.paluch.dap.checker.ShieldStyle;
+import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
@@ -113,7 +113,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 		presentation.setItemTextItalic(status.isOlder());
 		presentation.setItemTextBold(status.isCurrent());
 		presentation.setStrikeout(status.isRuleViolation());
-		presentation.setIcon(status.getIcon(ShieldStyle.OUTLINE));
+		presentation.setIcon(status.getIcon(SecurityShieldIcons.OUTLINE));
 
 		String tailText;
 

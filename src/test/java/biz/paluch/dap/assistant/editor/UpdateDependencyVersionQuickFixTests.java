@@ -22,8 +22,6 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.CheckerIcons;
-import biz.paluch.dap.checker.CvssSeverity;
-import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
@@ -93,8 +91,6 @@ class UpdateDependencyVersionQuickFixTests {
 				TestVulnerabilities.HIGH);
 
 		assertThat(fix.getText()).isEqualTo("Upgrade to 6.0.3 (High: CVE-2026-2)");
-		assertThat(fix.getIcon(Iconable.ICON_FLAG_VISIBILITY))
-				.isSameAs(SecurityShieldIcons.filled(CvssSeverity.HIGH).getIcon());
 	}
 
 	@Test

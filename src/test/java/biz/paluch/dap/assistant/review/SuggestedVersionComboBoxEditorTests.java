@@ -30,10 +30,10 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.upgrade.UpgradeDecision;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.ListTableModel;
 import org.junit.jupiter.api.Test;
@@ -50,18 +50,18 @@ class SuggestedVersionComboBoxEditorTests {
 	@Test
 	void editorKeepsHorizontalCellPaddingWithoutUpgradeTargets() {
 
-		UpgradeRow candidate = candidateWithoutUpgradeTargets();
+		TableRow candidate = candidateWithoutUpgradeTargets();
 		UpgradeReview review = new UpgradeReview(List.of(candidate), List.of());
 		review.setHideUpToDate(false);
 
 		DependencyCheckDialog.UpdateToColumn column = new DependencyCheckDialog.UpdateToColumn(review);
-		ListTableModel<UpgradeRow> model = new ListTableModel<>(column);
+		ListTableModel<TableRow> model = new ListTableModel<>(column);
 		model.setItems(review.getCandidates());
 
 		Component component = column.getEditor(candidate).getTableCellEditorComponent(new JTable(model), null, false,
 				0, 0);
 
-		assertThat(candidate.getDecision().hasUpgradeTargets()).isFalse();
+		assertThat(candidate.getUpgrade().hasUpgradeTargets()).isFalse();
 		assertThat(component).isInstanceOfSatisfying(javax.swing.JComponent.class, it -> {
 			Border border = it.getBorder();
 			Insets insets = border.getBorderInsets(it);
@@ -70,14 +70,16 @@ class SuggestedVersionComboBoxEditorTests {
 		});
 	}
 
-	private static UpgradeRow candidateWithoutUpgradeTargets() {
+	private static TableRow candidateWithoutUpgradeTargets() {
 
 		ArtifactVersion current = ArtifactVersion.of("1.0.0");
 		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"), current);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
-		UpgradeDecision decision = UpgradeDecision.create(dependency, Releases.just(Release.of(current)),
-				VulnerabilityRepository.empty(), DependencyRule.absent());
-		return new UpgradeRow(decision, new TestInterfaceAssistant(), DeclaredVersions.empty());
+		DependencyUpgradeCandidate upgrade = DependencyUpgradeCandidate.create(dependency,
+				Releases.just(Release.of(current)),
+				VulnerabilityRepository.empty(), DependencyRule.absent(), new TestInterfaceAssistant(),
+				DeclaredVersions.empty());
+		return new TableRow(upgrade);
 	}
 
 }

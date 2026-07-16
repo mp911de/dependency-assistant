@@ -85,7 +85,7 @@ public class DependencyCheck {
 	 * @param scope the in-scope build files with their contexts.
 	 * @return the merged dependency check result.
 	 */
-	public DependencyUpgradeCandidates findDependencyUpgrades(ProgressIndicator indicator,
+	public DependencyCheckResult findDependencyUpgrades(ProgressIndicator indicator,
 			UpgradeScope scope) {
 		this.service.getState().setUsedOnce(true);
 		indicator.setIndeterminate(false);
