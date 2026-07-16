@@ -129,7 +129,6 @@ public class ProjectStateIndexer {
 		}
 
 
-		// TODO: ReadAction.run(() -> updateAll(assistant)); ??
 		IntrospectedDependencies introspected = assistant.introspect(project);
 		List<ActiveScan> active = application
 				.runReadAction((Computable<List<ActiveScan>>) () -> collectPhase(assistant, introspected));

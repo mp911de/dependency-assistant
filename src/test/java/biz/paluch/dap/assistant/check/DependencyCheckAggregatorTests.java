@@ -50,14 +50,11 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
-// TODO: overly complex
 class DependencyCheckAggregatorTests {
 
 	ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
 
 	ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
-
-	ArtifactId SPRING_TEST = ArtifactId.of("org.springframework", "spring-test");
 
 	ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
 
@@ -114,7 +111,7 @@ class DependencyCheckAggregatorTests {
 
 		assertThat(result).extracting(upgrade -> upgrade.getArtifactId().artifactId())
 				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());
-		assertThat(result).extracting(upgrade -> upgrade.getCurrentVersion())
+		assertThat(result).extracting(DependencyUpgradeCandidate::getCurrentVersion)
 				.containsExactly(LETTUCE_CURRENT, SPRING_CURRENT);
 		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
 		assertThat(result.scope().toList()).containsExactly(a, b);
