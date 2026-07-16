@@ -16,8 +16,9 @@
 
 package biz.paluch.dap.lookup;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
@@ -30,48 +31,45 @@ import org.jspecify.annotations.Nullable;
  * Per-file deep module that resolves a build-file element to its
  * {@link ArtifactReference} and current version.
  *
- * <p>The module owns cached release lookup and current-version resolution.
- * Build-tool variation is isolated behind a single
- * {@link ArtifactReferenceResolver} that the module holds and delegates
- * {@link #resolveArtifactReference(PsiElement)} to. The same concrete type
- * serves every build ecosystem. Producing filtered upgrade suggestions is the
- * job of {@code UpgradeSuggestionsFactory}, not this module.
+ * <p>The module owns current-version resolution and exposes the project state
+ * service used by the surrounding artifact context. Build-tool variation is
+ * isolated behind a single {@link ArtifactReferenceResolver} that the module
+ * holds and delegates {@link #resolveArtifactReference(PsiElement)} to. The
+ * same concrete type serves every build ecosystem. Producing filtered upgrade
+ * suggestions is the job of {@code UpgradeSuggestionsFactory}, not this module.
  *
  * <p>Lookup methods are cache-only and never trigger remote repository access.
  *
  * @author Mark Paluch
  * @see ArtifactReferenceResolver
- * @see LookupContext
  */
 public class VersionUpgradeLookup {
 
-	private final LookupContext context;
+	private final StateService stateService;
+
+	private final @Nullable ProjectState projectState;
 
 	private final ArtifactReferenceResolver resolver;
 
 	/**
-	 * Create a {@code VersionUpgradeLookup} bound to the given context and
-	 * resolver.
-	 * @param context the shared per-file resolution environment .
+	 * Create a {@code VersionUpgradeLookup} backed by the given state and resolver.
+	 * @param stateService the state service exposing cached release data.
+	 * @param projectState the project dependency state, or {@literal null} if it is
+	 * unavailable.
 	 * @param resolver the build-tool-specific reference resolver .
 	 */
-	public VersionUpgradeLookup(LookupContext context, ArtifactReferenceResolver resolver) {
-		this.context = context;
+	public VersionUpgradeLookup(StateService stateService, @Nullable ProjectState projectState,
+			ArtifactReferenceResolver resolver) {
+		this.stateService = stateService;
+		this.projectState = projectState;
 		this.resolver = resolver;
-	}
-
-	/**
-	 * Return the shared release cache used by this lookup.
-	 */
-	public Cache getCache() {
-		return this.context.cache();
 	}
 
 	/**
 	 * Return the state service backing this lookup.
 	 */
 	public StateService getStateService() {
-		return this.context.service();
+		return this.stateService;
 	}
 
 	/**
@@ -111,7 +109,7 @@ public class VersionUpgradeLookup {
 			return null;
 		}
 
-		ArtifactVersion stateVersion = context.findCurrentVersion(reference.getArtifactId());
+		ArtifactVersion stateVersion = findCurrentVersion(reference.getArtifactId());
 		if (stateVersion != null) {
 			return stateVersion;
 		}
@@ -121,7 +119,7 @@ public class VersionUpgradeLookup {
 	}
 
 	public @Nullable VersionProperty findProperty(String property) {
-		return context.findProperty(property);
+		return projectState != null ? projectState.findProperty(property) : null;
 	}
 
 	/**
@@ -136,7 +134,17 @@ public class VersionUpgradeLookup {
 		if (property.artifacts().isEmpty()) {
 			return null;
 		}
-		return context.findCurrentVersion(property.artifacts().getFirst().toArtifactId());
+		return findCurrentVersion(property.artifacts().getFirst().toArtifactId());
+	}
+
+	private @Nullable ArtifactVersion findCurrentVersion(ArtifactId artifactId) {
+
+		if (projectState == null) {
+			return null;
+		}
+
+		Dependency dependency = projectState.findDependency(artifactId);
+		return dependency != null ? dependency.getCurrentVersion() : null;
 	}
 
 }

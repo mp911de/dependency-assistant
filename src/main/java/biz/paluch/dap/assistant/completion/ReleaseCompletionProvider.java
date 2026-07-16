@@ -40,6 +40,7 @@ import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiElements;
@@ -125,7 +126,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		Project project = parameters.getPosition().getProject();
 		StateService stateService = StateService.getInstance(project);
 		Cache cache = stateService.getCache();
-		ArtifactId artifactId = metadata.artifactReference().getArtifactId();
+		ArtifactId artifactId = metadata.declaration().getArtifactId();
 		Releases history = cache.getReleases(artifactId);
 
 		if (history.isEmpty()) {
@@ -134,7 +135,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
-		ResolutionContext resolutionContext = ResolutionContext.forReference(metadata.artifactReference,
+		ResolutionContext resolutionContext = ResolutionContext.forDeclaration(metadata.declaration(),
 				BranchSource.of(parameters.getEditor().getVirtualFile()), metadata.context().getProjectVersion());
 		DependencyRule rule = ruleService.resolve(resolutionContext);
 
@@ -289,13 +290,13 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			return null;
 		}
 
+		ArtifactDeclaration declaration = artifactReference.getDeclaration();
 		ArtifactVersion version = lookup.getCurrentVersion(artifactReference);
-		if (version == null && artifactReference.getDeclaration().isVersionDefined()) {
-			version = artifactReference.getDeclaration().getVersion();
+		if (version == null && declaration.isVersionDefined()) {
+			version = declaration.getVersion();
 		}
 
-		return new CompletionMetadata(artifactReference, version,
-				artifactReference.getDeclaration().getVersionLiteral(), context);
+		return new CompletionMetadata(declaration, version, declaration.getVersionLiteral(), context);
 	}
 
 	/**
@@ -440,15 +441,14 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	/**
 	 * Artifact metadata needed to build release completion suggestions.
 	 *
-	 * @param artifactReference the resolved artifact whose releases should be
-	 * suggested.
+	 * @param declaration the resolved artifact whose releases should be suggested.
 	 * @param currentVersion the currently declared version, or {@literal null} if
 	 * no current version is available.
 	 * @param versionLiteral the PSI element to replace with the selected lookup
 	 * string, or {@literal null} if insertion is handled elsewhere.
 	 * @param context the dependency context that resolved the artifact.
 	 */
-	public record CompletionMetadata(ArtifactReference artifactReference, @Nullable ArtifactVersion currentVersion,
+	public record CompletionMetadata(ArtifactDeclaration declaration, @Nullable ArtifactVersion currentVersion,
 			@Nullable PsiElement versionLiteral, ProjectDependencyContext context) {
 	}
 

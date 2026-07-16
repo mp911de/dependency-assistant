@@ -33,13 +33,11 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
 import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
-import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import com.intellij.openapi.Disposable;
 import com.intellij.util.EventDispatcher;
@@ -52,17 +50,17 @@ import org.jspecify.annotations.Nullable;
  */
 class UpgradeReview {
 
-	private final List<UpgradeCandidate> candidates;
+	private final List<UpgradeRow> candidates;
 
 	private final List<String> errors;
 
-	private final Map<UpgradeCandidate, UpgradeSelection> selections = new LinkedHashMap<>();
+	private final Map<UpgradeRow, UpgradeSelection> selections = new LinkedHashMap<>();
 
 	private final boolean hasRule;
 
 	private final Set<String> ambiguousArtifactIds = new HashSet<>();
 
-	private final Map<UpgradeCandidate, List<UpgradeCandidate>> sharedPropertyPeers = new HashMap<>();
+	private final Map<UpgradeRow, List<UpgradeRow>> sharedPropertyPeers = new HashMap<>();
 
 	private final EventDispatcher<ReviewListener> listeners = EventDispatcher.create(ReviewListener.class);
 
@@ -72,11 +70,25 @@ class UpgradeReview {
 
 	private final boolean hasSafeVersion;
 
+	UpgradeReview(DependencyUpgradeCandidates result) {
+		this(createRows(result), result.errors());
+	}
+
+	private static List<UpgradeRow> createRows(DependencyUpgradeCandidates result) {
+
+		List<UpgradeRow> rows = new ArrayList<>(result.decisions().size());
+		result.decisions().forEach(decision -> {
+			rows.add(new UpgradeRow(decision, result.assistants().get(decision),
+					result.declaredVersions().get(decision)));
+		});
+		return UpgradeRows.of(rows).toList();
+	}
+
 	/**
 	 * Create a new {@code UpgradeReview}.
 	 * @param candidates the update candidates to display.
 	 */
-	UpgradeReview(UpgradeCandidate... candidates) {
+	UpgradeReview(UpgradeRow... candidates) {
 		this(List.of(candidates), List.of());
 	}
 
@@ -85,15 +97,15 @@ class UpgradeReview {
 	 * @param candidates the update candidates to display.
 	 * @param errors release-fetch errors collected while resolving.
 	 */
-	UpgradeReview(Collection<UpgradeCandidate> candidates, List<String> errors) {
+	UpgradeReview(Collection<UpgradeRow> candidates, List<String> errors) {
 
 		this.candidates = List.copyOf(candidates);
 		this.errors = errors;
 
 		boolean hasRule = false;
 		Set<String> coordinateLabels = new HashSet<>();
-		Map<UpgradeCandidate, Set<String>> versionProperties = new LinkedHashMap<>();
-		for (UpgradeCandidate candidate : candidates) {
+		Map<UpgradeRow, Set<String>> versionProperties = new LinkedHashMap<>();
+		for (UpgradeRow candidate : candidates) {
 
 			if (candidate.getRule().isPresent()) {
 				hasRule = true;
@@ -115,7 +127,7 @@ class UpgradeReview {
 
 		versionProperties.forEach((candidate, propertyNames) -> {
 
-			List<UpgradeCandidate> peers = new ArrayList<>();
+			List<UpgradeRow> peers = new ArrayList<>();
 			versionProperties.forEach((other, otherNames) -> {
 				if (other != candidate && !Collections.disjoint(propertyNames, otherNames)) {
 					peers.add(other);
@@ -129,8 +141,8 @@ class UpgradeReview {
 
 		boolean hasSafeVersion = false;
 
-		for (UpgradeCandidate upgradeCandidate : this.candidates) {
-			if (upgradeCandidate.getUpdateCandidate().isVulnerable()) {
+		for (UpgradeRow upgradeCandidate : this.candidates) {
+			if (upgradeCandidate.getDecision().isVulnerable()) {
 				hasSafeVersion = true;
 				break;
 			}
@@ -144,7 +156,7 @@ class UpgradeReview {
 	 * labeled by its coordinate. Computed once over the full candidate set so
 	 * labels stay stable while filters toggle.
 	 */
-	boolean isAmbiguous(UpgradeCandidate candidate) {
+	boolean isAmbiguous(UpgradeRow candidate) {
 		return !candidate.isLabeledByDependencyName()
 				&& ambiguousArtifactIds.contains(candidate.getArtifactId().artifactId());
 	}
@@ -159,11 +171,11 @@ class UpgradeReview {
 	 * @return the coupled rows in row order; empty when the candidate's version
 	 * properties back no other row.
 	 */
-	List<UpgradeCandidate> getSharedPropertyPeers(UpgradeCandidate candidate) {
+	List<UpgradeRow> getSharedPropertyPeers(UpgradeRow candidate) {
 		return sharedPropertyPeers.getOrDefault(candidate, List.of());
 	}
 
-	public UpgradeSelection getSelection(UpgradeCandidate candidate) {
+	public UpgradeSelection getSelection(UpgradeRow candidate) {
 		return selections.computeIfAbsent(candidate, it -> new UpgradeSelection(it.getCurrentVersion()));
 	}
 
@@ -178,19 +190,19 @@ class UpgradeReview {
 	/**
 	 * Return the candidates currently shown by the dialog under the active filter.
 	 */
-	List<UpgradeCandidate> getCandidates() {
+	List<UpgradeRow> getCandidates() {
 		return candidates.stream().filter(this::isVisible).toList();
 	}
 
 	/**
 	 * Return all candidates regardless of the active visibility filter.
 	 */
-	List<UpgradeCandidate> getAllCandidates() {
+	List<UpgradeRow> getAllCandidates() {
 		return candidates;
 	}
 
-	private boolean isVisible(UpgradeCandidate candidate) {
-		return filter.includes(candidate.getUpdateCandidate());
+	private boolean isVisible(UpgradeRow candidate) {
+		return filter.includes(candidate.getDecision());
 	}
 
 	/**
@@ -198,12 +210,12 @@ class UpgradeReview {
 	 * filter. A vulnerable row's Safe Version is pinned in so it stays selectable
 	 * even when the filter would otherwise hide every newer release.
 	 */
-	public Releases getReleases(UpgradeCandidate candidate) {
-		return filter.visibleReleases(candidate.getUpdateCandidate());
+	public Releases getReleases(UpgradeRow candidate) {
+		return filter.visibleReleases(candidate.getDecision());
 	}
 
-	public UpgradeSuggestions getTargets(UpgradeCandidate candidate) {
-		return filter.visibleTargets(candidate.getUpdateCandidate());
+	public UpgradeSuggestions getTargets(UpgradeRow candidate) {
+		return filter.visibleTargets(candidate.getDecision());
 	}
 
 	/**
@@ -212,16 +224,9 @@ class UpgradeReview {
 	 * consistent with what the buttons and combo offer.
 	 */
 	@Nullable
-	Release resolveTarget(UpgradeCandidate candidate, UpgradeStrategy strategy) {
-		UpgradeSuggestion upgradeSuggestion = getTargets(candidate).get(strategy);
-		if (!upgradeSuggestion.isPresent()) {
-			return null;
-		}
-		Releases releases = getReleases(candidate);
-		if (releases.contains(upgradeSuggestion.getRelease())) {
-			return upgradeSuggestion.getRelease();
-		}
-		return null;
+	Release resolveTarget(UpgradeRow candidate, UpgradeStrategy strategy) {
+		return filter.hideUpToDate() ? candidate.getDecision().resolveDisplayTarget(strategy)
+				: candidate.getDecision().resolveTarget(strategy);
 	}
 
 	/**
@@ -262,7 +267,7 @@ class UpgradeReview {
 	 * cleared.
 	 */
 	@Nullable
-	ArtifactVersion getUpdateTo(UpgradeCandidate candidate) {
+	ArtifactVersion getUpdateTo(UpgradeRow candidate) {
 		return getSelection(candidate).getTargetVersion();
 	}
 
@@ -272,7 +277,7 @@ class UpgradeReview {
 	 * release matches.
 	 */
 	@Nullable
-	Release getSelectedRelease(UpgradeCandidate candidate) {
+	Release getSelectedRelease(UpgradeRow candidate) {
 
 		ArtifactVersion updateTo = getUpdateTo(candidate);
 		ArtifactVersion shown = updateTo != null ? updateTo : candidate.getCurrentVersion();
@@ -283,7 +288,7 @@ class UpgradeReview {
 	 * Return the candidate's selected target version.
 	 * @throws IllegalStateException if no target version is selected.
 	 */
-	ArtifactVersion getRequiredUpdateTo(UpgradeCandidate candidate) {
+	ArtifactVersion getRequiredUpdateTo(UpgradeRow candidate) {
 
 		ArtifactVersion updateTo = getSelection(candidate).getTargetVersion();
 		if (updateTo == null) {
@@ -296,20 +301,21 @@ class UpgradeReview {
 	/**
 	 * Return whether the candidate is selected to be applied.
 	 */
-	boolean isApplyUpdate(UpgradeCandidate candidate) {
+	boolean isApplyUpdate(UpgradeRow candidate) {
 		return getSelection(candidate).isApplyUpdate();
 	}
 
 	/**
 	 * Return the updates for all visible candidates selected to be applied. A
-	 * selected {@link UpgradeGroup} fans out to one update per member coordinate.
+	 * selected {@link UpgradeGroupRow} fans out to one update per member
+	 * coordinate.
 	 *
 	 * @return the updates to apply in row order.
 	 */
 	List<DependencyUpdate> getSelectedUpdates() {
 
 		List<DependencyUpdate> updates = new ArrayList<>();
-		for (UpgradeCandidate candidate : getCandidates()) {
+		for (UpgradeRow candidate : getCandidates()) {
 
 			if (isApplyUpdate(candidate)) {
 				updates.addAll(candidate.createUpdates(getRequiredUpdateTo(candidate)));
@@ -322,15 +328,15 @@ class UpgradeReview {
 	/**
 	 * Select the given target version for the candidate.
 	 */
-	void selectTarget(UpgradeCandidate candidate, ArtifactVersion version) {
-		getSelection(candidate).selectTarget(version);
+	void selectTarget(UpgradeRow candidate, ArtifactVersion version) {
+		getSelection(candidate).selectTarget(candidate.getDecision().selectTarget(version).version());
 		listeners.getMulticaster().changed(ReviewChange.row(candidate));
 	}
 
 	/**
 	 * Select the candidate's target for the given strategy, if one is visible.
 	 */
-	void applyStrategyTarget(UpgradeCandidate candidate, UpgradeStrategy strategy) {
+	void applyStrategyTarget(UpgradeRow candidate, UpgradeStrategy strategy) {
 		if (doApplyStrategyTarget(candidate, strategy)) {
 			listeners.getMulticaster().changed(ReviewChange.row(candidate));
 		}
@@ -347,7 +353,7 @@ class UpgradeReview {
 			return;
 		}
 
-		for (UpgradeCandidate candidate : getCandidates()) {
+		for (UpgradeRow candidate : getCandidates()) {
 			doApplyStrategyTarget(candidate, strategy);
 		}
 		listeners.getMulticaster().changed(ReviewChange.allRows());
@@ -364,7 +370,7 @@ class UpgradeReview {
 	/**
 	 * Set whether the candidate should be applied.
 	 */
-	void setSelected(UpgradeCandidate candidate, boolean apply) {
+	void setSelected(UpgradeRow candidate, boolean apply) {
 		getSelection(candidate).setApplyUpdate(apply);
 		listeners.getMulticaster().changed(ReviewChange.row(candidate));
 	}
@@ -374,20 +380,20 @@ class UpgradeReview {
 	 */
 	void selectAll(boolean apply) {
 
-		for (UpgradeCandidate candidate : getCandidates()) {
+		for (UpgradeRow candidate : getCandidates()) {
 			getSelection(candidate).setApplyUpdate(apply);
 		}
 		listeners.getMulticaster().changed(ReviewChange.allRows());
 	}
 
-	private boolean doApplyStrategyTarget(UpgradeCandidate candidate, UpgradeStrategy strategy) {
+	private boolean doApplyStrategyTarget(UpgradeRow candidate, UpgradeStrategy strategy) {
 
 		Release target = resolveTarget(candidate, strategy);
 		if (target == null) {
 			return false;
 		}
 
-		getSelection(candidate).selectTarget(target.version());
+		getSelection(candidate).selectTarget(candidate.getDecision().selectTarget(target.version()).version());
 		return true;
 	}
 

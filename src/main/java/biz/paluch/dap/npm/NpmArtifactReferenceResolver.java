@@ -21,14 +21,17 @@ import java.util.Optional;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
-import biz.paluch.dap.lookup.LookupContext;
+import biz.paluch.dap.state.GitVersionResolver;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.json.psi.JsonProperty;
 import com.intellij.json.psi.JsonStringLiteral;
 import com.intellij.psi.PsiElement;
+import org.jspecify.annotations.Nullable;
 
 /**
  * {@link ArtifactReferenceResolver} implementation for NPM {@code package.json}
@@ -44,12 +47,16 @@ import com.intellij.psi.PsiElement;
  */
 class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private final LookupContext context;
+	private final GitVersionResolver versionResolver;
+
+	private final @Nullable ProjectState projectState;
 
 	private final NpmProjectContext buildContext;
 
-	NpmArtifactReferenceResolver(LookupContext context, NpmProjectContext buildContext) {
-		this.context = context;
+	NpmArtifactReferenceResolver(GitVersionResolver versionResolver, @Nullable ProjectState projectState,
+			NpmProjectContext buildContext) {
+		this.versionResolver = versionResolver;
+		this.projectState = projectState;
 		this.buildContext = buildContext;
 	}
 
@@ -87,7 +94,7 @@ class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 			if (expression instanceof NpmVersionExpression.Git(
 					NpmVersionExpression.NpmGitRef ref
 			)) {
-				Versioned version = context.versionResolver().resolveLenient(artifactId, ref.committish().text());
+				Versioned version = versionResolver.resolveLenient(artifactId, ref.committish().text());
 				if (version.isVersioned()) {
 					builder.version(version.getVersion());
 					return;
@@ -110,9 +117,11 @@ class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 				}
 			}
 
-			ArtifactVersion version = context.findCurrentVersion(artifactId);
-			if (version != null) {
-				builder.version(version);
+			if (projectState != null) {
+				Dependency dependency = projectState.findDependency(artifactId);
+				if (dependency != null) {
+					builder.version(dependency.getCurrentVersion());
+				}
 			}
 		});
 	}

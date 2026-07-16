@@ -16,28 +16,34 @@
 
 package biz.paluch.dap.plan;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.CvssSeverity;
-import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 
 /**
- * One materialized Upgrade Plan item, pairing its live {@link UpgradeCandidate}
- * with member facts derived at construction and an independently replaceable
- * ticket association. Its serialized counterpart is
- * {@link UpgradePlanState.Item}.
+ * One materialized Upgrade Plan item over persisted member facts, a pinned
+ * target version, and the interface metadata needed to render its icon.
+ * Persisted plan state is resolved into this type by the plan loader.
  *
  * <p>Item identity is the {@link #getId() item id} alone: two items with the
  * same id are equal regardless of their versions or linked ticket. The linked
@@ -51,19 +57,25 @@ class UpgradePlanItem {
 
 	private final ItemId itemId;
 
-	private final UpgradeCandidate candidate;
+	private final List<Dependency> members;
+
+	private final List<InterfaceAssistant> assistants;
 
 	private final String displayName;
 
 	private final AttentionLevel attentionLevel;
 
+	private final boolean vulnerabilityFix;
+
 	private final int vulnerabilityCount;
 
-	private final CvssSeverity highestRatedVulnerabilitySeverity;
+	private final CvssSeverity highestVulnerabilitySeverity;
 
 	private final ArtifactVersion from;
 
 	private final ArtifactVersion to;
+
+	private final Icon icon;
 
 	private final Badge attentionBadge;
 
@@ -72,50 +84,53 @@ class UpgradePlanItem {
 	private @Nullable Badge ticketBadge;
 
 	/**
-	 * Create a materialized item for the given candidate and pinned target version,
-	 * deriving the source version as the oldest current version across the
-	 * candidate's members and the attention level from the version span, or from a
-	 * vulnerability that the upgrade resolves.
+	 * Create a materialized item from persisted state and resolved interface
+	 * metadata, deriving the source version as the oldest current version across
+	 * the members and the attention level from the version span.
 	 *
-	 * @param itemId the stable identity of the item.
-	 * @param candidate the live upgrade candidate, a single dependency or a group.
-	 * @param targetVersion the pinned version the item upgrades to.
+	 * @param itemId the stable item identity.
+	 * @param displayName the captured display name, or {@literal null} to obtain it
+	 * from the first assistant.
+	 * @param to the pinned target version.
+	 * @param vulnerabilityFix whether the target fixes current vulnerabilities.
+	 * @param vulnerabilityCount the captured current vulnerability count.
+	 * @param highestVulnerabilitySeverity the captured highest current severity.
+	 * @param members the reconstructed member dependencies.
+	 * @param assistants the interface metadata resolved for the members, in member
+	 * order.
 	 */
-	UpgradePlanItem(ItemId itemId, UpgradeCandidate candidate, ArtifactVersion targetVersion) {
+	UpgradePlanItem(ItemId itemId, @Nullable String displayName, ArtifactVersion to, boolean vulnerabilityFix,
+			int vulnerabilityCount, CvssSeverity highestVulnerabilitySeverity, List<Dependency> members,
+			List<InterfaceAssistant> assistants) {
+
+		Assert.isTrue(!members.isEmpty(), "Upgrade Plan item requires members");
+		Assert.isTrue(members.size() == assistants.size(),
+				"Each Upgrade Plan member requires interface metadata");
 
 		this.itemId = itemId;
-		this.candidate = candidate;
-		this.displayName = candidate.getRowLabel();
+		this.members = members.stream()
+				.map(member -> Dependency.from(member, member.getCurrentVersion()))
+				.toList();
+		this.assistants = List.copyOf(assistants);
+		this.to = to;
 
-		List<UpgradeCandidate> candidates = candidate instanceof UpgradeGroup group ? group.getMembers()
-				: List.of(candidate);
-
-		this.to = targetVersion;
 		ArtifactVersion from = null;
-
-		Vulnerabilities currentVulnerabilities = Vulnerabilities.clean();
-		Vulnerabilities targetVulnerabilities = Vulnerabilities.clean();
-		for (UpgradeCandidate member : candidates) {
-
-			ArtifactVersion current = member.getCurrentVersion();
-			currentVulnerabilities = currentVulnerabilities.addAll(member.getVulnerabilities(current));
-			targetVulnerabilities = targetVulnerabilities.addAll(member.getVulnerabilities(targetVersion));
-
+		for (Dependency member : members) {
+			ArtifactVersion current = getMemberFromVersion(member);
 			if (from == null || from.isNewer(current)) {
 				from = current;
 			}
 		}
 
-		this.from = from == null ? targetVersion : from;
-		this.attentionLevel = determineAttentionLevel(
-				currentVulnerabilities.isVulnerable() && !targetVulnerabilities.isVulnerable());
-		this.vulnerabilityCount = currentVulnerabilities.size();
-		if (currentVulnerabilities.isVulnerable()) {
-			this.highestRatedVulnerabilitySeverity = currentVulnerabilities.getHighestSeverity();
-		} else {
-			this.highestRatedVulnerabilitySeverity = CvssSeverity.NONE;
-		}
+		this.from = from == null ? to : from;
+		this.displayName = StringUtils.hasText(displayName) ? displayName
+				: assistants.getFirst().getDisplayName(getMemberArtifactId(members.getFirst()));
+		this.vulnerabilityFix = vulnerabilityFix;
+		this.vulnerabilityCount = vulnerabilityCount;
+		this.highestVulnerabilitySeverity = highestVulnerabilitySeverity;
+		this.attentionLevel = determineAttentionLevel();
 		this.attentionBadge = createAttentionBadge();
+		this.icon = assistants.getFirst().getTableIcon(members.getFirst());
 	}
 
 	/**
@@ -126,7 +141,7 @@ class UpgradePlanItem {
 		return switch (this.getAttentionLevel()) {
 		case VULNERABILITY_FIX -> new Badge(MessageBundle.message("plan.badge.cve"), Badge.ColorType.GREEN,
 				MessageBundle.message("plan.badge.cve.tooltip", vulnerabilityCount,
-						highestRatedVulnerabilitySeverity.getLabel()));
+						highestVulnerabilitySeverity.getLabel()));
 		case MAJOR -> new Badge(MessageBundle.message("upgrade-strategy.MAJOR"), Badge.ColorType.AMBER_SECONDARY,
 				MessageBundle.message("plan.badge.major.tooltip"));
 		case MINOR -> new Badge(MessageBundle.message("upgrade-strategy.MINOR"), Badge.ColorType.BLUE_SECONDARY,
@@ -138,12 +153,10 @@ class UpgradePlanItem {
 		};
 	}
 
-	private AttentionLevel determineAttentionLevel(boolean vulnerabilityFix) {
-
+	private AttentionLevel determineAttentionLevel() {
 		if (vulnerabilityFix) {
 			return AttentionLevel.VULNERABILITY_FIX;
 		}
-
 		return switch (VersionAge.between(getFromVersion(), getToVersion())) {
 		case NEWER_MAJOR -> AttentionLevel.MAJOR;
 		case NEWER_MINOR -> AttentionLevel.MINOR;
@@ -156,16 +169,24 @@ class UpgradePlanItem {
 		return itemId;
 	}
 
-	public UpgradeCandidate getUpgradeCandidate() {
-		return candidate;
-	}
-
 	public AttentionLevel getAttentionLevel() {
 		return attentionLevel;
 	}
 
+	boolean isVulnerabilityFix() {
+		return vulnerabilityFix;
+	}
+
+	int getVulnerabilityCount() {
+		return vulnerabilityCount;
+	}
+
+	CvssSeverity getHighestVulnerabilitySeverity() {
+		return highestVulnerabilitySeverity;
+	}
+
 	public Icon getIcon() {
-		return candidate.getTableIcon();
+		return icon;
 	}
 
 	public String getDisplayName() {
@@ -185,15 +206,69 @@ class UpgradePlanItem {
 	}
 
 	public boolean isGroup() {
-		return candidate instanceof UpgradeGroup;
+		return members.size() > 1;
 	}
 
 	/**
-	 * Return the member candidates of a group item, or an empty list for a single
-	 * dependency item.
+	 * Return the persisted member facts of a group item, or an empty list for a
+	 * single dependency item.
+	 *
+	 * @return the group members in persisted order, or an empty list.
 	 */
-	public List<UpgradeCandidate> getMembers() {
-		return candidate instanceof UpgradeGroup group ? group.getMembers() : List.of();
+	public List<Dependency> getMembers() {
+		return isGroup() ? members : List.of();
+	}
+
+	List<Dependency> getStoredMembers() {
+		return members;
+	}
+
+	String getMemberAssistantClassName(int index) {
+		return assistants.get(index).getClass().getName();
+	}
+
+	ArtifactId getMemberArtifactId(Dependency member) {
+		return member.getArtifactId();
+	}
+
+	ArtifactVersion getMemberFromVersion(Dependency member) {
+		return member.getCurrentVersion();
+	}
+
+	String getMemberDisplayName(Dependency member) {
+		return member.getArtifactId().artifactId();
+	}
+
+	/**
+	 * Return the bare property names backing the persisted member versions.
+	 *
+	 * @return the property names in member and source order.
+	 */
+	Set<String> getVersionPropertyNames() {
+
+		Set<String> names = new LinkedHashSet<>();
+		for (Dependency member : members) {
+			for (VersionSource source : member.getVersionSources()) {
+				if (source instanceof VersionSource.VersionProperty property) {
+					names.add(property.getProperty());
+				}
+			}
+		}
+		return names;
+	}
+
+	/**
+	 * Derive the Dependency Site query for all persisted members.
+	 *
+	 * @return the query covering every member artifact and version property.
+	 */
+	DependencySiteQuery toQuery() {
+		return DependencySiteQuery.create(builder -> {
+			for (Dependency member : members) {
+				builder.artifact(getMemberArtifactId(member));
+			}
+			builder.versionProperties(getVersionPropertyNames());
+		});
 	}
 
 	public Badge getAttentionBadge() {
@@ -238,7 +313,12 @@ class UpgradePlanItem {
 	 * target, fanned out to every member for a group item.
 	 */
 	public List<DependencyUpdate> createUpdates() {
-		return candidate.createUpdates(getToVersion());
+
+		List<DependencyUpdate> updates = new ArrayList<>(members.size());
+		for (Dependency member : members) {
+			updates.add(DependencyUpdate.from(member, getToVersion()));
+		}
+		return List.copyOf(updates);
 	}
 
 	@Override

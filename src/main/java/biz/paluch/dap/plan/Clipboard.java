@@ -22,7 +22,7 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.util.List;
 import java.util.StringJoiner;
 
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ide.CopyPasteManager;
@@ -127,15 +127,15 @@ class Clipboard {
 	 */
 	private static String memberLines(UpgradePlanItem item) {
 
-		List<UpgradeCandidate> members = item.getMembers();
+		List<Dependency> members = item.getMembers();
 		if (members.size() < 2) {
 			return "";
 		}
 
 		StringBuilder text = new StringBuilder();
-		for (UpgradeCandidate member : members) {
-			text.append("\n - ").append(member.getArtifactId())
-					.append(' ').append(member.getCurrentVersion()).append(" -> ").append(item.getToVersion());
+		for (Dependency member : members) {
+			text.append("\n - ").append(item.getMemberArtifactId(member))
+					.append(' ').append(item.getMemberFromVersion(member)).append(" -> ").append(item.getToVersion());
 		}
 
 		return text.toString();

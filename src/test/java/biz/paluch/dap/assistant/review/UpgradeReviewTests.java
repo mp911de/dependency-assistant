@@ -18,6 +18,7 @@ package biz.paluch.dap.assistant.review;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -26,18 +27,17 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.action.AppliedDependencyUpdate;
+import biz.paluch.dap.assistant.AppliedDependencyUpdate;
 import biz.paluch.dap.assistant.check.DeclarationSite;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
@@ -63,11 +63,30 @@ class UpgradeReviewTests {
 	private static final ArtifactId ADDON = ArtifactId.of("com.example", "addon");
 
 	@Test
+	void assemblesAndGroupsTransportedDecisions() {
+
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
+		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
+		DependencyUpgradeCandidates transported = new DependencyUpgradeCandidates(
+				List.of(core.getDecision(), test.getDecision()),
+				Map.of(core.getDecision(), core.getInterfaceAssistant(), test.getDecision(),
+						test.getInterfaceAssistant()),
+				Map.of(core.getDecision(), core.getDeclaredVersions(), test.getDecision(), test.getDeclaredVersions()),
+				List.of(), List.of());
+
+		UpgradeReview review = new UpgradeReview(transported);
+
+		assertThat(review.getAllCandidates()).singleElement().isInstanceOfSatisfying(UpgradeGroupRow.class,
+				group -> assertThat(group.getMembers()).extracting(UpgradeRow::getArtifactId)
+						.containsExactly(SPRING_CORE, SPRING_TEST));
+	}
+
+	@Test
 	void groupApplyFansOutToOneUpdatePerMemberCoordinate() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0");
-		UpgradeGroup group = UpgradeGroup.of(core, test);
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
+		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
@@ -84,10 +103,10 @@ class UpgradeReviewTests {
 	@Test
 	void groupFanOutCarriesDriftingMemberCurrentVersion() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0");
-		UpgradeCandidate drifting = candidate(SPRING_TEST, "6.0.9", TestReleases.from("6.0.9", "6.2.1"), "6.2.0",
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
+		UpgradeRow drifting = candidate(SPRING_TEST, "6.0.9", TestReleases.from("6.0.9", "6.2.1"), "6.2.0",
 				"6.0.9");
-		UpgradeGroup group = UpgradeGroup.of(core, drifting);
+		UpgradeGroupRow group = UpgradeGroupRow.governed(core, drifting);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
@@ -102,7 +121,7 @@ class UpgradeReviewTests {
 	@Test
 	void selectedSingleCandidateProducesOneUpdate() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0");
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
@@ -117,7 +136,7 @@ class UpgradeReviewTests {
 	@Test
 	void deselectedCandidateProducesNoUpdate() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0");
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
 		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
@@ -129,9 +148,9 @@ class UpgradeReviewTests {
 	@Test
 	void strategySelectionOnGroupResolvesAgainstIntersectionReleases() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"));
-		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"));
-		UpgradeGroup group = UpgradeGroup.of(core, test);
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"));
+		UpgradeRow test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"));
+		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.LATEST);
@@ -142,9 +161,9 @@ class UpgradeReviewTests {
 	@Test
 	void appliedGroupUpdatesCollapseToOneNotificationEntry() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0");
-		UpgradeGroup group = UpgradeGroup.of(core, test);
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
+		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
 		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
@@ -162,9 +181,9 @@ class UpgradeReviewTests {
 	@Test
 	void ambiguityIsComputedOverFullCandidateSetRegardlessOfFilter() {
 
-		UpgradeCandidate driver = candidate(POSTGRESQL, "6.2.0");
-		UpgradeCandidate testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
-		UpgradeCandidate lettuce = candidate(LETTUCE_CORE, "6.2.0");
+		UpgradeRow driver = candidate(POSTGRESQL, "6.2.0");
+		UpgradeRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
+		UpgradeRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(driver, testcontainer, lettuce);
 
@@ -180,8 +199,8 @@ class UpgradeReviewTests {
 	@Test
 	void rowsLabeledByRuleNameDoNotMakeCoordinatesAmbiguous() {
 
-		UpgradeCandidate driver = candidate(POSTGRESQL, "6.2.0");
-		UpgradeCandidate testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
+		UpgradeRow driver = candidate(POSTGRESQL, "6.2.0");
+		UpgradeRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
 		testcontainer.labelByDependencyName();
 
 		UpgradeReview review = new UpgradeReview(driver, testcontainer);
@@ -192,9 +211,9 @@ class UpgradeReviewTests {
 	@Test
 	void sharedVersionPropertyCrossReferencesCoupledRowsByBareName() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeCandidate addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
-		UpgradeCandidate lettuce = candidate(LETTUCE_CORE, "6.2.0");
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeRow addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
+		UpgradeRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core, addon, lettuce);
 
@@ -206,10 +225,10 @@ class UpgradeReviewTests {
 	@Test
 	void groupCrossReferencesUngovernedRowSharingMemberProperty() {
 
-		UpgradeCandidate core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		UpgradeCandidate test = candidate(SPRING_TEST, "6.2.0");
-		UpgradeGroup group = UpgradeGroup.of(core, test);
-		UpgradeCandidate ungoverned = candidate(ADDON, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		UpgradeRow test = candidate(SPRING_TEST, "6.2.0");
+		UpgradeGroupRow group = UpgradeGroupRow.governed(core, test);
+		UpgradeRow ungoverned = candidate(ADDON, "6.2.0", VersionSource.property("spring.version"));
 
 		UpgradeReview review = new UpgradeReview(group, ungoverned);
 
@@ -225,30 +244,30 @@ class UpgradeReviewTests {
 		return dependency;
 	}
 
-	private static UpgradeCandidate candidate(ArtifactId artifactId, String version) {
+	private static UpgradeRow candidate(ArtifactId artifactId, String version) {
 		return candidate(dependency(artifactId, version, VersionSource.declared(version)));
 	}
 
-	private static UpgradeCandidate candidate(ArtifactId artifactId, String version, VersionSource versionSource) {
+	private static UpgradeRow candidate(ArtifactId artifactId, String version, VersionSource versionSource) {
 		return candidate(dependency(artifactId, version, versionSource));
 	}
 
-	private static UpgradeCandidate candidate(ArtifactId artifactId, String version, Releases releases,
+	private static UpgradeRow candidate(ArtifactId artifactId, String version, Releases releases,
 			String... declaredVersions) {
 
 		Dependency dependency = dependency(artifactId, version, VersionSource.declared(version));
 		return candidate(dependency, releases, declaredVersions(dependency, declaredVersions));
 	}
 
-	private static UpgradeCandidate candidate(Dependency dependency) {
+	private static UpgradeRow candidate(Dependency dependency) {
 		return candidate(dependency, TestReleases.from(dependency.getCurrentVersion().toString(), "6.2.1"),
 				declaredVersions(dependency));
 	}
 
-	private static UpgradeCandidate candidate(Dependency dependency, Releases releases,
+	private static UpgradeRow candidate(Dependency dependency, Releases releases,
 			DeclaredVersions declaredVersions) {
-		return new UpgradeCandidate(
-				new DependencyUpdateCandidate(dependency, releases, VulnerabilityRepository.empty(),
+		return new UpgradeRow(
+				UpgradeDecision.create(dependency, releases, VulnerabilityRepository.empty(),
 						new TestDependencyRule("Spring Framework")),
 				TestInterfaceAssistant.INSTANCE, declaredVersions);
 	}

@@ -33,7 +33,6 @@ import biz.paluch.dap.artifact.TestCache;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VulnerabilityScannerPolicy;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
@@ -65,7 +64,7 @@ class SafeVersionScanEndToEndUnitTests {
 
 		scanCandidates(releases, current, vulnerableVersions("5.0.10", "5.0.11", "5.0.12", "5.1.0", "5.1.1"));
 
-		UpgradeSuggestions suggestions = new UpgradeSuggestionsFactory(new StateService(cache)).createSuggestions(
+		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(
 				new Dependency(ARTIFACT, current), releases,
 				VulnerabilityRepository.of(cache.getVulnerabilities(ARTIFACT)),
 				DependencyRule.absent());

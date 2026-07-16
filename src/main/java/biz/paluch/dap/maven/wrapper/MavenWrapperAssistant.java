@@ -33,9 +33,10 @@ import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
@@ -220,8 +221,9 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			LookupContext context = LookupContext.create(delegate, this);
-			return new VersionUpgradeLookup(context, new MavenWrapperArtifactReferenceResolver());
+			StateService stateService = StateService.getInstance(delegate.getProject());
+			ProjectState projectState = stateService.getProjectState(getProjectId());
+			return new VersionUpgradeLookup(stateService, projectState, new MavenWrapperArtifactReferenceResolver());
 		}
 
 		@Override

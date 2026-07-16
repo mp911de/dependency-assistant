@@ -37,9 +37,9 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.maven.BomUtil;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
@@ -263,8 +263,10 @@ class GradleAssistant implements DependencyAssistant {
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
 			PsiFile psiFile = element.getContainingFile();
-			LookupContext context = LookupContext.create(delegate, this);
-			return new VersionUpgradeLookup(context, new GradleArtifactReferenceResolver(context, psiFile));
+			StateService stateService = StateService.getInstance(delegate.getProject());
+			ProjectState projectState = stateService.getProjectState(getProjectId());
+			return new VersionUpgradeLookup(stateService, projectState,
+					new GradleArtifactReferenceResolver(projectState, psiFile));
 		}
 
 		@Override

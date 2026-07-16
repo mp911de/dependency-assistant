@@ -35,8 +35,8 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
@@ -231,8 +231,10 @@ class MavenAssistant implements DependencyAssistant {
 		private VersionUpgradeLookup createLookup(PsiFile pom) {
 
 			Project project = pom.getProject();
-			LookupContext context = LookupContext.create(project, this);
-			return new VersionUpgradeLookup(context, new MavenArtifactReferenceResolver(context, pom, projectContext));
+			StateService stateService = StateService.getInstance(project);
+			ProjectState projectState = stateService.getProjectState(getProjectId());
+			return new VersionUpgradeLookup(stateService, projectState,
+					new MavenArtifactReferenceResolver(projectState, pom, projectContext));
 		}
 
 		@Override

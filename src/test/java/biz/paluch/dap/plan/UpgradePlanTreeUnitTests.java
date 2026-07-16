@@ -27,6 +27,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.swing.JComponent;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -38,13 +39,11 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.treeStructure.Tree;
@@ -306,11 +305,11 @@ class UpgradePlanTreeUnitTests {
 		dependency.addVersionSource(VersionSource.declared(current.toString()));
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(
 				Map.of(current, Vulnerabilities.clean(), targetVersion, Vulnerabilities.clean()));
-		UpgradeCandidate candidate = new UpgradeCandidate(
-				new DependencyUpdateCandidate(dependency, Releases.just(Release.of(targetVersion)), vulnerabilities),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.of(current));
+		TestUpgradePlanCapture candidate = new TestUpgradePlanCapture(
+				UpgradeDecision.create(dependency, Releases.just(Release.of(targetVersion)), vulnerabilities));
 		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate, targetVersion);
-		return new UpgradePlanItem(stored.getId(), candidate, targetVersion);
+		return Objects.requireNonNull(
+				new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored));
 	}
 
 }

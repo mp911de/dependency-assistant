@@ -102,11 +102,13 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistant = packageDependencies(
-			"assistant", "biz.paluch.dap", "artifact", "checker", "lookup", "rule", "state", "support", "util");
+			"assistant", "biz.paluch.dap", "artifact", "checker", "lookup", "rule", "state", "support", "upgrade",
+			"util");
 
 	@ArchTest
 	ArchRule assistantAction = packageDependencies("assistant.action",
-			"biz.paluch.dap", "artifact", "assistant.check", "assistant.review", "plan", "rule", "state", "support",
+			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "assistant.review", "plan", "rule", "state",
+			"support",
 			"upgrade", "util");
 
 	@ArchTest
@@ -130,7 +132,7 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistantReview = packageDependencies("assistant.review",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "checker", "lookup", "plan", "rule",
+			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "checker", "lookup", "plan", "rule", "state",
 			"support", "upgrade", "util");
 
 	@ArchTest
@@ -148,12 +150,12 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule gradle = packageDependencies("gradle",
-			"biz.paluch.dap", "artifact", "assistant.completion", "assistant.editor", "maven", "state",
+			"biz.paluch.dap", "artifact", "assistant", "assistant.completion", "assistant.editor", "maven", "state",
 			"lookup", "support", "util");
 
 	@ArchTest
 	ArchRule gradleWrapper = packageDependencies("gradle.wrapper",
-			"biz.paluch.dap", "artifact", "assistant.completion", "assistant.editor", "gradle", "state",
+			"biz.paluch.dap", "artifact", "assistant", "assistant.completion", "assistant.editor", "gradle", "state",
 			"lookup", "support", "util");
 
 	@ArchTest
@@ -165,7 +167,7 @@ class ArchitectureTests {
 	@ArchTest
 	ArchRule mavenWrapper = packageDependencies("maven.wrapper",
 			"biz.paluch.dap",
-			"artifact", "assistant.action", "assistant.completion", "state", "lookup", "support",
+			"artifact", "assistant", "assistant", "assistant.completion", "state", "lookup", "support",
 			"util");
 
 	@ArchTest

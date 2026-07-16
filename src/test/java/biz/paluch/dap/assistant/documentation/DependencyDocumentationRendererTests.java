@@ -361,13 +361,13 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private DependencyDocumentationRenderer renderer(@Nullable String currentVersion, boolean linkable) {
-		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache), cache,
+		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
 				DependencyRuleEvaluator.absent(), currentVersion != null ? ArtifactVersion.of(currentVersion) : null,
 				linkable);
 	}
 
 	private DependencyDocumentationRenderer renderer(String currentVersion, DependencyRuleEvaluator evaluator) {
-		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache), cache,
+		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
 				evaluator, ArtifactVersion.of(currentVersion), false);
 	}
 

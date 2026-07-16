@@ -42,13 +42,12 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.VulnerabilitiesRepository;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
-import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -74,9 +73,7 @@ class DependencyDocumentationRenderer {
 
 	private final InterfaceAssistant interfaceAssistant;
 
-	private final VulnerabilitiesRepository advisories;
-
-	private final Cache cache;
+	private final StateService stateService;
 
 	private final DependencyRuleEvaluator evaluator;
 
@@ -87,11 +84,10 @@ class DependencyDocumentationRenderer {
 	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
 
 	DependencyDocumentationRenderer(InterfaceAssistant interfaceAssistant,
-			VulnerabilitiesRepository advisories, Cache cache,
+			StateService stateService,
 			DependencyRuleEvaluator evaluator, @Nullable ArtifactVersion currentVersion, boolean linkable) {
 		this.interfaceAssistant = interfaceAssistant;
-		this.advisories = advisories;
-		this.cache = cache;
+		this.stateService = stateService;
 		this.evaluator = evaluator;
 		this.currentVersion = currentVersion;
 		this.linkable = linkable;
@@ -108,12 +104,10 @@ class DependencyDocumentationRenderer {
 	 */
 	static DependencyDocumentationRenderer from(ArtifactReferenceContext context, boolean linkable) {
 
-		ArtifactDeclaration declaration = context.getDeclaration();
 		ProjectDependencyContext dependencyContext = context.getDependencyContext();
-		ArtifactVersion currentVersion = declaration.isVersionDefined() ? declaration.getVersion() : null;
 		return new DependencyDocumentationRenderer(dependencyContext.getInterfaceAssistant(),
-				context.getStateService(), context.getCache(), context.getEvaluator(),
-				currentVersion, linkable);
+				context.getStateService(), context.getEvaluator(),
+				context.getVersion(), linkable);
 	}
 
 	/**
@@ -134,7 +128,7 @@ class DependencyDocumentationRenderer {
 			content.append(renderCurrentVersion(currentVersion));
 		}
 
-		Releases releases = cache.getReleases(artifactId);
+		Releases releases = stateService.getCache().getReleases(artifactId);
 
 		if (!releases.isEmpty()) {
 			ReleaseDigest digest = ReleaseDigest.of(releases, currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
@@ -156,7 +150,7 @@ class DependencyDocumentationRenderer {
 
 		ArtifactId artifactId = release.artifactId();
 		ArtifactVersion version = release.getVersion().unwrap();
-		Vulnerabilities vulnerabilities = advisories.getVulnerabilities(artifactId,
+		Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId,
 				release.getVersion());
 		VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(), vulnerabilities);
 
@@ -177,7 +171,7 @@ class DependencyDocumentationRenderer {
 		String advisoriesNote = null;
 		if (currentVersion != null && !release.getVersion().matches(currentVersion)) {
 
-			Vulnerabilities currentVulnerabilities = advisories.getVulnerabilities(artifactId, currentVersion);
+			Vulnerabilities currentVulnerabilities = stateService.getVulnerabilities(artifactId, currentVersion);
 			List<Vulnerability> fixed = fixedVulnerabilities(currentVulnerabilities, vulnerabilities);
 			if (!fixed.isEmpty()) {
 				sections.add(section("documentation.release.fixes", fixesCell(fixed, currentVersion)));
@@ -276,7 +270,7 @@ class DependencyDocumentationRenderer {
 
 	private @Nullable Release findRelease(ArtifactId artifactId, ArtifactVersion version) {
 
-		for (Release release : cache.getReleases(artifactId)) {
+		for (Release release : stateService.getCache().getReleases(artifactId)) {
 			if (release.getVersion().matches(version)) {
 				return release;
 			}
@@ -370,7 +364,7 @@ class DependencyDocumentationRenderer {
 			return HtmlChunk.empty();
 		}
 
-		Vulnerabilities vulnerabilities = advisories.getVulnerabilities(artifactId, currentVersion);
+		Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId, currentVersion);
 		return securityAdvisories(vulnerabilities);
 	}
 
@@ -468,7 +462,7 @@ class DependencyDocumentationRenderer {
 			content.append(renderCurrentVersion(currentVersion));
 		}
 
-		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, cache, MAX_VERSIONS,
+		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, stateService.getCache(), MAX_VERSIONS,
 				property.artifacts())) {
 
 			content.append(group.renderHeader());
@@ -525,7 +519,7 @@ class DependencyDocumentationRenderer {
 
 		for (Release release : releases) {
 
-			Vulnerabilities vulnerabilities = advisories.getVulnerabilities(artifactId, release.getVersion());
+			Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId, release.getVersion());
 			VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
 					vulnerabilities);
 			rows.append(new DocumentedRelease(status, artifactId.toString(), release, linkable, withIcons)

@@ -26,13 +26,13 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.action.DependencyCheckTask;
 import biz.paluch.dap.assistant.action.UpgradeRequest;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
@@ -74,22 +74,18 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
-		DependencyUpgradeContext context = DependencyUpgradeContext.from(element, this::getContext);
+		ArtifactReferenceContext context = ArtifactReferenceContext.from(element, this::getContext);
 		if (context.isAbsent()) {
 			return null;
 		}
 
-		ArtifactReference artifactReference = context.getArtifactReference();
-		if (!artifactReference.getDeclaration().isVersionDefined()) {
-			return null;
-		}
 		InterfaceAssistant ui = context.getDependencyContext()
 				.getInterfaceAssistant();
 
 		PsiElement anchor = PsiTreeUtil.getDeepestFirst(element);
 		UpgradeSuggestions suggestions = context.getSuggestions();
 		DependencyRuleEvaluator evaluated = context.getEvaluator();
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
+		ArtifactDeclaration declaration = context.getDeclaration();
 		Vulnerabilities vulnerabilities = context.getCurrentVulnerabilities();
 		boolean vulnerable = vulnerabilities.isVulnerable();
 		VulnerabilitiesPresentation vulnerability = vulnerable ? VulnerabilitiesPresentation.of(vulnerabilities)
@@ -98,7 +94,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		Icon gutterIcon = ui.getGutterIcon(declaration);
 		Icon transparentIcon = evaluated.isPresent() ? gutterIcon : IconLoader.getTransparentIcon(gutterIcon, 0.7f);
 
-		ArtifactId artifactId = artifactReference.getArtifactId();
+		ArtifactId artifactId = context.getArtifactId();
 
 		if (suggestions.isEmpty()) {
 

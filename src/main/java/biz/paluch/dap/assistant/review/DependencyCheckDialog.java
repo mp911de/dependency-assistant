@@ -52,9 +52,8 @@ import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencySiteNavigator;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidates;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
 import biz.paluch.dap.checker.ShieldStyle;
+import biz.paluch.dap.plan.UpgradePlanCapture;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.ReleaseDateFormatter;
@@ -148,7 +147,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		this.project = project;
 		this.files = result.files();
 		this.actions = actions;
-		this.review = new UpgradeReview(result.candidates().toList(), result.errors());
+		this.review = new UpgradeReview(result);
 		this.components = new DependencyCheckComponents(this.review, getDisposable(), this::navigateToSites,
 				this::showContextMenu);
 		setTitle(title);
@@ -165,7 +164,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 */
 	private void updateActions() {
 
-		List<UpgradeCandidate> visible = review.getCandidates();
+		List<UpgradeRow> visible = review.getCandidates();
 		long selected = visible.stream().filter(review::isApplyUpdate).count();
 
 		openInPlanAction.setEnabled(selected > 0);
@@ -176,7 +175,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * Reflect the selected-row count in the OK button; collapses to "All", or "All
 	 * Shown" when a filter hides rows.
 	 */
-	private void updateOkButtonText(List<UpgradeCandidate> visible, long selected) {
+	private void updateOkButtonText(List<UpgradeRow> visible, long selected) {
 
 		if (selected == 0) {
 			setOKButtonText(CommonBundle.getOkButtonText());
@@ -259,7 +258,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		this.components.stopEditing();
 
-		Map<UpgradeCandidate, UpgradeSelection> selection = getSelection();
+		Map<UpgradePlanCapture, UpgradeSelection> selection = getSelection();
 		if (selection.isEmpty()) {
 			return;
 		}
@@ -269,10 +268,10 @@ public class DependencyCheckDialog extends DialogWrapper {
 		close(OK_EXIT_CODE);
 	}
 
-	private Map<UpgradeCandidate, UpgradeSelection> getSelection() {
+	private Map<UpgradePlanCapture, UpgradeSelection> getSelection() {
 
-		Map<UpgradeCandidate, UpgradeSelection> result = new LinkedHashMap<>();
-		for (UpgradeCandidate candidate : review.getCandidates()) {
+		Map<UpgradePlanCapture, UpgradeSelection> result = new LinkedHashMap<>();
+		for (UpgradeRow candidate : review.getCandidates()) {
 			UpgradeSelection selection = review.getSelection(candidate);
 			if (selection.isApplyUpdate()) {
 				result.put(candidate, selection);
@@ -292,7 +291,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 */
 	public void selectCandidate(ArtifactId artifactId) {
 
-		UpgradeCandidate candidate = findCandidate(artifactId);
+		UpgradeRow candidate = findCandidate(artifactId);
 		if (candidate == null) {
 			return;
 		}
@@ -304,9 +303,9 @@ public class DependencyCheckDialog extends DialogWrapper {
 		this.components.select(candidate);
 	}
 
-	private @Nullable UpgradeCandidate findCandidate(ArtifactId artifactId) {
+	private @Nullable UpgradeRow findCandidate(ArtifactId artifactId) {
 
-		for (UpgradeCandidate candidate : review.getAllCandidates()) {
+		for (UpgradeRow candidate : review.getAllCandidates()) {
 			if (represents(candidate, artifactId)) {
 				return candidate;
 			}
@@ -314,13 +313,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 		return null;
 	}
 
-	private static boolean represents(UpgradeCandidate candidate, ArtifactId artifactId) {
+	private static boolean represents(UpgradeRow candidate, ArtifactId artifactId) {
 
 		if (candidate.getArtifactId().equals(artifactId)) {
 			return true;
 		}
 
-		return candidate instanceof UpgradeGroup group
+		return candidate instanceof UpgradeGroupRow group
 				&& group.getMembers().stream().anyMatch(member -> member.getArtifactId().equals(artifactId));
 	}
 
@@ -328,7 +327,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * Run a Dependency Site Find for the double-clicked row and present the result
 	 * for navigation.
 	 */
-	private void navigateToSites(UpgradeCandidate candidate, RelativePoint where) {
+	private void navigateToSites(UpgradeRow candidate, RelativePoint where) {
 		new DependencySiteNavigator(project, getDisposable(), this::doCancelAction, files)
 				.browse(candidate.toQuery(), where);
 	}
@@ -337,7 +336,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * Show the coordinate-column context menu for the right-clicked row: add the
 	 * artifact to {@code dependencyfile.json}, or open the Dependency Sites popup.
 	 */
-	private void showContextMenu(UpgradeCandidate candidate, RelativePoint where) {
+	private void showContextMenu(UpgradeRow candidate, RelativePoint where) {
 
 		DefaultActionGroup group = new DefaultActionGroup();
 		group.add(new AnAction(MessageBundle.message("dialog.action.addToDependencyfile"),
@@ -345,7 +344,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			@Override
 			public void update(AnActionEvent e) {
-				e.getPresentation().setEnabled(actions.canAddToDependencyfile(candidate));
+				e.getPresentation().setEnabled(actions.canAddToDependencyfile(candidate.getMemberDecisions(),
+						candidate.getMemberDependencyNames(), candidate.getDependencyName()));
 			}
 
 			@Override
@@ -356,7 +356,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 			@Override
 			public void actionPerformed(AnActionEvent e) {
 				doCancelAction();
-				actions.addToDependencyfile(candidate);
+				actions.addToDependencyfile(candidate.getMemberDecisions(), candidate.getMemberDependencyNames(),
+						candidate.getDependencyName());
 			}
 
 		});
@@ -392,7 +393,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		private final UpgradeReview review;
 
-		private final ListTableModel<UpgradeCandidate> tableModel;
+		private final ListTableModel<UpgradeRow> tableModel;
 
 		private final DependencyUpdateTable table;
 
@@ -405,8 +406,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 		private @Nullable CopyProvider copyProvider;
 
 		DependencyCheckComponents(UpgradeReview review, Disposable parent,
-				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate,
-				BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu) {
+				BiConsumer<UpgradeRow, RelativePoint> onNavigate,
+				BiConsumer<UpgradeRow, RelativePoint> onContextMenu) {
 			super(new BorderLayout());
 			this.review = review;
 
@@ -438,7 +439,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Nullable
-		UpgradeCandidate getSelectedCandidate() {
+		UpgradeRow getSelectedCandidate() {
 			return table.getSelectedObject();
 		}
 
@@ -456,7 +457,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 					return;
 				}
 
-				UpgradeCandidate candidate = change.candidate();
+				UpgradeRow candidate = change.candidate();
 				if (candidate != null) {
 					int modelRow = tableModel.indexOf(candidate);
 					if (modelRow >= 0) {
@@ -556,12 +557,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 			return JBUI.Panels.simplePanel(warningBanner).withBorder(JBUI.Borders.emptyTop(8));
 		}
 
-		private static void installSpeedSearch(TableView<UpgradeCandidate> table) {
+		private static void installSpeedSearch(TableView<UpgradeRow> table) {
 
-			TableViewSpeedSearch<UpgradeCandidate> speedSearch = new TableViewSpeedSearch<>(table, null) {
+			TableViewSpeedSearch<UpgradeRow> speedSearch = new TableViewSpeedSearch<>(table, null) {
 
 				@Override
-				protected String getItemText(UpgradeCandidate item) {
+				protected String getItemText(UpgradeRow item) {
 					return item.getArtifactId() + " " + item.getDependencyName() + " " + item.getRowLabel();
 				}
 
@@ -612,7 +613,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		/**
 		 * Select and reveal the row of the given candidate.
 		 */
-		void select(UpgradeCandidate candidate) {
+		void select(UpgradeRow candidate) {
 
 			int modelRow = tableModel.indexOf(candidate);
 			if (modelRow < 0) {
@@ -766,22 +767,22 @@ public class DependencyCheckDialog extends DialogWrapper {
 		});
 	}
 
-	static class DependencyUpdateTable extends TableView<UpgradeCandidate> {
+	static class DependencyUpdateTable extends TableView<UpgradeRow> {
 
 		private final UpgradeReview review;
 
-		private final BiConsumer<UpgradeCandidate, RelativePoint> onNavigate;
+		private final BiConsumer<UpgradeRow, RelativePoint> onNavigate;
 
-		private final BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu;
+		private final BiConsumer<UpgradeRow, RelativePoint> onContextMenu;
 
 		/** View row whose strategy strip is hovered, {@code -1} for none. */
 		private int hoveredStrategyRow = -1;
 
 		private @Nullable UpgradeStrategy hoveredStrategy;
 
-		DependencyUpdateTable(ListTableModel<UpgradeCandidate> model, UpgradeReview review,
-				BiConsumer<UpgradeCandidate, RelativePoint> onNavigate,
-				BiConsumer<UpgradeCandidate, RelativePoint> onContextMenu) {
+		DependencyUpdateTable(ListTableModel<UpgradeRow> model, UpgradeReview review,
+				BiConsumer<UpgradeRow, RelativePoint> onNavigate,
+				BiConsumer<UpgradeRow, RelativePoint> onContextMenu) {
 			super(model);
 			this.review = review;
 			this.onNavigate = onNavigate;
@@ -846,7 +847,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			e.consume();
 
-			UpgradeCandidate candidate = coordinateRowAt(e);
+			UpgradeRow candidate = coordinateRowAt(e);
 			if (candidate != null) {
 				onNavigate.accept(candidate, new RelativePoint(this, e.getPoint()));
 			}
@@ -858,7 +859,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				return;
 			}
 
-			UpgradeCandidate candidate = coordinateRowAt(e);
+			UpgradeRow candidate = coordinateRowAt(e);
 			if (candidate != null) {
 				onContextMenu.accept(candidate, new RelativePoint(this, e.getPoint()));
 			}
@@ -868,7 +869,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		 * Return the candidate under the mouse when it hovers the Dependency coordinate
 		 * column, or {@literal null} for any other column or no row.
 		 */
-		private @Nullable UpgradeCandidate coordinateRowAt(MouseEvent e) {
+		private @Nullable UpgradeRow coordinateRowAt(MouseEvent e) {
 
 			Point p = e.getPoint();
 			int row = rowAtPoint(p);
@@ -888,7 +889,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				return super.getToolTipText(event);
 			}
 
-			UpgradeCandidate candidate = ModelUtil.getRow(this, rowAtPoint(event.getPoint()));
+			UpgradeRow candidate = ModelUtil.getRow(this, rowAtPoint(event.getPoint()));
 			Release target = review.resolveTarget(candidate, strategy);
 			if (target == null) {
 				return super.getToolTipText(event);
@@ -980,7 +981,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	}
 
-	static class DependencyCoordinateColumn extends ColumnInfo<UpgradeCandidate, ArtifactId> {
+	static class DependencyCoordinateColumn extends ColumnInfo<UpgradeRow, ArtifactId> {
 
 		static final TextAttributesKey WEAK_WARNING_KEY = HighlightInfoType.WEAK_WARNING.getAttributesKey();
 
@@ -1003,13 +1004,13 @@ public class DependencyCheckDialog extends DialogWrapper {
 			protected void customizeCellRenderer(JTable table, Object value, boolean selected, boolean hasFocus,
 					int row, int column) {
 
-				UpgradeCandidate candidate = ModelUtil.getRow(table, row);
-				List<UpgradeCandidate> peers = review.getSharedPropertyPeers(candidate);
+				UpgradeRow candidate = ModelUtil.getRow(table, row);
+				List<UpgradeRow> peers = review.getSharedPropertyPeers(candidate);
 				boolean waved = !peers.isEmpty() || candidate.getDeclaredVersions().hasDeclarationDrift();
 				append(candidate.getRowLabel(),
 						waved ? SHARED_PROPERTY_ATTRIBUTES : SimpleTextAttributes.REGULAR_ATTRIBUTES);
 
-				if (candidate instanceof UpgradeGroup group) {
+				if (candidate instanceof UpgradeGroupRow group) {
 					append("  (%s)".formatted(group.getMemberLabel()), SimpleTextAttributes.GRAYED_ATTRIBUTES);
 				} else if (review.isAmbiguous(candidate)) {
 					append("  (%s)".formatted(candidate.getArtifactId().groupId()),
@@ -1029,7 +1030,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 			this.review = review;
 		}
 
-		private static String toolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
+		private static String toolTip(UpgradeRow candidate, List<UpgradeRow> peers) {
 			StringBuilder tooltip = new StringBuilder();
 			String toolTipText = candidate.getToolTipText();
 			tooltip.append(toolTipText);
@@ -1050,11 +1051,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 			return "<html>" + tooltip + "</html>";
 		}
 
-		private static String sharedPropertyToolTip(UpgradeCandidate candidate, List<UpgradeCandidate> peers) {
+		private static String sharedPropertyToolTip(UpgradeRow candidate, List<UpgradeRow> peers) {
 
 			Set<String> names = candidate.getVersionPropertyNames();
 			Set<String> shared = new LinkedHashSet<>();
-			for (UpgradeCandidate peer : peers) {
+			for (UpgradeRow peer : peers) {
 				Set<String> peerShared = new LinkedHashSet<>(peer.getVersionPropertyNames());
 				peerShared.retainAll(names);
 				shared.addAll(peerShared);
@@ -1065,7 +1066,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 					"<code>" + String.join(", ", shared) + "</code>")).append("</b>");
 
 			tooltip.append("<ul>");
-			for (UpgradeCandidate peer : peers) {
+			for (UpgradeRow peer : peers) {
 				tooltip.append("<li><code>").append(peer.getRowLabel()).append("</code></li>");
 			}
 
@@ -1073,17 +1074,17 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
-		public ArtifactId valueOf(UpgradeCandidate item) {
+		public ArtifactId valueOf(UpgradeRow item) {
 			return item.getArtifactId();
 		}
 
 		@Override
-		public Comparator<UpgradeCandidate> getComparator() {
-			return Comparator.comparing(UpgradeCandidate::getRowLabel, String.CASE_INSENSITIVE_ORDER);
+		public Comparator<UpgradeRow> getComparator() {
+			return Comparator.comparing(UpgradeRow::getRowLabel, String.CASE_INSENSITIVE_ORDER);
 		}
 
 		@Override
-		public TableCellRenderer getRenderer(UpgradeCandidate item) {
+		public TableCellRenderer getRenderer(UpgradeRow item) {
 			return renderer;
 		}
 
@@ -1094,7 +1095,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	}
 
-	static class CurrentVersionColumn extends ColumnInfo<UpgradeCandidate, ArtifactVersion> {
+	static class CurrentVersionColumn extends ColumnInfo<UpgradeRow, ArtifactVersion> {
 
 		private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
 
@@ -1108,7 +1109,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				super.getTableCellRendererComponent(
 						table, value, isSelected, hasFocus, row, column);
 
-				UpgradeCandidate candidate = ModelUtil.getRow(table, row);
+				UpgradeRow candidate = ModelUtil.getRow(table, row);
 				DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
 				DependencyRuleEvaluator rule = candidate.getRuleEvaluator();
 
@@ -1147,18 +1148,18 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
-		public @Nullable ArtifactVersion valueOf(UpgradeCandidate item) {
+		public @Nullable ArtifactVersion valueOf(UpgradeRow item) {
 			return item.getCurrentVersion();
 		}
 
 		@Override
-		public Comparator<UpgradeCandidate> getComparator() {
-			return Comparator.comparing(UpgradeCandidate::getCurrentVersion,
+		public Comparator<UpgradeRow> getComparator() {
+			return Comparator.comparing(UpgradeRow::getCurrentVersion,
 					Comparator.nullsFirst(Comparator.naturalOrder()));
 		}
 
 		@Override
-		public TableCellRenderer getRenderer(UpgradeCandidate item) {
+		public TableCellRenderer getRenderer(UpgradeRow item) {
 			return renderer;
 		}
 
@@ -1168,7 +1169,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		private static @Nullable String statusTooltip(
-				UpgradeCandidate candidate,
+				UpgradeRow candidate,
 				DependencyRuleEvaluator rule) {
 			StringBuilder tooltip = new StringBuilder();
 			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
@@ -1189,7 +1190,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	}
 
-	static class UpgradeTargetsColumn extends ColumnInfo<UpgradeCandidate, Object> {
+	static class UpgradeTargetsColumn extends ColumnInfo<UpgradeRow, Object> {
 
 		private final UpgradeTargetsRenderer renderer;
 
@@ -1199,12 +1200,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
-		public @Nullable Object valueOf(UpgradeCandidate item) {
+		public @Nullable Object valueOf(UpgradeRow item) {
 			return null;
 		}
 
 		@Override
-		public TableCellRenderer getRenderer(UpgradeCandidate item) {
+		public TableCellRenderer getRenderer(UpgradeRow item) {
 			return renderer;
 		}
 
@@ -1278,7 +1279,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public Component getTableCellRendererComponent(JTable table, @Nullable Object value, boolean isSelected,
 				boolean hasFocus, int row, int column) {
 
-			UpgradeCandidate candidate = ModelUtil.getRow(table, row);
+			UpgradeRow candidate = ModelUtil.getRow(table, row);
 			UpgradeStrategy hovered = table instanceof DependencyUpdateTable updateTable
 					? updateTable.getHoveredStrategy(row)
 					: null;
@@ -1343,7 +1344,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	}
 
-	static class UpdateToColumn extends ColumnInfo<UpgradeCandidate, ArtifactVersion> {
+	static class UpdateToColumn extends ColumnInfo<UpgradeRow, ArtifactVersion> {
 
 		private final UpgradeReview review;
 
@@ -1359,34 +1360,34 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
-		public @Nullable ArtifactVersion valueOf(UpgradeCandidate item) {
+		public @Nullable ArtifactVersion valueOf(UpgradeRow item) {
 			return review.getUpdateTo(item);
 		}
 
 		@Override
-		public Comparator<UpgradeCandidate> getComparator() {
+		public Comparator<UpgradeRow> getComparator() {
 			return Comparator.comparing(review::getUpdateTo, Comparator.nullsFirst(Comparator.naturalOrder()));
 		}
 
 		@Override
-		public TableCellRenderer getRenderer(UpgradeCandidate item) {
+		public TableCellRenderer getRenderer(UpgradeRow item) {
 			return renderer;
 		}
 
 		@Override
-		public TableCellEditor getEditor(UpgradeCandidate item) {
+		public TableCellEditor getEditor(UpgradeRow item) {
 			return editor;
 		}
 
 		@Override
-		public void setValue(UpgradeCandidate item, ArtifactVersion value) {
+		public void setValue(UpgradeRow item, ArtifactVersion value) {
 			if (value != null && !value.matches(review.getUpdateTo(item))) {
 				review.selectTarget(item, value);
 			}
 		}
 
 		@Override
-		public boolean isCellEditable(UpgradeCandidate item) {
+		public boolean isCellEditable(UpgradeRow item) {
 			return true;
 		}
 
@@ -1433,7 +1434,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public Component getTableCellEditorComponent(JTable table, @Nullable Object value, boolean isSelected, int row,
 				int column) {
 
-			UpgradeCandidate candidate = ModelUtil.getRow(table, row);
+			UpgradeRow candidate = ModelUtil.getRow(table, row);
 			optionRenderer.setCandidate(candidate);
 			combo.setFont(table.getFont());
 
@@ -1482,7 +1483,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		public Component getTableCellRendererComponent(JTable table, @Nullable Object value, boolean isSelected,
 				boolean hasFocus, int row, int column) {
 
-			UpgradeCandidate candidate = ModelUtil.getRow(table, row);
+			UpgradeRow candidate = ModelUtil.getRow(table, row);
 			optionRenderer.setCandidate(candidate);
 			combo.setFont(table.getFont());
 
@@ -1499,20 +1500,20 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * List cell renderer that shows an icon (older / newer patch / minor / major)
 	 * plus version text, graying out versions that do not satisfy the dependency
 	 * rule. Options are classified relative to the candidate set via
-	 * {@link #setCandidate(UpgradeCandidate)}.
+	 * {@link #setCandidate(UpgradeRow)}.
 	 */
 	static class VersionOptionCellRenderer extends ColoredListCellRenderer<Release> {
 
 		private final ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 
-		private @Nullable UpgradeCandidate candidate;
+		private @Nullable UpgradeRow candidate;
 
 		VersionOptionCellRenderer() {
 			setIconTextGap(JBUI.scale(4));
 			setBorder(JBUI.Borders.empty());
 		}
 
-		void setCandidate(UpgradeCandidate candidate) {
+		void setCandidate(UpgradeRow candidate) {
 			this.candidate = candidate;
 		}
 
@@ -1541,7 +1542,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	}
 
-	static class DoUpdateColumn extends ColumnInfo<UpgradeCandidate, Boolean> {
+	static class DoUpdateColumn extends ColumnInfo<UpgradeRow, Boolean> {
 
 		private final UpgradeReview review;
 
@@ -1555,27 +1556,27 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		@Override
-		public TableCellRenderer getRenderer(UpgradeCandidate item) {
+		public TableCellRenderer getRenderer(UpgradeRow item) {
 			return renderer;
 		}
 
 		@Override
-		public TableCellEditor getEditor(UpgradeCandidate item) {
+		public TableCellEditor getEditor(UpgradeRow item) {
 			return editor;
 		}
 
 		@Override
-		public Boolean valueOf(UpgradeCandidate item) {
+		public Boolean valueOf(UpgradeRow item) {
 			return review.isApplyUpdate(item);
 		}
 
 		@Override
-		public void setValue(UpgradeCandidate item, Boolean value) {
+		public void setValue(UpgradeRow item, Boolean value) {
 			review.setSelected(item, value);
 		}
 
 		@Override
-		public boolean isCellEditable(UpgradeCandidate item) {
+		public boolean isCellEditable(UpgradeRow item) {
 			return true;
 		}
 

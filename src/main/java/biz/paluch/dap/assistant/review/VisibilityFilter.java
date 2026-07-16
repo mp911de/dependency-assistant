@@ -18,8 +18,8 @@ package biz.paluch.dap.assistant.review;
 
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
 import biz.paluch.dap.support.UpgradeStrategy;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 
@@ -43,37 +43,37 @@ record VisibilityFilter(boolean hideUpToDate) {
 	/**
 	 * Return the release options to show for the given option.
 	 */
-	Releases visibleReleases(DependencyUpdateCandidate option) {
-		return hideUpToDate ? option.getFilteredReleases() : option.getReleases();
+	Releases visibleReleases(UpgradeDecision decision) {
+		return hideUpToDate ? decision.getDisplayReleases() : decision.getReleases();
 	}
 
 	/**
 	 * Return the upgrade targets to show for the given option.
 	 */
-	UpgradeSuggestions visibleTargets(DependencyUpdateCandidate option) {
-		return hideUpToDate ? option.getFilteredTargets() : option.getTargets();
+	UpgradeSuggestions visibleTargets(UpgradeDecision decision) {
+		return hideUpToDate ? decision.getDisplaySuggestions() : decision.getSuggestions();
 	}
 
 	/**
 	 * Return whether the option's row is shown. When hiding up-to-date rows, an
-	 * option is shown only if it has an update candidate and is not preview-only.
+	 * decision is shown only if it has an update target and is not preview-only.
 	 */
-	boolean includes(DependencyUpdateCandidate option) {
+	boolean includes(UpgradeDecision decision) {
 
 		if (!hideUpToDate) {
 			return true;
 		}
 
-		if (option.isVulnerable()) {
+		if (decision.isVulnerable()) {
 			return true;
 		}
 
-		if (!option.hasUpgradeTargets()) {
+		if (!decision.hasUpgradeTargets()) {
 			return false;
 		}
 
-		UpgradeSuggestions targets = option.getTargets();
-		Dependency dependency = option.getDependency();
+		UpgradeSuggestions targets = decision.getSuggestions();
+		Dependency dependency = decision.getDependency();
 		if (dependency.getCurrentVersion().isPreview()) {
 			UpgradeSuggestion release = targets.get(UpgradeStrategy.PREVIEW);
 			if (release.isPresent()) {

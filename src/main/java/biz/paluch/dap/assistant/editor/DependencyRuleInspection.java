@@ -67,18 +67,18 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 			return PsiElementVisitor.EMPTY_VISITOR;
 		}
 
-		return new ArtifactReferenceContextVisitor(context, file) {
+		return new ArtifactReferenceContextVisitor(context) {
 
 			@Override
 			public void visitArtifactReference(PsiElement element, ArtifactReferenceContext artifactContext) {
 
 				ArtifactDeclaration declaration = artifactContext.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();
-				if (versionLiteral == null || !declaration.isVersionDefined()) {
+				if (versionLiteral == null) {
 					return;
 				}
 
-				ArtifactVersion version = declaration.getVersion();
+				ArtifactVersion version = artifactContext.getVersion();
 				DependencyRuleEvaluator evaluator = artifactContext.getEvaluator();
 
 				if (evaluator.test(version)) {

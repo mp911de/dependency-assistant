@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.util.MessageBundle;
@@ -91,12 +90,13 @@ interface PlanAction {
 	 * Create the capture transition that replaces the plan with fresh content built
 	 * from the armed upgrades and the build files they were captured from.
 	 *
-	 * @param upgrades the armed candidates mapped to their pinned target versions.
+	 * @param upgrades the reviewed upgrade captures mapped to their pinned target
+	 * versions.
 	 * @param files the build files the upgrades were captured from.
 	 * @param plan the persisted plan to replace.
 	 * @return the reversible capture transition.
 	 */
-	static PlanAction planUpgrades(Map<UpgradeCandidate, ArtifactVersion> upgrades, List<VirtualFile> files,
+	static PlanAction planUpgrades(Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades, List<VirtualFile> files,
 			UpgradePlanState.Plan plan) {
 		return new PlanUpgrades(upgrades, files, plan);
 	}
@@ -190,10 +190,10 @@ interface PlanAction {
 	enum Materialization {
 
 		/**
-		 * Re-materialize the live plan from persisted state, re-reading releases,
-		 * vulnerabilities, and the build-file scope and rebuilding the tree. Used when
-		 * the item set or scope gains entries that need fresh materialization: capture,
-		 * paste, and discard.
+		 * Re-materialize the live plan from persisted state, resolving interface
+		 * metadata and the build-file scope and rebuilding the tree. Used when the item
+		 * set or scope gains entries that need fresh materialization: capture, paste,
+		 * and discard.
 		 */
 		REBUILD,
 
@@ -384,14 +384,14 @@ interface PlanAction {
 
 		private final Content newContent;
 
-		private PlanUpgrades(Map<UpgradeCandidate, ArtifactVersion> upgrades, List<VirtualFile> files,
+		private PlanUpgrades(Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades, List<VirtualFile> files,
 				UpgradePlanState.Plan plan) {
 			this.plan = plan;
 
 			Content content = new Content();
 			List<Item> items = content.getItems();
-			upgrades.forEach((upgradeCandidate, version) -> {
-				items.add(Item.from(upgradeCandidate, version));
+			upgrades.forEach((capture, version) -> {
+				items.add(Item.from(capture, version));
 			});
 			content.getAffectedFiles()
 					.addAll(files.stream().map(VirtualFile::getPath).toList());

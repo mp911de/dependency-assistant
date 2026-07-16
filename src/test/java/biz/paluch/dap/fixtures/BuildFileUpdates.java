@@ -19,7 +19,7 @@ package biz.paluch.dap.fixtures;
 import java.util.List;
 import java.util.function.BiFunction;
 
-import biz.paluch.dap.assistant.action.BuildActionDelegate;
+import biz.paluch.dap.assistant.review.BuildActionDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.psi.PsiFile;

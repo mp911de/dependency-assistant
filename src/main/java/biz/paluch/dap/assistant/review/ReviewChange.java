@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant.review;
 
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -31,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  * @param reload whether the visible candidate set must be reloaded.
  * @author Mark Paluch
  */
-record ReviewChange(@Nullable UpgradeCandidate candidate, boolean reload) {
+record ReviewChange(@Nullable UpgradeRow candidate, boolean reload) {
 
 	/**
 	 * The visible candidate set changed and must be reloaded.
@@ -43,7 +42,7 @@ record ReviewChange(@Nullable UpgradeCandidate candidate, boolean reload) {
 	/**
 	 * A single candidate's selection changed; refresh its row.
 	 */
-	static ReviewChange row(UpgradeCandidate candidate) {
+	static ReviewChange row(UpgradeRow candidate) {
 		return new ReviewChange(candidate, false);
 	}
 

@@ -24,6 +24,7 @@ import java.util.Map;
 import javax.swing.Icon;
 
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -195,12 +196,12 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 
 				super.visitElement(element);
 
-				DependencyUpgradeContext context = DependencyUpgradeContext.from(element);
+				ArtifactReferenceContext context = ArtifactReferenceContext.from(element);
 				if (context.isAbsent()) {
 					return;
 				}
 
-				ArtifactDeclaration declaration = context.getArtifactReference().getDeclaration();
+				ArtifactDeclaration declaration = context.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();
 				if (versionLiteral == null || !file.equals(versionLiteral.getContainingFile())) {
 					return;
@@ -208,7 +209,7 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 
 				for (UpgradeSuggestion suggestion : context.getSuggestions().getSuggestions()) {
 					if (suggestion.getStrategy() == strategy) {
-						DependencyUpdate update = DependencyUpdate.from(context.getArtifactReference(), suggestion);
+						DependencyUpdate update = DependencyUpdate.from(declaration, suggestion);
 						updates.putIfAbsent(versionLiteral, update);
 						return;
 					}

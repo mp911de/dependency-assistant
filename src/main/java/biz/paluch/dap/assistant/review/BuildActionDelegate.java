@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.action;
+package biz.paluch.dap.assistant.review;
 
 import java.util.Collection;
 import java.util.List;
@@ -22,6 +22,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.upgrade.BuildFileUpdater;

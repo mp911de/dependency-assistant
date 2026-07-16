@@ -20,7 +20,9 @@ import java.util.function.Function;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -29,10 +31,11 @@ import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.upgrade.UpgradeSuggestions;
+import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
@@ -40,39 +43,47 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
 
 /**
- * Resolved context for one {@link ArtifactReference}, built from the
+ * Resolution context for one {@link ArtifactReference}, built from the
  * {@link PsiElement} under a dependency declaration in a build file.
+ *
+ * <p>Resolution always returns a context. Callers use {@link #isPresent()} or
+ * {@link #isAbsent()} to distinguish a resolved, version-defined declaration
+ * from an element that cannot participate in dependency operations.
  *
  * @author Mark Paluch
  */
 public class ArtifactReferenceContext {
 
-	private static final ArtifactReferenceContext ABSENT = new ArtifactReferenceContext(
-			ProjectDependencyContext.absent(), new StateService(), ArtifactReference.unresolved(),
-			DependencyRuleEvaluator.absent());
+	private static final ArtifactReferenceContext ABSENT = new ArtifactReferenceContext();
 
 	private final ProjectDependencyContext dependencyContext;
 
-	private final StateService stateService;
+	private final @Nullable StateService stateService;
 
 	private final @Nullable ArtifactDeclaration declaration;
 
-	private final ArtifactReference artifactReference;
-
 	private final DependencyRuleEvaluator evaluator;
 
-	private final Releases releases;
+	private @Nullable Releases releases;
+
+	private @Nullable UpgradeSuggestions suggestions;
+
+	private ArtifactReferenceContext() {
+		this.dependencyContext = ProjectDependencyContext.absent();
+		this.stateService = null;
+		this.declaration = null;
+		this.evaluator = DependencyRuleEvaluator.absent();
+		this.releases = null;
+	}
 
 	ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,
-			ArtifactReference artifactReference, DependencyRuleEvaluator evaluator) {
+			ArtifactDeclaration declaration, DependencyRuleEvaluator evaluator) {
+		Assert.isTrue(declaration.isVersionDefined(), "Artifact declaration must define a version");
 		this.dependencyContext = dependencyContext;
 		this.stateService = stateService;
-		this.declaration = artifactReference.isResolved() ? artifactReference.getDeclaration() : null;
-		this.artifactReference = artifactReference;
+		this.declaration = declaration;
 		this.evaluator = evaluator;
-		this.releases = artifactReference.isResolved()
-				? stateService.getCache().getReleases(artifactReference.getArtifactId())
-				: Releases.empty();
+		this.releases = null;
 	}
 
 	/**
@@ -111,18 +122,22 @@ public class ArtifactReferenceContext {
 
 		VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
-		if (!artifactReference.isResolved() || !artifactReference.getDeclaration().isVersionDefined()) {
+		if (!artifactReference.isResolved()) {
+			return ABSENT;
+		}
+		ArtifactDeclaration declaration = artifactReference.getDeclaration();
+		if (!declaration.isVersionDefined()) {
 			return ABSENT;
 		}
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(element.getProject());
-		ResolutionContext resolutionContext = ResolutionContext.forReference(artifactReference,
+		ResolutionContext resolutionContext = ResolutionContext.forDeclaration(declaration,
 				BranchSource.of(element),
 				context.getProjectVersion());
 		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.evaluate(ruleService, resolutionContext,
-				artifactReference.getDeclaration().getVersion());
+				declaration.getVersion());
 		StateService stateService = lookup.getStateService();
-		return new ArtifactReferenceContext(context, stateService, artifactReference, evaluator);
+		return new ArtifactReferenceContext(context, stateService, declaration, evaluator);
 	}
 
 	/**
@@ -130,7 +145,7 @@ public class ArtifactReferenceContext {
 	 * {@code false} otherwise.
 	 */
 	public boolean isPresent() {
-		return artifactReference.isResolved();
+		return declaration != null;
 	}
 
 	/**
@@ -145,13 +160,35 @@ public class ArtifactReferenceContext {
 		return dependencyContext;
 	}
 
-	public ArtifactReference getArtifactReference() {
-		return artifactReference;
+	/**
+	 * Return the artifact id of the resolved declaration.
+	 *
+	 * @return the resolved artifact id.
+	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
+	 */
+	public ArtifactId getArtifactId() {
+		return getDeclaration().getArtifactId();
 	}
 
+	/**
+	 * Return the resolved artifact declaration.
+	 *
+	 * @return the declaration represented by this context.
+	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
+	 */
 	public ArtifactDeclaration getDeclaration() {
-		Assert.state(isPresent(), "No declaration on absent ArtifactReferenceContext");
+		Assert.state(declaration != null, "No declaration on absent ArtifactReferenceContext");
 		return declaration;
+	}
+
+	/**
+	 * Return the version of the resolved declaration.
+	 *
+	 * @return the non-null version established by {@link #from(PsiElement)}.
+	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
+	 */
+	public ArtifactVersion getVersion() {
+		return getDeclaration().getVersion();
 	}
 
 	public DependencyRuleEvaluator getEvaluator() {
@@ -159,16 +196,39 @@ public class ArtifactReferenceContext {
 	}
 
 	public Releases getReleases() {
+
+		if (isAbsent()) {
+			return Releases.empty();
+		}
+		if (releases == null) {
+			releases = getStateService().getCache().getReleases(getArtifactId());
+		}
 		return releases;
 	}
 
 	/**
-	 * Return the {@link Cache} backing.
+	 * Return upgrade suggestions for the resolved declaration.
 	 *
-	 * @return the backing cache.
+	 * <p>Suggestions are computed when first requested so reference-only editor
+	 * surfaces do not pay for upgrade policy evaluation.
+	 *
+	 * @return the computed suggestions, or empty suggestions when this context is
+	 * absent.
 	 */
-	public Cache getCache() {
-		return stateService.getCache();
+	public UpgradeSuggestions getSuggestions() {
+
+		if (isAbsent()) {
+			return UpgradeSuggestions.empty();
+		}
+		if (!getDeclaration().hasVersionSource()) {
+			return UpgradeSuggestions.empty();
+		}
+		if (suggestions == null) {
+			Dependency dependency = getDeclaration().toDependency();
+			suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, getReleases(),
+					version -> getStateService().getVulnerabilities(getArtifactId(), version), evaluator.getRule());
+		}
+		return suggestions;
 	}
 
 	/**
@@ -177,8 +237,10 @@ public class ArtifactReferenceContext {
 	 * cache state.
 	 *
 	 * @return the backing state service.
+	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
 	 */
 	public StateService getStateService() {
+		Assert.state(stateService != null, "No state service on absent ArtifactReferenceContext");
 		return stateService;
 	}
 
@@ -194,11 +256,7 @@ public class ArtifactReferenceContext {
 		if (isAbsent()) {
 			return Vulnerabilities.absent();
 		}
-		ArtifactDeclaration declaration = getDeclaration();
-		if (!declaration.isVersionDefined()) {
-			return Vulnerabilities.absent();
-		}
-		return getVulnerabilities(declaration.getVersion());
+		return getVulnerabilities(getVersion());
 	}
 
 	/**
@@ -210,10 +268,10 @@ public class ArtifactReferenceContext {
 	 * scanned.
 	 */
 	public Vulnerabilities getVulnerabilities(ArtifactVersion artifactVersion) {
-		if (!artifactReference.isResolved()) {
+		if (isAbsent()) {
 			return Vulnerabilities.absent();
 		}
-		return stateService.getVulnerabilities(artifactReference.getArtifactId(), artifactVersion);
+		return getStateService().getVulnerabilities(getArtifactId(), artifactVersion);
 	}
 
 	/**
@@ -224,10 +282,7 @@ public class ArtifactReferenceContext {
 	 */
 	public VersionStatus getStatus(ArtifactVersion artifactVersion) {
 
-		ArtifactVersion currentVersion = null;
-		if (isPresent() && getDeclaration().isVersionDefined()) {
-			currentVersion = getDeclaration().getVersion();
-		}
+		ArtifactVersion currentVersion = isPresent() ? getVersion() : null;
 
 		return VersionStatus.of(evaluator, currentVersion, artifactVersion, getVulnerabilities(artifactVersion));
 	}
@@ -254,7 +309,7 @@ public class ArtifactReferenceContext {
 
 	@Override
 	public String toString() {
-		return artifactReference.toString();
+		return declaration == null ? "Absent" : "Resolved: " + declaration;
 	}
 
 }

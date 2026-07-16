@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.ticket.Label;
@@ -295,9 +294,8 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Reload the live plan from persisted state, reading releases, vulnerabilities,
-	 * and rules fresh from the project caches, and resolving the build-file scope
-	 * retaining the current {@link PlanGeneration}.
+	 * Reload the live plan from persisted state, resolving interface metadata and
+	 * the build-file scope while retaining the current {@link PlanGeneration}.
 	 *
 	 * @return the reloaded plan items in order.
 	 */
@@ -307,7 +305,7 @@ public final class UpgradePlanService implements Disposable {
 
 			Snapshot snapshot = state.doWithContent(Snapshot::new);
 			FileScope scope = FileScope.from(snapshot.content().getAffectedFiles());
-			UpgradePlanLoader loader = new UpgradePlanLoader(project, scope, ticketSystem);
+			UpgradePlanLoader loader = new UpgradePlanLoader(ticketSystem);
 
 			for (Item item : snapshot.content()) {
 				item.setMaterialized(loader.create(item));
@@ -331,10 +329,10 @@ public final class UpgradePlanService implements Disposable {
 	/**
 	 * Capture the armed upgrades into a fresh plan, discarding any previous plan.
 	 * The front door of the review transfer: the persisted shape is derived here,
-	 * so callers hand over live candidates and their pinned targets, not stored
+	 * so callers hand over reviewed captures and their pinned targets, not stored
 	 * state.
 	 */
-	void planUpgrades(Map<UpgradeCandidate, ArtifactVersion> upgrades, List<VirtualFile> files) {
+	void planUpgrades(Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades, List<VirtualFile> files) {
 		execute(PlanAction.planUpgrades(upgrades, files, getPlan()));
 	}
 

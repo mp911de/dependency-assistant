@@ -30,8 +30,9 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.state.GitVersionResolver;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
@@ -211,8 +212,11 @@ public class AntoraAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			LookupContext context = LookupContext.create(delegate, this);
-			return new VersionUpgradeLookup(context, new AntoraArtifactReferenceResolver(context, projectContext));
+			StateService stateService = StateService.getInstance(delegate.getProject());
+			ProjectState projectState = stateService.getProjectState(getProjectId());
+			GitVersionResolver versionResolver = new GitVersionResolver(stateService.getCache());
+			return new VersionUpgradeLookup(stateService, projectState,
+					new AntoraArtifactReferenceResolver(versionResolver, projectContext));
 		}
 
 		@Override

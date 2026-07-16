@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.action;
+package biz.paluch.dap.assistant;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -142,7 +142,7 @@ public class Notifications {
 	 * @param undo reverses the whole batch through the platform undo.
 	 * @param undoFlagged reverse-applies only the flagged entries.
 	 */
-	static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates,
+	public static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates,
 			Runnable undo, Runnable undoFlagged) {
 
 		if (updates.isEmpty()) {

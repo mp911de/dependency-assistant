@@ -18,7 +18,6 @@ package biz.paluch.dap.assistant.review;
 
 import javax.swing.JTable;
 
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import com.intellij.util.ui.SortableColumnModel;
 
 /**
@@ -29,13 +28,13 @@ import com.intellij.util.ui.SortableColumnModel;
 class ModelUtil {
 
 	/**
-	 * Return the {@link UpgradeCandidate} row backing the given view row.
+	 * Return the {@link UpgradeRow} row backing the given view row.
 	 * @param viewRow row index in view coordinates (e.g. from renderer/editor),
 	 * respects row sorter.
 	 */
-	static UpgradeCandidate getRow(JTable table, int viewRow) {
+	static UpgradeRow getRow(JTable table, int viewRow) {
 		int modelRow = table.convertRowIndexToModel(viewRow);
-		return (UpgradeCandidate) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);
+		return (UpgradeRow) ((SortableColumnModel) table.getModel()).getRowValue(modelRow);
 	}
 
 }

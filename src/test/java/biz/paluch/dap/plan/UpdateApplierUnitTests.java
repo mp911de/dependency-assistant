@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -26,9 +27,6 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
@@ -38,6 +36,7 @@ import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Plan;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.command.impl.UndoManagerImpl;
 import com.intellij.openapi.command.undo.UndoManager;
@@ -66,8 +65,8 @@ class UpdateApplierUnitTests {
 	@Test
 	void appliesSeveralItemsAsSeparatePlatformUndoSteps(Project project) throws Exception {
 
-		UpgradeCandidate alpha = candidate("alpha");
-		UpgradeCandidate bravo = candidate("bravo");
+		TestUpgradePlanCapture alpha = candidate("alpha");
+		TestUpgradePlanCapture bravo = candidate("bravo");
 		List<UpgradePlanItem> items = materializedItems(project, alpha, bravo);
 		UpgradePlanItem first = items.get(0);
 		UpgradePlanItem second = items.get(1);
@@ -107,26 +106,26 @@ class UpdateApplierUnitTests {
 		assertThat(engine.document.getText()).isEqualTo("before applied applied");
 	}
 
-	private static UpgradeCandidate candidate(String name) {
+	private static TestUpgradePlanCapture candidate(String name) {
 
 		Dependency dependency = new Dependency(ArtifactId.of("org.example", name), CURRENT);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(VersionSource.declared(CURRENT.toString()));
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(
 				Map.of(CURRENT, Vulnerabilities.clean(), TARGET, Vulnerabilities.clean()));
-		return new UpgradeCandidate(
-				new DependencyUpdateCandidate(dependency, Releases.just(Release.of(TARGET)), vulnerabilities),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.of(CURRENT));
+		return new TestUpgradePlanCapture(
+				UpgradeDecision.create(dependency, Releases.just(Release.of(TARGET)), vulnerabilities));
 	}
 
-	private static List<UpgradePlanItem> materializedItems(Project project, UpgradeCandidate... candidates) {
+	private static List<UpgradePlanItem> materializedItems(Project project, TestUpgradePlanCapture... candidates) {
 
 		Content content = new Content();
 		content.getAffectedFiles().add("pom.xml");
 		List<UpgradePlanItem> items = new java.util.ArrayList<>();
-		for (UpgradeCandidate candidate : candidates) {
+		for (TestUpgradePlanCapture candidate : candidates) {
 			Item stored = Item.from(candidate, TARGET);
-			UpgradePlanItem item = new UpgradePlanItem(stored.getId(), candidate, TARGET);
+			UpgradePlanItem item = Objects.requireNonNull(
+					new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored));
 			stored.setMaterialized(item);
 			content.getItems().add(stored);
 			items.add(item);

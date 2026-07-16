@@ -28,7 +28,6 @@ import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.DependencySearchResults;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.SiteRole;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -72,23 +71,24 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private final @Nullable ProjectState projectState;
 
 	/**
-	 * Create a resolver for the given context and build context.
+	 * Create a resolver for the given project state and file.
 	 *
-	 * @param context the shared per-file resolution environment.
+	 * @param projectState the project dependency state, or {@literal null} if it is
+	 * unavailable.
 	 * @param file the Gradle-related file to inspect.
 	 */
-	GradleArtifactReferenceResolver(LookupContext context, PsiFile file) {
+	GradleArtifactReferenceResolver(@Nullable ProjectState projectState, PsiFile file) {
 
 		this.file = file;
 		this.candidate = GradleUtils.isGradleFile(file);
-		this.projectState = context.projectState();
+		this.projectState = projectState;
 		this.propertyResolver = GradlePropertyResolver.create(file);
 		this.registry = VersionCatalogRegistry.from(file);
 		this.groovyLocator = new GroovyArtifactReferenceLocator(this.propertyResolver, this.registry,
-				context.projectState());
+				projectState);
 		this.kotlinLocator = new KotlinArtifactReferenceLocator(this.propertyResolver, this.registry,
-				context.projectState());
-		this.tomlLocator = new TomlArtifactReferenceLocator(context.projectState());
+				projectState);
+		this.tomlLocator = new TomlArtifactReferenceLocator(projectState);
 	}
 
 	@Override

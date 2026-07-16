@@ -122,10 +122,8 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 			UpgradeSuggestions suggestions) {
 
 		Dependency dependency = new Dependency(ARTIFACT, version(current));
-		DependencyUpgradeSubject subject = DependencyUpgradeSubject.of(dependency, releases, vulnerabilities,
-				DependencyRule.absent());
-
-		return filter.filter(subject, suggestions);
+		return filter.filter(dependency, releases.withVersion(dependency.getCurrentVersion()), vulnerabilities,
+				DependencyRule.absent(), suggestions);
 	}
 
 	private static VulnerabilityRepository scanResults(Releases releases, String... vulnerable) {

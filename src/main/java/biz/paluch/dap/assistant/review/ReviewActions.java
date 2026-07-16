@@ -20,8 +20,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
+import biz.paluch.dap.plan.UpgradePlanCapture;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.vfs.VirtualFile;
 
@@ -31,17 +32,18 @@ import com.intellij.openapi.vfs.VirtualFile;
  *
  * @author Mark Paluch
  */
+// TODO: Remove
 public interface ReviewActions {
 
 	/**
 	 * Return whether the candidate can be added to {@code dependencyfile.json}.
 	 */
-	boolean canAddToDependencyfile(UpgradeCandidate candidate);
+	boolean canAddToDependencyfile(List<UpgradeDecision> decisions, List<String> memberNames, String dependencyName);
 
 	/**
 	 * Add the candidate to {@code dependencyfile.json}.
 	 */
-	void addToDependencyfile(UpgradeCandidate candidate);
+	void addToDependencyfile(List<UpgradeDecision> decisions, List<String> memberNames, String dependencyName);
 
 	/**
 	 * Apply the selected updates to the reviewed files.
@@ -62,6 +64,6 @@ public interface ReviewActions {
 	 * @param files    the build files in the reviewed scope, as paths, that
 	 *                 become the plan's scope.
 	 */
-	void openInUpgradePlan(Map<UpgradeCandidate, UpgradeSelection> upgrades, List<VirtualFile> files);
+	void openInUpgradePlan(Map<UpgradePlanCapture, UpgradeSelection> upgrades, List<VirtualFile> files);
 
 }

@@ -20,12 +20,12 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
-import com.intellij.psi.PsiFile;
 
 /**
  * {@link PsiElementVisitor} base that resolves visited version elements to an
  * {@link ArtifactReferenceContext} and forwards each resolved reference to
  * {@link #visitArtifactReference(PsiElement, ArtifactReferenceContext)}.
+ *
  * @author Mark Paluch
  * @see ProjectDependencyContext
  * @see ArtifactReference
@@ -35,13 +35,12 @@ public class ArtifactReferenceContextVisitor extends PsiElementVisitor {
 	private final ProjectDependencyContext dependencyContext;
 
 	/**
-	 * Create a new {@code ArtifactReferenceContextVisitor} for the given file.
+	 * Create a new {@code ArtifactReferenceContextVisitor}.
 	 *
 	 * @param dependencyContext the build-tool context used to recognize version
 	 * elements and resolve them to artifact references.
-	 * @param file the file whose elements are visited.
 	 */
-	public ArtifactReferenceContextVisitor(ProjectDependencyContext dependencyContext, PsiFile file) {
+	public ArtifactReferenceContextVisitor(ProjectDependencyContext dependencyContext) {
 		this.dependencyContext = dependencyContext;
 	}
 
@@ -56,10 +55,6 @@ public class ArtifactReferenceContextVisitor extends PsiElementVisitor {
 	 */
 	@Override
 	public void visitElement(PsiElement element) {
-
-		if (!dependencyContext.isVersionElement(element)) {
-			return;
-		}
 
 		ArtifactReferenceContext context = ArtifactReferenceContext.from(element, it -> dependencyContext);
 		if (context.isAbsent()) {

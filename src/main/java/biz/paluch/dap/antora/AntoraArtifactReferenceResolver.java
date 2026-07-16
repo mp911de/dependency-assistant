@@ -21,7 +21,6 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
@@ -45,17 +44,17 @@ import org.jspecify.annotations.Nullable;
  */
 class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private final LookupContext context;
+	private final GitVersionResolver versionResolver;
 
 	private final AntoraProjectContext buildContext;
 
 	/**
 	 * Create a resolver for the given context and build context.
-	 * @param context the shared per-file resolution environment.
+	 * @param versionResolver the cached Git-ref resolver.
 	 * @param buildContext the Antora playbook context.
 	 */
-	AntoraArtifactReferenceResolver(LookupContext context, AntoraProjectContext buildContext) {
-		this.context = context;
+	AntoraArtifactReferenceResolver(GitVersionResolver versionResolver, AntoraProjectContext buildContext) {
+		this.versionResolver = versionResolver;
 		this.buildContext = buildContext;
 	}
 
@@ -84,7 +83,7 @@ class AntoraArtifactReferenceResolver implements ArtifactReferenceResolver {
 					.declarationElement(scalar)
 					.versionLiteral(scalar);
 
-			Versioned version = context.versionResolver().resolveLenient(artifactId, bundleUrl.version());
+			Versioned version = versionResolver.resolveLenient(artifactId, bundleUrl.version());
 			if (version.isVersioned()) {
 				builder.version(version.getVersion());
 			}

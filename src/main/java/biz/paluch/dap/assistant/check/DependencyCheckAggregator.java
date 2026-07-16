@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
+import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclaredDependency;
@@ -45,9 +46,7 @@ import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.upgrade.DependencyUpgradeSubject;
-import biz.paluch.dap.upgrade.UpgradeSuggestions;
-import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -233,11 +232,11 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	public DependencyUpgradeCandidates toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
 			DependencyRuleService evaluator) {
 
-		List<UpgradeCandidate> candidates = new ArrayList<>();
+		List<UpgradeDecision> decisions = new ArrayList<>();
+		Map<UpgradeDecision, InterfaceAssistant> assistants = new LinkedHashMap<>();
+		Map<UpgradeDecision, DeclaredVersions> declaredVersionFacts = new LinkedHashMap<>();
 		List<String> errors = getErrors(releases);
 		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, service);
-		UpgradeSuggestionsFactory suggestionsFactory = new UpgradeSuggestionsFactory(service);
-
 		entries.forEach((pkg, entry) -> {
 
 			ArtifactId artifactId = pkg.getArtifactId();
@@ -270,19 +269,16 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 			VulnerabilityRepository vulnerabilities = getVulnerabilities(pkg, scanner);
 
-			DependencyUpgradeSubject subject = DependencyUpgradeSubject.of(dependency, lookup.releases(),
-					vulnerabilities, rule);
-			UpgradeSuggestions suggestions = suggestionsFactory.createSuggestions(subject);
-
-			DependencyUpdateCandidate option = new DependencyUpdateCandidate(subject, suggestions);
-			candidates.add(new UpgradeCandidate(option,
-					entry.contexts().iterator().next()
-							.getInterfaceAssistant(), declaredVersions));
+			UpgradeDecision decision = UpgradeDecision.create(dependency, lookup.releases(), vulnerabilities, rule);
+			decisions.add(decision);
+			assistants.put(decision, entry.contexts().iterator().next().getInterfaceAssistant());
+			declaredVersionFacts.put(decision, declaredVersions);
 		});
 
-		candidates.sort(Comparator.comparing(UpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
+		decisions.sort(Comparator.comparing(UpgradeDecision::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
-		return new DependencyUpgradeCandidates(UpgradeGroups.of(candidates), new ArrayList<>(files), errors);
+		return new DependencyUpgradeCandidates(decisions, assistants, declaredVersionFacts, new ArrayList<>(files),
+				errors);
 	}
 
 	private VulnerabilityRepository getVulnerabilities(PackageIdentity pkg,

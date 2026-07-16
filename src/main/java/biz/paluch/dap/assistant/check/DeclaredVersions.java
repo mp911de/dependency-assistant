@@ -58,7 +58,6 @@ import org.springframework.util.Assert;
  * @param entries the sortable declaration entries used for conflict display.
  * @param declarationEntries the sortable declaration-style entries used for
  * drift display.
- * @see UpgradeCandidate
  */
 public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries,
 		Set<DeclarationDrift> declarationEntries) {
@@ -93,6 +92,25 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
 		versions.add(version);
 		return new DeclaredVersions(versions, Set.of(), Set.of());
+	}
+
+	/**
+	 * Merge declared-version and drift facts from several dependencies.
+	 *
+	 * @param declaredVersions the declared-version facts to merge.
+	 * @return one result containing all distinct versions and drift entries.
+	 */
+	public static DeclaredVersions merge(Collection<DeclaredVersions> declaredVersions) {
+
+		Set<ArtifactVersion> versions = new TreeSet<>(Comparator.reverseOrder());
+		Set<VersionDrift> entries = new TreeSet<>();
+		Set<DeclarationDrift> declarationEntries = new TreeSet<>();
+		for (DeclaredVersions declared : declaredVersions) {
+			versions.addAll(declared.versions());
+			entries.addAll(declared.entries());
+			declarationEntries.addAll(declared.declarationEntries());
+		}
+		return new DeclaredVersions(versions, entries, declarationEntries);
 	}
 
 	/**
@@ -248,7 +266,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 * @return {@literal true} if at least one version was found; {@literal false}
 	 * otherwise.
 	 */
-	boolean hasVersion() {
+	public boolean hasVersion() {
 		return !versions.isEmpty();
 	}
 

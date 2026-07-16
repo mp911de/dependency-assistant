@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
 import biz.paluch.dap.support.ArtifactDeclaration;
@@ -49,14 +50,14 @@ public class DependencyVersionAnnotator implements Annotator {
 	@Override
 	public void annotate(PsiElement element, AnnotationHolder holder) {
 
-		DependencyUpgradeContext context = DependencyUpgradeContext.from(element);
+		ArtifactReferenceContext context = ArtifactReferenceContext.from(element);
 
 		if (context.isAbsent()) {
 			return;
 		}
 
 		UpgradeSuggestions suggestions = context.getSuggestions();
-		ArtifactDeclaration declaration = context.getArtifactReference().getDeclaration();
+		ArtifactDeclaration declaration = context.getDeclaration();
 
 		Vulnerabilities vulnerabilities = context.getCurrentVulnerabilities();
 		VulnerabilitiesPresentation vulnerability = null;
@@ -131,9 +132,9 @@ public class DependencyVersionAnnotator implements Annotator {
 					continue;
 				}
 
-				DependencyUpdate update = DependencyUpdate.from(context.getArtifactReference(), suggestion);
+				DependencyUpdate update = DependencyUpdate.from(declaration, suggestion);
 				UpdateDependencyVersionQuickFix fix = new UpdateDependencyVersionQuickFix(versionLiteral,
-						suggestion.getStrategy(), context.getReferenceContext(), update);
+						suggestion.getStrategy(), context, update);
 				builder = builder.newFix(fix).key(key).registerFix();
 				seen.add(suggestion.getVersion());
 				if (!suggestion.getStrategy().isRemediation()

@@ -75,7 +75,7 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
 			return PsiElementVisitor.EMPTY_VISITOR;
 		}
 
-		return new ArtifactReferenceContextVisitor(context, file) {
+		return new ArtifactReferenceContextVisitor(context) {
 
 			@Override
 			protected void visitArtifactReference(PsiElement element, ArtifactReferenceContext referenceContext) {

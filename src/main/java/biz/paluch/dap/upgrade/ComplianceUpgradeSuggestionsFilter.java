@@ -19,7 +19,10 @@ package biz.paluch.dap.upgrade;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 
@@ -35,15 +38,14 @@ import biz.paluch.dap.support.UpgradeStrategy;
 class ComplianceUpgradeSuggestionsFilter implements UpgradeSuggestionsFilter {
 
 	@Override
-	public UpgradeSuggestions filter(DependencyUpgradeSubject subject, UpgradeSuggestions suggestions) {
-
-		DependencyRule rule = subject.getRule();
+	public UpgradeSuggestions filter(Dependency dependency, Releases releases,
+			VulnerabilityRepository vulnerabilities, DependencyRule rule, UpgradeSuggestions suggestions) {
 		UpgradeSuggestions filtered = suggestions
 				.filter(strategy -> strategy.isRemediation() || rule.isEnabled(strategy));
 
-		if (!rule.test(subject.getDependency().getCurrentVersion())) {
+		if (!rule.test(dependency.getCurrentVersion())) {
 
-			Release first = subject.getReleases().stream()
+			Release first = releases.stream()
 					.filter(it -> rule.test(it.getVersion())).findFirst().orElse(null);
 			if (first != null) {
 				Map<UpgradeStrategy, UpgradeSuggestion> newSuggestions = new LinkedHashMap<>();

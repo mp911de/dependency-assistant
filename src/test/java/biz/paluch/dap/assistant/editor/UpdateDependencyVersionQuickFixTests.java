@@ -30,7 +30,7 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.maven.MavenFixtures;
-import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
 import com.intellij.openapi.util.Iconable;
@@ -115,13 +115,13 @@ class UpdateDependencyVersionQuickFixTests {
 		PsiElement element = leaf.getParent();
 		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element);
 		ArtifactReferenceContext referenceContext = ArtifactReferenceContext.from(element);
-		ArtifactReference reference = referenceContext.getArtifactReference();
-		DependencyUpdate update = DependencyUpdate.from(reference, Release.of(targetVersion));
+		ArtifactDeclaration declaration = referenceContext.getDeclaration();
+		DependencyUpdate update = DependencyUpdate.from(declaration, Release.of(targetVersion));
 		VersionStatus status = VersionStatus.of(referenceContext.getEvaluator(),
-				reference.getDeclaration().getVersion(),
+				declaration.getVersion(),
 				update.version(), targetVulnerabilities);
-		return new UpdateDependencyVersionQuickFix(reference.getDeclaration().getVersionLiteral(), strategy, context,
-				update, reference.getDeclaration(), status);
+		return new UpdateDependencyVersionQuickFix(declaration.getVersionLiteral(), strategy, context,
+				update, declaration, status);
 	}
 
 }

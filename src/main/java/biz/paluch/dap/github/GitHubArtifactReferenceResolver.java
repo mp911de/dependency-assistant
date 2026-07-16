@@ -21,7 +21,6 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.StringUtils;
@@ -50,17 +49,17 @@ import org.jspecify.annotations.Nullable;
  */
 class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private final LookupContext context;
+	private final GitVersionResolver versionResolver;
 
 	private final GitHubProjectContext buildContext;
 
 	/**
 	 * Create a resolver for the given context and build context.
-	 * @param context the shared per-file resolution environment.
+	 * @param versionResolver the cached Git-ref resolver.
 	 * @param buildContext the GitHub Actions file context.
 	 */
-	GitHubArtifactReferenceResolver(LookupContext context, GitHubProjectContext buildContext) {
-		this.context = context;
+	GitHubArtifactReferenceResolver(GitVersionResolver versionResolver, GitHubProjectContext buildContext) {
+		this.versionResolver = versionResolver;
 		this.buildContext = buildContext;
 	}
 
@@ -93,7 +92,7 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 				return;
 			}
 
-			Versioned version = context.versionResolver().resolveLenient(artifactId, ref.version());
+			Versioned version = versionResolver.resolveLenient(artifactId, ref.version());
 			if (version.isVersioned()) {
 				builder.version(version.getVersion());
 			}

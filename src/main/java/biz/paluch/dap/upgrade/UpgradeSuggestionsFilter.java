@@ -16,11 +16,15 @@
 
 package biz.paluch.dap.upgrade;
 
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.rule.DependencyRule;
+
 /**
- * Strategy that refines the {@link UpgradeSuggestions} computed for a
- * {@link DependencyUpgradeSubject}, for example by adding a remediation target
- * or dropping suggestions a {@link biz.paluch.dap.rule.DependencyRule}
- * disallows.
+ * Strategy that refines the {@link UpgradeSuggestions} computed for a the
+ * materialized upgrade facts, for example by adding a remediation target or
+ * dropping suggestions a {@link biz.paluch.dap.rule.DependencyRule} disallows.
  *
  * @author Mark Paluch
  */
@@ -28,13 +32,16 @@ package biz.paluch.dap.upgrade;
 public interface UpgradeSuggestionsFilter {
 
 	/**
-	 * Refine the suggestions for the given subject.
+	 * Refine the suggestions for the given dependency.
 	 *
-	 * @param subject the dependency under consideration with its releases,
-	 * vulnerabilities, and rule.
+	 * @param dependency the dependency under consideration.
+	 * @param releases the available releases.
+	 * @param vulnerabilities the vulnerability results.
+	 * @param rule the governing dependency rule.
 	 * @param suggestions the suggestions to refine.
 	 * @return the refined suggestions; never {@literal null}.
 	 */
-	UpgradeSuggestions filter(DependencyUpgradeSubject subject, UpgradeSuggestions suggestions);
+	UpgradeSuggestions filter(Dependency dependency, Releases releases, VulnerabilityRepository vulnerabilities,
+			DependencyRule rule, UpgradeSuggestions suggestions);
 
 }

@@ -35,8 +35,7 @@ import com.intellij.psi.SyntaxTraverser;
  * two wrappers) supplies one resolver. The resolver owns the
  * build-tool-specific collaborators (property-expression chains, version
  * catalogs, the Maven project model, Git-ref resolution) needed to resolve a
- * version, and receives its shared services through the {@link LookupContext}
- * it is constructed with.
+ * version, and receives only the state or resolution services it directly uses.
  *
  * <p>This is the single variation point of the version-upgrade lookup: the
  * surrounding orchestration ({@link VersionUpgradeLookup}) is the same concrete
@@ -47,7 +46,6 @@ import com.intellij.psi.SyntaxTraverser;
  *
  * @author Mark Paluch
  * @see VersionUpgradeLookup
- * @see LookupContext
  * @see ArtifactReference
  */
 public interface ArtifactReferenceResolver {

@@ -19,131 +19,110 @@ package biz.paluch.dap.plan;
 import java.util.ArrayList;
 import java.util.List;
 
-import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
-import biz.paluch.dap.assistant.check.UpgradeGroups;
-import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.plan.UpgradePlanState.DeclarationSourceState;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Member;
 import biz.paluch.dap.plan.UpgradePlanState.VersionSourceState;
-import biz.paluch.dap.rule.BranchSource;
-import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleService;
-import biz.paluch.dap.rule.ResolutionContext;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.project.Project;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Loader for {@link UpgradePlanItem} from a serialized {@link Item}.
+ * Loader that validates persisted Upgrade Plan facts and resolves the interface
+ * metadata needed by {@link UpgradePlanItem}.
  *
  * @author Mark Paluch
  */
 class UpgradePlanLoader {
 
-	private final List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll();
-
-	private final StateService stateService;
+	private final List<InterfaceAssistant> assistants;
 
 	private final @Nullable TicketSystem ticketSystem;
 
-	private final Cache cache;
+	UpgradePlanLoader(@Nullable TicketSystem ticketSystem) {
+		this(DependencyAssistantDispatcher.findAll().stream()
+				.map(assistant -> assistant.getInterfaceAssistant())
+				.toList(), ticketSystem);
+	}
 
-	private final DependencyRuleService ruleService;
-
-	private final BranchSource branchSource;
-
-	UpgradePlanLoader(Project project, FileScope files, @Nullable TicketSystem ticketSystem) {
-
-		this.stateService = StateService.getInstance(project);
+	UpgradePlanLoader(List<? extends InterfaceAssistant> assistants, @Nullable TicketSystem ticketSystem) {
+		this.assistants = List.copyOf(assistants);
 		this.ticketSystem = ticketSystem;
-		this.cache = stateService.getCache();
-		this.ruleService = DependencyRuleService.getInstance(project);
-		this.branchSource = BranchSource.of(files.stream().findFirst().orElse(null));
 	}
 
 	public @Nullable UpgradePlanItem create(Item item) {
 
-		if (StringUtils.isEmpty(item.getToVersion())) {
+		if (ArtifactVersion.from(item.getToVersion()).isEmpty() || item.getMembers().isEmpty()) {
 			return null;
 		}
 
-		List<UpgradeCandidate> members = new ArrayList<>();
+		List<InterfaceAssistant> resolvedAssistants = new ArrayList<>(item.getMembers().size());
+		List<Dependency> dependencies = new ArrayList<>(item.getMembers().size());
 		for (Member member : item.getMembers()) {
-			UpgradeCandidate candidate = loadCandidate(member);
-			if (candidate == null) {
+			if (!isValid(member)) {
 				return null;
 			}
-			members.add(candidate);
+
+			InterfaceAssistant assistant = resolveAssistant(member.assistant);
+			if (assistant == null) {
+				return null;
+			}
+			resolvedAssistants.add(assistant);
+			dependencies.add(toDependency(member));
 		}
 
-		if (members.isEmpty()) {
-			return null;
+		UpgradePlanItem planItem = new UpgradePlanItem(item.getId(), item.getDisplayName(),
+				ArtifactVersion.of(item.getToVersion()), item.isVulnerabilityFix(), item.getVulnerabilityCount(),
+				item.getHighestVulnerabilitySeverity(), dependencies, resolvedAssistants);
+		UpgradePlanState.Ticket ticket = item.getTicket();
+		if (ticket != null) {
+			planItem.setTicket(ticket.toUpgradeTicket(ticketSystem));
 		}
 
-		UpgradeCandidate candidate;
-		if (members.size() == 1) {
-			candidate = members.getFirst();
-		} else {
-			// group through the dialog's own logic so the label and member label match;
-			// force a group when the members no longer satisfy the grouping criteria,
-			// restoring the captured derived name for inferred groups
-			List<UpgradeCandidate> grouped = UpgradeGroups.of(members).toList();
-			if (grouped.size() == 1) {
-				candidate = grouped.getFirst();
-			} else {
-				candidate = item.getDisplayName() != null ? UpgradeGroup.inferred(members, item.getDisplayName())
-						: UpgradeGroup.of(members);
+		return planItem;
+	}
+
+	private static boolean isValid(Member member) {
+
+		if (StringUtils.isEmpty(member.groupId) || StringUtils.isEmpty(member.artifactId)
+				|| ArtifactVersion.from(member.fromVersion).isEmpty() || StringUtils.isEmpty(member.assistant)) {
+			return false;
+		}
+
+		for (DeclarationSourceState source : member.declarationSources) {
+			if (source == null || source.kind == null) {
+				return false;
+			}
+		}
+		for (VersionSourceState source : member.versionSources) {
+			if (source == null || source.kind == null) {
+				return false;
 			}
 		}
 
-		UpgradePlanItem view = new UpgradePlanItem(item.getId(), candidate, ArtifactVersion.of(item.getToVersion()));
-
-		UpgradePlanState.Ticket ticket = item.getTicket();
-		if (ticket != null) {
-			view.setTicket(ticket.toUpgradeTicket(ticketSystem));
-		}
-
-		return view;
+		return true;
 	}
 
-	private @Nullable UpgradeCandidate loadCandidate(Member member) {
+	private static Dependency toDependency(Member member) {
 
-		if (StringUtils.isEmpty(member.groupId) || StringUtils.isEmpty(member.artifactId)
-				|| StringUtils.isEmpty(member.fromVersion)) {
-			return null;
-		}
-
-		InterfaceAssistant assistant = resolveAssistant(member.assistant);
-		if (assistant == null) {
-			return null;
-		}
-
-		ArtifactId artifactId = ArtifactId.of(member.groupId, member.artifactId);
 		ArtifactVersion fromVersion = ArtifactVersion.of(member.fromVersion);
+		Dependency dependency = new Dependency(ArtifactId.of(member.groupId, member.artifactId), fromVersion);
 
-		Dependency dependency = new Dependency(artifactId, fromVersion);
 		if (member.declarationSources.isEmpty()) {
 			dependency.addDeclarationSource(DeclarationSource.dependency());
 		} else {
-			member.declarationSources
-					.forEach(source -> dependency.addDeclarationSource(source.toDeclarationSource()));
+			for (DeclarationSourceState source : member.declarationSources) {
+				dependency.addDeclarationSource(source.toDeclarationSource());
+			}
 		}
+
 		if (member.versionSources.isEmpty()) {
 			dependency.addVersionSource(VersionSource.declared(member.fromVersion));
 		} else {
@@ -155,26 +134,14 @@ class UpgradePlanLoader {
 			}
 		}
 
-		Releases releases = cache.getReleases(artifactId);
-		VulnerabilityRepository vulnerabilities = version -> stateService.getVulnerabilities(artifactId, version);
-		DependencyRule rule = ruleService
-				.resolve(ResolutionContext.forAggregate(dependency, branchSource, Versioned.unversioned()));
-
-		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(dependency, releases, vulnerabilities,
-				rule);
-		return new UpgradeCandidate(candidate, assistant, DeclaredVersions.of(fromVersion));
+		return dependency;
 	}
 
-	private @Nullable InterfaceAssistant resolveAssistant(@Nullable String assistantClassName) {
+	private @Nullable InterfaceAssistant resolveAssistant(String assistantClassName) {
 
-		if (assistantClassName == null) {
-			return null;
-		}
-
-		for (DependencyAssistant assistant : assistants) {
-			if (assistant.getInterfaceAssistant().getClass().getName()
-					.equals(assistantClassName)) {
-				return assistant.getInterfaceAssistant();
+		for (InterfaceAssistant assistant : assistants) {
+			if (assistant.getClass().getName().equals(assistantClassName)) {
+				return assistant;
 			}
 		}
 

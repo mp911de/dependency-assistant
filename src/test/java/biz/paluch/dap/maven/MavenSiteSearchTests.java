@@ -23,8 +23,9 @@ import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.lookup.SiteRole;
+import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.BeforeEach;
@@ -113,8 +114,8 @@ class MavenSiteSearchTests {
 
 	private MavenArtifactReferenceResolver resolverFor(PsiFile file) {
 		MavenProjectContext buildContext = file.getUserData(MavenProjectContext.KEY);
-		LookupContext context = LookupContext.create(project, buildContext);
-		return new MavenArtifactReferenceResolver(context, file, buildContext);
+		ProjectState projectState = StateService.getInstance(project).getProjectState(buildContext.getProjectId());
+		return new MavenArtifactReferenceResolver(projectState, file, buildContext);
 	}
 
 }

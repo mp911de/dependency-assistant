@@ -26,7 +26,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
-import biz.paluch.dap.assistant.action.BuildActionDelegate;
+import biz.paluch.dap.assistant.review.BuildActionDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.UpgradeResult;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.action;
+package biz.paluch.dap.assistant.review;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -26,9 +26,9 @@ import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.review.ReviewActions;
-import biz.paluch.dap.assistant.review.UpgradeSelection;
+import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.assistant.Notifications;
+import biz.paluch.dap.plan.UpgradePlanCapture;
 import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
@@ -36,6 +36,7 @@ import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.undo.UndoManager;
@@ -49,25 +50,28 @@ import com.intellij.psi.PsiFile;
  *
  * @author Mark Paluch
  */
-class AssistantReviewActions implements ReviewActions {
+// TODO: maybe inline?
+public class AssistantReviewActions implements ReviewActions {
 
 	private final Project project;
 
 	private final boolean fromEditor;
 
-	AssistantReviewActions(Project project, boolean fromEditor) {
+	public AssistantReviewActions(Project project, boolean fromEditor) {
 		this.project = project;
 		this.fromEditor = fromEditor;
 	}
 
 	@Override
-	public boolean canAddToDependencyfile(UpgradeCandidate candidate) {
-		return new DependencyfileArtifactWriter(project).canAdd(candidate);
+	public boolean canAddToDependencyfile(List<UpgradeDecision> decisions, List<String> memberNames,
+			String dependencyName) {
+		return new DependencyfileArtifactWriter(project).canAdd(decisions, memberNames, dependencyName);
 	}
 
 	@Override
-	public void addToDependencyfile(UpgradeCandidate candidate) {
-		new DependencyfileArtifactWriter(project).add(candidate);
+	public void addToDependencyfile(List<UpgradeDecision> decisions, List<String> memberNames,
+			String dependencyName) {
+		new DependencyfileArtifactWriter(project).add(decisions, memberNames, dependencyName);
 	}
 
 	@Override
@@ -126,14 +130,14 @@ class AssistantReviewActions implements ReviewActions {
 	}
 
 	@Override
-	public void openInUpgradePlan(Map<UpgradeCandidate, UpgradeSelection> upgrades, List<VirtualFile> files) {
+	public void openInUpgradePlan(Map<UpgradePlanCapture, UpgradeSelection> upgrades, List<VirtualFile> files) {
 
-		Map<UpgradeCandidate, ArtifactVersion> targets = new LinkedHashMap<>();
-		for (Map.Entry<UpgradeCandidate, UpgradeSelection> entry : upgrades.entrySet()) {
+		Map<UpgradePlanCapture, ArtifactVersion> targets = new LinkedHashMap<>();
+		for (Map.Entry<UpgradePlanCapture, UpgradeSelection> entry : upgrades.entrySet()) {
 			ArtifactVersion target = entry.getValue().getTargetVersion();
 			if (target == null) {
 				throw new IllegalStateException(
-						"Target version for " + entry.getKey().getArtifactId() + " is required");
+						"Target version for " + entry.getKey().getPlanName() + " is required");
 			}
 			targets.put(entry.getKey(), target);
 		}

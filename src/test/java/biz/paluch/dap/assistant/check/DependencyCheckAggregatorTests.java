@@ -26,11 +26,11 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestProjectDependencyContext;
 import biz.paluch.dap.fixtures.TestProjects;
@@ -114,7 +114,7 @@ class DependencyCheckAggregatorTests {
 
 		assertThat(result).extracting(candidate -> candidate.getArtifactId().artifactId())
 				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());
-		assertThat(result).extracting(UpgradeCandidate::getCurrentVersion)
+		assertThat(result).extracting(decision -> decision.getCurrentVersion())
 				.containsExactly(LETTUCE_CURRENT, SPRING_CURRENT);
 		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
 		assertThat(result.files()).containsExactly(a, b);
@@ -134,289 +134,37 @@ class DependencyCheckAggregatorTests {
 				resolved(SPRING_UPDATE)));
 
 		assertThat(result).singleElement().satisfies(candidate -> {
-			assertThat(candidate.getDeclaredVersions().hasVersionDrift()).isFalse();
-			assertThat(candidate.getDeclaredVersions().hasDeclarationDrift()).isTrue();
-			assertThat(candidate.getDeclaredVersions().hasDrift()).isTrue();
+			DeclaredVersions declaredVersions = result.declaredVersions().get(candidate);
+			assertThat(declaredVersions.hasVersionDrift()).isFalse();
+			assertThat(declaredVersions.hasDeclarationDrift()).isTrue();
+			assertThat(declaredVersions.hasDrift()).isTrue();
 		});
 	}
 
 	@Test
-	void collapsesGovernedAgreeingCandidatesIntoUpgradeGroup() {
+	void keepsPresentationFactsSeparateForSameCoordinateAcrossPackageSystems() {
 
-		VirtualFile file = buildFile("group/pom.xml");
+		TestProjectDependencyContext maven = context(ACME_APP);
+		TestProjectDependencyContext npm = new TestProjectDependencyContext(ACME_LIB,
+				new OtherEcosystemAssistant()) {
 
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), file, List.of());
+			@Override
+			public PackageSystem getPackageSystem() {
+				return PackageSystem.NPM;
+			}
 
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, new TestDependencyRule("Spring Framework"), SPRING_TEST,
-						new TestDependencyRule("Spring Framework"))));
+		};
 
-		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
-			assertThat(group.getDependencyName()).isEqualTo("Spring Framework");
-			assertThat(group.getCurrentVersion()).isEqualTo(SPRING_CURRENT);
-			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
-					SPRING_TEST);
-		});
-	}
+		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), maven, buildFile("pom.xml"), List.of());
+		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), npm, buildFile("package.json"), List.of());
 
-	@Test
-	void keepsDivergentGovernedArtifactAsOwnRow() {
+		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(
+				Map.of(LETTUCE_CORE, resolved(LETTUCE_UPDATE)));
 
-		ArtifactId springJdbc = ArtifactId.of("org.springframework", "spring-jdbc");
-		ArtifactVersion older = ArtifactVersion.of("6.0.9");
-		VirtualFile file = buildFile("group/pom.xml");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(springJdbc, older), context(ACME_APP), file, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE), springJdbc, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, new TestDependencyRule("Spring Framework"), SPRING_TEST,
-						new TestDependencyRule("Spring Framework"), springJdbc,
-						new TestDependencyRule("Spring Framework"))));
-
-		assertThat(result).hasSize(2);
-		assertThat(result.getFirst()).isInstanceOfSatisfying(UpgradeGroup.class,
-				group -> assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
-						.containsExactly(SPRING_CORE, SPRING_TEST));
-		assertThat(result.getLast()).isNotInstanceOf(UpgradeGroup.class)
-				.extracting(UpgradeCandidate::getArtifactId).isEqualTo(springJdbc);
-	}
-
-	@Test
-	void equalCohortsTieBreakToHigherVersion() {
-
-		ArtifactId springAop = ArtifactId.of("org.springframework", "spring-aop");
-		ArtifactId springBeans = ArtifactId.of("org.springframework", "spring-beans");
-		ArtifactVersion older = ArtifactVersion.of("6.0.9");
-		VirtualFile file = buildFile("group/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(springAop, older), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(springBeans, older), context(ACME_APP), file, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE), springAop, resolved(SPRING_UPDATE), springBeans, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases, rules(
-				Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springAop, rule, springBeans, rule)));
-
-		assertThat(result).hasSize(3);
-		assertThat(result).filteredOn(UpgradeGroup.class::isInstance).singleElement()
-				.isInstanceOfSatisfying(UpgradeGroup.class, group -> {
-					assertThat(group.getCurrentVersion()).isEqualTo(SPRING_CURRENT);
-					assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId)
-							.containsExactly(SPRING_CORE, SPRING_TEST);
-				});
-	}
-
-	@Test
-	void driftingArtifactWithMatchingOccurrenceJoinsGroupCarryingDrift() {
-
-		ArtifactId springJdbc = ArtifactId.of("org.springframework", "spring-jdbc");
-		ArtifactVersion older = ArtifactVersion.of("6.0.9");
-		VirtualFile a = buildFile("group-a/pom.xml");
-		VirtualFile b = buildFile("group-b/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), a, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), a, List.of());
-		aggregator.add(dependency(springJdbc, SPRING_CURRENT), context(ACME_APP), a, List.of());
-		aggregator.add(dependency(springJdbc, older), context(ACME_LIB), b, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE), springJdbc, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
-
-		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
-			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
-					springJdbc, SPRING_TEST);
-			assertThat(group.getCurrentVersion()).isEqualTo(older);
-			assertThat(group.getDeclaredVersions().hasVersionDrift()).isTrue();
-		});
-	}
-
-	@Test
-	void fullyDriftedArtifactBelowGroupStaysOwnRow() {
-
-		ArtifactId springJdbc = ArtifactId.of("org.springframework", "spring-jdbc");
-		VirtualFile a = buildFile("group-a/pom.xml");
-		VirtualFile b = buildFile("group-b/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), a, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), a, List.of());
-		aggregator.add(dependency(springJdbc, ArtifactVersion.of("6.0.9")), context(ACME_APP), a, List.of());
-		aggregator.add(dependency(springJdbc, ArtifactVersion.of("6.1.0")), context(ACME_LIB), b, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE), springJdbc, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
-
-		assertThat(result).hasSize(2);
-		assertThat(result.getLast()).isNotInstanceOf(UpgradeGroup.class)
-				.satisfies(candidate -> {
-					assertThat(candidate.getArtifactId()).isEqualTo(springJdbc);
-					assertThat(candidate.getDeclaredVersions().hasVersionDrift()).isTrue();
-				});
-	}
-
-	@Test
-	void unnamedRuleFallsThroughToInferredGroup() {
-
-		VirtualFile file = buildFile("group/pom.xml");
-		TestDependencyRule unnamed = new TestDependencyRule("");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), file, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, unnamed, SPRING_TEST, unnamed)));
-
-		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class,
-				group -> assertThat(group.getRowLabel()).isEqualTo("spring"));
-	}
-
-	@Test
-	void rulesWithSameNameAcrossEcosystemsNeverGroup() {
-
-		VirtualFile gradle = buildFile("eco-a/build.gradle");
-		VirtualFile maven = buildFile("eco-b/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), gradle, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT),
-				new TestProjectDependencyContext(ACME_LIB, new OtherEcosystemAssistant()), maven, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule)));
-
-		assertThat(result).hasSize(2).noneMatch(UpgradeGroup.class::isInstance);
-	}
-
-	@Test
-	void groupOffersIntersectionOfMemberReleases() {
-
-		ArtifactVersion next = ArtifactVersion.of("6.3.0");
-		VirtualFile file = buildFile("group/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), file, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE, next),
-				SPRING_TEST, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule)));
-
-		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
-			Releases offered = group.getUpdateCandidate().getReleases();
-			assertThat(offered).containsRelease(SPRING_UPDATE);
-			assertThat(offered).doesNotContainRelease(next);
-		});
-	}
-
-	@Test
-	void inlineMemberAtAgreeingVersionJoinsPropertyBackedGroup() {
-
-		ArtifactId springJdbc = ArtifactId.of("org.springframework", "spring-jdbc");
-		VirtualFile file = buildFile("group/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT, VersionSource.property("spring.version")),
-				context(ACME_APP), file, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT, VersionSource.property("spring.version")),
-				context(ACME_APP), file, List.of());
-		aggregator.add(dependency(springJdbc, SPRING_CURRENT), context(ACME_APP), file, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE), springJdbc, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
-
-		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
-			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
-					springJdbc, SPRING_TEST);
-			assertThat(group.getUpdateCandidate().hasPropertyVersion()).isTrue();
-		});
-	}
-
-	@Test
-	void driftingArtifactSharingVersionPropertyJoinsGroup() {
-
-		ArtifactId springJdbc = ArtifactId.of("org.springframework", "spring-jdbc");
-		VirtualFile a = buildFile("group-a/pom.xml");
-		VirtualFile b = buildFile("group-b/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT, VersionSource.property("spring.version")),
-				context(ACME_APP), a, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT, VersionSource.property("spring.version")),
-				context(ACME_APP), a, List.of());
-		aggregator.add(dependency(springJdbc, ArtifactVersion.of("6.1.5"), VersionSource.property("spring.version")),
-				context(ACME_LIB), b, List.of());
-		aggregator.add(dependency(springJdbc, ArtifactVersion.of("6.0.9")), context(ACME_LIB), b, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE), springJdbc, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
-
-		assertThat(result).singleElement().isInstanceOfSatisfying(UpgradeGroup.class, group -> {
-			assertThat(group.getMembers()).extracting(UpgradeCandidate::getArtifactId).containsExactly(SPRING_CORE,
-					springJdbc, SPRING_TEST);
-			assertThat(group.getCurrentVersion()).isEqualTo(ArtifactVersion.of("6.0.9"));
-			assertThat(group.getDeclaredVersions().hasVersionDrift()).isTrue();
-		});
-	}
-
-	@Test
-	void relabelsLoneGovernedArtifactWithRuleName() {
-
-		VirtualFile file = buildFile("group/pom.xml");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), context(ACME_APP), file, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), LETTUCE_CORE,
-				resolved(LETTUCE_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, new TestDependencyRule("Spring Framework"))));
-
-		assertThat(result).extracting(UpgradeCandidate::getRowLabel).containsExactly("lettuce-core",
-				"Spring Framework");
-	}
-
-	@Test
-	void leftoverGovernedArtifactKeepsCoordinateLabelWhenGroupClaimsRuleName() {
-
-		ArtifactId springJdbc = ArtifactId.of("org.springframework", "spring-jdbc");
-		VirtualFile file = buildFile("group/pom.xml");
-		TestDependencyRule rule = new TestDependencyRule("Spring Framework");
-
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(SPRING_TEST, SPRING_CURRENT), context(ACME_APP), file, List.of());
-		aggregator.add(dependency(springJdbc, ArtifactVersion.of("6.0.9")), context(ACME_APP), file, List.of());
-
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), SPRING_TEST,
-				resolved(SPRING_UPDATE), springJdbc, resolved(SPRING_UPDATE));
-		DependencyUpgradeCandidates result = aggregator.toDependencyCheckResult(releases,
-				rules(Map.of(SPRING_CORE, rule, SPRING_TEST, rule, springJdbc, rule)));
-
-		assertThat(result).extracting(UpgradeCandidate::getRowLabel).containsExactly("Spring Framework",
-				"spring-jdbc");
+		assertThat(result.decisions()).hasSize(2);
+		assertThat(result.assistants().keySet()).containsExactlyInAnyOrderElementsOf(result.decisions());
+		assertThat(result.declaredVersions().keySet()).containsExactlyInAnyOrderElementsOf(result.decisions());
+		assertThat(result.assistants().values()).anyMatch(OtherEcosystemAssistant.class::isInstance);
 	}
 
 	@Test

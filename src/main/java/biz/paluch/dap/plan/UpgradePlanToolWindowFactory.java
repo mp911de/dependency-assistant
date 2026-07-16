@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -57,7 +56,7 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 	 */
 	// TODO: If two upgradeCandidates share the same property and the same
 	// assistant, keep only one of them.
-	public static void openWith(Project project, Map<UpgradeCandidate, ArtifactVersion> upgrades,
+	public static void openWith(Project project, Map<? extends UpgradePlanCapture, ArtifactVersion> upgrades,
 			List<VirtualFile> files) {
 
 		UpgradePlanService.getInstance(project).planUpgrades(upgrades, files);

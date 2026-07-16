@@ -20,10 +20,6 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.ArtifactReference;
 
 /**
  * Creates the upgrade suggestions surfaced for a dependency, including
@@ -36,57 +32,31 @@ public class UpgradeSuggestionsFactory {
 	private static final UpgradeSuggestionsFilter FILTERS = SuggestionFilters.of(new SafeUpgradeSuggestionsFilter(),
 			new ComplianceUpgradeSuggestionsFilter());
 
-	private final StateService stateService;
-
-	public UpgradeSuggestionsFactory(StateService stateService) {
-		this.stateService = stateService;
-	}
-
-	public UpgradeSuggestions createSuggestions(ArtifactReference artifactReference,
-			DependencyRuleEvaluator evaluator) {
-
-		if (!artifactReference.isResolved()) {
-			return UpgradeSuggestions.empty();
-		}
-
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		if (!declaration.hasVersionSource() || !declaration.isVersionDefined()) {
-			return UpgradeSuggestions.empty();
-		}
-
-		return createSuggestions(declaration.toDependency(), evaluator.getRule());
-	}
-
-	public UpgradeSuggestions createSuggestions(Dependency dependency, DependencyRule rule) {
-
-		Releases releases = stateService.getCache().getReleases(dependency.getArtifactId());
-		if (releases.isEmpty()) {
-			return UpgradeSuggestions.empty();
-		}
-
-		VulnerabilityRepository vulnerabilities = version -> stateService.getVulnerabilities(dependency.getArtifactId(),
-				version);
-		return createSuggestions(dependency, releases, vulnerabilities, rule);
-	}
-
-	public UpgradeSuggestions createSuggestions(Dependency dependency, Releases releases,
-			VulnerabilityRepository vulnerabilities, DependencyRule rule) {
-		return createSuggestions(DependencyUpgradeSubject.of(dependency, releases, vulnerabilities, rule));
+	private UpgradeSuggestionsFactory() {
 	}
 
 	/**
-	 * Create the suggestions for a fully materialized subject. The subject carries
-	 * releases, vulnerabilities, and rule, so no state lookup is involved.
+	 * Create suggestions from fully materialized upgrade facts.
+	 *
+	 * <p>The current dependency version is included in the release universe before
+	 * tier, Safe Version, and rule-remediation policy is applied.
+	 *
+	 * @param dependency the dependency to inspect.
+	 * @param releases the known releases for the dependency.
+	 * @param vulnerabilities the vulnerability results for known versions.
+	 * @param rule the governing dependency rule.
+	 * @return the policy-filtered suggestions in strategy priority order.
 	 */
-	public static UpgradeSuggestions createSuggestions(DependencyUpgradeSubject subject) {
+	public static UpgradeSuggestions createSuggestions(Dependency dependency, Releases releases,
+			VulnerabilityRepository vulnerabilities, DependencyRule rule) {
 
-		Releases releases = subject.getReleases();
-		if (releases.isEmpty()) {
+		Releases available = releases.withVersion(dependency.getCurrentVersion());
+		if (available.isEmpty()) {
 			return UpgradeSuggestions.empty();
 		}
 
-		UpgradeSuggestions suggestions = UpgradeSuggestions.from(subject.getDependency().getCurrentVersion(), releases);
-		return FILTERS.filter(subject, suggestions);
+		UpgradeSuggestions suggestions = UpgradeSuggestions.from(dependency.getCurrentVersion(), available);
+		return FILTERS.filter(dependency, available, vulnerabilities, rule, suggestions);
 	}
 
 }

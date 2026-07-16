@@ -27,8 +27,6 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.check.DeclarationSite;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
@@ -36,6 +34,7 @@ import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
@@ -46,8 +45,7 @@ import static org.assertj.core.api.Assertions.*;
  * of {@link UpgradeReview}.
  *
  * <p>Vulnerability state and the Safe Version are read from the row model
- * ({@link DependencyUpdateCandidate}); the review consults no vulnerabilities
- * on its own.
+ * ({@link UpgradeDecision}); the review consults no vulnerabilities on its own.
  *
  * @author Mark Paluch
  */
@@ -62,7 +60,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void safeStrategyHiddenWhenNoCandidateIsVulnerable() {
 
-		UpgradeCandidate clean = candidate(LETTUCE, CURRENT, VulnerabilityRepository.empty(), "6.0.0", "6.0.1");
+		UpgradeRow clean = candidate(LETTUCE, CURRENT, VulnerabilityRepository.empty(), "6.0.0", "6.0.1");
 
 		assertThat(review(List.of(clean)).isSafeStrategyAvailable()).isFalse();
 	}
@@ -70,7 +68,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void safeStrategyShownWhenAnUnfilteredCandidateIsVulnerable() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
+		UpgradeRow vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 
 		assertThat(review(List.of(vulnerable)).isSafeStrategyAvailable()).isTrue();
 	}
@@ -78,7 +76,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void safeStrategyShownEvenWhenVulnerableRowIsFilteredOut() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
+		UpgradeRow vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.setHideUpToDate(true);
@@ -89,8 +87,8 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void applyStrategyToAllSafeSelectsVulnerableRowsWithSafeVersion() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
-		UpgradeCandidate clean = candidate(SPRING, CURRENT, VulnerabilityRepository.empty(), "6.0.0", "6.0.1");
+		UpgradeRow vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
+		UpgradeRow clean = candidate(SPRING, CURRENT, VulnerabilityRepository.empty(), "6.0.0", "6.0.1");
 
 		UpgradeReview review = review(List.of(vulnerable, clean));
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
@@ -102,7 +100,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void applyStrategyToAllSafeSkipsVulnerableRowWithoutSafeVersion() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
+		UpgradeRow vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
@@ -113,7 +111,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void hideUpToDateKeepsVulnerableRowWithoutRemediationVisible() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
+		UpgradeRow vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.setHideUpToDate(true);
@@ -124,7 +122,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void hideUpToDateHidesCleanRowWithNoUpgrade() {
 
-		UpgradeCandidate clean = candidate(LETTUCE, CURRENT, VulnerabilityRepository.empty(), "6.0.0");
+		UpgradeRow clean = candidate(LETTUCE, CURRENT, VulnerabilityRepository.empty(), "6.0.0");
 
 		UpgradeReview review = review(List.of(clean));
 		review.setHideUpToDate(true);
@@ -135,7 +133,7 @@ class UpgradeReviewSafeVersionTests {
 	@Test
 	void hideUpToDatePinsSafeTargetSoSafeStrategyResolves() {
 
-		UpgradeCandidate vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
+		UpgradeRow vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 
 		UpgradeReview review = review(List.of(vulnerable));
 		review.setHideUpToDate(true);
@@ -146,7 +144,7 @@ class UpgradeReviewSafeVersionTests {
 		assertThat(review.getUpdateTo(vulnerable)).isEqualTo(ArtifactVersion.of("6.0.1"));
 	}
 
-	private static UpgradeReview review(List<UpgradeCandidate> candidates) {
+	private static UpgradeReview review(List<UpgradeRow> candidates) {
 		return new UpgradeReview(candidates, List.of());
 	}
 
@@ -164,14 +162,14 @@ class UpgradeReviewSafeVersionTests {
 		return VulnerabilityRepository.of(vulnerabilities);
 	}
 
-	private static UpgradeCandidate candidate(ArtifactId artifactId, ArtifactVersion current,
+	private static UpgradeRow candidate(ArtifactId artifactId, ArtifactVersion current,
 			VulnerabilityRepository vulnerabilities, String... versions) {
 
 		Dependency dependency = new Dependency(artifactId, current);
 		dependency.addVersionSource(VersionSource.declared(current.toString()));
 		Releases releases = TestReleases.from(versions);
-		return new UpgradeCandidate(
-				new DependencyUpdateCandidate(dependency, releases, vulnerabilities,
+		return new UpgradeRow(
+				UpgradeDecision.create(dependency, releases, vulnerabilities,
 						new TestDependencyRule(artifactId.artifactId())),
 				new TestInterfaceAssistant(),
 				DeclaredVersions.from(List.of(site(artifactId, current)), it -> null, null));

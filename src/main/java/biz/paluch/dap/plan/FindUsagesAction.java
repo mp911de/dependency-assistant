@@ -64,7 +64,7 @@ public class FindUsagesAction extends DumbAwareAction {
 	static void findUsages(Project project, RelativePoint where, UpgradePlanItem item) {
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
 		new DependencySiteNavigator(project, service, service.getScope())
-				.openInFindWindow(item.getUpgradeCandidate().toQuery(), where);
+				.openInFindWindow(item.toQuery(), where);
 	}
 
 }

@@ -23,7 +23,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.support.ArtifactReference;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import com.intellij.psi.PsiElement;
 import org.junit.jupiter.api.Test;
 
@@ -45,9 +45,10 @@ class ResolutionContextUnitTests {
 	@Test
 	void referenceContextUsesDeclarationPluginSemantics() {
 
-		ResolutionContext plugin = ResolutionContext.forReference(reference(DeclarationSource.plugin()), BRANCH_SOURCE,
+		ResolutionContext plugin = ResolutionContext.forDeclaration(declaration(DeclarationSource.plugin()),
+				BRANCH_SOURCE,
 				PROJECT_VERSION);
-		ResolutionContext dependency = ResolutionContext.forReference(reference(DeclarationSource.dependency()),
+		ResolutionContext dependency = ResolutionContext.forDeclaration(declaration(DeclarationSource.dependency()),
 				BRANCH_SOURCE, PROJECT_VERSION);
 
 		assertThat(plugin.suppressSemanticUpgrading()).isTrue();
@@ -67,12 +68,12 @@ class ResolutionContextUnitTests {
 		assertThat(mixed.suppressSemanticUpgrading()).isFalse();
 	}
 
-	private static ArtifactReference reference(DeclarationSource source) {
+	private static ArtifactDeclaration declaration(DeclarationSource source) {
 
-		return ArtifactReference.from(builder -> builder.artifact(ARTIFACT_ID)
+		return ArtifactDeclaration.builder().artifact(ARTIFACT_ID)
 				.versionSource(VersionSource.declared("1.0.0"))
 				.declarationSource(source)
-				.declarationElement(psiElement()));
+				.declarationElement(psiElement()).build();
 	}
 
 	private static PsiElement psiElement() {

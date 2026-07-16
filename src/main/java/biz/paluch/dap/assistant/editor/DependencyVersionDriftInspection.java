@@ -91,15 +91,14 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 		GitVersionResolver versionResolver = new GitVersionResolver(state.getCache());
 		Set<PsiElement> reported = new HashSet<>();
 
-		return new ArtifactReferenceContextVisitor(context, file) {
+		return new ArtifactReferenceContextVisitor(context) {
 
 			@Override
 			protected void visitArtifactReference(PsiElement element, ArtifactReferenceContext referenceContext) {
 
 				ArtifactDeclaration declaration = referenceContext.getDeclaration();
 				PsiElement versionLiteral = declaration.getVersionLiteral();
-				if (versionLiteral == null || !declaration.isVersionDefinedInSameFile()
-						|| !declaration.isVersionDefined()) {
+				if (versionLiteral == null || !declaration.isVersionDefinedInSameFile()) {
 					return;
 				}
 
@@ -221,7 +220,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 
 		AlignVersionAction(ArtifactReferenceContext context, ArtifactVersion version, boolean highest) {
 			this.context = context.getDependencyContext();
-			this.update = DependencyUpdate.from(context.getArtifactReference(), version);
+			this.update = DependencyUpdate.from(context.getDeclaration(), version);
 			this.highest = highest;
 		}
 

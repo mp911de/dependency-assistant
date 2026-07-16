@@ -18,7 +18,7 @@ package biz.paluch.dap.maven.wrapper;
 
 import java.io.IOException;
 
-import biz.paluch.dap.assistant.action.Notifications;
+import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.action;
+package biz.paluch.dap.assistant.review;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -26,10 +26,10 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
+import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileService;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.json.psi.JsonElementGenerator;
@@ -60,19 +60,18 @@ import org.jspecify.annotations.Nullable;
  * Writes artifact entries into the {@code artifacts} section of a
  * {@code dependencyfile.json}, creating the descriptor when none exists. The
  * single home for descriptor creation, entry insertion, and opening: the
- * dependency-check dialog adds one row via {@link #add(UpgradeCandidate)} and
- * the "Create Dependencyfile" action seeds a starter descriptor via
- * {@link #createOrOpen(Collection)}.
+ * dependency-check dialog adds reviewed decisions via
+ * {@link #add(List, List, String)} and the "Create Dependencyfile" action seeds
+ * a starter descriptor via {@link #createOrOpen(Collection)}.
  *
  * <p>For a regular row the entry key is the narrowest
- * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. For an
- * {@link UpgradeGroup} whose members share a groupId and a word-boundary common
- * prefix, a single wildcard entry (for example
- * {@code org.springframework.boot:spring-boot-starter-*}) covers them all;
- * otherwise one entry per member is written. Entries already present are
- * skipped, and the new key is inserted before the first existing key that sorts
- * after it (case-insensitive), so the descriptor stays loosely ordered without
- * a full rewrite.
+ * {@link ArtifactPattern#keyFor(ArtifactId) pattern key}. For an group whose
+ * members share a groupId and a word-boundary common prefix, a single wildcard
+ * entry (for example {@code org.springframework.boot:spring-boot-starter-*})
+ * covers them all; otherwise one entry per member is written. Entries already
+ * present are skipped, and the new key is inserted before the first existing
+ * key that sorts after it (case-insensitive), so the descriptor stays loosely
+ * ordered without a full rewrite.
  *
  * @author Mark Paluch
  */
@@ -96,7 +95,7 @@ class DependencyfileArtifactWriter {
 	 * @return {@literal true} if the add action has something to write;
 	 * {@literal false} otherwise.
 	 */
-	public boolean canAdd(UpgradeCandidate candidate) {
+	public boolean canAdd(List<UpgradeDecision> decisions, List<String> memberNames, String dependencyName) {
 
 		VirtualFile descriptor = dependencyfileservice.getDescriptor();
 		if (descriptor == null) {
@@ -104,7 +103,8 @@ class DependencyfileArtifactWriter {
 		}
 
 		Set<String> existing = existingKeys(descriptor);
-		return entries(candidate).stream().anyMatch(entry -> !existing.contains(entry.key()));
+		return entries(decisions, memberNames, dependencyName).stream()
+				.anyMatch(entry -> !existing.contains(entry.key()));
 	}
 
 	/**
@@ -114,7 +114,7 @@ class DependencyfileArtifactWriter {
 	 *
 	 * @param candidate the right-clicked row.
 	 */
-	public void add(UpgradeCandidate candidate) {
+	public void add(List<UpgradeDecision> decisions, List<String> memberNames, String dependencyName) {
 
 		try {
 			VirtualFile descriptor = findOrCreateDescriptor();
@@ -125,7 +125,7 @@ class DependencyfileArtifactWriter {
 			TextRange selection = WriteCommandAction.writeCommandAction(project)
 					.withName(MessageBundle.message("dialog.action.addToDependencyfile"))
 					.compute(() -> insertEntries(project, PsiManager.getInstance(project).findFile(descriptor),
-							entries(candidate)));
+							entries(decisions, memberNames, dependencyName)));
 
 			openInEditor(descriptor, selection);
 		} catch (IOException | IncorrectOperationException ex) {
@@ -410,25 +410,30 @@ class DependencyfileArtifactWriter {
 	 * group with a shared groupId and word-boundary prefix, one entry per member as
 	 * a fallback, or a single entry for a regular row.
 	 */
-	static List<ArtifactEntry> entries(UpgradeCandidate candidate) {
+	static List<ArtifactEntry> entries(List<UpgradeDecision> decisions, List<String> memberNames,
+			String dependencyName) {
 
-		if (candidate instanceof UpgradeGroup group) {
+		if (decisions.size() != memberNames.size() || decisions.isEmpty()) {
+			throw new IllegalArgumentException("Decisions and member names must be non-empty and have equal size");
+		}
 
-			String wildcardKey = wildcardKey(group.getMembers());
+		if (decisions.size() > 1) {
+
+			String wildcardKey = wildcardKey(decisions);
 			if (wildcardKey != null) {
-				return List.of(new ArtifactEntry(wildcardKey, group.getDependencyName()));
+				return List.of(new ArtifactEntry(wildcardKey, dependencyName));
 			}
 
-			List<ArtifactEntry> entries = new ArrayList<>(group.getMembers().size());
-			for (UpgradeCandidate member : group.getMembers()) {
-				entries.add(new ArtifactEntry(ArtifactPattern.keyFor(member.getArtifactId()),
-						member.getDependencyName()));
+			List<ArtifactEntry> entries = new ArrayList<>(decisions.size());
+			for (int i = 0; i < decisions.size(); i++) {
+				entries.add(new ArtifactEntry(ArtifactPattern.keyFor(decisions.get(i).getArtifactId()),
+						memberNames.get(i)));
 			}
 			return entries;
 		}
 
-		return List.of(new ArtifactEntry(ArtifactPattern.keyFor(candidate.getArtifactId()),
-				candidate.getDependencyName()));
+		return List.of(new ArtifactEntry(ArtifactPattern.keyFor(decisions.getFirst().getArtifactId()),
+				memberNames.getFirst()));
 	}
 
 	/**
@@ -436,11 +441,11 @@ class DependencyfileArtifactWriter {
 	 * {@literal null} when they do not share a groupId or their artifactIds have no
 	 * common prefix ending on a {@code -} or {@code .} word boundary.
 	 */
-	private static @Nullable String wildcardKey(List<UpgradeCandidate> members) {
+	private static @Nullable String wildcardKey(List<UpgradeDecision> members) {
 
 		String groupId = members.getFirst().getArtifactId().groupId();
 		List<String> artifactIds = new ArrayList<>(members.size());
-		for (UpgradeCandidate member : members) {
+		for (UpgradeDecision member : members) {
 			if (!groupId.equals(member.getArtifactId().groupId())) {
 				return null;
 			}

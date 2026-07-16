@@ -44,7 +44,7 @@ import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.BrowserUtil;
@@ -318,7 +318,7 @@ class UpgradePlanTree {
 		for (UpgradePlanItem item : shownItems) {
 
 			PlanTreeNode node = new PlanTreeNode(item, badgeColumns);
-			for (UpgradeCandidate member : item.getMembers()) {
+			for (Dependency member : item.getMembers()) {
 				node.add(new DefaultMutableTreeNode(member, false));
 			}
 			root.add(node);
@@ -459,8 +459,9 @@ class UpgradePlanTree {
 		if (value instanceof UpgradePlanItem item) {
 			return item.getDisplayName();
 		}
-		if (value instanceof UpgradeCandidate member) {
-			return member.getRowLabel();
+		if (value instanceof Dependency member) {
+			UpgradePlanItem item = itemOf((DefaultMutableTreeNode) path.getLastPathComponent());
+			return item != null ? item.getMemberDisplayName(member) : "";
 		}
 		return "";
 	}
@@ -528,11 +529,14 @@ class UpgradePlanTree {
 						SimpleTextAttributes.GRAYED_ATTRIBUTES);
 
 				panel.add(node.getBadgeGutter(), BorderLayout.EAST);
-			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof UpgradeCandidate member) {
+			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof Dependency member) {
 
+				UpgradePlanItem item = itemOf((DefaultMutableTreeNode) value);
 				text.setIcon(AllIcons.Nodes.Library);
-				text.append(member.getRowLabel(), SimpleTextAttributes.REGULAR_ATTRIBUTES);
-				text.append("   " + member.getCurrentVersion(), SimpleTextAttributes.GRAYED_ATTRIBUTES);
+				text.append(item != null ? item.getMemberDisplayName(member) : member.getArtifactId().artifactId(),
+						SimpleTextAttributes.REGULAR_ATTRIBUTES);
+				text.append("   " + (item != null ? item.getMemberFromVersion(member) : member.getCurrentVersion()),
+						SimpleTextAttributes.GRAYED_ATTRIBUTES);
 			}
 
 			SpeedSearchUtil.applySpeedSearchHighlighting(tree, text, true, selected);

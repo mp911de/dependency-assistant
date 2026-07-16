@@ -24,7 +24,6 @@ import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.model.Pointer;
@@ -85,7 +84,7 @@ public class DependencyDocumentationProvider
 			return new PropertyDocumentationTarget(target, documentation, property);
 		}
 
-		return new DependencyVersionTarget(target, documentation, context.getArtifactReference().getArtifactId());
+		return new DependencyVersionTarget(target, documentation, context.getArtifactId());
 	}
 
 	private abstract static class DocumentationTargetSupport implements DocumentationTarget, DependencyUpgradeTarget {
@@ -145,8 +144,8 @@ public class DependencyDocumentationProvider
 				return;
 			}
 
-			ArtifactReference reference = context.getArtifactReference();
-			PsiElement versionLiteral = reference.getDeclaration().getVersionLiteral();
+			ArtifactDeclaration declaration = context.getDeclaration();
+			PsiElement versionLiteral = declaration.getVersionLiteral();
 			if (versionLiteral == null) {
 				return;
 			}
@@ -154,7 +153,7 @@ public class DependencyDocumentationProvider
 			Release release = context.getReleases().stream()
 					.filter(it -> it.toString().equals(version) || it.getVersion().toString().equals(version))
 					.findFirst().orElseThrow();
-			DependencyUpdate update = DependencyUpdate.from(reference, release);
+			DependencyUpdate update = DependencyUpdate.from(declaration, release);
 			context.getDependencyContext().applyUpdate(versionLiteral, update);
 		}
 

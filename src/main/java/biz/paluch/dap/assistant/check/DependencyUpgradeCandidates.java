@@ -18,49 +18,74 @@ package biz.paluch.dap.assistant.check;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
+import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.vfs.VirtualFile;
+
+import org.springframework.util.Assert;
 
 /**
  * Result of a dependency check over one or more build files.
  *
- * <p>The result contains sorted update candidates, the scanned files that
- * produced those candidates, and non-fatal lookup errors collected while
- * resolving release metadata.
+ * <p>The result transports sorted domain decisions and independent presentation
+ * facts to the review dialog. Grouping and row assembly remain review concerns.
  *
  * @author Mark Paluch
- * @param candidates the update candidates that can be offered to the user.
+ * @param decisions the upgrade decisions that can be offered to the user.
+ * @param assistants the assistant metadata keyed by decision identity.
+ * @param declaredVersions the declared version facts keyed by decision
+ * identity.
  * @param files the build files included in the dependency check.
  * @param errors non-fatal release lookup errors; empty when all lookups
  * succeeded.
  */
-public record DependencyUpgradeCandidates(UpgradeGroups candidates,
-                                          List<VirtualFile> files,
-		List<String> errors) implements Sequence<UpgradeCandidate> {
+public record DependencyUpgradeCandidates(List<UpgradeDecision> decisions,
+		Map<UpgradeDecision, InterfaceAssistant> assistants,
+		Map<UpgradeDecision, DeclaredVersions> declaredVersions,
+		List<VirtualFile> files,
+		List<String> errors) implements Sequence<UpgradeDecision> {
 
-	public UpgradeCandidate getFirst() {
-		return candidates.toList().getFirst();
+	public DependencyUpgradeCandidates {
+		decisions = List.copyOf(decisions);
+		assistants = Map.copyOf(assistants);
+		declaredVersions = Map.copyOf(declaredVersions);
+		files = List.copyOf(files);
+		errors = List.copyOf(errors);
+
+		Set<UpgradeDecision> decisionSet = Set.copyOf(decisions);
+		Assert.isTrue(decisionSet.size() == decisions.size(), "Upgrade decisions must be unique");
+		Assert.isTrue(assistants.keySet().equals(decisionSet),
+				"Each upgrade decision requires exactly one interface assistant");
+		Assert.isTrue(declaredVersions.keySet().equals(decisionSet),
+				"Each upgrade decision requires exactly one declared-version result");
 	}
 
-	public UpgradeCandidate getLast() {
-		return candidates.toList().getLast();
+	public UpgradeDecision getFirst() {
+		return decisions.getFirst();
+	}
+
+	public UpgradeDecision getLast() {
+		return decisions.getLast();
 	}
 
 	@Override
-	public Iterator<UpgradeCandidate> iterator() {
-		return candidates.iterator();
+	public Iterator<UpgradeDecision> iterator() {
+		return decisions.iterator();
 	}
 
 	@Override
-	public Stream<UpgradeCandidate> stream() {
-		return candidates.stream();
+	public Stream<UpgradeDecision> stream() {
+		return decisions.stream();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return candidates.isEmpty();
+		return decisions.isEmpty();
 	}
 
 }

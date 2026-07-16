@@ -24,13 +24,14 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.DependencySearchResults;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
-import biz.paluch.dap.lookup.LookupContext;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.Expression;
@@ -59,7 +60,7 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private final LookupContext context;
+	private final @Nullable ProjectState projectState;
 
 	private final MavenProjectContext buildContext;
 
@@ -70,14 +71,16 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private final PropertyResolver propertyResolver;
 
 	/**
-	 * Create a resolver for the given context and build context.
-	 * @param context the shared per-file resolution environment.
+	 * Create a resolver for the given project state and build context.
+	 * @param projectState the project dependency state, or {@literal null} if it is
+	 * unavailable.
 	 * @param pomFile the {@code pom.xml} file to inspect.
 	 * @param projectContext the Maven project context.
 	 */
-	MavenArtifactReferenceResolver(LookupContext context, PsiFile pomFile, MavenProjectContext projectContext) {
+	MavenArtifactReferenceResolver(@Nullable ProjectState projectState, PsiFile pomFile,
+			MavenProjectContext projectContext) {
 
-		this.context = context;
+		this.projectState = projectState;
 		this.buildContext = projectContext;
 		this.pom = pomFile instanceof XmlFile xmlFile ? xmlFile : null;
 		this.candidate = MavenUtils.isMavenPomFile(pomFile);
@@ -266,7 +269,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private ArtifactReference resolveProperty(XmlTag propertyTag) {
 
-		VersionProperty property = this.context.findProperty(propertyTag.getLocalName());
+		VersionProperty property = projectState != null ? projectState.findProperty(propertyTag.getLocalName()) : null;
 		if (property == null) {
 			return ArtifactReference.unresolved();
 		}
@@ -316,7 +319,12 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		ArtifactId artifactId = property.artifacts().getFirst().toArtifactId();
-		return context.findCurrentVersion(artifactId);
+		if (projectState == null) {
+			return null;
+		}
+
+		Dependency dependency = projectState.findDependency(artifactId);
+		return dependency != null ? dependency.getCurrentVersion() : null;
 	}
 
 	private record ResolvedProperty(String value, Property propertyValue) {

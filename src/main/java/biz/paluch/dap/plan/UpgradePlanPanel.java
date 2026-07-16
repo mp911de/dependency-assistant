@@ -496,7 +496,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 			RelativePoint where = factory
 					.guessBestPopupLocation(tree.component());
 			new DependencySiteNavigator(getProject(), service, FileScope.from(service.affectedFiles()))
-					.navigate(item.getUpgradeCandidate().toQuery(), where);
+					.navigate(item.toQuery(), where);
 		}
 
 		@Override

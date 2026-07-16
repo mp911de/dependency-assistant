@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.action;
+package biz.paluch.dap.assistant.review;
 
 import java.util.List;
 
@@ -24,17 +24,10 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.action.DependencyfileArtifactWriter.ArtifactEntry;
-import biz.paluch.dap.assistant.check.DeclarationSite;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpdateCandidate;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
+import biz.paluch.dap.assistant.review.DependencyfileArtifactWriter.ArtifactEntry;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.state.ProjectId;
-import com.intellij.mock.MockVirtualFile;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -51,31 +44,34 @@ class DependencyfileArtifactWriterUnitTests {
 	@Test
 	void regularRowYieldsSinglePatternKeyedEntry() {
 
-		UpgradeCandidate candidate = candidate(ArtifactId.of("org.springframework", "spring-core"), "Spring Framework");
+		UpgradeDecision candidate = candidate(ArtifactId.of("org.springframework", "spring-core"), "Spring Framework");
 
-		assertThat(DependencyfileArtifactWriter.entries(candidate))
+		assertThat(DependencyfileArtifactWriter.entries(List.of(candidate), List.of("Spring Framework"),
+				"Spring Framework"))
 				.containsExactly(new ArtifactEntry("org.springframework:spring-core", "Spring Framework"));
 	}
 
 	@Test
 	void groupWithSharedGroupIdAndWordBoundaryPrefixYieldsWildcardEntry() {
 
-		UpgradeGroup group = UpgradeGroup.of(
+		List<UpgradeDecision> group = List.of(
 				candidate(ArtifactId.of("org.springframework.boot", "spring-boot-starter-web"), "Spring Boot"),
 				candidate(ArtifactId.of("org.springframework.boot", "spring-boot-starter-data-jpa"), "Spring Boot"));
 
-		assertThat(DependencyfileArtifactWriter.entries(group)).containsExactly(
+		assertThat(DependencyfileArtifactWriter.entries(group, List.of("Spring Boot", "Spring Boot"), "Spring Boot"))
+				.containsExactly(
 				new ArtifactEntry("org.springframework.boot:spring-boot-starter-*", "Spring Boot"));
 	}
 
 	@Test
 	void groupWithDifferentGroupIdsFallsBackToPerMemberEntries() {
 
-		UpgradeGroup group = UpgradeGroup.of(
+		List<UpgradeDecision> group = List.of(
 				candidate(ArtifactId.of("org.postgresql", "postgresql"), "PostgreSQL"),
 				candidate(ArtifactId.of("org.testcontainers", "postgresql"), "PostgreSQL"));
 
-		assertThat(DependencyfileArtifactWriter.entries(group)).containsExactly(
+		assertThat(DependencyfileArtifactWriter.entries(group, List.of("PostgreSQL", "PostgreSQL"), "PostgreSQL"))
+				.containsExactly(
 				new ArtifactEntry("org.postgresql:postgresql", "PostgreSQL"),
 				new ArtifactEntry("org.testcontainers:postgresql", "PostgreSQL"));
 	}
@@ -83,11 +79,12 @@ class DependencyfileArtifactWriterUnitTests {
 	@Test
 	void groupWithoutWordBoundaryPrefixFallsBackToPerMemberEntries() {
 
-		UpgradeGroup group = UpgradeGroup.of(
+		List<UpgradeDecision> group = List.of(
 				candidate(ArtifactId.of("com.example", "webflux"), "Web"),
 				candidate(ArtifactId.of("com.example", "webmvc"), "Web"));
 
-		assertThat(DependencyfileArtifactWriter.entries(group)).containsExactly(
+		assertThat(DependencyfileArtifactWriter.entries(group, List.of("Web", "Web"), "Web"))
+				.containsExactly(
 				new ArtifactEntry("com.example:webflux", "Web"),
 				new ArtifactEntry("com.example:webmvc", "Web"));
 	}
@@ -110,17 +107,12 @@ class DependencyfileArtifactWriterUnitTests {
 				.containsExactly(new ArtifactEntry("@vue/cli", "vue/cli"));
 	}
 
-	private static UpgradeCandidate candidate(ArtifactId artifactId, String dependencyName) {
+	private static UpgradeDecision candidate(ArtifactId artifactId, String dependencyName) {
 
 		Dependency dependency = new Dependency(artifactId, CURRENT);
 		dependency.addVersionSource(VersionSource.declared(CURRENT.toString()));
-		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "// test"),
-				ProjectId.of("com.acme", "app"), new Dependency(artifactId, CURRENT));
-		DependencyUpdateCandidate candidate = new DependencyUpdateCandidate(dependency,
-				Releases.of(Release.of(CURRENT)), VulnerabilityRepository.empty(),
-				new TestDependencyRule(dependencyName));
-		return new UpgradeCandidate(candidate,
-				new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null));
+		return UpgradeDecision.create(dependency, Releases.of(Release.of(CURRENT)),
+				VulnerabilityRepository.empty(), new TestDependencyRule(dependencyName));
 	}
 
 }

@@ -20,8 +20,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
@@ -37,9 +40,10 @@ import org.jspecify.annotations.Nullable;
 class SafeUpgradeSuggestionsFilter implements UpgradeSuggestionsFilter {
 
 	@Override
-	public UpgradeSuggestions filter(DependencyUpgradeSubject subject, UpgradeSuggestions suggestions) {
+	public UpgradeSuggestions filter(Dependency dependency, Releases releases,
+			VulnerabilityRepository vulnerabilities, DependencyRule rule, UpgradeSuggestions suggestions) {
 
-		Release safeVersion = resolveSafeVersion(subject);
+		Release safeVersion = resolveSafeVersion(dependency, releases, vulnerabilities);
 		if (safeVersion != null) {
 
 			Map<UpgradeStrategy, UpgradeSuggestion> newSuggestions = new LinkedHashMap<>();
@@ -58,16 +62,17 @@ class SafeUpgradeSuggestionsFilter implements UpgradeSuggestionsFilter {
 	 * the scheme scoping and ordering; absent or vulnerable results never read as
 	 * clean.
 	 */
-	private static @Nullable Release resolveSafeVersion(DependencyUpgradeSubject subject) {
+	private static @Nullable Release resolveSafeVersion(Dependency dependency, Releases releases,
+			VulnerabilityRepository vulnerabilities) {
 
-		ArtifactVersion current = subject.getDependency().getCurrentVersion();
-		if (!subject.isVulnerable()) {
+		ArtifactVersion current = dependency.getCurrentVersion();
+		if (!vulnerabilities.getVulnerabilities(current).isVulnerable()) {
 			return null;
 		}
 
-		return subject.getReleases().inScheme(current.scheme()).reversed().stream()
+		return releases.inScheme(current.scheme()).reversed().stream()
 				.filter(release -> release.isNewer(current))
-				.filter(release -> subject.getVulnerabilities(release.getVersion()).isClean())
+				.filter(release -> vulnerabilities.getVulnerabilities(release.getVersion()).isClean())
 				.findFirst().orElse(null);
 	}
 

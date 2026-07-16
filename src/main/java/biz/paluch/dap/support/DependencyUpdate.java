@@ -81,25 +81,24 @@ public class DependencyUpdate extends ArtifactVersionChange {
 	}
 
 	/**
-	 * Create an update from a resolved artifact reference and target version.
+	 * Create an update from a resolved artifact declaration and target version.
 	 *
-	 * @param reference the resolved artifact reference to update.
+	 * @param declaration the resolved artifact declaration to update.
 	 * @param version the selected target version.
 	 * @return the dependency update to apply.
 	 */
-	public static DependencyUpdate from(ArtifactReference reference, VersionAware version) {
-		return from(reference, version.getVersion());
+	public static DependencyUpdate from(ArtifactDeclaration declaration, VersionAware version) {
+		return from(declaration, version.getVersion());
 	}
 
 	/**
-	 * Create an update from a resolved artifact reference and target version.
+	 * Create an update from a resolved artifact declaration and target version.
 	 *
-	 * @param reference the resolved artifact reference to update.
+	 * @param declaration the resolved artifact declaration to update.
 	 * @param version the selected target version.
 	 * @return the dependency update to apply.
 	 */
-	public static DependencyUpdate from(ArtifactReference reference, ArtifactVersion version) {
-		ArtifactDeclaration declaration = reference.getDeclaration();
+	public static DependencyUpdate from(ArtifactDeclaration declaration, ArtifactVersion version) {
 		return new DependencyUpdate(declaration.getArtifactId(), declaration.getVersion(), version,
 				declaration.getDeclarationSource(), declaration.getVersionSource());
 	}

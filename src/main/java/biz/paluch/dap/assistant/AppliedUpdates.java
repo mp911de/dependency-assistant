@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.action;
+package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,6 @@ import java.util.TreeSet;
 
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -38,9 +37,8 @@ import com.intellij.openapi.vfs.VirtualFile;
  *
  * @author Mark Paluch
  * @see AppliedDependencyUpdate
- * @see Notifications#updatesApplied(Project, java.util.Collection, Runnable)
  */
-class AppliedUpdates {
+public class AppliedUpdates {
 
 	private final Set<AppliedDependencyUpdate> applied = new TreeSet<>();
 

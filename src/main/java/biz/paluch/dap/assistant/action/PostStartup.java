@@ -24,6 +24,7 @@ import biz.paluch.dap.BomMembershipResolver;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectStateIndexer;
+import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.VulnerabilityScanner;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;

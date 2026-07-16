@@ -18,6 +18,11 @@ package biz.paluch.dap.upgrade;
 
 import java.util.List;
 
+import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.rule.DependencyRule;
+
 /**
  * Composite {@link UpgradeSuggestionsFilter} that applies its delegates in
  * declaration order, threading the result of each into the next.
@@ -37,11 +42,12 @@ class SuggestionFilters implements UpgradeSuggestionsFilter {
 	}
 
 	@Override
-	public UpgradeSuggestions filter(DependencyUpgradeSubject subject, UpgradeSuggestions suggestions) {
+	public UpgradeSuggestions filter(Dependency dependency, Releases releases,
+			VulnerabilityRepository vulnerabilities, DependencyRule rule, UpgradeSuggestions suggestions) {
 
 		UpgradeSuggestions filtered = suggestions;
 		for (UpgradeSuggestionsFilter filter : filters) {
-			filtered = filter.filter(subject, filtered);
+			filtered = filter.filter(dependency, releases, vulnerabilities, rule, filtered);
 		}
 		return filtered;
 	}

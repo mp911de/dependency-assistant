@@ -3,10 +3,6 @@ package biz.paluch.dap.support;
 import java.util.function.Function;
 
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -30,15 +26,9 @@ public class DependencyFileDelegate {
 
 	private final VirtualFile file;
 
-	private final StateService service;
-
-	private final BetterPsiManager psiManager;
-
 	private DependencyFileDelegate(Project project, VirtualFile file) {
 		this.project = project;
 		this.file = file;
-		this.service = StateService.getInstance(project);
-		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
 	/**
@@ -61,28 +51,6 @@ public class DependencyFileDelegate {
 	}
 
 	/**
-	 * Return the shared release-metadata cache from the project
-	 * {@link StateService}.
-	 *
-	 * @return the cache; guaranteed to be not {@literal null}.
-	 */
-	public Cache getCache() {
-		return service.getCache();
-	}
-
-	/**
-	 * Return the persisted state for the given project from the project
-	 * {@link StateService}.
-	 *
-	 * @param projectId the identifier of the project whose state is requested; must
-	 * not be {@literal null}.
-	 * @return the project state; guaranteed to be not {@literal null}.
-	 */
-	public ProjectState getProjectState(ProjectId projectId) {
-		return service.getProjectState(projectId);
-	}
-
-	/**
 	 * Collect the dependencies declared in the bound file.
 	 *
 	 * <p>Resolves the {@link PsiFile} for the bound file and applies
@@ -96,7 +64,7 @@ public class DependencyFileDelegate {
 	 * when the file cannot be resolved; guaranteed to be not {@literal null}.
 	 */
 	public DependencyCollector collectDependencies(Function<PsiFile, DependencyCollector> collectorFunction) {
-		PsiFile psiFile = psiManager.findFile(this.file);
+		PsiFile psiFile = BetterPsiManager.getInstance(this.project).findFile(this.file);
 		return psiFile != null ? collectorFunction.apply(psiFile) : new DependencyCollector();
 	}
 

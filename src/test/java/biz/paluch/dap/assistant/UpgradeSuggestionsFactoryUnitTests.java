@@ -29,7 +29,6 @@ import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.Generations;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
@@ -56,7 +55,8 @@ class UpgradeSuggestionsFactoryUnitTests {
 				TestVulnerabilities.HIGH, version("1.0.1"), TestVulnerabilities.HIGH, version("1.0.2"),
 				Vulnerabilities.clean()));
 
-		UpgradeSuggestions suggestions = factory().createSuggestions(dependency, releases, vulnerabilities,
+		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
+				vulnerabilities,
 				DependencyRule.absent());
 
 		assertThat(suggestions.get(UpgradeStrategy.SAFE).getRelease()).isEqualTo(Release.of("1.0.2"));
@@ -70,7 +70,8 @@ class UpgradeSuggestionsFactoryUnitTests {
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
 				Vulnerabilities.clean(), version("1.0.1"), Vulnerabilities.clean()));
 
-		UpgradeSuggestions suggestions = factory().createSuggestions(dependency, releases, vulnerabilities,
+		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
+				vulnerabilities,
 				DependencyRule.absent());
 
 		assertThat(suggestions.contains(UpgradeStrategy.SAFE)).isFalse();
@@ -84,7 +85,8 @@ class UpgradeSuggestionsFactoryUnitTests {
 		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
 				TestVulnerabilities.HIGH, version("1.0.1"), Vulnerabilities.clean()));
 
-		UpgradeSuggestions suggestions = factory().createSuggestions(dependency, releases, vulnerabilities,
+		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
+				vulnerabilities,
 				new PatchOnlyRule());
 
 		assertThat(suggestions.contains(UpgradeStrategy.SAFE)).isTrue();
@@ -98,14 +100,10 @@ class UpgradeSuggestionsFactoryUnitTests {
 		Dependency dependency = dependency("3.0.0");
 		Releases releases = TestReleases.from("3.0.0", "2.0.1", "2.0.0", "1.0.0");
 
-		UpgradeSuggestions suggestions = factory().createSuggestions(dependency, releases,
+		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
 				VulnerabilityRepository.empty(), new GenerationTwoRule());
 
 		assertThat(suggestions.get(UpgradeStrategy.RULE).getRelease()).isEqualTo(Release.of("2.0.1"));
-	}
-
-	private static UpgradeSuggestionsFactory factory() {
-		return new UpgradeSuggestionsFactory(new StateService());
 	}
 
 	private static Dependency dependency(String version) {

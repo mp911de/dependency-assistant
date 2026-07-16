@@ -29,12 +29,13 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.UpgradeCandidate;
-import biz.paluch.dap.assistant.check.UpgradeGroup;
+import biz.paluch.dap.checker.CvssSeverity;
+import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.ticket.TicketSystem;
+import biz.paluch.dap.upgrade.UpgradeDecision;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.components.Service;
@@ -332,6 +333,15 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		@Attribute
 		private String toVersion = "";
 
+		@Attribute
+		private boolean vulnerabilityFix;
+
+		@Attribute
+		private int vulnerabilityCount;
+
+		@Attribute
+		private CvssSeverity highestVulnerabilitySeverity = CvssSeverity.NONE;
+
 		@Tag
 		private @Nullable Ticket ticket;
 
@@ -341,21 +351,26 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		@Transient
 		private @Nullable UpgradePlanItem materialized;
 
-		static Item from(UpgradeCandidate candidate, ArtifactVersion targetVersion) {
+		static Item from(UpgradePlanCapture capture, ArtifactVersion targetVersion) {
 
 			Item item = new Item();
 			item.setToVersion(targetVersion.toString());
+			item.displayName = capture.getPlanName();
 
-			List<UpgradeCandidate> members = candidate instanceof UpgradeGroup group ? group.getMembers()
-					: List.of(candidate);
-			if (candidate instanceof UpgradeGroup group) {
-				item.displayName = group.getDerivedLabel();
-			} else {
-				item.displayName = candidate.getDependencyName();
+			Vulnerabilities currentVulnerabilities = Vulnerabilities.clean();
+			Vulnerabilities targetVulnerabilities = Vulnerabilities.clean();
+			for (UpgradeDecision decision : capture.getUpgradeDecisions()) {
+				item.members.add(new Member(decision.getDependency(), capture.getAssistantClassName()));
+				currentVulnerabilities = currentVulnerabilities
+						.addAll(decision.getVulnerabilities(decision.getCurrentVersion()));
+				targetVulnerabilities = targetVulnerabilities.addAll(decision.getVulnerabilities(targetVersion));
 			}
-			for (UpgradeCandidate member : members) {
-				item.members.add(new Member(member));
-			}
+			item.vulnerabilityFix = currentVulnerabilities.isVulnerable()
+					&& !targetVulnerabilities.isVulnerable();
+			item.vulnerabilityCount = currentVulnerabilities.isVulnerable() ? currentVulnerabilities.size() : 0;
+			item.highestVulnerabilitySeverity = currentVulnerabilities.isVulnerable()
+					? currentVulnerabilities.getHighestSeverity()
+					: CvssSeverity.NONE;
 
 			item.getId();
 			return item;
@@ -363,8 +378,19 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		public static Item from(UpgradePlanItem planItem) {
 
-			Item item = from(planItem.getUpgradeCandidate(), planItem.getToVersion());
+			Item item = new Item();
+			item.setDisplayName(planItem.getDisplayName());
+			item.setToVersion(planItem.getToVersion().toString());
+			item.setVulnerabilityFix(planItem.isVulnerabilityFix());
+			item.setVulnerabilityCount(planItem.getVulnerabilityCount());
+			item.setHighestVulnerabilitySeverity(planItem.getHighestVulnerabilitySeverity());
+			List<Member> members = new ArrayList<>();
+			for (int i = 0; i < planItem.getStoredMembers().size(); i++) {
+				members.add(new Member(planItem.getStoredMembers().get(i), planItem.getMemberAssistantClassName(i)));
+			}
+			item.setMembers(members);
 			item.setTicket(Ticket.from(planItem.getTicket()));
+			item.getId();
 			return item;
 		}
 
@@ -389,6 +415,30 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		public void setToVersion(String toVersion) {
 			this.toVersion = toVersion;
+		}
+
+		public boolean isVulnerabilityFix() {
+			return vulnerabilityFix;
+		}
+
+		public void setVulnerabilityFix(boolean vulnerabilityFix) {
+			this.vulnerabilityFix = vulnerabilityFix;
+		}
+
+		public int getVulnerabilityCount() {
+			return vulnerabilityCount;
+		}
+
+		public void setVulnerabilityCount(int vulnerabilityCount) {
+			this.vulnerabilityCount = vulnerabilityCount;
+		}
+
+		public CvssSeverity getHighestVulnerabilitySeverity() {
+			return highestVulnerabilitySeverity;
+		}
+
+		public void setHighestVulnerabilitySeverity(CvssSeverity highestVulnerabilitySeverity) {
+			this.highestVulnerabilitySeverity = highestVulnerabilitySeverity;
 		}
 
 		public @Nullable Ticket getTicket() {
@@ -440,7 +490,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		public Item snapshot() {
 			Item snapshot = clone();
-			snapshot.members = List.copyOf(members);
+			snapshot.members = members.stream().map(Member::new).toList();
 			UpgradePlanItem materialized = snapshot.getMaterialized();
 
 			if (materialized != null) {
@@ -769,14 +819,27 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		public Member() {
 		}
 
-		public Member(UpgradeCandidate candidate) {
+		Member(Member member) {
+			this.groupId = member.groupId;
+			this.artifactId = member.artifactId;
+			this.fromVersion = member.fromVersion;
+			this.assistant = member.assistant;
+			for (DeclarationSourceState source : member.declarationSources) {
+				this.declarationSources.add(new DeclarationSourceState(source.kind, source.profileId));
+			}
+			for (VersionSourceState source : member.versionSources) {
+				this.versionSources.add(new VersionSourceState(source.kind, source.value, source.profile,
+						source.declaration));
+			}
+		}
 
-			ArtifactId artifactId = candidate.getArtifactId();
-			Dependency dependency = candidate.getUpdateCandidate().getDependency();
+		Member(Dependency dependency, String assistant) {
+
+			ArtifactId artifactId = dependency.getArtifactId();
 			this.groupId = artifactId.groupId();
 			this.artifactId = artifactId.artifactId();
-			this.fromVersion = candidate.getCurrentVersion().toString();
-			this.assistant = candidate.getInterfaceAssistant().getClass().getName();
+			this.fromVersion = dependency.getCurrentVersion().toString();
+			this.assistant = assistant;
 
 			for (VersionSource source : dependency.getVersionSources()) {
 				VersionSourceState versionSource = VersionSourceState.from(source);

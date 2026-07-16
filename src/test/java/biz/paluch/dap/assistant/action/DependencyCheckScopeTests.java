@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ class DependencyCheckScopeTests {
 
 		assertThat(result).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
-			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isTrue();
+			assertThat(result.declaredVersions().get(merged).hasVersionDrift()).isTrue();
 		});
 	}
 
@@ -97,8 +97,8 @@ class DependencyCheckScopeTests {
 		assertThat(result).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
 			assertThat(merged.getCurrentVersion()).isEqualTo(ArtifactVersion.of("7.4.1.RELEASE"));
-			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isFalse();
-			assertThat(merged.getUpdateCandidate().hasUpgradeTargets()).isTrue();
+			assertThat(result.declaredVersions().get(merged).hasVersionDrift()).isFalse();
+			assertThat(merged.hasUpgradeTargets()).isTrue();
 		});
 	}
 
