@@ -473,7 +473,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			table.setAutoCreateRowSorter(true);
 			table.setShowGrid(true);
-			table.setRowHeight(Math.max(table.getRowHeight(), STRATEGY_STRIP_HEIGHT) + 4);
+			table.setRowHeight(Math.max(table.getRowHeight(), STRATEGY_STRIP_HEIGHT) + JBUI.scale(4));
 			table.setIntercellSpacing(new Dimension(JBUI.scale(2), JBUI.scale(2)));
 			table.getTableHeader().setReorderingAllowed(false);
 

@@ -75,6 +75,8 @@ import org.jspecify.annotations.Nullable;
  */
 class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction {
 
+	private static final int MAX_POPUP_ROWS = 20;
+
 	private final UpgradePlanService service;
 
 	private final Component parent;
@@ -192,9 +194,10 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 				}
 
 			};
-			option.getTemplatePresentation().setIcon(model.getIcon(value));
-			option.getTemplatePresentation().putClientProperty(ActionUtil.TOOLTIP_TEXT, tooltipText(value));
-			option.getTemplatePresentation().putClientProperty(ActionUtil.SECONDARY_TEXT,
+			Presentation templatePresentation = option.getTemplatePresentation();
+			templatePresentation.setIcon(model.getIcon(value));
+			templatePresentation.putClientProperty(ActionUtil.TOOLTIP_TEXT, tooltipText(value));
+			templatePresentation.putClientProperty(ActionUtil.SECONDARY_TEXT,
 					model.getSecondaryText(value));
 			values.add(option);
 		}
@@ -202,7 +205,7 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 		JBPopup popup = JBPopupFactory.getInstance()
 				.createActionGroupPopup(null, values,
 						DataManager.getInstance().getDataContext(parent),
-						JBPopupFactory.ActionSelectionAid.SPEEDSEARCH, true);
+						JBPopupFactory.ActionSelectionAid.SPEEDSEARCH, true, null, MAX_POPUP_ROWS);
 
 		button.setPopupShowing(true);
 		popup.addListener(new JBPopupListener() {

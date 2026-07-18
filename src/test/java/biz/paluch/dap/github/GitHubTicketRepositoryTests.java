@@ -114,7 +114,7 @@ class GitHubTicketRepositoryTests {
 		server.stubFor(get(urlPathEqualTo("/api/v3/search/issues")).willReturn(okJson(searchResult())));
 
 		repository.findTickets((ProgressIndicator) EMPTY_INDICATOR,
-				query -> query.label(new GitHubLabel("type: dependency-upgrade", null)));
+				query -> query.label(new GitHubLabel("type: dependency-upgrade", "", null)));
 
 		assertThat(requestedUrl()).contains("type%3Aissue%20AND%20label%3A%22type%3A%20dependency-upgrade%22");
 	}
@@ -127,7 +127,7 @@ class GitHubTicketRepositoryTests {
 						issue(2, "Upgrade Netty", "task"), issue(3, "Upgrade Jackson", "documentation")))));
 
 		List<Ticket> tickets = repository.findTickets(EMPTY_INDICATOR,
-				query -> query.label(new GitHubLabel("dependencies", null), new GitHubLabel("task", null)));
+				query -> query.label(new GitHubLabel("dependencies", "", null), new GitHubLabel("task", "", null)));
 
 		assertThat(tickets).hasSize(2);
 		assertThat(requestedUrl()).contains("AND%20(label%3A%22dependencies%22%20OR%20label%3A%22task%22)");
@@ -140,7 +140,7 @@ class GitHubTicketRepositoryTests {
 
 		repository.findTickets((ProgressIndicator) EMPTY_INDICATOR,
 				query -> query.milestone(gitHubMilestone(7), gitHubMilestone(8))
-						.label(new GitHubLabel("dependencies", null), new GitHubLabel("task", null)));
+						.label(new GitHubLabel("dependencies", "", null), new GitHubLabel("task", "", null)));
 
 		assertThat(requestedUrl()).contains(
 				"type%3Aissue%20AND%20(milestone%3A%22milestone-7%22%20OR%20milestone%3A%22milestone-8%22)%20AND%20(label%3A%22dependencies%22%20OR%20label%3A%22task%22)");
@@ -219,7 +219,7 @@ class GitHubTicketRepositoryTests {
 
 		Ticket ticket = repository.createTicket(EMPTY_INDICATOR, "Upgrade Netty",
 				spec -> spec.description("Upgrade to 4.2.x").milestone(gitHubMilestone(7))
-						.label(new GitHubLabel("type: dependency-upgrade", null)));
+						.label(new GitHubLabel("type: dependency-upgrade", "", null)));
 
 		assertThat(ticket.getKey()).isEqualTo(TicketKey.of("42"));
 		assertThat(ticket.getMilestones()).hasSize(1);
@@ -270,7 +270,7 @@ class GitHubTicketRepositoryTests {
 	@Test
 	void getLabelsServesStoredFallbackOnFailure() throws IOException {
 
-		cache.storeLabels(COORDINATES, List.of(new GitHubLabel("bug", "d93f0b")));
+		cache.storeLabels(COORDINATES, List.of(new GitHubLabel("bug", "", "d93f0b")));
 		server.stubFor(get(urlPathEqualTo("/api/v3/repos/mp911de/dependency-assistant/labels"))
 				.willReturn(aResponse().withStatus(503)));
 

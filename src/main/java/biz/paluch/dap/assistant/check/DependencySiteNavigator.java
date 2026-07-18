@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant.check;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.InputEvent;
@@ -38,6 +39,7 @@ import javax.swing.JComponent;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 
 import biz.paluch.dap.DependencyAssistantIcons;
@@ -66,6 +68,7 @@ import com.intellij.openapi.ui.popup.ActiveIcon;
 import com.intellij.openapi.ui.popup.Balloon;
 import com.intellij.openapi.ui.popup.JBPopup;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.ui.popup.util.PopupUtil;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -75,16 +78,18 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.ui.CollectionListModel;
-import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBSplitter;
 import com.intellij.ui.ListSpeedSearch;
+import com.intellij.ui.ScrollPaneFactory;
+import com.intellij.ui.SimpleColoredComponent;
 import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
-import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.popup.list.SelectablePanel;
+import com.intellij.ui.speedSearch.SpeedSearchUtil;
 import com.intellij.usageView.UsageInfo;
 import com.intellij.usages.Usage;
 import com.intellij.usages.UsageInfo2UsageAdapter;
@@ -95,6 +100,7 @@ import com.intellij.usages.impl.rules.UsageType;
 import com.intellij.usages.impl.rules.UsageWithType;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -292,7 +298,7 @@ public class DependencySiteNavigator {
 		list.setSelectedIndex(0);
 
 		JBSplitter splitter = new JBSplitter(false, 0.4f);
-		splitter.setFirstComponent(new JBScrollPane(list));
+		splitter.setFirstComponent(ScrollPaneFactory.createScrollPane(list, true));
 		splitter.setSecondComponent(preview);
 
 		JButton openInFind = new JButton(MessageBundle.message("dialog.findSites.openInFind"));
@@ -352,6 +358,7 @@ public class DependencySiteNavigator {
 		JBList<SitePresentation> list = new JBList<>(new CollectionListModel<>(ordered.toList()));
 		list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		list.setCellRenderer(new SiteRenderer());
+		list.setBackground(JBUI.CurrentTheme.Popup.BACKGROUND);
 		ListSpeedSearch.installOn(list, SitePresentation::searchableText);
 
 		list.addMouseMotionListener(new MouseMotionAdapter() {
@@ -515,7 +522,7 @@ public class DependencySiteNavigator {
 			return label + " " + location;
 		}
 
-		private void renderOn(ColoredListCellRenderer<?> renderer) {
+		private void renderOn(SimpleColoredComponent renderer) {
 			renderer.setIcon(icon);
 			renderer.append(MessageBundle.message("dialog.findSites.role." + role.name()) + "  ",
 					SimpleTextAttributes.GRAYED_ATTRIBUTES);
@@ -697,13 +704,31 @@ public class DependencySiteNavigator {
 
 	}
 
-	private class SiteRenderer extends ColoredListCellRenderer<SitePresentation> {
+	/**
+	 * Popup-style row renderer: 24px rows with the rounded, inset selection of
+	 * platform popup lists ({@code PopupUtil.configListRendererFixedHeight}), as
+	 * used by Search Everywhere.
+	 */
+	private class SiteRenderer implements ListCellRenderer<SitePresentation> {
+
+		private final SimpleColoredComponent component = new SimpleColoredComponent();
+
+		private final SelectablePanel panel = SelectablePanel.wrap(component, JBUI.CurrentTheme.Popup.BACKGROUND);
+
+		SiteRenderer() {
+			component.setOpaque(false);
+			PopupUtil.configListRendererFixedHeight(panel);
+		}
 
 		@Override
-		protected void customizeCellRenderer(JList<? extends SitePresentation> list,
-				SitePresentation entry, int index,
-				boolean selected, boolean hasFocus) {
-			entry.renderOn(this);
+		public Component getListCellRendererComponent(JList<? extends SitePresentation> list, SitePresentation entry,
+				int index, boolean selected, boolean hasFocus) {
+
+			component.clear();
+			entry.renderOn(component);
+			SpeedSearchUtil.applySpeedSearchHighlighting(list, component, true, selected);
+			panel.setSelectionColor(selected ? UIUtil.getListBackground(true, true) : null);
+			return panel;
 		}
 
 	}

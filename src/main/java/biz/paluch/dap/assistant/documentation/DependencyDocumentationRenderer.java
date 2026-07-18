@@ -761,7 +761,7 @@ class DependencyDocumentationRenderer {
 
 			HtmlChunk.Element cell = HtmlChunk.tag("td");
 			return release.releaseDate() != null
-					? cell.addText(formatter.formatLong(release.releaseDate()))
+					? cell.addText(formatter.format(release.releaseDate()))
 					: cell.child(HtmlChunk.empty());
 		}
 

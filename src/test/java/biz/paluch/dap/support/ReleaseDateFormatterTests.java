@@ -16,10 +16,12 @@
 
 package biz.paluch.dap.support;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -31,41 +33,68 @@ import static org.assertj.core.api.Assertions.*;
  */
 class ReleaseDateFormatterTests {
 
-	@Test
-	void formatsAgeAsSingleCoarseUnit() {
+	Clock CLOCK = Clock.fixed(Instant.parse("2026-07-16T12:00:00Z"), ZoneOffset.UTC);
 
-		assertThat(age(3)).isEqualTo("3 days");
-		assertThat(age(8)).isEqualTo("1 week");
-		assertThat(age(40)).isEqualTo("1 month");
-		assertThat(age(81)).isEqualTo("3 months");
-	}
+	ReleaseDateFormatter formatter = ReleaseDateFormatter.create(CLOCK);
 
-	@Test
-	void roundsAgeToNearestUnit() {
+	LocalDateTime NOW = LocalDateTime.now(CLOCK);
 
-		assertThat(age(45)).isEqualTo("2 months");
-		assertThat(age(350)).isEqualTo("1 year");
-		assertThat(age(700)).isEqualTo("2 years");
-	}
+	LocalDateTime from = LocalDateTime.of(2026, 1, 1, 0, 0);
 
 	@Test
-	void omitsAgeBelowOneDay() {
-		assertThat(age(0)).isNull();
+	void formatsRelativeWithinOneYearInBothDirections() {
+
+		LocalDateTime releaseDate1 = NOW.minusDays(3);
+		assertThat(formatter.format(releaseDate1)).isEqualTo("3 days ago (13.07.2026)");
+		LocalDateTime releaseDate = NOW.plusDays(3);
+		assertThat(formatter.format(releaseDate)).isEqualTo("in 3 days (19.07.2026)");
 	}
 
 	@Test
 	void formatsDetailedDateWithTimeOfDay() {
 
-		String detailed = ReleaseDateFormatter.create().formatDetailed(LocalDateTime.of(2026, 2, 15, 14, 30));
+		String detailed = formatter.formatDetailed(LocalDateTime.of(2025, 2, 15, 14, 30));
 
 		// Medium date plus short time; the hour-minute separator marks the time
 		// part, joined without the locale's date-time comma.
-		assertThat(detailed).contains(":").doesNotContain("2026,");
+		assertThat(detailed).contains(":").doesNotContain("2025,");
+	}
+
+	@Test
+	void formatsAgeAsSingleCoarseUnit() {
+
+		assertThat(formatter.formatAge(from, from.plusDays(3))).isEqualTo("3 days");
+		assertThat(formatter.formatAge(from, from.plusDays(8))).isEqualTo("1 week");
+		assertThat(formatter.formatAge(from, from.plusDays(40))).isEqualTo("1 month");
+		assertThat(formatter.formatAge(from, from.plusDays(81))).isEqualTo("3 months");
+	}
+
+	@Test
+	void roundsAgeToNearestUnit() {
+
+		assertThat(formatter.formatAge(from, from.plusDays(45))).isEqualTo("2 months");
+		assertThat(formatter.formatAge(from, from.plusDays(350))).isEqualTo("1 year");
+	}
+
+	@Test
+	void addsMonthDetailInYearRange() {
+
+		assertThat(formatter.formatAge(from, from.plusDays(365))).isEqualTo("1 year");
+		assertThat(formatter.formatAge(from, from.plusDays(400))).isEqualTo("1 year and 1 month");
+		assertThat(formatter.formatAge(from, from.plusDays(500))).isEqualTo("1 year and 5 months");
+		assertThat(formatter.formatAge(from, from.plusDays(700))).isEqualTo("1 year and 11 months");
+		assertThat(formatter.formatAge(from, from.plusDays(720))).isEqualTo("2 years");
+		assertThat(formatter.formatAge(from, from.plusDays(730))).isEqualTo("2 years");
+	}
+
+	@Test
+	void omitsAgeBelowOneDay() {
+		assertThat(formatter.formatAge(from, from.plusDays(0))).isNull();
 	}
 
 	@Test
 	void formatsAgeDirectionAgnostic() {
-		assertThat(age(-40)).isEqualTo("1 month");
+		assertThat(formatter.formatAge(from, from.plusDays(-40))).isEqualTo("1 month");
 	}
 
 	@Test
@@ -87,14 +116,8 @@ class ReleaseDateFormatterTests {
 		assertThat(due(-30)).doesNotContain("(");
 	}
 
-	private static @Nullable String age(int days) {
-
-		LocalDateTime from = LocalDateTime.of(2026, 1, 1, 0, 0);
-		return ReleaseDateFormatter.create().formatAge(from, from.plusDays(days));
-	}
-
-	private static String due(int daysFromToday) {
-		return ReleaseDateFormatter.create().formatDue(LocalDate.now().plusDays(daysFromToday));
+	private String due(int daysFromToday) {
+		return formatter.formatDue(LocalDate.now(CLOCK).plusDays(daysFromToday));
 	}
 
 }

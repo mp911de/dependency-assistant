@@ -40,7 +40,7 @@ class GitHubTicketCacheUnitTests {
 	void getStateReturnsSnapshotDetachedFromLiveState() {
 
 		GitHubTicketCache cache = new GitHubTicketCache();
-		cache.storeLabels(COORDINATES, List.of(new GitHubLabel("bug", "d93f0b")));
+		cache.storeLabels(COORDINATES, List.of(new GitHubLabel("bug", "", "d93f0b")));
 		cache.storeMilestones(COORDINATES, List.of(new GitHubMilestone(7, "2026.1", true, "First release",
 				LocalDateTime.of(2026, 8, 1, 0, 0))));
 
