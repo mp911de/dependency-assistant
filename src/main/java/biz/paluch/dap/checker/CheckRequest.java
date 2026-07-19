@@ -125,9 +125,6 @@ public class CheckRequest {
 		/**
 		 * Add an artifact and the versions to check for it.
 		 *
-		 * @param artifactId the artifact coordinate.
-		 * @param packageSystem the ecosystem the artifact belongs to .
-		 * @param versions the exact versions to check.
 		 * @return this builder.
 		 */
 		public Builder add(PackageIdentity pkg, List<ArtifactVersion> versions) {

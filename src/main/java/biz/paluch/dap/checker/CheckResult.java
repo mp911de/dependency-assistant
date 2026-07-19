@@ -28,13 +28,6 @@ import biz.paluch.dap.artifact.PackageIdentity;
  * package} a source could check, the {@link Vulnerabilities vulnerabilities} it
  * produced per version.
  *
- * <p>The result holds only versions a source actually checked: a version no
- * source could resolve is absent from the map.
- * {@link #getVulnerabilities(PackageIdentity, ArtifactVersion)} therefore
- * returns {@link Vulnerabilities#absent() absent} exactly when no source
- * returned that version, and a {@link Vulnerabilities#isClean() clean} or
- * {@link Vulnerabilities#isVulnerable() vulnerable} result otherwise.
- *
  * @author Mark Paluch
  * @see VulnerabilitySource
  * @see CheckRequest

@@ -31,13 +31,6 @@ import org.jspecify.annotations.Nullable;
  * Per-file deep module that resolves a build-file element to its
  * {@link ArtifactReference} and current version.
  *
- * <p>The module owns current-version resolution and exposes the project state
- * service used by the surrounding artifact context. Build-tool variation is
- * isolated behind a single {@link ArtifactReferenceResolver} that the module
- * holds and delegates {@link #resolveArtifactReference(PsiElement)} to. The
- * same concrete type serves every build ecosystem. Producing filtered upgrade
- * suggestions is the job of {@code UpgradeSuggestionsFactory}, not this module.
- *
  * <p>Lookup methods are cache-only and never trigger remote repository access.
  *
  * @author Mark Paluch

@@ -27,10 +27,6 @@ import org.jetbrains.annotations.NotNull;
  * PSI change listener that funnels edits of supported build files into the
  * {@link StateRefresher}.
  *
- * <p>Registered through the {@code com.intellij.psi.treeChangeListener}
- * extension point so quick fixes and manual edits refresh dependency state
- * immediately instead of waiting for the file to be saved.
- *
  * @author Mark Paluch
  * @see FlushStateOnSave
  */

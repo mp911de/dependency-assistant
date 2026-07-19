@@ -35,6 +35,8 @@ import org.jspecify.annotations.Nullable;
  * Applies selected extension version updates to a Maven {@code extensions.xml}
  * file by rewriting the inline {@code <version>} tag of each matching
  * {@code <extension>} declaration.
+ *
+ * @author Mark Paluch
  */
 class UpdateExtensionsFile {
 

@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant.action;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,8 @@ import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.ReleaseResolver;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StepsProgressIndicator;
+import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
@@ -36,7 +39,6 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.TimeoutUtil;
-import com.intellij.util.progress.StepsProgressIndicator;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -44,7 +46,6 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-// TODO: progress bar indeterminate?
 class RefreshReleaseMetadata extends Task.Backgroundable {
 
 	private static final Logger LOG = Logger.getInstance(RefreshReleaseMetadata.class);
@@ -63,12 +64,17 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 	@Override
 	public void run(ProgressIndicator indicator) {
 
+		indicator.setIndeterminate(false);
 		long startNs = System.nanoTime();
 		DependencyCheck dependencyCheck = new DependencyCheck(project);
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
-		StepsProgressIndicator steps = new StepsProgressIndicator(indicator, 1 + assistants.size());
+
+		double[] doubles = new double[1 + assistants.size()];
+		Arrays.fill(doubles, 1);
+		doubles[doubles.length - 1] = 15;
+
+		StepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, doubles);
 		steps.setText(MessageBundle.message("action.index-dependencies.analyzing"));
-		steps.setIndeterminate(false);
 
 		List<ReleaseSources> sources = new ArrayList<>();
 

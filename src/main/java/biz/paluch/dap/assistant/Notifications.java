@@ -180,7 +180,7 @@ public class Notifications {
 		List<AppliedDependencyUpdate> outOfBounds = flagged.stream()
 				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.OUT_OF_BOUNDS).toList();
 		if (!outOfBounds.isEmpty()) {
-			renderFlagged(message,
+			renderOutOfBounds(message,
 					MessageBundle.message("notification.dependencies-updates.out-of-bounds", outOfBounds.size()),
 					outOfBounds);
 		}
@@ -188,7 +188,7 @@ public class Notifications {
 		List<AppliedDependencyUpdate> majorCrossings = flagged.stream()
 				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.MAJOR_CROSSING).toList();
 		if (!majorCrossings.isEmpty()) {
-			renderFlagged(message,
+			renderOutOfBounds(message,
 					MessageBundle.message("notification.dependencies-updates.major-crossing", majorCrossings.size()),
 					majorCrossings);
 		}
@@ -207,7 +207,7 @@ public class Notifications {
 		return notification;
 	}
 
-	private static void renderFlagged(StringBuilder message, String heading,
+	private static void renderOutOfBounds(StringBuilder message, String heading,
 			Collection<AppliedDependencyUpdate> entries) {
 
 		message.append(heading);

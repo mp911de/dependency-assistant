@@ -38,6 +38,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Applies selected dependency and plugin version updates to a POM file
  * according to the {@link VersionSource} and {@link DeclarationSource}.
+ *
+ * @author Mark Paluch
  */
 class UpdatePomFile {
 

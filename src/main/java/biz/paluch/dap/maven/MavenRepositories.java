@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Utility to obtain Maven repositories.
+ *
  * @author Mark Paluch
  */
 class MavenRepositories {
