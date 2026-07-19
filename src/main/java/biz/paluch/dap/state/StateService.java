@@ -31,6 +31,7 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilitiesRepository;
 import com.intellij.openapi.components.PersistentStateComponent;
+import com.intellij.openapi.components.PersistentStateComponentWithModificationTracker;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.project.Project;
@@ -55,7 +56,9 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 @State(name = "DependencyAssistant", storages = @Storage("dependency-assistant.xml"))
-public class StateService implements PersistentStateComponent<DependencyAssistantState>, VulnerabilitiesRepository {
+public class StateService
+		implements PersistentStateComponentWithModificationTracker<DependencyAssistantState>,
+		VulnerabilitiesRepository {
 
 	private final DependencyAssistantState state = new DependencyAssistantState();
 
@@ -92,6 +95,31 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		snapshot.setCache(state.getCache().snapshot());
 		snapshot.setUsedOnce(state.isUsedOnce());
 		return snapshot;
+	}
+
+	/**
+	 * Return the modification count the platform compares to decide whether
+	 * {@link #getState()} needs to be called at all during a save cycle.
+	 * <p>Combines the cache's mutation counter with the one-time flip of the
+	 * used-once flag.
+	 *
+	 * @return the state modification count.
+	 */
+	@Override
+	public long getStateModificationCount() {
+		return state.getCache().getModificationCount();
+	}
+
+	/**
+	 * Record that Dependency Assistant has been used actively.
+	 */
+	public void markUsed() {
+
+		if (state.isUsedOnce()) {
+			return;
+		}
+		state.getCache().incrementModification();
+		state.setUsedOnce(true);
 	}
 
 	/**
@@ -134,7 +162,6 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		return new DefaultProjectState(identity);
 	}
 
-
 	@Override
 	public Vulnerabilities getVulnerabilities(PackageIdentity pkg, ArtifactVersion version) {
 		return getVulnerabilities(pkg.getArtifactId(), version);
@@ -176,25 +203,21 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		BomAggregate.Builder aggregate = BomAggregate.builder(artifactId)
 				.member(artifactId, artifactVersion, vulnerabilities);
 
-		doWithDependencies(dependency -> {
+		bom.forEach((memberId, managedVersion) -> {
 
-			ArtifactVersion managedVersion = bom.get(dependency.getArtifactId());
-			if (managedVersion != null && managedVersion.equals(dependency.getCurrentVersion())) {
-				aggregate.member(dependency.getArtifactId(), managedVersion,
-						cache::getVulnerabilities);
-			}
-		});
+			for (DependencyCollector collector : dependencies.values()) {
 
-		doWithDeclarations(declaration -> {
+				Dependency usage = collector.getUsage(memberId);
+				if (usage != null && managedVersion.equals(usage.getCurrentVersion())) {
+					aggregate.member(memberId, managedVersion, cache::getVulnerabilities);
+					return;
+				}
 
-			if (declaration.hasDefinedVersion()) {
-				return;
-			}
-
-			ArtifactVersion managedVersion = bom.get(declaration.getArtifactId());
-			if (managedVersion != null) {
-				aggregate.member(declaration.getArtifactId(), managedVersion,
-						cache::getVulnerabilities);
+				DeclaredDependency declaration = collector.getDeclaration(memberId);
+				if (declaration != null && !declaration.hasDefinedVersion()) {
+					aggregate.member(memberId, managedVersion, cache::getVulnerabilities);
+					return;
+				}
 			}
 		});
 
@@ -228,6 +251,32 @@ public class StateService implements PersistentStateComponent<DependencyAssistan
 		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
 			if (projectFilter.test(entry.getKey())) {
 				for (Dependency dependency : entry.getValue().getUsages()) {
+					consumer.accept(dependency);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Perform the given action for each module's usage of the given artifact,
+	 * restricted to the modules accepted by {@code projectFilter}.
+	 * <p>Unlike {@link #doWithDependencies(Predicate, Consumer)}, this variant uses
+	 * the per-module usage index instead of scanning every dependency, so the cost
+	 * scales with the number of modules rather than the total dependency count.
+	 * Only the in-memory runtime dependency state is traversed; the persisted cache
+	 * is not consulted.
+	 *
+	 * @param artifactId the artifact whose usages are visited.
+	 * @param projectFilter selects which modules are traversed.
+	 * @param consumer the action invoked with each module's usage of the artifact.
+	 */
+	public void doWithDependencies(ArtifactId artifactId, Predicate<ProjectId> projectFilter,
+			Consumer<Dependency> consumer) {
+		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
+			if (projectFilter.test(entry.getKey())) {
+
+				Dependency dependency = entry.getValue().getUsage(artifactId);
+				if (dependency != null) {
 					consumer.accept(dependency);
 				}
 			}

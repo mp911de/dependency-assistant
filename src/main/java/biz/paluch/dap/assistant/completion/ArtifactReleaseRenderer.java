@@ -101,8 +101,8 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 			typeText = formatReleaseDate(release);
 		}
 
-		if (release.getVersion() instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())) {
-			typeText = gitVersion.getShortSha() + " " + typeText;
+		if (release.getVersion() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
+			typeText = gitVersion.getRequiredSha() + " " + typeText;
 			presentation.setTypeText(typeText.trim(), AllIcons.Vcs.CommitNode);
 		} else {
 			presentation.setTypeText(typeText.trim());

@@ -56,7 +56,7 @@ class DependencyDocumentationRendererTests {
 	@Test
 	void shouldDocumentPropertyWithSharedReleaseLine() {
 
-		cache.putVersionOptions(Releases.VAVR_MATCH.toArtifactId(),
+		cache.updateReleases(Releases.VAVR_MATCH.toArtifactId(),
 				cache.getReleases(Releases.VAVR.toArtifactId()));
 		VersionProperty property = new VersionProperty("vavr.version", Releases.VAVR, Releases.VAVR_MATCH);
 

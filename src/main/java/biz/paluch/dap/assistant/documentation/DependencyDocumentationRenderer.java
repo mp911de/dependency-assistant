@@ -50,7 +50,6 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
@@ -164,7 +163,7 @@ class DependencyDocumentationRenderer {
 					HtmlChunk.text(ReleaseDateFormatter.create().formatDetailed(releaseDate))));
 		}
 
-		if (release.getVersion() instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())) {
+		if (release.getVersion() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
 			sections.add(section("documentation.release.commit", HtmlChunk.text(gitVersion.getShortSha()).code()));
 		}
 

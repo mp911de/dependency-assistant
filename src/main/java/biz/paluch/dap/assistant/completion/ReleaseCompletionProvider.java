@@ -264,11 +264,11 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			lookupStrings.add(form.toString());
 		}
 
-		if (completionVersion instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())
+		if (completionVersion instanceof GitVersion gitVersion && gitVersion.hasSha()
 				&& refStyle == RefStyle.SHA) {
-			completion = gitVersion.getSha();
-			lookupStrings.add(gitVersion.getSha());
-			lookupStrings.add(gitVersion.getShortSha());
+			completion = gitVersion.getRequiredSha();
+			lookupStrings.add(gitVersion.getRequiredSha());
+			lookupStrings.add(gitVersion.getRequiredShortSha());
 		} else {
 			completion = completionVersion.toString();
 		}

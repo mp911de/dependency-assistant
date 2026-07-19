@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,9 +30,12 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import biz.paluch.dap.artifact.*;
 import biz.paluch.dap.checker.Vulnerabilities;
+import com.intellij.openapi.util.ModificationTracker;
+import com.intellij.openapi.util.SimpleModificationTracker;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -40,8 +44,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Persistent cache for release metadata and per-project property correlations.
- * <p>
- * This type serves as the durable backing store of the plugin state. It
+ * <p>This type serves as the durable backing store of the plugin state. It
  * keeps:
  * <ul>
  * <li>cached releases keyed by artifact coordinates, and</li>
@@ -54,13 +57,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 @Tag("cache")
-public class Cache {
-
-	/**
-	 * Clock used for cache age calculations.
-	 */
-	@Transient
-	private final Clock clock;
+public class Cache implements ModificationTracker {
 
 	private static final Duration CACHE_EXPIRATION = Duration.ofHours(8);
 
@@ -74,17 +71,24 @@ public class Cache {
 	 */
 	private static final int EMPTY_THRESHOLD = 3;
 
-	/**
-	 * Epoch-millisecond timestamp of the last successful update, or {@code 0} if no
-	 * update has been applied yet.
-	 */
+	@Transient
+	private final Clock clock;
+
+	@Transient
+	private final SimpleModificationTracker modificationTracker = new SimpleModificationTracker();
+
 	@Attribute
 	private volatile long lastUpdateTimestamp = 0L;
 
 	private final @XCollection(propertyElementName = "artifacts", elementName = "artifact", style = XCollection.Style.v2) List<CachedArtifact> artifacts = new ArrayList<>();
 
-	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project", style = XCollection.Style.v2) List<ProjectCache> projects = Collections
-			.synchronizedList(new ArrayList<>());
+	@Transient
+	private final Map<ArtifactId, CachedArtifact> artifactsById = new HashMap<>();
+
+	@Transient
+	private final Map<PackageIdentity, CachedArtifact> artifactsByPackageIdentity = new HashMap<>();
+
+	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project", style = XCollection.Style.v2) List<ProjectCache> projects = new ArrayList<>();
 
 	/**
 	 * Create a new {@code Cache} using the current UTC clock for XML
@@ -100,6 +104,15 @@ public class Cache {
 	 */
 	public Cache(Clock clock) {
 		this.clock = clock;
+	}
+
+	@Override
+	public long getModificationCount() {
+		return modificationTracker.getModificationCount();
+	}
+
+	public void incrementModification() {
+		this.modificationTracker.incModificationCount();
 	}
 
 	public Clock getClock() {
@@ -127,14 +140,63 @@ public class Cache {
 	}
 
 	/**
-	 * Return a snapshot of the known project cache entries.
+	 * Append cached artifact entries to this cache.
+	 * <p>Existing entries are not de-duplicated.
 	 *
-	 * @return an immutable snapshot of the current project entries.
+	 * @param artifacts the artifact entries to append.
 	 */
-	public List<ProjectCache> getProjects() {
-		synchronized (projects) {
-			return List.copyOf(projects);
-		}
+	public void addArtifacts(CachedArtifact... artifacts) {
+		addArtifacts(List.of(artifacts));
+	}
+
+	/**
+	 * Append cached artifact entries to this cache.
+	 * <p>Existing entries are not de-duplicated.
+	 *
+	 * @param artifacts the artifact entries to append.
+	 */
+	public void addArtifacts(Collection<CachedArtifact> artifacts) {
+		writeArtifacts(() -> {
+			for (CachedArtifact artifact : artifacts) {
+				this.artifacts.add(artifact);
+				index(artifact);
+			}
+		});
+	}
+
+	/**
+	 * Update the cached releases for the given artifact and their last seen
+	 * timestamps.
+	 * <p>If no cache entry exists yet, one is created first.
+	 *
+	 * @param artifactId the artifact whose releases should be stored.
+	 * @param releases the releases to cache.
+	 */
+	public void updateReleases(ArtifactId artifactId, Iterable<? extends Release> releases) {
+		writeArtifacts(() -> {
+			CachedArtifact artifactToUse = getOrCreate(findCachedArtifact(artifactId), null, artifactId);
+			artifactToUse.setCachedReleases(FetchedReleases.convert(releases), clock.millis());
+		});
+	}
+
+	/**
+	 * Update the cached releases using the given {@link FetchedReleases}, notifying
+	 * {@code onNewRelease} for each release added that was not previously cached.
+	 *
+	 * @param releases the fetched releases.
+	 * @param packageSystem the ecosystem the fetched artifact belongs to; stored on
+	 * a freshly created entry.
+	 * @param onNewRelease invoked once per newly cached release .
+	 */
+	public void updateReleases(FetchedReleases releases, PackageSystem packageSystem,
+			BiConsumer<Release, CachedRelease> onNewRelease) {
+
+		ArtifactId artifactId = releases.getArtifactId();
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId, packageSystem);
+		writeArtifacts(() -> {
+			CachedArtifact artifactToUse = getOrCreate(cachedArtifact, packageSystem, artifactId);
+			artifactToUse.updateReleases(releases, now(), onNewRelease);
+		});
 	}
 
 	/**
@@ -151,10 +213,9 @@ public class Cache {
 
 	/**
 	 * Return cached releases for the given artifact.
-	 * <p>
-	 * If {@code ensureRecent} is {@literal true}, stale cache content is treated
-	 * as absent and the result is an empty list once the cache age exceeds
-	 * the configured expiration window. The method does not trigger a refresh.
+	 * <p>If {@code ensureRecent} is {@literal true}, stale cache content is treated
+	 * as absent and the result is an empty list once the cache age exceeds the
+	 * configured expiration window. The method does not trigger a refresh.
 	 *
 	 * @param artifactId the artifact to look up.
 	 * @param ensureRecent whether stale cache content should be ignored.
@@ -182,48 +243,6 @@ public class Cache {
 		return Releases.empty();
 	}
 
-	/**
-	 * Append cached artifact entries to this cache.
-	 * <p>Existing entries are not de-duplicated.
-	 *
-	 * @param artifacts the artifact entries to append.
-	 */
-	public void addArtifacts(CachedArtifact... artifacts) {
-		addArtifacts(List.of(artifacts));
-	}
-
-	/**
-	 * Append cached artifact entries to this cache.
-	 * <p>Existing entries are not de-duplicated.
-	 *
-	 * @param artifacts the artifact entries to append.
-	 */
-	public void addArtifacts(Collection<CachedArtifact> artifacts) {
-		synchronized (this.artifacts) {
-			this.artifacts.addAll(artifacts);
-		}
-	}
-
-	/**
-	 * Replace the cached releases for the given artifact and update their last seen
-	 * timestamps.
-	 * <p>If no cache entry exists yet, one is created first.
-	 *
-	 * @param artifactId the artifact whose releases should be stored.
-	 * @param releases the releases to cache.
-	 */
-	public void putVersionOptions(ArtifactId artifactId, Iterable<? extends Release> releases) {
-
-		synchronized (artifacts) {
-			CachedArtifact artifactToUse = findCachedArtifact(artifactId);
-			if (artifactToUse == null) {
-				artifactToUse = new CachedArtifact(artifactId);
-				artifacts.add(artifactToUse);
-			}
-			artifactToUse.setCachedReleases(FetchedReleases.convert(releases), clock.millis());
-		}
-	}
-
 	public void putBillOfMaterials(DependencyCollector collector, PackageSystem packageSystem) {
 
 		collector.getUsages().forEach(it -> {
@@ -247,64 +266,11 @@ public class Cache {
 	public void putBillOfMaterials(BillOfMaterials bom, PackageSystem packageSystem) {
 
 		ArtifactId artifactId = bom.getArtifactId();
-		synchronized (artifacts) {
-			CachedArtifact artifactToUse = findCachedArtifact(artifactId, packageSystem);
-			if (artifactToUse == null) {
-				artifactToUse = new CachedArtifact(artifactId);
-				artifacts.add(artifactToUse);
-			}
-			artifactToUse.setPackageSystem(packageSystem);
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId, packageSystem);
+		writeArtifacts(() -> {
+			CachedArtifact artifactToUse = getOrCreate(cachedArtifact, packageSystem, bom.getArtifactId());
 			artifactToUse.setBillOfMaterials(bom);
-		}
-	}
-
-	/**
-	 * Return the cached Bill of Materials for the given BOM coordinates and
-	 * version.
-	 * <p>Released BOM contents are immutable, so entries never expire by age; the
-	 * containing artifact's last-seen eviction bounds their lifetime.
-	 *
-	 * @param artifactId the BOM artifact coordinates.
-	 * @param version the BOM version.
-	 * @return the Bill of Materials, or {@literal null} if no membership is cached
-	 * for the version.
-	 */
-	@Transient
-	public @Nullable BillOfMaterials getBillOfMaterials(ArtifactId artifactId, ArtifactVersion version) {
-
-		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
-		if (cachedArtifact == null) {
-			return null;
-		}
-
-		CachedBom membership = cachedArtifact.getBomMembership(version.toString());
-		return membership != null ? BillOfMaterials.of(artifactId, version, membership.toMembers()) : null;
-	}
-
-	/**
-	 * Update the cached releases using the given {@link FetchedReleases}, notifying
-	 * {@code onNewRelease} for each release added that was not previously cached.
-	 *
-	 * @param releases the fetched releases.
-	 * @param packageSystem the ecosystem the fetched artifact belongs to; stored on
-	 * a freshly created entry.
-	 * @param onNewRelease invoked once per newly cached release .
-	 */
-	public void updateVersionOptions(FetchedReleases releases, PackageSystem packageSystem,
-			BiConsumer<Release, CachedRelease> onNewRelease) {
-
-		ArtifactId artifactId = releases.getArtifactId();
-
-		synchronized (artifacts) {
-			CachedArtifact artifactToUse = findCachedArtifact(artifactId, packageSystem);
-			if (artifactToUse == null) {
-				artifactToUse = new CachedArtifact(artifactId);
-				artifactToUse.setPackageSystem(packageSystem);
-				artifacts.add(artifactToUse);
-			}
-
-			artifactToUse.updateCachedReleases(releases, now(), onNewRelease);
-		}
+		});
 	}
 
 	/**
@@ -313,12 +279,25 @@ public class Cache {
 	 */
 	public void recordUpdate() {
 		this.lastUpdateTimestamp = clock.millis();
+		this.modificationTracker.incModificationCount();
+	}
+
+	/**
+	 * Return a snapshot of the known project cache entries.
+	 *
+	 * @return an immutable snapshot of the current project entries.
+	 */
+	public List<ProjectCache> getProjects() {
+		synchronized (projects) {
+			return List.copyOf(projects);
+		}
 	}
 
 	/**
 	 * Return the cache entry for the given project identity.
-	 * <p>
-	 * If no entry exists yet, a new one is created, stored, and returned.
+	 * <p>If no entry exists yet, a new one is created, stored, and returned.
+	 * Callers use the returned entry to record project state, so this access counts
+	 * as a cache modification.
 	 *
 	 * @param identity the project identity.
 	 * @return the existing or newly created project cache entry.
@@ -337,6 +316,7 @@ public class Cache {
 			}
 
 			ProjectCache projectCache = new ProjectCache(identity);
+			modificationTracker.incModificationCount();
 			projects.add(projectCache);
 			projects.sort(ProjectCache.COMPARATOR);
 			return projectCache;
@@ -349,7 +329,8 @@ public class Cache {
 	 *
 	 * @param propertyName the property name to locate.
 	 * @param filter the conditional that must accept the matching property.
-	 * @return the first matching project property, or {@literal null} if none matches.
+	 * @return the first matching project property, or {@literal null} if none
+	 * matches.
 	 */
 	public @Nullable ProjectProperty findProperty(String propertyName, Predicate<VersionProperty> filter) {
 
@@ -373,8 +354,7 @@ public class Cache {
 
 	/**
 	 * Invoke the given consumer for each property known to this cache.
-	 * <p>
-	 * Iteration is based on a snapshot of the current project entries.
+	 * <p>Iteration is based on a snapshot of the current project entries.
 	 *
 	 * @param propertyConsumer the consumer to invoke.
 	 */
@@ -393,15 +373,12 @@ public class Cache {
 	 * @return an immutable snapshot of the current artifact entries.
 	 */
 	public List<CachedArtifact> getCachedArtifacts() {
-		synchronized (artifacts) {
-			return List.copyOf(artifacts);
-		}
+		return readArtifacts(() -> List.copyOf(artifacts));
 	}
 
 	/**
 	 * Return the raw {@link CachedRelease} entries for the given artifact.
-	 * <p>
-	 * Unlike {@link #getReleases(ArtifactId, boolean)}, this variant returns the
+	 * <p>Unlike {@link #getReleases(ArtifactId, boolean)}, this variant returns the
 	 * serialized form including optional extended attributes such as the commit SHA
 	 * stored by the GitHub integration.
 	 *
@@ -409,38 +386,8 @@ public class Cache {
 	 * @return the cached release entries, or an empty list if no entry is present.
 	 */
 	public List<CachedRelease> getCachedReleases(ArtifactId artifactId) {
-		synchronized (artifacts) {
-			CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
-			return cachedArtifact != null ? cachedArtifact.getReleases() : Collections.emptyList();
-		}
-	}
-
-	/**
-	 * Invoke the given consumer for a known artifact to this cache. Iteration is
-	 * based on the actual artifact.
-	 *
-	 * @param artifactId the artifact to look up.
-	 * @param consumer the consumer to invoke.
-	 */
-	public void doWithArtifact(ArtifactId artifactId, Consumer<CachedArtifact> consumer) {
 		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
-		if (cachedArtifact != null) {
-			consumer.accept(cachedArtifact);
-		}
-	}
-
-	/**
-	 * Invoke the given consumer for a known artifact to this cache. Iteration is
-	 * based on the actual artifact.
-	 *
-	 * @param pkg the package identity to look up.
-	 * @param consumer the consumer to invoke.
-	 */
-	public void doWithArtifact(PackageIdentity pkg, Consumer<CachedArtifact> consumer) {
-		CachedArtifact cachedArtifact = findCachedArtifact(pkg);
-		if (cachedArtifact != null) {
-			consumer.accept(cachedArtifact);
-		}
+		return cachedArtifact != null ? cachedArtifact.getReleases() : Collections.emptyList();
 	}
 
 	/**
@@ -521,20 +468,32 @@ public class Cache {
 	}
 
 	/**
-	 * Find a cached artifact.
+	 * Find a cached artifact by coordinates and ecosystem.
+	 * <p>An entry without a recorded ecosystem acts as a wildcard so entries
+	 * persisted before ecosystem tracking still match.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @param packageSystem the artifact ecosystem, or {@literal null} to match any
+	 * ecosystem.
+	 * @return the cached artifact or {@literal null} if none found.
+	 */
+	public @Nullable CachedArtifact findCachedArtifact(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
+		if (packageSystem == null) {
+			return findCachedArtifact(artifactId);
+		}
+		return findCachedArtifact(PackageIdentity.of(artifactId.detach(), packageSystem));
+	}
+
+	/**
+	 * Find a cached artifact by coordinates, regardless of its package ecosystem.
 	 * @param artifactId the artifact to look up.
 	 * @return the cached artifact or {@literal null} if none found.
 	 */
 	public @Nullable CachedArtifact findCachedArtifact(ArtifactId artifactId) {
-		synchronized (artifacts) {
-			for (CachedArtifact artifact : artifacts) {
-				// TODO: more performant lookup? Use Comparator and a tree set?
-				if (artifact.matches(artifactId)) {
-					return artifact;
-				}
-			}
-		}
-		return null;
+		return readArtifacts(() -> {
+			ensureIndexed();
+			return artifactsById.get(artifactId.detach());
+		});
 	}
 
 	/**
@@ -543,25 +502,49 @@ public class Cache {
 	 * @return the cached artifact or {@literal null} if none found.
 	 */
 	public @Nullable CachedArtifact findCachedArtifact(PackageIdentity pkg) {
-		return findCachedArtifact(pkg.getArtifactId(), pkg.getPackageSystem());
+		return readArtifacts(() -> {
+			ensureIndexed();
+
+			CachedArtifact artifact = artifactsByPackageIdentity.get(pkg);
+			if (artifact != null) {
+				return artifact;
+			}
+
+			artifact = artifactsById.get(pkg.getArtifactId());
+			return artifact != null && artifact.getPackageSystem() == null ? artifact : null;
+		});
 	}
 
 	/**
-	 * Find a cached artifact.
-	 * @param artifactId the artifact to look up.
-	 * @param packageSystem the artifact ecosytem.
-	 * @return the cached artifact or {@literal null} if none found.
+	 * Build the lookup indexes from the artifact entries. Required before any index
+	 * access because deserialization populates {@link #artifacts} without passing
+	 * through the mutator methods. Must be called under the {@code artifacts}
+	 * monitor.
 	 */
-	public @Nullable CachedArtifact findCachedArtifact(ArtifactId artifactId, @Nullable PackageSystem packageSystem) {
-		synchronized (artifacts) {
+	private void ensureIndexed() {
+
+		if (artifactsById.isEmpty() && artifactsByPackageIdentity.isEmpty() && !artifacts.isEmpty()) {
 			for (CachedArtifact artifact : artifacts) {
-				// TODO: more performant lookup? Use Comparator and a tree set?
-				if (artifact.matches(artifactId, packageSystem)) {
-					return artifact;
-				}
+				index(artifact);
 			}
 		}
-		return null;
+	}
+
+	/**
+	 * Register the given entry in the lookup indexes. First-registered entries win
+	 * so index lookups return the same artifact as the former first-match list
+	 * scan. Must be called under the {@code artifacts} monitor.
+	 */
+	private void index(CachedArtifact artifact) {
+
+		if (!artifact.hasCoordinates()) {
+			return;
+		}
+
+		artifactsById.putIfAbsent(artifact.toArtifactId(), artifact);
+		if (artifact.getPackageSystem() != null) {
+			artifactsByPackageIdentity.putIfAbsent(artifact.toPackageIdentity(), artifact);
+		}
 	}
 
 	/**
@@ -618,15 +601,14 @@ public class Cache {
 	 * @return {@literal true} if at least one artifact entry has cached releases.
 	 */
 	public boolean hasReleases() {
-
-		synchronized (artifacts) {
+		return readArtifacts(() -> {
 			for (CachedArtifact artifact : artifacts) {
 				if (artifact.hasReleases()) {
 					return true;
 				}
 			}
-		}
-		return false;
+			return false;
+		});
 	}
 
 	/**
@@ -635,9 +617,9 @@ public class Cache {
 	 * @return {@literal true} if at least one project entry is present.
 	 */
 	public boolean hasDependencies() {
-		synchronized (projects) {
+		return readArtifacts(() -> {
 			return !projects.isEmpty();
-		}
+		});
 	}
 
 	/**
@@ -666,6 +648,16 @@ public class Cache {
 		copy.lastUpdateTimestamp = this.lastUpdateTimestamp;
 		long threshold = clock.millis() - STALE_THRESHOLD_MILLIS;
 
+		Comparator<CachedArtifact> artifactComparator = Comparator
+				.comparing(CachedArtifact::getPackageSystem, Comparator.nullsFirst(Enum::compareTo))
+				.thenComparing(CachedArtifact::groupId)
+				.thenComparing(CachedArtifact::artifactId);
+
+		Comparator<ProjectCache> projectCacheComparator = Comparator
+				.comparing(ProjectCache::getGroupId, Comparator.nullsFirst(String::compareTo))
+				.thenComparing(ProjectCache::getArtifactId, Comparator.nullsFirst(String::compareTo))
+				.thenComparing(ProjectCache::getDescriptor, Comparator.nullsFirst(String::compareTo));
+
 		synchronized (artifacts) {
 			for (CachedArtifact artifact : artifacts) {
 				if (artifact.getLastSeen() > 0 && artifact.getLastSeen() < threshold) {
@@ -674,6 +666,8 @@ public class Cache {
 				copy.artifacts.add(artifact.snapshot());
 			}
 		}
+
+		copy.artifacts.sort(artifactComparator);
 
 		synchronized (projects) {
 			for (ProjectCache project : projects) {
@@ -687,7 +681,87 @@ public class Cache {
 			}
 		}
 
+		copy.projects.sort(projectCacheComparator);
+
 		return copy;
+	}
+
+	/**
+	 * Invoke the given consumer for a known artifact to this cache. Iteration is
+	 * based on the actual artifact. Consumers typically mutate the entry, so a
+	 * successful lookup counts as a cache modification.
+	 *
+	 * @param artifactId the artifact to look up.
+	 * @param consumer the consumer to invoke.
+	 */
+	public void doWithArtifact(ArtifactId artifactId, Consumer<CachedArtifact> consumer) {
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
+		if (cachedArtifact != null) {
+			consumer.accept(cachedArtifact);
+			modificationTracker.incModificationCount();
+		}
+	}
+
+	/**
+	 * Invoke the given consumer for a known artifact to this cache. Iteration is
+	 * based on the actual artifact. Consumers typically mutate the entry, so a
+	 * successful lookup counts as a cache modification.
+	 *
+	 * @param pkg the package identity to look up.
+	 * @param consumer the consumer to invoke.
+	 */
+	public void doWithArtifact(PackageIdentity pkg, Consumer<CachedArtifact> consumer) {
+		CachedArtifact cachedArtifact = findCachedArtifact(pkg);
+		if (cachedArtifact != null) {
+			consumer.accept(cachedArtifact);
+			modificationTracker.incModificationCount();
+		}
+	}
+
+	private CachedArtifact getOrCreate(@Nullable CachedArtifact cachedArtifact, @Nullable PackageSystem packageSystem,
+			ArtifactId artifactId) {
+		CachedArtifact artifactToUse = cachedArtifact;
+		if (artifactToUse == null) {
+			artifactToUse = createArtifact(packageSystem, artifactId);
+		}
+		postProcessArtifact(packageSystem, artifactToUse);
+		return artifactToUse;
+	}
+
+	private void postProcessArtifact(@Nullable PackageSystem packageSystem, CachedArtifact artifactToUse) {
+		if (packageSystem != null && artifactToUse.getPackageSystem() != packageSystem) {
+			artifactToUse.setPackageSystem(packageSystem);
+			index(artifactToUse);
+		}
+	}
+
+	private CachedArtifact createArtifact(@Nullable PackageSystem packageSystem, ArtifactId artifactId) {
+		CachedArtifact artifactToUse;
+		artifactToUse = new CachedArtifact(artifactId);
+		artifactToUse.setPackageSystem(packageSystem);
+		artifacts.add(artifactToUse);
+		index(artifactToUse);
+		return artifactToUse;
+	}
+
+	private <T extends @Nullable Object> T readArtifacts(Supplier<T> action) {
+		synchronized (this.artifacts) {
+			return action.get();
+		}
+	}
+
+	private <T extends @Nullable Object> T writeArtifacts(Supplier<T> action) {
+		synchronized (this.artifacts) {
+			this.modificationTracker.incModificationCount();
+			return action.get();
+		}
+	}
+
+	private void writeArtifacts(Runnable action) {
+		writeArtifacts(() -> {
+			action.run();
+			return null;
+		});
 	}
 
 }

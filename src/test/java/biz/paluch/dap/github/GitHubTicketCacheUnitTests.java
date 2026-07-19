@@ -44,8 +44,8 @@ class GitHubTicketCacheUnitTests {
 		cache.storeMilestones(COORDINATES, List.of(new GitHubMilestone(7, "2026.1", true, "First release",
 				LocalDateTime.of(2026, 8, 1, 0, 0))));
 
-		GitHubTicketCache.TicketData snapshot = cache.getState();
-		GitHubTicketCache.RepositoryData repository = snapshot.repositories.get(KEY);
+		GitHubTicketCache.Repositories snapshot = cache.getState();
+		GitHubTicketCache.Repository repository = snapshot.getRepository(COORDINATES);
 		repository.labels.getFirst().name = "changed";
 		repository.milestones.getFirst().title = "changed";
 		snapshot.repositories.clear();
@@ -73,12 +73,13 @@ class GitHubTicketCacheUnitTests {
 		milestone.description = "First release";
 		milestone.releaseDate = "2026-08-01T00:00";
 
-		GitHubTicketCache.RepositoryData repository = new GitHubTicketCache.RepositoryData();
+		GitHubTicketCache.Repository repository = new GitHubTicketCache.Repository();
+		repository.key = KEY;
 		repository.labels.add(label);
 		repository.milestones.add(milestone);
 
-		GitHubTicketCache.TicketData state = new GitHubTicketCache.TicketData();
-		state.repositories.put(KEY, repository);
+		GitHubTicketCache.Repositories state = new GitHubTicketCache.Repositories();
+		state.repositories.add(repository);
 
 		GitHubTicketCache cache = new GitHubTicketCache();
 		cache.loadState(state);

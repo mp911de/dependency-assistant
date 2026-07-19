@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -101,6 +102,7 @@ class CachedArtifactUnitTests {
 				2_000L, Set.of(), FetchPlan.fullFetch());
 
 		assertThat(artifact.getReleases()).extracting(CachedRelease::version)
+				.extracting(Objects::toString)
 				.containsExactlyInAnyOrder("0.9.0", "1.0.0", "1.1.0");
 	}
 
@@ -111,7 +113,7 @@ class CachedArtifactUnitTests {
 		artifact.addRelease(new CachedRelease("1.0.0", null));
 
 		List<String> added = new ArrayList<>();
-		artifact.updateCachedReleases(new FetchedReleases(ARTIFACT_ID,
+		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID,
 				List.of(CachedRelease.from(Release.of("1.0.0")), CachedRelease.from(Release.of("1.1.0"))),
 				FetchPlan.fullFetch(), null, Set.of()), 2_000L,
 				(release, cached) -> added.add(release.version().toString()));
@@ -251,7 +253,7 @@ class CachedArtifactUnitTests {
 
 	private static void updateReleases(CachedArtifact artifact, List<CachedRelease> releases, long timestamp,
 			Collection<String> emptySources, FetchPlan plan) {
-		artifact.updateCachedReleases(new FetchedReleases(ARTIFACT_ID, releases, plan, null, emptySources), timestamp);
+		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID, releases, plan, null, emptySources), timestamp);
 	}
 
 }

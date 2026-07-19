@@ -124,13 +124,12 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 
 				Set<ArtifactVersion> declaredVersions = new TreeSet<>();
 				Set<VersionSource> versionSources = new LinkedHashSet<>();
-				state.doWithDependencies(projectId -> !projectId.equals(excludedModule), dependency -> {
-					if (dependency.getArtifactId().equals(artifactId)) {
-						Versioned versioned = versionResolver.resolveLenient(dependency.getCurrentVersion(),
-								referenceContext.getReleases());
-						versioned.ifPresent(declaredVersions::add);
-						versionSources.addAll(dependency.getVersionSources());
-					}
+				state.doWithDependencies(artifactId, projectId -> !projectId.equals(excludedModule), dependency -> {
+
+					Versioned versioned = versionResolver.resolveLenient(dependency.getCurrentVersion(),
+							referenceContext.getReleases());
+					versioned.ifPresent(declaredVersions::add);
+					versionSources.addAll(dependency.getVersionSources());
 				});
 
 				ArtifactVersion currentVersion = versionResolver

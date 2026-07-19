@@ -129,7 +129,7 @@ class FetchPlanUnitTests {
 	void discoveryFetchPlanShouldFetchEverySourceBelowThreshold() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		artifact.updateCachedReleases(new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
+		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
 				NOW_MILLIS);
 		cache.addArtifacts(List.of(artifact));
 
@@ -176,7 +176,7 @@ class FetchPlanUnitTests {
 
 		assertThat(cache.createFetchPlan(releaseSources("central", "portal")).isFullFetch()).isTrue();
 
-		artifact.updateCachedReleases(new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
+		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
 				NOW_MILLIS);
 
 		assertThat(cache.createFetchPlan(releaseSources("central", "portal")).isSkip()).isTrue();
@@ -185,7 +185,7 @@ class FetchPlanUnitTests {
 	private CachedArtifact releasesWithEmptySources(long checkedSince, Set<String> emptySources) {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		artifact.updateCachedReleases(
+		artifact.updateReleases(
 				new FetchedReleases(ARTIFACT_ID, List.of(CachedRelease.from(Release.of("1.0.0"))),
 						FetchPlan.fullFetch(), null, emptySources),
 				checkedSince);
@@ -202,7 +202,7 @@ class FetchPlanUnitTests {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 		for (int i = 0; i < 4; i++) {
-			artifact.updateCachedReleases(
+			artifact.updateReleases(
 					new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
 					lastEmptyTimestamp);
 		}

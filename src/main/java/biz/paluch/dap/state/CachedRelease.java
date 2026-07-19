@@ -36,9 +36,10 @@ import org.jspecify.annotations.Nullable;
 /**
  * Persistent representation of a cached artifact release.
  * <p>The serialized form stores the release version, an optional ISO-8601 date
- * string, and optional source-provided sha metadata. Conversion back to the
- * domain {@link Release} type is performed lazily and memoized for repeated
- * access within the same JVM instance.
+ * string, and optional source-provided sha metadata. The version attribute is
+ * materialized into an {@link ArtifactVersion} while the state is loaded;
+ * conversion to the domain {@link Release} type is performed lazily and
+ * memoized for repeated access within the same JVM instance.
  *
  * @author Mark Paluch
  */
@@ -53,8 +54,8 @@ public class CachedRelease {
 	 */
 	public static final int MAX_SCAN_ATTEMPTS = 5;
 
-	@Attribute
-	private @Nullable String version;
+	@Attribute(converter = ArtifactVersionConverter.class)
+	private ArtifactVersion version;
 
 	@Attribute
 	private @Nullable String date;
@@ -90,25 +91,35 @@ public class CachedRelease {
 	}
 
 	/**
-	 * Create a release entry with the given serialized values.
+	 * Create a release entry parsing the given version string.
 	 *
-	 * @param version the release version.
+	 * @param version the release version string.
 	 * @param date the optional release date in ISO-8601 local date-time form.
 	 */
 	public CachedRelease(String version, @Nullable String date) {
-		this.version = version;
-		this.date = date;
+		this(ArtifactVersion.of(version), date, null);
 	}
 
 	/**
-	 * Create a release entry with the given serialized values including a content
+	 * Create a release entry parsing the given version string, including a content
 	 * hash.
+	 *
+	 * @param version the release version string.
+	 * @param date the optional release date in ISO-8601 local date-time form.
+	 * @param sha the opaque content hash, or {@literal null}.
+	 */
+	public CachedRelease(String version, @Nullable String date, @Nullable String sha) {
+		this(ArtifactVersion.of(version), date, sha);
+	}
+
+	/**
+	 * Create a release entry with the given values.
 	 *
 	 * @param version the release version.
 	 * @param date the optional release date in ISO-8601 local date-time form.
 	 * @param sha the opaque content hash, or {@literal null}.
 	 */
-	public CachedRelease(String version, @Nullable String date, @Nullable String sha) {
+	public CachedRelease(@Nullable ArtifactVersion version, @Nullable String date, @Nullable String sha) {
 		this.version = version;
 		this.date = date;
 		this.sha = sha;
@@ -135,10 +146,7 @@ public class CachedRelease {
 	 * @return the corresponding cached release representation.
 	 */
 	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate) {
-		if (releaseDate != null) {
-			return new CachedRelease(version.toString(), releaseDate.toString());
-		}
-		return new CachedRelease(version.toString(), null);
+		return from(version, releaseDate, null);
 	}
 
 	/**
@@ -148,19 +156,16 @@ public class CachedRelease {
 	 */
 	public static CachedRelease from(ArtifactVersion version, @Nullable LocalDateTime releaseDate,
 			@Nullable String sha) {
-		if (releaseDate != null) {
-			return new CachedRelease(version.toString(), releaseDate.toString(), sha);
-		}
-		return new CachedRelease(version.toString(), null, sha);
+		return new CachedRelease(version, releaseDate != null ? releaseDate.toString() : null, sha);
 	}
 
 	/**
-	 * Return the serialized release version.
+	 * Return the release version materialized when the state was loaded.
 	 *
-	 * @return the release version.
+	 * @return the release version, or {@literal null} if the persisted value was
+	 * unparseable.
 	 */
-	@Attribute
-	public String version() {
+	public ArtifactVersion version() {
 		return version;
 	}
 
@@ -169,7 +174,6 @@ public class CachedRelease {
 	 *
 	 * @return the optional ISO-8601 local date-time string.
 	 */
-	@Attribute
 	public @Nullable String date() {
 		return date;
 	}
@@ -180,7 +184,6 @@ public class CachedRelease {
 	 *
 	 * @return the content hash, or {@literal null}.
 	 */
-	@Attribute
 	public @Nullable String sha() {
 		return sha;
 	}
@@ -262,6 +265,7 @@ public class CachedRelease {
 	 * <p>The returned instance is memoized after the first conversion.
 	 *
 	 * @return the corresponding release.
+	 * @throws IllegalStateException if the persisted version was unparseable.
 	 */
 	@Transient
 	public Release toRelease() {
@@ -269,7 +273,10 @@ public class CachedRelease {
 		Release cachedRelease = this.release;
 		if (cachedRelease == null) {
 
-			ArtifactVersion version = ArtifactVersion.of(version());
+			ArtifactVersion version = version();
+			if (version == null) {
+				throw new IllegalStateException("No parseable version in %s".formatted(this));
+			}
 			if (StringUtils.hasText(sha())) {
 				version = GitVersion.of(sha(), version);
 			}

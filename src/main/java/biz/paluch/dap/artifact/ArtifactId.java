@@ -71,4 +71,12 @@ public interface ArtifactId extends Comparable<ArtifactId> {
 		return ArtifactId.COMPARATOR.compare(this, o);
 	}
 
+	/**
+	 * Create a detached {@link ArtifactId} that is not coupled to its underlying
+	 * implementation.
+	 */
+	default ArtifactId detach() {
+		return new DefaultArtifactId(groupId(), artifactId());
+	}
+
 }

@@ -162,7 +162,7 @@ public class ReleaseResolver {
 		FetchedReleases fetchedReleases = result.toFetchedReleases(fetchPlan);
 
 		List<Release> newReleases = new ArrayList<>();
-		cache.updateVersionOptions(fetchedReleases, sources.packageSystem(),
+		cache.updateReleases(fetchedReleases, sources.packageSystem(),
 				(release, cached) -> newReleases.add(release));
 
 		return ReleaseLookupResult.of(result.toReleases(), Releases.of(newReleases));

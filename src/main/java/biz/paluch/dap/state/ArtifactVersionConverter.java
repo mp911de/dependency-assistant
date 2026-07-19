@@ -14,35 +14,27 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.artifact;
+package biz.paluch.dap.state;
 
-import org.springframework.util.ObjectUtils;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import com.intellij.util.xmlb.Converter;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Default artifact coordinates (groupId + artifactId).
+ * xmlb converter materializing {@link ArtifactVersion}.
  *
  * @author Mark Paluch
  */
-record DefaultArtifactId(String groupId, String artifactId) implements ArtifactId {
+class ArtifactVersionConverter extends Converter<ArtifactVersion> {
 
 	@Override
-	public ArtifactId detach() {
-		return this;
+	public @Nullable ArtifactVersion fromString(String value) {
+		return ArtifactVersion.from(value).orElse(null);
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		return o instanceof ArtifactId that && groupId.equals(that.groupId()) && artifactId.equals(that.artifactId());
-	}
-
-	@Override
-	public int hashCode() {
-		return ObjectUtils.nullSafeHash(groupId, artifactId);
-	}
-
-	@Override
-	public String toString() {
-		return groupId.equals(artifactId) ? groupId : groupId + ":" + artifactId;
+	public @Nullable String toString(ArtifactVersion value) {
+		return value.toString();
 	}
 
 }

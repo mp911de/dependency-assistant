@@ -87,7 +87,7 @@ public class DependencyCheck {
 	 */
 	public DependencyCheckResult findDependencyUpgrades(ProgressIndicator indicator,
 			UpgradeScope scope) {
-		this.service.getState().setUsedOnce(true);
+		this.service.markUsed();
 		indicator.setIndeterminate(false);
 
 		// 🦄🔢

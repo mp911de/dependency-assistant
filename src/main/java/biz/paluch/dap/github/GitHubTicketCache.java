@@ -19,14 +19,16 @@ package biz.paluch.dap.github;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
-import com.intellij.openapi.components.PersistentStateComponent;
+import com.intellij.openapi.components.PersistentStateComponentWithModificationTracker;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.SimpleModificationTracker;
+import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
@@ -34,20 +36,18 @@ import org.jspecify.annotations.Nullable;
 /**
  * Project-level service persisting GitHub label and milestone listings across
  * IDE restarts.
- *
- * <p>Entries are keyed by {@code host/owner/repository} and replaced wholesale
- * after each successful listing. {@link GitHubTicketRepository} serves the
- * stored entries as fallback when GitHub cannot be reached. Milestones are
- * persisted from the open-only listing, so rehydrated milestones are open by
- * definition; the milestone number is retained so persisted entries remain
- * valid for issue assignment and query filtering.
+ * <p>Mutations count against a modification tracker so the persistence layer
+ * skips snapshotting and serialization while the listings are unchanged.
  *
  * @author Mark Paluch
  */
 @State(name = "DependencyAssistantGitHubTickets", storages = @Storage("dependency-assistant-github.xml"))
-public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketCache.TicketData> {
+public class GitHubTicketCache
+		implements PersistentStateComponentWithModificationTracker<GitHubTicketCache.Repositories> {
 
-	private final TicketData data = new TicketData();
+	private final Repositories state = new Repositories();
+
+	private final SimpleModificationTracker modificationTracker = new SimpleModificationTracker();
 
 	/**
 	 * Return the project-scoped service instance.
@@ -60,18 +60,23 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 	}
 
 	@Override
-	public TicketData getState() {
-		return data.snapshot();
+	public Repositories getState() {
+		return readRepositories(Repositories::snapshot);
 	}
 
 	@Override
-	public void loadState(TicketData state) {
+	public long getStateModificationCount() {
+		return modificationTracker.getModificationCount();
+	}
 
-		TicketData snapshot = state.snapshot();
-		synchronized (data.repositories) {
-			data.repositories.clear();
-			data.repositories.putAll(snapshot.repositories);
-		}
+	@Override
+	public void loadState(Repositories state) {
+
+		Repositories snapshot = state.snapshot();
+		writeRepositories(current -> {
+			current.repositories.clear();
+			current.repositories.addAll(snapshot.repositories);
+		});
 	}
 
 	/**
@@ -80,9 +85,9 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 	 * @return the stored labels; empty if the repository has no stored listing.
 	 */
 	List<GitHubLabel> getLabels(GitRepositoryMetadata coordinates) {
+		return readRepositories(state -> {
 
-		synchronized (data.repositories) {
-			RepositoryData repository = data.repositories.get(key(coordinates));
+			Repository repository = state.getRepository(coordinates);
 			if (repository == null) {
 				return List.of();
 			}
@@ -93,7 +98,7 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 			}
 
 			return labels;
-		}
+		});
 	}
 
 	/**
@@ -102,9 +107,9 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 	 * @return the stored milestones; empty if the repository has no stored listing.
 	 */
 	List<GitHubMilestone> getMilestones(GitRepositoryMetadata coordinates) {
+		return readRepositories(repositories -> {
 
-		synchronized (data.repositories) {
-			RepositoryData repository = data.repositories.get(key(coordinates));
+			Repository repository = repositories.getRepository(coordinates);
 			if (repository == null) {
 				return List.of();
 			}
@@ -115,7 +120,7 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 			}
 
 			return milestones;
-		}
+		});
 	}
 
 	/**
@@ -128,17 +133,10 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 			stored.add(CachedLabel.fromGitHubLabel(label));
 		}
 
-		String repositoryKey = key(coordinates);
-		synchronized (data.repositories) {
-			RepositoryData existing = data.repositories.get(repositoryKey);
-
-			RepositoryData fresh = new RepositoryData();
-			fresh.labels = stored;
-			if (existing != null) {
-				fresh.milestones = existing.milestones;
-			}
-			data.repositories.put(repositoryKey, fresh);
-		}
+		writeRepositories(repositories -> {
+			Repository repository = repositories.getOrCreateRepository(coordinates);
+			repository.labels = stored;
+		});
 	}
 
 	/**
@@ -151,60 +149,92 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 			stored.add(CachedMilestone.fromGitHubMilestone(milestone));
 		}
 
-		String repositoryKey = key(coordinates);
-		synchronized (data.repositories) {
-			RepositoryData existing = data.repositories.get(repositoryKey);
+		writeRepositories(repositories -> {
+			Repository repository = repositories.getOrCreateRepository(coordinates);
+			repository.milestones = stored;
+		});
+	}
 
-			RepositoryData fresh = new RepositoryData();
-			fresh.milestones = stored;
-			if (existing != null) {
-				fresh.labels = existing.labels;
-			}
-			data.repositories.put(repositoryKey, fresh);
+	private <T extends @Nullable Object> T readRepositories(Function<Repositories, T> action) {
+		synchronized (state.repositories) {
+			return action.apply(state);
 		}
 	}
 
-	private static String key(GitRepositoryMetadata coordinates) {
-		return "%s/%s/%s".formatted(coordinates.host(), coordinates.owner(), coordinates.repository());
+	private void writeRepositories(Consumer<Repositories> action) {
+		synchronized (state.repositories) {
+			modificationTracker.incModificationCount();
+			action.accept(state);
+		}
 	}
+
 
 	/**
 	 * Persisted service state.
 	 */
-	public static class TicketData {
+	@Tag("repositories")
+	public static class Repositories {
 
-		public Map<String, RepositoryData> repositories = new ConcurrentHashMap<>();
+		@XCollection(propertyElementName = "repositories", style = XCollection.Style.v2)
+		public final List<Repository> repositories = new ArrayList<>();
 
-		TicketData snapshot() {
+		Repositories snapshot() {
 
-			TicketData copy = new TicketData();
-			synchronized (repositories) {
-				for (Map.Entry<String, RepositoryData> entry : repositories.entrySet()) {
-					copy.repositories.put(entry.getKey(), entry.getValue().snapshot());
-				}
+			Repositories copy = new Repositories();
+			for (Repository repository : repositories) {
+				copy.repositories.add(repository.snapshot());
 			}
 
 			return copy;
 		}
 
+		public @Nullable Repository getRepository(GitRepositoryMetadata coordinates) {
+
+			String key = key(coordinates);
+			for (Repository repository : repositories) {
+				if (key.equals(repository.key)) {
+					return repository;
+				}
+			}
+			return null;
+		}
+
+		public Repository getOrCreateRepository(GitRepositoryMetadata coordinates) {
+
+			Repository repository = getRepository(coordinates);
+			if (repository == null) {
+				repository = new Repository();
+				repository.key = key(coordinates);
+				repositories.add(repository);
+			}
+			return repository;
+		}
+
+		private static String key(GitRepositoryMetadata coordinates) {
+			return "%s/%s/%s".formatted(coordinates.host(), coordinates.owner(), coordinates.repository());
+		}
+
 	}
 
 	/**
-	 * Stored listings of one GitHub repository.
+	 * Stored listings of one GitHub repository, keyed by host, owner, and
+	 * repository name.
 	 */
-	public static class RepositoryData {
+	@Tag("repository")
+	public static class Repository {
 
-		@Tag
+		public @Attribute String key = "";
+
 		@XCollection(propertyElementName = "labels", elementName = "label", style = XCollection.Style.v2)
 		public List<CachedLabel> labels = new ArrayList<>();
 
-		@Tag
 		@XCollection(propertyElementName = "milestones", elementName = "milestone", style = XCollection.Style.v2)
 		public List<CachedMilestone> milestones = new ArrayList<>();
 
-		RepositoryData snapshot() {
+		Repository snapshot() {
 
-			RepositoryData copy = new RepositoryData();
+			Repository copy = new Repository();
+			copy.key = this.key;
 			for (CachedLabel label : labels) {
 				copy.labels.add(label.snapshot());
 			}
@@ -223,11 +253,11 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 	@Tag("label")
 	public static class CachedLabel {
 
-		public String name = "";
+		public @Attribute String name = "";
 
-		public String description = "";
+		public @Attribute String description = "";
 
-		public @Nullable String color;
+		public @Attribute @Nullable String color;
 
 		GitHubLabel toGitHubLabel() {
 			return new GitHubLabel(name, description, color);
@@ -261,13 +291,13 @@ public class GitHubTicketCache implements PersistentStateComponent<GitHubTicketC
 	@Tag("milestone")
 	public static class CachedMilestone {
 
-		public long number;
+		public @Attribute long number;
 
-		public String title = "";
+		public @Attribute String title = "";
 
-		public @Nullable String description;
+		public @Attribute @Nullable String description;
 
-		public @Nullable String releaseDate;
+		public @Attribute @Nullable String releaseDate;
 
 		GitHubMilestone toGitHubMilestone() {
 

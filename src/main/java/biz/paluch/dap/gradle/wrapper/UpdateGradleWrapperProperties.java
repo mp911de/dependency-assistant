@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle.wrapper;
 import java.util.List;
 
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -125,13 +126,13 @@ class UpdateGradleWrapperProperties {
 
 	private static @Nullable String resolveSha(PropertyImpl property, DependencyUpdate update) {
 
-		if (update.version() instanceof GitVersion gitVersion && StringUtils.hasText(gitVersion.getSha())) {
-			return gitVersion.getSha();
+		if (update.version() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
+			return gitVersion.getRequiredSha();
 		}
 
-		for (CachedRelease release : StateService.getInstance(property.getProject()).getCache()
-				.getCachedReleases(update.artifactId())) {
-			if (update.versionAsString().equals(release.version())) {
+		Cache cache = StateService.getInstance(property.getProject()).getCache();
+		for (CachedRelease release : cache.getCachedReleases(update.artifactId())) {
+			if (update.version().compareTo(release.version()) == 0) {
 				return release.sha();
 			}
 		}

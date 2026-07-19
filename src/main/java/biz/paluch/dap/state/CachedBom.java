@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -38,7 +37,8 @@ import org.jspecify.annotations.Nullable;
 @Tag("bom")
 public class CachedBom {
 
-	private @Nullable @Attribute String version;
+	@Attribute(converter = ArtifactVersionConverter.class)
+	private ArtifactVersion version;
 
 	private final @XCollection(propertyElementName = "members", elementName = "member", style = XCollection.Style.v2) List<CachedBomMember> members = new ArrayList<>();
 
@@ -48,7 +48,11 @@ public class CachedBom {
 	public CachedBom() {
 	}
 
-	public CachedBom(@Nullable String version) {
+	public CachedBom(String version) {
+		this(ArtifactVersion.of(version));
+	}
+
+	public CachedBom(ArtifactVersion version) {
 		this.version = version;
 	}
 
@@ -57,7 +61,7 @@ public class CachedBom {
 	 *
 	 * @param version the BOM version string the membership is scoped to.
 	 * @param members the managed members keyed by artifact coordinates.
-	 * @return the membership entry; guaranteed to be not {@literal null}.
+	 * @return the membership entry.
 	 */
 	public static CachedBom from(String version, Map<ArtifactId, ArtifactVersion> members) {
 
@@ -70,7 +74,7 @@ public class CachedBom {
 	/**
 	 * Return the BOM version string this membership is scoped to.
 	 */
-	public @Nullable String getVersion() {
+	public ArtifactVersion getVersion() {
 		return version;
 	}
 
@@ -90,15 +94,10 @@ public class CachedBom {
 	 * not {@literal null}.
 	 */
 	public Map<ArtifactId, ArtifactVersion> toMembers() {
-
 		Map<ArtifactId, ArtifactVersion> membersMap = new LinkedHashMap<>();
 		for (CachedBomMember member : members) {
-
-			Optional<ArtifactVersion> version = ArtifactVersion.from(member.getVersion());
-			version.ifPresent(memberVersion -> membersMap
-					.put(member.toArtifactId(), memberVersion));
+			membersMap.put(member.toArtifactId(), member.getVersion());
 		}
-
 		return membersMap;
 	}
 
@@ -125,19 +124,14 @@ public class CachedBom {
 	@Tag("member")
 	public static class CachedBomMember extends CachedArtifactSupport {
 
-		private @Nullable @Attribute String groupId;
+		private @Attribute String groupId;
 
-		private @Nullable @Attribute String artifactId;
+		private @Attribute String artifactId;
 
-		/**
-		 * Package ecosystem this artifact belongs to, or {@literal null} for entries
-		 * persisted before ecosystem tracking. Persisted so a cache-only scan can build
-		 * the correct vulnerability query without re-reading the build files.
-		 */
 		private @Nullable @Attribute PackageSystem packageSystem;
 
-
-		private @Nullable @Attribute String version;
+		@Attribute(converter = ArtifactVersionConverter.class)
+		private ArtifactVersion version;
 
 		/**
 		 * Create an empty member entry for XML deserialization.
@@ -145,19 +139,23 @@ public class CachedBom {
 		public CachedBomMember() {
 		}
 
-		CachedBomMember(@Nullable String groupId, @Nullable String artifactId, @Nullable String version) {
+		CachedBomMember(String groupId, String artifactId, String version) {
+			this(groupId, artifactId, ArtifactVersion.of(version));
+		}
+
+		CachedBomMember(String groupId, String artifactId, ArtifactVersion version) {
 			this.groupId = groupId;
 			this.artifactId = artifactId;
 			this.version = version;
 		}
 
 		@Override
-		public @Nullable String getGroupId() {
+		public String getGroupId() {
 			return groupId;
 		}
 
 		@Override
-		public @Nullable String getArtifactId() {
+		public String getArtifactId() {
 			return artifactId;
 		}
 
@@ -166,7 +164,7 @@ public class CachedBom {
 			return packageSystem;
 		}
 
-		public @Nullable String getVersion() {
+		public ArtifactVersion getVersion() {
 			return version;
 		}
 

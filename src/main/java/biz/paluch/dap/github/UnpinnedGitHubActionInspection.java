@@ -147,7 +147,7 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
 
 		@Override
 		public String getName() {
-			return MessageBundle.message("inspection.github.unpinned-action.fix", pinTarget.getShortSha());
+			return MessageBundle.message("inspection.github.unpinned-action.fix", pinTarget.getRequiredShortSha());
 		}
 
 		@Override

@@ -95,8 +95,19 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	 */
 	@Nullable
 	public String getShortSha() {
-		if (StringUtils.hasText(sha) && sha.length() > 7) {
-			return sha.substring(0, 8);
+		return StringUtils.hasText(sha) && sha.length() > 7 ? sha.substring(0, 8) : sha;
+	}
+
+	/**
+	 * Return the required resolved SHA-1 commit hash truncated to its first 8
+	 * characters, the full hash when it is 8 characters or shorter, or throw
+	 * {@link IllegalStateException} if unavailable.
+	 */
+	@Nullable
+	public String getRequiredShortSha() {
+		String sha = getShortSha();
+		if (StringUtils.isEmpty(sha)) {
+			throw new IllegalStateException("No sha associated with this version");
 		}
 		return sha;
 	}

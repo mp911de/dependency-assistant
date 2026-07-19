@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.Vulnerabilities;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,43 @@ class StateServiceUnitTests {
 	private ArtifactId NETTY_BOM = ArtifactId.of("io.netty", "netty-bom");
 
 	private ArtifactId CODEC_HTTP = ArtifactId.of("io.netty", "netty-codec-http");
+
+	@Test
+	void cacheMutationsAdvanceStateModificationCount() {
+
+		StateService service = new StateService();
+		long initial = service.getStateModificationCount();
+
+		service.getCache().updateReleases(SPRING_CORE, List.of(Release.of("6.1.0")));
+
+		assertThat(service.getStateModificationCount()).isGreaterThan(initial);
+	}
+
+	@Test
+	void cacheLookupsKeepStateModificationCount() {
+
+		StateService service = new StateService();
+		service.getCache().updateReleases(SPRING_CORE, List.of(Release.of("6.1.0")));
+		long count = service.getStateModificationCount();
+
+		service.getCache().findCachedArtifact(SPRING_CORE);
+		service.getCache().getReleases(SPRING_CORE);
+
+		assertThat(service.getStateModificationCount()).isEqualTo(count);
+	}
+
+	@Test
+	void markUsedAdvancesStateModificationCountOnce() {
+
+		StateService service = new StateService();
+		long initial = service.getStateModificationCount();
+
+		service.markUsed();
+		service.markUsed();
+
+		assertThat(service.hasBeenUsed()).isTrue();
+		assertThat(service.getStateModificationCount()).isEqualTo(initial + 1);
+	}
 
 	@Test
 	void returnsEmptyForUnknownArtifact() {

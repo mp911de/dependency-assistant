@@ -55,9 +55,9 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 	private static final Logger LOG = Logger.getInstance(CachedArtifact.class);
 
-	private @Nullable @Attribute String groupId;
+	private @Attribute String groupId;
 
-	private @Nullable @Attribute String artifactId;
+	private @Attribute String artifactId;
 
 	/**
 	 * Package ecosystem this artifact belongs to, or {@literal null} for entries
@@ -168,6 +168,14 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		return getArtifactId();
 	}
 
+	/**
+	 * Return {@literal true} if the artifactId contains {@link #groupId()} and
+	 * {@link #artifactId()} values.
+	 */
+	public boolean hasCoordinates() {
+		return StringUtils.hasText(getGroupId()) && StringUtils.hasText(getArtifactId());
+	}
+
 	@Override
 	public @Nullable PackageSystem getPackageSystem() {
 		return this.packageSystem;
@@ -276,10 +284,9 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 		String version = bom.getVersion().toString();
 		synchronized (boms) {
-
 			if (getBomMembership(version) == null) {
 				boms.add(CachedBom.from(version, bom.getMembers()));
-				boms.sort(Comparator.comparing(it -> ArtifactVersion.of(it.getVersion())));
+				boms.sort(Comparator.comparing(CachedBom::getVersion));
 			}
 		}
 	}
@@ -313,7 +320,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		for (CachedBom.CachedBomMember member : reference.getMembers()) {
 
 			String memberGroupId = member.getGroupId();
-			if (memberGroupId == null || member.getArtifactId() == null) {
+			if (StringUtils.isEmpty(memberGroupId) || StringUtils.isEmpty(member.getArtifactId())) {
 				continue;
 			}
 
@@ -338,13 +345,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 			CachedBom nearest = null;
 			for (CachedBom membership : boms) {
-
-				String membershipVersion = membership.getVersion();
-				if (membershipVersion == null) {
-					continue;
-				}
-
-				if (nearest == null || !ArtifactVersion.of(membershipVersion).isNewer(version)) {
+				ArtifactVersion membershipVersion = membership.getVersion();
+				if (nearest == null || !membershipVersion.isNewer(version)) {
 					nearest = membership;
 				}
 			}
@@ -398,7 +400,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		String versionString = version.toString();
 		synchronized (releases) {
 			for (CachedRelease release : releases) {
-				if (versionString.equals(release.version())) {
+				if (versionString.equals(Objects.toString(release.version(), null))) {
 					return release;
 				}
 			}
@@ -472,8 +474,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * @param fetchedReleases the fetched releases.
 	 * @param timestamp current timestamp for expiry tracking.
 	 */
-	public void updateCachedReleases(FetchedReleases fetchedReleases, long timestamp) {
-		updateCachedReleases(fetchedReleases, timestamp, (release, cached) -> {
+	public void updateReleases(FetchedReleases fetchedReleases, long timestamp) {
+		updateReleases(fetchedReleases, timestamp, (release, cached) -> {
 		});
 	}
 
@@ -487,7 +489,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * @param timestamp current timestamp for expiry tracking.
 	 * @param onNewRelease invoked once per newly added release .
 	 */
-	public void updateCachedReleases(FetchedReleases fetchedReleases, long timestamp,
+	public void updateReleases(FetchedReleases fetchedReleases, long timestamp,
 			BiConsumer<Release, CachedRelease> onNewRelease) {
 
 		updateReleases(fetchedReleases, onNewRelease);
@@ -514,11 +516,11 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		synchronized (releases) {
 			Set<String> known = new HashSet<>();
 			for (CachedRelease existing : releases) {
-				known.add(existing.version());
+				known.add(Objects.toString(existing.version(), null));
 			}
 
 			fetched.forEach((release, cached) -> {
-				if (known.add(cached.version())) {
+				if (known.add(Objects.toString(cached.version(), null))) {
 					releases.add(cached);
 					onNewConsumer.accept(release, cached);
 				}

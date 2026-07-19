@@ -34,7 +34,7 @@ import com.intellij.openapi.project.Project;
  * through scanner or repository collaborators. Vulnerability helpers update
  * existing cached releases only, so tests must register the artifact and
  * release first through {@link #addArtifacts(CachedArtifact...)} or
- * {@link #putVersionOptions(ArtifactId, Iterable)}.
+ * {@link #updateReleases(ArtifactId, Iterable)}.
  *
  * @author Mark Paluch
  */
@@ -155,7 +155,7 @@ public class TestCache extends Cache {
 	 * @param vulnerabilities the advisories affecting the version.
 	 */
 	public void vulnerable(ArtifactId artifactId, String version, Vulnerability... vulnerabilities) {
-		putVersionOptions(artifactId, List.of(Release.of(version)));
+		updateReleases(artifactId, List.of(Release.of(version)));
 		addVulnerabilities(artifactId, version, vulnerabilities);
 	}
 
