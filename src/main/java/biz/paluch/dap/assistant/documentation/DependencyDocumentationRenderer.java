@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.ProjectDisplayName;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -43,6 +44,8 @@ import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
+import biz.paluch.dap.metadata.ProjectMetadata;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
@@ -50,17 +53,22 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.icons.AllIcons;
 import com.intellij.lang.documentation.DocumentationMarkup;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Renders the Quick Documentation HTML body for one dependency declaration or
- * release lookup item: the coordinate header, the current value, the
- * {@link ReleaseDigest} release table, and known security advisories. Immutable
- * and constructed from its rendering inputs; resolution and target lifecycle
- * live in {@link DependencyDocumentationProvider}.
+ * release lookup item: the coordinate header, the project-name and
+ * current-value sections, the {@link ReleaseDigest} release table, and known
+ * security advisories. The project-name section renders only for a
+ * pipeline-accepted captured name; an echo of the coordinates is omitted rather
+ * than repeated. Immutable and constructed from its rendering inputs;
+ * resolution and target lifecycle live in
+ * {@link DependencyDocumentationProvider}.
  *
  * @author Mark Paluch
  */
@@ -80,33 +88,40 @@ class DependencyDocumentationRenderer {
 
 	private final boolean linkable;
 
+	private final ProjectMetadata projectMetadata;
+
 	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
 
 	DependencyDocumentationRenderer(InterfaceAssistant interfaceAssistant,
-			StateService stateService,
-			DependencyRuleEvaluator evaluator, @Nullable ArtifactVersion currentVersion, boolean linkable) {
+			StateService stateService, DependencyRuleEvaluator evaluator,
+			@Nullable ArtifactVersion currentVersion, boolean linkable, ProjectMetadata projectMetadata) {
 		this.interfaceAssistant = interfaceAssistant;
 		this.stateService = stateService;
 		this.evaluator = evaluator;
 		this.currentVersion = currentVersion;
 		this.linkable = linkable;
+		this.projectMetadata = projectMetadata;
 	}
 
 	/**
-	 * Create a renderer from a resolved {@link ArtifactReferenceContext}.
+	 * Create a renderer from a resolved {@link ArtifactReferenceContext}, wiring
+	 * release-notes links and captured project names through the cache-only
+	 * {@link ProjectMetadataService} facade.
 	 *
+	 * @param project the project owning the documentation request.
 	 * @param context a {@link ArtifactReferenceContext#isPresent() present}
 	 * reference context.
 	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
 	 * links.
 	 * @return the renderer.
 	 */
-	static DependencyDocumentationRenderer from(ArtifactReferenceContext context, boolean linkable) {
+	static DependencyDocumentationRenderer from(Project project, ArtifactReferenceContext context, boolean linkable) {
 
 		ProjectDependencyContext dependencyContext = context.getDependencyContext();
+		ProjectMetadata metadata = ProjectMetadataService.getMetadata(context.getDeclaration());
 		return new DependencyDocumentationRenderer(dependencyContext.getInterfaceAssistant(),
 				context.getStateService(), context.getEvaluator(),
-				context.getVersion(), linkable);
+				context.getVersion(), linkable, metadata);
 	}
 
 	/**
@@ -123,8 +138,18 @@ class DependencyDocumentationRenderer {
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		HtmlBuilder content = new HtmlBuilder();
 
+		List<HtmlChunk> sections = new ArrayList<>();
+		String projectName = getProjectName(artifactId);
+		if (projectName != null) {
+			sections.add(section("documentation.project-name", HtmlChunk.text(projectName)));
+		}
+
 		if (currentVersion != null) {
-			content.append(renderCurrentVersion(currentVersion));
+			sections.add(section("documentation.current-value", nowrapLine(versionCode(currentVersion))));
+		}
+
+		if (!sections.isEmpty()) {
+			content.append(sectionsTable(sections));
 		}
 
 		Releases releases = stateService.getCache().getReleases(artifactId);
@@ -187,10 +212,7 @@ class DependencyDocumentationRenderer {
 		}
 
 		if (!sections.isEmpty()) {
-
-			HtmlBuilder rows = new HtmlBuilder();
-			sections.forEach(rows::append);
-			content.append(rows.wrapWith(DocumentationMarkup.SECTIONS_TABLE));
+			content.append(sectionsTable(sections));
 		}
 
 		content.append(securityAdvisories(vulnerabilities, advisoriesNote));
@@ -345,6 +367,42 @@ class DependencyDocumentationRenderer {
 				DocumentationMarkup.SECTION_CONTENT_CELL.child(value));
 	}
 
+	private static HtmlChunk sectionsTable(List<HtmlChunk> sections) {
+
+		HtmlBuilder rows = new HtmlBuilder();
+		sections.forEach(rows::append);
+		return rows.wrapWith(DocumentationMarkup.SECTIONS_TABLE);
+	}
+
+	/**
+	 * Render a section label as a full-width row spanning both columns of the
+	 * section table, for sections whose values follow on their own rows instead of
+	 * sharing the label row.
+	 */
+	private static HtmlChunk sectionLabelRow(String labelKey) {
+		return HtmlChunk.tag("tr").child(DocumentationMarkup.SECTION_HEADER_CELL.attr("colspan", 2)
+				.child(HtmlChunk.p().addText(MessageBundle.message(labelKey))));
+	}
+
+	/**
+	 * Render a section value as a full-width row spanning both columns, so the
+	 * value gets the entire popup width instead of the narrow content column.
+	 */
+	private static HtmlChunk spanningRow(HtmlChunk value) {
+		return HtmlChunk.tag("tr").child(DocumentationMarkup.SECTION_CONTENT_CELL.attr("colspan", 2).child(value));
+	}
+
+	/**
+	 * Wrap a section value in a non-breaking line: Swing's HTML renderer breaks
+	 * coordinate-like text at dots and colons when the content column runs out of
+	 * width, fragmenting one value across several code chips. A {@code nowrap}
+	 * block keeps the value whole and lets the section table claim the width it
+	 * needs; wrapping happens between lines only.
+	 */
+	private static HtmlChunk nowrapLine(HtmlChunk value) {
+		return HtmlChunk.div("white-space: nowrap").child(value);
+	}
+
 	private static String document(HtmlChunk definition, HtmlBuilder content) {
 		return new HtmlBuilder()
 				.append(DocumentationMarkup.DEFINITION_ELEMENT
@@ -457,8 +515,18 @@ class DependencyDocumentationRenderer {
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		HtmlBuilder content = new HtmlBuilder();
 
+		List<HtmlChunk> sections = new ArrayList<>();
+		String projectName = firstAcceptedProjectName(property.artifacts());
+		if (projectName != null) {
+			sections.add(section("documentation.project-name", HtmlChunk.text(projectName)));
+		}
+
 		if (currentVersion != null) {
-			content.append(renderCurrentVersion(currentVersion));
+			sections.add(section("documentation.current-value", nowrapLine(versionCode(currentVersion))));
+		}
+
+		if (!sections.isEmpty()) {
+			content.append(sectionsTable(sections));
 		}
 
 		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, stateService.getCache(), MAX_VERSIONS,
@@ -477,9 +545,26 @@ class DependencyDocumentationRenderer {
 		return document(HtmlChunk.text(property.name()), content);
 	}
 
-	private HtmlChunk renderCurrentVersion(ArtifactVersion version) {
-		return HtmlChunk.p().addText(MessageBundle.message("documentation.current-value")).addText(": ")
-				.child(versionCode(version));
+	private @Nullable String getProjectName(ArtifactId artifactId) {
+		return ProjectDisplayName.getAcceptedProjectName(artifactId, projectMetadata.getProjectName());
+	}
+
+	/**
+	 * Return the accepted project name of the first referenced artifact that yields
+	 * one. A version property spans several artifacts sharing one release line; the
+	 * first accepted name (typically the BOM or primary artifact) names the group,
+	 * artifacts with rejected echo names are skipped.
+	 */
+	private @Nullable String firstAcceptedProjectName(List<CachedArtifact> artifacts) {
+
+		for (CachedArtifact artifact : artifacts) {
+
+			String accepted = getProjectName(artifact.toArtifactId());
+			if (accepted != null) {
+				return accepted;
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -521,8 +606,11 @@ class DependencyDocumentationRenderer {
 			Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId, release.getVersion());
 			VersionStatus status = VersionStatus.of(evaluator, currentVersion, release.getVersion(),
 					vulnerabilities);
-			rows.append(new DocumentedRelease(status, artifactId.toString(), release, linkable, withIcons)
-					.render(formatter));
+			URI releaseNotesUrl = withIcons
+					? projectMetadata.findReleaseNotesUrl(release.getVersion())
+					: null;
+			rows.append(new DocumentedRelease(status, artifactId.toString(), release, linkable, withIcons,
+					releaseNotesUrl).render(formatter));
 		}
 	}
 
@@ -673,19 +761,19 @@ class DependencyDocumentationRenderer {
 					.collect(Collectors.toCollection(LinkedHashSet::new));
 		}
 
+		/**
+		 * Render the group header as a full-width label row followed by one full-width
+		 * row per coordinate, keeping every coordinate a single non-breaking code unit
+		 * with the entire popup width at its disposal.
+		 */
 		HtmlChunk renderHeader() {
-			return HtmlChunk.p()
-					.addText(MessageBundle.message("documentation.property-for"))
-					.addText(" ")
-					.child(formatArtifactIds(assistant));
-		}
 
-		private HtmlChunk formatArtifactIds(InterfaceAssistant assistant) {
-			return new HtmlBuilder()
-					.appendWithSeparators(HtmlChunk.text(", "), artifactIds.stream()
-							.map(artifactId -> HtmlChunk.text(assistant.getDisplayName(artifactId)).code())
-							.toList())
-					.toFragment();
+			List<HtmlChunk> rows = new ArrayList<>();
+			rows.add(sectionLabelRow("documentation.property-for"));
+			for (ArtifactId artifactId : artifactIds) {
+				rows.add(spanningRow(nowrapLine(HtmlChunk.text(assistant.getDisplayName(artifactId)).code())));
+			}
+			return sectionsTable(rows);
 		}
 
 		public Releases releases() {
@@ -717,7 +805,10 @@ class DependencyDocumentationRenderer {
 
 		private final @Nullable HtmlChunk firstColumnIcon;
 
-		DocumentedRelease(VersionStatus status, String name, Release release, boolean linkable, boolean withIcons) {
+		private final @Nullable HtmlChunk releaseNotesCell;
+
+		DocumentedRelease(VersionStatus status, String name, Release release, boolean linkable, boolean withIcons,
+				@Nullable URI releaseNotesUrl) {
 
 			this.release = release;
 			this.key = release.unwrap().toString();
@@ -734,9 +825,24 @@ class DependencyDocumentationRenderer {
 								.child(htmlIcon)
 						: htmlIcon;
 				this.firstColumnIcon = HtmlChunk.tag("td").child(content);
+				this.releaseNotesCell = HtmlChunk.tag("td")
+						.child(releaseNotesUrl != null ? releaseNotesLink(releaseNotesUrl) : HtmlChunk.empty());
 			} else {
 				this.firstColumnIcon = null;
+				this.releaseNotesCell = null;
 			}
+		}
+
+		/**
+		 * Render the release-notes icon as a raw https link, mirroring the
+		 * advisory-link precedent: the facade already validated the URL, so it is
+		 * browsed as returned.
+		 */
+		private HtmlChunk releaseNotesLink(URI releaseNotesUrl) {
+			return HtmlChunk.tag("a")
+					.attr("href", releaseNotesUrl.toString())
+					.attr("title", MessageBundle.message("documentation.release-notes", key))
+					.child(HtmlChunk.icon("AllIcons.Toolwindows.Documentation", AllIcons.Toolwindows.Documentation));
 		}
 
 		HtmlChunk render(ReleaseDateFormatter formatter) {
@@ -753,7 +859,8 @@ class DependencyDocumentationRenderer {
 				row = row.child(firstColumnIcon);
 			}
 
-			return row.children(HtmlChunk.tag("td").child(version), dateCell(formatter));
+			row = row.children(HtmlChunk.tag("td").child(version), dateCell(formatter));
+			return releaseNotesCell != null ? row.child(releaseNotesCell) : row;
 		}
 
 		private HtmlChunk.Element dateCell(ReleaseDateFormatter formatter) {

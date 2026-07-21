@@ -17,15 +17,11 @@
 package biz.paluch.dap.assistant.review;
 
 import java.io.IOException;
-import java.util.Set;
-import java.util.TreeSet;
 
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.assistant.Notifications;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
@@ -80,19 +76,12 @@ public class CreateDependencyfileAction extends AnAction implements DumbAware, I
 		}
 
 		try {
-			new DependencyfileArtifactWriter(project).createOrOpen(artifactIds(project));
+			new DependencyfileArtifactWriter(project).createOrOpen();
 		} catch (IOException | IncorrectOperationException ex) {
 			Notifications.error(project,
 					MessageBundle.message("dependencyfile.create.error.title"),
 					MessageBundle.message("dependencyfile.create.error", Notifications.errorMessage(ex)));
 		}
-	}
-
-	private static Set<ArtifactId> artifactIds(Project project) {
-
-		TreeSet<ArtifactId> artifactIds = new TreeSet<>(ArtifactId.COMPARATOR);
-		StateService.getInstance(project).doWithDependencies(dependency -> artifactIds.add(dependency.getArtifactId()));
-		return artifactIds;
 	}
 
 }

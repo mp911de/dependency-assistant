@@ -28,6 +28,8 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.assistant.Notifications;
+import biz.paluch.dap.metadata.ProjectMetadata;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.plan.UpgradePlanToolWindowFactory;
 import biz.paluch.dap.rule.BranchSource;
@@ -88,6 +90,7 @@ class AssistantReviewActions {
 				? UndoConfirmationPolicy.REQUEST_CONFIRMATION
 				: UndoConfirmationPolicy.DO_NOT_REQUEST_CONFIRMATION;
 
+		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
 		new BuildActionDelegate(project, (file, fileUpdates) -> {
 
 			indicator.checkCanceled();
@@ -96,8 +99,10 @@ class AssistantReviewActions {
 
 				for (DependencyUpdate fileUpdate : fileUpdates) {
 
+					ProjectMetadata metadata = metadataService.getMetadata(fileUpdate.artifactId());
 					DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(fileUpdate.artifactId(),
-							fileUpdate.declarationSources(), BranchSource.of(file), context.getProjectVersion()));
+							fileUpdate.declarationSources(), BranchSource.of(file), context.getProjectVersion(),
+							metadata));
 
 					applied.record(file.getVirtualFile(), fileUpdate, rule);
 				}

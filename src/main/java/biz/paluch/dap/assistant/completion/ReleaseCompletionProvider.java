@@ -34,6 +34,8 @@ import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.metadata.ProjectMetadata;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -125,9 +127,11 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		RefStyle refStyle = getRefStyle(position, metadata);
 		Project project = parameters.getPosition().getProject();
 		StateService stateService = StateService.getInstance(project);
+		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
 		Cache cache = stateService.getCache();
 		ArtifactId artifactId = metadata.declaration().getArtifactId();
 		Releases history = cache.getReleases(artifactId);
+		ProjectMetadata projectMetadata = metadataService.getMetadata(artifactId);
 
 		if (history.isEmpty()) {
 			result.addLookupAdvertisement(MessageBundle.message("completion.advertisement.no-releases"));
@@ -136,7 +140,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
 		ResolutionContext resolutionContext = ResolutionContext.forDeclaration(metadata.declaration(),
-				BranchSource.of(parameters.getEditor().getVirtualFile()), metadata.context().getProjectVersion());
+				BranchSource.of(parameters.getEditor().getVirtualFile()),
+				metadata.context().getProjectVersion(), projectMetadata);
 		DependencyRule rule = ruleService.resolve(resolutionContext);
 
 		CompletionResultSet prefixed = getPrefixMatcher(parameters, result);
@@ -147,9 +152,8 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		CompletionResultSet versionsResult = prefixed.withRelevanceSorter(releaseOrderSorter(proposals));
 		versionsResult.restartCompletionWhenNothingMatches();
 
-
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.currentVersion(), rule,
-				version -> stateService.getVulnerabilities(artifactId, version));
+				version -> stateService.getVulnerabilities(artifactId, version), projectMetadata);
 
 		for (ArtifactRelease release : proposals) {
 			renderer.withVersion(release);

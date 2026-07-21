@@ -16,11 +16,10 @@
 
 package biz.paluch.dap.fixtures;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
@@ -34,8 +33,8 @@ public record TestReleaseSource(String name) implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
-		return List.of();
+	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+		return Sequence.empty();
 	}
 
 }

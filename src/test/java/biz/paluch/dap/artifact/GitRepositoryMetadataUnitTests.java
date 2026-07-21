@@ -28,55 +28,47 @@ import static org.assertj.core.api.AssertionsForClassTypes.*;
 class GitRepositoryMetadataUnitTests {
 
 	@Test
-	void parsesHttpsGitHubUrl() {
+	void flatTakesFirstTwoSegments() {
 
-		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("https://github.com/octocat/hello-world.git");
+		GitRepositoryMetadata metadata = flat("https://github.com/octocat/hello-world");
 
-		assertThat(parsed).isNotNull();
-		assertThat(parsed.host()).isEqualTo("github.com");
-		assertThat(parsed.owner()).isEqualTo("octocat");
-		assertThat(parsed.repository()).isEqualTo("hello-world");
+		assertThat(metadata).isEqualTo(new GitRepositoryMetadata("github.com", "octocat", "hello-world"));
 	}
 
 	@Test
-	void parsesSshGitHubEnterpriseUrl() {
+	void flatIgnoresWebPathDebris() {
 
-		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("git@github.example.com:owner/repo.git");
+		GitRepositoryMetadata metadata = flat("https://github.com/mojohaus/flatten-maven-plugin/tree/master");
 
-		assertThat(parsed).isNotNull();
-		assertThat(parsed.host()).isEqualTo("github.example.com");
-		assertThat(parsed.owner()).isEqualTo("owner");
-		assertThat(parsed.repository()).isEqualTo("repo");
+		assertThat(metadata).isEqualTo(new GitRepositoryMetadata("github.com", "mojohaus", "flatten-maven-plugin"));
 	}
 
 	@Test
-	void parsesSshUrlWithSchemeAndUserInfo() {
+	void flatStripsInnerDotGitFromRepository() {
 
-		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("ssh://git@github.com/owner/repo.git");
+		GitRepositoryMetadata metadata = flat("https://github.com/assertj/assertj.git/assertj-parent/assertj-core");
 
-		assertThat(parsed).isNotNull();
-		assertThat(parsed.host()).isEqualTo("github.com");
-		assertThat(parsed.owner()).isEqualTo("owner");
-		assertThat(parsed.repository()).isEqualTo("repo");
+		assertThat(metadata).isEqualTo(new GitRepositoryMetadata("github.com", "assertj", "assertj"));
 	}
 
 	@Test
-	void rejectsBlankOrMalformedInput() {
-
-		assertThat(GitRepositoryMetadata.parseGitUrl(null)).isNull();
-		assertThat(GitRepositoryMetadata.parseGitUrl("")).isNull();
-		assertThat(GitRepositoryMetadata.parseGitUrl("not-a-url")).isNull();
-		assertThat(GitRepositoryMetadata.parseGitUrl("https://github.com/owner")).isNull();
+	void flatRequiresOwnerAndRepositorySegments() {
+		assertThat(flat("https://github.com/octocat")).isNull();
 	}
 
 	@Test
-	void parseGitUrlExtractsOwnerAndRepository() {
+	void rendersCanonicalKey() {
 
-		GitRepositoryMetadata parsed = GitRepositoryMetadata.parseGitUrl("git@github.example.com:acme/example.git");
+		GitRepositoryMetadata metadata = new GitRepositoryMetadata("github.com", "octocat", "hello-world");
 
-		assertThat(parsed).isNotNull();
-		assertThat(parsed.owner()).isEqualTo("acme");
-		assertThat(parsed.repository()).isEqualTo("example");
+		assertThat(metadata.key()).isEqualTo("github.com/octocat/hello-world");
+	}
+
+	private static GitRepositoryMetadata flat(String url) {
+
+		RemoteUrl remoteUrl = RemoteUrl.parse(url);
+		assertThat(remoteUrl).isNotNull();
+		return GitRepositoryMetadata.flat(remoteUrl);
 	}
 
 }

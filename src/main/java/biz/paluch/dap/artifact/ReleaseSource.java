@@ -17,9 +17,9 @@
 package biz.paluch.dap.artifact;
 
 import java.io.IOException;
-import java.util.List;
 
 import biz.paluch.dap.gradle.GradlePluginPortalReleaseSource;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
@@ -29,7 +29,8 @@ import com.intellij.openapi.progress.ProgressIndicator;
  * repository or the Gradle Plugin Portal.
  *
  * <p>Throw {@link ArtifactNotFoundException} only for a definitive absence at
- * this source. Return an empty list when release data is simply unavailable.
+ * this source. Return an empty sequence when release data is simply
+ * unavailable.
  *
  * @author Mark Paluch
  * @see MavenRepository
@@ -46,18 +47,18 @@ public interface ReleaseSource {
 
 	/**
 	 * Return all known releases for the given artifact at this source.
-	 * <p>
-	 * The returned list may be unsorted and may contain release, preview, and
-	 * snapshot versions. Implementations should periodically call
-	 * {@link ProgressIndicator#checkCanceled()} during long-running fetches to
-	 * honor user cancellation.
+	 * <p>The returned sequence may be unsorted and may contain release, preview,
+	 * and snapshot versions. Implementations may return a richer sequence type that
+	 * carries additional facts captured during the fetch. Implementations should
+	 * periodically call {@link ProgressIndicator#checkCanceled()} during
+	 * long-running fetches to honor user cancellation.
 	 * @param artifactId the artifact whose releases to retrieve.
 	 * @param indicator the progress indicator used to honor cancellation; must not
 	 * be {@literal null}.
 	 * @return the releases known to this source.
 	 * @throws ArtifactNotFoundException if the artifact is definitively absent.
 	 */
-	List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException;
+	Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException;
 
 	/**
 	 * Render the artifact coordinates as a human-readable string.

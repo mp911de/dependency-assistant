@@ -28,7 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.ProjectDisplayName;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
@@ -48,10 +48,10 @@ import org.jspecify.annotations.Nullable;
  * group replaces its members at the position of the first member; all other
  * candidates remain individual rows in their original order.
  *
- * <p>Ungoverned candidates then collapse as a fallback by coordinate shape,
- * with the winning cohort additionally split so that only members sharing the
- * same release line (their releases at or above the agreed current version)
- * group together. See ADR 0017.
+ * <p>Ungoverned candidates then collapse as a fallback by name shape when every
+ * candidate of a group id carries a grouping name, by coordinate shape
+ * otherwise, with the winning cohort additionally split so that only members
+ * sharing the same release line.
  *
  * <p>Iterate the result to obtain the rows in display order. Build it either
  * from a complete candidate list through {@link #of(List)} or incrementally
@@ -222,53 +222,110 @@ class UpgradeRows implements Sequence<TableRow> {
 		return members;
 	}
 
-	/**
-	 * Collapse ungoverned candidates into {@link GroupRow} rows by coordinate
-	 * shape. Candidates bucket by group id plus their leading word-boundary token;
-	 * within a bucket the largest version-agreeing cohort is partitioned by
-	 * <em>Release Line Agreement</em>, and each partition that has at least two
-	 * members and a {@link CoordinateShape#deriveGroupName(String) derivable group
-	 * name} forms an inferred group. Members whose release line is unique stay
-	 * individual rows. Drifting members join by version match only; a shared
-	 * version property never pulls a member in.
-	 */
 	private static void collapseInferred(List<TableRow> ungoverned,
 			Map<TableRow, GroupRow> firstMemberToGroup, Set<TableRow> grouped) {
 
-		Map<InferredKey, List<TableRow>> families = new LinkedHashMap<>();
+		Map<InferredKey, List<TableRow>> buckets = new LinkedHashMap<>();
 		for (TableRow candidate : ungoverned) {
-			families.computeIfAbsent(InferredKey.of(candidate), it -> new ArrayList<>()).add(candidate);
+			buckets.computeIfAbsent(InferredKey.of(candidate), it -> new ArrayList<>()).add(candidate);
 		}
 
-		families.forEach((key, family) -> {
+		buckets.forEach((key, bucket) -> {
 
-			AgreeingCohort cohort = selectCohort(family);
-			if (cohort == null || cohort.members().size() < 2) {
+			Map<TableRow, String> groupingNames = groupingNames(bucket);
+			Map<String, List<TableRow>> families = new LinkedHashMap<>();
+			for (TableRow candidate : bucket) {
+				families.computeIfAbsent(familyToken(candidate), it -> new ArrayList<>())
+						.add(candidate);
+			}
+
+			families.values()
+					.forEach(family -> collapseFamily(key.groupId(), family, groupingNames, firstMemberToGroup,
+							grouped));
+		});
+	}
+
+	/**
+	 * Collapse one family: the largest version-agreeing cohort is partitioned by
+	 * <em>Release Line Agreement</em>, and each partition that has at least two
+	 * members and a derivable group name forms an inferred group. Members whose
+	 * release line is unique stay individual rows. Drifting members join by version
+	 * match only; a shared version property never pulls a member in.
+	 */
+	private static void collapseFamily(String groupId, List<TableRow> family,
+			@Nullable Map<TableRow, String> groupingNames, Map<TableRow, GroupRow> firstMemberToGroup,
+			Set<TableRow> grouped) {
+
+		AgreeingCohort cohort = selectCohort(family);
+		if (cohort == null || cohort.members().size() < 2) {
+			return;
+		}
+
+		Map<Set<ArtifactVersion>, List<TableRow>> releaseLines = new LinkedHashMap<>();
+		for (TableRow member : cohort.members()) {
+			releaseLines.computeIfAbsent(releaseLine(member, cohort.version()), it -> new ArrayList<>())
+					.add(member);
+		}
+
+		releaseLines.values().forEach(line -> {
+
+			if (line.size() < 2) {
 				return;
 			}
 
-			Map<Set<ArtifactVersion>, List<TableRow>> releaseLines = new LinkedHashMap<>();
-			for (TableRow member : cohort.members()) {
-				releaseLines.computeIfAbsent(releaseLine(member, cohort.version()), it -> new ArrayList<>())
-						.add(member);
+			String name;
+			List<String> memberLabelParts;
+			List<String> artifactIds = line.stream()
+					.map(it -> it.getArtifactId().artifactId()).toList();
+			name = CoordinateShape.of(artifactIds).deriveGroupName(groupId);
+			memberLabelParts = List.of();
+
+			if (name == null) {
+				return;
 			}
 
-			releaseLines.values().forEach(line -> {
-
-				if (line.size() < 2) {
-					return;
-				}
-
-				List<String> artifactIds = line.stream().map(it -> it.getArtifactId().artifactId()).toList();
-				String name = CoordinateShape.of(artifactIds).deriveGroupName(key.groupId());
-				if (name == null) {
-					return;
-				}
-
-				firstMemberToGroup.put(line.getFirst(), GroupRow.inferred(line, name));
-				grouped.addAll(line);
-			});
+			firstMemberToGroup.put(line.getFirst(), GroupRow.inferred(line, name, memberLabelParts));
+			grouped.addAll(line);
 		});
+	}
+
+	/**
+	 * The grouping names of the bucket, or {@literal null} unless every candidate
+	 * carries one: one unnamed candidate demotes the whole bucket to coordinate
+	 * shape.
+	 */
+	private static @Nullable Map<TableRow, String> groupingNames(List<TableRow> bucket) {
+
+		Map<TableRow, String> names = new LinkedHashMap<>();
+		for (TableRow candidate : bucket) {
+
+			String name = ProjectDisplayName.getGroupingName(candidate.getArtifactId(),
+					candidate.getUpgrade().getProjectName());
+			if (name == null) {
+				return null;
+			}
+			names.put(candidate, name);
+		}
+
+		return names;
+	}
+
+	private static String familyToken(TableRow candidate) {
+
+		String artifactId = candidate.getArtifactId().artifactId();
+		int boundary = firstBoundary(artifactId);
+		return boundary < 0 ? artifactId : artifactId.substring(0, boundary);
+	}
+
+	private static int firstBoundary(String artifactId) {
+
+		for (int i = 0; i < artifactId.length(); i++) {
+			char c = artifactId.charAt(i);
+			if (c == '-' || c == '.') {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	/**
@@ -330,30 +387,15 @@ class UpgradeRows implements Sequence<TableRow> {
 	}
 
 	/**
-	 * Grouping identity for an ungoverned candidate: its group id and leading
-	 * word-boundary token within one build ecosystem.
+	 * Grouping identity for an ungoverned candidate: its group id within one build
+	 * ecosystem. Second-level partitioning by name or coordinate token happens per
+	 * bucket in {@link #collapseInferred}.
 	 */
-	private record InferredKey(String groupId, String leadingToken, Class<?> ecosystem) {
+	private record InferredKey(String groupId, Class<?> ecosystem) {
 
 		static InferredKey of(TableRow candidate) {
-
-			ArtifactId id = candidate.getArtifactId();
-			String artifactId = id.artifactId();
-			int boundary = firstBoundary(artifactId);
-			String token = boundary < 0 ? artifactId : artifactId.substring(0, boundary);
-
-			return new InferredKey(id.groupId(), token, candidate.getInterfaceAssistant().getClass());
-		}
-
-		private static int firstBoundary(String artifactId) {
-
-			for (int i = 0; i < artifactId.length(); i++) {
-				char c = artifactId.charAt(i);
-				if (c == '-' || c == '.') {
-					return i;
-				}
-			}
-			return -1;
+			return new InferredKey(candidate.getArtifactId().groupId(),
+					candidate.getInterfaceAssistant().getClass());
 		}
 
 	}

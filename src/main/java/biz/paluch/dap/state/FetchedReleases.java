@@ -1,3 +1,19 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package biz.paluch.dap.state;
 
 import java.util.ArrayList;
@@ -32,8 +48,11 @@ public class FetchedReleases implements HasArtifactId {
 
 	private final Collection<String> emptySources;
 
+	private final @Nullable CachedMetadata projectMetadata;
+
 	/**
-	 * Create a new {@code FetchedReleases} instance.
+	 * Create a new {@code FetchedReleases} instance without captured project
+	 * metadata.
 	 * @param artifactId the artifact identifier for which the releases were
 	 * fetched.
 	 * @param releases cached releases.
@@ -45,11 +64,31 @@ public class FetchedReleases implements HasArtifactId {
 	 */
 	public FetchedReleases(ArtifactId artifactId, Collection<CachedRelease> releases, FetchPlan plan,
 			@Nullable String preferredSource, Collection<String> emptySources) {
+		this(artifactId, releases, plan, preferredSource, emptySources, null);
+	}
+
+	/**
+	 * Create a new {@code FetchedReleases} instance.
+	 * @param artifactId the artifact identifier for which the releases were
+	 * fetched.
+	 * @param releases cached releases.
+	 * @param plan the underlying fetch plan.
+	 * @param preferredSource the preferred source for the artifact, can either
+	 * contain {@link ReleaseSource#getId()} or be empty (or {@literal null}).
+	 * @param emptySources the {@link ReleaseSource#getId() release source
+	 * identifiers} that returned no releases.
+	 * @param projectMetadata project metadata captured during the fetch, or
+	 * {@literal null} if the fetch produced none.
+	 */
+	public FetchedReleases(ArtifactId artifactId, Collection<CachedRelease> releases, FetchPlan plan,
+			@Nullable String preferredSource, Collection<String> emptySources,
+			@Nullable CachedMetadata projectMetadata) {
 		this.artifactId = artifactId;
 		this.releases = releases;
 		this.plan = plan;
 		this.preferredSource = preferredSource;
 		this.emptySources = emptySources;
+		this.projectMetadata = projectMetadata;
 
 		NavigableMap<Release, CachedRelease> pairs = new TreeMap<>();
 		for (CachedRelease cached : releases) {
@@ -87,6 +126,15 @@ public class FetchedReleases implements HasArtifactId {
 
 	public Collection<String> getEmptySources() {
 		return this.emptySources;
+	}
+
+	/**
+	 * Return the project metadata captured during the fetch.
+	 *
+	 * @return the captured metadata, or {@literal null} if the fetch produced none.
+	 */
+	public @Nullable CachedMetadata getProjectMetadata() {
+		return this.projectMetadata;
 	}
 
 	/**

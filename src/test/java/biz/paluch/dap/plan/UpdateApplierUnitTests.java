@@ -16,9 +16,9 @@
 
 package biz.paluch.dap.plan;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -33,6 +33,7 @@ import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Plan;
@@ -60,9 +61,9 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @IdeaProjectTests
 class UpdateApplierUnitTests {
 
-	private static final ArtifactVersion CURRENT = ArtifactVersion.of("1.0.0");
+	static ArtifactVersion CURRENT = ArtifactVersion.of("1.0.0");
 
-	private static final ArtifactVersion TARGET = ArtifactVersion.of("1.1.0");
+	static ArtifactVersion TARGET = ArtifactVersion.of("1.1.0");
 
 	@Test
 	void appliesSeveralItemsAsSeparatePlatformUndoSteps(Project project) throws Exception {
@@ -117,18 +118,17 @@ class UpdateApplierUnitTests {
 				Map.of(CURRENT, Vulnerabilities.clean(), TARGET, Vulnerabilities.clean()));
 		return new TestPlannedUpgrade(
 				DependencyUpgradeCandidate.create(dependency, Releases.just(Release.of(TARGET)), vulnerabilities,
-						TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty()));
+						TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(), ProjectMetadata.absent()));
 	}
 
 	private static List<UpgradePlanItem> materializedItems(Project project, TestPlannedUpgrade... candidates) {
 
 		Content content = new Content();
 		content.getAffectedFiles().add("pom.xml");
-		List<UpgradePlanItem> items = new java.util.ArrayList<>();
+		List<UpgradePlanItem> items = new ArrayList<>();
 		for (TestPlannedUpgrade candidate : candidates) {
 			Item stored = Item.from(candidate, TARGET);
-			UpgradePlanItem item = Objects.requireNonNull(
-					new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored));
+			UpgradePlanItem item = new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored);
 			stored.setMaterialized(item);
 			content.getItems().add(stored);
 			items.add(item);

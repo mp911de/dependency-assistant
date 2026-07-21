@@ -233,7 +233,8 @@ class MavenAssistant implements DependencyAssistant {
 			Project project = pom.getProject();
 			StateService stateService = StateService.getInstance(project);
 			ProjectState projectState = stateService.getProjectState(getProjectId());
-			return new VersionUpgradeLookup(stateService, projectState,
+
+			return VersionUpgradeLookup.of(project, getProjectId(),
 					new MavenArtifactReferenceResolver(projectState, pom, projectContext));
 		}
 

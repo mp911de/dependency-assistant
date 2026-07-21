@@ -16,113 +16,58 @@
 
 package biz.paluch.dap.artifact;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.regex.Pattern;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 /**
- * GitHub repository metadata extracted from a Git remote URL.
+ * Hosted Git repository coordinates: host, owner, and repository name.
  *
- * <p>The host is retained so release lookup can target GitHub Enterprise when a
- * project is not hosted on {@code github.com}. The owner and repository form
- * the framework's project identity for Git-backed dependency entries (GitHub
- * Actions {@code uses:} declarations and NPM {@code git+} URLs).
- *
- * <p>This type is the canonical, ecosystem-agnostic shape for parsed Git
- * coordinates, used both by the GitHub package (resolver and release source)
- * and by the NPM package (Git URL classifier). URL parsing is self-contained,
- * mirroring the Git and GitHub plugins' URL utilities, so this core type does
- * not link against optional plugins.
- *
- * @param host the GitHub host name (e.g. {@code github.com} or a GitHub
- * Enterprise host).
- * @param owner the GitHub user or organization.
+ * @param host the repository host name (e.g. {@code github.com} or a
+ * self-hosted instance).
+ * @param owner the owner path: a user or organization, or a GitLab group path
+ * whose subgroup segments are preserved (e.g.
+ * {@code gitlab-org/security-products/analyzers}).
  * @param repository the repository name.
  * @author Mark Paluch
+ * @see RemoteUrl
  */
 public record GitRepositoryMetadata(String host, String owner, String repository) {
 
-	private static final Pattern GITHUB_NAME = Pattern.compile("[A-Za-z0-9._-]+");
-
 	/**
-	 * Parse a Git remote URL into GitHub repository metadata.
-	 * <p>Both public GitHub and GitHub Enterprise remotes are supported, in scheme
-	 * form ({@code https://host/owner/repo.git}, {@code ssh://git@host/owner/repo})
-	 * and scp-like form ({@code git@host:owner/repo.git}). A {@literal null} result
-	 * indicates that the URL is blank, malformed, or not a supported Git remote.
-	 * @param url the remote URL to parse; can be {@literal null}.
-	 * @return the parsed metadata, or {@literal null} if the URL is not supported.
+	 * Create coordinates for a flat {@code owner/repo} host (GitHub, Bitbucket,
+	 * Codeberg): the first path segment is the owner, the second the repository.
+	 * Anything beyond the second segment is web-path or module-path debris and is
+	 * ignored; a trailing {@code .git} on the repository segment is stripped.
+	 * @param remoteUrl the parsed remote URL.
+	 * @return the coordinates, or {@literal null} if the URL carries fewer than two
+	 * path segments.
 	 */
-	public static @Nullable GitRepositoryMetadata parseGitUrl(@Nullable String url) {
+	public static @Nullable GitRepositoryMetadata flat(RemoteUrl remoteUrl) {
 
-		if (url == null || url.isBlank()) {
+		List<String> segments = remoteUrl.pathSegments();
+		if (segments.size() < 2) {
 			return null;
 		}
 
-		String host = parseHost(url.trim());
-		if (host == null) {
-			return null;
-		}
-
-		String path = removeProtocolPrefix(removeDotGitSuffix(url.trim()));
-		int repositoryStart = path.lastIndexOf('/');
-		if (repositoryStart == -1) {
-			return null;
-		}
-
-		String beforeRepository = path.substring(0, repositoryStart);
-		int ownerStart = Math.max(beforeRepository.lastIndexOf('/'), beforeRepository.lastIndexOf(':'));
-		if (ownerStart == -1) {
-			return null;
-		}
-
-		String owner = path.substring(ownerStart + 1, repositoryStart);
-		String repository = path.substring(repositoryStart + 1);
-		if (!GITHUB_NAME.matcher(owner).matches() || !GITHUB_NAME.matcher(repository).matches()) {
-			return null;
-		}
-
-		return new GitRepositoryMetadata(host, owner, repository);
+		return new GitRepositoryMetadata(remoteUrl.host(), segments.get(0), stripDotGit(segments.get(1)));
 	}
 
 	/**
-	 * Extract the host by reading the URL as a URI, rewriting the scp-like
-	 * {@code git@host:path} form into an ssh URI first.
+	 * Strip a trailing {@code .git} left inside the path by scm-inheritance debris
+	 * (e.g. {@code assertj/assertj.git/assertj-parent}).
 	 */
-	private static @Nullable String parseHost(String url) {
-
-		String cleaned = url;
-		while (cleaned.endsWith("/")) {
-			cleaned = cleaned.substring(0, cleaned.length() - 1);
-		}
-		cleaned = removeDotGitSuffix(cleaned);
-
-		try {
-			URI uri = cleaned.contains("://") ? new URI(cleaned)
-					: new URI("ssh://" + removeProtocolPrefix(cleaned).replace(":/", "/").replace(':', '/'));
-			return uri.getHost();
-		} catch (URISyntaxException e) {
-			return null;
-		}
+	public static String stripDotGit(String segment) {
+		return segment.endsWith(".git") ? segment.substring(0, segment.length() - 4) : segment;
 	}
 
-	private static String removeProtocolPrefix(String url) {
-
-		int atIndex = url.indexOf('@');
-		if (atIndex != -1) {
-			return url.substring(atIndex + 1);
-		}
-
-		int schemeIndex = url.indexOf("://");
-		return schemeIndex != -1 ? url.substring(schemeIndex + 3) : url;
-	}
-
-	private static String removeDotGitSuffix(String url) {
-
-		String cleaned = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-		return cleaned.endsWith(".git") ? cleaned.substring(0, cleaned.length() - 4) : cleaned;
+	/**
+	 * Return the canonical cache and connection key of these coordinates.
+	 * @return the key in {@code host/owner/repository} form; guaranteed to be not
+	 * {@literal null}.
+	 */
+	public String key() {
+		return host + "/" + owner + "/" + repository;
 	}
 
 	public GitArtifactId toArtifactId(ArtifactId originalArtifactId) {

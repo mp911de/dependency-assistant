@@ -28,8 +28,11 @@ import java.util.TreeSet;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
+import biz.paluch.dap.metadata.ProjectMetadata;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileService;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
@@ -52,7 +55,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiManager;
 import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
@@ -80,10 +82,13 @@ class DependencyfileArtifactWriter {
 
 	private final DependencyfileService dependencyfileservice;
 
+	private final ProjectMetadataService metadataService;
+
 	public DependencyfileArtifactWriter(Project project) {
 		this.project = project;
 		this.psiManager = BetterPsiManager.getInstance(project);
 		this.dependencyfileservice = DependencyfileService.getInstance(project);
+		this.metadataService = ProjectMetadataService.getInstance(project);
 	}
 
 	/**
@@ -140,7 +145,8 @@ class DependencyfileArtifactWriter {
 	 * @return the {@code name}-value range to select, or {@literal null} when the
 	 * file is not a JSON object or every entry was already present.
 	 */
-	static @Nullable TextRange insertEntries(Project project, @Nullable PsiFile psiFile, List<ArtifactEntry> entries) {
+	static @Nullable TextRange insertEntries(Project project, @Nullable PsiFile psiFile,
+			Collection<ArtifactEntry> entries) {
 
 		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
 			return null;
@@ -255,8 +261,22 @@ class DependencyfileArtifactWriter {
 
 		if (editor != null && selection != null) {
 			editor.getCaretModel().moveToOffset(selection.getEndOffset());
-			editor.getSelectionModel().setSelection(selection.getStartOffset(), selection.getEndOffset());
 		}
+	}
+
+	/**
+	 * Open the project-local descriptor when it already exists, otherwise create a
+	 * starter {@code .idea/dependencyfile.json} populated with the used artifact
+	 * ids as unconstrained rules.
+	 *
+	 * with.
+	 * @throws IOException when the descriptor cannot be created.
+	 */
+	void createOrOpen() throws IOException {
+
+		TreeSet<ArtifactId> artifactIds = new TreeSet<>(ArtifactId.COMPARATOR);
+		StateService.getInstance(project).doWithDependencies(dependency -> artifactIds.add(dependency.getArtifactId()));
+		createOrOpen(artifactIds);
 	}
 
 	/**
@@ -283,8 +303,8 @@ class DependencyfileArtifactWriter {
 
 		WriteCommandAction.writeCommandAction(project)
 				.withName(MessageBundle.message("dependencyfile.create.action"))
-				.compute(() -> insertEntries(project, PsiManager.getInstance(project).findFile(descriptor),
-						templateEntries(artifactIds)));
+				.compute(() -> insertEntries(project, psiManager.findFile(descriptor),
+						createEntries(artifactIds)));
 		saveDocument(descriptor);
 		openInEditor(descriptor, null);
 	}
@@ -384,22 +404,15 @@ class DependencyfileArtifactWriter {
 		return keys;
 	}
 
-	/**
-	 * Compute the starter entries seeding a fresh descriptor: one unconstrained
-	 * rule per artifact id, keyed by its {@link ArtifactPattern#keyFor(ArtifactId)
-	 * pattern key} and named after that key (npm-style {@code @scope} prefixes
-	 * stripped). Duplicate keys collapse and the result is ordered.
-	 */
-	static List<ArtifactEntry> templateEntries(Collection<? extends ArtifactId> artifactIds) {
+	private Collection<ArtifactEntry> createEntries(Collection<? extends ArtifactId> artifactIds) {
 
-		TreeSet<String> patterns = new TreeSet<>();
+		Set<ArtifactEntry> entries = new TreeSet<>();
 		for (ArtifactId artifactId : artifactIds) {
-			patterns.add(ArtifactPattern.keyFor(artifactId));
+			ProjectMetadata metadata = metadataService.getMetadata(artifactId);
+			entries.add(ArtifactEntry.create(artifactId, metadata.getProjectName()));
 		}
 
-		return patterns.stream()
-				.map(pattern -> new ArtifactEntry(pattern, pattern.startsWith("@") ? pattern.substring(1) : pattern))
-				.toList();
+		return entries;
 	}
 
 	/**
@@ -423,7 +436,7 @@ class DependencyfileArtifactWriter {
 
 		for (TableRow upgradeRow : rows) {
 			entries.add(new ArtifactEntry(ArtifactPattern.keyFor(upgradeRow.getArtifactId()),
-					upgradeRow.getName()));
+					upgradeRow.getDependencyName()));
 		}
 
 		return entries;
@@ -454,7 +467,20 @@ class DependencyfileArtifactWriter {
 		return groupId + ":" + commonPrefix.substring(0, separator + 1) + "*";
 	}
 
-	record ArtifactEntry(String key, String name) {
+	record ArtifactEntry(String key, String name) implements Comparable<ArtifactEntry> {
+
+		public static ArtifactEntry create(ArtifactId artifactId, @Nullable String projectName) {
+
+			String key = ArtifactPattern.keyFor(artifactId);
+			String name = StringUtils.hasText(projectName) ? projectName
+					: (key.startsWith("@") ? key.substring(1) : key);
+			return new ArtifactEntry(key, name);
+		}
+
+		@Override
+		public int compareTo(ArtifactEntry o) {
+			return key.compareToIgnoreCase(o.key);
+		}
 	}
 
 }

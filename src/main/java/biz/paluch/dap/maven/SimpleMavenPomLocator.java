@@ -20,21 +20,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.BomLocator;
+import biz.paluch.dap.artifact.PomLocator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link BomLocator} resolving BOM POMs against the default local Maven
- * repository ({@code ~/.m2/repository}), serving IDEs without the Maven
- * integration.
+ * {@link PomLocator} resolving POMs against the default local Maven repository
+ * ({@code ~/.m2/repository}), serving IDEs without the Maven integration.
  *
  * @author Mark Paluch
  */
-public class SimpleMavenBomLocator implements BomLocator {
+public class SimpleMavenPomLocator implements PomLocator {
 
 	private static final String MAVEN_LOCAL_CACHE_ROOT = ".m2/repository";
 
@@ -43,12 +41,12 @@ public class SimpleMavenBomLocator implements BomLocator {
 	private final LocalFileSystem localFileSystem = LocalFileSystem.getInstance();
 
 	@Override
-	public @Nullable VirtualFile locateBom(Project project, ArtifactId artifactId, ArtifactVersion version) {
-
+	public @Nullable VirtualFile locatePom(Project project, ArtifactId artifactId, String version) {
 		String fileName = "%s-%s.pom".formatted(artifactId.artifactId(), version);
-		Path pomFile = mavenRepository.resolve(artifactId.groupId().replace('.', '/'))
-				.resolve(artifactId.artifactId()).resolve(version.toString()).resolve(fileName);
-
+		Path pomFile = mavenRepository
+				.resolve(artifactId.groupId().replace('.', '/'))
+				.resolve(artifactId.artifactId())
+				.resolve(version).resolve(fileName);
 		return Files.isRegularFile(pomFile) ? localFileSystem.findFileByNioFile(pomFile) : null;
 	}
 

@@ -265,7 +265,7 @@ class GradleAssistant implements DependencyAssistant {
 			PsiFile psiFile = element.getContainingFile();
 			StateService stateService = StateService.getInstance(delegate.getProject());
 			ProjectState projectState = stateService.getProjectState(getProjectId());
-			return new VersionUpgradeLookup(stateService, projectState,
+			return VersionUpgradeLookup.of(delegate.getProject(), getProjectId(),
 					new GradleArtifactReferenceResolver(projectState, psiFile));
 		}
 

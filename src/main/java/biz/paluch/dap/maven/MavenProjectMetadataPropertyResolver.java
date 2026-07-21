@@ -21,15 +21,22 @@ import java.util.Map;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.psi.SyntaxTraverser;
 import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.xml.XmlDocument;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import com.intellij.psi.xml.XmlTagValue;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Maven property resolver using Maven POM project metadata like {@code groupId}
- * and {@code artifactId}.
+ * Maven property resolver over the POM's own elements.
+ *
+ * <p>Every value-carrying tag registers under its dot path with the
+ * {@code project.} prefix and the legacy {@code pom.} alias, following the
+ * Maven convention of referencing POM elements by name (e.g.
+ * {@code project.scm.tag} or {@code project.parent.version}). Entries of the
+ * {@code <properties>} block additionally register under their plain property
+ * name.
  *
  * @author Mark Paluch
  */
@@ -48,44 +55,18 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 	 */
 	MavenProjectMetadataPropertyResolver(XmlFile pom) {
 
-		XmlTag rootTag = pom.getDocument().getRootTag();
-		if (rootTag == null) {
-			this.version = null;
-			this.parentVersion = null;
-			return;
+		XmlDocument document = pom.getDocument();
+		XmlTag rootTag = document != null ? document.getRootTag() : null;
+		if (rootTag != null) {
+			registerProjectTags(rootTag);
 		}
 
-		PropertyValue artifactId = find(rootTag, "artifactId");
-		if (artifactId != null) {
-			register(artifactId, "artifactId");
-		}
+		this.version = properties.get("project.version");
+		this.parentVersion = properties.get("project.parent.version");
 
-		PropertyValue groupId = find(rootTag, "groupId");
-		if (groupId != null) {
-			register(groupId, "groupId");
-		}
-
-		this.version = findDirect(rootTag, "version");
-		this.parentVersion = findParent(rootTag, "version");
-
-		PropertyValue effectiveVersion = this.version != null ? this.version : this.parentVersion;
-		if (effectiveVersion != null) {
-			register(effectiveVersion, "version");
-		}
-
-		PropertyValue parentArtifactId = findParent(rootTag, "artifactId");
-		if (parentArtifactId != null) {
-			registerParent(parentArtifactId, "artifactId");
-		}
-
-		PropertyValue parentGroupId = findParent(rootTag, "groupId");
-		if (parentGroupId != null) {
-			registerParent(parentGroupId, "groupId");
-		}
-
-		if (this.parentVersion != null) {
-			registerParent(this.parentVersion, "version");
-		}
+		registerEffectiveCoordinate("groupId");
+		registerEffectiveCoordinate("artifactId");
+		registerEffectiveCoordinate("version");
 	}
 
 	public static MavenProjectMetadataPropertyResolver from(XmlFile pom) {
@@ -94,24 +75,73 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 	}
 
 	/**
-	 * Register a project coordinate under its plain name, the {@code project.}
-	 * prefix, and the legacy {@code pom.} alias that Maven treats as equivalent.
+	 * Register every value-carrying leaf tag under its dot path. The first
+	 * occurrence of a path wins, matching document order.
 	 */
-	private void register(PropertyValue value, String coordinate) {
+	private void registerProjectTags(XmlTag rootTag) {
 
-		properties.put(coordinate, value);
-		properties.put("project." + coordinate, value);
-		properties.put("pom." + coordinate, value);
+		for (XmlTag tag : SyntaxTraverser.psiTraverser(rootTag).filter(XmlTag.class)) {
+
+			if (tag == rootTag || !tag.isValid() || tag.getSubTags().length > 0) {
+				continue;
+			}
+
+			String text = tag.getValue().getTrimmedText();
+			if (!StringUtils.hasText(text)) {
+				continue;
+			}
+
+			String path = pathOf(tag, rootTag);
+			if (path == null) {
+				continue;
+			}
+
+			PropertyValue value = new PropertyValue(path, text, tag);
+			properties.putIfAbsent("project." + path, value);
+			properties.putIfAbsent("pom." + path, value);
+
+			if (path.startsWith("properties.")) {
+				properties.putIfAbsent(tag.getLocalName(), value);
+			}
+		}
 	}
 
 	/**
-	 * Register a parent coordinate under the {@code project.parent.} placeholder
-	 * and the legacy {@code pom.parent.} alias.
+	 * Build the dot path of the tag relative to the root {@code <project>} tag, or
+	 * return {@literal null} when the tag left the tree while traversing.
 	 */
-	private void registerParent(PropertyValue value, String coordinate) {
+	private static @Nullable String pathOf(XmlTag tag, XmlTag rootTag) {
 
-		properties.put("project.parent." + coordinate, value);
-		properties.put("pom.parent." + coordinate, value);
+		StringBuilder path = new StringBuilder(tag.getLocalName());
+		for (XmlTag parent = tag.getParentTag(); parent != rootTag; parent = parent.getParentTag()) {
+
+			if (parent == null) {
+				return null;
+			}
+			path.insert(0, '.').insert(0, parent.getLocalName());
+		}
+		return path.toString();
+	}
+
+	/**
+	 * Register the plain-name placeholder for a project coordinate
+	 * ({@code $}{@code {version}} style) and fall back to the {@code <parent>}
+	 * declaration, so inherited coordinates resolve on POMs that do not declare
+	 * them locally.
+	 */
+	private void registerEffectiveCoordinate(String coordinate) {
+
+		PropertyValue effective = properties.get("project." + coordinate);
+		if (effective == null) {
+			effective = properties.get("project.parent." + coordinate);
+		}
+		if (effective == null) {
+			return;
+		}
+
+		properties.putIfAbsent(coordinate, effective);
+		properties.putIfAbsent("project." + coordinate, effective);
+		properties.putIfAbsent("pom." + coordinate, effective);
 	}
 
 	/**
@@ -148,44 +178,6 @@ class MavenProjectMetadataPropertyResolver implements PropertyResolver {
 	@Override
 	public @Nullable PropertyValue getPropertyValue(String key) {
 		return properties.get(key);
-	}
-
-	private @Nullable PropertyValue find(XmlTag tag, String tagName) {
-
-		PropertyValue direct = findDirect(tag, tagName);
-		if (direct != null) {
-			return direct;
-		}
-		return findParent(tag, tagName);
-	}
-
-	private @Nullable PropertyValue findParent(XmlTag tag, String tagName) {
-
-		for (XmlTag parent : tag.findSubTags("parent")) {
-			if (!parent.isValid()) {
-				continue;
-			}
-			PropertyValue property = find(parent, tagName);
-			if (property != null) {
-				return property;
-			}
-		}
-		return null;
-	}
-
-	private static @Nullable PropertyValue findDirect(XmlTag tag, String tagName) {
-
-		for (XmlTag subTag : tag.findSubTags(tagName)) {
-			if (!subTag.isValid()) {
-				continue;
-			}
-			XmlTagValue value = subTag.getValue();
-			String text = value.getTrimmedText();
-			if (StringUtils.hasText(text)) {
-				return new PropertyValue(tagName, text, subTag);
-			}
-		}
-		return null;
 	}
 
 }

@@ -83,6 +83,30 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	}
 
 	/**
+	 * Attempt to derive a version from a Git tag name.
+	 * <p>Tag names frequently carry a project prefix, such as
+	 * {@code assertj-build-3.27.7}. The tag is cut where the version literal
+	 * starts, so qualifier suffixes ({@code -M1}, {@code -RC1}) remain part of the
+	 * parsed version, and the prefix is preserved so {@link Object#toString()}
+	 * round-trips the original tag. The prefixed-semantic interpretation wins over
+	 * the release-train fallback, so a prefixed tag is not misread as a release
+	 * train; tags without any version literal (e.g. {@code latest}) yield an empty
+	 * {@link Optional}.
+	 * @param tag the tag name to parse; can be {@literal null}.
+	 * @return the parsed version equal to its unprefixed form, or an empty
+	 * {@link Optional}.
+	 */
+	static Optional<ArtifactVersion> fromTag(@Nullable String tag) {
+
+		if (StringUtils.isEmpty(tag)) {
+			return Optional.empty();
+		}
+
+		ArtifactVersion prefixed = PrefixedArtifactVersion.parseTag(tag);
+		return prefixed != null ? Optional.of(prefixed) : from(tag);
+	}
+
+	/**
 	 * Return whether this version is strictly newer than the given version.
 	 * @param other the version to compare with.
 	 */

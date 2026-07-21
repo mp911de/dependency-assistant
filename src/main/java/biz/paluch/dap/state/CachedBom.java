@@ -87,6 +87,25 @@ public class CachedBom {
 	}
 
 	/**
+	 * Return whether the given artifact is listed as a member of this membership,
+	 * regardless of version.
+	 * @param artifactId the member coordinates to look up.
+	 * @return {@literal true} if a member entry matches the coordinates;
+	 * {@literal false} otherwise.
+	 */
+	public boolean isMember(ArtifactId artifactId) {
+
+		for (CachedBomMember member : members) {
+			if (artifactId.groupId().equals(member.getGroupId())
+					&& artifactId.artifactId().equals(member.getArtifactId())) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Convert the member entries into a domain member map, skipping entries whose
 	 * version no longer parses.
 	 *

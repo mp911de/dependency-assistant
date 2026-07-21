@@ -20,8 +20,8 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.BomLocator;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PomLocator;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import com.intellij.openapi.project.Project;
@@ -32,7 +32,7 @@ import com.intellij.openapi.vfs.VirtualFile;
  * before locating and parsing the BOM POM from a local repository.
  *
  * @author Mark Paluch
- * @see BomLocator
+ * @see PomLocator
  * @see MavenBomParser
  */
 public class BomUtil {
@@ -59,7 +59,7 @@ public class BomUtil {
 			return cachedArtifact.getBom(version);
 		}
 
-		VirtualFile bomPom = BomLocator.findBom(project, pkg.getArtifactId(), version);
+		VirtualFile bomPom = PomLocator.findPom(project, pkg.getArtifactId(), version);
 		if (bomPom == null) {
 			return Map.of();
 		}

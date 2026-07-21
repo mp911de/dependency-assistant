@@ -28,6 +28,7 @@ import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
@@ -89,7 +90,7 @@ class DependencyUpgradeCandidateUnitTests {
 	private static DependencyUpgradeCandidate upgrade(Dependency dependency, Releases releases,
 			VulnerabilityRepository vulnerabilities) {
 		return DependencyUpgradeCandidate.create(dependency, releases, vulnerabilities, DependencyRule.absent(),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty());
+				TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(), ProjectMetadata.absent());
 	}
 
 }

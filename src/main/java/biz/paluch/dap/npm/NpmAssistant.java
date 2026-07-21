@@ -211,7 +211,7 @@ public class NpmAssistant implements DependencyAssistant {
 			StateService stateService = StateService.getInstance(project);
 			ProjectState projectState = stateService.getProjectState(getProjectId());
 			GitVersionResolver versionResolver = new GitVersionResolver(stateService.getCache());
-			return new VersionUpgradeLookup(stateService, projectState,
+			return VersionUpgradeLookup.of(project, getProjectId(),
 					new NpmArtifactReferenceResolver(versionResolver, projectState, projectContext));
 		}
 

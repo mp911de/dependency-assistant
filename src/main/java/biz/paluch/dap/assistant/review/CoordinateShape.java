@@ -39,6 +39,7 @@ import org.jspecify.annotations.Nullable;
  * @see UpgradeRows
  * @see GroupRow
  */
+// TODO: refactor
 class CoordinateShape {
 
 	private final List<String> artifactIds;

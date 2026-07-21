@@ -19,12 +19,12 @@ package biz.paluch.dap.gradle;
 import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
 import org.junit.jupiter.api.Test;
@@ -56,7 +56,7 @@ class GradleDistributionServiceTests {
 				]
 				""");
 
-		List<Release> releases = source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
+		Sequence<Release> releases = source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
 				new AbstractProgressIndicatorBase());
 
 		assertThat(releases).singleElement().satisfies(release -> {
@@ -79,7 +79,7 @@ class GradleDistributionServiceTests {
 				]
 				""");
 
-		List<Release> releases = source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
+		Sequence<Release> releases = source.getReleases(GradleDistributionService.GRADLE_DISTRIBUTION,
 				new AbstractProgressIndicatorBase());
 
 		assertThat(releases).extracting(release -> release.version().toString()).containsExactly("8.14.3");
@@ -92,7 +92,7 @@ class GradleDistributionServiceTests {
 			throw new AssertionError("Should not fetch versions for non-Gradle artifacts");
 		});
 
-		List<Release> releases = source.getReleases(ArtifactId.of("org.springframework", "spring-core"),
+		Sequence<Release> releases = source.getReleases(ArtifactId.of("org.springframework", "spring-core"),
 				new AbstractProgressIndicatorBase());
 
 		assertThat(releases).isEmpty();

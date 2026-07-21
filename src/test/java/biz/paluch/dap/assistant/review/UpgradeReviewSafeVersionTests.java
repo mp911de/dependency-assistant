@@ -34,6 +34,7 @@ import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
@@ -171,7 +172,7 @@ class UpgradeReviewSafeVersionTests {
 		Releases releases = TestReleases.from(versions);
 		return new TableRow(DependencyUpgradeCandidate.create(dependency, releases, vulnerabilities,
 				new TestDependencyRule(artifactId.artifactId()), new TestInterfaceAssistant(),
-				DeclaredVersions.from(List.of(site(artifactId, current)), it -> null, null)));
+				DeclaredVersions.from(List.of(site(artifactId, current)), it -> null, null), ProjectMetadata.absent()));
 	}
 
 	private static DeclarationSite site(ArtifactId artifactId, ArtifactVersion version) {

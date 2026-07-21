@@ -41,7 +41,7 @@ public class GitVersion extends ArtifactVersionWrapper implements ArtifactVersio
 	 * @param sha the full 40-character SHA-1, or {@literal null} when unavailable.
 	 * @param version the version used for comparison and display.
 	 */
-	private GitVersion(@Nullable String sha, ArtifactVersion version) {
+	GitVersion(@Nullable String sha, ArtifactVersion version) {
 		super(version);
 		this.sha = sha;
 		this.version = version;

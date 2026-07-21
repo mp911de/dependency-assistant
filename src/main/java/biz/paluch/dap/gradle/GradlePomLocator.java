@@ -20,8 +20,7 @@ import java.io.File;
 import java.nio.file.Path;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.BomLocator;
+import biz.paluch.dap.artifact.PomLocator;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -31,25 +30,25 @@ import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link BomLocator} resolving BOM POMs from the Gradle module cache
+ * {@link PomLocator} resolving POMs from the Gradle module cache
  * ({@code caches/modules-2/files-2.1}) under the configured Gradle user home,
  * scanning the per-artifact hash directories for the POM file.
  *
  * @author Mark Paluch
  */
-public class GradleBomLocator implements BomLocator {
+public class GradlePomLocator implements PomLocator {
 
 	private static final String MODULE_CACHE_ROOT = "caches/modules-2/files-2.1";
 
 	private final LocalFileSystem localFileSystem = LocalFileSystem.getInstance();
 
 	@Override
-	public @Nullable VirtualFile locateBom(Project project, ArtifactId artifactId, ArtifactVersion version) {
+	public @Nullable VirtualFile locatePom(Project project, ArtifactId artifactId, String version) {
 
 		File versionDirectory = resolveGradleUserHome(project).resolve(MODULE_CACHE_ROOT)
 				.resolve(artifactId.groupId()) //
 				.resolve(artifactId.artifactId()) //
-				.resolve(version.toString()).toFile();
+				.resolve(version).toFile();
 
 		File[] hashDirectories = versionDirectory.listFiles();
 		if (hashDirectories == null) {

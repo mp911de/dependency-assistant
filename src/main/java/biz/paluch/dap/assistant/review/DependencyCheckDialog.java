@@ -376,8 +376,16 @@ public class DependencyCheckDialog extends DialogWrapper {
 		});
 
 		DataContext dataContext = DataManager.getInstance().getDataContext(this.components);
+
+		String title;
+		if (candidate.getName().equals(candidate.getDependencyName())) {
+			title = candidate.getName();
+		} else {
+			title = String.format("%s (%s)", candidate.getDependencyName(), candidate.getName());
+		}
+
 		JBPopupFactory.getInstance()
-				.createActionGroupPopup(candidate.getName(), group, dataContext,
+				.createActionGroupPopup(title, group, dataContext,
 						JBPopupFactory.ActionSelectionAid.MNEMONICS, true)
 				.show(where);
 	}

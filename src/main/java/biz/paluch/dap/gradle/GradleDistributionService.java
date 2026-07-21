@@ -31,6 +31,7 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.util.HttpClientUtil;
+import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -89,10 +90,10 @@ public class GradleDistributionService implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		if (!GRADLE_DISTRIBUTION.equals(artifactId)) {
-			return List.of();
+			return Sequence.empty();
 		}
 
 		indicator.checkCanceled();
@@ -101,9 +102,9 @@ public class GradleDistributionService implements ReleaseSource {
 			String body = fetcher.fetch(VERSIONS_ALL);
 			indicator.checkCanceled();
 			if (!StringUtils.hasText(body)) {
-				return List.of();
+				return Sequence.empty();
 			}
-			return parseReleases(body, indicator);
+			return Sequence.of(parseReleases(body, indicator));
 		} catch (HttpRequests.HttpStatusException e) {
 			if (e.getStatusCode() == 404) {
 				LOG.debug("[%s][%s] HTTP Status %d: %s".formatted(artifactId, getId(),

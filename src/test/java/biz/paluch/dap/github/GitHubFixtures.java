@@ -28,6 +28,7 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -103,8 +104,8 @@ class GitHubFixtures {
 		}
 
 		@Override
-		public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
-			return List.of();
+		public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+			return Sequence.empty();
 		}
 
 		@Override

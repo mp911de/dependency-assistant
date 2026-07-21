@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
@@ -68,22 +69,26 @@ public class ArtifactReferenceContext {
 
 	private @Nullable UpgradeSuggestions suggestions;
 
+	private final ProjectMetadata projectMetadata;
+
 	private ArtifactReferenceContext() {
 		this.dependencyContext = ProjectDependencyContext.absent();
 		this.stateService = null;
 		this.declaration = null;
 		this.evaluator = DependencyRuleEvaluator.absent();
 		this.releases = null;
+		this.projectMetadata = ProjectMetadata.absent();
 	}
 
 	ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,
-			ArtifactDeclaration declaration, DependencyRuleEvaluator evaluator) {
+			ArtifactDeclaration declaration, DependencyRuleEvaluator evaluator, ProjectMetadata projectMetadata) {
 		Assert.isTrue(declaration.isVersionDefined(), "Artifact declaration must define a version");
 		this.dependencyContext = dependencyContext;
 		this.stateService = stateService;
 		this.declaration = declaration;
 		this.evaluator = evaluator;
 		this.releases = null;
+		this.projectMetadata = projectMetadata;
 	}
 
 	/**
@@ -130,14 +135,14 @@ public class ArtifactReferenceContext {
 			return ABSENT;
 		}
 
+		ProjectMetadata metadata = lookup.getMetadata(declaration.getArtifactId());
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(element.getProject());
 		ResolutionContext resolutionContext = ResolutionContext.forDeclaration(declaration,
-				BranchSource.of(element),
-				context.getProjectVersion());
+				BranchSource.of(element), context.getProjectVersion(), metadata);
 		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.evaluate(ruleService, resolutionContext,
 				declaration.getVersion());
 		StateService stateService = lookup.getStateService();
-		return new ArtifactReferenceContext(context, stateService, declaration, evaluator);
+		return new ArtifactReferenceContext(context, stateService, declaration, evaluator, metadata);
 	}
 
 	/**
@@ -244,6 +249,10 @@ public class ArtifactReferenceContext {
 		return stateService;
 	}
 
+	public ProjectMetadata getProjectMetadata() {
+		return projectMetadata;
+	}
+
 	/**
 	 * Return the {@link Vulnerabilities} for the resolved artifact.
 	 *
@@ -283,7 +292,6 @@ public class ArtifactReferenceContext {
 	public VersionStatus getStatus(ArtifactVersion artifactVersion) {
 
 		ArtifactVersion currentVersion = isPresent() ? getVersion() : null;
-
 		return VersionStatus.of(evaluator, currentVersion, artifactVersion, getVulnerabilities(artifactVersion));
 	}
 

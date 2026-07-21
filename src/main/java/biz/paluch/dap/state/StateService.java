@@ -35,6 +35,7 @@ import com.intellij.openapi.components.PersistentStateComponentWithModificationT
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.openapi.util.Predicates;
 import com.intellij.util.xmlb.XmlSerializerUtil;
 import com.intellij.util.xmlb.annotations.Transient;
@@ -58,6 +59,7 @@ import org.jspecify.annotations.Nullable;
 @State(name = "DependencyAssistant", storages = @Storage("dependency-assistant.xml"))
 public class StateService
 		implements PersistentStateComponentWithModificationTracker<DependencyAssistantState>,
+		ModificationTracker,
 		VulnerabilitiesRepository {
 
 	private final DependencyAssistantState state = new DependencyAssistantState();
@@ -95,6 +97,11 @@ public class StateService
 		snapshot.setCache(state.getCache().snapshot());
 		snapshot.setUsedOnce(state.isUsedOnce());
 		return snapshot;
+	}
+
+	@Override
+	public long getModificationCount() {
+		return getStateModificationCount();
 	}
 
 	/**

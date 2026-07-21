@@ -40,6 +40,7 @@ import java.util.regex.Pattern;
 
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MavenMetadataProjection;
+import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.util.XmlBeamProjectorFactory;
 import com.intellij.openapi.diagnostic.Logger;
@@ -95,7 +96,7 @@ public class MavenRepository implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		String path = artifactId.groupId().replace(".", "/") + "/" + artifactId.artifactId() + "/";
 		String metadataPath = path + "maven-metadata.xml";
@@ -119,7 +120,7 @@ public class MavenRepository implements ReleaseSource {
 					releaseDates.forEach((version, date) -> {
 						Release.tryFrom(version, date, null).ifPresent(releases::add);
 					});
-					return new ArrayList<>(releases);
+					return Sequence.of(releases);
 				}
 			}
 
@@ -127,7 +128,7 @@ public class MavenRepository implements ReleaseSource {
 		}
 
 		if (StringUtils.isEmpty(xml)) {
-			return List.of();
+			return Sequence.empty();
 		}
 
 		Map<String, LocalDateTime> releaseDates = directoryResponse.parse();
@@ -136,7 +137,7 @@ public class MavenRepository implements ReleaseSource {
 			Release.tryFrom(rawVersion, releaseDates.get(rawVersion), null).ifPresent(releases::add);
 		}
 
-		return new ArrayList<>(releases);
+		return Sequence.of(releases);
 	}
 
 	private List<String> parseReleaseVersions(String xml) {

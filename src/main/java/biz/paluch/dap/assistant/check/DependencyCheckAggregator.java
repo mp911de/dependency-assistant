@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant.check;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -31,6 +32,7 @@ import java.util.stream.Stream;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -39,6 +41,8 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.metadata.ProjectMetadata;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -63,7 +67,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Mark Paluch
  */
-class DependencyCheckAggregator implements Sequence<PackageIdentity> {
+public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 	private final Map<PackageIdentity, Entry> entries = new LinkedHashMap<>();
 
@@ -71,17 +75,15 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 	private final Project project;
 
-	private final StateService service;
+	private final StateService stateService;
 
-	/**
-	 * Create an aggregator for the given project state.
-	 *
-	 * @param project the IntelliJ project used for read actions.
-	 * @param service the state service used to store scanned dependencies.
-	 */
-	public DependencyCheckAggregator(Project project, StateService service) {
+	private final ProjectMetadataService metadataService;
+
+	public DependencyCheckAggregator(Project project, StateService stateService,
+			ProjectMetadataService metadataService) {
 		this.project = project;
-		this.service = service;
+		this.stateService = stateService;
+		this.metadataService = metadataService;
 	}
 
 	/**
@@ -129,6 +131,16 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 */
 	public void forEachArtifact(BiConsumer<PackageIdentity, Collection<ReleaseSource>> consumer) {
 		entries.forEach((pkg, entry) -> consumer.accept(pkg, entry.releaseSources));
+	}
+
+	/**
+	 * Apply the given consumer to each unique artifact and its declaration sites.
+	 *
+	 * @param consumer the consumer receiving artifact identifiers and declaration
+	 * sites in encounter order.
+	 */
+	public void forEachDeclaration(BiConsumer<PackageIdentity, Collection<DeclarationSite>> consumer) {
+		entries.forEach((pkg, entry) -> consumer.accept(pkg, entry.declarationSites()));
 	}
 
 	/**
@@ -187,7 +199,7 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 */
 	public void add(VirtualFile buildFile, ProjectDependencyContext context, ProgressIndicator indicator) {
 
-		ProjectState projectState = service.getProjectState(context.getProjectId());
+		ProjectState projectState = stateService.getProjectState(context.getProjectId());
 
 		DependencyCollector collector = context.scanDependencies(indicator);
 		projectState.setDependencies(collector, context.getPackageSystem());
@@ -234,7 +246,7 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 		List<DependencyUpgradeCandidate> upgrades = new ArrayList<>();
 		List<String> errors = getErrors(releases);
-		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, service);
+		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, stateService);
 		entries.forEach((pkg, entry) -> {
 
 			ArtifactId artifactId = pkg.getArtifactId();
@@ -261,8 +273,9 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 
+			ProjectMetadata metadata = metadataService.getMetadata(pkg);
 			ResolutionContext resolutionContext = ResolutionContext.forAggregate(merged,
-					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned);
+					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned, metadata);
 			DependencyRule rule = evaluator.resolve(resolutionContext);
 
 			VulnerabilityRepository vulnerabilities = getVulnerabilities(pkg, scanner);
@@ -270,7 +283,7 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 			upgrades.add(
 					DependencyUpgradeCandidate.create(dependency, lookup.releases(), vulnerabilities, rule, assistant,
-							declaredVersions));
+							declaredVersions, metadata));
 		});
 
 		upgrades.sort(Comparator.comparing(DependencyUpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
@@ -285,7 +298,7 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			return VulnerabilityRepository.empty();
 		}
 
-		return version -> service.getVulnerabilities(pkg, version);
+		return version -> stateService.getVulnerabilities(pkg, version);
 	}
 
 	private static List<String> getErrors(Map<?, ReleaseLookupResult> map) {
@@ -297,6 +310,19 @@ class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			}
 		});
 		return errors;
+	}
+
+	public Map<PackageIdentity, ArtifactVersion> getDependencyVersions() {
+		Map<PackageIdentity, ArtifactVersion> versions = new HashMap<>();
+		forEachDeclaration((packageIdentity, declarationSites) -> {
+
+			for (DeclarationSite site : declarationSites) {
+				if (site.dependency() instanceof Dependency dependency) {
+					versions.put(packageIdentity, dependency.getCurrentVersion());
+				}
+			}
+		});
+		return versions;
 	}
 
 	/**

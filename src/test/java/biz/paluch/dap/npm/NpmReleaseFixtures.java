@@ -35,7 +35,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class NpmReleases {
+class NpmReleaseFixtures {
 
 	private static final List<CachedArtifact> ALL = new ArrayList<>();
 
@@ -62,7 +62,7 @@ class NpmReleases {
 					.add("5.3.1", "2024-11-05", "d1185ce5aa7757407fe6a5febb1e03e3dba2a530")
 					.add("5.3.0", "2024-03-19", "aaabbdde59f7757407fe6a5febb1e03e3dba2a530"));
 
-	private NpmReleases() {
+	private NpmReleaseFixtures() {
 	}
 
 	/**

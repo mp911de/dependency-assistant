@@ -145,7 +145,8 @@ public class MavenBomParser extends MavenPomSupport {
 				return localResolver.getProperty(key);
 			}
 
-			return MavenPropertyResolver.resolve("${" + key + "}", model);
+			String resolved = MavenPropertyResolver.resolve("${" + key + "}", model);
+			return resolved == null || resolved.contains("${") ? null : resolved;
 		}
 
 	}

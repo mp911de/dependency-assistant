@@ -105,6 +105,17 @@ public class Releases implements Sequence<Release> {
 	}
 
 	/**
+	 * Create {@code Releases} for a single release.
+	 *
+	 * @param version the version to include.
+	 * @return a single-element {@code Releases} instance containing the given
+	 * release.
+	 */
+	public static Releases just(ArtifactVersion version) {
+		return of(Release.from(version));
+	}
+
+	/**
 	 * Create {@code Releases} from an array of releases.
 	 *
 	 * @param releases releases for the same artifact and must contain no
@@ -127,11 +138,7 @@ public class Releases implements Sequence<Release> {
 	 * @return a new {@code Releases} instance containing the given releases.
 	 * @see #just(Release)
 	 */
-	public static Releases of(Collection<Release> releases) {
-
-		if (releases.isEmpty()) {
-			return empty();
-		}
+	public static Releases of(Iterable<Release> releases) {
 
 		Map<VersioningScheme, List<Release>> partitions = new EnumMap<>(VersioningScheme.class);
 		for (Release release : releases) {

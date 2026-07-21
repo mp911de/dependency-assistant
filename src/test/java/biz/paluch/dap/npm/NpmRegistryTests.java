@@ -17,10 +17,11 @@
 package biz.paluch.dap.npm;
 
 import java.io.IOException;
-import java.util.List;
 
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.state.CachedMetadata;
+import biz.paluch.dap.util.Sequence;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -53,7 +54,7 @@ class NpmRegistryTests {
 				}
 				""";
 
-		List<Release> releases = SOURCE.parseReleases(body);
+		Sequence<Release> releases = SOURCE.parseReleases(body);
 
 		for (Release release : releases) {
 			assertThat(release.version()).isInstanceOf(GitVersion.class);
@@ -80,7 +81,7 @@ class NpmRegistryTests {
 				}
 				""";
 
-		List<Release> releases = SOURCE.parseReleases(body);
+		Sequence<Release> releases = SOURCE.parseReleases(body);
 
 		assertThat(releases).extracting(r -> r.version().toString())
 				.containsExactlyInAnyOrder("3.1.0", "3.1.2");
@@ -106,7 +107,7 @@ class NpmRegistryTests {
 				}
 				""";
 
-		List<Release> releases = SOURCE.parseReleases(body);
+		Sequence<Release> releases = SOURCE.parseReleases(body);
 
 		assertThat(releases).extracting(r -> r.version().toString())
 				.containsExactlyInAnyOrder("1.0.0", "1.1.0-rc.1", "1.1.0-beta", "1.1.0-next.0");
@@ -131,10 +132,183 @@ class NpmRegistryTests {
 				}
 				""";
 
-		List<Release> releases = SOURCE.parseReleases(body);
+		Sequence<Release> releases = SOURCE.parseReleases(body);
 
 		assertThat(releases).hasSize(2);
 		assertThat(releases).allSatisfy(r -> assertThat(r.releaseDate()).isNull());
+	}
+
+	@Test
+	void capturesRepositoryAndBugsFromLatestVersionDocument() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "3.4.0" },
+				  "versions": {
+				    "3.4.0": {
+				      "repository": { "type": "git", "url": "git+https://github.com/vuejs/core.git" },
+				      "bugs": { "url": "https://github.com/vuejs/core/issues" }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl()).isEqualTo("git+https://github.com/vuejs/core.git");
+		assertThat(metadata.getIssueTrackerUrl()).isEqualTo("https://github.com/vuejs/core/issues");
+	}
+
+	@Test
+	void capturesMonorepoRepositoryUrlIgnoringDirectory() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "19.0.0" },
+				  "versions": {
+				    "19.0.0": {
+				      "repository": {
+				        "type": "git",
+				        "url": "git+https://github.com/facebook/react.git",
+				        "directory": "packages/react"
+				      }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl()).isEqualTo("git+https://github.com/facebook/react.git");
+	}
+
+	@Test
+	void capturesGitLabNestedGroupRepository() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "1.0.0" },
+				  "versions": {
+				    "1.0.0": {
+				      "repository": {
+				        "type": "git",
+				        "url": "git+https://gitlab.com/gitlab-org/gitlab-services/design.gitlab.com.git",
+				        "directory": "packages/gitlab-ui"
+				      }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl())
+				.isEqualTo("git+https://gitlab.com/gitlab-org/gitlab-services/design.gitlab.com.git");
+	}
+
+	@Test
+	void capturesLegacyPathKeyRepository() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "2.3.3" },
+				  "versions": {
+				    "2.3.3": {
+				      "repository": { "type": "git", "path": "git://github.com/astro/node-expat.git" }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl()).isEqualTo("git://github.com/astro/node-expat.git");
+	}
+
+	@Test
+	void capturesRepositoryUrlWithCommitIshFragment() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "11.14.0" },
+				  "versions": {
+				    "11.14.0": {
+				      "repository": { "type": "git", "url": "git+https://github.com/emotion-js/emotion.git#main" }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl()).isEqualTo("git+https://github.com/emotion-js/emotion.git#main");
+	}
+
+	@Test
+	void dropsDoubledSchemeTrackerUrl() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "0.1.20" },
+				  "versions": {
+				    "0.1.20": {
+				      "bugs": { "url": "http://http://github.com/tmpvar/jsdom/issues", "email": "tmpvar@gmail.com" }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl()).isNull();
+		assertThat(metadata.getIssueTrackerUrl()).isNull();
+	}
+
+	@Test
+	void emailOnlyBugsCountsAsAbsent() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "1.0.0" },
+				  "versions": {
+				    "1.0.0": {
+				      "bugs": { "email": "bugs@example.com" }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getIssueTrackerUrl()).isNull();
+	}
+
+	@Test
+	void fallsBackToTopLevelWhenLatestVersionLacksMetadata() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "1.0.0" },
+				  "repository": "https://github.com/owner/repo",
+				  "bugs": "https://github.com/owner/repo/issues",
+				  "versions": {
+				    "1.0.0": {}
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/owner/repo");
+		assertThat(metadata.getIssueTrackerUrl()).isEqualTo("https://github.com/owner/repo/issues");
+	}
+
+	@Test
+	void prefersLatestVersionDocumentOverTopLevelCopy() throws IOException {
+
+		CachedMetadata metadata = parseMetadata("""
+				{
+				  "dist-tags": { "latest": "2.0.0" },
+				  "repository": { "type": "git", "url": "git+https://github.com/owner/old-repo.git" },
+				  "versions": {
+				    "2.0.0": {
+				      "repository": { "type": "git", "url": "git+https://github.com/owner/new-repo.git" }
+				    }
+				  }
+				}
+				""");
+
+		assertThat(metadata.getRepositoryUrl()).isEqualTo("git+https://github.com/owner/new-repo.git");
+	}
+
+	private CachedMetadata parseMetadata(String body) throws IOException {
+
+		NpmReleases releases = (NpmReleases) SOURCE.parseReleases(body);
+		return releases.getProjectMetadata();
 	}
 
 }

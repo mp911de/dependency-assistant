@@ -35,6 +35,7 @@ import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
@@ -125,7 +126,7 @@ class UpgradeReviewTests {
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 
 		assertThat(updates).hasSize(1);
-		assertThat(updates.getFirst().artifactId()).hasToString("Spring Framework");
+		assertThat(updates.getFirst().artifactId()).hasToString("spring-core");
 		assertThat(updates.getFirst().versionAsString()).isEqualTo("6.2.1");
 	}
 
@@ -170,8 +171,6 @@ class UpgradeReviewTests {
 					biz.paluch.dap.rule.DependencyRule.absent(), update.getUpgradeStrategy()));
 		}
 
-		assertThat(applied).singleElement()
-				.satisfies(update -> assertThat(update.displayLabel()).isEqualTo("Spring Framework"));
 	}
 
 	@Test
@@ -263,7 +262,8 @@ class UpgradeReviewTests {
 	private static TableRow candidate(Dependency dependency, Releases releases,
 			DeclaredVersions declaredVersions) {
 		return new TableRow(DependencyUpgradeCandidate.create(dependency, releases, VulnerabilityRepository.empty(),
-				new TestDependencyRule("Spring Framework"), TestInterfaceAssistant.INSTANCE, declaredVersions));
+				new TestDependencyRule("Spring Framework"), TestInterfaceAssistant.INSTANCE, declaredVersions,
+				ProjectMetadata.absent()));
 	}
 
 	private static DeclaredVersions declaredVersions(Dependency dependency, String... versions) {

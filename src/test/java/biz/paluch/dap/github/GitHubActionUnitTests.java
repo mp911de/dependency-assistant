@@ -61,6 +61,23 @@ class GitHubActionUnitTests {
 	}
 
 	@Test
+	void rejectsOwnersOutsideGitHubNamingRules() {
+
+		assertThat(GitHubAction.isValidUsage("-foo/bar@version")).isFalse();
+		assertThat(GitHubAction.isValidUsage("foo-/bar@version")).isFalse();
+		assertThat(GitHubAction.isValidUsage("fo--o/bar@version")).isFalse();
+		assertThat(GitHubAction.isValidUsage("a".repeat(40) + "/bar@version")).isFalse();
+	}
+
+	@Test
+	void rejectsReservedRepositoryNames() {
+
+		assertThat(GitHubAction.isValidUsage("foo/.@version")).isFalse();
+		assertThat(GitHubAction.isValidUsage("foo/..@version")).isFalse();
+		assertThat(GitHubAction.isValidUsage("foo/../bar@version")).isFalse();
+	}
+
+	@Test
 	void parsesRepositoryWithDotsAndUnderscores() {
 		assertThat(GitHubAction.from("foo/my.repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my.repo"));
 		assertThat(GitHubAction.from("foo/my_repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my_repo"));

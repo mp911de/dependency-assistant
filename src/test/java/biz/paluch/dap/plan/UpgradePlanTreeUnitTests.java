@@ -27,7 +27,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import javax.swing.JComponent;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -45,6 +44,7 @@ import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.ui.treeStructure.Tree;
@@ -308,9 +308,9 @@ class UpgradePlanTreeUnitTests {
 				Map.of(current, Vulnerabilities.clean(), targetVersion, Vulnerabilities.clean()));
 		TestPlannedUpgrade candidate = new TestPlannedUpgrade(
 				DependencyUpgradeCandidate.create(dependency, Releases.just(Release.of(targetVersion)), vulnerabilities,
-						TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty()));
+						TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(), ProjectMetadata.absent()));
 		UpgradePlanState.Item stored = UpgradePlanState.Item.from(candidate, targetVersion);
-		return Objects.requireNonNull(
+		return (
 				new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored));
 	}
 

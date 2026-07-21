@@ -17,7 +17,6 @@
 package biz.paluch.dap.github;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -25,6 +24,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubServerPath;
@@ -105,7 +105,7 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 	 * @return releases obtained from the selected GitHub release source.
 	 */
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		ReleaseSource releaseSource;
 		ArtifactId id = artifactId;
@@ -113,12 +113,12 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 			id = gitArtifactId.releaseSource();
 			releaseSource = doGetReleaseSource(GithubApiRequestExecutorFactory.serverPath(gitArtifactId.host()));
 		} else if (strict) {
-			return List.of();
+			return Sequence.empty();
 		} else {
 			releaseSource = doGetReleaseSource(GithubServerPath.DEFAULT_SERVER);
 		}
 
-		return releaseSource != null ? releaseSource.getReleases(id, indicator) : List.of();
+		return releaseSource != null ? releaseSource.getReleases(id, indicator) : Sequence.empty();
 	}
 
 	private @Nullable ReleaseSource doGetReleaseSource(GithubServerPath server) {

@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.psi.PsiFile;
@@ -49,7 +50,8 @@ class VersionUpgradeLookupTests {
 				.declarationSource(DeclarationSource.dependency())
 				.declarationElement(file)
 				.versionLiteral(file));
-		VersionUpgradeLookup lookup = new VersionUpgradeLookup(new StateService(), null, element -> reference);
+		VersionUpgradeLookup lookup = new VersionUpgradeLookup(new StateService(),
+				ProjectMetadataService.getInstance(file.getProject()), null, element -> reference);
 
 		assertThat(lookup.getCurrentVersion(lookup.resolveArtifactReference(file))).isEqualTo(declaredVersion);
 	}

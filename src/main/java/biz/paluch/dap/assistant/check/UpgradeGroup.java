@@ -85,7 +85,7 @@ public class UpgradeGroup {
 				.merge(members.stream().map(DependencyUpgradeCandidate::getDeclaredVersions).toList());
 		return DependencyUpgradeCandidate.create(dependency, intersectReleases(members),
 				VulnerabilityRepository.composite(repositories), first.getRule(), first.getAssistant(),
-				declaredVersions);
+				declaredVersions, first.getProjectMetadata());
 	}
 
 	private static Releases intersectReleases(List<DependencyUpgradeCandidate> members) {

@@ -44,20 +44,16 @@ public interface StepsProgressIndicator extends ProgressIndicator {
 	void nextStep();
 
 	/**
-	 * Adapt the platform {@code StepsProgressIndicator} to this interface, dividing
-	 * the parent into {@code totalSteps} equally sized steps.
+	 * Create a new {@code StepsProgressIndicator} for the number of
+	 * {@code totalSteps}.
 	 *
-	 * <p>The returned indicator is not thread-safe; advance steps from a single
-	 * thread. Use
-	 * {@link WeightedStepsProgressIndicator#forTasks(ProgressIndicator, int)} for a
-	 * thread-safe equal-step indicator.
+	 * <p>The returned indicator is thread-safe.
 	 * @param indicator the indicator to forward to.
 	 * @param totalSteps the number of equally sized steps.
 	 * @return a steps indicator backed by the platform implementation.
 	 */
 	static StepsProgressIndicator forSteps(ProgressIndicator indicator, int totalSteps) {
-		return new StepsProgressIndicatorWrapper(
-				new com.intellij.util.progress.StepsProgressIndicator(indicator, totalSteps));
+		return WeightedStepsProgressIndicator.forTasks(indicator, totalSteps);
 	}
 
 }

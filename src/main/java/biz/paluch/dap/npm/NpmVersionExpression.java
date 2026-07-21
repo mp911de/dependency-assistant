@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
+import biz.paluch.dap.artifact.RemoteUrl;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.util.TextRange;
@@ -595,8 +596,8 @@ sealed interface NpmVersionExpression
 	}
 
 	/**
-	 * Git dependency whose URL resolves through
-	 * {@link GitRepositoryMetadata#parseGitUrl(String)} to a GitHub repository.
+	 * Git dependency whose URL resolves through {@link RemoteUrl} and
+	 * {@link GitRepositoryMetadata#flat(RemoteUrl)} to a GitHub repository.
 	 *
 	 * <p>The repository metadata determines the release source used for update
 	 * lookup. The committish after {@code #} is modeled as another
@@ -747,7 +748,8 @@ sealed interface NpmVersionExpression
 			String committishRaw = hash < 0 ? "" : value.substring(hash + 1);
 
 			String normalized = normalizeForResolver(urlPart);
-			GitRepositoryMetadata repository = GitRepositoryMetadata.parseGitUrl(normalized);
+			RemoteUrl remoteUrl = RemoteUrl.parse(normalized);
+			GitRepositoryMetadata repository = remoteUrl != null ? GitRepositoryMetadata.flat(remoteUrl) : null;
 			if (repository == null) {
 				return null;
 			}
@@ -771,11 +773,8 @@ sealed interface NpmVersionExpression
 			String repo = matcher.group("repo");
 			String ref = matcher.group("ref");
 
-			String url = "https://github.com/%s/%s.git".formatted(owner, repo);
-			GitRepositoryMetadata repository = GitRepositoryMetadata.parseGitUrl(url);
-			if (repository == null) {
-				return null;
-			}
+			GitRepositoryMetadata repository = new GitRepositoryMetadata("github.com", owner,
+					GitRepositoryMetadata.stripDotGit(repo));
 
 			String committishRaw = ref != null ? ref : "";
 			NpmVersionExpression committish = stripSemverPrefix(committishRaw);
@@ -831,7 +830,7 @@ sealed interface NpmVersionExpression
 
 	/**
 	 * Git-backed NPM dependency reference resolved through
-	 * {@link GitRepositoryMetadata#parseGitUrl(String)}.
+	 * {@link RemoteUrl#parse(String)}.
 	 *
 	 * <p>The {@code prefix} is the original Git URL or shorthand text up to the
 	 * committish replacement point, including {@code #}; for semver refs, the

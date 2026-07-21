@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,8 @@ class UpgradeGroupUnitTests {
 		Dependency dependency = new Dependency(ArtifactId.of("com.example", artifactId), ArtifactVersion.of(current));
 		return DependencyUpgradeCandidate.create(dependency, TestReleases.from(releases),
 				VulnerabilityRepository.empty(),
-				DependencyRule.absent(), TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty());
+				DependencyRule.absent(), TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(),
+				ProjectMetadata.absent());
 	}
 
 }

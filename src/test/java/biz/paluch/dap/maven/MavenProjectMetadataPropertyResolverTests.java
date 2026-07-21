@@ -75,6 +75,28 @@ class MavenProjectMetadataPropertyResolverTests {
 	@ProjectFile(name = "pom.xml", content = """
 			<project>
 				<modelVersion>4.0.0</modelVersion>
+				<artifactId>demo</artifactId>
+				<scm>
+					<tag>build-1.0</tag>
+				</scm>
+				<properties>
+					<repository.url>https://github.com/example/example-repo</repository.url>
+				</properties>
+			</project>
+			""")
+	void registersNestedElementsAndPropertiesEntries(PsiFile pom) {
+
+		MavenProjectMetadataPropertyResolver resolver = new MavenProjectMetadataPropertyResolver((XmlFile) pom);
+
+		assertThat(resolver.getProperty("project.scm.tag")).isEqualTo("build-1.0");
+		assertThat(resolver.getProperty("pom.scm.tag")).isEqualTo("build-1.0");
+		assertThat(resolver.getProperty("repository.url")).isEqualTo("https://github.com/example/example-repo");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<modelVersion>4.0.0</modelVersion>
 				<groupId>com.example</groupId>
 				<artifactId>demo</artifactId>
 				<version>1.0.0</version>

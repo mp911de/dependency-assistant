@@ -8,7 +8,9 @@
 		<assistant implementation="biz.paluch.dap.maven.MavenAssistant"/>
 		<assistant implementation="biz.paluch.dap.maven.MavenExtensionsAssistant"/>
 		<assistant implementation="biz.paluch.dap.maven.wrapper.MavenWrapperAssistant"/>
-		<bomLocator implementation="biz.paluch.dap.maven.MavenBomLocator"/>
+		<pomLocator implementation="biz.paluch.dap.maven.MavenPomLocator"/>
+		<projectMetadataInspector
+				implementation="biz.paluch.dap.maven.MavenProjectMetadataInspector"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">

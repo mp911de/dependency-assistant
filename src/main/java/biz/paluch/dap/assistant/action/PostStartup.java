@@ -18,24 +18,32 @@ package biz.paluch.dap.assistant.action;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import biz.paluch.dap.BomMembershipResolver;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectStateIndexer;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.VulnerabilityScanner;
+import biz.paluch.dap.metadata.ProjectMetadataIndexer;
+import biz.paluch.dap.metadata.RepositoryTagScanner;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
+import com.intellij.ide.PowerSaveMode;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
+import com.intellij.openapi.util.Predicates;
 import com.intellij.util.progress.StepsProgressIndicator;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
@@ -53,15 +61,14 @@ public class PostStartup implements ProjectActivity {
 
 		DumbService.getInstance(project).runWhenSmart(() -> {
 
-			ProgressManager.getInstance()
-					.run(new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), false) {
+			new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), false) {
 
 						@Override
 						public void run(ProgressIndicator indicator) {
 							postStartup(indicator, project);
 						}
 
-					});
+			}.queue();
 		});
 
 		return null;
@@ -72,7 +79,7 @@ public class PostStartup implements ProjectActivity {
 		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		VulnerabilityScanner scanner = VulnerabilityScanner.create(project);
 		StepsProgressIndicator steps = new StepsProgressIndicator(indicator,
-				assistants.size() + (scanner.isPresent() ? 1 : 0) + 1);
+				assistants.size() + (scanner.isPresent() ? 1 : 0));
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, steps);
 		steps.setIndeterminate(false);
 
@@ -90,8 +97,24 @@ public class PostStartup implements ProjectActivity {
 		steps.nextStep();
 
 		if (scanner.isPresent()) {
-			scanVulnerabilities(scanner, indicator, project, service);
+			if (!PowerSaveMode.isEnabled()) {
+				scanVulnerabilities(scanner, indicator, project, service);
+			}
 			steps.nextStep();
+		}
+
+		if (!PowerSaveMode.isEnabled()) {
+			ProjectMetadataIndexer metadataIndexer = new ProjectMetadataIndexer(project);
+			Map<PackageIdentity, ArtifactVersion> versionMap = new HashMap<>();
+			service.doWithDependencies(Predicates.alwaysTrue(), dependency -> {
+				CachedArtifact cachedArtifact = service.getCache()
+						.findCachedArtifact(dependency.getArtifactId());
+				if (cachedArtifact != null && cachedArtifact.getPackageSystem() != null) {
+					versionMap.put(cachedArtifact.toPackageIdentity(), dependency.getCurrentVersion());
+				}
+			});
+			metadataIndexer.update(indicator, versionMap);
+			scanRepositoryTags(project, service);
 		}
 
 		if (!service.hasBeenUsed()) {
@@ -111,6 +134,23 @@ public class PostStartup implements ProjectActivity {
 			Notifications.releaseMetadataStale(project, lastUpdate,
 					RefreshReleaseMetadata::new);
 		}
+	}
+
+	/**
+	 * Queue the repository-tag sweep as its own background task so tag fetching
+	 * never delays startup completion.
+	 */
+	private void scanRepositoryTags(Project project, StateService service) {
+
+		RepositoryTagScanner scanner = new RepositoryTagScanner(project, service.getCache());
+		new Task.Backgroundable(project, MessageBundle.message("repository-scan.loading"), true) {
+
+			@Override
+			public void run(ProgressIndicator indicator) {
+				scanner.scan(indicator);
+			}
+
+		}.queue();
 	}
 
 	private void scanVulnerabilities(VulnerabilityScanner scanner, ProgressIndicator indicator, Project project,

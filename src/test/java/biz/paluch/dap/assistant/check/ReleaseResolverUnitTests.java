@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
 import org.junit.jupiter.api.Test;
@@ -104,8 +105,8 @@ class ReleaseResolverUnitTests {
 		}
 
 		@Override
-		public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
-			return List.of(Release.of(version));
+		public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+			return Sequence.of(Release.of(version));
 		}
 
 	}
@@ -124,7 +125,7 @@ class ReleaseResolverUnitTests {
 		}
 
 		@Override
-		public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
+		public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
 			while (!Thread.currentThread().isInterrupted()) {
 				try {
@@ -133,7 +134,7 @@ class ReleaseResolverUnitTests {
 					Thread.currentThread().interrupt();
 				}
 			}
-			return List.of();
+			return Sequence.empty();
 		}
 
 	}

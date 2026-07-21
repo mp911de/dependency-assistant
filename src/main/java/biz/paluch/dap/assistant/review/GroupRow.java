@@ -43,7 +43,8 @@ class GroupRow extends TableRow {
 
 	private final String toolTipText;
 
-	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String derivedLabel) {
+	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String derivedLabel,
+			List<String> memberLabelParts) {
 
 		super(group.getUpgrade());
 		this.members = members;
@@ -53,14 +54,20 @@ class GroupRow extends TableRow {
 		}
 		this.toolTipText = createGroupToolTipText();
 
-		List<String> artifactIds = members.stream().map(member -> member.getArtifactId().artifactId()).toList();
-		String label = String.join(", ", CoordinateShape.of(artifactIds).memberLabelParts());
+		List<String> parts = memberLabelParts;
+		if (parts.isEmpty()) {
+
+			List<String> artifactIds = members.stream().map(member -> member.getArtifactId().artifactId()).toList();
+			parts = CoordinateShape.of(artifactIds).memberLabelParts();
+		}
+
+		String label = String.join(", ", parts);
 		this.memberLabel = !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label
 				: String.valueOf(members.size());
 	}
 
 	static GroupRow governed(List<TableRow> members) {
-		return create(members, null);
+		return create(members, null, List.of());
 	}
 
 	static GroupRow governed(TableRow... members) {
@@ -68,14 +75,23 @@ class GroupRow extends TableRow {
 	}
 
 	static GroupRow inferred(List<TableRow> members, String displayName) {
-		return create(members, displayName);
+		return create(members, displayName, List.of());
 	}
 
-	private static GroupRow create(List<TableRow> members, @Nullable String derivedLabel) {
+	/**
+	 * Create an inferred group labeled with the given display name and member label
+	 * parts; empty parts fall back to the members' coordinate shape.
+	 */
+	static GroupRow inferred(List<TableRow> members, String displayName, List<String> memberLabelParts) {
+		return create(members, displayName, memberLabelParts);
+	}
+
+	private static GroupRow create(List<TableRow> members, @Nullable String derivedLabel,
+			List<String> memberLabelParts) {
 
 		List<DependencyUpgradeCandidate> upgrades = members.stream().map(TableRow::getUpgrade).toList();
 		UpgradeGroup group = UpgradeGroup.of(upgrades);
-		return new GroupRow(group, members, derivedLabel);
+		return new GroupRow(group, members, derivedLabel, memberLabelParts);
 	}
 
 	private String createGroupToolTipText() {

@@ -33,6 +33,7 @@ import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.ListTableModel;
@@ -78,7 +79,7 @@ class SuggestedVersionComboBoxEditorTests {
 		DependencyUpgradeCandidate upgrade = DependencyUpgradeCandidate.create(dependency,
 				Releases.just(Release.of(current)),
 				VulnerabilityRepository.empty(), DependencyRule.absent(), new TestInterfaceAssistant(),
-				DeclaredVersions.empty());
+				DeclaredVersions.empty(), ProjectMetadata.absent());
 		return new TableRow(upgrade);
 	}
 

@@ -35,8 +35,10 @@ import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestProjectDependencyContext;
 import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestReleaseSource;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.mock.MockVirtualFile;
@@ -72,7 +74,8 @@ class DependencyCheckAggregatorTests {
 
 	String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
 
-	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(TestProjects.PROJECT, new StateService());
+	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(TestProjects.PROJECT, new StateService(),
+			new ProjectMetadataService(null, new Cache()));
 
 	@Test
 	void groupsDeclarationsByArtifact() {

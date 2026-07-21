@@ -55,8 +55,14 @@
 		<extensionPoint qualifiedName="biz.paluch.dap.vulnerabilitySource"
 		                interface="biz.paluch.dap.checker.VulnerabilitySource"
 		                dynamic="true"/>
-		<extensionPoint qualifiedName="biz.paluch.dap.bomLocator"
-		                interface="biz.paluch.dap.artifact.BomLocator"
+		<extensionPoint qualifiedName="biz.paluch.dap.pomLocator"
+		                interface="biz.paluch.dap.artifact.PomLocator"
+		                dynamic="true"/>
+		<extensionPoint qualifiedName="biz.paluch.dap.projectMetadataInspector"
+		                interface="biz.paluch.dap.state.ProjectMetadataInspector"
+		                dynamic="true"/>
+		<extensionPoint qualifiedName="biz.paluch.dap.platform"
+		                interface="biz.paluch.dap.metadata.Platform"
 		                dynamic="true"/>
 		<extensionPoint qualifiedName="biz.paluch.dap.ticketSystem"
 		                interface="biz.paluch.dap.ticket.TicketSystemProvider"
@@ -64,8 +70,13 @@
 	</extensionPoints>
 
 	<extensions defaultExtensionNs="biz.paluch.dap">
-		<bomLocator implementation="biz.paluch.dap.maven.SimpleMavenBomLocator"/>
+		<pomLocator implementation="biz.paluch.dap.maven.SimpleMavenPomLocator"/>
 		<ticketSystem implementation="biz.paluch.dap.plan.InMemoryTicketSystemProvider"/>
+		<platform implementation="biz.paluch.dap.github.GitHubPlatform"/>
+		<platform implementation="biz.paluch.dap.metadata.GitLabPlatform"/>
+		<platform implementation="biz.paluch.dap.metadata.BitbucketPlatform"/>
+		<platform implementation="biz.paluch.dap.metadata.CodebergPlatform"/>
+		<platform implementation="biz.paluch.dap.metadata.SourceForgePlatform"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="org.jetbrains.kotlin">
@@ -112,6 +123,8 @@
 				implementation="biz.paluch.dap.severity.DependencyAssistantSeverities"/>
 		<platform.backend.documentation.psiTargetProvider
 				implementation="biz.paluch.dap.assistant.documentation.DependencyDocumentationProvider"/>
+		<platform.backend.documentation.targetProvider
+				implementation="biz.paluch.dap.assistant.documentation.DependencyDocumentationTargetProvider"/>
 		<platform.backend.documentation.lookupElementTargetProvider
 				implementation="biz.paluch.dap.assistant.documentation.ReleaseLookupDocumentationProvider"/>
 		<platform.backend.documentation.linkHandler
@@ -138,6 +151,22 @@
 			<categoryKey>intention.dap.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.assistant.action.UpgradeDependenciesIntention
+			</className>
+		</intentionAction>
+		<intentionAction id="dap.report.issue">
+			<language/>
+			<skipBeforeAfter>true</skipBeforeAfter>
+			<categoryKey>intention.dap.category</categoryKey>
+			<bundleName>messages.MessageBundle</bundleName>
+			<className>biz.paluch.dap.assistant.editor.ReportIssueIntention
+			</className>
+		</intentionAction>
+		<intentionAction id="dap.open.release-notes">
+			<language/>
+			<skipBeforeAfter>true</skipBeforeAfter>
+			<categoryKey>intention.dap.category</categoryKey>
+			<bundleName>messages.MessageBundle</bundleName>
+			<className>biz.paluch.dap.assistant.editor.OpenReleaseNotesIntention
 			</className>
 		</intentionAction>
 	</extensions>
@@ -176,6 +205,9 @@
 			<action id="DependencyAssistant.UpgradePlan.OpenTicket"
 			        class="biz.paluch.dap.plan.OpenTicketInBrowserAction"
 			        icon="AllIcons.General.Web"/>
+			<action id="DependencyAssistant.UpgradePlan.ShowReleaseNotes"
+			        class="biz.paluch.dap.plan.ShowReleaseNotesAction"
+			        icon="AllIcons.Toolwindows.Documentation"/>
 			<action id="DependencyAssistant.UpgradePlan.UnlinkTicket"
 			        class="biz.paluch.dap.plan.UnlinkTicketAction"
 			        icon="AllIcons.General.Remove"/>

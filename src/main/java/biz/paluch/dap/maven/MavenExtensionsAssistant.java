@@ -27,7 +27,6 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -194,9 +193,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 			Project project = extensions.getProject();
 			MavenExtensionContext buildContext = new MavenExtensionContext(project, extensions.getVirtualFile());
-			StateService stateService = StateService.getInstance(project);
-			ProjectState projectState = stateService.getProjectState(buildContext.getProjectId());
-			return new VersionUpgradeLookup(stateService, projectState,
+
+			return VersionUpgradeLookup.of(project, buildContext.getProjectId(),
 					new MavenExtensionsReferenceResolver(extensions));
 		}
 

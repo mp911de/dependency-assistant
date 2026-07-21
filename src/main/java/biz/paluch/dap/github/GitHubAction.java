@@ -48,14 +48,15 @@ interface GitHubAction extends ArtifactId {
 
 	/**
 	 * Pattern for repository-backed GitHub Action {@code uses:} values.
-	 * <p>
-	 * Local actions and Docker image references are intentionally excluded from
+	 * <p>Local actions and Docker image references are intentionally excluded from
 	 * this contract because they are not resolved through GitHub repository release
-	 * metadata.
+	 * metadata. Owner and repository follow GitHub naming rules: owners are
+	 * alphanumerics with single inner hyphens up to 39 characters, repository names
+	 * exclude the reserved {@code .} and {@code ..}.
 	 */
 	Pattern USES = Pattern.compile(
-			"^(?<owner>[A-Za-z0-9-]{1,40})\\/" +
-					"(?<repo>[A-Za-z0-9._-]{1,100})" +
+			"^(?<owner>[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38})\\/" +
+					"(?<repo>(?!\\.\\.?[/@])[A-Za-z0-9._-]{1,100})" +
 					"(?<paths>[/A-Za-z0-9._-]*)@" +
 					"(?<version>\\S*)\\s*(#(?<comment>[\\sA-Za-z0-9._-]+))?$");
 

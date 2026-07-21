@@ -28,6 +28,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -70,6 +71,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 
 	private final DeclaredVersions declaredVersions;
 
+	private final ProjectMetadata projectMetadata;
+
 	private final UpgradeSuggestions suggestions;
 
 	private final Releases displayReleases;
@@ -77,8 +80,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	private final UpgradeSuggestions displaySuggestions;
 
 	private DependencyUpgradeCandidate(Dependency dependency, Releases releases,
-			VulnerabilityRepository vulnerabilities,
-			DependencyRule rule, InterfaceAssistant assistant, DeclaredVersions declaredVersions) {
+			VulnerabilityRepository vulnerabilities, DependencyRule rule, InterfaceAssistant assistant,
+			DeclaredVersions declaredVersions, ProjectMetadata projectMetadata) {
 
 		this.dependency = dependency;
 		this.releases = releases.withVersion(dependency.getCurrentVersion());
@@ -86,6 +89,7 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 		this.rule = rule;
 		this.assistant = assistant;
 		this.declaredVersions = declaredVersions;
+		this.projectMetadata = projectMetadata;
 		this.suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, this.releases, vulnerabilities,
 				rule);
 		this.displayReleases = filterDisplayReleases();
@@ -103,12 +107,15 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	 * @return an upgrade governed by the absent dependency rule.
 	 */
 	public static DependencyUpgradeCandidate create(Dependency dependency, Releases releases,
-			VulnerabilityRepository vulnerabilities, InterfaceAssistant assistant, DeclaredVersions declaredVersions) {
-		return create(dependency, releases, vulnerabilities, DependencyRule.absent(), assistant, declaredVersions);
+			VulnerabilityRepository vulnerabilities, InterfaceAssistant assistant,
+			DeclaredVersions declaredVersions, ProjectMetadata metadata) {
+		return create(dependency, releases, vulnerabilities, DependencyRule.absent(), assistant, declaredVersions,
+				metadata);
 	}
 
 	/**
-	 * Create an upgrade governed by the given rule.
+	 * Create an upgrade governed by the given rule, carrying the captured project
+	 * name.
 	 *
 	 * @param dependency the collected dependency to upgrade.
 	 * @param releases the known releases for the dependency.
@@ -116,13 +123,16 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	 * @param rule the governing dependency rule.
 	 * @param assistant the assistant that can apply the upgrade.
 	 * @param declaredVersions the versions the dependency is declared at.
+	 * @param projectMetadata the project name captured from the artifact's own
+	 * metadata.
 	 * @return an upgrade with suggestions and display views computed from the
 	 * supplied facts.
 	 */
 	public static DependencyUpgradeCandidate create(Dependency dependency, Releases releases,
 			VulnerabilityRepository vulnerabilities, DependencyRule rule, InterfaceAssistant assistant,
-			DeclaredVersions declaredVersions) {
-		return new DependencyUpgradeCandidate(dependency, releases, vulnerabilities, rule, assistant, declaredVersions);
+			DeclaredVersions declaredVersions, ProjectMetadata projectMetadata) {
+		return new DependencyUpgradeCandidate(dependency, releases, vulnerabilities, rule, assistant, declaredVersions,
+				projectMetadata);
 	}
 
 	private Releases filterDisplayReleases() {
@@ -202,6 +212,10 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 		return displayReleases;
 	}
 
+	public ProjectMetadata getProjectMetadata() {
+		return projectMetadata;
+	}
+
 	/**
 	 * Return all policy suggestions in strategy priority order.
 	 *
@@ -246,6 +260,15 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	 */
 	public DeclaredVersions getDeclaredVersions() {
 		return declaredVersions;
+	}
+
+	/**
+	 * Return the project name captured from the artifact's own metadata.
+	 *
+	 * @return the captured project name, or {@literal null} when none was captured.
+	 */
+	public @Nullable String getProjectName() {
+		return projectMetadata.getProjectName();
 	}
 
 	/**

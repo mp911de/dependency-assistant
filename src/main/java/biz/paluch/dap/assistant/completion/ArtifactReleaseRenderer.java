@@ -26,6 +26,7 @@ import biz.paluch.dap.artifact.VersioningScheme;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.ReleaseDateFormatter;
@@ -52,6 +53,8 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 
 	private final VulnerabilityRepository vulnerabilities;
 
+	private final ProjectMetadata projectMetadata;
+
 	private int versionLength = 0;
 
 	/**
@@ -65,11 +68,12 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 	 * and never blocking.
 	 */
 	public ArtifactReleaseRenderer(@Nullable ArtifactVersion currentVersion, DependencyRule rule,
-			VulnerabilityRepository vulnerabilities) {
+			VulnerabilityRepository vulnerabilities, ProjectMetadata projectMetadata) {
 		this.currentVersion = currentVersion != null && currentVersion.scheme() == VersioningScheme.OPAQUE ? null
 				: currentVersion;
 		this.rule = rule;
 		this.vulnerabilities = vulnerabilities;
+		this.projectMetadata = projectMetadata;
 	}
 
 	public String formatReleaseDate(ArtifactRelease release) {
@@ -88,7 +92,8 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 		String itemText = version.toString();
 		presentation.setItemText(itemText);
 
-		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.create(rule, release.artifactId(), version);
+		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.create(rule,
+				release.artifactId(), version, projectMetadata);
 
 		String typeText = "";
 		LocalDateTime releaseDate = release.getReleaseDate();

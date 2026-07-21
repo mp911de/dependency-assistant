@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
@@ -105,7 +106,7 @@ class ArtifactReferenceContextUnitTests {
 		StateService stateService = new StateService(cache);
 
 		ArtifactReferenceContext context = new ArtifactReferenceContext(ProjectDependencyContext.absent(), stateService,
-				reference().getDeclaration(), DependencyRuleEvaluator.absent());
+				reference().getDeclaration(), DependencyRuleEvaluator.absent(), ProjectMetadata.absent());
 
 		assertThat(releaseLookups).hasValue(0);
 		assertThat(context.getReleases()).isSameAs(releases);
@@ -128,7 +129,8 @@ class ArtifactReferenceContextUnitTests {
 
 		};
 		ArtifactReferenceContext context = new ArtifactReferenceContext(ProjectDependencyContext.absent(),
-				new StateService(cache), reference().getDeclaration(), DependencyRuleEvaluator.absent());
+				new StateService(cache), reference().getDeclaration(), DependencyRuleEvaluator.absent(),
+				ProjectMetadata.absent());
 
 		assertThat(context.getReleases()).isSameAs(releases);
 		assertThat(context.getSuggestions()).isNotEmpty();
@@ -146,7 +148,7 @@ class ArtifactReferenceContextUnitTests {
 
 		assertThatIllegalArgumentException().isThrownBy(() -> new ArtifactReferenceContext(
 				ProjectDependencyContext.absent(), new StateService(), versionless.getDeclaration(),
-				DependencyRuleEvaluator.absent()));
+				DependencyRuleEvaluator.absent(), ProjectMetadata.absent()));
 	}
 
 	private static ArtifactReference reference() {

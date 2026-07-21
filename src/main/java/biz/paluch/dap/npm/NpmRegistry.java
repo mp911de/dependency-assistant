@@ -18,6 +18,7 @@ package biz.paluch.dap.npm;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -31,7 +32,10 @@ import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.metadata.RepositoryUrl;
+import biz.paluch.dap.state.CachedMetadata;
 import biz.paluch.dap.util.HttpClientUtil;
+import biz.paluch.dap.util.Sequence;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.diagnostic.Logger;
@@ -44,6 +48,11 @@ import org.springframework.util.ObjectUtils;
 /**
  * {@link ReleaseSource} that fetches release metadata from the public NPM
  * registry at {@code https://registry.npmjs.org/}.
+ *
+ * <p>The registry document also carries the package's {@code repository} and
+ * {@code bugs} declarations; the fetch captures them as {@link CachedMetadata}
+ * on the returned {@link NpmReleases} so the cache-write path can store them
+ * without a second request.
  *
  * @author Mark Paluch
  */
@@ -76,21 +85,21 @@ public class NpmRegistry implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		if (artifactId instanceof GitArtifactId && NpmUtils.GITHUB_AVAILABLE) {
-			return List.of();
+			return Sequence.empty();
 		}
 
 		String packageName = toPackageName(artifactId);
 		URI uri = URI.create(registryBaseUrl + encodePackageName(packageName));
 		indicator.checkCanceled();
 
-			String body = fetchUrl(artifactId, uri);
-			if (body == null || body.isEmpty()) {
-				return List.of();
-			}
-			return parseReleases(body);
+		String body = fetchUrl(artifactId, uri);
+		if (body == null || body.isEmpty()) {
+			return Sequence.empty();
+		}
+		return parseReleases(body);
 	}
 
 	@Override
@@ -133,14 +142,14 @@ public class NpmRegistry implements ReleaseSource {
 		}
 	}
 
-	protected List<Release> parseReleases(String body) throws IOException {
+	protected Sequence<Release> parseReleases(String body) throws IOException {
 
 		JsonNode root = MAPPER.readTree(body);
 		JsonNode versions = root.path("versions");
 		JsonNode time = root.path("time");
 
 		if (!versions.isObject()) {
-			return List.of();
+			return Sequence.empty();
 		}
 
 		List<Release> result = new ArrayList<>();
@@ -153,7 +162,82 @@ public class NpmRegistry implements ReleaseSource {
 
 			Release.tryFrom(versionString, releaseDate, sha).ifPresent(result::add);
 		}
-		return result;
+		return new NpmReleases(result, getProjectMetadata(root));
+	}
+
+	/**
+	 * Capture {@link CachedMetadata} from the packument's {@code repository} and
+	 * {@code bugs} fields, reading the {@code dist-tags.latest} version document
+	 * first and falling back to the top-level hoisted copies.
+	 * <p>A repository candidate is selected only when it parses through
+	 * {@link RepositoryUrl#parse(String)}; a tracker candidate only when it is a
+	 * valid absolute http/https URL. Unusable candidates count as absent, so the
+	 * result can be the nothing-found marker.
+	 */
+	private static CachedMetadata getProjectMetadata(JsonNode root) {
+
+		String latest = root.path("dist-tags").path("latest").asText("");
+		JsonNode latestVersion = root.path("versions").path(latest);
+
+		String repositoryUrl = selectRepositoryUrl(latestVersion, root);
+		String issueTrackerUrl = selectIssueTrackerUrl(latestVersion, root);
+
+		return CachedMetadata.of(repositoryUrl, issueTrackerUrl, null, null);
+	}
+
+	private static @Nullable String selectRepositoryUrl(JsonNode version, JsonNode root) {
+
+		String selected = parseableRepositoryUrl(version.path("repository"));
+		return selected != null ? selected : parseableRepositoryUrl(root.path("repository"));
+	}
+
+	/**
+	 * Extract the declared repository URL from a string or object shaped
+	 * {@code repository} field, trying the {@code url} and legacy {@code path}
+	 * keys, and return it as declared when it parses to a usable repository URL.
+	 */
+	private static @Nullable String parseableRepositoryUrl(JsonNode repository) {
+
+		String declared = repository.isTextual() ? repository.asText()
+				: repository.path("url").asText(repository.path("path").asText(null));
+		return declared != null && RepositoryUrl.parse(declared) != null ? declared : null;
+	}
+
+	private static @Nullable String selectIssueTrackerUrl(JsonNode version, JsonNode root) {
+
+		String selected = declaredTrackerUrl(version.path("bugs"));
+		return selected != null ? selected : declaredTrackerUrl(root.path("bugs"));
+	}
+
+	/**
+	 * Extract the declared tracker URL from a string or object shaped {@code bugs}
+	 * field. Email-only objects carry no URL and count as absent, as do values that
+	 * are not valid absolute http/https URLs.
+	 */
+	private static @Nullable String declaredTrackerUrl(JsonNode bugs) {
+
+		String declared = bugs.isTextual() ? bugs.asText() : bugs.path("url").asText(null);
+		return declared != null && isAbsoluteHttpUrl(declared) ? declared : null;
+	}
+
+	private static boolean isAbsoluteHttpUrl(String url) {
+
+		URI candidate;
+		try {
+			candidate = new URI(url.trim());
+		} catch (URISyntaxException e) {
+			return false;
+		}
+
+		String scheme = candidate.getScheme();
+		if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+			return false;
+		}
+
+		// A doubled scheme such as http://http://... parses as host "http" with an
+		// empty port, so an authority with a trailing colon marks a malformed URL.
+		String authority = candidate.getAuthority();
+		return candidate.getHost() != null && authority != null && !authority.endsWith(":");
 	}
 
 	@Override

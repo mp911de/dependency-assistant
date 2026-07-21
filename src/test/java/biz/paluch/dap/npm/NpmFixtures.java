@@ -36,7 +36,7 @@ class NpmFixtures {
 	static void setup(Project project) {
 
 		Cache cache = new Cache();
-		cache.addArtifacts(NpmReleases.all());
+		cache.addArtifacts(NpmReleaseFixtures.all());
 		StateService service = StateService.getInstance(project);
 		service.setCache(cache);
 	}

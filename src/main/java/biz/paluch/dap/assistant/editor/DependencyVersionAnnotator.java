@@ -22,6 +22,7 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.severity.DependencyAssistantSeverities;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -58,6 +59,7 @@ public class DependencyVersionAnnotator implements Annotator {
 
 		UpgradeSuggestions suggestions = context.getSuggestions();
 		ArtifactDeclaration declaration = context.getDeclaration();
+		DependencyRuleEvaluator evaluated = context.getEvaluator();
 
 		Vulnerabilities vulnerabilities = context.getCurrentVulnerabilities();
 		VulnerabilitiesPresentation vulnerability = null;
@@ -71,7 +73,7 @@ public class DependencyVersionAnnotator implements Annotator {
 
 				AnnotationBuilder builder = holder
 						.newAnnotation(HighlightSeverity.WARNING,
-								declaration.getArtifactId() + ": " + vulnerability.getText())
+								evaluated.getDependencyName() + ": " + vulnerability.getText())
 						.range(context.getHighlightRange(element));
 
 				builder.textAttributes(vulnerability.getTextAttributes());
@@ -107,7 +109,7 @@ public class DependencyVersionAnnotator implements Annotator {
 
 		AnnotationBuilder builder = holder
 				.newAnnotation(DependencyAssistantSeverities.UPGRADE_AVAILABLE,
-						declaration.getArtifactId() + ": " + message)
+						evaluated.getDependencyName() + ": " + message)
 				.range(context.getHighlightRange(element));
 
 		if (vulnerability != null) {

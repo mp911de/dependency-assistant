@@ -32,8 +32,6 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.gradle.GradleDistributionService;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.ProjectState;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -197,9 +195,8 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			StateService stateService = StateService.getInstance(project);
-			ProjectState projectState = stateService.getProjectState(getProjectId());
-			return new VersionUpgradeLookup(stateService, projectState, new GradleWrapperArtifactReferenceResolver());
+			return VersionUpgradeLookup.of(project, getProjectId(),
+					new GradleWrapperArtifactReferenceResolver());
 		}
 
 		@Override

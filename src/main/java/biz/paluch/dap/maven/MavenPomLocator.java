@@ -20,7 +20,7 @@ import java.nio.file.Path;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.BomLocator;
+import biz.paluch.dap.artifact.PomLocator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -29,21 +29,24 @@ import org.jetbrains.idea.maven.utils.MavenUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * {@link BomLocator} resolving BOM POMs through the project's Maven repository
+ * {@link PomLocator} resolving POMs through the project's Maven repository
  * configuration.
  *
  * @author Mark Paluch
  */
-public class MavenBomLocator implements BomLocator {
+public class MavenPomLocator implements PomLocator {
 
 	private final LocalFileSystem localFileSystem = LocalFileSystem.getInstance();
 
 	@Override
-	public @Nullable VirtualFile locateBom(Project project, ArtifactId artifactId, ArtifactVersion version) {
+	public @Nullable VirtualFile locatePom(Project project, ArtifactId artifactId, ArtifactVersion version) {
+		return locatePom(project, artifactId, version.toString());
+	}
 
-		MavenId mavenId = new MavenId(artifactId.groupId(), artifactId.artifactId(), version.toString());
+	@Override
+	public @Nullable VirtualFile locatePom(Project project, ArtifactId artifactId, String version) {
+		MavenId mavenId = new MavenId(artifactId.groupId(), artifactId.artifactId(), version);
 		Path pomFile = MavenUtil.getRepositoryFile(project, mavenId, "pom", null);
 		return pomFile == null ? null : localFileSystem.findFileByNioFile(pomFile);
 	}
-
 }

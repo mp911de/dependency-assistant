@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import org.jspecify.annotations.Nullable;
@@ -73,6 +74,26 @@ class MavenPomSupport {
 	static final String ARTIFACT_ID = "artifactId";
 
 	static final String VERSION = "version";
+
+	static final String PARENT = "parent";
+
+	static final String NAME = "name";
+
+	static final String SCM = "scm";
+
+	static final String SCM_URL = "url";
+
+	static final String SCM_CONNECTION = "connection";
+
+	static final String SCM_DEVELOPER_CONNECTION = "developerConnection";
+
+	static final String SCM_TAG = "tag";
+
+	static final String ISSUE_MANAGEMENT = "issueManagement";
+
+	static final String CI_MANAGEMENT = "ciManagement";
+
+	static final String SYSTEM = "system";
 
 	/**
 	 * Return whether the given {@code parent} tag is a candidate for being a parent
@@ -176,11 +197,35 @@ class MavenPomSupport {
 		return result;
 	}
 
+
+	static void doWithRoot(@Nullable PsiFile file, Consumer<XmlTag> callback) {
+		if (file instanceof XmlFile xmlFile) {
+			doWithRoot(xmlFile, callback);
+		}
+	}
+
 	static void doWithRoot(XmlFile file, Consumer<XmlTag> callback) {
 		XmlTag rootTag = file.getRootTag();
 		if (rootTag != null) {
 			callback.accept(rootTag);
 		}
+	}
+
+	static <T> @Nullable T doWithRoot(@Nullable PsiFile file, Function<XmlTag, @Nullable T> callback) {
+		if (file instanceof XmlFile xmlFile) {
+			return doWithRoot(xmlFile, callback);
+		}
+
+		return null;
+	}
+
+	static <T> @Nullable T doWithRoot(XmlFile file, Function<XmlTag, @Nullable T> callback) {
+		XmlTag rootTag = file.getRootTag();
+		if (rootTag != null) {
+			return callback.apply(rootTag);
+		}
+
+		return null;
 	}
 
 	static void doWithProfiles(PomTag root, Consumer<PomTag> callback) {
@@ -254,6 +299,14 @@ class MavenPomSupport {
 			return subtag(qname).getText();
 		}
 
+		/**
+		 * Return the subtag text with {@code ${...}} placeholders resolved; values that
+		 * stay unresolved are dropped.
+		 */
+		public @Nullable String getText(String qname, PropertyResolver resolver) {
+			return subtag(qname).getText(resolver);
+		}
+
 		public @Nullable String getGroupId() {
 			return getText(GROUP_ID);
 		}
@@ -265,6 +318,7 @@ class MavenPomSupport {
 		public XmlTag getTag() {
 			return this.tag;
 		}
+
 
 	}
 
@@ -286,6 +340,24 @@ class MavenPomSupport {
 
 		public @Nullable String getText() {
 			return text;
+		}
+
+		/**
+		 * Return the subtag text with {@code ${...}} placeholders resolved; values that
+		 * stay unresolved are dropped.
+		 */
+		public @Nullable String getText(PropertyResolver resolver) {
+
+			if (text == null) {
+				return null;
+			}
+
+			String resolved = resolver.resolvePlaceholders(text);
+			if (!StringUtils.hasText(resolved) || resolved.contains("${")) {
+				return null;
+			}
+
+			return resolved.trim();
 		}
 
 		public boolean isPresent() {

@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.assistant.check;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,8 +34,12 @@ import biz.paluch.dap.BomMembershipResolver;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.metadata.ProjectMetadataIndexer;
+import biz.paluch.dap.metadata.ProjectMetadataService;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
@@ -65,7 +71,11 @@ public class DependencyCheck {
 
 	private final Project project;
 
-	private final StateService service;
+	private final ProjectMetadataIndexer metadataIndexer;
+
+	private final StateService stateService;
+
+	private final ProjectMetadataService metadataService;
 
 	/**
 	 * Create a dependency check bound to the given project.
@@ -74,7 +84,9 @@ public class DependencyCheck {
 	 */
 	public DependencyCheck(Project project) {
 		this.project = project;
-		this.service = StateService.getInstance(project);
+		this.stateService = StateService.getInstance(project);
+		this.metadataService = ProjectMetadataService.getInstance(project);
+		this.metadataIndexer = new ProjectMetadataIndexer(project);
 	}
 
 	/**
@@ -87,7 +99,7 @@ public class DependencyCheck {
 	 */
 	public DependencyCheckResult findDependencyUpgrades(ProgressIndicator indicator,
 			UpgradeScope scope) {
-		this.service.markUsed();
+		this.stateService.markUsed();
 		indicator.setIndeterminate(false);
 
 		// 🦄🔢
@@ -102,11 +114,19 @@ public class DependencyCheck {
 
 		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(steps,
 				aggregator.getReleaseSources(), ReleaseResolver.cached());
+
+		reindexMetadata(indicator, aggregator.getDependencyVersions());
+
 		return aggregator.toDependencyCheckResult(releases, ruleService);
 	}
 
+	private void reindexMetadata(ProgressIndicator indicator,
+			Map<PackageIdentity, ArtifactVersion> dependencyVersions) {
+		metadataIndexer.update(indicator, dependencyVersions);
+	}
+
 	private DependencyCheckAggregator aggregate(StepsProgressIndicator steps, UpgradeScope scope) {
-		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, service);
+		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, stateService, metadataService);
 		steps.setText(MessageBundle.message("action.check.dependencies.progress.collecting"));
 		scope.forEach(entry -> {
 			steps.checkCanceled();
@@ -128,14 +148,14 @@ public class DependencyCheck {
 	 * @param assistant the dependency assistant that provides project entries.
 	 * @return one release-source group per collected artifact.
 	 */
-	public List<ReleaseSources> collectDependencies(ProgressIndicator indicator,
+	public DependencyCheckAggregator collectDependencies(ProgressIndicator indicator,
 			DependencyAssistant assistant) {
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
-		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, service);
+		DependencyCheckAggregator aggregator = new DependencyCheckAggregator(project, stateService, metadataService);
 		indexer.forEachAvailableEntry(assistant, (psiFile, context) -> {
 			aggregator.add(psiFile.getVirtualFile(), context, indicator);
 		});
-		return aggregator.getReleaseSources();
+		return aggregator;
 	}
 
 	/**
@@ -146,14 +166,24 @@ public class DependencyCheck {
 	 *
 	 * @param indicator the progress indicator used for cancellation and user
 	 * feedback.
-	 * @param candidates the artifacts and release sources to query.
+	 * @param aggregators the artifacts and release sources to query.
 	 * @param consistency the release-cache consistency to use.
 	 * @return successfully resolved releases keyed by artifact, in encounter order.
 	 */
 	public Map<ArtifactId, Releases> getReleases(ProgressIndicator indicator,
-			List<ReleaseSources> candidates, ReleaseResolver.Consistency consistency) {
+			List<DependencyCheckAggregator> aggregators, ReleaseResolver.Consistency consistency) {
 		indicator.setText(MessageBundle.message("action.check.dependency.loading.remote"));
-		Map<ArtifactId, ReleaseLookupResult> resultMap = resolveReleases(indicator, candidates, consistency);
+
+		Map<PackageIdentity, ArtifactVersion> dependencyVersions = new HashMap<>();
+		List<ReleaseSources> sources = new ArrayList<>();
+
+		for (DependencyCheckAggregator aggregator : aggregators) {
+			sources.addAll(aggregator.getReleaseSources());
+			dependencyVersions.putAll(aggregator.getDependencyVersions());
+		}
+
+		Map<ArtifactId, ReleaseLookupResult> resultMap = resolveReleases(indicator, sources, consistency);
+		reindexMetadata(indicator, dependencyVersions);
 		Map<ArtifactId, Releases> releases = new LinkedHashMap<>();
 		for (Map.Entry<ArtifactId, ReleaseLookupResult> entry : resultMap.entrySet()) {
 			if (entry.getValue().error() == null) {
@@ -198,7 +228,7 @@ public class DependencyCheck {
 		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, stepCount);
 		steps.setIndeterminate(false);
 
-		Cache cache = service.getCache();
+		Cache cache = stateService.getCache();
 		ReleaseResolver resolver = new ReleaseResolver(resolverExecutor, indicator, cache);
 
 		Map<ArtifactId, Future<ReleaseLookupResult>> futures = new LinkedHashMap<>();
@@ -275,6 +305,8 @@ public class DependencyCheck {
 			BomMembershipResolver.create(project, cache)
 					.resolve(artifactIds, indicator);
 		}
+
+		indicator.checkCanceled();
 
 		if (scanner.isPresent()) {
 			indicator.setText(MessageBundle.message("action.check.dependency.vulnerability-scan"));

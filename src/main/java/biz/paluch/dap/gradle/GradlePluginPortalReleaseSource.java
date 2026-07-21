@@ -17,23 +17,22 @@
 package biz.paluch.dap.gradle;
 
 import java.io.IOException;
-import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 
 /**
  * {@link ReleaseSource} for Gradle Plugin Portal marker artifacts.
  *
- * <p>
- * Plugin declarations are represented as {@code groupId == artifactId}. Such
+ * <p>Plugin declarations are represented as {@code groupId == artifactId}. Such
  * lookups are translated to the Portal marker artifact
  * {@code <pluginId>:<pluginId>.gradle.plugin}. Regular library coordinates
- * return an empty list.
+ * return an empty sequence.
  *
  * @author Mark Paluch
  */
@@ -58,7 +57,7 @@ public class GradlePluginPortalReleaseSource implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
 		if (GradlePluginId.isPlugin(artifactId)) {
 			String pluginId = artifactId.groupId();

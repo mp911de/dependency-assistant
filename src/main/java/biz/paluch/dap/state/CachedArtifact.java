@@ -37,6 +37,7 @@ import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.xmlb.annotations.Attribute;
+import com.intellij.util.xmlb.annotations.Property;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.Transient;
 import com.intellij.util.xmlb.annotations.XCollection;
@@ -109,6 +110,12 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	private final @XCollection(propertyElementName = "releases", elementName = "release", style = XCollection.Style.v2) List<CachedRelease> releases = new ArrayList<>();
 
 	private final @XCollection(propertyElementName = "boms", elementName = "bom", style = XCollection.Style.v2) List<CachedBom> boms = new ArrayList<>();
+
+	/**
+	 * Project metadata captured for this artifact, or {@literal null} if the
+	 * artifact was never inspected.
+	 */
+	private @Nullable @Property(surroundWithTag = false) CachedMetadata projectMetadata;
 
 	/**
 	 * Create an empty cache entry for XML deserialization.
@@ -268,12 +275,25 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 		synchronized (boms) {
 			for (CachedBom membership : boms) {
-				if (version.equals(membership.getVersion())) {
+				if (version.equals(membership.getVersion().toString())) {
 					return membership;
 				}
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * Return the cached Bill of Materials memberships of this artifact, ordered by
+	 * ascending BOM version.
+	 *
+	 * @return an immutable snapshot of the memberships; empty when this artifact
+	 * carries no membership.
+	 */
+	public List<CachedBom> getBomMemberships() {
+		synchronized (boms) {
+			return List.copyOf(boms);
+		}
 	}
 
 	/**
@@ -284,10 +304,12 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 		String version = bom.getVersion().toString();
 		synchronized (boms) {
-			if (getBomMembership(version) == null) {
-				boms.add(CachedBom.from(version, bom.getMembers()));
-				boms.sort(Comparator.comparing(CachedBom::getVersion));
+			for (CachedBom cachedBom : boms) {
+				if (cachedBom.getVersion().equals(bom.getVersion())) {
+					return;
+				}
 			}
+			boms.add(CachedBom.from(version, bom.getMembers()));
 		}
 	}
 
@@ -338,6 +360,10 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * Return the cached membership closest to the given version: the highest cached
 	 * version at or below it, or the lowest cached one when all cached memberships
 	 * are newer.
+	 *
+	 * @param version the version to find the nearest membership for.
+	 * @return the nearest membership, or {@literal null} when no membership is
+	 * cached at all.
 	 */
 	private @Nullable CachedBom getNearestBomMembership(ArtifactVersion version) {
 
@@ -496,6 +522,12 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		this.lastSeen = timestamp;
 		setPreferredSource(fetchedReleases.getPreferredSource());
 
+		CachedMetadata metadata = fetchedReleases.getProjectMetadata();
+		if (metadata != null) {
+			this.projectMetadata = metadata;
+			this.projectMetadata.setRetrievedAt(timestamp);
+		}
+
 		Collection<String> emptySources = fetchedReleases.getEmptySources();
 		if (fetchedReleases.isFullFetch()) {
 			this.emptyReleaseSources = emptySources.isEmpty() ? null : String.join(",", emptySources);
@@ -526,6 +558,33 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 				}
 			});
 		}
+	}
+
+	/**
+	 * Return the project metadata captured for this artifact.
+	 *
+	 * @return the project metadata, or {@literal null} if the artifact was never
+	 * inspected.
+	 */
+	public @Nullable CachedMetadata getProjectMetadata() {
+		return projectMetadata;
+	}
+
+	/**
+	 * Store the given inspection result as this artifact's project metadata,
+	 * stamping the metadata's retrieval time and this entry's last-seen clock.
+	 * <p>The metadata replaces any previously stored element wholesale: a fresh
+	 * inspection is the new truth, including the nothing-found marker. The given
+	 * instance is retained and stamped in place.
+	 *
+	 * @param metadata the inspection result to store.
+	 * @param timestamp current timestamp for retrieval and expiry tracking.
+	 */
+	public void updateProjectMetadata(CachedMetadata metadata, long timestamp) {
+
+		metadata.setRetrievedAt(timestamp);
+		this.projectMetadata = metadata;
+		this.lastSeen = timestamp;
 	}
 
 	/**
@@ -566,7 +625,10 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 			for (CachedBom membership : boms) {
 				copy.boms.add(membership.snapshot());
 			}
+
+			copy.boms.sort(Comparator.comparing(CachedBom::getVersion));
 		}
+		copy.projectMetadata = projectMetadata;
 		copy.preferredSource = preferredSource;
 		copy.emptyLookups = emptyLookups;
 		copy.sourcesCheckedSince = sourcesCheckedSince;

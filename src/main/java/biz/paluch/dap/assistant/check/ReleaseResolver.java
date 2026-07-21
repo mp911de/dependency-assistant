@@ -39,8 +39,11 @@ import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedMetadata;
 import biz.paluch.dap.state.FetchPlan;
 import biz.paluch.dap.state.FetchedReleases;
+import biz.paluch.dap.state.HasProjectMetadata;
+import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.nls.NlsMessages;
 import com.intellij.openapi.diagnostic.Logger;
@@ -180,8 +183,11 @@ public class ReleaseResolver {
 			indicator.checkCanceled();
 			Future<SourceAwareReleases> future = completionService.submit(() -> {
 				try {
-					return new SourceAwareReleases(source, Releases.of(source.getReleases(artifactId, indicator)),
-							null);
+					Sequence<Release> fetched = source.getReleases(artifactId, indicator);
+					CachedMetadata projectMetadata = fetched instanceof HasProjectMetadata metadata
+							? metadata.getProjectMetadata()
+							: null;
+					return new SourceAwareReleases(source, Releases.of(fetched), projectMetadata, null);
 				} catch (ProcessCanceledException e) {
 					throw e;
 				} catch (ArtifactNotFoundException e) {
@@ -189,11 +195,11 @@ public class ReleaseResolver {
 						LOG.debug("[%s][%s] No artifacts found.".formatted(source.toString(artifactId),
 								source.getId()));
 					}
-					return new SourceAwareReleases(source, Releases.empty(), e);
+					return new SourceAwareReleases(source, Releases.empty(), null, e);
 				} catch (Exception e) {
 					LOG.warn("[%s][%s] Failed to fetch releases".formatted(source.toString(artifactId),
 							source.getId()), e);
-					return new SourceAwareReleases(source, Releases.empty(), e);
+					return new SourceAwareReleases(source, Releases.empty(), null, e);
 				}
 			});
 			pending.put(future, source);
@@ -281,7 +287,8 @@ public class ReleaseResolver {
 		pending.clear();
 	}
 
-	record SourceAwareReleases(ReleaseSource source, Releases releases, @Nullable Exception error) {
+	record SourceAwareReleases(ReleaseSource source, Releases releases, @Nullable CachedMetadata projectMetadata,
+			@Nullable Exception error) {
 	}
 
 	/**
@@ -360,9 +367,24 @@ public class ReleaseResolver {
 			return ids;
 		}
 
+		/**
+		 * Return the project metadata captured by any of the sources during this fetch,
+		 * or {@literal null} if no source captured metadata.
+		 */
+		public @Nullable CachedMetadata getProjectMetadata() {
+
+			for (SourceAwareReleases entry : sources) {
+				if (entry.projectMetadata != null) {
+					return entry.projectMetadata;
+				}
+			}
+
+			return null;
+		}
+
 		public FetchedReleases toFetchedReleases(FetchPlan fetchPlan) {
 			return new FetchedReleases(artifactId, FetchedReleases.convert(releases),
-					fetchPlan, getPreferredSource(), emptySources());
+					fetchPlan, getPreferredSource(), emptySources(), getProjectMetadata());
 		}
 
 	}

@@ -35,6 +35,7 @@ import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
@@ -160,7 +161,8 @@ class UpgradeGroupRowUnitTests {
 				"app"), new Dependency(id, version));
 		return new TableRow(
 				DependencyUpgradeCandidate.create(dependency, Releases.of(Release.of("1.0.0")), vulnerabilities,
-						new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null)));
+						new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null),
+						ProjectMetadata.absent()));
 	}
 
 }

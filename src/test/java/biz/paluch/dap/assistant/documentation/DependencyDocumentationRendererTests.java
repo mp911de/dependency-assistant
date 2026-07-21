@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.assistant.documentation;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -27,7 +29,12 @@ import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
+import biz.paluch.dap.metadata.GitLabPlatform;
+import biz.paluch.dap.metadata.ProjectMetadata;
+import biz.paluch.dap.metadata.RepositoryConnection;
+import biz.paluch.dap.metadata.RepositoryUrl;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.Generations;
@@ -65,8 +72,8 @@ class DependencyDocumentationRendererTests {
 		assertThat(html)
 				.containsOnlyOnce("Version property for:")
 				.containsOnlyOnce("<table>")
-				.contains("<p>Version property for: <code>io.vavr:vavr</code>, "
-						+ "<code>io.vavr:vavr-match</code></p>");
+				.containsSubsequence("<code>io.vavr:vavr</code>", "<code>io.vavr:vavr-match</code>")
+				.doesNotContain("Project name:");
 	}
 
 	@Test
@@ -80,8 +87,46 @@ class DependencyDocumentationRendererTests {
 		assertThat(StringUtils.countMatches(html, "Version property for:")).isEqualTo(2);
 		assertThat(StringUtils.countMatches(html, "<table>")).isEqualTo(2);
 		assertThat(html)
-				.contains("<p>Version property for: <code>io.lettuce:lettuce-core</code></p>")
-				.contains("<p>Version property for: <code>org.junit:junit-bom</code></p>");
+				.contains("<code>io.lettuce:lettuce-core</code>")
+				.contains("<code>org.junit:junit-bom</code>");
+	}
+
+	@Test
+	void shouldRenderProjectNameSectionFirst() {
+
+		String html = renderer("7.4.1.RELEASE", capturedName("Advanced Redis Client"))
+				.render(Releases.LETTUCE_CORE.toArtifactId(), false);
+
+		assertThat(html)
+				.contains("Advanced Redis Client")
+				.containsSubsequence("Project name:", "Current value:");
+	}
+
+	@Test
+	void shouldRenderCurrentValueWithoutCapturedName() {
+
+		String html = renderer("7.4.1.RELEASE").render(Releases.LETTUCE_CORE.toArtifactId(), false);
+
+		assertThat(html)
+				.contains("Current value:")
+				.contains("<code>7.4.1.RELEASE</code>")
+				.doesNotContain("Project name:");
+	}
+
+	@Test
+	void shouldRenderProjectNameSectionForVersionProperty() {
+
+		VersionProperty property = new VersionProperty("managed.version",
+				Releases.LETTUCE_CORE, Releases.JUNIT_BOM);
+
+		// the name echoes the first artifact (rejected) and is accepted for the second,
+		// naming the group
+		String html = renderer("7.4.1.RELEASE", capturedName("Lettuce Core")).render(property, false);
+
+		assertThat(html)
+				.contains("<p>Project name:</p>")
+				.contains("Lettuce Core")
+				.containsSubsequence("Project name:", "Current value:", "Version property for:");
 	}
 
 	@Test
@@ -338,6 +383,42 @@ class DependencyDocumentationRendererTests {
 	}
 
 	@Test
+	void shouldRenderReleaseNotesLinkPerReleaseRow() {
+
+		String html = renderer("7.4.1.RELEASE",
+				releaseNotes("scm:git:https://gitlab.com/redis/lettuce.git",
+						"7.4.1.RELEASE", "7.5.0.RELEASE", "7.5.1.RELEASE"))
+								.render(Releases.LETTUCE_CORE.toArtifactId(), true);
+
+		assertThat(html)
+				.contains("href=\"https://gitlab.com/redis/lettuce/-/releases/7.5.1.RELEASE\"")
+				.contains("title=\"Release notes for 7.5.1.RELEASE\"")
+				.contains("AllIcons.Toolwindows.Documentation");
+	}
+
+	@Test
+	void shouldOmitReleaseNotesIconWithoutResolvedUrl() {
+
+		String html = renderer("7.4.1.RELEASE", releaseNotes("scm:git:https://gitlab.com/redis/lettuce.git"))
+				.render(Releases.LETTUCE_CORE.toArtifactId(), true);
+
+		assertThat(html)
+				.doesNotContain("AllIcons.Toolwindows.Documentation")
+				.doesNotContain("Release notes for");
+	}
+
+	@Test
+	void shouldOmitReleaseNotesColumnWithoutIcons() {
+
+		String html = renderer("7.4.1.RELEASE",
+				releaseNotes("scm:git:https://gitlab.com/redis/lettuce.git",
+						"7.4.1.RELEASE", "7.5.0.RELEASE", "7.5.1.RELEASE"))
+								.render(Releases.LETTUCE_CORE.toArtifactId(), false);
+
+		assertThat(html).doesNotContain("Release notes for");
+	}
+
+	@Test
 	void shouldRenderRuleViolationForGoverningRule() {
 
 		String html = renderer("7.4.1.RELEASE", rejectingRule())
@@ -363,12 +444,31 @@ class DependencyDocumentationRendererTests {
 	private DependencyDocumentationRenderer renderer(@Nullable String currentVersion, boolean linkable) {
 		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
 				DependencyRuleEvaluator.absent(), currentVersion != null ? ArtifactVersion.of(currentVersion) : null,
-				linkable);
+				linkable, ProjectMetadata.absent());
+	}
+
+	private DependencyDocumentationRenderer renderer(String currentVersion, ProjectMetadata metadata) {
+		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
+				DependencyRuleEvaluator.absent(), ArtifactVersion.of(currentVersion), false, metadata);
 	}
 
 	private DependencyDocumentationRenderer renderer(String currentVersion, DependencyRuleEvaluator evaluator) {
 		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
-				evaluator, ArtifactVersion.of(currentVersion), false);
+				evaluator, ArtifactVersion.of(currentVersion), false, ProjectMetadata.absent());
+	}
+
+	private static ProjectMetadata capturedName(String projectName) {
+		return ProjectMetadata.from(projectName, null, null, null, List.of());
+	}
+
+	private static ProjectMetadata releaseNotes(String repositoryUrl, String... tags) {
+
+		RepositoryUrl parsed = RepositoryUrl.parse(repositoryUrl);
+		assertThat(parsed).isNotNull();
+		RepositoryConnection connection = new GitLabPlatform().detect(parsed, null);
+		assertThat(connection).isNotNull();
+		return ProjectMetadata.from(null, connection, connection.createRepository(TestProjects.PROJECT), null,
+				List.of(tags));
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {
@@ -412,7 +512,7 @@ class DependencyDocumentationRendererTests {
 
 		};
 		return DependencyRuleEvaluator.create(rule, Releases.LETTUCE_CORE.toArtifactId(),
-				ArtifactVersion.of("7.4.1.RELEASE"));
+				ArtifactVersion.of("7.4.1.RELEASE"), ProjectMetadata.absent());
 	}
 
 }

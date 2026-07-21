@@ -99,14 +99,12 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		if (suggestions.isEmpty()) {
 
 			if (vulnerable) {
-
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						getRuleIcon(transparentIcon, evaluated), e -> vulnerability.getText(),
 						new UpgradeDialogNavigationHandler(artifactId),
 						GutterIconRenderer.Alignment.LEFT, vulnerability::getText);
 
 			} else if (evaluated.isPresent() && evaluated.isLocked()) {
-
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						getRuleIcon(transparentIcon, evaluated), e -> evaluated.getToolTipText(),
 						new UpgradeDialogNavigationHandler(artifactId),

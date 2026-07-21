@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
+import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.rule.Generations;
@@ -152,7 +153,8 @@ class VersionStatusUnitTests {
 			}
 
 		};
-		return DependencyRuleEvaluator.create(rule, ArtifactId.of("com.example", "demo"), CURRENT);
+		return DependencyRuleEvaluator.create(rule, ArtifactId.of("com.example", "demo"), CURRENT,
+				ProjectMetadata.absent());
 	}
 
 }

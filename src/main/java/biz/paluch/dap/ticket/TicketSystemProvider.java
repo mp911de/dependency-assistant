@@ -24,9 +24,7 @@ import org.jspecify.annotations.Nullable;
  * SPI for contributing a ticket system implementation.
  *
  * <p>Providers are stateless: the platform may share a single instance across
- * projects and threads. A provider first answers whether a project has a usable
- * ticket system through {@link #supports(Project)} and then creates the
- * project-scoped {@link TicketSystem} through {@link #create(Project)}.
+ * projects and threads.
  *
  * <p>Each created {@code TicketSystem} forms a separate object boundary. Ticket
  * objects and repository-owned values obtained through one system are not valid

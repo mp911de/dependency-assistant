@@ -90,6 +90,11 @@ public class Cache implements ModificationTracker {
 
 	private final @Tag @XCollection(propertyElementName = "projects", elementName = "project", style = XCollection.Style.v2) List<ProjectCache> projects = new ArrayList<>();
 
+	private final @XCollection(propertyElementName = "repositories", elementName = "repository", style = XCollection.Style.v2) List<CachedRepository> repositories = new ArrayList<>();
+
+	@Transient
+	private final Map<String, CachedRepository> repositoriesByKey = new HashMap<>();
+
 	/**
 	 * Create a new {@code Cache} using the current UTC clock for XML
 	 * deserialization.
@@ -268,9 +273,32 @@ public class Cache implements ModificationTracker {
 		ArtifactId artifactId = bom.getArtifactId();
 		CachedArtifact cachedArtifact = findCachedArtifact(artifactId, packageSystem);
 		writeArtifacts(() -> {
-			CachedArtifact artifactToUse = getOrCreate(cachedArtifact, packageSystem, bom.getArtifactId());
+			CachedArtifact artifactToUse = getOrCreate(cachedArtifact, packageSystem, artifactId);
 			artifactToUse.setBillOfMaterials(bom);
 		});
+	}
+
+	/**
+	 * Return the cached Bill of Materials for the given BOM coordinates and
+	 * version.
+	 * <p>Released BOM contents are immutable, so entries never expire by age; the
+	 * containing artifact's last-seen eviction bounds their lifetime.
+	 *
+	 * @param artifactId the BOM artifact coordinates.
+	 * @param version the BOM version.
+	 * @return the Bill of Materials, or {@literal null} if no membership is cached
+	 * for the version.
+	 */
+	@Transient
+	public @Nullable BillOfMaterials getBillOfMaterials(ArtifactId artifactId, ArtifactVersion version) {
+
+		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
+		if (cachedArtifact == null) {
+			return null;
+		}
+
+		CachedBom membership = cachedArtifact.getBomMembership(version.toString());
+		return membership != null ? BillOfMaterials.of(artifactId, version, membership.toMembers()) : null;
 	}
 
 	/**
@@ -547,6 +575,29 @@ public class Cache implements ModificationTracker {
 		}
 	}
 
+	public boolean requiresMetadataRefresh(@Nullable CachedArtifact cachedArtifact) {
+
+		if (cachedArtifact == null) {
+			return false;
+		}
+
+		CachedMetadata metadata = cachedArtifact.getProjectMetadata();
+		if (metadata == null) {
+			return true;
+		}
+
+		if (metadata.getRetrievedAt() > EMPTY_THRESHOLD) {
+			long staleThreshold = clock.millis() - STALE_THRESHOLD_MILLIS;
+			if (staleThreshold > metadata.getRetrievedAt()) {
+				return true;
+			}
+		} else if (metadata.getRetrievedAt() < EMPTY_THRESHOLD) {
+			return true;
+		}
+
+		return false;
+	}
+
 	/**
 	 * Decide how the given artifact should be fetched from its release sources,
 	 * given empty-lookup back-off to avoid constantly re-querying a source assumed
@@ -683,6 +734,17 @@ public class Cache implements ModificationTracker {
 
 		copy.projects.sort(projectCacheComparator);
 
+		synchronized (repositories) {
+			for (CachedRepository repository : repositories) {
+				if (repository.getLastSeen() > 0 && repository.getLastSeen() < threshold) {
+					continue;
+				}
+				copy.repositories.add(repository.snapshot());
+			}
+		}
+
+		copy.repositories.sort(Comparator.comparing(CachedRepository::getKey));
+
 		return copy;
 	}
 
@@ -742,6 +804,106 @@ public class Cache implements ModificationTracker {
 		artifacts.add(artifactToUse);
 		index(artifactToUse);
 		return artifactToUse;
+	}
+
+	/**
+	 * Return the cached tags of the repository with the given key.
+	 * @param key the repository key.
+	 * @return the tag names, or an empty list if the repository is not known.
+	 */
+	public List<String> getTags(String key) {
+
+		CachedRepository repository = findRepository(key);
+		return repository != null ? repository.getTags() : List.of();
+	}
+
+	/**
+	 * Find a cached repository by its key.
+	 * @param key the repository key.
+	 * @return the cached repository or {@literal null} if none found.
+	 */
+	public @Nullable CachedRepository findRepository(String key) {
+		return readRepositories(() -> {
+			ensureRepositoriesIndexed();
+			return repositoriesByKey.get(key);
+		});
+	}
+
+	/**
+	 * Create the repository entry for the given key, or update the URL of the
+	 * existing entry. Timestamps stay untouched: a fresh entry carries
+	 * {@code lastSeen} zero until a scan writes to it.
+	 * @param key the repository key.
+	 * @param url the browsable repository URL.
+	 * @return the created or updated repository entry.
+	 */
+	public CachedRepository createOrUpdateRepository(String key, String url) {
+		return writeRepositories(() -> {
+
+			ensureRepositoriesIndexed();
+			CachedRepository repository = repositoriesByKey.get(key);
+			if (repository == null) {
+				repository = new CachedRepository(key, url);
+				repositories.add(repository);
+				repositoriesByKey.put(key, repository);
+			} else {
+				repository.setUrl(url);
+			}
+
+			return repository;
+		});
+	}
+
+	/**
+	 * Return a snapshot of all cached repository entries.
+	 * @return an immutable snapshot of the repository entries.
+	 */
+	public List<CachedRepository> getRepositories() {
+		return readRepositories(() -> List.copyOf(repositories));
+	}
+
+	/**
+	 * Invoke the given consumer for a known repository of this cache. Consumers
+	 * typically mutate the entry, so a successful lookup counts as a cache
+	 * modification.
+	 * @param key the repository key to look up.
+	 * @param consumer the consumer to invoke.
+	 */
+	public void doWithRepository(String key, Consumer<CachedRepository> consumer) {
+
+		CachedRepository repository = findRepository(key);
+		if (repository != null) {
+			consumer.accept(repository);
+			modificationTracker.incModificationCount();
+		}
+	}
+
+	/**
+	 * Build the key index from the repository entries. Required before any index
+	 * access because deserialization populates {@link #repositories} without
+	 * passing through the mutator methods. Must be called under the
+	 * {@code repositories} monitor.
+	 */
+	private void ensureRepositoriesIndexed() {
+
+		if (repositoriesByKey.isEmpty() && !repositories.isEmpty()) {
+			for (CachedRepository repository : repositories) {
+				repositoriesByKey.putIfAbsent(repository.getKey(), repository);
+			}
+		}
+	}
+
+	private <T extends @Nullable Object> T readRepositories(Supplier<T> action) {
+		synchronized (this.repositories) {
+			return action.get();
+		}
+	}
+
+	private <T extends @Nullable Object> T writeRepositories(Supplier<T> action) {
+		synchronized (this.repositories) {
+			this.modificationTracker.incModificationCount();
+			return action.get();
+		}
 	}
 
 	private <T extends @Nullable Object> T readArtifacts(Supplier<T> action) {

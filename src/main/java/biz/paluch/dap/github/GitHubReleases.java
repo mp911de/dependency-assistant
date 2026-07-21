@@ -32,7 +32,9 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.TagSource;
 import biz.paluch.dap.state.CachedRelease;
+import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.intellij.openapi.diagnostic.Logger;
@@ -71,7 +73,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class GitHubReleases implements ReleaseSource {
+public class GitHubReleases implements ReleaseSource, TagSource {
 
 	private static final Logger LOG = Logger.getInstance(GitHubReleases.class);
 
@@ -106,8 +108,8 @@ public class GitHubReleases implements ReleaseSource {
 	}
 
 	@Override
-	public List<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
-		return fetchAllReleases(artifactId, indicator);
+	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+		return Sequence.of(fetchAllReleases(artifactId, indicator));
 	}
 
 	/**
@@ -129,6 +131,19 @@ public class GitHubReleases implements ReleaseSource {
 		}
 
 		return createReleases(releases, shaByTag);
+	}
+
+	@Override
+	public Sequence<String> getTags(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
+
+		List<IOException> exceptions = new ArrayList<>();
+		Map<String, String> shaByTag = fetchTagShas(artifactId, indicator, exceptions::add);
+
+		if (exceptions.isEmpty()) {
+			return Sequence.of(shaByTag.keySet());
+		}
+
+		throw exceptions.getFirst();
 	}
 
 	private List<Release> createReleases(List<GitHubReleaseDto> releases, Map<String, String> shaByTag) {
@@ -233,7 +248,7 @@ public class GitHubReleases implements ReleaseSource {
 		if (ex.getStatusCode() == 404) {
 			LOG.debug("[%s][%s] HTTP Status %d: %s %s".formatted(toString(artifactId), getId(),
 					ex.getStatusCode(), url, ex.getError()), ex);
-			throw new ArtifactNotFoundException("Action repository not found", artifactId);
+			throw new ArtifactNotFoundException("Repository (" + url + ") not found: " + artifactId, artifactId);
 		}
 		LOG.warn("[%s][%s] HTTP Status %d: %s %s".formatted(toString(artifactId), getId(),
 				ex.getStatusCode(), url, ex.getError()), ex);

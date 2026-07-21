@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.plan;
 
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -85,7 +84,7 @@ class PlanNotificationsUnitTests {
 		});
 		try {
 			operation.run();
-			return Objects.requireNonNull(captured.get());
+			return (captured.get());
 		} finally {
 			connection.disconnect();
 		}

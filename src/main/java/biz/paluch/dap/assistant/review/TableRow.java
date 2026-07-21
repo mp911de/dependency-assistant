@@ -58,27 +58,34 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	private boolean labelByDependencyName;
 
+	private final String renderedArtifactId;
+
 	private final String toolTipText;
+
+	private final String rowName;
 
 	private final String dependencyName;
 
 	TableRow(DependencyUpgradeCandidate upgrade) {
 
 		this.upgrade = upgrade;
-		this.evaluator = DependencyRuleEvaluator.create(upgrade.getRule(), getArtifactId(), getCurrentVersion());
+		this.evaluator = DependencyRuleEvaluator.create(upgrade.getRule(), getArtifactId(),
+				getCurrentVersion(), upgrade.getProjectMetadata());
+		this.renderedArtifactId = upgrade.getArtifactId().artifactId();
 		this.tableIcon = createTableIcon();
 		this.toolTipText = createToolTipText();
-		String dependencyName = getRule().getDependencyName();
-		if (StringUtils.isEmpty(dependencyName)) {
-			dependencyName = upgrade.getAssistant().getDisplayName(getArtifactId());
+
+		String rowName = getRule().getDependencyName();
+		if (StringUtils.isEmpty(rowName)) {
+			rowName = renderedArtifactId;
 		}
-		this.dependencyName = dependencyName;
+		this.rowName = rowName;
+		this.dependencyName = evaluator.getDependencyName();
 	}
 
 	private String createToolTipText() {
 
-		String artifactId = getArtifactId().toString();
-		String tooltip = artifactId;
+		String tooltip = renderedArtifactId;
 		Dependency dependency = upgrade.getDependency();
 		if (dependency.hasPropertyVersion()) {
 			VersionSource.VersionProperty versionProperty = dependency.findPropertyVersion();
@@ -91,7 +98,7 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 		if (!dependency.getDeclarationSources().isEmpty()
 				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin) {
-			tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.plugin", artifactId);
+			tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.plugin", renderedArtifactId);
 		}
 
 		if (!dependency.getDeclarationSources().isEmpty()
@@ -163,7 +170,7 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 	}
 
 	public String getName() {
-		return labelByDependencyName ? getDependencyName() : getArtifactId().artifactId();
+		return labelByDependencyName ? rowName : renderedArtifactId;
 	}
 
 	public void labelByDependencyName() {
@@ -203,12 +210,12 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 	public List<DependencyUpdate> createUpdates(ArtifactVersion target) {
 
 		Dependency dependency = upgrade.getDependency();
-		ArtifactId artifactId = new FriendlyArtifactId(dependency.getArtifactId(), getDependencyName());
+		ArtifactId artifactId = new FriendlyArtifactId(dependency.getArtifactId(), getName());
 		return List.of(upgrade.createUpdate(artifactId, target));
 	}
 
 	public DependencyRuleEvaluator evaluate(ArtifactVersion version) {
-		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version);
+		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version, upgrade.getProjectMetadata());
 	}
 
 	@Override

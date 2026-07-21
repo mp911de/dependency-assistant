@@ -24,10 +24,10 @@ import java.util.Map;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
+import biz.paluch.dap.assistant.check.DependencyCheckAggregator;
 import biz.paluch.dap.assistant.check.ReleaseResolver;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
@@ -76,7 +76,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 		StepsProgressIndicator steps = new WeightedStepsProgressIndicator(indicator, doubles);
 		steps.setText(MessageBundle.message("action.index-dependencies.analyzing"));
 
-		List<ReleaseSources> sources = new ArrayList<>();
+		List<DependencyCheckAggregator> sources = new ArrayList<>();
 
 		ReadAction.nonBlocking(() -> {
 			for (DependencyAssistant assistant : assistants) {
@@ -85,7 +85,7 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 				if (steps.isCanceled()) {
 					return null;
 				}
-				sources.addAll(dependencyCheck.collectDependencies(steps, assistant));
+				sources.add(dependencyCheck.collectDependencies(steps, assistant));
 				steps.nextStep();
 			}
 

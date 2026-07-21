@@ -7,7 +7,7 @@
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.gradle.GradleAssistant"/>
 		<assistant implementation="biz.paluch.dap.gradle.wrapper.GradleWrapperAssistant"/>
-		<bomLocator implementation="biz.paluch.dap.gradle.GradleBomLocator"/>
+		<pomLocator implementation="biz.paluch.dap.gradle.GradlePomLocator"/>
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">

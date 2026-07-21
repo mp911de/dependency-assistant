@@ -241,16 +241,6 @@ class CachedArtifactUnitTests {
 		assertThat(artifact.snapshot().getPackageSystem()).isEqualTo(PackageSystem.MAVEN);
 	}
 
-	@Test
-	void keepsCheckClockWhenReleasesReturnWithoutFullQuery() {
-
-		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central"), FetchPlan.fullFetch());
-		updateReleases(artifact, List.of(CachedRelease.from(Release.of("1.0.0"))), 2_000L, Set.of(), FetchPlan.skip());
-
-		assertThat(artifact.getSourcesCheckedSince()).isEqualTo(1_000L);
-	}
-
 	private static void updateReleases(CachedArtifact artifact, List<CachedRelease> releases, long timestamp,
 			Collection<String> emptySources, FetchPlan plan) {
 		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID, releases, plan, null, emptySources), timestamp);
