@@ -38,7 +38,9 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -48,8 +50,10 @@ import org.springframework.util.Assert;
  * {@link PsiElement} under a dependency declaration in a build file.
  *
  * <p>Resolution always returns a context. Callers use {@link #isPresent()} or
- * {@link #isAbsent()} to distinguish a resolved, version-defined declaration
- * from an element that cannot participate in dependency operations.
+ * {@link #isAbsent()} to distinguish a resolved declaration from an element
+ * that cannot participate in dependency operations. The regular element lookup
+ * requires a version-defined declaration; the copied-PSI lookup can retain a
+ * resolved declaration without a current version for completion.
  *
  * @author Mark Paluch
  */
@@ -63,6 +67,10 @@ public class ArtifactReferenceContext {
 
 	private final @Nullable ArtifactDeclaration declaration;
 
+	private final @Nullable ArtifactVersion currentVersion;
+
+	private final DependencyRule rule;
+
 	private final DependencyRuleEvaluator evaluator;
 
 	private @Nullable Releases releases;
@@ -75,6 +83,8 @@ public class ArtifactReferenceContext {
 		this.dependencyContext = ProjectDependencyContext.absent();
 		this.stateService = null;
 		this.declaration = null;
+		this.currentVersion = null;
+		this.rule = DependencyRule.absent();
 		this.evaluator = DependencyRuleEvaluator.absent();
 		this.releases = null;
 		this.projectMetadata = ProjectMetadata.absent();
@@ -86,6 +96,21 @@ public class ArtifactReferenceContext {
 		this.dependencyContext = dependencyContext;
 		this.stateService = stateService;
 		this.declaration = declaration;
+		this.currentVersion = declaration.getVersion();
+		this.rule = evaluator.getRule();
+		this.evaluator = evaluator;
+		this.releases = null;
+		this.projectMetadata = projectMetadata;
+	}
+
+	private ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,
+			ArtifactDeclaration declaration, @Nullable ArtifactVersion currentVersion, DependencyRule rule,
+			DependencyRuleEvaluator evaluator, ProjectMetadata projectMetadata) {
+		this.dependencyContext = dependencyContext;
+		this.stateService = stateService;
+		this.declaration = declaration;
+		this.currentVersion = currentVersion;
+		this.rule = rule;
 		this.evaluator = evaluator;
 		this.releases = null;
 		this.projectMetadata = projectMetadata;
@@ -126,27 +151,65 @@ public class ArtifactReferenceContext {
 		}
 
 		VersionUpgradeLookup lookup = context.getLookup(element, element.getContainingFile().getVirtualFile());
+		return resolve(element, context, lookup, BranchSource.of(element), true);
+	}
+
+	/**
+	 * Resolve the given element against the supplied context file.
+	 *
+	 * <p>This variant supports copied PSI, such as IntelliJ completion positions,
+	 * where the element's containing file is not the project file used to locate
+	 * the dependency context. A resolved declaration is retained even when no
+	 * current version is available.
+	 *
+	 * @param element the PSI element under a dependency declaration to resolve.
+	 * @param contextFile the original project file used for context, lookup, and
+	 * branch-rule resolution.
+	 * @return the resolved context, or an {@link #isAbsent() absent} context when
+	 * no dependency context or artifact declaration applies.
+	 */
+	public static ArtifactReferenceContext from(PsiElement element, PsiFile contextFile) {
+
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(element.getProject(),
+				contextFile);
+		if (context.isAbsent()) {
+			return ABSENT;
+		}
+
+		VirtualFile containingFile = contextFile.getVirtualFile();
+		VersionUpgradeLookup lookup = context.getLookup(element, containingFile);
+		return resolve(element, context, lookup, BranchSource.of(containingFile), false);
+	}
+
+	private static ArtifactReferenceContext resolve(PsiElement element, ProjectDependencyContext context,
+			VersionUpgradeLookup lookup, BranchSource branchSource, boolean requireDefinedVersion) {
+
 		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
 		if (!artifactReference.isResolved()) {
 			return ABSENT;
 		}
 		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		if (!declaration.isVersionDefined()) {
+		if (requireDefinedVersion && !declaration.isVersionDefined()) {
 			return ABSENT;
 		}
 
+		ArtifactVersion currentVersion = requireDefinedVersion ? declaration.getVersion()
+				: lookup.getCurrentVersion(artifactReference);
 		ProjectMetadata metadata = lookup.getMetadata(declaration.getArtifactId());
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(element.getProject());
 		ResolutionContext resolutionContext = ResolutionContext.forDeclaration(declaration,
-				BranchSource.of(element), context.getProjectVersion(), metadata);
-		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.evaluate(ruleService, resolutionContext,
-				declaration.getVersion());
+				branchSource, context.getProjectVersion(), metadata);
+		DependencyRule rule = ruleService.resolve(resolutionContext);
+		DependencyRuleEvaluator evaluator = currentVersion != null
+				? DependencyRuleEvaluator.create(rule, declaration.getArtifactId(), currentVersion, metadata)
+				: DependencyRuleEvaluator.absent();
 		StateService stateService = lookup.getStateService();
-		return new ArtifactReferenceContext(context, stateService, declaration, evaluator, metadata);
+		return new ArtifactReferenceContext(context, stateService, declaration, currentVersion, rule, evaluator,
+				metadata);
 	}
 
 	/**
-	 * @return {@code true} if the element resolved to a version-defined dependency;
+	 * @return {@code true} if the element resolved to an artifact declaration;
 	 * {@code false} otherwise.
 	 */
 	public boolean isPresent() {
@@ -154,8 +217,8 @@ public class ArtifactReferenceContext {
 	}
 
 	/**
-	 * @return {@code true} if the element did not resolve to a version-defined
-	 * dependency; {@code false} otherwise.
+	 * @return {@code true} if the element did not resolve to an artifact
+	 * declaration; {@code false} otherwise.
 	 */
 	public boolean isAbsent() {
 		return !isPresent();
@@ -190,10 +253,30 @@ public class ArtifactReferenceContext {
 	 * Return the version of the resolved declaration.
 	 *
 	 * @return the non-null version established by {@link #from(PsiElement)}.
-	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
+	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}
+	 * or the declaration has no version.
 	 */
 	public ArtifactVersion getVersion() {
 		return getDeclaration().getVersion();
+	}
+
+	/**
+	 * Return the current version resolved from project state or the declaration.
+	 *
+	 * @return the current version, or {@literal null} when the resolved declaration
+	 * carries no version and project state has no entry.
+	 */
+	public @Nullable ArtifactVersion getCurrentVersion() {
+		return currentVersion;
+	}
+
+	/**
+	 * Return the dependency rule governing the resolved declaration.
+	 *
+	 * @return the resolved rule, or the absent rule when no rule applies.
+	 */
+	public DependencyRule getRule() {
+		return rule;
 	}
 
 	public DependencyRuleEvaluator getEvaluator() {
@@ -225,13 +308,13 @@ public class ArtifactReferenceContext {
 		if (isAbsent()) {
 			return UpgradeSuggestions.empty();
 		}
-		if (!getDeclaration().hasVersionSource()) {
+		if (!getDeclaration().isVersionDefined() || !getDeclaration().hasVersionSource()) {
 			return UpgradeSuggestions.empty();
 		}
 		if (suggestions == null) {
 			Dependency dependency = getDeclaration().toDependency();
 			suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, getReleases(),
-					version -> getStateService().getVulnerabilities(getArtifactId(), version), evaluator.getRule());
+					version -> getStateService().getVulnerabilities(getArtifactId(), version), rule);
 		}
 		return suggestions;
 	}
@@ -262,10 +345,10 @@ public class ArtifactReferenceContext {
 	 */
 	public Vulnerabilities getCurrentVulnerabilities() {
 
-		if (isAbsent()) {
+		if (currentVersion == null) {
 			return Vulnerabilities.absent();
 		}
-		return getVulnerabilities(getVersion());
+		return getVulnerabilities(currentVersion);
 	}
 
 	/**
@@ -291,7 +374,6 @@ public class ArtifactReferenceContext {
 	 */
 	public VersionStatus getStatus(ArtifactVersion artifactVersion) {
 
-		ArtifactVersion currentVersion = isPresent() ? getVersion() : null;
 		return VersionStatus.of(evaluator, currentVersion, artifactVersion, getVulnerabilities(artifactVersion));
 	}
 
@@ -300,7 +382,7 @@ public class ArtifactReferenceContext {
 	 * resolved artifact; {@code false} otherwise.
 	 */
 	public boolean hasRule() {
-		return evaluator.isPresent();
+		return rule.isPresent();
 	}
 
 	/**

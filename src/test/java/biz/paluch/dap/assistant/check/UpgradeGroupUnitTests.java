@@ -18,18 +18,11 @@ package biz.paluch.dap.assistant.check;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.fixtures.TestReleases;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link UpgradeGroup}.
@@ -47,18 +40,13 @@ class UpgradeGroupUnitTests {
 		UpgradeGroup group = UpgradeGroup.of(List.of(core, support));
 
 		assertThat(group.getMembers()).containsExactly(core, support);
-		assertThat(group.getUpgrade().getReleases()).containsExactlyElementsOf(TestReleases.from("1.0.0", "1.0.1"));
-		assertThat(group.getUpgrade().getSuggestions().get(UpgradeStrategy.LATEST).getVersion())
-				.isEqualTo(ArtifactVersion.of("1.0.1"));
+		assertThat(group.getUpgrade().getReleases()).containsExactlyVersions("1.0.1", "1.0.0");
+		assertThat(group.getUpgrade().getSuggestions().get(UpgradeStrategy.LATEST).getVersion()).isEqualTo("1.0.1");
 		assertThat(group.getUpgrade().getSuggestions().get(UpgradeStrategy.MINOR).isPresent()).isFalse();
 	}
 
 	private static DependencyUpgradeCandidate upgrade(String artifactId, String current, String... releases) {
-		Dependency dependency = new Dependency(ArtifactId.of("com.example", artifactId), ArtifactVersion.of(current));
-		return DependencyUpgradeCandidate.create(dependency, TestReleases.from(releases),
-				VulnerabilityRepository.empty(),
-				DependencyRule.absent(), TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(),
-				ProjectMetadata.absent());
+		return TestCandidates.candidate("com.example:" + artifactId + ":" + current, it -> it.releases(releases));
 	}
 
 }

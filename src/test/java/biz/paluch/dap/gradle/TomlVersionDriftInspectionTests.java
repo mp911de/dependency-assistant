@@ -58,7 +58,7 @@ class TomlVersionDriftInspectionTests {
 	void reportsDriftOnTheAliasNotTheSharedVersionsEntry(PsiFile toml) {
 
 		GradleFixtures.analyze(toml);
-		Inspections.registerDependency(fixture.getProject(), "other", "org.jooq", "jooq", "3.99.0");
+		Inspections.registerDependency(fixture.getProject(), "other", "org.jooq:jooq:3.99.0");
 
 		List<String> highlighted = Inspections.inspect(fixture.getProject(), toml).stream()
 				.map(problem -> problem.getPsiElement().getText())

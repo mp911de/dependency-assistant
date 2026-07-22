@@ -18,28 +18,14 @@ package biz.paluch.dap.assistant.review;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DeclarationSite;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.state.ProjectId;
-import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
+import static biz.paluch.dap.fixtures.TestCandidates.*;
 import static org.assertj.core.api.Assertions.*;
 
 /**
@@ -119,10 +105,11 @@ class UpgradeGroupRowUnitTests {
 
 		ArtifactVersion vulnerableVersion = ArtifactVersion.of("1.0.0");
 		ArtifactVersion cleanVersion = ArtifactVersion.of("1.0.1");
-		VulnerabilityRepository first = VulnerabilityRepository.of(Map.of(vulnerableVersion,
-				TestVulnerabilities.CRITICAL_AND_HIGH, cleanVersion, Vulnerabilities.clean()));
-		VulnerabilityRepository second = VulnerabilityRepository.of(Map.of(vulnerableVersion,
-				TestVulnerabilities.CRITICAL));
+		VulnerabilityRepository first = TestVulnerabilities.from("""
+				1.0.0 CVE-2026-1,CVE-2026-2
+				1.0.1 CLEAN
+				""");
+		VulnerabilityRepository second = TestVulnerabilities.from("1.0.0 CVE-2026-1");
 		GroupRow group = GroupRow.governed(member("core", first), member("support", second));
 
 		assertThat(group.getVulnerabilities(vulnerableVersion)).extracting(Vulnerability::getIdentifier)
@@ -151,18 +138,9 @@ class UpgradeGroupRowUnitTests {
 	}
 
 	private static TableRow member(String artifactId, VulnerabilityRepository vulnerabilities) {
-
-		ArtifactId id = ArtifactId.of("com.example", artifactId);
-		ArtifactVersion version = ArtifactVersion.of("1.0.0");
-		Dependency dependency = new Dependency(id, version);
-		dependency.addDeclarationSource(DeclarationSource.dependency());
-		dependency.addVersionSource(VersionSource.property("example.version"));
-		DeclarationSite site = new DeclarationSite(new MockVirtualFile("pom.xml", "x"), ProjectId.of("com.example",
-				"app"), new Dependency(id, version));
-		return new TableRow(
-				DependencyUpgradeCandidate.create(dependency, Releases.of(Release.of("1.0.0")), vulnerabilities,
-						new TestInterfaceAssistant(), DeclaredVersions.from(List.of(site), it -> null, null),
-						ProjectMetadata.absent()));
+		return new TableRow(candidate("com.example:" + artifactId + ":1.0.0",
+				it -> it.versionProperty("example.version").declaredVersions("1.0.0")
+						.vulnerabilities(vulnerabilities)));
 	}
 
 }

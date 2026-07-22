@@ -16,13 +16,13 @@
 
 package biz.paluch.dap.fixtures;
 
-import java.util.Arrays;
-
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.util.Sequence;
 
 /**
- * Test factory for {@link Releases} built from plain version strings.
+ * Test factory for {@link Releases} built from plain versions.
  *
  * @author Mark Paluch
  */
@@ -36,7 +36,18 @@ public class TestReleases {
 	 * @return the releases for the given versions.
 	 */
 	public static Releases from(String... versions) {
-		return Releases.of(Arrays.stream(versions).map(Release::of).toList());
+		return Releases.of(Sequence.of(versions).map(Release::of));
+	}
+
+	/**
+	 * Create {@link Releases} from the given versions.
+	 *
+	 * @param versions the versions, each wrapped through
+	 * {@link Release#of(ArtifactVersion)}.
+	 * @return the releases for the given versions.
+	 */
+	public static Releases from(ArtifactVersion... versions) {
+		return Releases.of(Sequence.of(versions).map(Release::of));
 	}
 
 }

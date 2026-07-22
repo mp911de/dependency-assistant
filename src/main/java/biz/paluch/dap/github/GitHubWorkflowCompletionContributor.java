@@ -54,10 +54,10 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
 
 		@Override
-		protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
+		protected RefStyle getRefStyle(PsiElement element) {
 
 			UsesRepositoryAction action = GitHubArtifactReferenceResolver.findUsesRepository(element);
-			return action != null ? action.getStyle() : super.getRefStyle(element, metadata);
+			return action != null ? action.getStyle() : super.getRefStyle(element);
 		}
 
 		@Override

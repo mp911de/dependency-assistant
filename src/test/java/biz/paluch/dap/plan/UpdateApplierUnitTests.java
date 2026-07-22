@@ -16,27 +16,12 @@
 
 package biz.paluch.dap.plan;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.plan.UpgradePlanState.Content;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
-import biz.paluch.dap.plan.UpgradePlanState.Plan;
+import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.support.UpgradeResult;
@@ -70,7 +55,7 @@ class UpdateApplierUnitTests {
 
 		TestPlannedUpgrade alpha = candidate("alpha");
 		TestPlannedUpgrade bravo = candidate("bravo");
-		List<UpgradePlanItem> items = materializedItems(project, alpha, bravo);
+		List<UpgradePlanItem> items = TestPlannedUpgrade.create(project, TARGET, alpha, bravo);
 		UpgradePlanItem first = items.get(0);
 		UpgradePlanItem second = items.get(1);
 
@@ -110,34 +95,8 @@ class UpdateApplierUnitTests {
 	}
 
 	private static TestPlannedUpgrade candidate(String name) {
-
-		Dependency dependency = new Dependency(ArtifactId.of("org.example", name), CURRENT);
-		dependency.addDeclarationSource(DeclarationSource.dependency());
-		dependency.addVersionSource(VersionSource.declared(CURRENT.toString()));
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(
-				Map.of(CURRENT, Vulnerabilities.clean(), TARGET, Vulnerabilities.clean()));
-		return new TestPlannedUpgrade(
-				DependencyUpgradeCandidate.create(dependency, Releases.just(Release.of(TARGET)), vulnerabilities,
-						TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(), ProjectMetadata.absent()));
-	}
-
-	private static List<UpgradePlanItem> materializedItems(Project project, TestPlannedUpgrade... candidates) {
-
-		Content content = new Content();
-		content.getAffectedFiles().add("pom.xml");
-		List<UpgradePlanItem> items = new ArrayList<>();
-		for (TestPlannedUpgrade candidate : candidates) {
-			Item stored = Item.from(candidate, TARGET);
-			UpgradePlanItem item = new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored);
-			stored.setMaterialized(item);
-			content.getItems().add(stored);
-			items.add(item);
-		}
-		Plan persisted = new Plan();
-		persisted.setContent(content);
-		UpgradePlanState.getInstance(project).loadState(persisted);
-		((UndoManagerImpl) UndoManager.getInstance(project)).dropHistoryInTests();
-		return items;
+		return new TestPlannedUpgrade(TestCandidates.candidate(ArtifactId.of("org.example", name), CURRENT,
+				it -> it.releases(TARGET)));
 	}
 
 	private static class ChangedFileUpdateEngine extends FileUpdateEngine {

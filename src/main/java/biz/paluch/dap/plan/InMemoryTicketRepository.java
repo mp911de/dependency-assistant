@@ -319,6 +319,10 @@ public enum InMemoryTicketRepository implements TicketRepository {
 			this.color = color;
 		}
 
+		public static InMemoryLabel of(String name) {
+			return new InMemoryLabel(name, null);
+		}
+
 		@Override
 		public String getName() {
 			return name;
@@ -327,6 +331,11 @@ public enum InMemoryTicketRepository implements TicketRepository {
 		@Override
 		public @Nullable Color getColor() {
 			return color;
+		}
+
+		@Override
+		public String toString() {
+			return name;
 		}
 
 	}
@@ -344,6 +353,18 @@ public enum InMemoryTicketRepository implements TicketRepository {
 			this.title = title;
 			this.releaseDate = releaseDate;
 			this.open = open;
+		}
+
+		public static InMemoryMilestone open(String title) {
+			return open(title, null);
+		}
+
+		public static InMemoryMilestone open(String title, @Nullable LocalDateTime releaseDate) {
+			return new InMemoryMilestone(title, releaseDate, true);
+		}
+
+		public static InMemoryMilestone closed(String title) {
+			return new InMemoryMilestone(title, null, false);
 		}
 
 		@Override
@@ -364,6 +385,11 @@ public enum InMemoryTicketRepository implements TicketRepository {
 		@Override
 		public @Nullable LocalDateTime getReleaseDate() {
 			return releaseDate;
+		}
+
+		@Override
+		public String toString() {
+			return title;
 		}
 
 	}

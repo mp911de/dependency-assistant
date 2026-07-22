@@ -25,12 +25,24 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Present, permissive {@link DependencyRule} fixture carrying only a dependency
- * name.
+ * Present {@link DependencyRule} fixture carrying a dependency name. The
+ * default form accepts every version; a {@link #rejecting()} rule rejects every
+ * version and reports semantic upgrading as disabled.
  *
  * @author Mark Paluch
  */
-public record TestDependencyRule(String dependencyName) implements DependencyRule {
+public record TestDependencyRule(String dependencyName, boolean accepting) implements DependencyRule {
+
+	public TestDependencyRule(String dependencyName) {
+		this(dependencyName, true);
+	}
+
+	/**
+	 * Create a rule that rejects every version.
+	 */
+	public static TestDependencyRule rejecting() {
+		return new TestDependencyRule("", false);
+	}
 
 	@Override
 	public boolean isPresent() {
@@ -39,7 +51,7 @@ public record TestDependencyRule(String dependencyName) implements DependencyRul
 
 	@Override
 	public boolean isSemanticUpgradingEnabled() {
-		return true;
+		return accepting;
 	}
 
 	@Override
@@ -59,7 +71,7 @@ public record TestDependencyRule(String dependencyName) implements DependencyRul
 
 	@Override
 	public boolean test(ArtifactVersion version) {
-		return true;
+		return accepting;
 	}
 
 	@Override

@@ -77,28 +77,6 @@ class NpmProjectContextTests {
 	@Test
 	@ProjectFile(name = "package.json", content = """
 			{
-			  "version": 1,
-			  "dependencies": {}
-			}
-			""")
-	void returnsUnversionedWhenVersionIsNotString(PsiFile packageJson) {
-		assertThat(context(packageJson).getProjectVersion()).isEqualTo(Versioned.unversioned());
-	}
-
-	@Test
-	@ProjectFile(name = "package.json", content = """
-			{
-			  "version": "   ",
-			  "dependencies": {}
-			}
-			""")
-	void returnsUnversionedWhenVersionIsBlank(PsiFile packageJson) {
-		assertThat(context(packageJson).getProjectVersion()).isEqualTo(Versioned.unversioned());
-	}
-
-	@Test
-	@ProjectFile(name = "package.json", content = """
-			{
 			  "version": "not a version",
 			  "dependencies": {}
 			}

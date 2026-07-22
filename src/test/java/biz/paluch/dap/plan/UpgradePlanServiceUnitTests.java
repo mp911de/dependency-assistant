@@ -16,27 +16,13 @@
 
 package biz.paluch.dap.plan;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Stream;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.plan.UpgradePlanState.Content;
-import biz.paluch.dap.plan.UpgradePlanState.Item;
-import biz.paluch.dap.plan.UpgradePlanState.Plan;
+import biz.paluch.dap.fixtures.TestCandidates;
 import com.intellij.openapi.command.impl.UndoManagerImpl;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.project.Project;
@@ -59,12 +45,13 @@ class UpgradePlanServiceUnitTests {
 	@Test
 	void repeatedDeletesUndoAndRedoInSequence(Project project) {
 
-		List<UpgradePlanItem> items = materializedItems(project, "alpha", "bravo");
+		List<UpgradePlanItem> items = TestPlannedUpgrade.create(project, TARGET, Stream.of("alpha", "bravo")
+				.map(UpgradePlanServiceUnitTests::candidate).toList());
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
 		UndoManager undoManager = UndoManager.getInstance(project);
 		try {
-			service.removeItems(List.of(items.get(0)));
-			service.removeItems(List.of(items.get(1)));
+
+			items.forEach(service::removeItem);
 			assertThat(service.getUpgradePlan().isEmpty()).isTrue();
 
 			undoManager.undo(null);
@@ -83,36 +70,9 @@ class UpgradePlanServiceUnitTests {
 		}
 	}
 
-	private static List<UpgradePlanItem> materializedItems(Project project, String... names) {
-
-		Content content = new Content();
-		content.getAffectedFiles().add("pom.xml");
-		List<UpgradePlanItem> items = new ArrayList<>();
-		for (String name : names) {
-			TestPlannedUpgrade candidate = candidate(name);
-			Item stored = Item.from(candidate, TARGET);
-			UpgradePlanItem item = new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored);
-			stored.setMaterialized(item);
-			content.getItems().add(stored);
-			items.add(item);
-		}
-		Plan persisted = new Plan();
-		persisted.setContent(content);
-		UpgradePlanState.getInstance(project).loadState(persisted);
-		((UndoManagerImpl) UndoManager.getInstance(project)).dropHistoryInTests();
-		return items;
-	}
-
 	private static TestPlannedUpgrade candidate(String name) {
-
-		Dependency dependency = new Dependency(ArtifactId.of("org.example", name), CURRENT);
-		dependency.addDeclarationSource(DeclarationSource.dependency());
-		dependency.addVersionSource(VersionSource.declared(CURRENT.toString()));
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(
-				Map.of(CURRENT, Vulnerabilities.clean(), TARGET, Vulnerabilities.clean()));
-		return new TestPlannedUpgrade(
-				DependencyUpgradeCandidate.create(dependency, Releases.just(Release.of(TARGET)), vulnerabilities,
-						TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(), ProjectMetadata.absent()));
+		return new TestPlannedUpgrade(TestCandidates.candidate(ArtifactId.of("org.example", name), CURRENT,
+				it -> it.releases(TARGET)));
 	}
 
 }

@@ -20,11 +20,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.maven.MavenPomMetadataIntrospector.Gav;
+import biz.paluch.dap.fixtures.Coordinates;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedMetadata;
@@ -46,15 +44,9 @@ import static biz.paluch.dap.assertions.Assertions.*;
 @IdeaProjectTests
 class MavenPomMetadataIntrospectorTests {
 
-	static ArtifactId MEMBER = ArtifactId.of("com.example", "member-core");
-
-	static ArtifactId PARENT = ArtifactId.of("com.example", "example-parent");
-
-	static ArtifactId BOM = ArtifactId.of("com.example", "example-bom");
-
 	Cache cache = new Cache();
 
-	Map<Gav, VirtualFile> poms = new HashMap<>();
+	Map<Coordinates, VirtualFile> pomsByCoordinates = new HashMap<>();
 
 	MavenPomMetadataIntrospector inspector;
 
@@ -65,10 +57,39 @@ class MavenPomMetadataIntrospectorTests {
 
 			@Override
 			protected VirtualFile findPom(ArtifactId artifactId, String version) {
-				return poms.get(Gav.of(artifactId, version));
+				return pomsByCoordinates.get(Coordinates.of(artifactId, version));
 			}
 
 		};
+	}
+
+	@Test
+	@ProjectFile(name = "member/v1/pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>member-core</artifactId>
+				<version>1.0</version>
+				<scm><url>https://github.com/example/member-1.0</url></scm>
+			</project>
+			""")
+	@ProjectFile(name = "member/v2/pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>member-core</artifactId>
+				<version>2.0.0</version>
+				<scm><url>https://github.com/example/member-1.0.0</url></scm>
+			</project>
+			""")
+	void resolvesPomByFullVersionedCoordinates(@ProjectFile("member/v1/pom.xml") PsiFile versionOne,
+			@ProjectFile("member/v2/pom.xml") PsiFile versionTwo) {
+
+		registerPom("com.example:member-core:1.0", versionOne);
+		registerPom("com.example:member-core:1.0.0", versionTwo);
+
+		assertThat(introspect("com.example:member-core:1.0").getRepositoryUrl())
+				.isEqualTo("https://github.com/example/member-1.0");
+		assertThat(introspect("com.example:member-core:1.0.0").getRepositoryUrl())
+				.isEqualTo("https://github.com/example/member-1.0.0");
 	}
 
 	@Test
@@ -88,9 +109,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void selectsScmUrlOverConnectionAndKeepsDeclaredTracker(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 		assertThat(metadata.getIssueTrackerUrl()).isEqualTo("https://jira.example.com/browse/EX");
@@ -110,9 +131,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void skipsUndetectableScmUrlInFavorOfConnection(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 	}
@@ -130,9 +151,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void derivesIssueTrackerFromDetectedRepository(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getIssueTrackerUrl()).isEqualTo("https://github.com/example/example-repo/issues");
 	}
@@ -164,10 +185,10 @@ class MavenPomMetadataIntrospectorTests {
 	void inheritsScmFromParentKeepingOwnTracker(@ProjectFile("member/pom.xml") PsiFile member,
 			@ProjectFile("parent/pom.xml") PsiFile parent) {
 
-		registerPom(MEMBER, "1.0.0", member);
-		registerPom(PARENT, "5", parent);
+		registerPom("com.example:member-core:1.0.0", member);
+		registerPom("com.example:example-parent:5", parent);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 		assertThat(metadata.getIssueTrackerUrl()).isEqualTo("https://github.com/example/example-repo/issues");
@@ -190,9 +211,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void interpolatesPropertiesAndDropsUnresolvedValues(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 	}
@@ -224,10 +245,10 @@ class MavenPomMetadataIntrospectorTests {
 	void resolvesParentPropertyReferencedInChildScm(@ProjectFile("member/pom.xml") PsiFile member,
 			@ProjectFile("parent/pom.xml") PsiFile parent) {
 
-		registerPom(MEMBER, "1.0.0", member);
-		registerPom(PARENT, "5", parent);
+		registerPom("com.example:member-core:1.0.0", member);
+		registerPom("com.example:example-parent:5", parent);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 	}
@@ -256,11 +277,10 @@ class MavenPomMetadataIntrospectorTests {
 	void cyclicParentChainTerminatesWithEmptyMetadata(@ProjectFile("cycle-a/pom.xml") PsiFile cycleA,
 			@ProjectFile("cycle-b/pom.xml") PsiFile cycleB) {
 
-		ArtifactId cycleAId = ArtifactId.of("com.example", "cycle-a");
-		registerPom(cycleAId, "1.0.0", cycleA);
-		registerPom(ArtifactId.of("com.example", "cycle-b"), "1.0.0", cycleB);
+		registerPom("com.example:cycle-a:1.0.0", cycleA);
+		registerPom("com.example:cycle-b:1.0.0", cycleB);
 
-		CachedMetadata metadata = introspect(cycleAId, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:cycle-a:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isNull();
 		assertThat(metadata.getIssueTrackerUrl()).isNull();
@@ -279,9 +299,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void offPlatformScmContributesNothing(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isNull();
 		assertThat(metadata.getIssueTrackerUrl()).isNull();
@@ -298,9 +318,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void capturesProjectNameFromOwnPom(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getProjectName()).isEqualTo("Member Core");
 	}
@@ -319,9 +339,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void interpolatesProjectName(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getProjectName()).isEqualTo("Member Core");
 	}
@@ -337,9 +357,9 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void dropsUnresolvedProjectName(@ProjectFile("member/pom.xml") PsiFile pom) {
 
-		registerPom(MEMBER, "1.0.0", pom);
+		registerPom("com.example:member-core:1.0.0", pom);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getProjectName()).isNull();
 	}
@@ -369,10 +389,10 @@ class MavenPomMetadataIntrospectorTests {
 	void ignoresParentProjectName(@ProjectFile("member/pom.xml") PsiFile member,
 			@ProjectFile("parent/pom.xml") PsiFile parent) {
 
-		registerPom(MEMBER, "1.0.0", member);
-		registerPom(PARENT, "5", parent);
+		registerPom("com.example:member-core:1.0.0", member);
+		registerPom("com.example:example-parent:5", parent);
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 		assertThat(metadata.getProjectName()).isNull();
@@ -392,10 +412,11 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void crossCheckResolvesMemberMetadataFromGoverningBom(@ProjectFile("bom/pom.xml") PsiFile bomPom) {
 
-		registerPom(BOM, "1.0.0", bomPom);
-		cacheBomMembership(BOM, "1.0.0", MEMBER, "1.0.0");
+		registerPom("com.example:example-bom:1.0.0", bomPom);
+		cacheBomMembership("com.example:example-bom:1.0.0",
+				"com.example:member-core:1.0.0");
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 		assertThat(metadata.getProjectName()).isNull();
@@ -414,10 +435,11 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void crossCheckResolvesBomMetadataFromManagedMember(@ProjectFile("member/pom.xml") PsiFile memberPom) {
 
-		registerPom(MEMBER, "1.0.0", memberPom);
-		cacheBomMembership(BOM, "1.0.0", MEMBER, "1.0.0");
+		registerPom("com.example:member-core:1.0.0", memberPom);
+		cacheBomMembership("com.example:example-bom:1.0.0",
+				"com.example:member-core:1.0.0");
 
-		CachedMetadata metadata = introspect(BOM, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:example-bom:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
 	}
@@ -435,30 +457,30 @@ class MavenPomMetadataIntrospectorTests {
 			""")
 	void crossCheckNeverCrossesGroupIdBoundaries(@ProjectFile("bom/pom.xml") PsiFile bomPom) {
 
-		ArtifactId aggregatorBom = ArtifactId.of("com.other", "aggregator-bom");
-		registerPom(aggregatorBom, "1.0.0", bomPom);
-		cacheBomMembership(aggregatorBom, "1.0.0", MEMBER, "1.0.0");
+		registerPom("com.other:aggregator-bom:1.0.0", bomPom);
+		cacheBomMembership("com.other:aggregator-bom:1.0.0", "com.example:member-core:1.0.0");
 
-		CachedMetadata metadata = introspect(MEMBER, "1.0.0");
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
 
 		assertThat(metadata.getRepositoryUrl()).isNull();
 		assertThat(metadata.getIssueTrackerUrl()).isNull();
 	}
 
-	private void registerPom(ArtifactId artifactId, String version, PsiFile pomFile) {
-		poms.put(Gav.of(artifactId, version), pomFile.getVirtualFile());
+	private void registerPom(String coordinates, PsiFile pomFile) {
+		pomsByCoordinates.put(Coordinates.of(coordinates), pomFile.getVirtualFile());
 	}
 
-	private void cacheBomMembership(ArtifactId bomId, String bomVersion, ArtifactId memberId, String memberVersion) {
+	private void cacheBomMembership(String bomgav, String member) {
 
-		CachedArtifact bomArtifact = new CachedArtifact(bomId);
-		bomArtifact.setBillOfMaterials(BillOfMaterials.of(bomId, ArtifactVersion.of(bomVersion),
-				Map.of(memberId, ArtifactVersion.of(memberVersion))));
+		Coordinates bom = Coordinates.of(bomgav);
+		CachedArtifact bomArtifact = new CachedArtifact(bom.getArtifactId());
+		bomArtifact.setBillOfMaterials(Coordinates.bom(bom.toString(), it -> it.member(member)));
 		cache.addArtifacts(bomArtifact);
 	}
 
-	private CachedMetadata introspect(ArtifactId artifactId, String version) {
-		return inspector.getProjectMetadata(artifactId, ArtifactVersion.of(version),
+	private CachedMetadata introspect(String gav) {
+		Coordinates coordinates = Coordinates.of(gav);
+		return inspector.getProjectMetadata(coordinates.getArtifactId(), coordinates.getVersion(),
 				new EmptyProgressIndicator(ModalityState.NON_MODAL));
 	}
 

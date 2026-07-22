@@ -19,7 +19,6 @@ package biz.paluch.dap.plan;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
@@ -32,7 +31,7 @@ import biz.paluch.dap.plan.UpgradePlanState.VersionSourceState;
 import biz.paluch.dap.support.DependencyUpdate;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link UpgradePlanLoader}.
@@ -51,8 +50,8 @@ class UpgradePlanLoaderUnitTests {
 
 		assertThat(planItem).isNotNull();
 		assertThat(planItem.getDisplayName()).isEqualTo("Spring Core");
-		assertThat(planItem.getFromVersion()).isEqualTo(ArtifactVersion.of("6.2.1"));
-		assertThat(planItem.getToVersion()).isEqualTo(ArtifactVersion.of("6.2.2"));
+		assertThat(planItem.getFromVersion()).isEqualTo("6.2.1");
+		assertThat(planItem.getToVersion()).isEqualTo("6.2.2");
 		assertThat(planItem.isGroup()).isFalse();
 		assertThat(planItem.getVersionPropertyNames()).containsExactly("spring.version");
 		assertThat(planItem.toQuery().artifacts())
@@ -61,8 +60,8 @@ class UpgradePlanLoaderUnitTests {
 
 		DependencyUpdate update = planItem.createUpdates().getFirst();
 		assertThat(update.artifactId()).isEqualTo(ArtifactId.of("org.springframework", "spring-core"));
-		assertThat(update.from().getVersion()).isEqualTo(ArtifactVersion.of("6.2.1"));
-		assertThat(update.version()).isEqualTo(ArtifactVersion.of("6.2.2"));
+		assertThat(update.from().getVersion()).isEqualTo("6.2.1");
+		assertThat(update.version()).isEqualTo("6.2.2");
 		assertThat(update.declarationSources()).containsExactly(DeclarationSource.dependency());
 		assertThat(update.versionSources()).containsExactly(VersionSource.property("spring.version"));
 	}

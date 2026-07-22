@@ -16,30 +16,20 @@
 
 package biz.paluch.dap.assistant.review;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.AppliedDependencyUpdate;
-import biz.paluch.dap.assistant.check.DeclarationSite;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
-import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.fixtures.TestDependencyRule;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.fixtures.TestReleases;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
-import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -232,51 +222,24 @@ class UpgradeReviewTests {
 	}
 
 
-	private static Dependency dependency(ArtifactId artifactId, String version, VersionSource versionSource) {
-		ArtifactVersion artifactVersion = ArtifactVersion.of(version);
-		Dependency dependency = new Dependency(artifactId, artifactVersion);
-		dependency.addVersionSource(versionSource);
-		return dependency;
-	}
-
 	private static TableRow candidate(ArtifactId artifactId, String version) {
-		return candidate(dependency(artifactId, version, VersionSource.declared(version)));
+		return candidate(artifactId, version, VersionSource.declared(version));
 	}
 
 	private static TableRow candidate(ArtifactId artifactId, String version, VersionSource versionSource) {
-		return candidate(dependency(artifactId, version, versionSource));
+		return candidate(artifactId, version, TestReleases.from(version, "6.2.1"), versionSource, version);
 	}
 
 	private static TableRow candidate(ArtifactId artifactId, String version, Releases releases,
 			String... declaredVersions) {
-
-		Dependency dependency = dependency(artifactId, version, VersionSource.declared(version));
-		return candidate(dependency, releases, declaredVersions(dependency, declaredVersions));
+		return candidate(artifactId, version, releases, VersionSource.declared(version),
+				declaredVersions.length == 0 ? new String[] {version} : declaredVersions);
 	}
 
-	private static TableRow candidate(Dependency dependency) {
-		return candidate(dependency, TestReleases.from(dependency.getCurrentVersion().toString(), "6.2.1"),
-				declaredVersions(dependency));
-	}
-
-	private static TableRow candidate(Dependency dependency, Releases releases,
-			DeclaredVersions declaredVersions) {
-		return new TableRow(DependencyUpgradeCandidate.create(dependency, releases, VulnerabilityRepository.empty(),
-				new TestDependencyRule("Spring Framework"), TestInterfaceAssistant.INSTANCE, declaredVersions,
-				ProjectMetadata.absent()));
-	}
-
-	private static DeclaredVersions declaredVersions(Dependency dependency, String... versions) {
-
-		List<DeclarationSite> declarations = new ArrayList<>();
-		List<String> declaredVersions = versions.length == 0 ? List.of(dependency.getCurrentVersion().toString())
-				: List.of(versions);
-		for (String version : declaredVersions) {
-			Dependency declared = new Dependency(dependency.getArtifactId(), ArtifactVersion.of(version));
-			declarations.add(new DeclarationSite(new MockVirtualFile("review-" + version + "/pom.xml", "// test"),
-					ProjectId.of("com.acme", "app"), declared));
-		}
-		return DeclaredVersions.from(declarations, it -> null, null);
+	private static TableRow candidate(ArtifactId artifactId, String version, Releases releases,
+			VersionSource versionSource, String... declaredVersions) {
+		return new TableRow(TestCandidates.candidate(artifactId, version, it -> it.releases(releases)
+				.versionSource(versionSource).rule("Spring Framework").declaredVersions(declaredVersions)));
 	}
 
 }

@@ -60,6 +60,16 @@ public class ArtifactVersionAssert extends AbstractComparableAssert<ArtifactVers
 	}
 
 	/**
+	 * Verifies that the actual version equals the version parsed from the given
+	 * string.
+	 * @param expected the expected version string.
+	 * @return this assertion object.
+	 */
+	public ArtifactVersionAssert isEqualTo(String expected) {
+		return isEqualTo(ArtifactVersion.of(expected));
+	}
+
+	/**
 	 * Verifies that the actual version compares equal to the given version string.
 	 * @param expected the expected comparable version.
 	 * @return this assertion object.

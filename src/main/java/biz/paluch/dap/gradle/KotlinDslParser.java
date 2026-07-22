@@ -207,9 +207,13 @@ class KotlinDslParser {
 			}
 
 			// A platform(libs.x) consumer refines the catalog entry to a BOM import.
-			return declarationSource instanceof DeclarationSource.Bom
-					? resolved.getDeclaration().at(call, declarationSource)
-					: resolved.getDeclaration().at(call);
+			return resolved.getDeclaration()
+					.mutate(it -> {
+						it.declarationElement(call);
+						if (declarationSource instanceof DeclarationSource.Bom) {
+							it.declarationSource(declarationSource);
+						}
+					});
 		}
 
 	}

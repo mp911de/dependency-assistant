@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.support;
 
+import java.util.function.Consumer;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -66,46 +68,39 @@ public class ArtifactDeclaration implements DependencySite {
 
 	/**
 	 * Create a new {@link ArtifactDeclaration.Builder}.
+	 * @return a new builder.
 	 */
 	public static Builder builder() {
 		return new Builder();
 	}
 
 	/**
-	 * Return this declaration re-anchored at the given declaration element.
-	 * <p>The artifact, version, and version literal remain unchanged. This is used
-	 * when a Gradle script consumes an artifact defined in a version catalog.
-	 * @param declarationElement the consuming declaration element.
-	 * @return the re-anchored artifact declaration.
+	 * Return a copy of this declaration with the given customizations applied.
+	 * <p>The {@link Builder} is pre-populated with this declaration's state; the
+	 * customizer overrides individual aspects, such as re-anchoring the
+	 * {@linkplain Builder#declarationElement(PsiElement) declaration element} when
+	 * a Gradle script consumes an artifact defined in a version catalog, or
+	 * refining the {@linkplain Builder#declarationSource(DeclarationSource)
+	 * declaration source} at the consuming call site. Whether the version is
+	 * defined in the same file is re-derived from the resulting declaration element
+	 * and version literal, see {@link Builder#build()}.
+	 * @param customizer customizes the pre-populated builder; must not be
+	 * {@literal null}.
+	 * @return a new declaration carrying the customized state; never
+	 * {@literal null}.
 	 */
-	// TODO: introduce mutate() method
-	public ArtifactDeclaration at(PsiElement declarationElement) {
-		return at(declarationElement, declarationSource);
-	}
-
-	/**
-	 * Return this declaration re-anchored at the given declaration element,
-	 * carrying the given declaration source.
-	 * <p>The artifact, version, and version literal remain unchanged. This is used
-	 * when the consuming call site refines the declaration classification, such as
-	 * a Gradle {@code platform(...)} call consuming a version-catalog entry.
-	 * @param declarationElement the consuming declaration element.
-	 * @param declarationSource the declaration source describing the consuming call
-	 * site.
-	 * @return the re-anchored artifact declaration.
-	 */
-	public ArtifactDeclaration at(PsiElement declarationElement, DeclarationSource declarationSource) {
+	public ArtifactDeclaration mutate(Consumer<Builder> customizer) {
 
 		Builder builder = builder().artifact(artifactId)
 				.versionSource(versionSource)
 				.declarationSource(declarationSource)
+				.version(version)
 				.declarationElement(declarationElement);
-		if (version != null) {
-			builder.version(version);
-		}
 		if (versionLiteral != null) {
 			builder.versionLiteral(versionLiteral);
 		}
+
+		customizer.accept(builder);
 		return builder.build();
 	}
 
@@ -229,8 +224,6 @@ public class ArtifactDeclaration implements DependencySite {
 
 		private @Nullable DeclarationSource declarationSource;
 
-		private boolean versionDefinedInSameFile;
-
 		private @Nullable ArtifactVersion version;
 
 		private @Nullable PsiElement declarationElement;
@@ -285,26 +278,6 @@ public class ArtifactDeclaration implements DependencySite {
 		}
 
 		/**
-		 * Indicate that the version is defined in a different file.
-		 *
-		 * @return {@code this} builder.
-		 */
-		public Builder versionDefinedInOtherFile() {
-			this.versionDefinedInSameFile = false;
-			return this;
-		}
-
-		/**
-		 * Indicate that the version is defined in the same file.
-		 *
-		 * @return {@code this} builder.
-		 */
-		public Builder versionDefinedInSameFile() {
-			this.versionDefinedInSameFile = true;
-			return this;
-		}
-
-		/**
 		 * Configure the PSI element representing the declaration.
 		 *
 		 * @param declarationElement the declaration element.
@@ -312,11 +285,6 @@ public class ArtifactDeclaration implements DependencySite {
 		 */
 		public Builder declarationElement(PsiElement declarationElement) {
 			this.declarationElement = declarationElement;
-
-			if (versionLiteral != null) {
-				this.versionDefinedInSameFile = versionLiteral.getContainingFile()
-						.equals(declarationElement.getContainingFile());
-			}
 			return this;
 		}
 
@@ -329,21 +297,15 @@ public class ArtifactDeclaration implements DependencySite {
 		 */
 		public Builder versionLiteral(PsiElement versionLiteral) {
 			this.versionLiteral = versionLiteral;
-
-			if (declarationElement != null) {
-				this.versionDefinedInSameFile = versionLiteral.getContainingFile()
-						.equals(declarationElement.getContainingFile());
-			}
 			return this;
 		}
 
 		/**
 		 * Build a new {@link ArtifactDeclaration}.
-		 * <p>Requires both {@link ArtifactId} and {@link VersionSource} to be
-		 * configured.
 		 *
 		 * @return a new {@link ArtifactDeclaration}.
-		 * @throws IllegalArgumentException if {@code id} or {@code versionSource} is .
+		 * @throws IllegalArgumentException if the artifact id, version source,
+		 * declaration source, or declaration element is not configured.
 		 */
 		public ArtifactDeclaration build() {
 
@@ -351,6 +313,9 @@ public class ArtifactDeclaration implements DependencySite {
 			Assert.notNull(versionSource, "VersionSource must not be null");
 			Assert.notNull(declarationSource, "DeclarationSource must not be null");
 			Assert.notNull(declarationElement, "Declaration element must not be null");
+
+			boolean versionDefinedInSameFile = versionLiteral != null && versionLiteral.getContainingFile()
+					.equals(declarationElement.getContainingFile());
 
 			return new ArtifactDeclaration(id, versionSource, declarationSource, versionDefinedInSameFile, version,
 					declarationElement, versionLiteral);

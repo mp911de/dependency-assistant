@@ -16,15 +16,13 @@
 
 package biz.paluch.dap.plan;
 
-import java.awt.Color;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.ticket.Label;
+import biz.paluch.dap.plan.InMemoryTicketRepository.InMemoryLabel;
+import biz.paluch.dap.plan.InMemoryTicketRepository.InMemoryMilestone;
 import biz.paluch.dap.ticket.Milestone;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -39,7 +37,7 @@ class RefreshMilestonesActionUnitTests {
 	@Test
 	void rebindsPersistedMilestoneByTitle() {
 
-		TestMilestone milestone = new TestMilestone("6.2", true);
+		InMemoryMilestone milestone = InMemoryMilestone.open("6.2");
 		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(List.of(milestone));
 
 		assertThat(milestones.getSelection("6.2")).isSameAs(milestone);
@@ -48,14 +46,13 @@ class RefreshMilestonesActionUnitTests {
 	@Test
 	void defaultsToLowestOpenMilestoneFromBranch() {
 
-		TestMilestone patch = new TestMilestone("6.2.1", true);
-		TestMilestone line = new TestMilestone("6.2", true);
-		TestMilestone closed = new TestMilestone("6.1", false);
+		InMemoryMilestone patch = InMemoryMilestone.open("6.2.1");
+		InMemoryMilestone line = InMemoryMilestone.open("6.2");
+		InMemoryMilestone closed = InMemoryMilestone.closed("6.1");
 		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(
 				List.of(patch, closed, line));
 
-		Milestone selected = milestones.getDefaultMilestone("release/6.2.x",
-				Versioned.of(ArtifactVersion.of("7.1.0")));
+		Milestone selected = milestones.getDefaultMilestone("release/6.2.x", projectVersion("7.1.0"));
 
 		assertThat(selected).isSameAs(line);
 	}
@@ -63,8 +60,8 @@ class RefreshMilestonesActionUnitTests {
 	@Test
 	void retainsPersistedMilestoneBeforeApplyingDefault() {
 
-		TestMilestone persisted = new TestMilestone("custom", true);
-		TestMilestone branchDefault = new TestMilestone("6.2", true);
+		InMemoryMilestone persisted = InMemoryMilestone.open("custom");
+		InMemoryMilestone branchDefault = InMemoryMilestone.open("6.2");
 		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(
 				List.of(branchDefault, persisted));
 
@@ -77,12 +74,11 @@ class RefreshMilestonesActionUnitTests {
 	@Test
 	void defaultsFromProjectVersionWhenBranchHasNoVersion() {
 
-		TestMilestone patch = new TestMilestone("7.1.1", true);
-		TestMilestone line = new TestMilestone("7.1", true);
+		InMemoryMilestone patch = InMemoryMilestone.open("7.1.1");
+		InMemoryMilestone line = InMemoryMilestone.open("7.1");
 		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(List.of(patch, line));
 
-		Milestone selected = milestones.getDefaultMilestone("main",
-				Versioned.of(ArtifactVersion.of("7.1.3")));
+		Milestone selected = milestones.getDefaultMilestone("main", projectVersion("7.1.3"));
 
 		assertThat(selected).isSameAs(line);
 	}
@@ -90,65 +86,16 @@ class RefreshMilestonesActionUnitTests {
 	@Test
 	void rebindsPersistedLabelBeforeApplyingDefault() {
 
-		TestLabel custom = new TestLabel("custom");
-		TestLabel dependency = new TestLabel("dependencies");
+		InMemoryLabel custom = InMemoryLabel.of("custom");
+		InMemoryLabel dependency = InMemoryLabel.of("dependencies");
 		RefreshMilestonesAction.Labels labels = new RefreshMilestonesAction.Labels(List.of(dependency, custom));
 
 		assertThat(labels.getSelection("custom")).isSameAs(custom);
 		assertThat(labels.getSelection(null)).isSameAs(dependency);
 	}
 
-	private static class TestMilestone implements Milestone {
-
-		private final String title;
-
-		private final boolean open;
-
-		TestMilestone(String title, boolean open) {
-			this.title = title;
-			this.open = open;
-		}
-
-		@Override
-		public String getTitle() {
-			return title;
-		}
-
-		@Override
-		public boolean isOpen() {
-			return open;
-		}
-
-		@Override
-		public @Nullable String getDescription() {
-			return null;
-		}
-
-		@Override
-		public @Nullable LocalDateTime getReleaseDate() {
-			return null;
-		}
-
-	}
-
-	private static class TestLabel implements Label {
-
-		private final String name;
-
-		TestLabel(String name) {
-			this.name = name;
-		}
-
-		@Override
-		public String getName() {
-			return name;
-		}
-
-		@Override
-		public @Nullable Color getColor() {
-			return null;
-		}
-
+	private static Versioned projectVersion(String version) {
+		return Versioned.of(ArtifactVersion.of(version));
 	}
 
 }

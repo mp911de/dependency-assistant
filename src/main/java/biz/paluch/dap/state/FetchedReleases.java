@@ -51,23 +51,6 @@ public class FetchedReleases implements HasArtifactId {
 	private final @Nullable CachedMetadata projectMetadata;
 
 	/**
-	 * Create a new {@code FetchedReleases} instance without captured project
-	 * metadata.
-	 * @param artifactId the artifact identifier for which the releases were
-	 * fetched.
-	 * @param releases cached releases.
-	 * @param plan the underlying fetch plan.
-	 * @param preferredSource the preferred source for the artifact, can either
-	 * contain {@link ReleaseSource#getId()} or be empty (or {@literal null}).
-	 * @param emptySources the {@link ReleaseSource#getId() release source
-	 * identifiers} that returned no releases.
-	 */
-	public FetchedReleases(ArtifactId artifactId, Collection<CachedRelease> releases, FetchPlan plan,
-			@Nullable String preferredSource, Collection<String> emptySources) {
-		this(artifactId, releases, plan, preferredSource, emptySources, null);
-	}
-
-	/**
 	 * Create a new {@code FetchedReleases} instance.
 	 * @param artifactId the artifact identifier for which the releases were
 	 * fetched.

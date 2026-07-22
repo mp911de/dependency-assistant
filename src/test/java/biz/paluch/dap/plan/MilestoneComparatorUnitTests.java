@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import biz.paluch.dap.plan.InMemoryTicketRepository.InMemoryMilestone;
 import biz.paluch.dap.ticket.Milestone;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -75,35 +76,8 @@ class MilestoneComparatorUnitTests {
 	}
 
 	private static Milestone milestone(String title, @Nullable String releaseDay) {
-
-		return new Milestone() {
-
-			@Override
-			public String getTitle() {
-				return title;
-			}
-
-			@Override
-			public boolean isOpen() {
-				return true;
-			}
-
-			@Override
-			public @Nullable String getDescription() {
-				return null;
-			}
-
-			@Override
-			public @Nullable LocalDateTime getReleaseDate() {
-				return releaseDay != null ? LocalDateTime.parse(releaseDay + "T10:00:00") : null;
-			}
-
-			@Override
-			public String toString() {
-				return title;
-			}
-
-		};
+		return InMemoryMilestone.open(title,
+				releaseDay != null ? LocalDateTime.parse(releaseDay + "T10:00:00") : null);
 	}
 
 }

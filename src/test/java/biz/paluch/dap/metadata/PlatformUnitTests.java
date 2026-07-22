@@ -35,12 +35,13 @@ import static org.assertj.core.api.Assertions.*;
  */
 class PlatformUnitTests {
 
-	@Test
-	void gitHubAcceptsCanonicalCoordinates() {
-
-		assertThat(detect(new GitHubPlatform(), "https://github.com/spring-projects/spring-framework")).isNotNull();
-		assertThat(detect(new GitHubPlatform(), "scm:git:git@github.com:mp911de/logstash-gelf.git")).isNotNull();
-		assertThat(detect(new GitHubPlatform(), "https://github.com/spring-projects/.github")).isNotNull();
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"https://github.com/spring-projects/spring-framework",
+			"scm:git:git@github.com:mp911de/logstash-gelf.git",
+			"https://github.com/spring-projects/.github"})
+	void gitHubAcceptsCanonicalCoordinates(String url) {
+		assertThat(detect(new GitHubPlatform(), url)).isNotNull();
 	}
 
 	@ParameterizedTest
@@ -98,11 +99,12 @@ class PlatformUnitTests {
 		assertThat(detect(new BitbucketPlatform(), url)).isNull();
 	}
 
-	@Test
-	void sourceForgeAcceptsUnixNames() {
-
-		assertThat(detect(new SourceForgePlatform(), "https://sourceforge.net/projects/libjpeg-turbo/")).isNotNull();
-		assertThat(detect(new SourceForgePlatform(), "git://git.code.sf.net/p/libpng/code")).isNotNull();
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"https://sourceforge.net/projects/libjpeg-turbo/",
+			"git://git.code.sf.net/p/libpng/code"})
+	void sourceForgeAcceptsUnixNames(String url) {
+		assertThat(detect(new SourceForgePlatform(), url)).isNotNull();
 	}
 
 	@ParameterizedTest

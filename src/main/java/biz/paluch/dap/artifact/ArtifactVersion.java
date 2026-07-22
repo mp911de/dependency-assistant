@@ -210,9 +210,6 @@ public interface ArtifactVersion extends Comparable<ArtifactVersion> {
 	 * Return a human-readable rendering of this version for documentation and popup
 	 * display.
 	 *
-	 * <p>The default returns {@link #toString()}. Versions carrying additional
-	 * resolution metadata (such as a resolved commit hash) enrich the rendering.
-	 *
 	 * @return the documentation display string; guaranteed to be not
 	 * {@literal null}.
 	 */

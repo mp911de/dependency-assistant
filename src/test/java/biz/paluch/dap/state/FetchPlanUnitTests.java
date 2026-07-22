@@ -27,9 +27,9 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
+import biz.paluch.dap.fixtures.TestFetchedReleases;
 import biz.paluch.dap.fixtures.TestReleaseSource;
 import org.junit.jupiter.api.Test;
 
@@ -129,7 +129,7 @@ class FetchPlanUnitTests {
 	void discoveryFetchPlanShouldFetchEverySourceBelowThreshold() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
+		artifact.updateReleases(TestFetchedReleases.of(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), SOURCES),
 				NOW_MILLIS);
 		cache.addArtifacts(List.of(artifact));
 
@@ -176,7 +176,7 @@ class FetchPlanUnitTests {
 
 		assertThat(cache.createFetchPlan(releaseSources("central", "portal")).isFullFetch()).isTrue();
 
-		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
+		artifact.updateReleases(TestFetchedReleases.of(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), SOURCES),
 				NOW_MILLIS);
 
 		assertThat(cache.createFetchPlan(releaseSources("central", "portal")).isSkip()).isTrue();
@@ -186,8 +186,7 @@ class FetchPlanUnitTests {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 		artifact.updateReleases(
-				new FetchedReleases(ARTIFACT_ID, List.of(CachedRelease.from(Release.of("1.0.0"))),
-						FetchPlan.fullFetch(), null, emptySources),
+				TestFetchedReleases.of(ARTIFACT_ID, FetchPlan.fullFetch(), emptySources, "1.0.0"),
 				checkedSince);
 		cache.addArtifacts(List.of(artifact));
 		return artifact;
@@ -203,7 +202,7 @@ class FetchPlanUnitTests {
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 		for (int i = 0; i < 4; i++) {
 			artifact.updateReleases(
-					new FetchedReleases(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), null, SOURCES),
+					TestFetchedReleases.of(ARTIFACT_ID, List.of(), FetchPlan.fullFetch(), SOURCES),
 					lastEmptyTimestamp);
 		}
 		cache.addArtifacts(List.of(artifact));

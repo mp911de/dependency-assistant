@@ -71,7 +71,7 @@ class DependencyVersionDriftInspectionTests {
 	void highlightsDriftingVersion(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.3");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.3");
 
 		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
 
@@ -100,7 +100,7 @@ class DependencyVersionDriftInspectionTests {
 	void alignToHighestRewritesToHighestDeclaredVersion(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.3");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.3");
 
 		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 
@@ -125,7 +125,7 @@ class DependencyVersionDriftInspectionTests {
 	void doesNotFlagWhenModulesAgree(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.0");
 
 		assertThat(Inspections.inspect(fixture.getProject(), pomFile)).isEmpty();
 	}
@@ -148,7 +148,7 @@ class DependencyVersionDriftInspectionTests {
 	void highlightsDeclarationDriftWhenInlineAndPropertyDeclarationsAgree(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0",
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.0",
 				VersionSource.property("drift.version"));
 
 		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
@@ -175,7 +175,7 @@ class DependencyVersionDriftInspectionTests {
 	void alignToLowestDowngradesToLowestDeclaredVersion(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.0");
 
 		applyFix(pomFile, "Downgrade to lowest used version '6.0.0'");
 
@@ -200,7 +200,7 @@ class DependencyVersionDriftInspectionTests {
 	void offersOnlyFixesThatChangeTheCurrentVersion(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.0");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.0");
 
 		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
 
@@ -227,7 +227,7 @@ class DependencyVersionDriftInspectionTests {
 	void clearsDriftAfterAligningCurrentFile(PsiFile pomFile) {
 
 		MavenFixtures.analyze(pomFile);
-		Inspections.registerDependency(fixture.getProject(), "other", "hello.world", "drift-bom", "6.0.3");
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.3");
 
 		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 

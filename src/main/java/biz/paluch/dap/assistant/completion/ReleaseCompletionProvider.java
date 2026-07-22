@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
@@ -33,17 +32,11 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.metadata.ProjectMetadataService;
-import biz.paluch.dap.rule.BranchSource;
 import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleService;
-import biz.paluch.dap.rule.ResolutionContext;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
@@ -59,13 +52,10 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.codeInsight.lookup.LookupElementWeigher;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.keymap.KeymapUtil;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.ElementManipulator;
 import com.intellij.psi.ElementManipulators;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.util.ProcessingContext;
@@ -85,8 +75,8 @@ import org.jspecify.annotations.Nullable;
  * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)} for
  * format-specific prefix handling,
  * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}
- * for insert handlers, and {@link #getRefStyle(PsiElement, CompletionMetadata)}
- * for tag-vs-SHA insertion.
+ * for insert handlers, and {@link #getRefStyle(PsiElement)} for tag-vs-SHA
+ * insertion.
  *
  * <p>This provider does not decide completion locations, refresh release
  * metadata, or contact remote repositories. Register it from a
@@ -118,41 +108,35 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 		position = PsiElements.unleaf(position);
 
-		CompletionMetadata metadata = getCompletionMetadata(position, parameters.getOriginalFile(),
-				parameters.getOriginalFile().getVirtualFile());
-		if (metadata == null) {
+		ArtifactReferenceContext referenceContext = ArtifactReferenceContext.from(position,
+				parameters.getOriginalFile());
+		if (referenceContext.isAbsent()) {
 			return;
 		}
 
-		RefStyle refStyle = getRefStyle(position, metadata);
-		Project project = parameters.getPosition().getProject();
-		StateService stateService = StateService.getInstance(project);
-		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
-		Cache cache = stateService.getCache();
-		ArtifactId artifactId = metadata.declaration().getArtifactId();
-		Releases history = cache.getReleases(artifactId);
-		ProjectMetadata projectMetadata = metadataService.getMetadata(artifactId);
+		RefStyle refStyle = getRefStyle(position);
+		StateService stateService = referenceContext.getStateService();
+		ArtifactId artifactId = referenceContext.getArtifactId();
+		Releases history = referenceContext.getReleases();
+		ProjectMetadata projectMetadata = referenceContext.getProjectMetadata();
 
 		if (history.isEmpty()) {
 			result.addLookupAdvertisement(MessageBundle.message("completion.advertisement.no-releases"));
 			return;
 		}
 
-		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
-		ResolutionContext resolutionContext = ResolutionContext.forDeclaration(metadata.declaration(),
-				BranchSource.of(parameters.getEditor().getVirtualFile()),
-				metadata.context().getProjectVersion(), projectMetadata);
-		DependencyRule rule = ruleService.resolve(resolutionContext);
+		DependencyRule rule = referenceContext.getRule();
 
 		CompletionResultSet prefixed = getPrefixMatcher(parameters, result);
-		List<ArtifactRelease> proposals = proposals(parameters, history, metadata, rule, artifactId);
+		List<ArtifactRelease> proposals = proposals(parameters, history, referenceContext.getCurrentVersion(), rule,
+				artifactId);
 
 		advertiseShowAllReleases(parameters, result, history.size(), proposals.size());
 
 		CompletionResultSet versionsResult = prefixed.withRelevanceSorter(releaseOrderSorter(proposals));
 		versionsResult.restartCompletionWhenNothingMatches();
 
-		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(metadata.currentVersion(), rule,
+		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(referenceContext.getCurrentVersion(), rule,
 				version -> stateService.getVulnerabilities(artifactId, version), projectMetadata);
 
 		for (ArtifactRelease release : proposals) {
@@ -166,6 +150,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 				? AutoCompletionPolicy.NEVER_AUTOCOMPLETE
 				: AutoCompletionPolicy.ALWAYS_AUTOCOMPLETE;
 
+		PsiElement versionLiteral = referenceContext.getDeclaration().getVersionLiteral();
 		List<LookupElement> elements = new ArrayList<>();
 		for (ArtifactRelease release : proposals) {
 
@@ -173,9 +158,9 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			LookupElementBuilder element = createLookupElement(release, completionVersion, refStyle)
 					.withRenderer(renderer);
 
-			if (metadata.versionLiteral() != null) {
+			if (versionLiteral != null) {
 				element = element
-						.withInsertHandler(new LookupElementInsertHandler(metadata.versionLiteral()));
+						.withInsertHandler(new LookupElementInsertHandler(versionLiteral));
 			}
 			element = postProcess(parameters, element, position, release);
 			elements.add(element.withAutoCompletionPolicy(autoCompletionPolicy));
@@ -191,7 +176,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * prefix and unioned with the governing rule's remediation target.
 	 */
 	private static List<ArtifactRelease> proposals(CompletionParameters parameters, Releases history,
-			CompletionMetadata metadata, DependencyRule rule, ArtifactId artifactId) {
+			@Nullable ArtifactVersion currentVersion, DependencyRule rule, ArtifactId artifactId) {
 
 		if (showsFullHistory(parameters)) {
 			return history.stream().map(release -> new ArtifactRelease(artifactId, release)).toList();
@@ -200,7 +185,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		// The stem derives from the typed text, not the prefix matcher: several
 		// contributors deliberately match with an empty prefix.
 		VersionStem stem = VersionStem.from(getPrefix(parameters));
-		ReleaseProposals proposals = ReleaseProposals.select(history, metadata.currentVersion(), stem);
+		ReleaseProposals proposals = ReleaseProposals.select(history, currentVersion, stem);
 
 		Release remediation = rule.suggestRemediation(history);
 		if (remediation != null) {
@@ -280,29 +265,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		return LookupElementBuilder.create(release, completion).withLookupStrings(lookupStrings);
 	}
 
-	private @Nullable CompletionMetadata getCompletionMetadata(PsiElement element, PsiFile psiFile,
-			VirtualFile containingFile) {
-
-		ProjectDependencyContext context = context(element, psiFile);
-		if (context.isAbsent()) {
-			return null;
-		}
-
-		VersionUpgradeLookup lookup = context.getLookup(element, containingFile);
-		ArtifactReference artifactReference = lookup.resolveArtifactReference(element);
-		if (!artifactReference.isResolved()) {
-			return null;
-		}
-
-		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		ArtifactVersion version = lookup.getCurrentVersion(artifactReference);
-		if (version == null && declaration.isVersionDefined()) {
-			version = declaration.getVersion();
-		}
-
-		return new CompletionMetadata(declaration, version, declaration.getVersionLiteral(), context);
-	}
-
 	/**
 	 * Return the reference style to use when choosing the inserted lookup string.
 	 *
@@ -310,11 +272,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * SHA references can return {@link RefStyle#SHA}; in that case Git-backed
 	 * releases with SHA metadata insert the SHA while keeping version lookup
 	 * strings available for matching.
-	 * @param element the PSI element used to resolve completion metadata.
-	 * @param metadata the resolved completion metadata.
+	 * @param element the PSI element used to resolve the artifact reference.
 	 * @return the reference style to use; guaranteed to be not {@literal null}.
 	 */
-	protected RefStyle getRefStyle(PsiElement element, CompletionMetadata metadata) {
+	protected RefStyle getRefStyle(PsiElement element) {
 		return RefStyle.VERSION;
 	}
 
@@ -327,7 +288,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * The default returns {@code builder} unchanged.
 	 * @param parameters the IntelliJ completion parameters.
 	 * @param builder the lookup element builder prepared by this provider.
-	 * @param element the PSI element used to resolve completion metadata.
+	 * @param element the PSI element used to resolve the artifact reference.
 	 * @param option the release option represented by the lookup element.
 	 * @return the lookup element builder to add to the result set.
 	 */
@@ -436,24 +397,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		}
 
 		return text.substring(start, caretInScalar);
-	}
-
-	private static ProjectDependencyContext context(PsiElement element, PsiFile psiFile) {
-		return DependencyAssistantDispatcher.findFirstContext(element.getProject(), psiFile);
-	}
-
-	/**
-	 * Artifact metadata needed to build release completion suggestions.
-	 *
-	 * @param declaration the resolved artifact whose releases should be suggested.
-	 * @param currentVersion the currently declared version, or {@literal null} if
-	 * no current version is available.
-	 * @param versionLiteral the PSI element to replace with the selected lookup
-	 * string, or {@literal null} if insertion is handled elsewhere.
-	 * @param context the dependency context that resolved the artifact.
-	 */
-	public record CompletionMetadata(ArtifactDeclaration declaration, @Nullable ArtifactVersion currentVersion,
-			@Nullable PsiElement versionLiteral, ProjectDependencyContext context) {
 	}
 
 	public static class LookupElementInsertHandler implements InsertHandler<LookupElement> {

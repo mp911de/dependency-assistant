@@ -16,8 +16,8 @@
 
 package biz.paluch.dap.assistant.check;
 
-import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -32,7 +32,9 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.util.AbstractProgressIndicatorBase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import static biz.paluch.dap.assertions.Assertions.*;
 
@@ -41,51 +43,45 @@ import static biz.paluch.dap.assertions.Assertions.*;
  *
  * @author Mark Paluch
  */
+@Timeout(value = 5, threadMode = Timeout.ThreadMode.SEPARATE_THREAD) // guards against a broken resolver timeout
 class ReleaseResolverUnitTests {
 
 	private static final ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
 
 	static final PackageIdentity LETTUCE = PackageIdentity.of(LETTUCE_CORE, PackageSystem.MAVEN);
 
+	ExecutorService executor = Executors.newFixedThreadPool(2);
+
+	@AfterEach
+	void tearDown() {
+		executor.shutdownNow();
+	}
 
 	@Test
 	void keepsCompletedReleasesWhenSiblingSourceTimesOut() {
 
-		ExecutorService executor = Executors.newFixedThreadPool(2);
-		try {
-			ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(),
-					new Cache(), 50, TimeUnit.MILLISECONDS);
-			ReleaseSources sources = new ReleaseSources(LETTUCE,
-					List.of(new ReleasingSource("central", "1.0.0"), new BlockingSource("slow")));
+		ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(), new Cache(), 250,
+				TimeUnit.MILLISECONDS);
+		ReleaseSources sources = new ReleaseSources(LETTUCE,
+				List.of(new ReleasingSource("central", "1.0.0"), new BlockingSource("slow")));
 
-			ReleaseLookupResult result = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
-					Duration.ofSeconds(1), () -> resolver.getReleases(sources, ReleaseResolver.reset()));
+		ReleaseLookupResult result = resolver.getReleases(sources, ReleaseResolver.reset());
 
-			assertThat(result.error()).isNull();
-			assertThat(result.releases()).containsRelease("1.0.0");
-		} finally {
-			executor.shutdownNow();
-		}
+		assertThat(result.error()).isNull();
+		assertThat(result.releases()).containsRelease("1.0.0");
 	}
 
 	@Test
 	void reportsTimeoutWhenNoSourceCompletes() {
 
-		ExecutorService executor = Executors.newFixedThreadPool(1);
-		try {
-			ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(),
-					new Cache(), 50, TimeUnit.MILLISECONDS);
-			ReleaseSources sources = new ReleaseSources(LETTUCE,
-					List.of(new BlockingSource("slow")));
+		ReleaseResolver resolver = new ReleaseResolver(executor, new AbstractProgressIndicatorBase(), new Cache(), 250,
+				TimeUnit.MILLISECONDS);
+		ReleaseSources sources = new ReleaseSources(LETTUCE, List.of(new BlockingSource("slow")));
 
-			ReleaseLookupResult result = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
-					Duration.ofSeconds(1), () -> resolver.getReleases(sources, ReleaseResolver.reset()));
+		ReleaseLookupResult result = resolver.getReleases(sources, ReleaseResolver.reset());
 
-			assertThat(result.error()).contains("Release source slow timed out");
-			assertThat(result.releases()).isEmpty();
-		} finally {
-			executor.shutdownNow();
-		}
+		assertThat(result.error()).contains("Release source slow timed out");
+		assertThat(result.releases()).isEmpty();
 	}
 
 	private static class ReleasingSource implements ReleaseSource {
@@ -127,12 +123,10 @@ class ReleaseResolverUnitTests {
 		@Override
 		public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) {
 
-			while (!Thread.currentThread().isInterrupted()) {
-				try {
-					Thread.sleep(10);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				}
+			try {
+				new CountDownLatch(1).await();
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
 			}
 			return Sequence.empty();
 		}

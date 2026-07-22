@@ -16,30 +16,17 @@
 
 package biz.paluch.dap.assistant.review;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.check.DeclarationSite;
-import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
-import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.fixtures.TestDependencyRule;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.fixtures.TestReleases;
+import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.state.ProjectId;
-import com.intellij.mock.MockVirtualFile;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for the Safe Version strategy entry and vulnerable-row visibility
@@ -95,7 +82,7 @@ class UpgradeReviewSafeVersionTests {
 		UpgradeReview review = review(List.of(vulnerable, clean));
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
 
-		assertThat(review.getUpdateTo(vulnerable)).isEqualTo(ArtifactVersion.of("6.0.1"));
+		assertThat(review.getUpdateTo(vulnerable)).isEqualTo("6.0.1");
 		assertThat(review.getUpdateTo(clean)).isEqualTo(CURRENT);
 	}
 
@@ -143,7 +130,7 @@ class UpgradeReviewSafeVersionTests {
 		assertThat(review.getCandidates()).contains(vulnerable);
 		assertThat(review.getReleases(vulnerable).getRelease(ArtifactVersion.of("6.0.1"))).isNotNull();
 		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
-		assertThat(review.getUpdateTo(vulnerable)).isEqualTo(ArtifactVersion.of("6.0.1"));
+		assertThat(review.getUpdateTo(vulnerable)).isEqualTo("6.0.1");
 	}
 
 	private static UpgradeReview review(List<TableRow> candidates) {
@@ -156,28 +143,17 @@ class UpgradeReviewSafeVersionTests {
 	 */
 	private static VulnerabilityRepository scanResults(String... cleanNewer) {
 
-		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new HashMap<>();
-		vulnerabilities.put(CURRENT, TestVulnerabilities.CRITICAL);
+		StringBuilder scanReport = new StringBuilder(CURRENT + " CVE-2026-1\n");
 		for (String version : cleanNewer) {
-			vulnerabilities.put(ArtifactVersion.of(version), Vulnerabilities.clean());
+			scanReport.append(version).append(" CLEAN\n");
 		}
-		return VulnerabilityRepository.of(vulnerabilities);
+		return TestVulnerabilities.from(scanReport.toString());
 	}
 
 	private static TableRow candidate(ArtifactId artifactId, ArtifactVersion current,
 			VulnerabilityRepository vulnerabilities, String... versions) {
-
-		Dependency dependency = new Dependency(artifactId, current);
-		dependency.addVersionSource(VersionSource.declared(current.toString()));
-		Releases releases = TestReleases.from(versions);
-		return new TableRow(DependencyUpgradeCandidate.create(dependency, releases, vulnerabilities,
-				new TestDependencyRule(artifactId.artifactId()), new TestInterfaceAssistant(),
-				DeclaredVersions.from(List.of(site(artifactId, current)), it -> null, null), ProjectMetadata.absent()));
-	}
-
-	private static DeclarationSite site(ArtifactId artifactId, ArtifactVersion version) {
-		return new DeclarationSite(new MockVirtualFile("review/pom.xml", "// test"), ProjectId.of("com.acme", "app"),
-				new Dependency(artifactId, version));
+		return new TableRow(TestCandidates.candidate(artifactId, current, it -> it.releases(versions)
+				.vulnerabilities(vulnerabilities).rule(artifactId.artifactId()).declaredVersions(current.toString())));
 	}
 
 }

@@ -24,12 +24,13 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.fixtures.TestDeclaredVersions;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link DeclaredVersions}.
@@ -54,8 +55,8 @@ class DeclaredVersionsTests {
 
 		VirtualFile a = new MockVirtualFile("conflict-a/build.gradle", "// test");
 		VirtualFile b = new MockVirtualFile("conflict-b/build.gradle", "// test");
-		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(site(a, "com.acme", "app", "7.4.1.RELEASE"),
-				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null, null);
+		DeclaredVersions declaredVersions = TestDeclaredVersions.from(site(a, "com.acme", "app", "7.4.1.RELEASE"),
+				site(b, "com.acme", "lib", "7.5.0.RELEASE"));
 
 		assertThat(declaredVersions.hasVersionDrift()).isTrue();
 		assertThat(declaredVersions.versions()).extracting(Object::toString)
@@ -67,10 +68,9 @@ class DeclaredVersionsTests {
 
 		VirtualFile a = new MockVirtualFile("drift-a/build.gradle", "// test");
 		VirtualFile b = new MockVirtualFile("drift-b/build.gradle", "// test");
-		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(
-				site(a, ArtifactVersion.of("7.4.1.RELEASE"), VersionSource.property("lettuce.version")),
-				site(b, ArtifactVersion.of("7.4.1.RELEASE"), VersionSource.declared("7.4.1.RELEASE"))),
-				ref -> null, null);
+		DeclaredVersions declaredVersions = TestDeclaredVersions.from(
+				site(a, "7.4.1.RELEASE", VersionSource.property("lettuce.version")),
+				site(b, "7.4.1.RELEASE", VersionSource.declared("7.4.1.RELEASE")));
 
 		assertThat(declaredVersions.hasVersionDrift()).isFalse();
 		assertThat(declaredVersions.hasDeclarationDrift()).isTrue();
@@ -85,7 +85,7 @@ class DeclaredVersionsTests {
 				ref -> ArtifactVersion.of("7.5.0.RELEASE"), null);
 
 		assertThat(declaredVersions.versions()).extracting(Object::toString).containsExactly("7.5.0.RELEASE");
-		assertThat(declaredVersions.getHighestDeclaredVersion()).isEqualTo(ArtifactVersion.of("7.5.0.RELEASE"));
+		assertThat(declaredVersions.getHighestDeclaredVersion()).isEqualTo("7.5.0.RELEASE");
 	}
 
 	@Test
@@ -93,8 +93,8 @@ class DeclaredVersionsTests {
 
 		VirtualFile a = new MockVirtualFile("prefix-a/build.gradle", "// test");
 		VirtualFile b = new MockVirtualFile("prefix-b/build.gradle", "// test");
-		DeclaredVersions declaredVersions = DeclaredVersions.from(List.of(site(a, "com.acme", "app", "7.4.1.RELEASE"),
-				site(b, "com.acme", "lib", "7.5.0.RELEASE")), ref -> null, null);
+		DeclaredVersions declaredVersions = TestDeclaredVersions.from(site(a, "com.acme", "app", "7.4.1.RELEASE"),
+				site(b, "com.acme", "lib", "7.5.0.RELEASE"));
 		List<String> conflicts = new ArrayList<>();
 
 		declaredVersions.forEachDrift((version, location) -> conflicts.add(version + "@" + location));
@@ -107,9 +107,8 @@ class DeclaredVersionsTests {
 
 		VirtualFile a = new MockVirtualFile("moduleA/build.gradle", "// test");
 		VirtualFile b = new MockVirtualFile("moduleB/build.gradle", "// test");
-		DeclaredVersions declaredVersions = DeclaredVersions.from(
-				List.of(site(a, ArtifactVersion.of("7.4.1.RELEASE")), site(b, ArtifactVersion.of("7.5.0.RELEASE"))),
-				ref -> null, null);
+		DeclaredVersions declaredVersions = TestDeclaredVersions.from(site(a, "7.4.1.RELEASE"),
+				site(b, "7.5.0.RELEASE"));
 		List<String> conflicts = new ArrayList<>();
 
 		declaredVersions.forEachDrift((version, location) -> conflicts.add(version + "@" + location));
@@ -122,12 +121,16 @@ class DeclaredVersionsTests {
 		return new DeclarationSite(file, ProjectId.of(groupId, artifactId), dependency(ArtifactVersion.of(version)));
 	}
 
+	private static DeclarationSite site(VirtualFile file, String version) {
+		return site(file, ArtifactVersion.of(version));
+	}
+
 	private static DeclarationSite site(VirtualFile file, ArtifactVersion version) {
 		return new DeclarationSite(file, ProjectId.of(file), dependency(version));
 	}
 
-	private static DeclarationSite site(VirtualFile file, ArtifactVersion version, VersionSource versionSource) {
-		return new DeclarationSite(file, ProjectId.of(file), dependency(version, versionSource));
+	private static DeclarationSite site(VirtualFile file, String version, VersionSource versionSource) {
+		return new DeclarationSite(file, ProjectId.of(file), dependency(ArtifactVersion.of(version), versionSource));
 	}
 
 	private static Dependency dependency(ArtifactVersion version) {

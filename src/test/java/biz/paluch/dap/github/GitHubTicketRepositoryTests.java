@@ -18,11 +18,14 @@ package biz.paluch.dap.github;
 
 import java.awt.Color;
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
 import biz.paluch.dap.extension.IdeaProjectTests;
+import biz.paluch.dap.plan.InMemoryTicketRepository.InMemoryLabel;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Ticket;
 import biz.paluch.dap.ticket.TicketKey;
@@ -86,14 +89,14 @@ class GitHubTicketRepositoryTests {
 		server.stubFor(get(urlPathEqualTo("/api/v3/search/issues"))
 				.willReturn(okJson(searchResult(issue(1, "Upgrade Spring"),
 						issue(2, "Upgrade Spring Framework"),
-						issue(3, "Upgrade Spring", "null", true)))));
+						pullRequest(3, "Upgrade Spring")))));
 
 		List<Ticket> tickets = repository.findTickets(EMPTY_INDICATOR, query -> query.title("Upgrade Spring"));
 
 		assertThat(tickets).hasSize(1);
 		assertThat(tickets.getFirst().getKey()).isEqualTo(TicketKey.of("1"));
 		assertThat(requestedUrl()).contains("/api/v3/search/issues")
-				.contains("q=repo%3Amp911de%2Fdependency-assistant%20type%3Aissue")
+				.contains("q=repo:mp911de/dependency-assistant type:issue")
 				.contains("advanced_search=true").contains("per_page=100").doesNotContain("sort=")
 				.doesNotContain("order=");
 	}
@@ -105,7 +108,7 @@ class GitHubTicketRepositoryTests {
 
 		repository.findTickets((ProgressIndicator) EMPTY_INDICATOR, query -> query.state(GitHubTicketState.OPEN));
 
-		assertThat(requestedUrl()).contains("state%3Aopen");
+		assertThat(requestedUrl()).contains("state:open");
 	}
 
 	@Test
@@ -116,7 +119,7 @@ class GitHubTicketRepositoryTests {
 		repository.findTickets((ProgressIndicator) EMPTY_INDICATOR,
 				query -> query.label(new GitHubLabel("type: dependency-upgrade", "", null)));
 
-		assertThat(requestedUrl()).contains("type%3Aissue%20AND%20label%3A%22type%3A%20dependency-upgrade%22");
+		assertThat(requestedUrl()).contains("type:issue AND label:\"type: dependency-upgrade\"");
 	}
 
 	@Test
@@ -124,13 +127,14 @@ class GitHubTicketRepositoryTests {
 
 		server.stubFor(get(urlPathEqualTo("/api/v3/search/issues"))
 				.willReturn(okJson(searchResult(issue(1, "Upgrade Spring", "dependencies"),
-						issue(2, "Upgrade Netty", "task"), issue(3, "Upgrade Jackson", "documentation")))));
+						issue(2, "Upgrade Netty", "task"),
+						issue(3, "Upgrade Jackson", "documentation")))));
 
 		List<Ticket> tickets = repository.findTickets(EMPTY_INDICATOR,
 				query -> query.label(new GitHubLabel("dependencies", "", null), new GitHubLabel("task", "", null)));
 
 		assertThat(tickets).hasSize(2);
-		assertThat(requestedUrl()).contains("AND%20(label%3A%22dependencies%22%20OR%20label%3A%22task%22)");
+		assertThat(requestedUrl()).contains("AND (label:\"dependencies\" OR label:\"task\")");
 	}
 
 	@Test
@@ -143,7 +147,7 @@ class GitHubTicketRepositoryTests {
 						.label(new GitHubLabel("dependencies", "", null), new GitHubLabel("task", "", null)));
 
 		assertThat(requestedUrl()).contains(
-				"type%3Aissue%20AND%20(milestone%3A%22milestone-7%22%20OR%20milestone%3A%22milestone-8%22)%20AND%20(label%3A%22dependencies%22%20OR%20label%3A%22task%22)");
+				"type:issue AND (milestone:\"milestone-7\" OR milestone:\"milestone-8\") AND (label:\"dependencies\" OR label:\"task\")");
 	}
 
 	@Test
@@ -151,14 +155,14 @@ class GitHubTicketRepositoryTests {
 
 		server.stubFor(get(urlPathEqualTo("/api/v3/search/issues"))
 				.willReturn(okJson(searchResult(issue(1, "Upgrade Spring", "dependencies"),
-						issueWithMilestone(2, "Upgrade Netty", 7, "2026.1", null, "task")))));
+						issueWithMilestone(2, "Upgrade Netty", 7, "2026.1", "task")))));
 
 		List<Ticket> tickets = repository.findTickets(EMPTY_INDICATOR,
 				query -> query.title(List.of()).state(List.of()).milestone(List.of()).label(List.of()));
 
 		assertThat(tickets).extracting(Ticket::getKey).containsExactly(TicketKey.of("1"), TicketKey.of("2"));
-		assertThat(requestedUrl()).contains("/api/v3/search/issues").doesNotContain("state%3A")
-				.doesNotContain("milestone%3A").doesNotContain("label%3A");
+		assertThat(requestedUrl()).contains("/api/v3/search/issues").doesNotContain("state:")
+				.doesNotContain("milestone:").doesNotContain("label:");
 	}
 
 	@Test
@@ -167,37 +171,20 @@ class GitHubTicketRepositoryTests {
 		server.stubFor(get(urlPathEqualTo("/api/v3/search/issues"))
 				.willReturn(okJson(searchResult(issue(1, "Upgrade Spring", "dependencies")))));
 
-		Label foreign = new Label() {
-
-			@Override
-			public String getName() {
-				return "dependencies";
-			}
-
-			@Override
-			public @Nullable Color getColor() {
-				return null;
-			}
-
-			@Override
-			public String toString() {
-				return "foreign";
-			}
-
-		};
+		Label foreign = InMemoryLabel.of("dependencies");
 
 		List<Ticket> tickets = repository.findTickets(EMPTY_INDICATOR, query -> query.label(foreign));
 
 		assertThat(tickets).isEmpty();
-		assertThat(requestedUrl()).contains("/api/v3/search/issues").doesNotContain("label%3A");
+		assertThat(requestedUrl()).contains("/api/v3/search/issues").doesNotContain("label:");
 	}
 
 	@Test
 	void findTicketsMatchesAnyQueriedMilestone() throws IOException {
 
 		server.stubFor(get(urlPathEqualTo("/api/v3/search/issues"))
-				.willReturn(okJson(searchResult(issueWithMilestone(1, "Upgrade Spring", 7, "2026.1", null),
-						issueWithMilestone(2, "Upgrade Netty", 9, "2026.2", null),
+				.willReturn(okJson(searchResult(issueWithMilestone(1, "Upgrade Spring", 7, "2026.1"),
+						issueWithMilestone(2, "Upgrade Netty", 9, "2026.2"),
 						issue(3, "Upgrade Jackson")))));
 
 		List<Ticket> tickets = repository.findTickets(EMPTY_INDICATOR,
@@ -206,7 +193,7 @@ class GitHubTicketRepositoryTests {
 		assertThat(tickets).hasSize(1);
 		assertThat(tickets.getFirst().getKey()).isEqualTo(TicketKey.of("1"));
 		assertThat(requestedUrl())
-				.contains("AND%20(milestone%3A%22milestone-7%22%20OR%20milestone%3A%22milestone-8%22)");
+				.contains("AND (milestone:\"milestone-7\" OR milestone:\"milestone-8\")");
 	}
 
 	@Test
@@ -214,7 +201,7 @@ class GitHubTicketRepositoryTests {
 
 		server.stubFor(post(urlEqualTo("/api/v3/repos/mp911de/dependency-assistant/issues"))
 				.willReturn(aResponse().withStatus(201).withHeader("Content-Type", "application/json")
-						.withBody(issueWithMilestone(42, "Upgrade Netty", 7, "2026.1", null,
+						.withBody(issueWithMilestone(42, "Upgrade Netty", 7, "2026.1",
 								"type: dependency-upgrade"))));
 
 		Ticket ticket = repository.createTicket(EMPTY_INDICATOR, "Upgrade Netty",
@@ -290,8 +277,12 @@ class GitHubTicketRepositoryTests {
 		assertThat(states.getLast().isClosed()).isTrue();
 	}
 
+	/**
+	 * Return the requested URL, percent-decoded so assertions read as plain GitHub
+	 * search syntax.
+	 */
 	private String requestedUrl() {
-		return server.getAllServeEvents().getFirst().getRequest().getUrl();
+		return URLDecoder.decode(server.getAllServeEvents().getFirst().getRequest().getUrl(), StandardCharsets.UTF_8);
 	}
 
 	private static String searchResult(String... items) {
@@ -309,9 +300,13 @@ class GitHubTicketRepositoryTests {
 		return issue(number, title, "null", false, labels);
 	}
 
+	private static String pullRequest(long number, String title) {
+		return issue(number, title, "null", true);
+	}
+
 	private static String issueWithMilestone(long number, String title, long milestoneNumber, String milestoneTitle,
-			@Nullable String dueOn, String... labels) {
-		return issue(number, title, milestone(milestoneNumber, milestoneTitle, dueOn), false, labels);
+			String... labels) {
+		return issue(number, title, milestone(milestoneNumber, milestoneTitle, null), false, labels);
 	}
 
 	private static String issue(long number, String title, String milestone, boolean pullRequest, String... labels) {

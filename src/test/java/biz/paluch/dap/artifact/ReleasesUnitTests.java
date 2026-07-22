@@ -111,7 +111,7 @@ class ReleasesUnitTests {
 
 		Releases releases = Releases.just(Release.of("v1.2.3"));
 
-		assertThat(releases.getRelease(ArtifactVersion.of("1.2.3"))).isEqualTo(Release.of("v1.2.3"));
+		assertThat(releases).containsRelease("1.2.3").hasVersion("v1.2.3");
 	}
 
 	@Test

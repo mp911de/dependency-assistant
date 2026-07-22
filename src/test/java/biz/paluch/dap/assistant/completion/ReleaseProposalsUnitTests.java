@@ -70,21 +70,21 @@ class ReleaseProposalsUnitTests {
 	@Test
 	void corridorKeepsCurrentLineAndNewer() {
 
-		assertThat(proposals(SEMVER, version("4.5.3"), null))
+		assertThat(proposals(SEMVER, ArtifactVersion.of("4.5.3"), null))
 				.containsExactly("6.1.0-RC1", "6.0.3", "5.5.4", "5.4.9", "5.3.8", "4.5.9", "4.5.3");
 	}
 
 	@Test
 	void corridorBypassesMajorCapForCurrentLine() {
 
-		assertThat(proposals(SEMVER, version("5.1.6"), null))
+		assertThat(proposals(SEMVER, ArtifactVersion.of("5.1.6"), null))
 				.containsExactly("6.1.0-RC1", "6.0.3", "5.5.4", "5.4.9", "5.3.8", "5.1.6");
 	}
 
 	@Test
 	void corridorKeepsAncientCurrentLineBeyondWindow() {
 
-		assertThat(proposals(SEMVER, version("2.7.5"), null))
+		assertThat(proposals(SEMVER, ArtifactVersion.of("2.7.5"), null))
 				.containsExactly("6.1.0-RC1", "6.0.3", "5.5.4", "5.4.9", "5.3.8", "4.5.9", "4.4.9", "3.5.12", "3.4.7",
 						"2.7.12");
 	}
@@ -100,7 +100,7 @@ class ReleaseProposalsUnitTests {
 	@Test
 	void stemAddsMatchingLinesBelowTheCorridor() {
 
-		assertThat(proposals(SEMVER, version("4.5.3"), "3."))
+		assertThat(proposals(SEMVER, ArtifactVersion.of("4.5.3"), "3."))
 				.contains("3.5.12", "3.4.7", "4.5.9", "4.5.3")
 				.doesNotContain("2.7.12");
 	}
@@ -159,7 +159,7 @@ class ReleaseProposalsUnitTests {
 	@Test
 	void currentVersionAheadOfHistoryFallsBackToWindow() {
 
-		assertThat(proposals(SEMVER, version("7.0.0-SNAPSHOT"), null))
+		assertThat(proposals(SEMVER, ArtifactVersion.of("7.0.0-SNAPSHOT"), null))
 				.containsExactly("6.1.0-RC1", "6.0.3", "5.5.4", "5.4.9", "5.3.8", "4.5.9", "4.4.9", "3.5.12", "3.4.7");
 	}
 
@@ -169,14 +169,14 @@ class ReleaseProposalsUnitTests {
 		Releases releases = TestReleases.from("2021.0.5", "2021.0.4", "2020.0.6", "Hoxton.SR12", "Hoxton.RELEASE",
 				"Greenwich.SR6");
 
-		assertThat(proposals(releases, version("Hoxton.SR11"), null))
+		assertThat(proposals(releases, ArtifactVersion.of("Hoxton.SR11"), null))
 				.containsExactly("2021.0.5", "2020.0.6", "Hoxton.SR12");
 	}
 
 	@Test
 	void withAddsReleaseInCanonicalOrder() {
 
-		Release release = SEMVER.getRelease(version("5.1.6"));
+		Release release = SEMVER.getRelease(ArtifactVersion.of("5.1.6"));
 		assertThat(release).isNotNull();
 
 		assertThat(ReleaseProposals.select(SEMVER, null, null).with(release))
@@ -189,7 +189,7 @@ class ReleaseProposalsUnitTests {
 	void withReturnsSameInstanceForIncludedRelease() {
 
 		ReleaseProposals proposals = ReleaseProposals.select(SEMVER, null, null);
-		Release release = SEMVER.getRelease(version("6.0.3"));
+		Release release = SEMVER.getRelease(ArtifactVersion.of("6.0.3"));
 		assertThat(release).isNotNull();
 
 		assertThat(proposals.with(release)).isSameAs(proposals);
@@ -200,10 +200,6 @@ class ReleaseProposalsUnitTests {
 		return ReleaseProposals.select(releases, currentVersion, VersionStem.from(prefix)).stream()
 				.map(release -> release.version().toString())
 				.toList();
-	}
-
-	private static ArtifactVersion version(String version) {
-		return ArtifactVersion.of(version);
 	}
 
 }

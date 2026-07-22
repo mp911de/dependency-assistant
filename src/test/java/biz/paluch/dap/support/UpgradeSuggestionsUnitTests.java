@@ -22,7 +22,7 @@ import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link UpgradeSuggestions} tier selection and ordering.
@@ -37,7 +37,7 @@ class UpgradeSuggestionsUnitTests {
 		UpgradeSuggestion best = from("1.0.0", "1.0.1", "1.0.0").getSuggestion();
 
 		assertThat(best.getStrategy()).isEqualTo(UpgradeStrategy.PATCH);
-		assertThat(best.getRelease().version()).isEqualTo(version("1.0.1"));
+		assertThat(best.getRelease().version()).isEqualTo("1.0.1");
 	}
 
 	@Test
@@ -46,7 +46,7 @@ class UpgradeSuggestionsUnitTests {
 		UpgradeSuggestion best = from("1.0.0", "1.1.0", "1.0.0").getSuggestion();
 
 		assertThat(best.getStrategy()).isEqualTo(UpgradeStrategy.MINOR);
-		assertThat(best.getRelease().version()).isEqualTo(version("1.1.0"));
+		assertThat(best.getRelease().version()).isEqualTo("1.1.0");
 	}
 
 	@Test
@@ -55,7 +55,7 @@ class UpgradeSuggestionsUnitTests {
 		UpgradeSuggestion best = from("1.0.0", "2.0.0", "1.0.0").getSuggestion();
 
 		assertThat(best.getStrategy()).isEqualTo(UpgradeStrategy.MAJOR);
-		assertThat(best.getRelease().version()).isEqualTo(version("2.0.0"));
+		assertThat(best.getRelease().version()).isEqualTo("2.0.0");
 	}
 
 	@Test
@@ -83,11 +83,7 @@ class UpgradeSuggestionsUnitTests {
 	}
 
 	private static UpgradeSuggestions from(String current, String... versions) {
-		return UpgradeSuggestions.from(version(current), TestReleases.from(versions));
-	}
-
-	private static ArtifactVersion version(String version) {
-		return ArtifactVersion.of(version);
+		return UpgradeSuggestions.from(ArtifactVersion.of(current), TestReleases.from(versions));
 	}
 
 }

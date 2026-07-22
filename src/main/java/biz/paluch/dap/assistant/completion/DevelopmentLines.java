@@ -24,8 +24,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.VersionAware;
 import biz.paluch.dap.util.Sequence;
 
 /**
@@ -52,8 +51,8 @@ class DevelopmentLines implements Sequence<DevelopmentLine> {
 	 * @param releases the release history to group.
 	 * @return the development lines, newest line first.
 	 */
-	public static DevelopmentLines of(Releases releases) {
-		return of(releases.stream().map(Release::version).toList());
+	public static DevelopmentLines of(Sequence<? extends VersionAware> releases) {
+		return of(releases.stream().map(VersionAware::getVersion).toList());
 	}
 
 	/**

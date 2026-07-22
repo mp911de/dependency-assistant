@@ -19,6 +19,7 @@ package biz.paluch.dap.assertions;
 import java.time.LocalDateTime;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import org.assertj.core.api.AbstractAssert;
 
@@ -86,6 +87,26 @@ public class ReleaseAssert extends AbstractAssert<ReleaseAssert, Release> {
 		if (!expected.equals(this.actual.releaseDate())) {
 			failWithMessage("Expected release '%s' to have release date '%s' but was '%s'", this.actual.version(),
 					expected, this.actual.releaseDate());
+		}
+		return this;
+	}
+
+	/**
+	 * Verifies that the actual release version is a {@link GitVersion} carrying the
+	 * given commit SHA.
+	 * @param expected the expected commit SHA.
+	 * @return this assertion object.
+	 */
+	public ReleaseAssert hasSha(String expected) {
+		isNotNull();
+		if (!(this.actual.version() instanceof GitVersion gitVersion)) {
+			failWithMessage("Expected release version '%s' to be a GitVersion but was %s", this.actual.version(),
+					this.actual.version().getClass().getSimpleName());
+			return this;
+		}
+		if (!expected.equals(gitVersion.getSha())) {
+			failWithMessage("Expected release '%s' to have SHA '%s' but was '%s'", this.actual.version(), expected,
+					gitVersion.getSha());
 		}
 		return this;
 	}

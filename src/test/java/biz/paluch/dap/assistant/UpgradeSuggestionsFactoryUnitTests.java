@@ -16,14 +16,11 @@
 
 package biz.paluch.dap.assistant;
 
-import java.util.Map;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
@@ -35,7 +32,7 @@ import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link UpgradeSuggestionsFactory}.
@@ -51,15 +48,17 @@ class UpgradeSuggestionsFactoryUnitTests {
 
 		Dependency dependency = dependency("1.0.0");
 		Releases releases = TestReleases.from("1.0.0", "1.0.1", "1.0.2", "1.1.0");
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
-				TestVulnerabilities.HIGH, version("1.0.1"), TestVulnerabilities.HIGH, version("1.0.2"),
-				Vulnerabilities.clean()));
+		VulnerabilityRepository vulnerabilities = TestVulnerabilities.from("""
+				1.0.0 CVE-2026-2
+				1.0.1 CVE-2026-2
+				1.0.2 CLEAN
+				""");
 
 		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
 				vulnerabilities,
 				DependencyRule.absent());
 
-		assertThat(suggestions.get(UpgradeStrategy.SAFE).getRelease()).isEqualTo(Release.of("1.0.2"));
+		assertThat(suggestions.get(UpgradeStrategy.SAFE).getRelease()).hasVersion("1.0.2");
 	}
 
 	@Test
@@ -67,8 +66,10 @@ class UpgradeSuggestionsFactoryUnitTests {
 
 		Dependency dependency = dependency("1.0.0");
 		Releases releases = TestReleases.from("1.0.0", "1.0.1");
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
-				Vulnerabilities.clean(), version("1.0.1"), Vulnerabilities.clean()));
+		VulnerabilityRepository vulnerabilities = TestVulnerabilities.from("""
+				1.0.0 CLEAN
+				1.0.1 CLEAN
+				""");
 
 		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
 				vulnerabilities,
@@ -82,8 +83,10 @@ class UpgradeSuggestionsFactoryUnitTests {
 
 		Dependency dependency = dependency("1.0.0");
 		Releases releases = TestReleases.from("1.0.0", "1.0.1", "1.1.0");
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(version("1.0.0"),
-				TestVulnerabilities.HIGH, version("1.0.1"), Vulnerabilities.clean()));
+		VulnerabilityRepository vulnerabilities = TestVulnerabilities.from("""
+				1.0.0 CVE-2026-2
+				1.0.1 CLEAN
+				""");
 
 		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
 				vulnerabilities,
@@ -103,15 +106,11 @@ class UpgradeSuggestionsFactoryUnitTests {
 		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, releases,
 				VulnerabilityRepository.empty(), new GenerationTwoRule());
 
-		assertThat(suggestions.get(UpgradeStrategy.RULE).getRelease()).isEqualTo(Release.of("2.0.1"));
+		assertThat(suggestions.get(UpgradeStrategy.RULE).getRelease()).hasVersion("2.0.1");
 	}
 
 	private static Dependency dependency(String version) {
-		return new Dependency(ARTIFACT, version(version));
-	}
-
-	private static ArtifactVersion version(String version) {
-		return ArtifactVersion.of(version);
+		return new Dependency(ARTIFACT, ArtifactVersion.of(version));
 	}
 
 	private static class PatchOnlyRule implements DependencyRule {

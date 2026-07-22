@@ -185,7 +185,7 @@ class UpgradePlanTree {
 	}
 
 	void setItems(List<UpgradePlanItem> planItems) {
-		this.planItems = List.copyOf(planItems);
+		this.planItems = planItems;
 		rebuild();
 	}
 

@@ -46,7 +46,7 @@ class DependencyCollectorUnitTests {
 		assertThat(collector.getUsages()).hasSize(1);
 		Dependency usage = collector.getUsage(CHECKOUT);
 		assertThat(usage).isNotNull();
-		assertThat(usage.getCurrentVersion()).isEqualTo(ArtifactVersion.of("4.2.0"));
+		assertThat(usage.getCurrentVersion()).isEqualTo("4.2.0");
 		assertThat(usage.getVersionSources()).contains(declaredV4);
 		assertThat(usage.getDeclarationSources()).contains(DeclarationSource.dependency());
 	}
@@ -77,7 +77,7 @@ class DependencyCollectorUnitTests {
 		});
 
 		assertThat(visited).doesNotContain(CHECKOUT);
-		assertThat(collector.getUsage(CHECKOUT).getCurrentVersion()).isEqualTo(ArtifactVersion.of("3.6.0"));
+		assertThat(collector.getUsage(CHECKOUT).getCurrentVersion()).isEqualTo("3.6.0");
 	}
 
 	@Test

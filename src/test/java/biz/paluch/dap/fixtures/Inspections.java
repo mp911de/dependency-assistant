@@ -18,8 +18,6 @@ package biz.paluch.dap.fixtures;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
@@ -68,24 +66,35 @@ public class Inspections {
 
 	/**
 	 * Register a declared dependency usage for the given module in the project
-	 * state.
+	 * state, using coordinates in {@code group:artifact:version} form.
+	 *
+	 * @param project the project whose state receives the dependency.
+	 * @param moduleId the module identifier within the test project.
+	 * @param coordinates the dependency coordinates.
 	 */
-	public static void registerDependency(Project project, String moduleId, String groupId, String artifactId,
-			String version) {
+	public static void registerDependency(Project project, String moduleId, String coordinates) {
 
-		registerDependency(project, moduleId, groupId, artifactId, version, VersionSource.declared(version));
+		Coordinates parsed = Coordinates.of(coordinates);
+		registerDependency(project, moduleId, coordinates, VersionSource.declared(parsed.getVersion().toString()));
 	}
 
 	/**
 	 * Register a dependency usage with an explicit version source for the given
-	 * module in the project state.
+	 * module in the project state, using coordinates in
+	 * {@code group:artifact:version} form.
+	 *
+	 * @param project the project whose state receives the dependency.
+	 * @param projectId the module identifier within the test project.
+	 * @param coordinates the dependency coordinates.
+	 * @param versionSource the declaration source of the dependency version.
 	 */
-	public static void registerDependency(Project project, String projectId, String groupId, String artifactId,
-			String version, VersionSource versionSource) {
+	public static void registerDependency(Project project, String projectId, String coordinates,
+			VersionSource versionSource) {
 
+		Coordinates parsed = Coordinates.of(coordinates);
 		DependencyCollector collector = new DependencyCollector();
-		collector.registerUsage(ArtifactId.of(groupId, artifactId), ArtifactVersion.of(version),
-				DeclarationSource.dependency(), versionSource);
+		collector.registerUsage(parsed.getArtifactId(), parsed.getVersion(), DeclarationSource.dependency(),
+				versionSource);
 		StateService.getInstance(project)
 				.getProjectState(ProjectId.of("com.example", projectId))
 				.setDependencies(collector, PackageSystem.MAVEN);

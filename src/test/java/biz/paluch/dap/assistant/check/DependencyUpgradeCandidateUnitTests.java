@@ -16,24 +16,13 @@
 
 package biz.paluch.dap.assistant.check;
 
-import java.util.Map;
-
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
-import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
+import static biz.paluch.dap.fixtures.TestCandidates.*;
 
 /**
  * Unit tests for {@link DependencyUpgradeCandidate}.
@@ -45,31 +34,21 @@ class DependencyUpgradeCandidateUnitTests {
 	@Test
 	void keepsRemediationTargetInDisplayReleaseUniverse() {
 
-		ArtifactVersion current = ArtifactVersion.of("1.0.0");
-		ArtifactVersion remediation = ArtifactVersion.of("1.1.0-RC1");
-		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"), current);
-		Releases releases = TestReleases.from("1.1.0-RC1");
-		VulnerabilityRepository vulnerabilities = VulnerabilityRepository.of(Map.of(current,
-				TestVulnerabilities.HIGH, remediation, Vulnerabilities.clean()));
+		DependencyUpgradeCandidate upgrade = candidate("com.example:demo:1.0.0",
+				it -> it.releases("1.1.0-RC1").vulnerable("1.0.0", TestVulnerabilities.HIGH));
 
-		DependencyUpgradeCandidate upgrade = upgrade(dependency, releases, vulnerabilities);
-
-		assertThat(upgrade.getReleases()).contains(Release.of("1.0.0"));
-		assertThat(upgrade.getDisplayReleases()).contains(Release.of("1.1.0-RC1"));
-		assertThat(upgrade.resolveDisplayTarget(UpgradeStrategy.SAFE)).isEqualTo(Release.of("1.1.0-RC1"));
+		assertThat(upgrade.getReleases()).containsRelease("1.0.0");
+		assertThat(upgrade.getDisplayReleases()).containsRelease("1.1.0-RC1");
+		assertThat(upgrade.resolveDisplayTarget(UpgradeStrategy.SAFE)).hasVersion("1.1.0-RC1");
 	}
 
 	@Test
 	void omitsTargetsOutsideDisplayReleaseUniverse() {
 
-		ArtifactVersion current = ArtifactVersion.of("1.0.0");
-		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"), current);
-
-		DependencyUpgradeCandidate upgrade = upgrade(dependency, TestReleases.from("1.1.0-RC1"),
-				VulnerabilityRepository.empty());
+		DependencyUpgradeCandidate upgrade = candidate("com.example:demo:1.0.0", it -> it.releases("1.1.0-RC1"));
 
 		assertThat(upgrade.getSuggestions().get(UpgradeStrategy.PREVIEW).isPresent()).isTrue();
-		assertThat(upgrade.getDisplayReleases()).doesNotContain(Release.of("1.1.0-RC1"));
+		assertThat(upgrade.getDisplayReleases()).doesNotContainRelease("1.1.0-RC1");
 		assertThat(upgrade.getDisplaySuggestions().get(UpgradeStrategy.PREVIEW).isPresent()).isFalse();
 		assertThat(upgrade.resolveDisplayTarget(UpgradeStrategy.PREVIEW)).isNull();
 	}
@@ -77,20 +56,11 @@ class DependencyUpgradeCandidateUnitTests {
 	@Test
 	void selectsOnlyTargetsFromItsReleaseUniverse() {
 
-		Dependency dependency = new Dependency(ArtifactId.of("com.example", "demo"), ArtifactVersion.of("1.0.0"));
-		DependencyUpgradeCandidate upgrade = upgrade(dependency, TestReleases.from("1.1.0"),
-				VulnerabilityRepository.empty());
+		DependencyUpgradeCandidate upgrade = candidate("com.example:demo:1.0.0", it -> it.releases("1.1.0"));
 
-		assertThat(upgrade.selectTarget(ArtifactVersion.of("1.1.0"))).isEqualTo(Release.of("1.1.0"));
-		assertThatThrownBy(() -> upgrade.selectTarget(ArtifactVersion.of("2.0.0")))
-				.isInstanceOf(IllegalArgumentException.class)
-				.hasMessageContaining("2.0.0");
-	}
-
-	private static DependencyUpgradeCandidate upgrade(Dependency dependency, Releases releases,
-			VulnerabilityRepository vulnerabilities) {
-		return DependencyUpgradeCandidate.create(dependency, releases, vulnerabilities, DependencyRule.absent(),
-				TestInterfaceAssistant.INSTANCE, DeclaredVersions.empty(), ProjectMetadata.absent());
+		assertThat(upgrade.selectTarget(ArtifactVersion.of("1.1.0"))).hasVersion("1.1.0");
+		assertThatIllegalArgumentException().isThrownBy(() -> upgrade.selectTarget(ArtifactVersion.of("2.0.0")))
+				.withMessageContaining("2.0.0");
 	}
 
 }

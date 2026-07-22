@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.state.CachedArtifact;
 
 /**
@@ -145,6 +146,18 @@ public class Releases {
 	 */
 	public static List<CachedArtifact> all() {
 		return List.copyOf(ALL);
+	}
+
+	/**
+	 * Return an isolated Maven cache entry copied from the given release fixture.
+	 *
+	 * @param artifact the shared release fixture to copy.
+	 * @return a mutable snapshot with the Maven package system assigned.
+	 */
+	public static CachedArtifact maven(CachedArtifact artifact) {
+		CachedArtifact copy = artifact.snapshot();
+		copy.setPackageSystem(PackageSystem.MAVEN);
+		return copy;
 	}
 
 	private static CachedArtifact create(String groupId, String artifactId, Consumer<ReleaseBuilder> configurer) {

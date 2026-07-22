@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
@@ -41,7 +40,7 @@ import com.intellij.util.SameThreadExecutorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Integration tests for the multi-context
@@ -96,7 +95,7 @@ class DependencyCheckScopeTests {
 
 		assertThat(result).singleElement().satisfies(merged -> {
 			assertThat(merged.getArtifactId()).isEqualTo(ArtifactId.of("io.lettuce", "lettuce-core"));
-			assertThat(merged.getCurrentVersion()).isEqualTo(ArtifactVersion.of("7.4.1.RELEASE"));
+			assertThat(merged.getCurrentVersion()).isEqualTo("7.4.1.RELEASE");
 			assertThat(merged.getDeclaredVersions().hasVersionDrift()).isFalse();
 			assertThat(merged.hasUpgradeTargets()).isTrue();
 		});

@@ -18,17 +18,13 @@ package biz.paluch.dap.assistant;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.Release;
-import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.rule.Generations;
-import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -57,7 +53,7 @@ class VersionStatusUnitTests {
 	@Test
 	void olderCandidateExposesAgeInformation() {
 
-		VersionStatus status = status(ArtifactVersion.of("5.3.0"), Vulnerabilities.absent());
+		VersionStatus status = status("5.3.0", Vulnerabilities.absent());
 
 		assertThat(status.isOlder()).isTrue();
 		assertThat(status.getVersionAge()).isEqualTo(VersionAge.OLDER);
@@ -110,51 +106,17 @@ class VersionStatusUnitTests {
 		assertThat(status.getVulnerabilityTailLabel()).isEqualTo("GHSA-xyz");
 	}
 
+	private static VersionStatus status(String candidate, Vulnerabilities vulnerabilities) {
+		return status(ArtifactVersion.of(candidate), vulnerabilities);
+	}
+
 	private static VersionStatus status(ArtifactVersion candidate, Vulnerabilities vulnerabilities) {
 		return VersionStatus.of(DependencyRuleEvaluator.absent(), CURRENT, candidate, vulnerabilities);
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {
-		DependencyRule rule = new DependencyRule() {
-
-			@Override
-			public boolean test(ArtifactVersion version) {
-				return false;
-			}
-
-			@Override
-			public boolean isPresent() {
-				return true;
-			}
-
-			@Override
-			public boolean isSemanticUpgradingEnabled() {
-				return false;
-			}
-
-			@Override
-			public Generations getGenerations() {
-				return Generations.unconstrained();
-			}
-
-			@Override
-			public String getDependencyName() {
-				return "";
-			}
-
-			@Override
-			public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
-				return true;
-			}
-
-			@Override
-			public Release suggestRemediation(Releases releases) {
-				return null;
-			}
-
-		};
-		return DependencyRuleEvaluator.create(rule, ArtifactId.of("com.example", "demo"), CURRENT,
-				ProjectMetadata.absent());
+		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(), ArtifactId.of("com.example", "demo"),
+				CURRENT, ProjectMetadata.absent());
 	}
 
 }

@@ -28,6 +28,7 @@ import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Releases;
+import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
@@ -35,14 +36,10 @@ import biz.paluch.dap.metadata.GitLabPlatform;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.RepositoryConnection;
 import biz.paluch.dap.metadata.RepositoryUrl;
-import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.rule.Generations;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
-import biz.paluch.dap.support.UpgradeStrategy;
-import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -84,11 +81,9 @@ class DependencyDocumentationRendererTests {
 
 		String html = renderer(null).render(property, false);
 
-		assertThat(StringUtils.countMatches(html, "Version property for:")).isEqualTo(2);
-		assertThat(StringUtils.countMatches(html, "<table>")).isEqualTo(2);
-		assertThat(html)
-				.contains("<code>io.lettuce:lettuce-core</code>")
-				.contains("<code>org.junit:junit-bom</code>");
+		assertThat(html).containsSubsequence(
+				"Version property for:", "<code>io.lettuce:lettuce-core</code>", "<table>",
+				"Version property for:", "<code>org.junit:junit-bom</code>", "<table>");
 	}
 
 	@Test
@@ -472,46 +467,7 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {
-
-		DependencyRule rule = new DependencyRule() {
-
-			@Override
-			public boolean test(ArtifactVersion version) {
-				return false;
-			}
-
-			@Override
-			public boolean isPresent() {
-				return true;
-			}
-
-			@Override
-			public boolean isSemanticUpgradingEnabled() {
-				return false;
-			}
-
-			@Override
-			public Generations getGenerations() {
-				return Generations.unconstrained();
-			}
-
-			@Override
-			public String getDependencyName() {
-				return "";
-			}
-
-			@Override
-			public boolean isEnabled(UpgradeStrategy upgradeStrategy) {
-				return true;
-			}
-
-			@Override
-			public @Nullable Release suggestRemediation(biz.paluch.dap.artifact.Releases releases) {
-				return null;
-			}
-
-		};
-		return DependencyRuleEvaluator.create(rule, Releases.LETTUCE_CORE.toArtifactId(),
+		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(), Releases.LETTUCE_CORE.toArtifactId(),
 				ArtifactVersion.of("7.4.1.RELEASE"), ProjectMetadata.absent());
 	}
 

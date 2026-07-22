@@ -19,13 +19,13 @@ package biz.paluch.dap.state;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -292,7 +292,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 */
 	public List<CachedBom> getBomMemberships() {
 		synchronized (boms) {
-			return List.copyOf(boms);
+			return boms.stream().sorted(Comparator.comparing(CachedBom::getVersion)).toList();
 		}
 	}
 
@@ -367,17 +367,19 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 */
 	private @Nullable CachedBom getNearestBomMembership(ArtifactVersion version) {
 
-		synchronized (boms) {
-
-			CachedBom nearest = null;
-			for (CachedBom membership : boms) {
-				ArtifactVersion membershipVersion = membership.getVersion();
-				if (nearest == null || !membershipVersion.isNewer(version)) {
-					nearest = membership;
-				}
-			}
-			return nearest;
+		List<CachedBom> memberships = getBomMemberships();
+		if (memberships.isEmpty()) {
+			return null;
 		}
+
+		CachedBom nearest = memberships.getFirst();
+		for (CachedBom membership : memberships) {
+			if (membership.getVersion().isNewer(version)) {
+				break;
+			}
+			nearest = membership;
+		}
+		return nearest;
 	}
 
 	/**
@@ -423,10 +425,9 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	}
 
 	public @Nullable CachedRelease getCachedRelease(ArtifactVersion version) {
-		String versionString = version.toString();
 		synchronized (releases) {
 			for (CachedRelease release : releases) {
-				if (versionString.equals(Objects.toString(release.version(), null))) {
+				if (version.compareTo(release.version()) == 0) {
 					return release;
 				}
 			}
@@ -546,13 +547,13 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	private void updateReleases(FetchedReleases fetched, BiConsumer<Release, CachedRelease> onNewConsumer) {
 
 		synchronized (releases) {
-			Set<String> known = new HashSet<>();
+			Set<ArtifactVersion> known = new TreeSet<>();
 			for (CachedRelease existing : releases) {
-				known.add(Objects.toString(existing.version(), null));
+				known.add(existing.version());
 			}
 
 			fetched.forEach((release, cached) -> {
-				if (known.add(Objects.toString(cached.version(), null))) {
+				if (known.add(cached.version())) {
 					releases.add(cached);
 					onNewConsumer.accept(release, cached);
 				}

@@ -59,6 +59,7 @@ import org.springframework.util.Assert;
  * @param declarationEntries the sortable declaration-style entries used for
  * drift display.
  */
+// TODO: Cleanup
 public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries,
 		Set<DeclarationDrift> declarationEntries) {
 

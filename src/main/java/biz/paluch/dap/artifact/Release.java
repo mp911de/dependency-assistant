@@ -33,7 +33,7 @@ import org.springframework.util.ObjectUtils;
  * @author Mark Paluch
  */
 public record Release(ArtifactVersion version,
-		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, VersionAware, Versioned {
+		@Nullable LocalDateTime releaseDate) implements Comparable<Release>, Versioned {
 
 	/**
 	 * Create a {@code Release} from a version string.

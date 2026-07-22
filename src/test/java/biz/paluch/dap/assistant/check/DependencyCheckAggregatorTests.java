@@ -17,28 +17,25 @@
 package biz.paluch.dap.assistant.check;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.fixtures.Coordinates;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestProjectDependencyContext;
 import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestReleaseSource;
 import biz.paluch.dap.metadata.ProjectMetadataService;
-import biz.paluch.dap.rule.DependencyRule;
-import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import com.intellij.mock.MockVirtualFile;
@@ -46,6 +43,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
+import static biz.paluch.dap.fixtures.Releases.*;
 
 /**
  * Unit tests for {@link DependencyCheckAggregator}.
@@ -54,27 +52,22 @@ import static biz.paluch.dap.assertions.Assertions.*;
  */
 class DependencyCheckAggregatorTests {
 
-	ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
+	private static final Coordinates LETTUCE_CURRENT = Coordinates.of(LETTUCE_CORE, "7.4.1.RELEASE");
 
-	ArtifactId SPRING_CORE = ArtifactId.of("org.springframework", "spring-core");
+	private static final Coordinates LETTUCE_UPDATE = Coordinates.of(LETTUCE_CORE, "7.5.0.RELEASE");
 
-	ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
+	private static final Coordinates VAVR_CURRENT = Coordinates.of(VAVR, "0.11.0");
 
-	ProjectId ACME_APP = ProjectId.of("com.acme", "app");
+	private static final ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
 
-	ProjectId ACME_LIB = ProjectId.of("com.acme", "lib");
+	private static final ProjectId ACME_APP = ProjectId.of("com.acme", "app");
 
-	ArtifactVersion LETTUCE_CURRENT = ArtifactVersion.of("7.4.1.RELEASE");
+	private static final ProjectId ACME_LIB = ProjectId.of("com.acme", "lib");
 
-	ArtifactVersion LETTUCE_UPDATE = ArtifactVersion.of("7.5.0.RELEASE");
+	private static final String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
 
-	ArtifactVersion SPRING_CURRENT = ArtifactVersion.of("6.2.0");
-
-	ArtifactVersion SPRING_UPDATE = ArtifactVersion.of("6.2.1");
-
-	String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
-
-	DependencyCheckAggregator aggregator = new DependencyCheckAggregator(TestProjects.PROJECT, new StateService(),
+	private final DependencyCheckAggregator aggregator = new DependencyCheckAggregator(TestProjects.PROJECT,
+			new StateService(),
 			new ProjectMetadataService(null, new Cache()));
 
 	@Test
@@ -85,15 +78,15 @@ class DependencyCheckAggregatorTests {
 		ReleaseSource mavenCentral = new TestReleaseSource("mavenCentral");
 		ReleaseSource pluginPortal = new TestReleaseSource("pluginPortal");
 
-		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), context(ACME_APP), a, List.of(mavenCentral));
-		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_UPDATE), context(ACME_LIB), b, List.of(pluginPortal));
+		aggregator.add(dependency(LETTUCE_CURRENT), context(ACME_APP), a, List.of(mavenCentral));
+		aggregator.add(dependency(LETTUCE_UPDATE), context(ACME_LIB), b, List.of(pluginPortal));
 
 		List<ArtifactId> artifacts = new ArrayList<>();
 		aggregator.forEach(pkg -> artifacts.add(pkg.getArtifactId()));
 		List<Collection<ReleaseSource>> releaseSources = new ArrayList<>();
 		aggregator.forEachArtifact((artifactId, sources) -> releaseSources.add(sources));
 
-		assertThat(artifacts).containsExactly(LETTUCE_CORE);
+		assertThat(artifacts).containsExactly(LETTUCE_CURRENT.getArtifactId());
 		assertThat(releaseSources).singleElement().satisfies(sources -> assertThat(sources)
 				.containsExactlyInAnyOrder(mavenCentral, pluginPortal));
 		assertThat(aggregator.getFiles()).containsExactly(a, b);
@@ -105,17 +98,19 @@ class DependencyCheckAggregatorTests {
 		VirtualFile a = buildFile("result-a/build.gradle");
 		VirtualFile b = buildFile("result-b/build.gradle");
 
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_APP), a, List.of());
-		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), context(ACME_LIB), b, List.of());
+		aggregator.add(dependency(VAVR_CURRENT), context(ACME_APP), a, List.of());
+		aggregator.add(dependency(LETTUCE_CURRENT), context(ACME_LIB), b, List.of());
 
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(SPRING_CORE, resolved(SPRING_UPDATE), LETTUCE_CORE,
-				resolved(LETTUCE_UPDATE), BROKEN_ARTIFACT, ReleaseLookupResult.failed(BROKEN_ARTIFACT_ERROR));
+		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(VAVR_CURRENT.getArtifactId(), resolved(VAVR),
+				LETTUCE_CURRENT.getArtifactId(), resolved(LETTUCE_CORE), BROKEN_ARTIFACT,
+				ReleaseLookupResult.failed(BROKEN_ARTIFACT_ERROR));
 		DependencyCheckResult result = aggregator.toDependencyCheckResult(releases);
 
 		assertThat(result).extracting(upgrade -> upgrade.getArtifactId().artifactId())
-				.containsExactly(LETTUCE_CORE.artifactId(), SPRING_CORE.artifactId());
+				.containsExactly(LETTUCE_CURRENT.getArtifactId().artifactId(),
+						VAVR_CURRENT.getArtifactId().artifactId());
 		assertThat(result).extracting(DependencyUpgradeCandidate::getCurrentVersion)
-				.containsExactly(LETTUCE_CURRENT, SPRING_CURRENT);
+				.containsExactly(LETTUCE_CURRENT.getVersion(), VAVR_CURRENT.getVersion());
 		assertThat(result.errors()).containsExactly(BROKEN_ARTIFACT_ERROR);
 		assertThat(result.scope().toList()).containsExactly(a, b);
 	}
@@ -126,12 +121,12 @@ class DependencyCheckAggregatorTests {
 		VirtualFile a = buildFile("declaration-a/build.gradle");
 		VirtualFile b = buildFile("declaration-b/build.gradle");
 
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT, VersionSource.property("spring.version")),
+		aggregator.add(dependency(VAVR_CURRENT, VersionSource.property("vavr.version")),
 				context(ACME_APP), a, List.of());
-		aggregator.add(dependency(SPRING_CORE, SPRING_CURRENT), context(ACME_LIB), b, List.of());
+		aggregator.add(dependency(VAVR_CURRENT), context(ACME_LIB), b, List.of());
 
-		DependencyCheckResult result = aggregator.toDependencyCheckResult(Map.of(SPRING_CORE,
-				resolved(SPRING_UPDATE)));
+		DependencyCheckResult result = aggregator
+				.toDependencyCheckResult(Map.of(VAVR_CURRENT.getArtifactId(), resolved(VAVR)));
 
 		assertThat(result).singleElement().satisfies(upgrade -> {
 			DeclaredVersions declaredVersions = upgrade.getDeclaredVersions();
@@ -155,11 +150,11 @@ class DependencyCheckAggregatorTests {
 
 		};
 
-		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), maven, buildFile("pom.xml"), List.of());
-		aggregator.add(dependency(LETTUCE_CORE, LETTUCE_CURRENT), npm, buildFile("package.json"), List.of());
+		aggregator.add(dependency(LETTUCE_CURRENT), maven, buildFile("pom.xml"), List.of());
+		aggregator.add(dependency(LETTUCE_CURRENT), npm, buildFile("package.json"), List.of());
 
 		DependencyCheckResult result = aggregator.toDependencyCheckResult(
-				Map.of(LETTUCE_CORE, resolved(LETTUCE_UPDATE)));
+				Map.of(LETTUCE_CURRENT.getArtifactId(), resolved(LETTUCE_CORE)));
 
 		assertThat(result.upgrades()).hasSize(2);
 		assertThat(result.upgrades()).extracting(DependencyUpgradeCandidate::getAssistant)
@@ -171,25 +166,25 @@ class DependencyCheckAggregatorTests {
 
 		VirtualFile file = buildFile("sources/build.gradle");
 
-		Dependency first = dependency(LETTUCE_CORE, LETTUCE_CURRENT);
-		Dependency second = dependency(LETTUCE_CORE, LETTUCE_UPDATE);
+		Dependency first = dependency(LETTUCE_CURRENT);
+		Dependency second = dependency(LETTUCE_UPDATE);
 
 		aggregator.add(first, context(ACME_APP), file, List.of());
 		aggregator.add(second, context(ACME_LIB), file, List.of());
 
 		DependencyCheckAggregator.Entry entry = new DependencyCheckAggregator.Entry(List.of(), List.of(),
 				List.of(new DeclarationSite(file, ACME_APP, first), new DeclarationSite(file, ACME_LIB, second)));
-		DeclaredDependency dependency = aggregator.mergeDeclarations(LETTUCE_CORE, entry);
+		DeclaredDependency dependency = aggregator.mergeDeclarations(LETTUCE_CURRENT.getArtifactId(), entry);
 
 		assertThat(dependency.getVersionSources()).hasSize(2);
 	}
 
-	private static Dependency dependency(ArtifactId artifactId, ArtifactVersion version) {
-		return dependency(artifactId, version, VersionSource.declared(version.toString()));
+	private static Dependency dependency(Coordinates coordinates) {
+		return dependency(coordinates, VersionSource.declared(coordinates.getVersion().toString()));
 	}
 
-	private static Dependency dependency(ArtifactId artifactId, ArtifactVersion version, VersionSource versionSource) {
-		Dependency dependency = new Dependency(artifactId, version);
+	private static Dependency dependency(Coordinates coordinates, VersionSource versionSource) {
+		Dependency dependency = new Dependency(coordinates.getArtifactId(), coordinates.getVersion());
 		dependency.addVersionSource(versionSource);
 		return dependency;
 	}
@@ -202,12 +197,8 @@ class DependencyCheckAggregatorTests {
 		return new MockVirtualFile(path, "// test");
 	}
 
-	private static ReleaseLookupResult resolved(ArtifactVersion... versions) {
-		return ReleaseLookupResult.of(Releases.of(Arrays.stream(versions).map(Release::of).toList()));
-	}
-
-	private static DependencyRuleService rules(Map<ArtifactId, DependencyRule> rules) {
-		return context -> rules.getOrDefault(context.getArtifactId(), DependencyRule.absent());
+	private static ReleaseLookupResult resolved(CachedArtifact artifact) {
+		return ReleaseLookupResult.of(Releases.of(artifact.getVersionOptions()));
 	}
 
 	static class OtherEcosystemAssistant extends TestInterfaceAssistant {

@@ -97,25 +97,10 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	}
 
 	/**
-	 * Create an ungoverned upgrade for the given dependency.
+	 * Create an upgrade governed by the given rule.
 	 *
-	 * @param dependency the collected dependency to upgrade.
-	 * @param releases the known releases for the dependency.
-	 * @param vulnerabilities the vulnerability results for known versions.
-	 * @param assistant the assistant that can apply the upgrade.
-	 * @param declaredVersions the versions the dependency is declared at.
-	 * @return an upgrade governed by the absent dependency rule.
-	 */
-	public static DependencyUpgradeCandidate create(Dependency dependency, Releases releases,
-			VulnerabilityRepository vulnerabilities, InterfaceAssistant assistant,
-			DeclaredVersions declaredVersions, ProjectMetadata metadata) {
-		return create(dependency, releases, vulnerabilities, DependencyRule.absent(), assistant, declaredVersions,
-				metadata);
-	}
-
-	/**
-	 * Create an upgrade governed by the given rule, carrying the captured project
-	 * name.
+	 * <p>The release universe always retains the dependency's current version;
+	 * suggestions and display views are computed eagerly from the supplied facts.
 	 *
 	 * @param dependency the collected dependency to upgrade.
 	 * @param releases the known releases for the dependency.
@@ -123,8 +108,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	 * @param rule the governing dependency rule.
 	 * @param assistant the assistant that can apply the upgrade.
 	 * @param declaredVersions the versions the dependency is declared at.
-	 * @param projectMetadata the project name captured from the artifact's own
-	 * metadata.
+	 * @param projectMetadata the project metadata captured from the artifact's own
+	 * sources, or {@link ProjectMetadata#absent()} when none was captured.
 	 * @return an upgrade with suggestions and display views computed from the
 	 * supplied facts.
 	 */

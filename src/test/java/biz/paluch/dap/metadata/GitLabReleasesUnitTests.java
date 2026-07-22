@@ -17,17 +17,14 @@
 package biz.paluch.dap.metadata;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import biz.paluch.dap.artifact.GitRepositoryMetadata;
-import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.RemoteUrl;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
-import static org.assertj.core.api.InstanceOfAssertFactories.*;
+import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
  * Unit tests for {@link GitLabReleases}.
@@ -43,16 +40,16 @@ class GitLabReleasesUnitTests {
 
 		String body = """
 				[
-				  { "name": "v17.1.0", "commit": { "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
-				  { "name": "v17.0.0", "commit": { "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } },
+				  { "name": "v17.1.0", "commit": { "id": "aaaaaaa" } },
+				  { "name": "v17.0.0", "commit": { "id": "bbbbbbb" } },
 				  { "name": "no-commit" },
-				  { "commit": { "id": "cccccccccccccccccccccccccccccccccccccccc" } }
+				  { "commit": { "id": "ccccccc" } }
 				]
 				""";
 
 		assertThat(source.parseTagShas(body)).containsExactly(
-				entry("v17.1.0", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-				entry("v17.0.0", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"));
+				entry("v17.1.0", "aaaaaaa"),
+				entry("v17.0.0", "bbbbbbb"));
 	}
 
 	@Test
@@ -66,8 +63,8 @@ class GitLabReleasesUnitTests {
 				""";
 		String tags = """
 				[
-				  { "name": "v17.1.0", "commit": { "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
-				  { "name": "v17.0.0", "commit": { "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }
+				  { "name": "v17.1.0", "commit": { "id": "aaaaaaa" } },
+				  { "name": "v17.0.0", "commit": { "id": "bbbbbbb" } }
 				]
 				""";
 
@@ -75,9 +72,7 @@ class GitLabReleasesUnitTests {
 
 		assertThat(result).extracting(release -> release.version().toString())
 				.containsExactly("v17.1.0", "v17.0.0");
-		assertThat(result.getFirst().releaseDate()).isEqualTo(LocalDateTime.of(2024, 6, 20, 9, 15));
-		assertThat(result.getFirst().version()).asInstanceOf(type(GitVersion.class))
-				.extracting(GitVersion::getSha).isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+		assertThat(result.getFirst()).hasReleaseDate("2024-06-20T09:15").hasSha("aaaaaaa");
 	}
 
 	@Test
@@ -90,8 +85,8 @@ class GitLabReleasesUnitTests {
 				""";
 		String tags = """
 				[
-				  { "name": "v17.1.0", "commit": { "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } },
-				  { "name": "v17.0.0", "commit": { "id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }
+				  { "name": "v17.1.0", "commit": { "id": "aaaaaaa" } },
+				  { "name": "v17.0.0", "commit": { "id": "bbbbbbb" } }
 				]
 				""";
 
@@ -99,9 +94,7 @@ class GitLabReleasesUnitTests {
 
 		assertThat(result).extracting(release -> release.version().toString())
 				.containsExactly("v17.1.0", "v17.0.0");
-		assertThat(result.getLast().releaseDate()).isNull();
-		assertThat(result.getLast().version()).asInstanceOf(type(GitVersion.class))
-				.extracting(GitVersion::getSha).isEqualTo("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+		assertThat(result.getLast()).hasNoReleaseDate().hasSha("bbbbbbb");
 	}
 
 	@Test
@@ -110,15 +103,14 @@ class GitLabReleasesUnitTests {
 		String releases = """
 				[
 				  { "tag_name": "v1.0.0", "released_at": "2020-01-03T01:56:19.539Z",
-				    "commit": { "id": "dddddddddddddddddddddddddddddddddddddddd" } }
+				    "commit": { "id": "ddddddd" } }
 				]
 				""";
 
 		List<Release> result = source.mergeReleases(releases, "[]");
 
 		assertThat(result).hasSize(1);
-		assertThat(result.getFirst().version()).asInstanceOf(type(GitVersion.class))
-				.extracting(GitVersion::getSha).isEqualTo("dddddddddddddddddddddddddddddddddddddddd");
+		assertThat(result.getFirst()).hasSha("ddddddd");
 	}
 
 	@Test
@@ -133,7 +125,7 @@ class GitLabReleasesUnitTests {
 				""";
 		String tags = """
 				[
-				  { "name": "v18.0.0", "commit": { "id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" } }
+				  { "name": "v18.0.0", "commit": { "id": "eeeeeee" } }
 				]
 				""";
 

@@ -19,7 +19,6 @@ package biz.paluch.dap.assistant.action;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
@@ -80,7 +79,7 @@ class StateRefresherTests {
 				.findDependency(ArtifactId.of("hello.world", "drift-bom"));
 
 		assertThat(dependency).isNotNull();
-		assertThat(dependency.getCurrentVersion()).isEqualTo(ArtifactVersion.of("6.0.3"));
+		assertThat(dependency.getCurrentVersion()).isEqualTo("6.0.3");
 	}
 
 	private void replaceText(PsiFile file, String oldText, String newText) {

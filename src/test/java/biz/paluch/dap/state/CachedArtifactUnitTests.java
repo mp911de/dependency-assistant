@@ -19,15 +19,15 @@ package biz.paluch.dap.state;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.fixtures.Coordinates;
+import biz.paluch.dap.fixtures.TestFetchedReleases;
+import biz.paluch.dap.fixtures.TestVulnerabilities;
 import com.intellij.util.xmlb.XmlSerializer;
 import org.jdom.Element;
 import org.junit.jupiter.api.Test;
@@ -45,22 +45,26 @@ class CachedArtifactUnitTests {
 
 	private static final ArtifactId NETTY_BOM = ArtifactId.of("io.netty", "netty-bom");
 
-	private static final ArtifactId CODEC_HTTP = ArtifactId.of("io.netty", "netty-codec-http");
+	private static final Coordinates OLD_MEMBER = Coordinates.of("io.netty:netty-old:1.0.0");
+
+	private static final Coordinates NEW_MEMBER = Coordinates.of("io.netty:netty-new:2.0.0");
 
 	@Test
 	void predictsReleaseTrainMembersForUnknownBomVersion() {
 
+		Coordinates codecHttp = Coordinates.of("io.netty:netty-codec-http:4.1.100");
+		Coordinates incubatorQuic = Coordinates.of("io.netty.incubator:netty-incubator-codec-quic:4.1.100");
 		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
-		bom.setBillOfMaterials(BillOfMaterials.of(NETTY_BOM, ArtifactVersion.of("4.1.100"), Map.of(
-				CODEC_HTTP, ArtifactVersion.of("4.1.100"),
-				ArtifactId.of("io.netty.incubator", "netty-incubator-codec-quic"), ArtifactVersion.of("4.1.100"),
-				ArtifactId.of("io.netty", "netty-tcnative"), ArtifactVersion.of("2.0.61"),
-				ArtifactId.of("org.example", "coincidence"), ArtifactVersion.of("4.1.100"))));
+		bom.setBillOfMaterials(Coordinates.bom("io.netty:netty-bom:4.1.100", it -> {
+			it.member("io.netty:netty-codec-http:4.1.100");
+			it.member("io.netty.incubator:netty-incubator-codec-quic:4.1.100");
+			it.member("io.netty:netty-tcnative:2.0.61");
+			it.member("org.example:coincidence:4.1.100");
+		}));
 
 		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108"))).containsOnly(
-				entry(CODEC_HTTP, ArtifactVersion.of("4.1.108")),
-				entry(ArtifactId.of("io.netty.incubator", "netty-incubator-codec-quic"),
-						ArtifactVersion.of("4.1.108")));
+				entry(codecHttp.getArtifactId(), ArtifactVersion.of("4.1.108")),
+				entry(incubatorQuic.getArtifactId(), ArtifactVersion.of("4.1.108")));
 	}
 
 	@Test
@@ -72,23 +76,34 @@ class CachedArtifactUnitTests {
 	}
 
 	@Test
-	void predictBomUsesNearestCachedMembership() {
-
-		ArtifactId oldMember = ArtifactId.of("io.netty", "netty-old");
-		ArtifactId newMember = ArtifactId.of("io.netty", "netty-new");
+	void predictBomUsesNearestCachedMembershipRegardlessOfInsertionOrder() {
 
 		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
-		bom.setBillOfMaterials(BillOfMaterials.of(NETTY_BOM, ArtifactVersion.of("1.0.0"),
-				Map.of(oldMember, ArtifactVersion.of("1.0.0"))));
-		bom.setBillOfMaterials(BillOfMaterials.of(NETTY_BOM, ArtifactVersion.of("2.0.0"),
-				Map.of(newMember, ArtifactVersion.of("2.0.0"))));
+		bom.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:2.0.0", it -> it.member("io.netty:netty-new:2.0.0")));
+		bom.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:1.0.0", it -> it.member("io.netty:netty-old:1.0.0")));
 
 		assertThat(bom.predictBom(ArtifactVersion.of("1.5.0")))
-				.containsOnly(entry(oldMember, ArtifactVersion.of("1.5.0")));
+				.containsOnly(entry(OLD_MEMBER.getArtifactId(), ArtifactVersion.of("1.5.0")));
 		assertThat(bom.predictBom(ArtifactVersion.of("3.0.0")))
-				.containsOnly(entry(newMember, ArtifactVersion.of("3.0.0")));
+				.containsOnly(entry(NEW_MEMBER.getArtifactId(), ArtifactVersion.of("3.0.0")));
 		assertThat(bom.predictBom(ArtifactVersion.of("0.5.0")))
-				.containsOnly(entry(oldMember, ArtifactVersion.of("0.5.0")));
+				.containsOnly(entry(OLD_MEMBER.getArtifactId(), ArtifactVersion.of("0.5.0")));
+	}
+
+	@Test
+	void returnsBomMembershipsInVersionOrder() {
+
+		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
+		bom.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:2.0.0", it -> it.member("io.netty:netty-new:2.0.0")));
+		bom.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:1.0.0", it -> it.member("io.netty:netty-old:1.0.0")));
+
+		assertThat(bom.getBomMemberships()).extracting(CachedBom::getVersion)
+				.extracting(Objects::toString)
+				.containsExactly("1.0.0", "2.0.0");
 	}
 
 	@Test
@@ -97,9 +112,7 @@ class CachedArtifactUnitTests {
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 		artifact.addRelease(new CachedRelease("0.9.0", null));
 
-		updateReleases(artifact,
-				List.of(CachedRelease.from(Release.of("1.0.0")), CachedRelease.from(Release.of("1.1.0"))),
-				2_000L, Set.of(), FetchPlan.fullFetch());
+		updateReleases(artifact, 2_000L, Set.of(), FetchPlan.fullFetch(), "1.0.0", "1.1.0");
 
 		assertThat(artifact.getReleases()).extracting(CachedRelease::version)
 				.extracting(Objects::toString)
@@ -113,22 +126,39 @@ class CachedArtifactUnitTests {
 		artifact.addRelease(new CachedRelease("1.0.0", null));
 
 		List<String> added = new ArrayList<>();
-		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID,
-				List.of(CachedRelease.from(Release.of("1.0.0")), CachedRelease.from(Release.of("1.1.0"))),
-				FetchPlan.fullFetch(), null, Set.of()), 2_000L,
-				(release, cached) -> added.add(release.version().toString()));
+		artifact.updateReleases(TestFetchedReleases.of(ARTIFACT_ID, FetchPlan.fullFetch(), Set.of(), "1.0.0", "1.1.0"),
+				2_000L, (release, cached) -> added.add(release.version().toString()));
 
 		assertThat(added).containsExactly("1.1.0");
 	}
 
 	@Test
-	void roundTripsEmptyReleaseSources() {
+	void updateCachedReleasesPreservesVulnerabilityScan() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
+		CachedRelease existing = new CachedRelease("1.0.0", null);
+		existing.setVulnerabilities(1_000L, List.of(TestVulnerabilities.HIGH_VULNERABILITY));
+		artifact.addRelease(existing);
 
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central", "portal"), FetchPlan.fullFetch());
+		updateReleases(artifact, 2_000L, Set.of(), FetchPlan.fullFetch(), "1.0.0");
 
-		assertThat(artifact.getEmptyReleaseSources()).containsExactlyInAnyOrder("central", "portal");
+		CachedRelease refreshed = artifact.getCachedRelease(ArtifactVersion.of("1.0.0"));
+		assertThat(refreshed.getLastScanned()).isEqualTo(1_000L);
+		assertThat(refreshed.toVulnerabilities()).containsExactly(TestVulnerabilities.HIGH_VULNERABILITY);
+	}
+
+	@Test
+	void roundTripsReleaseBackOffStateThroughXmlSerialization() {
+
+		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
+		updateReleases(artifact, 1_000L, Set.of("central", "portal"), FetchPlan.fullFetch());
+
+		Element element = XmlSerializer.serialize(artifact);
+		CachedArtifact deserialized = XmlSerializer.deserialize(element, CachedArtifact.class);
+
+		assertThat(deserialized.getEmptyReleaseSources()).containsExactlyInAnyOrder("central", "portal");
+		assertThat(deserialized.getEmptyLookups()).isEqualTo(1);
+		assertThat(deserialized.getSourcesCheckedSince()).isEqualTo(1_000L);
 	}
 
 	@Test
@@ -136,7 +166,7 @@ class CachedArtifactUnitTests {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 
-		updateReleases(artifact, List.of(), 1_000L, Set.of(), FetchPlan.fullFetch());
+		updateReleases(artifact, 1_000L, Set.of(), FetchPlan.fullFetch());
 
 		assertThat(artifact.getEmptyReleaseSources()).isEmpty();
 	}
@@ -146,8 +176,8 @@ class CachedArtifactUnitTests {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central"), FetchPlan.fullFetch());
-		updateReleases(artifact, List.of(), 2_000L, Set.of("portal"), FetchPlan.partial());
+		updateReleases(artifact, 1_000L, Set.of("central"), FetchPlan.fullFetch());
+		updateReleases(artifact, 2_000L, Set.of("portal"), FetchPlan.partial());
 
 		assertThat(artifact.getEmptyReleaseSources()).containsExactlyInAnyOrder("central", "portal");
 	}
@@ -156,10 +186,9 @@ class CachedArtifactUnitTests {
 	void dropsSourcesThatProduceReleases() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central", "portal"), FetchPlan.fullFetch());
+		updateReleases(artifact, 1_000L, Set.of("central", "portal"), FetchPlan.fullFetch());
 
-		updateReleases(artifact, List.of(CachedRelease.from(Release.of("1.0.0"))), 2_000L, Set.of("portal"),
-				FetchPlan.fullFetch());
+		updateReleases(artifact, 2_000L, Set.of("portal"), FetchPlan.fullFetch(), "1.0.0");
 
 		assertThat(artifact.getEmptyReleaseSources()).containsExactly("portal");
 	}
@@ -168,7 +197,7 @@ class CachedArtifactUnitTests {
 	void carriesEmptyReleaseSourcesIntoSnapshot() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central"), FetchPlan.fullFetch());
+		updateReleases(artifact, 1_000L, Set.of("central"), FetchPlan.fullFetch());
 
 		assertThat(artifact.snapshot().getEmptyReleaseSources()).containsExactly("central");
 	}
@@ -178,8 +207,8 @@ class CachedArtifactUnitTests {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central"), FetchPlan.fullFetch());
-		updateReleases(artifact, List.of(), 2_000L, Set.of("central"), FetchPlan.fullFetch());
+		updateReleases(artifact, 1_000L, Set.of("central"), FetchPlan.fullFetch());
+		updateReleases(artifact, 2_000L, Set.of("central"), FetchPlan.fullFetch());
 
 		assertThat(artifact.getEmptyLookups()).isEqualTo(2);
 	}
@@ -188,10 +217,9 @@ class CachedArtifactUnitTests {
 	void resetsEmptyLookupsWhenReleasesReturn() {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central"), FetchPlan.fullFetch());
+		updateReleases(artifact, 1_000L, Set.of("central"), FetchPlan.fullFetch());
 
-		updateReleases(artifact, List.of(CachedRelease.from(Release.of("1.0.0"))), 2_000L, Set.of(),
-				FetchPlan.fullFetch());
+		updateReleases(artifact, 2_000L, Set.of(), FetchPlan.fullFetch(), "1.0.0");
 
 		assertThat(artifact.getEmptyLookups()).isZero();
 	}
@@ -201,13 +229,13 @@ class CachedArtifactUnitTests {
 
 		CachedArtifact artifact = new CachedArtifact(ARTIFACT_ID);
 
-		updateReleases(artifact, List.of(), 1_000L, Set.of("central"), FetchPlan.fullFetch());
+		updateReleases(artifact, 1_000L, Set.of("central"), FetchPlan.fullFetch());
 		assertThat(artifact.getSourcesCheckedSince()).isEqualTo(1_000L);
 
-		updateReleases(artifact, List.of(), 2_000L, Set.of("central"), FetchPlan.skip());
+		updateReleases(artifact, 2_000L, Set.of("central"), FetchPlan.skip());
 		assertThat(artifact.getSourcesCheckedSince()).isEqualTo(1_000L);
 
-		updateReleases(artifact, List.of(), 3_000L, Set.of("central"), FetchPlan.fullFetch());
+		updateReleases(artifact, 3_000L, Set.of("central"), FetchPlan.fullFetch());
 		assertThat(artifact.getSourcesCheckedSince()).isEqualTo(3_000L);
 	}
 
@@ -241,9 +269,9 @@ class CachedArtifactUnitTests {
 		assertThat(artifact.snapshot().getPackageSystem()).isEqualTo(PackageSystem.MAVEN);
 	}
 
-	private static void updateReleases(CachedArtifact artifact, List<CachedRelease> releases, long timestamp,
-			Collection<String> emptySources, FetchPlan plan) {
-		artifact.updateReleases(new FetchedReleases(ARTIFACT_ID, releases, plan, null, emptySources), timestamp);
+	private static void updateReleases(CachedArtifact artifact, long timestamp, Collection<String> emptySources,
+			FetchPlan plan, String... versions) {
+		artifact.updateReleases(TestFetchedReleases.of(ARTIFACT_ID, plan, emptySources, versions), timestamp);
 	}
 
 }
