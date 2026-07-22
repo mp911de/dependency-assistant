@@ -42,6 +42,7 @@ import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.VersionStatus;
+import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.metadata.ProjectMetadata;
@@ -159,7 +160,7 @@ class DependencyDocumentationRenderer {
 			content.append(versionsTable(artifactId, digest, withIcons, formatter));
 		}
 
-		content.append(securityAdvisories(artifactId));
+		content.append(securityAdvisories(artifactId, withIcons));
 
 		return document(HtmlChunk.text(artifactId.toString()), content);
 	}
@@ -215,7 +216,7 @@ class DependencyDocumentationRenderer {
 			content.append(sectionsTable(sections));
 		}
 
-		content.append(securityAdvisories(vulnerabilities, advisoriesNote));
+		content.append(securityAdvisories(vulnerabilities, advisoriesNote, true));
 
 		return document(HtmlChunk.text(artifactId + " " + version), content);
 	}
@@ -415,30 +416,24 @@ class DependencyDocumentationRenderer {
 	 * Render the security-advisories section for the current version of the given
 	 * artifact; cache-only, empty for clean or unscanned dependencies.
 	 */
-	private HtmlChunk securityAdvisories(ArtifactId artifactId) {
+	private HtmlChunk securityAdvisories(ArtifactId artifactId, boolean withIcons) {
 
 		if (currentVersion == null) {
 			return HtmlChunk.empty();
 		}
 
 		Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId, currentVersion);
-		return securityAdvisories(vulnerabilities);
-	}
-
-	/**
-	 * Render the security-advisories section for the given vulnerabilities; empty
-	 * for clean or unscanned versions.
-	 */
-	private static HtmlChunk securityAdvisories(Vulnerabilities vulnerabilities) {
-		return securityAdvisories(vulnerabilities, null);
+		return securityAdvisories(vulnerabilities, null, withIcons);
 	}
 
 	/**
 	 * Render the security-advisories section for the given vulnerabilities, with an
 	 * optional plain-text note behind the section header; empty for clean or
-	 * unscanned versions.
+	 * unscanned versions. With icons, each advisory row leads with its severity
+	 * shield instead of a list dot; the plain variant keeps the {@code ul} list.
 	 */
-	private static HtmlChunk securityAdvisories(Vulnerabilities vulnerabilities, @Nullable String note) {
+	private static HtmlChunk securityAdvisories(Vulnerabilities vulnerabilities, @Nullable String note,
+			boolean withIcons) {
 
 		if (!vulnerabilities.isVulnerable()) {
 			return HtmlChunk.empty();
@@ -446,7 +441,7 @@ class DependencyDocumentationRenderer {
 
 		HtmlBuilder advisories = new HtmlBuilder();
 		for (Vulnerability vulnerability : vulnerabilities) {
-			advisories.append(advisory(vulnerability));
+			advisories.append(withIcons ? advisoryRow(vulnerability) : advisoryText(vulnerability).wrapWith("li"));
 		}
 
 		HtmlChunk.Element headline = HtmlChunk.p()
@@ -457,18 +452,25 @@ class DependencyDocumentationRenderer {
 
 		return new HtmlBuilder()
 				.append(headline)
-				.append(advisories.wrapWith("ul"))
+				.append(advisories.wrapWith(withIcons ? "table" : "ul"))
 				.toFragment();
 	}
 
-	private static HtmlChunk advisory(Vulnerability vulnerability) {
+	private static HtmlChunk advisoryRow(Vulnerability vulnerability) {
 
-		return HtmlChunk.li().children(
-				HtmlChunk.raw(Markdown.of(vulnerability.getTitle()).toHtml()),
-				HtmlChunk.text(" ("),
-				advisoryIdentifier(vulnerability),
-				HtmlChunk.text(", CVSS " + String.format(Locale.ROOT, "%.1f", vulnerability.getCvssScore()) + " "
-						+ vulnerability.getSeverity().getLabel() + ")"));
+		return HtmlChunk.tag("tr").children(
+				HtmlChunk.tag("td").attr("valign", "top")
+						.child(SecurityShieldIcons.OUTLINE.resolve(vulnerability.getSeverity()).asHtml()),
+				HtmlChunk.tag("td").child(advisoryText(vulnerability).toFragment()));
+	}
+
+	private static HtmlBuilder advisoryText(Vulnerability vulnerability) {
+
+		return new HtmlBuilder().append(HtmlChunk.raw(Markdown.of(vulnerability.getTitle()).toHtml()))
+				.append(HtmlChunk.text(" ("))
+				.append(advisoryIdentifier(vulnerability))
+				.append(HtmlChunk.text(", CVSS " + String.format(Locale.ROOT, "%.1f", vulnerability.getCvssScore())
+						+ " " + vulnerability.getSeverity().getLabel() + ")"));
 	}
 
 	/**
@@ -539,7 +541,7 @@ class DependencyDocumentationRenderer {
 				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter));
 			}
 
-			content.append(securityAdvisories(group.artifactIds.getFirst()));
+			content.append(securityAdvisories(group.artifactIds.getFirst(), withIcons));
 		}
 
 		return document(HtmlChunk.text(property.name()), content);

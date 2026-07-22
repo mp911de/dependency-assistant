@@ -77,16 +77,16 @@ public enum SecurityShieldIcons {
 			"biz.paluch.dap.checker.CheckerIcons.UNKNOWN");
 
 	private static final ResolvableIcon HIGH_OUTLINE = new ResolvableIcon(CheckerIcons.HIGH_OUTLINE,
-			"biz.paluch.dap.checker.CheckerIcons.HIGH");
+			"biz.paluch.dap.checker.CheckerIcons.HIGH_OUTLINE");
 
 	private static final ResolvableIcon MEDIUM_OUTLINE = new ResolvableIcon(CheckerIcons.MEDIUM_OUTLINE,
-			"biz.paluch.dap.checker.CheckerIcons.MEDIUM");
+			"biz.paluch.dap.checker.CheckerIcons.MEDIUM_OUTLINE");
 
 	private static final ResolvableIcon LOW_OUTLINE = new ResolvableIcon(CheckerIcons.LOW_OUTLINE,
-			"biz.paluch.dap.checker.CheckerIcons.LOW");
+			"biz.paluch.dap.checker.CheckerIcons.LOW_OUTLINE");
 
 	private static final ResolvableIcon UNKNOWN_OUTLINE = new ResolvableIcon(CheckerIcons.UNKNOWN_OUTLINE,
-			"biz.paluch.dap.checker.CheckerIcons.UNKNOWN");
+			"biz.paluch.dap.checker.CheckerIcons.UNKNOWN_OUTLINE");
 
 	/**
 	 * Return the shield icon for the given severity in this style.
