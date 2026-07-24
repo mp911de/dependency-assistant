@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant.completion;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
@@ -26,7 +27,6 @@ import biz.paluch.dap.artifact.VersioningScheme;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.ReleaseDateFormatter;
@@ -53,7 +53,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 
 	private final VulnerabilityRepository vulnerabilities;
 
-	private final ProjectMetadata projectMetadata;
+	private final DependencyPresentation presentation;
 
 	private int versionLength = 0;
 
@@ -68,12 +68,12 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 	 * and never blocking.
 	 */
 	public ArtifactReleaseRenderer(@Nullable ArtifactVersion currentVersion, DependencyRule rule,
-			VulnerabilityRepository vulnerabilities, ProjectMetadata projectMetadata) {
+			VulnerabilityRepository vulnerabilities, DependencyPresentation presentation) {
 		this.currentVersion = currentVersion != null && currentVersion.scheme() == VersioningScheme.OPAQUE ? null
 				: currentVersion;
 		this.rule = rule;
 		this.vulnerabilities = vulnerabilities;
-		this.projectMetadata = projectMetadata;
+		this.presentation = presentation;
 	}
 
 	public String formatReleaseDate(ArtifactRelease release) {
@@ -93,7 +93,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 		presentation.setItemText(itemText);
 
 		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.create(rule,
-				release.artifactId(), version, projectMetadata);
+				release.artifactId(), version);
 
 		String typeText = "";
 		LocalDateTime releaseDate = release.getReleaseDate();
@@ -133,7 +133,13 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 		if (StringUtils.hasText(tailLabel)) {
 			tailText += tailLabel;
 		} else {
-			tailText += evaluator.getDependencyName();
+
+			String dependencyName = this.rule.getDependencyName();
+			if (StringUtils.hasText(dependencyName)) {
+				tailText += dependencyName;
+			} else {
+				tailText += this.presentation.getArtifactIdDisplayName();
+			}
 		}
 
 		presentation.setTailText(" " + tailText, true);

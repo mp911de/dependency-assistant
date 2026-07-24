@@ -23,32 +23,25 @@ import java.util.function.Predicate;
 import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
-import biz.paluch.dap.ProjectDisplayName;
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.util.text.StringUtil;
 
 /**
  * Outcome of testing a {@link DependencyRule} against a concrete artifact
  * version, paired with the presentation an upgrade view needs to surface it.
  *
- * <p>The rule is evaluated once at construction. Its result is retained as one
- * of three states: undefined (no rule governs the artifact), passed, or not
- * passed. A renderer consults {@link #isPresent()} to decide whether to show an
- * indicator at all, then {@link #getIcon()} and {@link #getToolTipText()} for
- * the indicator itself.
- *
  * @author Mark Paluch
  */
-// TODO: too many responsibilities current version vs testing other versions.
 public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
 	private static final DependencyRuleEvaluator ABSENT = new DependencyRuleEvaluator(DependencyRule.absent(),
-			ArtifactId.of("", ""), ArtifactVersion.of("1.0"), "", ProjectMetadata.absent()) {
+			ArtifactVersion.of("1.0"), "") {
 
 		@Override
 		public boolean isPresent() {
@@ -61,7 +54,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		}
 
 		@Override
-		public String getToolTipText() {
+		public String getToolTipText(DependencyPresentation presentation) {
 			return MessageBundle.message("inspection.dependency-rule.absent");
 		}
 
@@ -71,43 +64,20 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
 	private final DependencyRule rule;
 
-	private final boolean hasDependencyName;
-
-	private final ArtifactId artifactId;
-
 	private final String renderedVersion;
-
-	private final ProjectMetadata metadata;
 
 	private final EvaluationState result;
 
-	private final String dependencyName;
-
-	private DependencyRuleEvaluator(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
-			String renderedVersion, ProjectMetadata metadata) {
+	private DependencyRuleEvaluator(DependencyRule rule, ArtifactVersion version,
+			String renderedVersion) {
 		this.rule = rule;
-		this.hasDependencyName = StringUtils.hasText(rule.getDependencyName());
-		this.artifactId = artifactId;
 		this.renderedVersion = renderedVersion;
-		this.metadata = metadata;
 
 		if (rule.isPresent()) {
 			this.result = rule.test(version) ? EvaluationState.PASSED : EvaluationState.NOT_PASSED;
 		} else {
 			this.result = EvaluationState.UNDEFINED;
 		}
-
-		String dependencyName;
-		if (hasDependencyName) {
-			dependencyName = rule.getDependencyName();
-		} else {
-			dependencyName = ProjectDisplayName.getAcceptedProjectName(artifactId, metadata.getProjectName());
-
-			if (StringUtils.isEmpty(dependencyName)) {
-				dependencyName = artifactId.toString();
-			}
-		}
-		this.dependencyName = dependencyName;
 	}
 
 	/**
@@ -115,9 +85,8 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * version.
 	 * @return the evaluation outcome for the candidate's current version.
 	 */
-	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version,
-			ProjectMetadata metadata) {
-		return new DependencyRuleEvaluator(rule, artifactId, version, version.toDocumentationString(), metadata);
+	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version) {
+		return new DependencyRuleEvaluator(rule, version, version.toDocumentationString());
 	}
 
 	/**
@@ -143,7 +112,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 			ArtifactVersion version) {
 
 		DependencyRule rule = rules.resolve(context);
-		return DependencyRuleEvaluator.create(rule, context.getArtifactId(), version, context.getProjectMetadata());
+		return DependencyRuleEvaluator.create(rule, context.getArtifactId(), version);
 	}
 
 	@Override
@@ -199,8 +168,8 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		return rule.isEnabled(strategy);
 	}
 
-	public String getDependencyName() {
-		return dependencyName;
+	public String getDependencyName(DependencyPresentation presentation) {
+		return presentation.hasDependencyName() ? presentation.getDependencyName() : presentation.getDisplayName();
 	}
 
 	/**
@@ -209,15 +178,18 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 *
 	 * @return the tooltip markup; empty when there is nothing to report.
 	 */
-	public String getToolTipText() {
+	public String getToolTipText(DependencyPresentation presentation) {
 
 		StringBuilder sb = new StringBuilder();
 
 		if (isLocked()) {
 
-			String dependencyName = getDependencyName();
-			if (!hasDependencyName) {
-				dependencyName = "'" + dependencyName + "'";
+			String dependencyName;
+			if (presentation.hasDependencyName()) {
+				dependencyName = StringUtil.escapeXmlEntities(presentation.getDependencyName());
+				;
+			} else {
+				dependencyName = "'" + StringUtil.escapeXmlEntities(presentation.getDisplayName()) + "'";
 			}
 
 			if (result == EvaluationState.NOT_PASSED) {

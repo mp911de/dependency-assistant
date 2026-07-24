@@ -20,6 +20,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
@@ -85,11 +86,13 @@ public class DependencyRuleInspection extends LocalInspectionTool implements Ico
 					return;
 				}
 
+				DependencyPresentation presentation = artifactContext.getPresentation();
 				Releases releases = artifactContext.getReleases();
-				Release remediation = evaluator.getRule().suggestRemediation(releases);
+				DependencyRule rule = evaluator.getRule();
+				Release remediation = rule.suggestRemediation(releases);
 				String message = MessageBundle.message("inspection.dependency-rule.problem",
-						evaluator.getDependencyName(), version.toDocumentationString(),
-						evaluator.getRule().getGenerations().value());
+						evaluator.getDependencyName(presentation), version.toDocumentationString(),
+						rule.getGenerations().value());
 
 				if (remediation != null) {
 					message += " " + MessageBundle.message("inspection.dependency-rule.remediation.message",

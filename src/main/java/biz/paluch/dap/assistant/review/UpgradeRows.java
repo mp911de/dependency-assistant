@@ -232,7 +232,6 @@ class UpgradeRows implements Sequence<TableRow> {
 
 		buckets.forEach((key, bucket) -> {
 
-			Map<TableRow, String> groupingNames = groupingNames(bucket);
 			Map<String, List<TableRow>> families = new LinkedHashMap<>();
 			for (TableRow candidate : bucket) {
 				families.computeIfAbsent(familyToken(candidate), it -> new ArrayList<>())
@@ -240,7 +239,7 @@ class UpgradeRows implements Sequence<TableRow> {
 			}
 
 			families.values()
-					.forEach(family -> collapseFamily(key.groupId(), family, groupingNames, firstMemberToGroup,
+					.forEach(family -> collapseFamily(key.groupId(), family, firstMemberToGroup,
 							grouped));
 		});
 	}
@@ -253,8 +252,7 @@ class UpgradeRows implements Sequence<TableRow> {
 	 * match only; a shared version property never pulls a member in.
 	 */
 	private static void collapseFamily(String groupId, List<TableRow> family,
-			@Nullable Map<TableRow, String> groupingNames, Map<TableRow, GroupRow> firstMemberToGroup,
-			Set<TableRow> grouped) {
+			Map<TableRow, GroupRow> firstMemberToGroup, Set<TableRow> grouped) {
 
 		AgreeingCohort cohort = selectCohort(family);
 		if (cohort == null || cohort.members().size() < 2) {
@@ -368,7 +366,7 @@ class UpgradeRows implements Sequence<TableRow> {
 	/**
 	 * Grouping identity: the rule's dependency name within one build ecosystem.
 	 */
-	private record GroupKey(String dependencyName, Class<?> ecosystem) {
+	private record GroupKey(String dependencyName, String ecosystem) {
 
 		/**
 		 * Return the group key for the candidate, or {@literal null} if the candidate
@@ -381,7 +379,7 @@ class UpgradeRows implements Sequence<TableRow> {
 				return null;
 			}
 
-			return new GroupKey(rule.getDependencyName(), candidate.getInterfaceAssistant().getClass());
+			return new GroupKey(rule.getDependencyName(), candidate.getUpgrade().getPresentation().getEcosystem());
 		}
 
 	}
@@ -391,11 +389,11 @@ class UpgradeRows implements Sequence<TableRow> {
 	 * ecosystem. Second-level partitioning by name or coordinate token happens per
 	 * bucket in {@link #collapseInferred}.
 	 */
-	private record InferredKey(String groupId, Class<?> ecosystem) {
+	private record InferredKey(String groupId, String ecosystem) {
 
 		static InferredKey of(TableRow candidate) {
 			return new InferredKey(candidate.getArtifactId().groupId(),
-					candidate.getInterfaceAssistant().getClass());
+					candidate.getUpgrade().getPresentation().getEcosystem());
 		}
 
 	}

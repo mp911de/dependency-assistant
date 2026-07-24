@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant;
 import java.util.function.Function;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -79,6 +80,8 @@ public class ArtifactReferenceContext {
 
 	private final ProjectMetadata projectMetadata;
 
+	private final DependencyPresentation presentation;
+
 	private ArtifactReferenceContext() {
 		this.dependencyContext = ProjectDependencyContext.absent();
 		this.stateService = null;
@@ -88,19 +91,7 @@ public class ArtifactReferenceContext {
 		this.evaluator = DependencyRuleEvaluator.absent();
 		this.releases = null;
 		this.projectMetadata = ProjectMetadata.absent();
-	}
-
-	ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,
-			ArtifactDeclaration declaration, DependencyRuleEvaluator evaluator, ProjectMetadata projectMetadata) {
-		Assert.isTrue(declaration.isVersionDefined(), "Artifact declaration must define a version");
-		this.dependencyContext = dependencyContext;
-		this.stateService = stateService;
-		this.declaration = declaration;
-		this.currentVersion = declaration.getVersion();
-		this.rule = evaluator.getRule();
-		this.evaluator = evaluator;
-		this.releases = null;
-		this.projectMetadata = projectMetadata;
+		this.presentation = DependencyPresentation.of(ArtifactId.of("", ""));
 	}
 
 	private ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,
@@ -114,6 +105,8 @@ public class ArtifactReferenceContext {
 		this.evaluator = evaluator;
 		this.releases = null;
 		this.projectMetadata = projectMetadata;
+		this.presentation = DependencyPresentationFactory.create(declaration.getArtifactId(),
+				projectMetadata.getProjectName(), rule, dependencyContext.getInterfaceAssistant());
 	}
 
 	/**
@@ -201,7 +194,7 @@ public class ArtifactReferenceContext {
 				branchSource, context.getProjectVersion(), metadata);
 		DependencyRule rule = ruleService.resolve(resolutionContext);
 		DependencyRuleEvaluator evaluator = currentVersion != null
-				? DependencyRuleEvaluator.create(rule, declaration.getArtifactId(), currentVersion, metadata)
+				? DependencyRuleEvaluator.create(rule, declaration.getArtifactId(), currentVersion)
 				: DependencyRuleEvaluator.absent();
 		StateService stateService = lookup.getStateService();
 		return new ArtifactReferenceContext(context, stateService, declaration, currentVersion, rule, evaluator,
@@ -334,6 +327,10 @@ public class ArtifactReferenceContext {
 
 	public ProjectMetadata getProjectMetadata() {
 		return projectMetadata;
+	}
+
+	public DependencyPresentation getPresentation() {
+		return presentation;
 	}
 
 	/**

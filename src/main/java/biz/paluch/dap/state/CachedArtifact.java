@@ -424,6 +424,10 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		return sourcesCheckedSince;
 	}
 
+	public @Transient @Nullable String getProjectName() {
+		return projectMetadata != null ? projectMetadata.getProjectName() : null;
+	}
+
 	public @Nullable CachedRelease getCachedRelease(ArtifactVersion version) {
 		synchronized (releases) {
 			for (CachedRelease release : releases) {
@@ -642,5 +646,4 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	public String toString() {
 		return getGroupId() + ":" + getArtifactId() + ", Release count: " + releases.size();
 	}
-
 }

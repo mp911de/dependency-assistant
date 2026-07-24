@@ -27,19 +27,10 @@ import biz.paluch.dap.artifact.ArtifactId;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Display policy for a captured project name, in three tiers sharing one
- * normalization and display-trim pipeline: {@link #getDisplayName} serves
- * surfaces where the name replaces the coordinates (intention titles, the
- * review dialog) and falls back to the assistant's coordinate rendering,
- * {@link #getAcceptedProjectName} serves surfaces that already show the
- * coordinates (the quick-documentation popup) and returns {@literal null}
- * unless the name adds information over them, and {@link #getGroupingName}
- * serves cross-member name-shape analysis with the accepted name's {@code ::}
- * module separators collapsed into plain word boundaries.
+ * Display policy for a captured project name.
  *
  * @author Mark Paluch
  */
-// TODO: refactor
 public class ProjectDisplayName {
 
 	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
@@ -55,30 +46,6 @@ public class ProjectDisplayName {
 	private static final int MAX_LENGTH = 50;
 
 	private ProjectDisplayName() {
-	}
-
-	/**
-	 * Render the display name for surfaces where the name replaces the coordinates:
-	 * echoes such as {@code spring-security-bom} are welcome, only a bare module
-	 * qualifier falls back.
-	 * @param artifactId the coordinates the name would replace.
-	 * @param projectName the captured project name; can be {@literal null}.
-	 * @param fallback renders the coordinates when no name is presentable.
-	 * @return the display name; guaranteed to be not {@literal null}.
-	 */
-	public static String getDisplayName(ArtifactId artifactId, @Nullable String projectName,
-			InterfaceAssistant fallback) {
-
-		String name = normalize(projectName);
-		if (name != null) {
-
-			String display = trimForDisplay(name);
-			if (!display.isEmpty() && !isModuleQualifier(display, artifactId)) {
-				return display;
-			}
-		}
-
-		return fallback.getDisplayName(artifactId);
 	}
 
 	/**
@@ -187,14 +154,6 @@ public class ProjectDisplayName {
 		Set<String> coordinateTokens = new HashSet<>(tokenize(artifactId.groupId()));
 		coordinateTokens.addAll(tokenize(artifactId.artifactId()));
 		return coordinateTokens.containsAll(tokenize(name));
-	}
-
-	/**
-	 * The joined comparison catches echoes whose token boundaries shift, such as
-	 * "ANTLR 4 Runtime" vs {@code antlr4-runtime}.
-	 */
-	private static boolean restatesArtifactId(String name, ArtifactId artifactId) {
-		return String.join("", tokenize(name)).equals(String.join("", tokenize(artifactId.artifactId())));
 	}
 
 	private static List<String> tokenize(String value) {

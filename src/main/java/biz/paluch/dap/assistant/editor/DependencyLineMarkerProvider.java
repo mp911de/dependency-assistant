@@ -23,6 +23,7 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -90,7 +91,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		boolean vulnerable = vulnerabilities.isVulnerable();
 		VulnerabilitiesPresentation vulnerability = vulnerable ? VulnerabilitiesPresentation.of(vulnerabilities)
 				: null;
-
+		DependencyPresentation presentation = context.getPresentation();
 		Icon gutterIcon = ui.getGutterIcon(declaration);
 		Icon transparentIcon = evaluated.isPresent() ? gutterIcon : IconLoader.getTransparentIcon(gutterIcon, 0.7f);
 
@@ -106,7 +107,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 			} else if (evaluated.isPresent() && evaluated.isLocked()) {
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
-						getRuleIcon(transparentIcon, evaluated), e -> evaluated.getToolTipText(),
+						getRuleIcon(transparentIcon, evaluated), e -> evaluated.getToolTipText(presentation),
 						new UpgradeDialogNavigationHandler(artifactId),
 						GutterIconRenderer.Alignment.LEFT, evaluated::getAccessibleName);
 			}
@@ -132,9 +133,9 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		}
 
 		if (evaluated.isPresent()) {
-			String evaluatedToolTip = evaluated.getToolTipText();
+			String evaluatedToolTip = evaluated.getToolTipText(presentation);
 			if (StringUtils.hasText(evaluatedToolTip)) {
-				tooltip += "<br>" + evaluated.getToolTipText();
+				tooltip += "<br>" + evaluatedToolTip;
 			}
 		}
 

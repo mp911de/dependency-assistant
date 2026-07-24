@@ -48,6 +48,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
+import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
@@ -570,7 +571,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 				@Override
 				protected String getItemText(TableRow item) {
-					return item.getArtifactId() + " " + item.getDependencyName() + " " + item.getName();
+					return item.getSearchString();
 				}
 
 			};
@@ -1184,8 +1185,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 			if (declaredVersions.hasVersionDrift()) {
 				tooltip.append(declaredVersions.getVersionDriftToolTipText(candidate.getCurrentVersion()));
 			}
+
 			if (rule.isPresent()) {
-				tooltip.append(rule.getToolTipText());
+				IconDependencyPresentation presentation = candidate.getUpgrade()
+						.getPresentation();
+				tooltip.append(rule.getToolTipText(presentation));
 			}
 
 			if (tooltip.isEmpty()) {

@@ -18,7 +18,6 @@ package biz.paluch.dap.assistant.editor;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.ProjectDisplayName;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
@@ -41,13 +40,6 @@ import org.jspecify.annotations.Nullable;
  * Intention that opens the issue tracker of the dependency declared at the
  * caret in the browser.
  *
- * <p>Availability is cache-only: the intention shows up only when the
- * {@link ProjectMetadataService} facade resolves a browsable tracker URL for
- * the declaration under the caret, so no network runs during availability
- * checks or on invocation. The intention text names the dependency through the
- * shared display-name cascade ({@link ProjectDisplayName}). Sorted to the
- * bottom of the intention list via {@link PriorityAction.Priority#BOTTOM}.
- *
  * @author Mark Paluch
  */
 public class ReportIssueIntention extends BaseIntentionAction implements PriorityAction, Iconable {
@@ -69,7 +61,8 @@ public class ReportIssueIntention extends BaseIntentionAction implements Priorit
 			return false;
 		}
 
-		setText(MessageBundle.message("intention.ReportIssue.text", displayName(context, metadata)));
+		setText(MessageBundle.message("intention.ReportIssue.text", context.getPresentation()
+				.getDisplayName()));
 		return true;
 	}
 
@@ -106,14 +99,6 @@ public class ReportIssueIntention extends BaseIntentionAction implements Priorit
 	@Override
 	public Icon getIcon(int flags) {
 		return AllIcons.Actions.Report;
-	}
-
-	/**
-	 * Render the dependency name through the shared display-name cascade.
-	 */
-	static String displayName(ArtifactReferenceContext context, ProjectMetadata metadata) {
-		return ProjectDisplayName.getDisplayName(context.getArtifactId(), metadata.getProjectName(),
-				context.getDependencyContext().getInterfaceAssistant());
 	}
 
 	/**

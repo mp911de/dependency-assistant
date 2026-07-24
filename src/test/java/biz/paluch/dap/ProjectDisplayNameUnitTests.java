@@ -17,7 +17,6 @@
 package biz.paluch.dap;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,34 +30,6 @@ import static org.assertj.core.api.Assertions.*;
  * @author Mark Paluch
  */
 class ProjectDisplayNameUnitTests {
-
-	@ParameterizedTest // titles welcome echoes: the name replaces the coordinates there
-	@CsvSource(delimiter = ';', value = { //
-			"spring-security-bom;org.springframework.security;spring-security-bom;spring-security-bom", //
-			"spring-boot-starter-web;org.springframework.boot;spring-boot-starter-web;spring-boot-starter-web", //
-			"Spring AOP;org.springframework;spring-aop;Spring AOP", //
-			"ANTLR 4 Runtime;org.antlr;antlr4-runtime;ANTLR 4 Runtime", //
-			"AppCompat;androidx.appcompat;appcompat;AppCompat", //
-			"Jackson BOM;com.fasterxml.jackson;jackson-bom;Jackson"})
-	void titleShowsCoordinateEchoes(String projectName, String groupId, String artifactId, String expected) {
-		assertThat(displayName(projectName, groupId, artifactId)).isEqualTo(expected);
-	}
-
-	@Test // a bare module qualifier is not a name, even for titles
-	void moduleQualifierNameFallsBackToCoordinates() {
-		assertThat(displayName("bom", "org.mongodb", "mongodb-driver-bom")).isEqualTo("org.mongodb:mongodb-driver-bom");
-	}
-
-	@ParameterizedTest
-	@CsvSource(delimiter = ';', value = { //
-			"spring-security-bom;org.springframework.security;spring-security-bom", //
-			"Spring AOP;org.springframework;spring-aop", //
-			"io.grpc:grpc-core;io.grpc;grpc-core", //
-			"Jackson BOM;com.fasterxml.jackson;jackson-bom", //
-			"Hibernate ORM - hibernate-core;org.hibernate.orm;hibernate-core"})
-	void strictGateOmitsRedundantName(String projectName, String groupId, String artifactId) {
-		assertThat(displayName(projectName, groupId, artifactId)).isEqualTo(projectName.replaceAll(" BOM", ""));
-	}
 
 	@ParameterizedTest
 	@CsvSource(delimiter = ';', value = { //
@@ -108,31 +79,6 @@ class ProjectDisplayNameUnitTests {
 	}
 
 	@Test
-	void blankAfterTrimFallsBack() {
-		assertThat(displayName("(Bill of Materials)", "org.dom4j", "dom4j")).isEqualTo("org.dom4j:dom4j");
-	}
-
-	@Test
-	void unresolvedInterpolationFallsBack() {
-		assertThat(displayName("${extension.name} API", "javax.annotation", "javax.annotation-api"))
-				.isEqualTo("javax.annotation:javax.annotation-api");
-	}
-
-	@Test
-	void descriptionLengthNameFallsBack() {
-		assertThat(displayName("flexmark-java extension for generating GitHub style task list items",
-				"com.vladsch.flexmark", "flexmark-ext-gfm-tasklist"))
-						.isEqualTo("com.vladsch.flexmark:flexmark-ext-gfm-tasklist");
-	}
-
-	@Test
-	void absentAndBlankNamesFallBack() {
-
-		assertThat(displayName(null, "org.dom4j", "dom4j")).isEqualTo("org.dom4j:dom4j");
-		assertThat(displayName("   ", "org.dom4j", "dom4j")).isEqualTo("org.dom4j:dom4j");
-	}
-
-	@Test
 	void collapsesWhitespaceAndTrims() {
 		assertThat(displayName("AWS Java SDK ::\n\tChecksums ", "software.amazon.awssdk", "checksums"))
 				.isEqualTo("AWS Java SDK :: Checksums");
@@ -171,10 +117,8 @@ class ProjectDisplayNameUnitTests {
 		assertThat(groupingName(projectName, groupId, artifactId)).isNull();
 	}
 
-	private static final InterfaceAssistant ASSISTANT = new TestInterfaceAssistant();
-
 	private static String displayName(@Nullable String projectName, String groupId, String artifactId) {
-		return ProjectDisplayName.getDisplayName(ArtifactId.of(groupId, artifactId), projectName, ASSISTANT);
+		return ProjectDisplayName.getAcceptedProjectName(ArtifactId.of(groupId, artifactId), projectName);
 	}
 
 	private static @Nullable String groupingName(@Nullable String projectName, String groupId, String artifactId) {

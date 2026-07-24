@@ -23,7 +23,6 @@ import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import org.junit.jupiter.api.Test;
 
@@ -116,7 +115,7 @@ class VersionStatusUnitTests {
 
 	private static DependencyRuleEvaluator rejectingRule() {
 		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(), ArtifactId.of("com.example", "demo"),
-				CURRENT, ProjectMetadata.absent());
+				CURRENT);
 	}
 
 }

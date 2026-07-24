@@ -29,12 +29,12 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.assistant.check.DeclarationSite;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.ProjectId;
 import com.intellij.mock.MockVirtualFile;
@@ -221,8 +221,10 @@ public class TestCandidates {
 			dependency.addDeclarationSource(DeclarationSource.dependency());
 			dependency.addVersionSource(versionSource);
 
+			IconDependencyPresentation presentation = IconDependencyPresentation.from(dependency,
+					TestInterfaceAssistant.INSTANCE);
 			return DependencyUpgradeCandidate.create(dependency, releases, vulnerabilityRepository(), rule,
-					TestInterfaceAssistant.INSTANCE, declaredVersions(), ProjectMetadata.absent());
+					presentation, declaredVersions());
 		}
 
 		private VulnerabilityRepository vulnerabilityRepository() {

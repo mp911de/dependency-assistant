@@ -67,7 +67,7 @@ public class OpenReleaseNotesIntention extends BaseIntentionAction implements Pr
 		}
 
 		setText(MessageBundle.message("intention.OpenReleaseNotes.text",
-				ReportIssueIntention.displayName(context, projectMetadata), context.getVersion()));
+				context.getPresentation().getDisplayName(), context.getVersion()));
 		return true;
 	}
 

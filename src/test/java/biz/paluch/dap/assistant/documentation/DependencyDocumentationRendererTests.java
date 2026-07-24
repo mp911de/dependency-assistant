@@ -30,17 +30,21 @@ import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.fixtures.Releases;
 import biz.paluch.dap.fixtures.TestDependencyRule;
 import biz.paluch.dap.fixtures.TestInterfaceAssistant;
-import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.metadata.GitLabPlatform;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.metadata.RepositoryConnection;
-import biz.paluch.dap.metadata.RepositoryUrl;
+import biz.paluch.dap.metadata.Platform;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.CachedMetadata;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
+import com.intellij.mock.MockApplication;
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.extensions.ExtensionPoint;
+import com.intellij.openapi.util.Disposer;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -56,6 +60,22 @@ class DependencyDocumentationRendererTests {
 			"Remote code execution", 9.8, CvssSeverity.CRITICAL, "https://example.com/advisory");
 
 	TestCache cache = DependencyAssistantFixtures.createCache();
+
+	Disposable disposable = Disposer.newDisposable();
+
+	@BeforeEach
+	void registerPlatforms() {
+
+		MockApplication application = MockApplication.setUp(disposable);
+		application.getExtensionArea().registerExtensionPoint(Platform.EP_NAME, Platform.class.getName(),
+				ExtensionPoint.Kind.INTERFACE, disposable);
+		Platform.EP_NAME.getPoint().registerExtension(new GitLabPlatform(), disposable);
+	}
+
+	@AfterEach
+	void tearDown() {
+		Disposer.dispose(disposable);
+	}
 
 	@Test
 	void shouldDocumentPropertyWithSharedReleaseLine() {
@@ -439,36 +459,36 @@ class DependencyDocumentationRendererTests {
 	private DependencyDocumentationRenderer renderer(@Nullable String currentVersion, boolean linkable) {
 		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
 				DependencyRuleEvaluator.absent(), currentVersion != null ? ArtifactVersion.of(currentVersion) : null,
-				linkable, ProjectMetadata.absent());
+				linkable);
 	}
 
-	private DependencyDocumentationRenderer renderer(String currentVersion, ProjectMetadata metadata) {
-		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
-				DependencyRuleEvaluator.absent(), ArtifactVersion.of(currentVersion), false, metadata);
+	private DependencyDocumentationRenderer renderer(String currentVersion, CachedMetadata metadata) {
+
+		for (CachedArtifact cachedArtifact : cache.getCachedArtifacts()) {
+			cachedArtifact.updateProjectMetadata(metadata, 999);
+		}
+		return renderer(currentVersion);
 	}
 
 	private DependencyDocumentationRenderer renderer(String currentVersion, DependencyRuleEvaluator evaluator) {
 		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
-				evaluator, ArtifactVersion.of(currentVersion), false, ProjectMetadata.absent());
+				evaluator, ArtifactVersion.of(currentVersion), false);
 	}
 
-	private static ProjectMetadata capturedName(String projectName) {
-		return ProjectMetadata.from(projectName, null, null, null, List.of());
+	private static CachedMetadata capturedName(String projectName) {
+		return CachedMetadata.of(null, null, projectName, null);
 	}
 
-	private static ProjectMetadata releaseNotes(String repositoryUrl, String... tags) {
+	private CachedMetadata releaseNotes(String repositoryUrl, String... tags) {
 
-		RepositoryUrl parsed = RepositoryUrl.parse(repositoryUrl);
-		assertThat(parsed).isNotNull();
-		RepositoryConnection connection = new GitLabPlatform().detect(parsed, null);
-		assertThat(connection).isNotNull();
-		return ProjectMetadata.from(null, connection, connection.createRepository(TestProjects.PROJECT), null,
-				List.of(tags));
+		cache.createOrUpdateRepository("gitlab.com/redis/lettuce", "https://gitlab.com/redis/lettuce")
+				.setTags(List.of(tags));
+		return CachedMetadata.of(repositoryUrl, null, null, null);
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {
 		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(), Releases.LETTUCE_CORE.toArtifactId(),
-				ArtifactVersion.of("7.4.1.RELEASE"), ProjectMetadata.absent());
+				ArtifactVersion.of("7.4.1.RELEASE"));
 	}
 
 }

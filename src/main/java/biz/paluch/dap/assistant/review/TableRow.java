@@ -23,7 +23,6 @@ import java.util.function.Consumer;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -64,13 +63,11 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	private final String rowName;
 
-	private final String dependencyName;
-
 	TableRow(DependencyUpgradeCandidate upgrade) {
 
 		this.upgrade = upgrade;
 		this.evaluator = DependencyRuleEvaluator.create(upgrade.getRule(), getArtifactId(),
-				getCurrentVersion(), upgrade.getProjectMetadata());
+				getCurrentVersion());
 		this.renderedArtifactId = upgrade.getArtifactId().artifactId();
 		this.tableIcon = createTableIcon();
 		this.toolTipText = createToolTipText();
@@ -80,7 +77,6 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 			rowName = renderedArtifactId;
 		}
 		this.rowName = rowName;
-		this.dependencyName = evaluator.getDependencyName();
 	}
 
 	private String createToolTipText() {
@@ -111,7 +107,7 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	private Icon createTableIcon() {
 
-		Icon base = upgrade.getAssistant().getTableIcon(upgrade.getDependency());
+		Icon base = upgrade.getPresentation().getTableIcon();
 		if (!upgrade.getDependency().hasPropertyVersion()) {
 			return base;
 		}
@@ -130,10 +126,6 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	public DeclaredVersions getDeclaredVersions() {
 		return upgrade.getDeclaredVersions();
-	}
-
-	public InterfaceAssistant getInterfaceAssistant() {
-		return upgrade.getAssistant();
 	}
 
 	@Override
@@ -182,7 +174,7 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 	}
 
 	public String getDependencyName() {
-		return this.dependencyName;
+		return upgrade.getPresentation().getDisplayName();
 	}
 
 	public String getToolTipText() {
@@ -215,7 +207,7 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 	}
 
 	public DependencyRuleEvaluator evaluate(ArtifactVersion version) {
-		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version, upgrade.getProjectMetadata());
+		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version);
 	}
 
 	@Override
@@ -225,6 +217,10 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	public void doWithRow(Consumer<TableRow> consumer) {
 		consumer.accept(this);
+	}
+
+	public String getSearchString() {
+		return getArtifactId() + " " + getDependencyName() + " " + getName();
 	}
 
 	@Override

@@ -30,9 +30,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.ProjectDisplayName;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -41,6 +41,7 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
+import biz.paluch.dap.assistant.DependencyPresentationFactory;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.checker.SecurityShieldIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
@@ -83,25 +84,28 @@ class DependencyDocumentationRenderer {
 
 	private final StateService stateService;
 
+	private final ProjectMetadataService metadataService;
+
+	private final DependencyPresentationFactory presentationFactory;
+
 	private final DependencyRuleEvaluator evaluator;
 
 	private final @Nullable ArtifactVersion currentVersion;
 
 	private final boolean linkable;
 
-	private final ProjectMetadata projectMetadata;
-
 	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
 
 	DependencyDocumentationRenderer(InterfaceAssistant interfaceAssistant,
 			StateService stateService, DependencyRuleEvaluator evaluator,
-			@Nullable ArtifactVersion currentVersion, boolean linkable, ProjectMetadata projectMetadata) {
+			@Nullable ArtifactVersion currentVersion, boolean linkable) {
 		this.interfaceAssistant = interfaceAssistant;
 		this.stateService = stateService;
 		this.evaluator = evaluator;
 		this.currentVersion = currentVersion;
 		this.linkable = linkable;
-		this.projectMetadata = projectMetadata;
+		this.metadataService = new ProjectMetadataService(null, stateService.getCache());
+		this.presentationFactory = new DependencyPresentationFactory(stateService);
 	}
 
 	/**
@@ -119,10 +123,9 @@ class DependencyDocumentationRenderer {
 	static DependencyDocumentationRenderer from(Project project, ArtifactReferenceContext context, boolean linkable) {
 
 		ProjectDependencyContext dependencyContext = context.getDependencyContext();
-		ProjectMetadata metadata = ProjectMetadataService.getMetadata(context.getDeclaration());
 		return new DependencyDocumentationRenderer(dependencyContext.getInterfaceAssistant(),
 				context.getStateService(), context.getEvaluator(),
-				context.getVersion(), linkable, metadata);
+				context.getVersion(), linkable);
 	}
 
 	/**
@@ -139,10 +142,11 @@ class DependencyDocumentationRenderer {
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		HtmlBuilder content = new HtmlBuilder();
 
+		DependencyPresentation presentation = presentationFactory.create(artifactId, evaluator.getRule(),
+				interfaceAssistant);
 		List<HtmlChunk> sections = new ArrayList<>();
-		String projectName = getProjectName(artifactId);
-		if (projectName != null) {
-			sections.add(section("documentation.project-name", HtmlChunk.text(projectName)));
+		if (presentation.hasProjectName()) {
+			sections.add(section("documentation.project-name", HtmlChunk.text(presentation.getProjectName())));
 		}
 
 		if (currentVersion != null) {
@@ -157,7 +161,7 @@ class DependencyDocumentationRenderer {
 
 		if (!releases.isEmpty()) {
 			ReleaseDigest digest = ReleaseDigest.of(releases, currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
-			content.append(versionsTable(artifactId, digest, withIcons, formatter));
+			content.append(versionsTable(artifactId, digest, withIcons, formatter, presentation));
 		}
 
 		content.append(securityAdvisories(artifactId, withIcons));
@@ -510,17 +514,20 @@ class DependencyDocumentationRenderer {
 	@Nullable
 	String render(VersionProperty property, boolean withIcons) {
 
-		if (property.artifacts().isEmpty()) {
+		List<CachedArtifact> artifacts = property.artifacts();
+		if (artifacts.isEmpty()) {
 			return null;
 		}
 
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		HtmlBuilder content = new HtmlBuilder();
 
+		DependencyPresentation presentation = presentationFactory.create(artifacts
+				.getFirst(), evaluator.getRule(), interfaceAssistant);
+
 		List<HtmlChunk> sections = new ArrayList<>();
-		String projectName = firstAcceptedProjectName(property.artifacts());
-		if (projectName != null) {
-			sections.add(section("documentation.project-name", HtmlChunk.text(projectName)));
+		if (presentation.hasProjectName()) {
+			sections.add(section("documentation.project-name", HtmlChunk.text(presentation.getProjectName())));
 		}
 
 		if (currentVersion != null) {
@@ -531,14 +538,14 @@ class DependencyDocumentationRenderer {
 			content.append(sectionsTable(sections));
 		}
 
-		for (ReleaseGroup group : ReleaseGroup.group(interfaceAssistant, stateService.getCache(), MAX_VERSIONS,
-				property.artifacts())) {
+		for (ReleaseGroup group : ReleaseGroup.group(stateService.getCache(), MAX_VERSIONS,
+				artifacts)) {
 
-			content.append(group.renderHeader());
+			content.append(group.renderHeader(interfaceAssistant));
 			if (group.hasReleases()) {
 
 				ReleaseDigest digest = group.digest(currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
-				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter));
+				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter, presentation));
 			}
 
 			content.append(securityAdvisories(group.artifactIds.getFirst(), withIcons));
@@ -547,48 +554,26 @@ class DependencyDocumentationRenderer {
 		return document(HtmlChunk.text(property.name()), content);
 	}
 
-	private @Nullable String getProjectName(ArtifactId artifactId) {
-		return ProjectDisplayName.getAcceptedProjectName(artifactId, projectMetadata.getProjectName());
-	}
-
-	/**
-	 * Return the accepted project name of the first referenced artifact that yields
-	 * one. A version property spans several artifacts sharing one release line; the
-	 * first accepted name (typically the BOM or primary artifact) names the group,
-	 * artifacts with rejected echo names are skipped.
-	 */
-	private @Nullable String firstAcceptedProjectName(List<CachedArtifact> artifacts) {
-
-		for (CachedArtifact artifact : artifacts) {
-
-			String accepted = getProjectName(artifact.toArtifactId());
-			if (accepted != null) {
-				return accepted;
-			}
-		}
-		return null;
-	}
-
 	/**
 	 * Render the release table for the {@link ReleaseDigest} rows; hidden rows are
 	 * summarized by notes linking to the Dependency Check dialog so truncation is
 	 * never silent.
 	 */
 	private HtmlChunk versionsTable(ArtifactId artifactId, ReleaseDigest digest, boolean withIcons,
-			ReleaseDateFormatter formatter) {
+			ReleaseDateFormatter formatter, DependencyPresentation presentation) {
 
 		HtmlBuilder section = new HtmlBuilder();
 
 		if (!digest.previewRows().isEmpty() || !digest.releaseRows().isEmpty()) {
 
 			HtmlBuilder rows = new HtmlBuilder();
-			appendRows(rows, artifactId, digest.previewRows(), withIcons, formatter);
+			appendRows(rows, artifactId, digest.previewRows(), withIcons, formatter, presentation);
 
 			if (digest.morePreviews() > 0) {
 				rows.append(morePreviewsRow(digest.morePreviews(), withIcons));
 			}
 
-			appendRows(rows, artifactId, digest.releaseRows(), withIcons, formatter);
+			appendRows(rows, artifactId, digest.releaseRows(), withIcons, formatter, presentation);
 			section.append(rows.wrapWith("table"));
 		}
 
@@ -601,8 +586,8 @@ class DependencyDocumentationRenderer {
 	}
 
 	private void appendRows(HtmlBuilder rows, ArtifactId artifactId, List<Release> releases, boolean withIcons,
-			ReleaseDateFormatter formatter) {
-
+			ReleaseDateFormatter formatter, DependencyPresentation presentation) {
+		ProjectMetadata projectMetadata = metadataService.getMetadata(artifactId);
 		for (Release release : releases) {
 
 			Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId, release.getVersion());
@@ -611,7 +596,7 @@ class DependencyDocumentationRenderer {
 			URI releaseNotesUrl = withIcons
 					? projectMetadata.findReleaseNotesUrl(release.getVersion())
 					: null;
-			rows.append(new DocumentedRelease(status, artifactId.toString(), release, linkable, withIcons,
+			rows.append(new DocumentedRelease(status, presentation, release, linkable, withIcons,
 					releaseNotesUrl).render(formatter));
 		}
 	}
@@ -724,12 +709,9 @@ class DependencyDocumentationRenderer {
 
 		private final List<ArtifactId> artifactIds = new ArrayList<>();
 
-		private final InterfaceAssistant assistant;
-
 		private final Releases releases;
 
-		ReleaseGroup(InterfaceAssistant assistant, Releases releases) {
-			this.assistant = assistant;
+		ReleaseGroup(Releases releases) {
 			this.releases = releases;
 		}
 
@@ -737,7 +719,7 @@ class DependencyDocumentationRenderer {
 			return !releases.isEmpty();
 		}
 
-		static Collection<ReleaseGroup> group(InterfaceAssistant assistant, Cache cache, int limit,
+		static Collection<ReleaseGroup> group(Cache cache, int limit,
 				List<CachedArtifact> artifacts) {
 
 			Map<Set<String>, ReleaseGroup> groups = new LinkedHashMap<>();
@@ -746,7 +728,7 @@ class DependencyDocumentationRenderer {
 				Releases releases = cache.getReleases(artifactId);
 				Set<String> versionKeys = releaseVersionKeys(releases, limit);
 
-				ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(assistant, releases));
+				ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(releases));
 				group.add(artifactId);
 			}
 			return groups.values();
@@ -768,7 +750,7 @@ class DependencyDocumentationRenderer {
 		 * row per coordinate, keeping every coordinate a single non-breaking code unit
 		 * with the entire popup width at its disposal.
 		 */
-		HtmlChunk renderHeader() {
+		HtmlChunk renderHeader(InterfaceAssistant assistant) {
 
 			List<HtmlChunk> rows = new ArrayList<>();
 			rows.add(sectionLabelRow("documentation.property-for"));
@@ -809,7 +791,8 @@ class DependencyDocumentationRenderer {
 
 		private final @Nullable HtmlChunk releaseNotesCell;
 
-		DocumentedRelease(VersionStatus status, String name, Release release, boolean linkable, boolean withIcons,
+		DocumentedRelease(VersionStatus status, DependencyPresentation presentation, Release release, boolean linkable,
+				boolean withIcons,
 				@Nullable URI releaseNotesUrl) {
 
 			this.release = release;
@@ -823,7 +806,9 @@ class DependencyDocumentationRenderer {
 				HtmlChunk content = this.linkable
 						? HtmlChunk.tag("a")
 								.attr("href", DependencyUpgradeLinkHandler.SCHEME + key)
-								.attr("title", MessageBundle.message("documentation.upgrade-to", name, key))
+								.attr("title",
+										MessageBundle.message("documentation.upgrade-to", presentation.getDisplayName(),
+												key))
 								.child(htmlIcon)
 						: htmlIcon;
 				this.firstColumnIcon = HtmlChunk.tag("td").child(content);

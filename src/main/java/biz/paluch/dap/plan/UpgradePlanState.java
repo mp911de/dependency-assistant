@@ -842,7 +842,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		}
 
 		public static Member of(DependencyUpgradeCandidate upgrade) {
-			return new Member(upgrade.getDependency(), upgrade.getAssistant().getClass().getName());
+			return new Member(upgrade.getDependency(), upgrade.getPresentation().getEcosystem());
 		}
 
 		@Override

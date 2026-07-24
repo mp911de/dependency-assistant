@@ -18,22 +18,11 @@ package biz.paluch.dap.assistant;
 
 import java.lang.reflect.Proxy;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.Vulnerabilities;
-import biz.paluch.dap.fixtures.TestReleases;
-import biz.paluch.dap.metadata.ProjectMetadata;
-import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.StateService;
-import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.psi.PsiElement;
 import org.junit.jupiter.api.Test;
 
@@ -48,8 +37,6 @@ import static biz.paluch.dap.assertions.Assertions.*;
 class ArtifactReferenceContextUnitTests {
 
 	private static final ArtifactVersion CANDIDATE = ArtifactVersion.of("1.1.0");
-
-	private static final ArtifactId ARTIFACT = ArtifactId.of("com.example", "demo");
 
 	@Test
 	void absentResolutionRetainsAbsentDomainBehavior() {
@@ -87,76 +74,6 @@ class ArtifactReferenceContextUnitTests {
 		visitor.visitElement(psiElement());
 
 		assertThat(visited).isFalse();
-	}
-
-	@Test
-	void releasesAreLoadedOnlyWhenRequested() {
-
-		Releases releases = TestReleases.from("1.0.0", "1.1.0");
-		AtomicInteger releaseLookups = new AtomicInteger();
-		Cache cache = new Cache() {
-
-			@Override
-			public Releases getReleases(ArtifactId artifactId) {
-				releaseLookups.incrementAndGet();
-				return releases;
-			}
-
-		};
-		StateService stateService = new StateService(cache);
-
-		ArtifactReferenceContext context = new ArtifactReferenceContext(ProjectDependencyContext.absent(), stateService,
-				reference().getDeclaration(), DependencyRuleEvaluator.absent(), ProjectMetadata.absent());
-
-		assertThat(releaseLookups).hasValue(0);
-		assertThat(context.getReleases()).isSameAs(releases);
-		assertThat(context.getReleases()).isSameAs(releases);
-		assertThat(releaseLookups).hasValue(1);
-	}
-
-	@Test
-	void suggestionsReuseLazilyLoadedReleasesAndAreCached() {
-
-		Releases releases = TestReleases.from("1.0.0", "1.1.0");
-		AtomicInteger releaseLookups = new AtomicInteger();
-		Cache cache = new Cache() {
-
-			@Override
-			public Releases getReleases(ArtifactId artifactId) {
-				releaseLookups.incrementAndGet();
-				return releases;
-			}
-
-		};
-		ArtifactReferenceContext context = new ArtifactReferenceContext(ProjectDependencyContext.absent(),
-				new StateService(cache), reference().getDeclaration(), DependencyRuleEvaluator.absent(),
-				ProjectMetadata.absent());
-
-		assertThat(context.getReleases()).isSameAs(releases);
-		assertThat(context.getSuggestions()).isNotEmpty();
-		assertThat(context.getSuggestions()).isNotEmpty();
-		assertThat(releaseLookups).hasValue(1);
-	}
-
-	@Test
-	void rejectsPresentContextWithoutDefinedVersion() {
-
-		ArtifactReference versionless = ArtifactReference.from(builder -> builder.artifact(ARTIFACT)
-				.versionSource(VersionSource.none())
-				.declarationSource(DeclarationSource.dependency())
-				.declarationElement(psiElement()));
-
-		assertThatIllegalArgumentException().isThrownBy(() -> new ArtifactReferenceContext(
-				ProjectDependencyContext.absent(), new StateService(), versionless.getDeclaration(),
-				DependencyRuleEvaluator.absent(), ProjectMetadata.absent()));
-	}
-
-	private static ArtifactReference reference() {
-		return ArtifactReference.from(builder -> builder.artifact(ARTIFACT)
-				.version(ArtifactVersion.of("1.0.0"))
-				.versionSource(VersionSource.declared("1.0.0"))
-				.declarationSource(DeclarationSource.dependency())
-				.declarationElement(psiElement()));
 	}
 
 	private static PsiElement psiElement() {

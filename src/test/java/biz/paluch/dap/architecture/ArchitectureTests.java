@@ -18,11 +18,13 @@ package biz.paluch.dap.architecture;
 
 import java.util.Arrays;
 
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.metadata.IssueTracker;
 import biz.paluch.dap.rule.DependencyRuleService;
@@ -68,6 +70,8 @@ class ArchitectureTests {
 				it.withClosedHierarchy(ArtifactVersion.class)
 						.withClosedHierarchy(BillOfMaterials.class)
 						.withStrictClosedHierarchy(PropertyResolver.class)
+						.withStrictClosedHierarchy(DependencyPresentation.class)
+						.withStrictClosedHierarchy(IconDependencyPresentation.class)
 						.withStrictClosedHierarchy(IssueTracker.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
 						.withStrictClosedHierarchy(VulnerabilityRepository.class)

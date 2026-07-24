@@ -34,7 +34,6 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
@@ -118,7 +117,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		StateService stateService = referenceContext.getStateService();
 		ArtifactId artifactId = referenceContext.getArtifactId();
 		Releases history = referenceContext.getReleases();
-		ProjectMetadata projectMetadata = referenceContext.getProjectMetadata();
 
 		if (history.isEmpty()) {
 			result.addLookupAdvertisement(MessageBundle.message("completion.advertisement.no-releases"));
@@ -137,7 +135,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		versionsResult.restartCompletionWhenNothingMatches();
 
 		ArtifactReleaseRenderer renderer = new ArtifactReleaseRenderer(referenceContext.getCurrentVersion(), rule,
-				version -> stateService.getVulnerabilities(artifactId, version), projectMetadata);
+				version -> stateService.getVulnerabilities(artifactId, version), referenceContext.getPresentation());
 
 		for (ArtifactRelease release : proposals) {
 			renderer.withVersion(release);

@@ -157,8 +157,6 @@ class DependencyCheckAggregatorTests {
 				Map.of(LETTUCE_CURRENT.getArtifactId(), resolved(LETTUCE_CORE)));
 
 		assertThat(result.upgrades()).hasSize(2);
-		assertThat(result.upgrades()).extracting(DependencyUpgradeCandidate::getAssistant)
-				.anyMatch(OtherEcosystemAssistant.class::isInstance);
 	}
 
 	@Test

@@ -40,6 +40,8 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.assistant.DependencyPresentationFactory;
+import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
@@ -79,11 +81,14 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 	private final ProjectMetadataService metadataService;
 
+	private final DependencyPresentationFactory presentationFactory;
+
 	public DependencyCheckAggregator(Project project, StateService stateService,
 			ProjectMetadataService metadataService) {
 		this.project = project;
 		this.stateService = stateService;
 		this.metadataService = metadataService;
+		this.presentationFactory = new DependencyPresentationFactory(stateService);
 	}
 
 	/**
@@ -281,9 +286,12 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			VulnerabilityRepository vulnerabilities = getVulnerabilities(pkg, scanner);
 			InterfaceAssistant assistant = entry.contexts().iterator().next().getInterfaceAssistant();
 
+			IconDependencyPresentation presentation = presentationFactory.create(dependency, rule,
+					assistant);
+
 			upgrades.add(
-					DependencyUpgradeCandidate.create(dependency, lookup.releases(), vulnerabilities, rule, assistant,
-							declaredVersions, metadata));
+					DependencyUpgradeCandidate.create(dependency, lookup.releases(),
+							vulnerabilities, rule, presentation, declaredVersions));
 		});
 
 		upgrades.sort(Comparator.comparing(DependencyUpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
