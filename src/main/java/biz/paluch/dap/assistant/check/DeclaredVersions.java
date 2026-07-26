@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant.check;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectUtil;
@@ -59,9 +61,8 @@ import org.springframework.util.Assert;
  * @param declarationEntries the sortable declaration-style entries used for
  * drift display.
  */
-// TODO: Cleanup
 public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> entries,
-		Set<DeclarationDrift> declarationEntries) {
+		Set<DeclarationDrift> declarationEntries) implements Sequence<ArtifactVersion> {
 
 	/** Maximum number of version groups listed in the version-drift tool tip. */
 	private static final int MAX_DISPLAYED_VERSIONS = 5;
@@ -193,6 +194,11 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 			}
 		}
 		return hasGitRefs;
+	}
+
+	@Override
+	public Iterator<ArtifactVersion> iterator() {
+		return versions.iterator();
 	}
 
 	/**

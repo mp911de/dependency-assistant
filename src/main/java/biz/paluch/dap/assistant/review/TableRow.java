@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
@@ -41,6 +42,7 @@ import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.LayeredIcon;
 import com.intellij.util.IconUtil;
 
@@ -63,26 +65,47 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	private final String rowName;
 
+	private final String dependencyOrProjectName;
+
 	TableRow(DependencyUpgradeCandidate upgrade) {
 
 		this.upgrade = upgrade;
 		this.evaluator = DependencyRuleEvaluator.create(upgrade.getRule(), getArtifactId(),
 				getCurrentVersion());
 		this.renderedArtifactId = upgrade.getArtifactId().artifactId();
-		this.tableIcon = createTableIcon();
-		this.toolTipText = createToolTipText();
 
 		String rowName = getRule().getDependencyName();
 		if (StringUtils.isEmpty(rowName)) {
 			rowName = renderedArtifactId;
 		}
 		this.rowName = rowName;
+
+		IconDependencyPresentation presentation = upgrade.getPresentation();
+		if (presentation.hasDependencyName()) {
+			this.dependencyOrProjectName = presentation.getDependencyName();
+		} else if (presentation.hasProjectName()) {
+			this.dependencyOrProjectName = presentation.getProjectName();
+		} else {
+			this.dependencyOrProjectName = "";
+		}
+
+		this.tableIcon = createTableIcon();
+		this.toolTipText = createToolTipText();
 	}
 
 	private String createToolTipText() {
 
-		String tooltip = renderedArtifactId;
 		Dependency dependency = upgrade.getDependency();
+		String tooltip = StringUtils.hasText(dependencyOrProjectName)
+				? "<code>%s</code> (%s)".formatted(StringUtil.escapeXmlEntities(getName()),
+						StringUtil.escapeXmlEntities(dependencyOrProjectName))
+				: "<code>" + StringUtil.escapeXmlEntities(getName()) + "</code>";
+
+		if (!dependency.getDeclarationSources().isEmpty()
+				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin) {
+			tooltip = MessageBundle.message("dialog.tooltip.plugin") + ": " + tooltip;
+		}
+
 		if (dependency.hasPropertyVersion()) {
 			VersionSource.VersionProperty versionProperty = dependency.findPropertyVersion();
 			tooltip = MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
@@ -90,11 +113,6 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 				tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.profile",
 						"<code>" + profile.getProfileId() + "</code>");
 			}
-		}
-
-		if (!dependency.getDeclarationSources().isEmpty()
-				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin) {
-			tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.plugin", renderedArtifactId);
 		}
 
 		if (!dependency.getDeclarationSources().isEmpty()
@@ -165,6 +183,10 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 		return labelByDependencyName ? rowName : renderedArtifactId;
 	}
 
+	String getDependencyOrProjectName() {
+		return dependencyOrProjectName;
+	}
+
 	public void labelByDependencyName() {
 		this.labelByDependencyName = true;
 	}
@@ -225,7 +247,7 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	@Override
 	public String toString() {
-		return (labelByDependencyName ? getDependencyName() : getArtifactId()) + "@" + getCurrentVersion() + " -> ["
+		return (rowName) + "@" + getCurrentVersion() + " -> ["
 				+ upgrade.getDisplayReleases() + "]";
 	}
 

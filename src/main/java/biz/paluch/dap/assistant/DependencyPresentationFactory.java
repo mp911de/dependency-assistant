@@ -20,7 +20,6 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.ProjectDisplayName;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.rule.DependencyRule;

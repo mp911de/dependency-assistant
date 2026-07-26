@@ -1044,16 +1044,20 @@ public class DependencyCheckDialog extends DialogWrapper {
 			tooltip.append(toolTipText);
 
 			if (!peers.isEmpty()) {
-				tooltip.append("<p>");
+				if (tooltip.toString().endsWith("code>")) {
+					tooltip.append("<br/>");
+					tooltip.append("<br/>");
+				}
 				tooltip.append(sharedPropertyToolTip(candidate, peers));
-				tooltip.append("</p>");
 			}
 
 			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
 			if (declaredVersions.hasDeclarationDrift()) {
-				tooltip.append("<p>");
+				if (tooltip.toString().endsWith("code>")) {
+					tooltip.append("<br/>");
+					tooltip.append("<br/>");
+				}
 				tooltip.append(declaredVersions.getDeclarationDriftToolTipText());
-				tooltip.append("</p>");
 			}
 
 			return "<html>" + tooltip + "</html>";
@@ -1071,7 +1075,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			StringBuilder tooltip = new StringBuilder();
 			tooltip.append("<b>").append(MessageBundle.message("dialog.tooltip.sharedProperty",
-					"<code>" + String.join(", ", shared) + "</code>")).append("</b>");
+					"</b><code>" + String.join(", ", shared) + "</code><b>")).append("</b>");
 
 			tooltip.append("<ul>");
 			for (TableRow peer : peers) {

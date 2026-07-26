@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.artifact;
 
+import org.springframework.util.ObjectUtils;
+
 /**
  * Wrapper class for {@link ArtifactVersion} delegating to the wrapped version.
  *
@@ -107,6 +109,14 @@ abstract class ArtifactVersionWrapper implements ArtifactVersion {
 	@Override
 	public ArtifactVersion getVersion() {
 		return delegate;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof ArtifactVersionWrapper that) {
+			return ObjectUtils.nullSafeEquals(delegate, that.delegate);
+		}
+		return ObjectUtils.nullSafeEquals(delegate, o);
 	}
 
 	@Override

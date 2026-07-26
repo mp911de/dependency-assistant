@@ -26,6 +26,8 @@ import biz.paluch.dap.assistant.check.UpgradeGroup;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.openapi.util.text.StringUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -43,8 +45,7 @@ class GroupRow extends TableRow {
 
 	private final String toolTipText;
 
-	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String derivedLabel,
-			List<String> memberLabelParts) {
+	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String derivedLabel) {
 
 		super(group.getUpgrade());
 		this.members = members;
@@ -54,20 +55,14 @@ class GroupRow extends TableRow {
 		}
 		this.toolTipText = createGroupToolTipText();
 
-		List<String> parts = memberLabelParts;
-		if (parts.isEmpty()) {
-
-			List<String> artifactIds = members.stream().map(member -> member.getArtifactId().artifactId()).toList();
-			parts = CoordinateShape.of(artifactIds).memberLabelParts();
-		}
-
-		String label = String.join(", ", parts);
+		List<String> artifactIds = members.stream().map(member -> member.getArtifactId().artifactId()).toList();
+		String label = String.join(", ", CoordinateShape.of(artifactIds).memberLabelParts());
 		this.memberLabel = !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label
 				: String.valueOf(members.size());
 	}
 
 	static GroupRow governed(List<TableRow> members) {
-		return create(members, null, List.of());
+		return create(members, null);
 	}
 
 	static GroupRow governed(TableRow... members) {
@@ -75,30 +70,25 @@ class GroupRow extends TableRow {
 	}
 
 	static GroupRow inferred(List<TableRow> members, String displayName) {
-		return create(members, displayName, List.of());
+		return create(members, displayName);
 	}
 
-	/**
-	 * Create an inferred group labeled with the given display name and member label
-	 * parts; empty parts fall back to the members' coordinate shape.
-	 */
-	static GroupRow inferred(List<TableRow> members, String displayName, List<String> memberLabelParts) {
-		return create(members, displayName, memberLabelParts);
-	}
-
-	private static GroupRow create(List<TableRow> members, @Nullable String derivedLabel,
-			List<String> memberLabelParts) {
+	private static GroupRow create(List<TableRow> members, @Nullable String derivedLabel) {
 
 		List<DependencyUpgradeCandidate> upgrades = members.stream().map(TableRow::getUpgrade).toList();
 		UpgradeGroup group = UpgradeGroup.of(upgrades);
-		return new GroupRow(group, members, derivedLabel, memberLabelParts);
+		return new GroupRow(group, members, derivedLabel);
 	}
 
 	private String createGroupToolTipText() {
 
+		String name = StringUtils.hasText(getDependencyOrProjectName())
+				? "</b><code>%s</code><b> (%s)".formatted(StringUtil.escapeXmlEntities(getName()),
+						StringUtil.escapeXmlEntities(getDependencyOrProjectName()))
+				: "</b><code>" + StringUtil.escapeXmlEntities(getName()) + "</code><b>";
 		StringBuilder tooltip = new StringBuilder();
 		tooltip.append("<b>")
-				.append(MessageBundle.message("dialog.tooltip.group.header", getName()))
+				.append(MessageBundle.message("dialog.tooltip.group.header", name))
 				.append("</b><ul>");
 		for (TableRow member : members) {
 			tooltip.append("<li><code>").append(member.getArtifactId()).append("</code></li>");
