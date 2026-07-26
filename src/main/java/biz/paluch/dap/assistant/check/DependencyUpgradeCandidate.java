@@ -19,10 +19,13 @@ package biz.paluch.dap.assistant.check;
 import java.util.HashSet;
 import java.util.Set;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.IconDependencyPresentation;
@@ -57,9 +60,11 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class DependencyUpgradeCandidate implements HasArtifactId {
+public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIdentity {
 
 	private final Dependency dependency;
+
+	private final DependencyAssistant assistant;
 
 	private final Releases releases;
 
@@ -77,11 +82,12 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 
 	private final UpgradeSuggestions displaySuggestions;
 
-	private DependencyUpgradeCandidate(Dependency dependency, Releases releases,
+	private DependencyUpgradeCandidate(Dependency dependency, DependencyAssistant assistant, Releases releases,
 			VulnerabilityRepository vulnerabilities, DependencyRule rule,
 			IconDependencyPresentation presentation, DeclaredVersions declaredVersions) {
 
 		this.dependency = dependency;
+		this.assistant = assistant;
 		this.releases = releases.withVersion(dependency.getCurrentVersion());
 		this.vulnerabilities = vulnerabilities;
 		this.rule = rule;
@@ -100,6 +106,7 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	 * suggestions and display views are computed eagerly from the supplied facts.
 	 *
 	 * @param dependency the collected dependency to upgrade.
+	 * @param assistant
 	 * @param releases the known releases for the dependency.
 	 * @param vulnerabilities the vulnerability results for known versions.
 	 * @param rule the governing dependency rule.
@@ -109,10 +116,10 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	 * @return an upgrade with suggestions and display views computed from the
 	 * supplied facts.
 	 */
-	public static DependencyUpgradeCandidate create(Dependency dependency, Releases releases,
-			VulnerabilityRepository vulnerabilities, DependencyRule rule,
-			IconDependencyPresentation presentation, DeclaredVersions declaredVersions) {
-		return new DependencyUpgradeCandidate(dependency, releases, vulnerabilities,
+	public static DependencyUpgradeCandidate create(Dependency dependency,
+			DependencyAssistant assistant, Releases releases, VulnerabilityRepository vulnerabilities,
+			DependencyRule rule, IconDependencyPresentation presentation, DeclaredVersions declaredVersions) {
+		return new DependencyUpgradeCandidate(dependency, assistant, releases, vulnerabilities,
 				rule, presentation, declaredVersions);
 	}
 
@@ -150,6 +157,11 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	}
 
 	@Override
+	public PackageIdentity getPackageIdentity() {
+		return dependency.getPackageIdentity();
+	}
+
+	@Override
 	public ArtifactId getArtifactId() {
 		return dependency.getArtifactId();
 	}
@@ -161,6 +173,15 @@ public class DependencyUpgradeCandidate implements HasArtifactId {
 	 */
 	public Dependency getDependency() {
 		return dependency;
+	}
+
+	/**
+	 * Return the associated dependency assistant.
+	 *
+	 * @return the associated dependency assistant.
+	 */
+	public DependencyAssistant getAssistant() {
+		return assistant;
 	}
 
 	/**

@@ -21,6 +21,8 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
@@ -136,7 +138,7 @@ class UpdateAntoraPlaybookFileTests {
 		GitArtifactId id = GitArtifactId.of("github.com", "spring-io", "antora-ui-spring");
 		GitVersion targetVersion = GitVersion.of(ArtifactVersion.of(toTag));
 
-		Dependency dependency = new Dependency(id, targetVersion);
+		Dependency dependency = new Dependency(PackageIdentity.of(id, PackageSystem.OTHER), targetVersion);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(VersionSource.declared("v0.4.25"));
 

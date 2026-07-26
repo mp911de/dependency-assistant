@@ -21,6 +21,10 @@ import java.util.Optional;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.HasPackageSystem;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.DependencySite;
 import biz.paluch.dap.support.Expression;
@@ -54,7 +58,7 @@ import org.jspecify.annotations.Nullable;
  * @see GradleArtifactId
  * @see GradlePluginId
  */
-interface GradleDependency {
+interface GradleDependency extends HasPackageSystem, HasPackageIdentity {
 
 	/**
 	 * Return the dependency identity used by release lookup, caching, and UI
@@ -63,6 +67,16 @@ interface GradleDependency {
 	 * represented through {@link #getVersionSource()}.
 	 */
 	ArtifactId getId();
+
+	@Override
+	default PackageIdentity getPackageIdentity() {
+		return PackageIdentity.of(getId(), getPackageSystem());
+	}
+
+	@Override
+	default PackageSystem getPackageSystem() {
+		return PackageSystem.MAVEN;
+	}
 
 	/**
 	 * Return the source that owns the version value for this declaration.
@@ -220,7 +234,7 @@ interface GradleDependency {
 	 * @return the dependency site.
 	 */
 	default DependencySite toDependencySite(PsiElement declaration) {
-		return DependencySite.of(getId(), getVersionSource(), getDeclarationSource(), declaration);
+		return DependencySite.of(this, getVersionSource(), getDeclarationSource(), declaration);
 	}
 
 	/**
@@ -298,8 +312,8 @@ interface GradleDependency {
 		@Override
 		public DependencySite toDependencySite(PsiElement declaration, PsiElement version) {
 
-			DependencySite dependencySite = DependencySite.of(getId(), getVersionSource(), getDeclarationSource(),
-					declaration);
+			DependencySite dependencySite = DependencySite.of(this, getVersionSource(),
+					getDeclarationSource(), declaration);
 			Optional<ArtifactVersion> concreteVersion = GradleRichVersion.parse(version());
 			if (concreteVersion.isEmpty()) {
 				return dependencySite;

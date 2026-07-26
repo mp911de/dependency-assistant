@@ -28,6 +28,8 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.assistant.VersionStatus;
@@ -49,7 +51,7 @@ import com.intellij.util.IconUtil;
 /**
  * Dialog-row presentation over one upgrade aggregate.
  */
-class TableRow implements HasArtifactId, PlannedUpgrade {
+class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 	private final DependencyUpgradeCandidate upgrade;
 
@@ -144,6 +146,11 @@ class TableRow implements HasArtifactId, PlannedUpgrade {
 
 	public DeclaredVersions getDeclaredVersions() {
 		return upgrade.getDeclaredVersions();
+	}
+
+	@Override
+	public PackageIdentity getPackageIdentity() {
+		return upgrade.getPackageIdentity();
 	}
 
 	@Override

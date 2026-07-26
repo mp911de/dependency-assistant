@@ -18,6 +18,7 @@ package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
@@ -56,7 +57,7 @@ class MavenExtensionsParserTests {
 	void directDependenciesWithInlineVersionsAreDiscovered(XmlFile file) {
 
 		MavenExtensionsAssistant assistant = new MavenExtensionsAssistant();
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		assistant.collect(file, collector);
 
 		assertThat(collector)

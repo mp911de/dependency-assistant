@@ -17,6 +17,7 @@
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.PropertyResolver;
@@ -54,9 +55,10 @@ class MavenDependencyCollector {
 	/**
 	 * Collects artifact declarations from {@code buildFile}.
 	 */
-	public DependencyCollector collect(PsiFile buildFile, PropertyResolver propertyResolver) {
+	public DependencyCollector collect(PackageSystem packageSystem, PsiFile buildFile,
+			PropertyResolver propertyResolver) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(packageSystem);
 		doCollect(buildFile, propertyResolver, collector);
 		return collector;
 	}

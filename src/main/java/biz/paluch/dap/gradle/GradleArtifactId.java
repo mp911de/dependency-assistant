@@ -16,6 +16,10 @@
 package biz.paluch.dap.gradle;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.HasPackageSystem;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.StringUtils;
@@ -51,7 +55,7 @@ import org.springframework.util.ObjectUtils;
  * @author Mark Paluch
  * @see GradleDependency
  */
-interface GradleArtifactId extends ArtifactId {
+interface GradleArtifactId extends ArtifactId, HasPackageIdentity, HasPackageSystem {
 
 	/**
 	 * Version segment associated with the Gradle declaration, or an empty string
@@ -154,6 +158,17 @@ interface GradleArtifactId extends ArtifactId {
 
 	record DefaultGradleArtifactId(String groupId, String artifactId, String version)
 			implements GradleArtifactId {
+
+
+		@Override
+		public PackageIdentity getPackageIdentity() {
+			return PackageIdentity.of(this, getPackageSystem());
+		}
+
+		@Override
+		public PackageSystem getPackageSystem() {
+			return PackageSystem.MAVEN;
+		}
 
 		@Override
 		public boolean equals(Object o) {

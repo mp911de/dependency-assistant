@@ -23,6 +23,8 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.assistant.review.BuildActionDelegate;
@@ -81,7 +83,7 @@ class UpdateTestSupport {
 		ArtifactVersion current = ArtifactVersion.of(fromVersion);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
 
-		Dependency dependency = new Dependency(id, current);
+		Dependency dependency = new Dependency(PackageIdentity.of(id, PackageSystem.MAVEN), current);
 		dependency.addDeclarationSource(declarationSource);
 		dependency.addVersionSource(versionSource);
 

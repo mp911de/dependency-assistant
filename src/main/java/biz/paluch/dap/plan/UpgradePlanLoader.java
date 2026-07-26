@@ -19,9 +19,9 @@ package biz.paluch.dap.plan;
 import java.util.ArrayList;
 import java.util.List;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
@@ -42,18 +42,16 @@ import org.jspecify.annotations.Nullable;
  */
 class UpgradePlanLoader {
 
-	private final List<InterfaceAssistant> assistants;
+	private final List<? extends DependencyAssistant> assistants;
 
 	private final @Nullable TicketSystem ticketSystem;
 
 	UpgradePlanLoader(@Nullable TicketSystem ticketSystem) {
-		this(DependencyAssistantDispatcher.findAll().stream()
-				.map(assistant -> assistant.getInterfaceAssistant())
-				.toList(), ticketSystem);
+		this(DependencyAssistantDispatcher.findAll(), ticketSystem);
 	}
 
-	UpgradePlanLoader(List<? extends InterfaceAssistant> assistants, @Nullable TicketSystem ticketSystem) {
-		this.assistants = List.copyOf(assistants);
+	UpgradePlanLoader(List<? extends DependencyAssistant> assistants, @Nullable TicketSystem ticketSystem) {
+		this.assistants = assistants;
 		this.ticketSystem = ticketSystem;
 	}
 
@@ -113,7 +111,7 @@ class UpgradePlanLoader {
 	private static Dependency toDependency(Member member) {
 
 		ArtifactVersion fromVersion = ArtifactVersion.of(member.fromVersion);
-		Dependency dependency = new Dependency(ArtifactId.of(member.groupId, member.artifactId), fromVersion);
+		Dependency dependency = new Dependency(member.getPackageIdentity(), fromVersion);
 
 		if (member.declarationSources.isEmpty()) {
 			dependency.addDeclarationSource(DeclarationSource.dependency());
@@ -137,11 +135,11 @@ class UpgradePlanLoader {
 		return dependency;
 	}
 
-	private @Nullable InterfaceAssistant resolveAssistant(String assistantClassName) {
+	private @Nullable InterfaceAssistant resolveAssistant(String id) {
 
-		for (InterfaceAssistant assistant : assistants) {
-			if (assistant.getClass().getName().equals(assistantClassName)) {
-				return assistant;
+		for (DependencyAssistant assistant : assistants) {
+			if (assistant.getId().equals(id)) {
+				return assistant.getInterfaceAssistant();
 			}
 		}
 

@@ -19,6 +19,7 @@ package biz.paluch.dap.github;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import com.intellij.psi.PsiFile;
@@ -43,7 +44,8 @@ class GitHubDependencyCollectorTests {
 			""")
 	void keepsUnresolvedSha(PsiFile workflowFile) {
 
-		DependencyCollector collector = new GitHubDependencyCollector(workflowFile.getProject()).collect(workflowFile);
+		DependencyCollector collector = new GitHubDependencyCollector(workflowFile.getProject())
+				.collect(PackageSystem.GITHUB, workflowFile);
 
 		Dependency usage = collector.getUsage(TestGitHubReleases.SETUP_JAVA);
 		assertThat(usage).isNotNull();

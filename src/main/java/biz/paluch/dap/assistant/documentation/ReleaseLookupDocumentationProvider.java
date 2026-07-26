@@ -113,7 +113,7 @@ public class ReleaseLookupDocumentationProvider implements LookupElementDocument
 				return null;
 			}
 
-			return DependencyDocumentationRenderer.from(psiFile.getProject(), context, false).render(release);
+			return DependencyDocumentationRenderer.from(context, false).render(release);
 		}
 
 	}

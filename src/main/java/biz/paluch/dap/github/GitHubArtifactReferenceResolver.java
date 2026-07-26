@@ -19,6 +19,7 @@ package biz.paluch.dap.github;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -83,6 +84,7 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 		ArtifactId artifactId = ref.toArtifactId();
 		return ArtifactReference.from(builder -> {
 			builder.artifact(artifactId)
+					.packageSystem(PackageSystem.GITHUB)
 					.versionSource(ref.toVersionSource())
 					.declarationSource(DeclarationSource.dependency())
 					.declarationElement(scalar)

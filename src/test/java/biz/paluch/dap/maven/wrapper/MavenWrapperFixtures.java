@@ -17,6 +17,7 @@
 package biz.paluch.dap.maven.wrapper;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -43,10 +44,10 @@ class MavenWrapperFixtures {
 	public static DependencyCollector analyze(PsiFile file) {
 		MavenWrapperAssistant assistant = new MavenWrapperAssistant();
 		if (!assistant.supports(file)) {
-			return new DependencyCollector();
+			return new DependencyCollector(PackageSystem.MAVEN);
 		}
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		assistant.collect(file, collector);
 		ProjectState state = StateService.getInstance(file.getProject())
 				.getProjectState(assistant.createContext(file.getProject(), file).getProjectId());

@@ -17,6 +17,7 @@
 package biz.paluch.dap.gradle.wrapper;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -37,10 +38,10 @@ class GradleWrapperFixtures {
 	static DependencyCollector analyze(PsiFile file) {
 		GradleWrapperAssistant assistant = new GradleWrapperAssistant();
 		if (!assistant.supports(file)) {
-			return new DependencyCollector();
+			return new DependencyCollector(PackageSystem.OTHER);
 		}
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.OTHER);
 		assistant.collect(file, collector);
 		ProjectState state = StateService.getInstance(file.getProject())
 				.getProjectState(assistant.createContext(file.getProject(), file).getProjectId());

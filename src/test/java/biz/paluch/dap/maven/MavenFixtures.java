@@ -21,6 +21,7 @@ import java.util.Map;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.fixtures.DependencyAssistantFixtures;
 import biz.paluch.dap.maven.MavenProjectContext.MavenContextImpl;
 import biz.paluch.dap.state.ProjectId;
@@ -93,9 +94,9 @@ public class MavenFixtures {
 		if (MavenUtils.isMavenExtensionsFile(file)) {
 			MavenExtensionsAssistant assistant = new MavenExtensionsAssistant();
 			if (!assistant.supports(file)) {
-				return new DependencyCollector();
+				return new DependencyCollector(PackageSystem.MAVEN);
 			}
-			DependencyCollector collector = new DependencyCollector();
+			DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 			assistant.collect(file, collector);
 			StateService service = StateService.getInstance(file.getProject());
 			ProjectState projectState = service
@@ -108,7 +109,7 @@ public class MavenFixtures {
 		MavenProjectContext projectContext = installProjectContext(file);
 
 		MavenAssistant assistant = new MavenAssistant();
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		collector.addPropertyValues(properties);
 		IntrospectedDependencies introspected = assistant.introspect(file.getProject());
 		assistant.collect(file, collector, introspected);

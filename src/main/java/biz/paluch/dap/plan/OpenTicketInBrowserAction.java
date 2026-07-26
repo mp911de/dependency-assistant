@@ -17,6 +17,7 @@
 package biz.paluch.dap.plan;
 
 import com.intellij.ide.BrowserUtil;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.project.DumbAwareAction;
@@ -30,6 +31,11 @@ import com.intellij.openapi.project.Project;
  * @author Mark Paluch
  */
 public class OpenTicketInBrowserAction extends DumbAwareAction {
+
+	@Override
+	public ActionUpdateThread getActionUpdateThread() {
+		return ActionUpdateThread.BGT;
+	}
 
 	@Override
 	public void update(AnActionEvent e) {

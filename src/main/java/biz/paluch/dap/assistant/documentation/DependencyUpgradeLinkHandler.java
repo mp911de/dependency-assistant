@@ -120,7 +120,7 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 			if (declarationFile != null) {
 				ApplicationManager.getApplication()
 						.invokeLater(() -> ProgressManager.getInstance().run(new DependencyCheckTask(project,
-								new UpgradeRequest(List.of(), declarationFile, upgradeTarget.getArtifactId()))));
+								new UpgradeRequest(List.of(), declarationFile, upgradeTarget.getPackageIdentity()))));
 			}
 
 			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));

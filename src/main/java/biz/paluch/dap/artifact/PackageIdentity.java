@@ -29,7 +29,7 @@ import org.springframework.util.ObjectUtils;
  * @author Mark Paluch
  * @see PackageSystem
  */
-public class PackageIdentity implements HasArtifactId {
+public class PackageIdentity implements HasArtifactId, HasPackageSystem {
 
 	private final ArtifactId artifactId;
 
@@ -66,6 +66,7 @@ public class PackageIdentity implements HasArtifactId {
 	 *
 	 * @return the package ecosystem.
 	 */
+	@Override
 	public PackageSystem getPackageSystem() {
 		return packageSystem;
 	}

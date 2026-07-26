@@ -19,6 +19,7 @@ package biz.paluch.dap.maven;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.support.ArtifactReference;
@@ -93,7 +94,9 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 
 		String version = versionTag.getValue().getText().trim();
 		return ArtifactReference.from(it -> {
-			it.artifact(artifactId).declarationElement(parentTag)
+			it.artifact(artifactId)
+					.packageSystem(PackageSystem.MAVEN)
+					.declarationElement(parentTag)
 					.declarationSource(MavenParser.getDeclarationSource(parentTag))
 					.versionSource(VersionSource.from(version))
 					.declarationSource(declarationSource);

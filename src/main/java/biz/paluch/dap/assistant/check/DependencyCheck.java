@@ -33,7 +33,6 @@ import java.util.concurrent.TimeoutException;
 import biz.paluch.dap.BomMembershipResolver;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectStateIndexer;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSources;
@@ -112,7 +111,7 @@ public class DependencyCheck {
 		}).inSmartMode(project).executeSynchronously();
 		steps.nextStep();
 
-		Map<ArtifactId, ReleaseLookupResult> releases = resolveReleases(steps,
+		Map<PackageIdentity, ReleaseLookupResult> releases = resolveReleases(steps,
 				aggregator.getReleaseSources(), ReleaseResolver.cached());
 
 		reindexMetadata(indicator, aggregator.getDependencyVersions());
@@ -170,7 +169,7 @@ public class DependencyCheck {
 	 * @param consistency the release-cache consistency to use.
 	 * @return successfully resolved releases keyed by artifact, in encounter order.
 	 */
-	public Map<ArtifactId, Releases> getReleases(ProgressIndicator indicator,
+	public Map<PackageIdentity, Releases> getReleases(ProgressIndicator indicator,
 			List<DependencyCheckAggregator> aggregators, ReleaseResolver.Consistency consistency) {
 		indicator.setText(MessageBundle.message("action.check.dependency.loading.remote"));
 
@@ -182,10 +181,10 @@ public class DependencyCheck {
 			dependencyVersions.putAll(aggregator.getDependencyVersions());
 		}
 
-		Map<ArtifactId, ReleaseLookupResult> resultMap = resolveReleases(indicator, sources, consistency);
+		Map<PackageIdentity, ReleaseLookupResult> resultMap = resolveReleases(indicator, sources, consistency);
 		reindexMetadata(indicator, dependencyVersions);
-		Map<ArtifactId, Releases> releases = new LinkedHashMap<>();
-		for (Map.Entry<ArtifactId, ReleaseLookupResult> entry : resultMap.entrySet()) {
+		Map<PackageIdentity, Releases> releases = new LinkedHashMap<>();
+		for (Map.Entry<PackageIdentity, ReleaseLookupResult> entry : resultMap.entrySet()) {
 			if (entry.getValue().error() == null) {
 				releases.put(entry.getKey(), entry.getValue().releases());
 			}
@@ -204,7 +203,7 @@ public class DependencyCheck {
 	 * @return the resolver result per artifact, in encounter order; a run aborted
 	 * by timeout or interruption yields a partial map.
 	 */
-	protected Map<ArtifactId, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
+	protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
 			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {
 
 		ThreadFactory threadFactory = IntelliJVirtualThreads.ofVirtual().name("DependencyAssistant").factory();
@@ -216,7 +215,7 @@ public class DependencyCheck {
 		}
 	}
 
-	protected Map<ArtifactId, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
+	protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
 			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency,
 			ExecutorService resolverExecutor, ExecutorService executor) {
 
@@ -231,7 +230,7 @@ public class DependencyCheck {
 		Cache cache = stateService.getCache();
 		ReleaseResolver resolver = new ReleaseResolver(resolverExecutor, indicator, cache);
 
-		Map<ArtifactId, Future<ReleaseLookupResult>> futures = new LinkedHashMap<>();
+		Map<PackageIdentity, Future<ReleaseLookupResult>> futures = new LinkedHashMap<>();
 
 		for (ReleaseSources artifactSource : artifactSources) {
 
@@ -246,16 +245,16 @@ public class DependencyCheck {
 				return result;
 			};
 
-			futures.put(artifactSource.artifactId(), executor.submit(lookupReleaseSupplier::get));
+			futures.put(artifactSource.pkg(), executor.submit(lookupReleaseSupplier::get));
 		}
 
 		steps.nextStep();
 
-		Map<ArtifactId, ReleaseLookupResult> results = new LinkedHashMap<>();
-		for (Map.Entry<ArtifactId, Future<ReleaseLookupResult>> entry : futures.entrySet()) {
+		Map<PackageIdentity, ReleaseLookupResult> results = new LinkedHashMap<>();
+		for (Map.Entry<PackageIdentity, Future<ReleaseLookupResult>> entry : futures.entrySet()) {
 
-			ArtifactId artifactId = entry.getKey();
-			String name = artifactId.toString();
+			PackageIdentity pkg = entry.getKey();
+			String name = pkg.toString();
 
 			try {
 				indicator.checkCanceled();
@@ -283,21 +282,21 @@ public class DependencyCheck {
 				Throwable cause = e.getCause() != null ? e.getCause() : e;
 				res = ReleaseLookupResult.failed("%s: %s".formatted(name, cause.getMessage()));
 			} catch (InterruptedException e) {
-				res = cancelAndRecord(artifactId, futures, e);
+				res = cancelAndRecord(pkg, futures, e);
 				Thread.currentThread().interrupt();
 				abort = true;
 			} catch (TimeoutException e) {
 				res = ReleaseLookupResult.failed("%s: %s".formatted(name, e.getMessage()));
 			}
 
-			results.put(artifactId, res);
+			results.put(pkg, res);
 
 			if (abort) {
 				break;
 			}
 		}
 
-		List<ArtifactId> artifactIds = results.entrySet().stream()
+		List<PackageIdentity> artifactIds = results.entrySet().stream()
 				.filter(e -> !e.getValue().newReleases().isEmpty())
 				.map(Map.Entry::getKey).toList();
 		indicator.checkCanceled();
@@ -334,18 +333,18 @@ public class DependencyCheck {
 	}
 
 
-	private static void cancelRemainingFutures(Map<ArtifactId, Future<ReleaseLookupResult>> futures) {
-		for (Future<ReleaseLookupResult> future : futures.values()) {
+	private static void cancelRemainingFutures(Map<?, ? extends Future<?>> futures) {
+		for (Future<?> future : futures.values()) {
 			if (!future.isDone()) {
 				future.cancel(true);
 			}
 		}
 	}
 
-	private static ReleaseLookupResult cancelAndRecord(ArtifactId artifactId,
-			Map<ArtifactId, Future<ReleaseLookupResult>> futures, Throwable cause) {
+	private static ReleaseLookupResult cancelAndRecord(PackageIdentity pkg,
+			Map<?, ? extends Future<?>> futures, Throwable cause) {
 		cancelRemainingFutures(futures);
-		return ReleaseLookupResult.failed("%s: %s".formatted(artifactId, cause.getMessage()));
+		return ReleaseLookupResult.failed("%s: %s".formatted(pkg, cause.getMessage()));
 	}
 
 }

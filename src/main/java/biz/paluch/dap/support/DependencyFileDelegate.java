@@ -3,6 +3,7 @@ package biz.paluch.dap.support;
 import java.util.function.Function;
 
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -58,14 +59,16 @@ public class DependencyFileDelegate {
 	 * empty {@link DependencyCollector} is returned and the function is not
 	 * invoked. Must be called inside a read action.
 	 *
+	 * @param packageSystem
 	 * @param collectorFunction the format-specific collector applied to the
 	 * resolved {@link PsiFile}.
 	 * @return the collected dependencies, or an empty {@link DependencyCollector}
 	 * when the file cannot be resolved; guaranteed to be not {@literal null}.
 	 */
-	public DependencyCollector collectDependencies(Function<PsiFile, DependencyCollector> collectorFunction) {
+	public DependencyCollector collectDependencies(PackageSystem packageSystem,
+			Function<PsiFile, DependencyCollector> collectorFunction) {
 		PsiFile psiFile = BetterPsiManager.getInstance(this.project).findFile(this.file);
-		return psiFile != null ? collectorFunction.apply(psiFile) : new DependencyCollector();
+		return psiFile != null ? collectorFunction.apply(psiFile) : new DependencyCollector(packageSystem);
 	}
 
 	@Override

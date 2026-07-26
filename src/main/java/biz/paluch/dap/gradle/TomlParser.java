@@ -26,6 +26,7 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.PropertyManagedDependency;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
@@ -523,6 +524,7 @@ class TomlParser {
 
 			ArtifactDeclaration.Builder builder = ArtifactDeclaration.builder()
 					.artifact(artifactId)
+					.packageSystem(PackageSystem.MAVEN)
 					.versionSource(getVersionSource(versionExpression))
 					.declarationSource(declarationSource)
 					.declarationElement(declaration)

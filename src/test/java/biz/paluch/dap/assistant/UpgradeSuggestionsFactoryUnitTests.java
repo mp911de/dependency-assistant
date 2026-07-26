@@ -19,6 +19,8 @@ package biz.paluch.dap.assistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.VulnerabilityRepository;
@@ -42,6 +44,8 @@ import static biz.paluch.dap.assertions.Assertions.*;
 class UpgradeSuggestionsFactoryUnitTests {
 
 	private static final ArtifactId ARTIFACT = ArtifactId.of("com.example", "demo");
+
+	private static final PackageIdentity PKG = PackageIdentity.of(ARTIFACT, PackageSystem.MAVEN);
 
 	@Test
 	void addsSafeSuggestionFromVulnerabilities() {
@@ -110,7 +114,7 @@ class UpgradeSuggestionsFactoryUnitTests {
 	}
 
 	private static Dependency dependency(String version) {
-		return new Dependency(ARTIFACT, ArtifactVersion.of(version));
+		return new Dependency(PKG, ArtifactVersion.of(version));
 	}
 
 	private static class PatchOnlyRule implements DependencyRule {

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageSystem;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.LinkedMultiValueMap;
@@ -101,12 +102,12 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 	 * artifact id up to the first {@code -} or {@code .} boundary, within its group
 	 * id and build ecosystem.
 	 */
-	private record Family(String groupId, String ecosystem, String token) {
+	private record Family(String groupId, PackageSystem packageSystem, String token) {
 
 		static Family of(TableRow candidate) {
 			ArtifactId artifactId = candidate.getArtifactId();
 			return new Family(artifactId.groupId(),
-					candidate.getUpgrade().getPresentation().getEcosystem(),
+					candidate.getUpgrade().getPresentation().getPackageSystem(),
 					token(artifactId.artifactId()));
 		}
 

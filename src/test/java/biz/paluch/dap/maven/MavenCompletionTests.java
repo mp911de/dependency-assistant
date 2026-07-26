@@ -189,7 +189,7 @@ class MavenCompletionTests {
 
 		ProjectState projectState = StateService.getInstance(pomFile.getProject())
 				.getProjectState(MavenFixtures.PROJECT_ID);
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		collector.registerUsage(Releases.JUNIT_BOM.toArtifactId(), ArtifactVersion.of("5.14.1"),
 				DeclarationSource.dependency(), VersionSource.declared("5.14.1"));
 		projectState.setDependencies(collector, PackageSystem.MAVEN);

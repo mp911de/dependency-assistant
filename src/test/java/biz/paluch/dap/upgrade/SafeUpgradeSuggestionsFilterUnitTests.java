@@ -19,6 +19,8 @@ package biz.paluch.dap.upgrade;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.fixtures.TestReleases;
@@ -134,7 +136,8 @@ class SafeUpgradeSuggestionsFilterUnitTests {
 	private UpgradeSuggestions safeVersions(Releases releases, String current, VulnerabilityRepository vulnerabilities,
 			UpgradeSuggestions suggestions) {
 
-		Dependency dependency = new Dependency(ARTIFACT, ArtifactVersion.of(current));
+		Dependency dependency = new Dependency(PackageIdentity.of(ARTIFACT, PackageSystem.MAVEN),
+				ArtifactVersion.of(current));
 		return filter.filter(dependency, releases.withVersion(dependency.getCurrentVersion()), vulnerabilities,
 				DependencyRule.absent(), suggestions);
 	}

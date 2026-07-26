@@ -58,7 +58,9 @@ class ArchitectureTests {
 			.excludingClass("biz.paluch.dap.github.GitHubTicketQuery",
 					"needs rework")
 			.excludingClass("biz.paluch.dap.util.WeightedStepsProgressIndicator",
-					"deliberate dependency on StepsProgressIndicator");
+					"deliberate dependency on StepsProgressIndicator")
+			.excludingClass("biz.paluch.dap.ProjectDependencyContext",
+					"deliberate factory/back-reference pair: the assistant creates contexts, the context exposes its assistant");
 
 	/*
 	 * Variant 1: explicit closed hierarchy declaration. DeclarationSource, its

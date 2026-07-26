@@ -53,7 +53,8 @@ public class GradleFixtures {
 	static DependencyCollector analyze(PsiFile file, Map<String, String> properties) {
 
 		GradleDependencyCollector parser = new GradleDependencyCollector(file.getProject(), properties);
-		DependencyCollector collector = parser.collect(file);
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
+		parser.collect(file, collector);
 		GradleProjectContext projectContext = new GradleBuildContextImpl(file.getProject(),
 				GradleProjectDescriptor.of(new ProjectId("demo", "demo", file.getVirtualFile()
 						.getPath()), "1.0.0", ""));

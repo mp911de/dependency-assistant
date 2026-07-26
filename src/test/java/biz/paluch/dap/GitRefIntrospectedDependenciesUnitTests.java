@@ -21,6 +21,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.github.TestGitHubReleases;
 import biz.paluch.dap.state.Cache;
@@ -43,7 +44,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 
 		cache.addArtifacts(TestGitHubReleases.CHECKOUT);
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		collector.registerDeclaration(TestGitHubReleases.CHECKOUT.toArtifactId(), DeclarationSource.dependency(),
 				VersionSource.declared("v4.2.0"));
 
@@ -62,7 +63,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 
 		cache.addArtifacts(TestGitHubReleases.ANTORA_UI);
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		collector.registerDeclaration(TestGitHubReleases.GIT_ANTORA_UI, DeclarationSource.dependency(),
 				VersionSource.declared("v0.4.26"));
 
@@ -78,7 +79,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 	@Test
 	void completeLeavesDeclarationUnresolvedWhenCacheIsCold() {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		collector.registerDeclaration(TestGitHubReleases.CHECKOUT.toArtifactId(), DeclarationSource.dependency(),
 				VersionSource.declared("v4.2.0"));
 
@@ -92,7 +93,7 @@ class GitRefIntrospectedDependenciesUnitTests {
 
 		cache.addArtifacts(TestGitHubReleases.CHECKOUT);
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		VersionSource version = VersionSource.declared("v3.6.0");
 		collector.registerDeclaration(TestGitHubReleases.CHECKOUT.toArtifactId(), DeclarationSource.dependency(),
 				version);

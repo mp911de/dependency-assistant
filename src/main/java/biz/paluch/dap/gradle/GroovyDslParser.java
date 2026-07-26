@@ -424,7 +424,8 @@ class GroovyDslParser {
 			return null;
 		}
 
-		ArtifactId artifactId = GradleArtifactId.from(gavText).resolve(propertyResolver);
+		GradleArtifactId gid = GradleArtifactId.from(gavText);
+		ArtifactId artifactId = gid.resolve(propertyResolver);
 		VersionSource versionSource;
 		if (StringUtils.hasText(versionValue.versionProperty) || StringUtils.hasText(versionValue.version)) {
 			Expression expression = StringUtils.hasText(versionValue.versionProperty)
@@ -436,8 +437,8 @@ class GroovyDslParser {
 			versionSource = VersionSource.from(versionValue.version);
 		}
 
-		DependencySite dependencySite = DependencySite.of(artifactId, versionSource, DeclarationSource.dependency(),
-				call);
+		DependencySite dependencySite = DependencySite.of(artifactId, gid.getPackageSystem(), versionSource,
+				DeclarationSource.dependency(), call);
 		if (versionSource.isProperty()) {
 			Property propertyValue = propertyResolver
 					.getPropertyValue(((VersionSource.VersionProperty) versionSource).getProperty());
@@ -453,12 +454,13 @@ class GroovyDslParser {
 		if (versionValue.isPresent()) {
 			Optional<ArtifactVersion> optionalVersion = ArtifactVersion.from(versionValue.version());
 			if (optionalVersion.isPresent()) {
-				return VersionedDependencySite.of(artifactId, optionalVersion.get(), versionSource,
-						DeclarationSource.dependency(), call, versionValue.versionElement());
+				return VersionedDependencySite.of(dependencySite.getPackageIdentity(), optionalVersion.get(),
+						versionSource, DeclarationSource.dependency(), call, versionValue.versionElement());
 			}
 		}
 
-		return DependencySite.of(artifactId, versionSource, DeclarationSource.dependency(), call);
+		return DependencySite.of(dependencySite, versionSource,
+				DeclarationSource.dependency(), call);
 	}
 
 	/**

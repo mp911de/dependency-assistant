@@ -24,6 +24,9 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -58,7 +61,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class ArtifactReferenceContext {
+public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdentity {
 
 	private static final ArtifactReferenceContext ABSENT = new ArtifactReferenceContext();
 
@@ -91,7 +94,7 @@ public class ArtifactReferenceContext {
 		this.evaluator = DependencyRuleEvaluator.absent();
 		this.releases = null;
 		this.projectMetadata = ProjectMetadata.absent();
-		this.presentation = DependencyPresentation.of(ArtifactId.of("", ""));
+		this.presentation = null;
 	}
 
 	private ArtifactReferenceContext(ProjectDependencyContext dependencyContext, StateService stateService,
@@ -105,7 +108,7 @@ public class ArtifactReferenceContext {
 		this.evaluator = evaluator;
 		this.releases = null;
 		this.projectMetadata = projectMetadata;
-		this.presentation = DependencyPresentationFactory.create(declaration.getArtifactId(),
+		this.presentation = DependencyPresentationFactory.create(declaration.getPackageIdentity(),
 				projectMetadata.getProjectName(), rule, dependencyContext.getInterfaceAssistant());
 	}
 
@@ -222,11 +225,23 @@ public class ArtifactReferenceContext {
 	}
 
 	/**
-	 * Return the artifact id of the resolved declaration.
+	 * Return the artifact id of the resolved package identity.
+	 *
+	 * @return the resolved package id.
+	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
+	 */
+	@Override
+	public PackageIdentity getPackageIdentity() {
+		return getDeclaration().getPackageIdentity();
+	}
+
+	/**
+	 * Return the artifact id of the resolved artifact Id.
 	 *
 	 * @return the resolved artifact id.
 	 * @throws IllegalStateException if this context is {@link #isAbsent() absent}.
 	 */
+	@Override
 	public ArtifactId getArtifactId() {
 		return getDeclaration().getArtifactId();
 	}
@@ -282,7 +297,7 @@ public class ArtifactReferenceContext {
 			return Releases.empty();
 		}
 		if (releases == null) {
-			releases = getStateService().getCache().getReleases(getArtifactId());
+			releases = getStateService().getCache().getReleases(getPackageIdentity());
 		}
 		return releases;
 	}
@@ -307,7 +322,7 @@ public class ArtifactReferenceContext {
 		if (suggestions == null) {
 			Dependency dependency = getDeclaration().toDependency();
 			suggestions = UpgradeSuggestionsFactory.createSuggestions(dependency, getReleases(),
-					version -> getStateService().getVulnerabilities(getArtifactId(), version), rule);
+					version -> getStateService().getVulnerabilities(getPackageIdentity(), version), rule);
 		}
 		return suggestions;
 	}
@@ -360,7 +375,7 @@ public class ArtifactReferenceContext {
 		if (isAbsent()) {
 			return Vulnerabilities.absent();
 		}
-		return getStateService().getVulnerabilities(getArtifactId(), artifactVersion);
+		return getStateService().getVulnerabilities(getPackageIdentity(), artifactVersion);
 	}
 
 	/**

@@ -171,7 +171,7 @@ public interface DependencyAssistant {
 	default DependencyCollector collectCompleted(PsiFile anchor) {
 
 		IntrospectedDependencies introspected = introspect(anchor.getProject());
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(getPackageSystem());
 		collect(anchor, collector, introspected);
 		introspected.complete(collector);
 		return collector;

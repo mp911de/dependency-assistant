@@ -45,6 +45,12 @@ enum AbsentDependencyContext implements ProjectDependencyContext {
 
 	ABSENT;
 
+
+	@Override
+	public DependencyAssistant getAssistant() {
+		throw new IllegalStateException("No dependency context available");
+	}
+
 	@Override
 	public InterfaceAssistant getInterfaceAssistant() {
 		throw new IllegalStateException("No dependency context available");

@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.ReleaseSources;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
@@ -109,7 +110,7 @@ class DependencyCheckScopeTests {
 		DependencyCheck dependencyCheck = new DependencyCheck(project) {
 
 			@Override
-			protected Map<ArtifactId, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
+			protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
 					List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {
 				return super.resolveReleases(indicator, artifactSources, consistency, new SameThreadExecutorService(),
 						new SameThreadExecutorService());

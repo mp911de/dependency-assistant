@@ -23,6 +23,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.fixtures.TestDeclaredVersions;
 import biz.paluch.dap.state.ProjectId;
@@ -38,6 +40,10 @@ import static biz.paluch.dap.assertions.Assertions.*;
  * @author Mark Paluch
  */
 class DeclaredVersionsTests {
+
+	static ArtifactId LETTUCE = ArtifactId.of("io.lettuce", "lettuce-core");
+
+	static PackageIdentity PKG = PackageIdentity.of(LETTUCE, PackageSystem.MAVEN);
 
 	@Test
 	void emptyHasNoConflictAndNoVersion() {
@@ -134,7 +140,7 @@ class DeclaredVersionsTests {
 	}
 
 	private static Dependency dependency(ArtifactVersion version) {
-		return new Dependency(ArtifactId.of("io.lettuce", "lettuce-core"), version);
+		return new Dependency(PKG, version);
 	}
 
 	private static Dependency dependency(ArtifactVersion version, VersionSource versionSource) {

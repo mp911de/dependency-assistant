@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
@@ -86,6 +87,7 @@ class NpmArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		return ArtifactReference.from(builder -> {
 			builder.artifact(artifactId)
+					.packageSystem(PackageSystem.NPM)
 					.declarationSource(DeclarationSource.dependency())
 					.versionSource(versionSource)
 					.declarationElement(literal)

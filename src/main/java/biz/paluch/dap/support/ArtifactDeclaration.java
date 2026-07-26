@@ -22,6 +22,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
@@ -37,7 +39,9 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class ArtifactDeclaration implements DependencySite {
+public class ArtifactDeclaration implements DependencySite, HasPackageIdentity {
+
+	private final PackageSystem packageSystem;
 
 	private final ArtifactId artifactId;
 
@@ -53,10 +57,11 @@ public class ArtifactDeclaration implements DependencySite {
 
 	private final @Nullable PsiElement versionLiteral;
 
-	private ArtifactDeclaration(ArtifactId artifactId, VersionSource versionSource,
+	private ArtifactDeclaration(PackageSystem packageSystem, ArtifactId artifactId, VersionSource versionSource,
 			DeclarationSource declarationSource, boolean versionDefinedInSameFile,
 			@Nullable ArtifactVersion version, PsiElement declarationElement,
 			@Nullable PsiElement versionLiteral) {
+		this.packageSystem = packageSystem;
 		this.artifactId = artifactId;
 		this.versionSource = versionSource;
 		this.declarationSource = declarationSource;
@@ -92,6 +97,7 @@ public class ArtifactDeclaration implements DependencySite {
 	public ArtifactDeclaration mutate(Consumer<Builder> customizer) {
 
 		Builder builder = builder().artifact(artifactId)
+				.packageSystem(packageSystem)
 				.versionSource(versionSource)
 				.declarationSource(declarationSource)
 				.version(version)
@@ -109,8 +115,14 @@ public class ArtifactDeclaration implements DependencySite {
 	 *
 	 * @return the artifact identifier.
 	 */
+	@Override
 	public ArtifactId getArtifactId() {
 		return artifactId;
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return packageSystem;
 	}
 
 	/**
@@ -197,7 +209,7 @@ public class ArtifactDeclaration implements DependencySite {
 	 */
 	public Dependency toDependency() {
 
-		Dependency dependency = new Dependency(getArtifactId(), getVersion());
+		Dependency dependency = new Dependency(getPackageIdentity(), getVersion());
 		dependency.addVersionSource(getVersionSource());
 		dependency.addDeclarationSource(getDeclarationSource());
 
@@ -220,6 +232,8 @@ public class ArtifactDeclaration implements DependencySite {
 
 		private @Nullable ArtifactId id;
 
+		private @Nullable PackageSystem packageSystem;
+
 		private @Nullable VersionSource versionSource;
 
 		private @Nullable DeclarationSource declarationSource;
@@ -241,6 +255,17 @@ public class ArtifactDeclaration implements DependencySite {
 		 */
 		public Builder artifact(ArtifactId id) {
 			this.id = id;
+			return this;
+		}
+
+		/**
+		 * Configure the package system.
+		 *
+		 * @param packageSystem the package system.
+		 * @return {@code this} builder.
+		 */
+		public Builder packageSystem(PackageSystem packageSystem) {
+			this.packageSystem = packageSystem;
 			return this;
 		}
 
@@ -309,6 +334,7 @@ public class ArtifactDeclaration implements DependencySite {
 		 */
 		public ArtifactDeclaration build() {
 
+			Assert.notNull(packageSystem, "Package system must not be null");
 			Assert.notNull(id, "ArtifactId must not be null");
 			Assert.notNull(versionSource, "VersionSource must not be null");
 			Assert.notNull(declarationSource, "DeclarationSource must not be null");
@@ -317,7 +343,9 @@ public class ArtifactDeclaration implements DependencySite {
 			boolean versionDefinedInSameFile = versionLiteral != null && versionLiteral.getContainingFile()
 					.equals(declarationElement.getContainingFile());
 
-			return new ArtifactDeclaration(id, versionSource, declarationSource, versionDefinedInSameFile, version,
+			return new ArtifactDeclaration(packageSystem, id, versionSource, declarationSource,
+					versionDefinedInSameFile,
+					version,
 					declarationElement, versionLiteral);
 		}
 

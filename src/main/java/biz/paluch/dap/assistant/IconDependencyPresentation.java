@@ -19,6 +19,7 @@ package biz.paluch.dap.assistant;
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.HasPackageSystem;
 
 /**
  * A {@link DependencyPresentation} enriched with table rendering concerns: the
@@ -34,7 +35,7 @@ import biz.paluch.dap.artifact.Dependency;
  * @see DependencyPresentationFactory
  * @see DependencyIcons
  */
-public interface IconDependencyPresentation extends DependencyPresentation, DependencyIcons {
+public interface IconDependencyPresentation extends DependencyPresentation, DependencyIcons, HasPackageSystem {
 
 	/**
 	 * Create a presentation from the dependency's coordinates and the assistant's
@@ -51,16 +52,7 @@ public interface IconDependencyPresentation extends DependencyPresentation, Depe
 	 */
 	static IconDependencyPresentation from(Dependency dependency, InterfaceAssistant assistant) {
 		return new DefaultIconDependencyPresentation(assistant.getTableIcon(dependency),
-				assistant.getClass().getName(), DependencyPresentation.of(dependency.getArtifactId()));
+				DependencyPresentation.of(dependency.getPackageIdentity()));
 	}
-
-	/**
-	 * Return the identifier of the ecosystem the dependency originates from.
-	 * Presentations produced by the same assistant share the same identifier; the
-	 * value discriminates upgrade grouping across ecosystems.
-	 *
-	 * @return the ecosystem identifier.
-	 */
-	String getEcosystem();
 
 }

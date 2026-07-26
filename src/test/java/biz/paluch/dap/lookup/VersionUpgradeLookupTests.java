@@ -19,6 +19,7 @@ package biz.paluch.dap.lookup;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
@@ -45,6 +46,7 @@ class VersionUpgradeLookupTests {
 		ArtifactVersion declaredVersion = ArtifactVersion.of("6.2.1");
 		ArtifactReference reference = ArtifactReference.from(it -> it
 				.artifact(ArtifactId.of("org.springframework", "spring-core"))
+				.packageSystem(PackageSystem.MAVEN)
 				.version(declaredVersion)
 				.versionSource(VersionSource.declared(declaredVersion.toString()))
 				.declarationSource(DeclarationSource.dependency())

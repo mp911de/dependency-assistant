@@ -21,7 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
+import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.plan.UpgradePlanState.DeclarationKind;
 import biz.paluch.dap.plan.UpgradePlanState.DeclarationSourceState;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
@@ -77,7 +77,7 @@ class UpgradePlanLoaderUnitTests {
 	}
 
 	private static UpgradePlanLoader loader() {
-		return new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null);
+		return new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null);
 	}
 
 	private static Item item(String displayName, String target, Member... members) {
@@ -93,7 +93,7 @@ class UpgradePlanLoaderUnitTests {
 		member.groupId = groupId;
 		member.artifactId = artifactId;
 		member.fromVersion = fromVersion;
-		member.assistant = TestInterfaceAssistant.class.getName();
+		member.assistant = TestAssistant.INSTANCE.getId();
 		member.declarationSources.add(new DeclarationSourceState(DeclarationKind.DEPENDENCY, null));
 		member.versionSources
 				.add(new VersionSourceState(VersionSourceKind.PROPERTY, property, null, null));

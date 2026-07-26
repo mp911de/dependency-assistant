@@ -24,6 +24,8 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.assistant.review.BuildActionDelegate;
@@ -61,7 +63,7 @@ class UpdateTestSupport {
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
 
-		Dependency dependency = new Dependency(id, updateTo);
+		Dependency dependency = new Dependency(PackageIdentity.of(id, PackageSystem.MAVEN), updateTo);
 		dependency.addDeclarationSource(declarationSource);
 		dependency.addVersionSource(versionSource);
 
@@ -84,7 +86,7 @@ class UpdateTestSupport {
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		ArtifactVersion current = ArtifactVersion.of(fromVersion);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
-		Dependency dependency = new Dependency(id, current);
+		Dependency dependency = new Dependency(PackageIdentity.of(id, PackageSystem.MAVEN), current);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(VersionSource.declared(fromVersion));
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
@@ -98,7 +100,7 @@ class UpdateTestSupport {
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
 		ArtifactVersion current = ArtifactVersion.of(fromVersion);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
-		Dependency dependency = new Dependency(id, current);
+		Dependency dependency = new Dependency(PackageIdentity.of(id, PackageSystem.MAVEN), current);
 		dependency.addDeclarationSource(DeclarationSource.dependency());
 		dependency.addVersionSource(VersionSource.declared(fromVersion));
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);

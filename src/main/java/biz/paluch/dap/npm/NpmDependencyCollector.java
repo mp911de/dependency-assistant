@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -45,12 +46,14 @@ class NpmDependencyCollector {
 
 	/**
 	 * Collect NPM dependencies from the given {@code package.json} file.
+	 *
+	 * @param packageSystem
 	 * @param file the JSON PSI file to scan.
 	 * @return the populated dependency collector.
 	 */
-	DependencyCollector collect(PsiFile file) {
+	DependencyCollector collect(PackageSystem packageSystem, PsiFile file) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(packageSystem);
 		doCollect(file, collector);
 		return collector;
 	}

@@ -41,7 +41,7 @@ class DependencyfileCompletionFixtures {
 
 	static void setup(Project project) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		register(collector, SPRING_CORE);
 		register(collector, SPRING_WEB);
 		register(collector, JUNIT);

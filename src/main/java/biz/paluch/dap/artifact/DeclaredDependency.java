@@ -36,9 +36,9 @@ import org.jspecify.annotations.Nullable;
  * @see VersionSource
  * @see DependencyCollector
  */
-public class DeclaredDependency implements HasArtifactId {
+public class DeclaredDependency implements HasArtifactId, HasPackageIdentity {
 
-	private final ArtifactId artifactId;
+	private final PackageIdentity pkg;
 
 	private final Set<VersionSource> versionSources = new LinkedHashSet<>();
 
@@ -46,15 +46,20 @@ public class DeclaredDependency implements HasArtifactId {
 
 	/**
 	 * Create a new {@code DeclaredDependency}.
-	 * @param artifactId the declared artifact coordinates.
+	 * @param pkg the declared artifact coordinates.
 	 */
-	public DeclaredDependency(ArtifactId artifactId) {
-		this.artifactId = artifactId;
+	public DeclaredDependency(PackageIdentity pkg) {
+		this.pkg = pkg;
 	}
 
 	@Override
 	public ArtifactId getArtifactId() {
-		return artifactId;
+		return pkg.getArtifactId();
+	}
+
+	@Override
+	public PackageIdentity getPackageIdentity() {
+		return pkg;
 	}
 
 	/**

@@ -19,6 +19,10 @@ package biz.paluch.dap.gradle;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.HasPackageSystem;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -47,7 +51,7 @@ import org.springframework.util.StringUtils;
  * @see GradleArtifactId
  * @see GradleDependency
  */
-interface GradlePluginId extends ArtifactId {
+interface GradlePluginId extends ArtifactId, HasPackageSystem, HasPackageIdentity {
 
 	/**
 	 * Conservative character set accepted for plugin ids before they are adapted to
@@ -113,4 +117,13 @@ interface GradlePluginId extends ArtifactId {
 		return groupId();
 	}
 
+	@Override
+	default PackageIdentity getPackageIdentity() {
+		return PackageIdentity.of(this, getPackageSystem());
+	}
+
+	@Override
+	default PackageSystem getPackageSystem() {
+		return PackageSystem.MAVEN;
+	}
 }

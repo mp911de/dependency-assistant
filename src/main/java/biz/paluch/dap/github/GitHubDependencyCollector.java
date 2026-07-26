@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.GitVersionResolver;
@@ -57,12 +58,14 @@ class GitHubDependencyCollector {
 	/**
 	 * Collect repository-backed {@code uses:} references from the given GitHub
 	 * Actions file.
+	 *
+	 * @param packageSystem
 	 * @param file the YAML PSI file to scan.
 	 * @return the populated dependency collector.
 	 */
-	DependencyCollector collect(PsiFile file) {
+	DependencyCollector collect(PackageSystem packageSystem, PsiFile file) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(packageSystem);
 		doCollect(file, collector);
 
 		return collector;

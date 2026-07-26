@@ -120,10 +120,10 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 			throw new IllegalStateException("Gradle wrapper integration does not support " + anchor);
 		}
 
-		return CachedValuesManager.getProjectPsiDependentCache(anchor, GradleWrapperAssistant::createWrapperContext);
+		return CachedValuesManager.getProjectPsiDependentCache(anchor, this::createWrapperContext);
 	}
 
-	private static ProjectDependencyContext createWrapperContext(PsiFile anchor) {
+	private ProjectDependencyContext createWrapperContext(PsiFile anchor) {
 
 		VirtualFile virtualFile = anchor.getVirtualFile();
 		if (virtualFile == null) {
@@ -132,11 +132,13 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		Project project = anchor.getProject();
 		ProjectId projectId = GradleWrapperUtils.createProjectId(virtualFile);
-		return new GradleWrapperDependencyContext(project, virtualFile, projectId);
+		return new GradleWrapperDependencyContext(this, project, virtualFile, projectId);
 	}
 
 	public static class GradleWrapperDependencyContext extends AbstractProjectBuildContext
 			implements ProjectDependencyContext {
+
+		private final DependencyAssistant assistant;
 
 		private final Project project;
 
@@ -144,27 +146,25 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		private final BetterPsiManager psiManager;
 
-		GradleWrapperDependencyContext(Project project, VirtualFile anchor, ProjectId projectId) {
+		GradleWrapperDependencyContext(DependencyAssistant assistant, Project project, VirtualFile anchor,
+				ProjectId projectId) {
 			super(projectId);
+			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.psiManager = BetterPsiManager.getInstance(project);
 		}
 
-		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return GradleWrapperInterface.INSTANCE;
-		}
 
 		@Override
-		public PackageSystem getPackageSystem() {
-			return PackageSystem.OTHER;
+		public DependencyAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			DependencyCollector collector = new DependencyCollector();
+			DependencyCollector collector = new DependencyCollector(getPackageSystem());
 			PsiFile psiFile = psiManager.findFile(anchor);
 			if (psiFile instanceof PropertiesFile propertiesFile && GradleWrapperUtils.isWrapperFile(psiFile)) {
 				new GradleWrapperParser(collector).collect(propertiesFile);

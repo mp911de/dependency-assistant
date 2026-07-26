@@ -38,6 +38,7 @@
 	<depends optional="true" config-file="maven.xml">org.jetbrains.idea.maven</depends>
 	<depends optional="true" config-file="kotlin.xml">org.jetbrains.kotlin</depends>
 	<depends optional="true" config-file="gradle.xml">org.jetbrains.plugins.gradle</depends>
+	<depends optional="true" config-file="java.xml">com.intellij.modules.java</depends>
 	<depends optional="true" config-file="yaml.xml">org.jetbrains.plugins.yaml</depends>
 	<depends optional="true" config-file="github.xml">org.jetbrains.plugins.github</depends>
 	<depends optional="true" config-file="git.xml">Git4Idea</depends>
@@ -93,8 +94,8 @@
 		<actionOnSave implementation="biz.paluch.dap.assistant.action.FlushStateOnSave"/>
 		<psi.treeChangeListener
 				implementation="biz.paluch.dap.assistant.action.FlushStateOnEdit"/>
-		<notificationGroup id="biz.paluch.dependency-assistant"
-		                   displayType="NONE"
+		<notificationGroup id="biz.paluch.dependency-assistant.releases-refreshed"
+		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plugin.name"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.releases-sticky"
 		                   displayType="STICKY_BALLOON"

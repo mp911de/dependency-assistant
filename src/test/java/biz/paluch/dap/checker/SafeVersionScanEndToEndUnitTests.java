@@ -19,6 +19,8 @@ package biz.paluch.dap.checker;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
@@ -46,7 +48,7 @@ class SafeVersionScanEndToEndUnitTests {
 		ArtifactVersion current = ArtifactVersion.of("5.0.10");
 
 		UpgradeSuggestions suggestions = UpgradeSuggestionsFactory.createSuggestions(
-				new Dependency(ARTIFACT, current), releases,
+				new Dependency(PackageIdentity.of(ARTIFACT, PackageSystem.MAVEN), current), releases,
 				TestVulnerabilities.from("""
 						5.0.10 CVE-2026-1
 						5.0.11 CVE-2026-1

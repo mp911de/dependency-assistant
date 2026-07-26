@@ -17,6 +17,7 @@
 package biz.paluch.dap;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -26,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  */
 class SimpleDependencyPresentation implements DependencyPresentation {
 
-	private final ArtifactId artifactId;
+	private final PackageIdentity pkg;
 
 	private final String artifactIdDisplayName;
 
@@ -34,24 +35,29 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 
 	private final @Nullable String projectName;
 
-	public SimpleDependencyPresentation(ArtifactId artifactId, String artifactIdDisplayName,
+	public SimpleDependencyPresentation(PackageIdentity pkg, String artifactIdDisplayName,
 			@Nullable String dependencyName, @Nullable String projectName) {
-		this.artifactId = artifactId;
+		this.pkg = pkg;
 		this.artifactIdDisplayName = artifactIdDisplayName;
 		this.dependencyName = dependencyName;
 		this.projectName = projectName;
 	}
 
-	public static SimpleDependencyPresentation of(ArtifactId artifactId, String renderedArtifactId,
+	public static SimpleDependencyPresentation of(PackageIdentity pkg, String renderedArtifactId,
 			@Nullable String dependencyName,
 			@Nullable String projectName) {
 
-		return new SimpleDependencyPresentation(artifactId, renderedArtifactId, dependencyName, projectName);
+		return new SimpleDependencyPresentation(pkg, renderedArtifactId, dependencyName, projectName);
+	}
+
+	@Override
+	public PackageIdentity getPackageIdentity() {
+		return pkg;
 	}
 
 	@Override
 	public ArtifactId getArtifactId() {
-		return artifactId;
+		return pkg.getArtifactId();
 	}
 
 	@Override
@@ -77,7 +83,7 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 		if (hasDependencyName()) {
 			return dependencyName;
 		}
-		throw new IllegalStateException("No dependency name for %s".formatted(artifactId));
+		throw new IllegalStateException("No dependency name for %s".formatted(pkg));
 	}
 
 	@Override
@@ -90,7 +96,7 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 		if (hasProjectName()) {
 			return projectName;
 		}
-		throw new IllegalStateException("No project name for %s".formatted(artifactId));
+		throw new IllegalStateException("No project name for %s".formatted(pkg));
 	}
 
 	@Override

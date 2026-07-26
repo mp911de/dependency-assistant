@@ -20,6 +20,8 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 
 /**
  * @author Mark Paluch
@@ -28,14 +30,11 @@ class DefaultIconDependencyPresentation implements IconDependencyPresentation {
 
 	private final Icon tableIcon;
 
-	private final String ecosystem;
-
 	private final DependencyPresentation presentation;
 
-	public DefaultIconDependencyPresentation(Icon tableIcon, String ecosystem,
+	public DefaultIconDependencyPresentation(Icon tableIcon,
 			DependencyPresentation presentation) {
 		this.tableIcon = tableIcon;
-		this.ecosystem = ecosystem;
 		this.presentation = presentation;
 	}
 
@@ -45,13 +44,18 @@ class DefaultIconDependencyPresentation implements IconDependencyPresentation {
 	}
 
 	@Override
-	public Icon getTableIcon() {
-		return tableIcon;
+	public PackageIdentity getPackageIdentity() {
+		return presentation.getPackageIdentity();
 	}
 
 	@Override
-	public String getEcosystem() {
-		return ecosystem;
+	public PackageSystem getPackageSystem() {
+		return getPackageIdentity().getPackageSystem();
+	}
+
+	@Override
+	public Icon getTableIcon() {
+		return tableIcon;
 	}
 
 	@Override

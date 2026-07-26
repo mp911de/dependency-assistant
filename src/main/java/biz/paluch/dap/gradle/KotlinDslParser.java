@@ -343,11 +343,13 @@ class KotlinDslParser {
 			String versionText = literals.toString();
 			GradlePluginId artifactId = GradlePluginId.of(id);
 			if (literals.hasProperty()) {
-				return DependencySite.of(artifactId, VersionSource.property(literals.getProperty()),
+				return DependencySite.of(artifactId,
+						VersionSource.property(literals.getProperty()),
 						DeclarationSource.plugin(), call);
 			}
 
-			DependencySite dependencySite = DependencySite.of(artifactId, VersionSource.declared(versionText),
+			DependencySite dependencySite = DependencySite.of(artifactId,
+					VersionSource.declared(versionText),
 					DeclarationSource.plugin(), call);
 			return ArtifactVersion.from(versionText)
 					.map(it -> (DependencySite) dependencySite.withVersion(it, versionExpr))

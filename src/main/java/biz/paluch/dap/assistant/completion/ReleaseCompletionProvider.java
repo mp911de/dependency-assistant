@@ -29,6 +29,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
@@ -116,6 +117,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		RefStyle refStyle = getRefStyle(position);
 		StateService stateService = referenceContext.getStateService();
 		ArtifactId artifactId = referenceContext.getArtifactId();
+		PackageIdentity pkg = referenceContext.getPackageIdentity();
 		Releases history = referenceContext.getReleases();
 
 		if (history.isEmpty()) {
@@ -127,7 +129,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		CompletionResultSet prefixed = getPrefixMatcher(parameters, result);
 		List<ArtifactRelease> proposals = proposals(parameters, history, referenceContext.getCurrentVersion(), rule,
-				artifactId);
+				pkg);
 
 		advertiseShowAllReleases(parameters, result, history.size(), proposals.size());
 
@@ -174,10 +176,10 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * prefix and unioned with the governing rule's remediation target.
 	 */
 	private static List<ArtifactRelease> proposals(CompletionParameters parameters, Releases history,
-			@Nullable ArtifactVersion currentVersion, DependencyRule rule, ArtifactId artifactId) {
+			@Nullable ArtifactVersion currentVersion, DependencyRule rule, PackageIdentity pkg) {
 
 		if (showsFullHistory(parameters)) {
-			return history.stream().map(release -> new ArtifactRelease(artifactId, release)).toList();
+			return history.stream().map(release -> new ArtifactRelease(pkg.getArtifactId(), release)).toList();
 		}
 
 		// The stem derives from the typed text, not the prefix matcher: several
@@ -190,7 +192,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			proposals = proposals.with(remediation);
 		}
 
-		return proposals.stream().map(release -> new ArtifactRelease(artifactId, release)).toList();
+		return proposals.stream().map(release -> new ArtifactRelease(pkg.getArtifactId(), release)).toList();
 	}
 
 	/**

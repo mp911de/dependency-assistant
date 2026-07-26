@@ -20,8 +20,8 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
@@ -39,37 +39,36 @@ public final class DependencyPresentationFactory {
 		this.stateService = stateService;
 	}
 
-	public DependencyPresentation create(ArtifactId artifactId, DependencyRule rule, InterfaceAssistant assistant) {
+	public DependencyPresentation create(PackageIdentity pkg, DependencyRule rule, InterfaceAssistant assistant) {
 
 		String projectName = null;
 		CachedArtifact artifact = stateService.getCache()
-				.findCachedArtifact(artifactId);
+				.findCachedArtifact(pkg);
 		if (artifact != null) {
 			projectName = artifact.getProjectName();
 		}
-		return create(artifactId, projectName, rule, assistant);
+		return create(pkg, projectName, rule, assistant);
 	}
 
-	public static DependencyPresentation create(ArtifactId artifactId, @Nullable String projectName,
-			DependencyRule rule,
-			InterfaceAssistant assistant) {
+	public static DependencyPresentation create(PackageIdentity pkg, @Nullable String projectName,
+			DependencyRule rule, InterfaceAssistant assistant) {
 
 		String dependencyName = rule.getDependencyName();
 
 		if (StringUtils.isEmpty(dependencyName)) {
-			dependencyName = ProjectDisplayName.getAcceptedProjectName(artifactId,
+			dependencyName = ProjectDisplayName.getAcceptedProjectName(pkg.getArtifactId(),
 					projectName);
 		}
 
-		return DependencyPresentation.of(artifactId,
-				assistant.getDisplayName(artifactId), dependencyName, projectName);
+		return DependencyPresentation.of(pkg,
+				assistant.getDisplayName(pkg.getArtifactId()), dependencyName, projectName);
 	}
 
 	public IconDependencyPresentation create(Dependency dependency, DependencyRule rule, InterfaceAssistant assistant) {
 
-		DependencyPresentation presentation = create(dependency.getArtifactId(), rule, assistant);
+		DependencyPresentation presentation = create(dependency.getPackageIdentity(), rule, assistant);
 		Icon tableIcon = assistant.getTableIcon(dependency);
-		return new DefaultIconDependencyPresentation(tableIcon, assistant.getClass().getName(), presentation);
+		return new DefaultIconDependencyPresentation(tableIcon, presentation);
 	}
 
 }

@@ -53,7 +53,7 @@ class NpmFixtures {
 	static DependencyCollector analyze(PsiFile file) {
 
 		StateService service = StateService.getInstance(file.getProject());
-		DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(file);
+		DependencyCollector collector = new NpmDependencyCollector(service.getCache()).collect(PackageSystem.NPM, file);
 
 		NpmProjectContext context = NpmProjectContext.of(file);
 		file.putUserData(NpmProjectContext.KEY, context);

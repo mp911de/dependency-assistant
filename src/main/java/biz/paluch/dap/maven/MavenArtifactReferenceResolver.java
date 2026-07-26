@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.DependencySearchResults;
@@ -219,7 +220,9 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 			ResolvedProperty property = resolveProperty(expression);
 			return ArtifactReference.from(it -> {
-				it.artifact(artifactId).declarationElement(parentTag)
+				it.artifact(artifactId)
+						.packageSystem(PackageSystem.MAVEN)
+						.declarationElement(parentTag)
 						.versionSource(VersionSource.property(expression.getPropertyName()))
 						.declarationSource(declarationSource);
 				if (property != null) {
@@ -237,7 +240,9 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		return ArtifactReference.from(it -> {
-			it.artifact(artifactId).declarationElement(parentTag)
+			it.artifact(artifactId)
+					.packageSystem(PackageSystem.MAVEN)
+					.declarationElement(parentTag)
 					.declarationSource(declarationSource)
 					.versionSource(VersionSource.from(version));
 			ArtifactVersion.from(version).ifPresent(it::version);
@@ -282,6 +287,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(firstArtifact.toArtifactId())
+					.packageSystem(PackageSystem.MAVEN)
 					.declarationElement(propertyTag)
 					.versionSource(VersionSource.property(tagName))
 					.declarationSource(DeclarationSource.dependency());

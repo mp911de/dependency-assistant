@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
@@ -147,7 +148,7 @@ class MavenWrapperParserTests {
 
 	private static DependencyCollector analyze(PsiFile file) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		new MavenWrapperParser(collector).collect((PropertiesFile) file);
 		return collector;
 	}

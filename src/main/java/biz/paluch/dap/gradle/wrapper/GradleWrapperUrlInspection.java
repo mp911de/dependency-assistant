@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.CredentialsInUrl;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.InvalidUrl;
@@ -212,6 +213,7 @@ public class GradleWrapperUrlInspection extends LocalInspectionTool implements D
 		return ArtifactReference.from(it -> {
 
 			it.artifact(WrapperProperty.GRADLE_DISTRIBUTION)
+					.packageSystem(PackageSystem.OTHER)
 					.declarationSource(DeclarationSource.dependency())
 					.declarationElement(property)
 					.versionSource(VersionSource.none())

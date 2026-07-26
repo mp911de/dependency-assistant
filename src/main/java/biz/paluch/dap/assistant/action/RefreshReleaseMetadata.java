@@ -24,6 +24,7 @@ import java.util.Map;
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
@@ -97,11 +98,11 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 			return;
 		}
 
-		Map<ArtifactId, Releases> result = dependencyCheck.getReleases(steps, sources,
+		Map<PackageIdentity, Releases> result = dependencyCheck.getReleases(steps, sources,
 				ReleaseResolver.refresh());
 		steps.nextStep();
 
-		updates = result.keySet().stream().toList();
+		updates = result.keySet().stream().map(PackageIdentity::getArtifactId).toList();
 		duration = TimeoutUtil.getDurationMillis(startNs);
 	}
 

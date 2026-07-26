@@ -37,6 +37,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
@@ -57,7 +59,6 @@ import biz.paluch.dap.support.ReleaseDateFormatter;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.lang.documentation.DocumentationMarkup;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
@@ -80,6 +81,8 @@ class DependencyDocumentationRenderer {
 
 	private static final int MAX_PREVIEWS = 2;
 
+	private final PackageSystem packageSystem;
+
 	private final InterfaceAssistant interfaceAssistant;
 
 	private final StateService stateService;
@@ -96,9 +99,10 @@ class DependencyDocumentationRenderer {
 
 	private final NumberFormat decimalFormat = NumberFormat.getIntegerInstance();
 
-	DependencyDocumentationRenderer(InterfaceAssistant interfaceAssistant,
+	DependencyDocumentationRenderer(PackageSystem packageSystem, InterfaceAssistant interfaceAssistant,
 			StateService stateService, DependencyRuleEvaluator evaluator,
 			@Nullable ArtifactVersion currentVersion, boolean linkable) {
+		this.packageSystem = packageSystem;
 		this.interfaceAssistant = interfaceAssistant;
 		this.stateService = stateService;
 		this.evaluator = evaluator;
@@ -113,19 +117,31 @@ class DependencyDocumentationRenderer {
 	 * release-notes links and captured project names through the cache-only
 	 * {@link ProjectMetadataService} facade.
 	 *
-	 * @param project the project owning the documentation request.
 	 * @param context a {@link ArtifactReferenceContext#isPresent() present}
 	 * reference context.
 	 * @param linkable {@literal true} to wrap non-current version rows in upgrade
 	 * links.
 	 * @return the renderer.
 	 */
-	static DependencyDocumentationRenderer from(Project project, ArtifactReferenceContext context, boolean linkable) {
+	static DependencyDocumentationRenderer from(ArtifactReferenceContext context, boolean linkable) {
 
 		ProjectDependencyContext dependencyContext = context.getDependencyContext();
-		return new DependencyDocumentationRenderer(dependencyContext.getInterfaceAssistant(),
-				context.getStateService(), context.getEvaluator(),
-				context.getVersion(), linkable);
+		return new DependencyDocumentationRenderer(context.getDeclaration().getPackageSystem(),
+				dependencyContext.getInterfaceAssistant(), context.getStateService(),
+				context.getEvaluator(), context.getVersion(), linkable);
+	}
+
+	/**
+	 * Render the documentation body for a single concrete artifact.
+	 *
+	 * @param pkg the artifact to document.
+	 * @param withIcons {@literal true} to render the full body with
+	 * {@link VersionAge} icons and upgrade links; {@literal false} for plain HTML
+	 * without icons or links (hover hint).
+	 * @return the HTML body.
+	 */
+	String render(PackageIdentity pkg, boolean withIcons) {
+		return render(pkg.getArtifactId(), withIcons);
 	}
 
 	/**
@@ -142,7 +158,8 @@ class DependencyDocumentationRenderer {
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		HtmlBuilder content = new HtmlBuilder();
 
-		DependencyPresentation presentation = presentationFactory.create(artifactId, evaluator.getRule(),
+		DependencyPresentation presentation = presentationFactory.create(PackageIdentity.of(artifactId, packageSystem),
+				evaluator.getRule(),
 				interfaceAssistant);
 		List<HtmlChunk> sections = new ArrayList<>();
 		if (presentation.hasProjectName()) {
@@ -522,8 +539,8 @@ class DependencyDocumentationRenderer {
 		ReleaseDateFormatter formatter = ReleaseDateFormatter.create();
 		HtmlBuilder content = new HtmlBuilder();
 
-		DependencyPresentation presentation = presentationFactory.create(artifacts
-				.getFirst(), evaluator.getRule(), interfaceAssistant);
+		DependencyPresentation presentation = presentationFactory.create(PackageIdentity.of(artifacts
+				.getFirst(), packageSystem), evaluator.getRule(), interfaceAssistant);
 
 		List<HtmlChunk> sections = new ArrayList<>();
 		if (presentation.hasProjectName()) {

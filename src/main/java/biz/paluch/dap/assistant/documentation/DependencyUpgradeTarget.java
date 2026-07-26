@@ -16,7 +16,8 @@
 
 package biz.paluch.dap.assistant.documentation;
 
-import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.HasPackageIdentity;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
@@ -28,20 +29,12 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see DependencyUpgradeLinkHandler
  */
-interface DependencyUpgradeTarget {
+interface DependencyUpgradeTarget extends HasArtifactId, HasPackageIdentity {
 
 	/**
 	 * Return the project owning the documented declaration.
 	 */
 	Project getProject();
-
-	/**
-	 * Return the {@link ArtifactId} of the documented declaration this target
-	 * applies versions to.
-	 *
-	 * @return the artifact identity; never {@literal null}.
-	 */
-	ArtifactId getArtifactId();
 
 	/**
 	 * Return the build file containing the documented declaration, used to scope a

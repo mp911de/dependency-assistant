@@ -19,6 +19,9 @@ package biz.paluch.dap.support;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
@@ -33,12 +36,22 @@ import com.intellij.psi.PsiElement;
  * @see VersionSource
  * @see ArtifactDeclaration
  */
-public interface DependencySite {
+public interface DependencySite extends HasPackageIdentity {
 
 	/**
 	 * Return the artifact coordinates associated with this dependency site.
 	 */
 	ArtifactId getArtifactId();
+
+	/**
+	 * Return the package system.
+	 */
+	PackageSystem getPackageSystem();
+
+	@Override
+	default PackageIdentity getPackageIdentity() {
+		return PackageIdentity.of(getArtifactId(), getPackageSystem());
+	}
 
 	/**
 	 * Return the source from which the dependency version is obtained.
@@ -64,21 +77,52 @@ public interface DependencySite {
 	 * @return the new {@link VersionedDependencySite}.
 	 */
 	default VersionedDependencySite withVersion(ArtifactVersion version, PsiElement versionElement) {
-		return new ResolvedDependencySite(getArtifactId(), version, getVersionSource(), getDeclarationSource(),
-				getDeclarationElement(), versionElement);
+		return new ResolvedDependencySite(getPackageIdentity(), version, getVersionSource(),
+				getDeclarationSource(), getDeclarationElement(), versionElement);
 	}
 
 	/**
 	 * Create a new {@code DependencySite}.
 	 * @param artifactId the artifact identifier.
+	 * @param packageSystem the package system.
 	 * @param versionSource the version source.
 	 * @param declarationSource the declaration source.
 	 * @param declarationElement element that represents this dependency site.
 	 * @return the dependency site.
 	 */
-	static DependencySite of(ArtifactId artifactId, VersionSource versionSource, DeclarationSource declarationSource,
+	static DependencySite of(ArtifactId artifactId, PackageSystem packageSystem,
+			VersionSource versionSource, DeclarationSource declarationSource,
 			PsiElement declarationElement) {
-		return new SimpleDependencySite(artifactId, versionSource, declarationSource, declarationElement);
+		return new SimpleDependencySite(PackageIdentity.of(artifactId, packageSystem),
+				versionSource, declarationSource, declarationElement);
+	}
+
+	/**
+	 * Create a new {@code DependencySite}.
+	 * @param aware the object providing a {@link PackageIdentity}.
+	 * @param versionSource the version source.
+	 * @param declarationSource the declaration source.
+	 * @param declarationElement element that represents this dependency site.
+	 * @return the dependency site.
+	 */
+	static DependencySite of(HasPackageIdentity aware, VersionSource versionSource,
+			DeclarationSource declarationSource, PsiElement declarationElement) {
+		return of(aware.getPackageIdentity(), versionSource, declarationSource,
+				declarationElement);
+	}
+
+	/**
+	 * Create a new {@code DependencySite}.
+	 * @param pkg the artifact identifier.
+	 * @param versionSource the version source.
+	 * @param declarationSource the declaration source.
+	 * @param declarationElement element that represents this dependency site.
+	 * @return the dependency site.
+	 */
+	static DependencySite of(PackageIdentity pkg, VersionSource versionSource,
+			DeclarationSource declarationSource, PsiElement declarationElement) {
+		return new SimpleDependencySite(pkg, versionSource, declarationSource,
+				declarationElement);
 	}
 
 }

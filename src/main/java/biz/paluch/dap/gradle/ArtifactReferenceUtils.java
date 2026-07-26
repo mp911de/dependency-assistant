@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.VersionProperty;
 import biz.paluch.dap.state.CachedArtifact;
@@ -60,6 +61,7 @@ class ArtifactReferenceUtils {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(artifact.toArtifactId())
+					.packageSystem(PackageSystem.MAVEN)
 					.declarationElement(declarationElement)
 					.declarationSource(DeclarationSource.managed())
 					.versionSource(VersionSource.versionCatalogProperty(propertyName));
@@ -117,6 +119,7 @@ class ArtifactReferenceUtils {
 
 		return ArtifactReference.from(it -> {
 			it.artifact(dependencySite.getArtifactId())
+					.packageSystem(PackageSystem.MAVEN)
 					.versionSource(dependencySite.getVersionSource())
 					.declarationSource(dependencySite.getDeclarationSource())
 					.declarationElement(dependencySite.getDeclarationElement());

@@ -26,6 +26,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
@@ -217,14 +219,15 @@ public class TestCandidates {
 
 		DependencyUpgradeCandidate create() {
 
-			Dependency dependency = new Dependency(artifactId, currentVersion);
+			PackageIdentity pkg = PackageIdentity.of(artifactId, PackageSystem.MAVEN);
+			Dependency dependency = new Dependency(pkg, currentVersion);
 			dependency.addDeclarationSource(DeclarationSource.dependency());
 			dependency.addVersionSource(versionSource);
 
 			IconDependencyPresentation presentation = IconDependencyPresentation.from(dependency,
 					TestInterfaceAssistant.INSTANCE);
-			return DependencyUpgradeCandidate.create(dependency, releases, vulnerabilityRepository(), rule,
-					presentation, declaredVersions());
+			return DependencyUpgradeCandidate.create(dependency, TestAssistant.INSTANCE, releases,
+					vulnerabilityRepository(), rule, presentation, declaredVersions(pkg));
 		}
 
 		private VulnerabilityRepository vulnerabilityRepository() {
@@ -250,7 +253,7 @@ public class TestCandidates {
 			return new MapVulnerabilityRepository(entries);
 		}
 
-		private DeclaredVersions declaredVersions() {
+		private DeclaredVersions declaredVersions(PackageIdentity pkg) {
 
 			if (declaredVersions.isEmpty()) {
 				return DeclaredVersions.empty();
@@ -259,7 +262,7 @@ public class TestCandidates {
 			List<DeclarationSite> sites = new ArrayList<>();
 			for (String version : declaredVersions) {
 
-				Dependency declared = new Dependency(artifactId, ArtifactVersion.of(version));
+				Dependency declared = new Dependency(pkg, ArtifactVersion.of(version));
 				sites.add(new DeclarationSite(new MockVirtualFile("declared-" + version + "/pom.xml", "// test"),
 						ProjectId.of("com.example", "app"), declared));
 			}

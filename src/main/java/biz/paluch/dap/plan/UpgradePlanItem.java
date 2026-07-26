@@ -223,10 +223,6 @@ class UpgradePlanItem {
 		return members;
 	}
 
-	String getMemberAssistantClassName(int index) {
-		return assistants.get(index).getClass().getName();
-	}
-
 	ArtifactId getMemberArtifactId(Dependency member) {
 		return member.getArtifactId();
 	}

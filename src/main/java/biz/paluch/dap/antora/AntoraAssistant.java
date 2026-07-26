@@ -126,7 +126,7 @@ public class AntoraAssistant implements DependencyAssistant {
 
 	@Override
 	public void collect(PsiFile anchor, DependencyCollector collector) {
-		new AntoraDependencyCollector().doCollect(anchor, collector);
+		new AntoraDependencyCollector(getPackageSystem()).doCollect(anchor, collector);
 	}
 
 	@Override
@@ -165,19 +165,22 @@ public class AntoraAssistant implements DependencyAssistant {
 
 	private static class AntoraDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
+		private final AntoraAssistant assistant;
+
 		private final DependencyFileDelegate delegate;
 
 		private final AntoraProjectContext projectContext;
 
 		AntoraDependencyContext(AntoraAssistant assistant, Project project, VirtualFile file, AntoraProjectContext projectContext) {
 			super(projectContext);
+			this.assistant = assistant;
 			this.delegate = DependencyFileDelegate.of(project, file);
 			this.projectContext = projectContext;
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return AntoraInterface.INSTANCE;
+		public AntoraAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
@@ -188,8 +191,8 @@ public class AntoraAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			return delegate.collectDependencies(it -> {
-				return new AntoraDependencyCollector().collect(it);
+			return delegate.collectDependencies(getPackageSystem(), it -> {
+				return new AntoraDependencyCollector(getPackageSystem()).collect(it);
 			});
 		}
 

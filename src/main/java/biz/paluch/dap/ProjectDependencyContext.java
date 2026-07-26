@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.HasPackageSystem;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
@@ -49,17 +50,24 @@ import org.jspecify.annotations.Nullable;
  * @see DependencyAssistant
  * @see DependencyCollector
  */
-public interface ProjectDependencyContext extends ProjectBuildContext {
+public interface ProjectDependencyContext extends ProjectBuildContext, HasPackageSystem {
+
+	/**
+	 * Return the associated assistant.
+	 */
+	DependencyAssistant getAssistant();
 
 	/**
 	 * Return the user-interface support for this context.
 	 */
-	InterfaceAssistant getInterfaceAssistant();
+	default InterfaceAssistant getInterfaceAssistant() {
+		return getAssistant().getInterfaceAssistant();
+	}
 
-	/**
-	 * Return the package ecosystem this context supports.
-	 */
-	PackageSystem getPackageSystem();
+	@Override
+	default PackageSystem getPackageSystem() {
+		return getAssistant().getPackageSystem();
+	}
 
 	/**
 	 * Scan the build files reachable from the anchor file and return the aggregated

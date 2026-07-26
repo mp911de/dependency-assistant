@@ -17,6 +17,7 @@
 package biz.paluch.dap.gradle.wrapper;
 
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
@@ -62,6 +63,7 @@ class GradleWrapperArtifactReferenceResolver implements ArtifactReferenceResolve
 		}
 
 		return ArtifactReference.from(builder -> builder.artifact(entry.property().artifactId())
+				.packageSystem(PackageSystem.OTHER)
 				.versionSource(entry.versionSource())
 				.declarationSource(DeclarationSource.dependency())
 				.declarationElement(literal)

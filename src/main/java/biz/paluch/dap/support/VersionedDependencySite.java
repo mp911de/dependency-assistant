@@ -19,6 +19,7 @@ package biz.paluch.dap.support;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiElement;
 
@@ -58,7 +59,7 @@ public interface VersionedDependencySite extends DependencySite {
 	 * Create a new {@code VersionedDependencySite} instance given
 	 * {@link ArtifactId}, {@link ArtifactVersion}, {@link VersionSource} and its
 	 * {@link PsiElement declaration} and version elements.
-	 * @param artifactId the artifact identifier.
+	 * @param pkg the artifact identifier.
 	 * @param version the artifact version.
 	 * @param versionSource the version source, an inline-version or a property.
 	 * @param declarationSource the declaration source.
@@ -66,10 +67,11 @@ public interface VersionedDependencySite extends DependencySite {
 	 * @param versionElement element that represents the version literal.
 	 * @return the dependency site.
 	 */
-	static VersionedDependencySite of(ArtifactId artifactId, ArtifactVersion version, VersionSource versionSource,
-			DeclarationSource declarationSource, PsiElement declarationElement, PsiElement versionElement) {
-		return new ResolvedDependencySite(artifactId, version, versionSource, declarationSource, declarationElement,
-				versionElement);
+	static VersionedDependencySite of(PackageIdentity pkg, ArtifactVersion version,
+			VersionSource versionSource, DeclarationSource declarationSource,
+			PsiElement declarationElement, PsiElement versionElement) {
+		return new ResolvedDependencySite(pkg, version, versionSource, declarationSource,
+				declarationElement, versionElement);
 	}
 
 }

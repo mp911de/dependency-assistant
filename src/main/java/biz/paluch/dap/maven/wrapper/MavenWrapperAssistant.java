@@ -122,10 +122,10 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 			throw new IllegalStateException("Maven integration does not support " + anchor);
 		}
 
-		return CachedValuesManager.getProjectPsiDependentCache(anchor, MavenWrapperAssistant::createWrapperContext);
+		return CachedValuesManager.getProjectPsiDependentCache(anchor, this::createWrapperContext);
 	}
 
-	private static ProjectDependencyContext createWrapperContext(PsiFile anchor) {
+	private ProjectDependencyContext createWrapperContext(PsiFile anchor) {
 
 		VirtualFile virtualFile = anchor.getVirtualFile();
 		if (virtualFile == null) {
@@ -136,7 +136,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		ProjectId projectId = MavenWrapperUtils.createProjectId(virtualFile);
 		List<ReleaseSource> releaseSources = collectReleaseSources(anchor);
 
-		return new MavenWrapperDependencyContext(project, virtualFile, projectId, releaseSources);
+		return new MavenWrapperDependencyContext(this, project, virtualFile, projectId, releaseSources);
 	}
 
 	/**
@@ -166,19 +166,22 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		private final DependencyFileDelegate delegate;
 
+		private final DependencyAssistant assistant;
+
 		private final List<ReleaseSource> releaseSources;
 
-		MavenWrapperDependencyContext(Project project, VirtualFile file, ProjectId projectId,
+		MavenWrapperDependencyContext(DependencyAssistant assistant, Project project, VirtualFile file,
+				ProjectId projectId,
 				List<ReleaseSource> releaseSources) {
 			super(projectId);
+			this.assistant = assistant;
 			this.releaseSources = releaseSources;
-
 			this.delegate = DependencyFileDelegate.of(project, file);
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return MavenWrapperInterface.INSTANCE;
+		public DependencyAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
@@ -189,8 +192,8 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 
-			return delegate.collectDependencies(it -> {
-				DependencyCollector collector = new DependencyCollector();
+			return delegate.collectDependencies(getPackageSystem(), it -> {
+				DependencyCollector collector = new DependencyCollector(getPackageSystem());
 				if (it instanceof PropertiesFile propertiesFile && MavenWrapperUtils.isWrapperFile(it)) {
 					new MavenWrapperParser(collector).collect(propertiesFile);
 				}

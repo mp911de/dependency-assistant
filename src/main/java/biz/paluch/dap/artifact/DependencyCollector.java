@@ -46,6 +46,8 @@ import org.jspecify.annotations.Nullable;
  */
 public class DependencyCollector {
 
+	private final PackageSystem packageSystem;
+
 	private final Map<ArtifactId, DeclaredDependency> declarations = new TreeMap<>();
 
 	private final Map<ArtifactId, Dependency> usages = new TreeMap<>();
@@ -56,7 +58,12 @@ public class DependencyCollector {
 
 	private final Map<String, String> propertyValues = new LinkedHashMap<>();
 
-	public DependencyCollector() {
+	public DependencyCollector(HasPackageSystem aware) {
+		this(aware.getPackageSystem());
+	}
+
+	public DependencyCollector(PackageSystem packageSystem) {
+		this.packageSystem = packageSystem;
 	}
 
 	/**
@@ -122,7 +129,7 @@ public class DependencyCollector {
 	 */
 	public void registerUsage(ArtifactId artifactId, ArtifactVersion currentVersion,
 			DeclarationSource declarationSource, VersionSource versionSource) {
-		usages.computeIfAbsent(artifactId, ac -> new Dependency(ac, currentVersion))
+		usages.computeIfAbsent(artifactId, ac -> new Dependency(PackageIdentity.of(ac, packageSystem), currentVersion))
 				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
 	}
 
@@ -134,7 +141,7 @@ public class DependencyCollector {
 	 */
 	public void registerDeclaration(ArtifactId artifactId,
 			DeclarationSource declarationSource, VersionSource versionSource) {
-		declarations.computeIfAbsent(artifactId, DeclaredDependency::new)
+		declarations.computeIfAbsent(artifactId, pkg -> new DeclaredDependency(PackageIdentity.of(pkg, packageSystem)))
 				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
 	}
 

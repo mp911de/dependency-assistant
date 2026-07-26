@@ -29,7 +29,7 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
-import biz.paluch.dap.InterfaceAssistant;
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -82,6 +82,13 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	private final ProjectMetadataService metadataService;
 
 	private final DependencyPresentationFactory presentationFactory;
+
+	public DependencyCheckAggregator(Project project, StateService stateService) {
+		this.project = project;
+		this.stateService = stateService;
+		this.metadataService = new ProjectMetadataService(project, stateService.getCache());
+		this.presentationFactory = new DependencyPresentationFactory(stateService);
+	}
 
 	public DependencyCheckAggregator(Project project, StateService stateService,
 			ProjectMetadataService metadataService) {
@@ -169,13 +176,13 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 * Merge the declaration and version sources of every site for the given
 	 * artifact into a single declaration.
 	 *
-	 * @param artifactId the artifact represented by the merged declaration.
+	 * @param pkg the artifact represented by the merged declaration.
 	 * @param entry the aggregated declaration data for the artifact.
 	 * @return a new declaration carrying all known source locations.
 	 */
-	public DeclaredDependency mergeDeclarations(ArtifactId artifactId, Entry entry) {
+	public DeclaredDependency mergeDeclarations(PackageIdentity pkg, Entry entry) {
 
-		DeclaredDependency dependency = new DeclaredDependency(artifactId);
+		DeclaredDependency dependency = new DeclaredDependency(pkg);
 
 		entry.declarationSites().forEach(it -> {
 			dependency.addAllDeclarationSources(it.dependency().getDeclarationSources());
@@ -231,7 +238,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 * @param releases the resolved releases keyed by artifact.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
-	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases) {
+	public DependencyCheckResult toDependencyCheckResult(Map<PackageIdentity, ReleaseLookupResult> releases) {
 		return toDependencyCheckResult(releases, DependencyRuleService.absent());
 	}
 
@@ -246,7 +253,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 	 * @param evaluator the rule service used to resolve governing dependency rules.
 	 * @return a new dependency-check result with candidates sorted by artifact.
 	 */
-	public DependencyCheckResult toDependencyCheckResult(Map<ArtifactId, ReleaseLookupResult> releases,
+	public DependencyCheckResult toDependencyCheckResult(Map<PackageIdentity, ReleaseLookupResult> releases,
 			DependencyRuleService evaluator) {
 
 		List<DependencyUpgradeCandidate> upgrades = new ArrayList<>();
@@ -254,8 +261,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 		VulnerabilityScanner scanner = VulnerabilityScanner.create(project, stateService);
 		entries.forEach((pkg, entry) -> {
 
-			ArtifactId artifactId = pkg.getArtifactId();
-			ReleaseLookupResult lookup = releases.get(artifactId);
+			ReleaseLookupResult lookup = releases.get(pkg);
 			if (lookup == null) {
 				return;
 			}
@@ -275,7 +281,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 				}
 			}
 
-			DeclaredDependency merged = mergeDeclarations(artifactId, entry);
+			DeclaredDependency merged = mergeDeclarations(pkg, entry);
 			Dependency dependency = Dependency.from(merged, declaredVersions.getLowestDeclaredVersion());
 
 			ProjectMetadata metadata = metadataService.getMetadata(pkg);
@@ -284,14 +290,15 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 			DependencyRule rule = evaluator.resolve(resolutionContext);
 
 			VulnerabilityRepository vulnerabilities = getVulnerabilities(pkg, scanner);
-			InterfaceAssistant assistant = entry.contexts().iterator().next().getInterfaceAssistant();
+			ProjectDependencyContext next = entry.contexts().iterator().next();
+			DependencyAssistant assistant = next.getAssistant();
 
 			IconDependencyPresentation presentation = presentationFactory.create(dependency, rule,
-					assistant);
+					assistant.getInterfaceAssistant());
 
-			upgrades.add(
-					DependencyUpgradeCandidate.create(dependency, lookup.releases(),
-							vulnerabilities, rule, presentation, declaredVersions));
+			DependencyUpgradeCandidate candidate = DependencyUpgradeCandidate.create(dependency, assistant,
+					lookup.releases(), vulnerabilities, rule, presentation, declaredVersions);
+			upgrades.add(candidate);
 		});
 
 		upgrades.sort(Comparator.comparing(DependencyUpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));

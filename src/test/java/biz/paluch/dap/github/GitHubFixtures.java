@@ -65,7 +65,8 @@ class GitHubFixtures {
 		StateService service = StateService.getInstance(file.getProject());
 
 		ReleaseSource releaseSource = new EmptyReleaseSource();
-		DependencyCollector collector = new GitHubDependencyCollector(file.getProject()).collect(file);
+		DependencyCollector collector = new GitHubDependencyCollector(file.getProject()).collect(PackageSystem.GITHUB,
+				file);
 
 		GitHubProjectContext projectContext = new GitHubProjectContext(
 				new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()), releaseSource);

@@ -51,7 +51,7 @@ class AntoraFixtures {
 
 		StateService service = StateService.getInstance(file.getProject());
 
-		DependencyCollector collector = new AntoraDependencyCollector().collect(file);
+		DependencyCollector collector = new AntoraDependencyCollector(PackageSystem.OTHER).collect(file);
 
 		AntoraProjectContext projectContext = new AntoraProjectContext(TestProjects.PROJECT,
 				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()));

@@ -202,18 +202,13 @@ class MavenAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return MavenInterface.INSTANCE;
-		}
-
-		@Override
-		public PackageSystem getPackageSystem() {
-			return PackageSystem.MAVEN;
+		public DependencyAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-			return delegate.collectDependencies(file -> assistant.collectCompleted(file));
+			return delegate.collectDependencies(getPackageSystem(), assistant::collectCompleted);
 		}
 
 		@Override

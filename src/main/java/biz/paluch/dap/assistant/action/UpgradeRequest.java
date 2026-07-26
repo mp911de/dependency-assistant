@@ -18,7 +18,7 @@ package biz.paluch.dap.assistant.action;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
@@ -40,7 +40,7 @@ import org.springframework.util.Assert;
  * @see UpgradeScopeResolver
  */
 public record UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile,
-		@Nullable ArtifactId focusArtifact) {
+		@Nullable PackageIdentity focusArtifact) {
 
 	public UpgradeRequest(List<VirtualFile> selection, @Nullable PsiFile editorFile) {
 		this(selection, editorFile, null);

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.util.StringUtils;
 
@@ -105,7 +106,7 @@ class GroupByRule implements GroupingPolicy<TableRow, GroupRow> {
 	/**
 	 * Grouping identity: the rule's dependency name within one build ecosystem.
 	 */
-	private record GroupKey(String dependencyName, String ecosystem) {
+	private record GroupKey(String dependencyName, PackageSystem packageSystem) {
 
 		/**
 		 * Return the group key for the candidate, or {@literal null} if the candidate
@@ -114,7 +115,7 @@ class GroupByRule implements GroupingPolicy<TableRow, GroupRow> {
 		static GroupKey of(TableRow candidate) {
 
 			DependencyRule rule = candidate.getRule();
-			return new GroupKey(rule.getDependencyName(), candidate.getUpgrade().getPresentation().getEcosystem());
+			return new GroupKey(rule.getDependencyName(), candidate.getUpgrade().getPresentation().getPackageSystem());
 		}
 
 	}

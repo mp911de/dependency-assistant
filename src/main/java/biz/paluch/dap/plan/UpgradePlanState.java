@@ -24,10 +24,13 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.CvssSeverity;
@@ -462,7 +465,8 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 			for (UpgradePlanState.Member member : members) {
 				memberKeys.add(
-						new ItemId.MemberKey(member.groupId, member.artifactId, member.fromVersion, member.assistant));
+						new ItemId.MemberKey(member.groupId, member.artifactId, member.packageSystem,
+								member.fromVersion, member.assistant));
 			}
 
 			return new ItemId(memberKeys);
@@ -794,6 +798,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		public @Nullable String artifactId;
 
 		@Attribute
+		public @Nullable PackageSystem packageSystem;
+
+		@Attribute
 		public @Nullable String fromVersion;
 
 		@Attribute
@@ -811,6 +818,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		Member(Member member) {
 			this.groupId = member.groupId;
 			this.artifactId = member.artifactId;
+			this.packageSystem = member.packageSystem;
 			this.fromVersion = member.fromVersion;
 			this.assistant = member.assistant;
 			for (DeclarationSourceState source : member.declarationSources) {
@@ -822,13 +830,15 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			}
 		}
 
-		Member(Dependency dependency, String assistant) {
+		Member(Dependency dependency, DependencyAssistant assistant) {
 
-			ArtifactId artifactId = dependency.getArtifactId();
+			PackageIdentity pkg = dependency.getPackageIdentity();
+			ArtifactId artifactId = pkg.getArtifactId();
 			this.groupId = artifactId.groupId();
 			this.artifactId = artifactId.artifactId();
+			this.packageSystem = pkg.getPackageSystem();
 			this.fromVersion = dependency.getCurrentVersion().toString();
-			this.assistant = assistant;
+			this.assistant = assistant.getId();
 
 			for (VersionSource source : dependency.getVersionSources()) {
 				VersionSourceState versionSource = VersionSourceState.from(source);
@@ -842,12 +852,21 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		}
 
 		public static Member of(DependencyUpgradeCandidate upgrade) {
-			return new Member(upgrade.getDependency(), upgrade.getPresentation().getEcosystem());
+			Dependency dependency = upgrade.getDependency();
+			return new Member(dependency, upgrade.getAssistant());
+		}
+
+		@Transient
+		public PackageIdentity getPackageIdentity() {
+			return PackageIdentity.of(ArtifactId.of(groupId, artifactId), packageSystem);
 		}
 
 		@Override
 		public boolean equals(Object o) {
 			if (!(o instanceof Member that)) {
+				return false;
+			}
+			if (!ObjectUtils.nullSafeEquals(packageSystem, that.packageSystem)) {
 				return false;
 			}
 			if (!ObjectUtils.nullSafeEquals(groupId, that.groupId)) {
@@ -870,7 +889,8 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		@Override
 		public int hashCode() {
-			return ObjectUtils.nullSafeHash(groupId, artifactId, fromVersion, assistant, declarationSources,
+			return ObjectUtils.nullSafeHash(packageSystem, groupId, artifactId, fromVersion, assistant,
+					declarationSources,
 					versionSources);
 		}
 

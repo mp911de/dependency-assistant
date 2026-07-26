@@ -23,8 +23,8 @@ import java.util.Objects;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
+import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.fixtures.TestCandidates;
-import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.plan.UpgradePlanState.Plan;
@@ -71,7 +71,7 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 		for (TestPlannedUpgrade candidate : candidates) {
 
 			Item stored = Item.from(candidate, target);
-			UpgradePlanItem item = new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored);
+			UpgradePlanItem item = new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null).create(stored);
 			stored.setMaterialized(item);
 			content.getItems().add(stored);
 			items.add(item);
@@ -96,7 +96,7 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 				TestCandidates.candidate(coordinates, it -> it.releases(target)));
 		Item stored = Item.from(candidate, ArtifactVersion.of(target));
 		return Objects
-				.requireNonNull(new UpgradePlanLoader(List.of(TestInterfaceAssistant.INSTANCE), null).create(stored));
+				.requireNonNull(new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null).create(stored));
 	}
 
 	@Override

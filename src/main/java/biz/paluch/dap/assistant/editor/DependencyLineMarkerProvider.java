@@ -26,7 +26,7 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.action.DependencyCheckTask;
 import biz.paluch.dap.assistant.action.UpgradeRequest;
@@ -94,21 +94,20 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		DependencyPresentation presentation = context.getPresentation();
 		Icon gutterIcon = ui.getGutterIcon(declaration);
 		Icon transparentIcon = evaluated.isPresent() ? gutterIcon : IconLoader.getTransparentIcon(gutterIcon, 0.7f);
-
-		ArtifactId artifactId = context.getArtifactId();
+		PackageIdentity pkg = context.getPackageIdentity();
 
 		if (suggestions.isEmpty()) {
 
 			if (vulnerable) {
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						getRuleIcon(transparentIcon, evaluated), e -> vulnerability.getText(),
-						new UpgradeDialogNavigationHandler(artifactId),
+						new UpgradeDialogNavigationHandler(pkg),
 						GutterIconRenderer.Alignment.LEFT, vulnerability::getText);
 
 			} else if (evaluated.isPresent() && evaluated.isLocked()) {
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 						getRuleIcon(transparentIcon, evaluated), e -> evaluated.getToolTipText(presentation),
-						new UpgradeDialogNavigationHandler(artifactId),
+						new UpgradeDialogNavigationHandler(pkg),
 						GutterIconRenderer.Alignment.LEFT, evaluated::getAccessibleName);
 			}
 			return null;
@@ -176,7 +175,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 		return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
 				icon, e -> tooltipToUse,
-				new UpgradeDialogNavigationHandler(artifactId),
+				new UpgradeDialogNavigationHandler(pkg),
 				GutterIconRenderer.Alignment.LEFT, () -> accessibleName);
 	}
 
@@ -201,7 +200,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	 * clicked declaration's build file, with the artifact's row selected and
 	 * revealed.
 	 */
-	public record UpgradeDialogNavigationHandler(ArtifactId artifactId)
+	public record UpgradeDialogNavigationHandler(PackageIdentity pkg)
 			implements GutterIconNavigationHandler<PsiElement> {
 
 		@Override
@@ -209,7 +208,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 			PsiFile file = psiElement.getContainingFile();
 			ProgressManager.getInstance().run(new DependencyCheckTask(file.getProject(),
-					new UpgradeRequest(List.of(), file, artifactId)));
+					new UpgradeRequest(List.of(), file, pkg)));
 		}
 
 	}

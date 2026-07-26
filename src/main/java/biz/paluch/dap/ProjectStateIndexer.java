@@ -178,7 +178,7 @@ public class ProjectStateIndexer {
 		List<Entry> active = new ArrayList<>();
 
 		forEachAvailableEntry(assistant, (anchor, context) -> {
-			DependencyCollector collector = new DependencyCollector();
+			DependencyCollector collector = new DependencyCollector(context.getPackageSystem());
 			assistant.collect(anchor, collector, introspected);
 			active.add(new Entry(anchor.getVirtualFile(), collector));
 		});
@@ -210,7 +210,7 @@ public class ProjectStateIndexer {
 		}
 
 		IntrospectedDependencies introspected = assistant.introspect(project);
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(context.getPackageSystem());
 		assistant.collect(file, collector, introspected);
 		introspected.complete(collector);
 
@@ -224,7 +224,7 @@ public class ProjectStateIndexer {
 		List<ActiveScan> active = new ArrayList<>();
 
 		forEachAvailableEntry(assistant, (anchor, context) -> {
-			DependencyCollector collector = new DependencyCollector();
+			DependencyCollector collector = new DependencyCollector(context.getPackageSystem());
 			assistant.collect(anchor, collector, introspected);
 			active.add(new ActiveScan(context, collector));
 		});

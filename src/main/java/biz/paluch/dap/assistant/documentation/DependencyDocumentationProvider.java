@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant.documentation;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.artifact.VersionSource;
@@ -70,8 +71,7 @@ public class DependencyDocumentationProvider
 
 		ArtifactDeclaration declaration = context.getDeclaration();
 		boolean linkable = declaration.getVersionLiteral() != null;
-		DependencyDocumentationRenderer documentation = DependencyDocumentationRenderer.from(target.getProject(),
-				context, linkable);
+		DependencyDocumentationRenderer documentation = DependencyDocumentationRenderer.from(context, linkable);
 
 		if (declaration.getVersionSource() instanceof VersionSource.VersionProperty propertySource) {
 
@@ -85,7 +85,7 @@ public class DependencyDocumentationProvider
 			return new PropertyDocumentationTarget(target, documentation, property);
 		}
 
-		return new DependencyVersionTarget(target, documentation, context.getArtifactId());
+		return new DependencyVersionTarget(target, documentation, context.getPackageIdentity());
 	}
 
 	private abstract static class DocumentationTargetSupport implements DocumentationTarget, DependencyUpgradeTarget {
@@ -211,6 +211,11 @@ public class DependencyDocumentationProvider
 		}
 
 		@Override
+		public PackageIdentity getPackageIdentity() {
+			return property.artifacts().getFirst().toPackageIdentity();
+		}
+
+		@Override
 		protected @Nullable String buildHtmlBody(boolean withIcons) {
 			return documentation.render(property, withIcons);
 		}
@@ -222,22 +227,27 @@ public class DependencyDocumentationProvider
 	 */
 	protected static class DependencyVersionTarget extends DocumentationTargetSupport {
 
-		private final ArtifactId artifactId;
+		private final PackageIdentity pkg;
 
 		DependencyVersionTarget(PsiElement target, DependencyDocumentationRenderer documentation,
-				ArtifactId artifactId) {
+				PackageIdentity pkg) {
 			super(target, documentation);
-			this.artifactId = artifactId;
+			this.pkg = pkg;
 		}
 
 		@Override
 		public ArtifactId getArtifactId() {
-			return artifactId;
+			return pkg.getArtifactId();
+		}
+
+		@Override
+		public PackageIdentity getPackageIdentity() {
+			return pkg;
 		}
 
 		@Override
 		protected @Nullable String buildHtmlBody(boolean withIcons) {
-			return documentation.render(artifactId, withIcons);
+			return documentation.render(pkg, withIcons);
 		}
 
 	}

@@ -92,7 +92,7 @@ public class Inspections {
 			VersionSource versionSource) {
 
 		Coordinates parsed = Coordinates.of(coordinates);
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		collector.registerUsage(parsed.getArtifactId(), parsed.getVersion(), DeclarationSource.dependency(),
 				versionSource);
 		StateService.getInstance(project)

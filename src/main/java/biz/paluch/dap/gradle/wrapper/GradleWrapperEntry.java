@@ -19,6 +19,7 @@ package biz.paluch.dap.gradle.wrapper;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.VersionedDependencySite;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
@@ -70,6 +71,11 @@ record GradleWrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral
 	@Override
 	public ArtifactId getArtifactId() {
 		return property.artifactId();
+	}
+
+	@Override
+	public PackageSystem getPackageSystem() {
+		return PackageSystem.OTHER;
 	}
 
 	@Override

@@ -117,7 +117,7 @@ class StateServiceUnitTests {
 
 		StateService service = new StateService();
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		collector.registerUsage(NETTY_BOM, ArtifactVersion.of("4.1.100"),
 				DeclarationSource.bom(Map.of(CODEC_HTTP, ArtifactVersion.of("4.1.100"))),
 				VersionSource.declared("4.1.100"));
@@ -143,7 +143,7 @@ class StateServiceUnitTests {
 	private static void store(StateService service, String groupId, String artifactId, ArtifactId dependency,
 			String version, VersionSource versionSource) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		collector.registerUsage(dependency, ArtifactVersion.of(version), DeclarationSource.dependency(),
 				versionSource);
 		service.getProjectState(ProjectId.of(groupId, artifactId))

@@ -224,19 +224,14 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return GradleInterface.INSTANCE;
-		}
-
-		@Override
-		public PackageSystem getPackageSystem() {
-			return projectContext.getPackageSystem();
+		public DependencyAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
 			return delegate.collectDependencies(
-					it -> assistant.collectCompleted(it));
+					getPackageSystem(), assistant::collectCompleted);
 		}
 
 		@Override

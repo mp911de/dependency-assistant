@@ -18,6 +18,8 @@ package biz.paluch.dap.plan;
 
 import java.util.Set;
 
+import biz.paluch.dap.artifact.PackageSystem;
+
 import org.springframework.util.ObjectUtils;
 
 /**
@@ -50,7 +52,7 @@ class ItemId {
 		return members.toString();
 	}
 
-	record MemberKey(String groupId, String artifactId, String version, String assistant) {
+	record MemberKey(String groupId, String artifactId, PackageSystem packageSystem, String version, String assistant) {
 	}
 
 }

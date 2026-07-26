@@ -21,6 +21,7 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
@@ -269,7 +270,7 @@ class MavenParserTests {
 			""")
 	void multiModuleChildAddsDependenciesAlongsideParent(XmlFile parent, XmlFile child) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		MavenParser parser = new MavenParser(collector, new Cache());
 		parser.parsePomFile(parent);
 		parser.parsePomFile(child);
@@ -292,7 +293,7 @@ class MavenParserTests {
 			""")
 	void parsesParentAsDependency(XmlFile pomFile) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		MavenParser parser = new MavenParser(collector, new Cache());
 		parser.parsePomFile(pomFile);
 
@@ -708,12 +709,12 @@ class MavenParserTests {
 	void multiModuleParentThenChildResolvesVersionFromParentProperty(XmlFile parent, XmlFile child) {
 
 		Cache cache = new Cache();
-		DependencyCollector propertyCollector = new DependencyCollector();
+		DependencyCollector propertyCollector = new DependencyCollector(PackageSystem.MAVEN);
 		MavenParser parser = new MavenParser(propertyCollector, cache);
 		parser.parsePomFile(child);
 		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector, 0);
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		parser = new MavenParser(collector, cache);
 		parser.parsePomFile(parent);
 

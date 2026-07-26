@@ -69,22 +69,6 @@ class GradleDependencyCollector {
 	}
 
 	/**
-	 * Collect artifact declarations from {@code buildFile}.
-	 * <p>When {@code buildFile} is a Gradle build or settings script, the parser
-	 * resolves visible Gradle properties and version-catalog accessors through the
-	 * project root.
-	 *
-	 * @param buildFile the Gradle file.
-	 * @return a populated {@link DependencyCollector}, guaranteed to be not .
-	 */
-	public DependencyCollector collect(PsiFile buildFile) {
-
-		DependencyCollector collector = new DependencyCollector();
-		collect(buildFile, collector);
-		return collector;
-	}
-
-	/**
 	 * Collect artifact declarations from {@code buildFile} into the provided
 	 * {@code collector}.
 	 * <p>Script anchors resolve project-root Gradle properties and version-catalog

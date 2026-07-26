@@ -17,6 +17,7 @@
 package biz.paluch.dap.maven.wrapper;
 
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
@@ -63,6 +64,7 @@ class MavenWrapperArtifactReferenceResolver implements ArtifactReferenceResolver
 		}
 
 		return ArtifactReference.from(builder -> builder.artifact(entry.property().artifactId())
+				.packageSystem(PackageSystem.MAVEN)
 				.declarationSource(DeclarationSource.dependency())
 				.versionSource(entry.versionSource())
 				.declarationElement(literal)

@@ -21,6 +21,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.metadata.ProjectMetadata;
@@ -72,6 +73,7 @@ class ResolutionContextUnitTests {
 	private static ArtifactDeclaration declaration(DeclarationSource source) {
 
 		return ArtifactDeclaration.builder().artifact(ARTIFACT_ID)
+				.packageSystem(PackageSystem.MAVEN)
 				.versionSource(VersionSource.declared("1.0.0"))
 				.declarationSource(source)
 				.declarationElement(psiElement()).build();

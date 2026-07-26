@@ -19,6 +19,7 @@ package biz.paluch.dap.fixtures;
 import java.util.List;
 import java.util.Objects;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyCollector;
@@ -52,6 +53,11 @@ public class TestProjectDependencyContext implements ProjectDependencyContext {
 	public TestProjectDependencyContext(ProjectId projectId, InterfaceAssistant interfaceAssistant) {
 		this.projectId = projectId;
 		this.interfaceAssistant = interfaceAssistant;
+	}
+
+	@Override
+	public DependencyAssistant getAssistant() {
+		return TestAssistant.INSTANCE;
 	}
 
 	@Override

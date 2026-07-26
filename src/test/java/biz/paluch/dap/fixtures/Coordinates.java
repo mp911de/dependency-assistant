@@ -25,6 +25,9 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.HasArtifactId;
+import biz.paluch.dap.artifact.HasPackageIdentity;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Versioned;
 
 /**
@@ -35,7 +38,7 @@ import biz.paluch.dap.artifact.Versioned;
  *
  * @author Mark Paluch
  */
-public class Coordinates implements HasArtifactId, Versioned {
+public class Coordinates implements HasArtifactId, HasPackageIdentity, Versioned {
 
 	private final ArtifactId artifactId;
 
@@ -88,6 +91,11 @@ public class Coordinates implements HasArtifactId, Versioned {
 		BomBuilder builder = new BomBuilder(bom);
 		customizer.accept(builder);
 		return builder.build();
+	}
+
+	@Override
+	public PackageIdentity getPackageIdentity() {
+		return PackageIdentity.of(getArtifactId(), PackageSystem.MAVEN);
 	}
 
 	@Override

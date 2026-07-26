@@ -30,15 +30,15 @@ package biz.paluch.dap.artifact;
  * @see DeclaredDependency
  * @see DependencyCollector#registerUsage
  */
-public class Dependency extends DeclaredDependency implements HasArtifactId {
+public class Dependency extends DeclaredDependency {
 
 	private final ArtifactVersion currentVersion;
 
 	/**
 	 * Create a dependency usage with its effective current version.
 	 */
-	public Dependency(ArtifactId artifactId, ArtifactVersion currentVersion) {
-		super(artifactId);
+	public Dependency(PackageIdentity pkg, ArtifactVersion currentVersion) {
+		super(pkg);
 		this.currentVersion = currentVersion;
 	}
 
@@ -51,7 +51,7 @@ public class Dependency extends DeclaredDependency implements HasArtifactId {
 	 */
 	public static Dependency from(DeclaredDependency declaredDependency, ArtifactVersion version) {
 
-		Dependency dependency = new Dependency(declaredDependency.getArtifactId(), version);
+		Dependency dependency = new Dependency(declaredDependency.getPackageIdentity(), version);
 		declaredDependency.getDeclarationSources().forEach(dependency::addDeclarationSource);
 		declaredDependency.getVersionSources().forEach(dependency::addVersionSource);
 		return dependency;

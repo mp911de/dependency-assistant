@@ -152,6 +152,7 @@ public class NpmAssistant implements DependencyAssistant {
 
 	private static class NpmDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
+		private final NpmAssistant assistant;
 		private final Project project;
 
 		private final VirtualFile anchor;
@@ -165,6 +166,7 @@ public class NpmAssistant implements DependencyAssistant {
 		NpmDependencyContext(NpmAssistant assistant, Project project, VirtualFile anchor,
 				NpmProjectContext projectContext) {
 			super(projectContext);
+			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
@@ -173,13 +175,8 @@ public class NpmAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return NpmInterface.INSTANCE;
-		}
-
-		@Override
-		public PackageSystem getPackageSystem() {
-			return projectContext.getPackageSystem();
+		public DependencyAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
@@ -187,10 +184,10 @@ public class NpmAssistant implements DependencyAssistant {
 
 			PsiFile psiFile = psiManager.findFile(anchor);
 			if (psiFile == null) {
-				return new DependencyCollector();
+				return new DependencyCollector(getPackageSystem());
 			}
 
-			return new NpmDependencyCollector(service.getCache()).collect(psiFile);
+			return new NpmDependencyCollector(service.getCache()).collect(getPackageSystem(), psiFile);
 		}
 
 		@Override

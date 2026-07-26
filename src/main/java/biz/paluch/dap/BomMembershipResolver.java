@@ -102,12 +102,12 @@ public class BomMembershipResolver {
 	 * @param artifactIds the artifacts of interest.
 	 * @param indicator the progress indicator to report cancellation through.
 	 */
-	public void resolve(Collection<ArtifactId> artifactIds, ProgressIndicator indicator) {
+	public void resolve(Collection<PackageIdentity> artifactIds, ProgressIndicator indicator) {
 
 		List<CachedArtifact> bomCandidates = new ArrayList<>(artifactIds.size());
-		for (ArtifactId artifactId : artifactIds) {
+		for (PackageIdentity pkg : artifactIds) {
 
-			CachedArtifact cachedArtifact = cache.findCachedArtifact(artifactId);
+			CachedArtifact cachedArtifact = cache.findCachedArtifact(pkg);
 			if (cachedArtifact != null && cachedArtifact.getPackageSystem() != null) {
 				bomCandidates.add(cachedArtifact);
 			}

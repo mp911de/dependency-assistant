@@ -207,6 +207,18 @@ public class Cache implements ModificationTracker {
 	/**
 	 * Return cached releases for the given artifact.
 	 *
+	 * @param pkg the artifact to look up.
+	 * @return the cached releases for the artifact, or an empty list if no entry is
+	 * present.
+	 */
+	@Transient
+	public Releases getReleases(PackageIdentity pkg) {
+		return getReleases(pkg.getArtifactId());
+	}
+
+	/**
+	 * Return cached releases for the given artifact.
+	 *
 	 * @param artifactId the artifact to look up.
 	 * @return the cached releases for the artifact, or an empty list if no entry is
 	 * present.
@@ -533,12 +545,14 @@ public class Cache implements ModificationTracker {
 		return readArtifacts(() -> {
 			ensureIndexed();
 
-			CachedArtifact artifact = artifactsByPackageIdentity.get(pkg);
+			ArtifactId artifactId = pkg.getArtifactId().detach();
+			CachedArtifact artifact = artifactsByPackageIdentity.get(PackageIdentity.of(artifactId,
+					pkg.getPackageSystem()));
 			if (artifact != null) {
 				return artifact;
 			}
 
-			artifact = artifactsById.get(pkg.getArtifactId());
+			artifact = artifactsById.get(artifactId);
 			return artifact != null && artifact.getPackageSystem() == null ? artifact : null;
 		});
 	}

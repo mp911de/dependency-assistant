@@ -18,7 +18,7 @@ package biz.paluch.dap.assistant.action;
 
 import java.util.List;
 
-import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.assistant.check.DependencyCheck;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
@@ -106,7 +106,7 @@ public class DependencyCheckTask extends Task.Backgroundable {
 				request.hasEditorFile());
 		dialog.show();
 
-		ArtifactId focusArtifact = request.focusArtifact();
+		PackageIdentity focusArtifact = request.focusArtifact();
 		if (focusArtifact != null) {
 			dialog.selectCandidate(focusArtifact);
 		}

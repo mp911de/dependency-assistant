@@ -27,7 +27,6 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileIndexLookup;
@@ -110,7 +109,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 			return ProjectDependencyContext.absent();
 		}
 
-		return new MavenExtensionContext(project, anchor.getVirtualFile());
+		return new MavenExtensionContext(this, project, anchor.getVirtualFile());
 	}
 
 	/**
@@ -121,7 +120,10 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		private final DependencyFileDelegate delegate;
 
-		MavenExtensionContext(Project project, VirtualFile file) {
+		private final DependencyAssistant assistant;
+
+		MavenExtensionContext(DependencyAssistant assistant, Project project, VirtualFile file) {
+			this.assistant = assistant;
 			this.delegate = DependencyFileDelegate.of(project, file);
 		}
 
@@ -141,18 +143,13 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return MavenAssistant.MavenInterface.INSTANCE;
-		}
-
-		@Override
-		public PackageSystem getPackageSystem() {
-			return PackageSystem.MAVEN;
+		public DependencyAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
 		public DependencyCollector scanDependencies(ProgressIndicator indicator) {
-			return delegate.collectDependencies(this::collect);
+			return delegate.collectDependencies(getPackageSystem(), this::collect);
 		}
 
 		@Override
@@ -164,7 +161,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
 			return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
-					MavenExtensionContext::createLookup);
+					this::createLookup);
 		}
 
 		@Override
@@ -180,8 +177,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		private DependencyCollector collect(PsiFile file) {
 
 			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(
-					StateService.getInstance(delegate.getProject()).getCache());
-			return dependencyCollector.collect(file, PropertyResolver.empty());
+					delegate.getProject());
+			return dependencyCollector.collect(getPackageSystem(), file, PropertyResolver.empty());
 		}
 
 		@Override
@@ -189,10 +186,11 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 			return "MavenExtensionsDependencyContext[%s]".formatted(delegate);
 		}
 
-		private static VersionUpgradeLookup createLookup(PsiFile extensions) {
+		private VersionUpgradeLookup createLookup(PsiFile extensions) {
 
 			Project project = extensions.getProject();
-			MavenExtensionContext buildContext = new MavenExtensionContext(project, extensions.getVirtualFile());
+			MavenExtensionContext buildContext = new MavenExtensionContext(assistant, project,
+					extensions.getVirtualFile());
 
 			return VersionUpgradeLookup.of(project, buildContext.getProjectId(),
 					new MavenExtensionsReferenceResolver(extensions));

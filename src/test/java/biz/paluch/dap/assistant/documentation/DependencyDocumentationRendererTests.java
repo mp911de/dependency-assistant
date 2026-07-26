@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitRef;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.TestCache;
 import biz.paluch.dap.checker.CvssSeverity;
@@ -457,9 +458,9 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private DependencyDocumentationRenderer renderer(@Nullable String currentVersion, boolean linkable) {
-		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
-				DependencyRuleEvaluator.absent(), currentVersion != null ? ArtifactVersion.of(currentVersion) : null,
-				linkable);
+		return new DependencyDocumentationRenderer(PackageSystem.MAVEN, TestInterfaceAssistant.INSTANCE,
+				new StateService(cache), DependencyRuleEvaluator.absent(),
+				currentVersion != null ? ArtifactVersion.of(currentVersion) : null, linkable);
 	}
 
 	private DependencyDocumentationRenderer renderer(String currentVersion, CachedMetadata metadata) {
@@ -471,8 +472,8 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private DependencyDocumentationRenderer renderer(String currentVersion, DependencyRuleEvaluator evaluator) {
-		return new DependencyDocumentationRenderer(TestInterfaceAssistant.INSTANCE, new StateService(cache),
-				evaluator, ArtifactVersion.of(currentVersion), false);
+		return new DependencyDocumentationRenderer(PackageSystem.MAVEN, TestInterfaceAssistant.INSTANCE,
+				new StateService(cache), evaluator, ArtifactVersion.of(currentVersion), false);
 	}
 
 	private static CachedMetadata capturedName(String projectName) {

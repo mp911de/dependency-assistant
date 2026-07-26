@@ -17,18 +17,19 @@
 package biz.paluch.dap.artifact;
 
 /**
- * Common accessor interface for objects identified by {@link ArtifactId}.
+ * Common accessor interface for objects that provide a {@link PackageSystem}.
  *
  * @author Mark Paluch
- * @see ArtifactId
+ * @see PackageSystem
+ * @see PackageIdentity
  */
-public interface HasArtifactId {
+public interface HasPackageSystem {
 
 	/**
-	 * Return the artifact coordinates.
+	 * Return the package system.
 	 *
-	 * @return the artifact id.
+	 * @return the package system.
 	 */
-	ArtifactId getArtifactId();
+	PackageSystem getPackageSystem();
 
 }

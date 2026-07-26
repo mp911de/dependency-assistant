@@ -37,7 +37,7 @@ class DependencyCollectorUnitTests {
 	@Test
 	void promoteResolvedDeclarationsRegistersUsageWhenResolverReturnsDependency() {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		VersionSource declaredV4 = VersionSource.declared("v4.2.0");
 		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), declaredV4);
 
@@ -54,7 +54,7 @@ class DependencyCollectorUnitTests {
 	@Test
 	void promoteResolvedDeclarationsSkipsDeclarationWhenResolverReturnsNull() {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), VersionSource.declared("unresolvable"));
 
 		collector.promoteResolvedDeclarations(declaration -> null);
@@ -65,7 +65,7 @@ class DependencyCollectorUnitTests {
 	@Test
 	void promoteResolvedDeclarationsDoesNotDisturbAlreadyResolvedUsage() {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		VersionSource v3 = VersionSource.declared("v3.6.0");
 		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), v3);
 		collector.registerUsage(CHECKOUT, ArtifactVersion.of("3.6.0"), DeclarationSource.dependency(), v3);
@@ -83,7 +83,7 @@ class DependencyCollectorUnitTests {
 	@Test
 	void promoteResolvedDeclarationsHandlesMultipleDeclarations() {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(PackageSystem.GITHUB);
 		collector.registerDeclaration(CHECKOUT, DeclarationSource.dependency(), VersionSource.declared("v4.2.0"));
 		collector.registerDeclaration(SETUP_JAVA, DeclarationSource.dependency(), VersionSource.declared("v4.0.0"));
 

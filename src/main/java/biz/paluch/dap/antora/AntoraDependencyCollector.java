@@ -21,6 +21,7 @@ import java.util.List;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import com.intellij.psi.PsiFile;
 
@@ -39,6 +40,12 @@ class AntoraDependencyCollector {
 
 	private final AntoraPlaybookParser parser = new AntoraPlaybookParser();
 
+	private final PackageSystem packageSystem;
+
+	AntoraDependencyCollector(PackageSystem packageSystem) {
+		this.packageSystem = packageSystem;
+	}
+
 	/**
 	 * Collect Antora bundle URL references from the given playbook file.
 	 * @param file the Antora playbook PSI file to scan.
@@ -46,7 +53,7 @@ class AntoraDependencyCollector {
 	 */
 	DependencyCollector collect(PsiFile file) {
 
-		DependencyCollector collector = new DependencyCollector();
+		DependencyCollector collector = new DependencyCollector(packageSystem);
 		doCollect(file, collector);
 
 		return collector;

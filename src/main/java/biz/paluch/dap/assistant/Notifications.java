@@ -41,7 +41,7 @@ import com.intellij.util.text.DateFormatUtil;
  */
 public class Notifications {
 
-	private static final String BALLOON_NOTIFICATION = "biz.paluch.dependency-assistant.releases";
+	private static final String BALLOON_REFRESHED = "biz.paluch.dependency-assistant.releases-refreshed";
 
 	private static final String STICKY_NOTIFICATION = "biz.paluch.dependency-assistant.releases-sticky";
 
@@ -73,7 +73,7 @@ public class Notifications {
 	 */
 	public static void info(Project project, String title, String content) {
 
-		Notification notification = new Notification(BALLOON_NOTIFICATION, title, content,
+		Notification notification = new Notification(BALLOON_REFRESHED, title, content,
 				NotificationType.INFORMATION);
 		notification.notify(project);
 	}
@@ -104,7 +104,7 @@ public class Notifications {
 				.collect(Collectors.joining(", "));
 
 		Notification notification = new Notification(
-				BALLOON_NOTIFICATION, MessageBundle.message("action.refresh-releases.task.done.title"),
+				BALLOON_REFRESHED, MessageBundle.message("action.refresh-releases.task.done.title"),
 				MessageBundle.message("action.refresh-releases.task.done.message", count, duration, detail),
 				NotificationType.INFORMATION);
 		notification.notify(project);

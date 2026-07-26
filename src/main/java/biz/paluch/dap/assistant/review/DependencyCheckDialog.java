@@ -46,6 +46,7 @@ import javax.swing.table.TableColumnModel;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
 import biz.paluch.dap.assistant.IconDependencyPresentation;
@@ -287,12 +288,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 	 * was opened from a gutter icon or a documentation link. When the visibility
 	 * filter hides the row, the filter is cleared first so the row can show.
 	 *
-	 * @param artifactId the artifact whose row to select; group rows match through
-	 * their members.
+	 * @param pkg the artifact whose row to select; group rows match through their
+	 * members.
 	 */
-	public void selectCandidate(ArtifactId artifactId) {
+	public void selectCandidate(PackageIdentity pkg) {
 
-		TableRow candidate = findCandidate(artifactId);
+		TableRow candidate = findCandidate(pkg);
 		if (candidate == null) {
 			return;
 		}
@@ -304,24 +305,24 @@ public class DependencyCheckDialog extends DialogWrapper {
 		this.components.select(candidate);
 	}
 
-	private @Nullable TableRow findCandidate(ArtifactId artifactId) {
+	private @Nullable TableRow findCandidate(PackageIdentity pkg) {
 
 		for (TableRow candidate : review.getAllCandidates()) {
-			if (represents(candidate, artifactId)) {
+			if (represents(candidate, pkg)) {
 				return candidate;
 			}
 		}
 		return null;
 	}
 
-	private static boolean represents(TableRow candidate, ArtifactId artifactId) {
+	private static boolean represents(TableRow candidate, PackageIdentity pkg) {
 
-		if (candidate.getArtifactId().equals(artifactId)) {
+		if (candidate.getPackageIdentity().equals(pkg)) {
 			return true;
 		}
 
 		return candidate instanceof GroupRow group
-				&& group.getMembers().stream().anyMatch(member -> member.getArtifactId().equals(artifactId));
+				&& group.getMembers().stream().anyMatch(member -> member.getPackageIdentity().equals(pkg));
 	}
 
 	/**

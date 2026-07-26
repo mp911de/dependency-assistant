@@ -72,7 +72,7 @@ public class UpgradeGroup {
 			}
 		}
 
-		Dependency dependency = new Dependency(first.getArtifactId(), current);
+		Dependency dependency = new Dependency(first.getDependency().getPackageIdentity(), current);
 		for (DependencyUpgradeCandidate member : members) {
 			dependency.addAllDeclarationSources(member.getDependency().getDeclarationSources());
 			dependency.addAllVersionSources(member.getDependency().getVersionSources());
@@ -83,7 +83,7 @@ public class UpgradeGroup {
 				.toList();
 		DeclaredVersions declaredVersions = DeclaredVersions
 				.merge(members.stream().map(DependencyUpgradeCandidate::getDeclaredVersions).toList());
-		return DependencyUpgradeCandidate.create(dependency, intersectReleases(members),
+		return DependencyUpgradeCandidate.create(dependency, first.getAssistant(), intersectReleases(members),
 				VulnerabilityRepository.composite(repositories), first.getRule(), first.getPresentation(),
 				declaredVersions);
 	}

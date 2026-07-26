@@ -148,15 +148,15 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		GitHubProjectContext injected = anchor.getUserData(GitHubProjectContext.KEY);
 		if (injected != null) {
-			return new GitHubDependencyContext(project, anchor.getVirtualFile(), injected);
+			return new GitHubDependencyContext(this, project, anchor.getVirtualFile(), injected);
 		}
 
 		return CachedValuesManager.getProjectPsiDependentCache(anchor,
 				it -> createContext(project, it.getVirtualFile()));
 	}
 
-	private static ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
-		return new GitHubDependencyContext(project, anchor, GitHubProjectContext.of(project, anchor));
+	private ProjectDependencyContext createContext(Project project, VirtualFile anchor) {
+		return new GitHubDependencyContext(this, project, anchor, GitHubProjectContext.of(project, anchor));
 	}
 
 	private static boolean isYamlAvailable() {
@@ -167,6 +167,8 @@ public class GitHubAssistant implements DependencyAssistant {
 	private static class GitHubDependencyContext extends ProjectBuildContextWrapper
 			implements ProjectDependencyContext {
 
+		private final DependencyAssistant assistant;
+
 		private final Project project;
 
 		private final VirtualFile anchor;
@@ -175,9 +177,10 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		private final BetterPsiManager psiManager;
 
-		GitHubDependencyContext(Project project, VirtualFile anchor,
-				GitHubProjectContext projectContext) {
+		GitHubDependencyContext(DependencyAssistant assistant, Project project,
+				VirtualFile anchor, GitHubProjectContext projectContext) {
 			super(projectContext);
+			this.assistant = assistant;
 			this.project = project;
 			this.anchor = anchor;
 			this.projectContext = projectContext;
@@ -185,13 +188,8 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public InterfaceAssistant getInterfaceAssistant() {
-			return GitHubInterface.INSTANCE;
-		}
-
-		@Override
-		public PackageSystem getPackageSystem() {
-			return projectContext.getPackageSystem();
+		public DependencyAssistant getAssistant() {
+			return assistant;
 		}
 
 		@Override
@@ -199,8 +197,8 @@ public class GitHubAssistant implements DependencyAssistant {
 
 			return psiManager.optional(anchor).map(psiFile -> {
 				GitHubDependencyCollector collector = new GitHubDependencyCollector(project);
-				return collector.collect(psiFile);
-			}).orElseGet(DependencyCollector::new);
+				return collector.collect(getPackageSystem(), psiFile);
+			}).orElseGet(() -> new DependencyCollector(getPackageSystem()));
 		}
 
 		@Override

@@ -24,6 +24,7 @@ import java.util.Map;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.Releases;
@@ -33,8 +34,6 @@ import biz.paluch.dap.fixtures.TestInterfaceAssistant;
 import biz.paluch.dap.fixtures.TestProjectDependencyContext;
 import biz.paluch.dap.fixtures.TestProjects;
 import biz.paluch.dap.fixtures.TestReleaseSource;
-import biz.paluch.dap.metadata.ProjectMetadataService;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
@@ -58,7 +57,8 @@ class DependencyCheckAggregatorTests {
 
 	private static final Coordinates VAVR_CURRENT = Coordinates.of(VAVR, "0.11.0");
 
-	private static final ArtifactId BROKEN_ARTIFACT = ArtifactId.of("broken", "artifact");
+	private static final PackageIdentity BROKEN_ARTIFACT = PackageIdentity.of(ArtifactId.of("broken", "artifact"),
+			PackageSystem.MAVEN);
 
 	private static final ProjectId ACME_APP = ProjectId.of("com.acme", "app");
 
@@ -66,9 +66,8 @@ class DependencyCheckAggregatorTests {
 
 	private static final String BROKEN_ARTIFACT_ERROR = "broken: unavailable";
 
-	private final DependencyCheckAggregator aggregator = new DependencyCheckAggregator(TestProjects.PROJECT,
-			new StateService(),
-			new ProjectMetadataService(null, new Cache()));
+	private final DependencyCheckAggregator aggregator = new DependencyCheckAggregator(
+			TestProjects.PROJECT, new StateService());
 
 	@Test
 	void groupsDeclarationsByArtifact() {
@@ -101,8 +100,8 @@ class DependencyCheckAggregatorTests {
 		aggregator.add(dependency(VAVR_CURRENT), context(ACME_APP), a, List.of());
 		aggregator.add(dependency(LETTUCE_CURRENT), context(ACME_LIB), b, List.of());
 
-		Map<ArtifactId, ReleaseLookupResult> releases = Map.of(VAVR_CURRENT.getArtifactId(), resolved(VAVR),
-				LETTUCE_CURRENT.getArtifactId(), resolved(LETTUCE_CORE), BROKEN_ARTIFACT,
+		Map<PackageIdentity, ReleaseLookupResult> releases = Map.of(VAVR_CURRENT.getPackageIdentity(), resolved(VAVR),
+				LETTUCE_CURRENT.getPackageIdentity(), resolved(LETTUCE_CORE), BROKEN_ARTIFACT,
 				ReleaseLookupResult.failed(BROKEN_ARTIFACT_ERROR));
 		DependencyCheckResult result = aggregator.toDependencyCheckResult(releases);
 
@@ -126,7 +125,7 @@ class DependencyCheckAggregatorTests {
 		aggregator.add(dependency(VAVR_CURRENT), context(ACME_LIB), b, List.of());
 
 		DependencyCheckResult result = aggregator
-				.toDependencyCheckResult(Map.of(VAVR_CURRENT.getArtifactId(), resolved(VAVR)));
+				.toDependencyCheckResult(Map.of(VAVR_CURRENT.getPackageIdentity(), resolved(VAVR)));
 
 		assertThat(result).singleElement().satisfies(upgrade -> {
 			DeclaredVersions declaredVersions = upgrade.getDeclaredVersions();
@@ -140,8 +139,7 @@ class DependencyCheckAggregatorTests {
 	void keepsPresentationFactsSeparateForSameCoordinateAcrossPackageSystems() {
 
 		TestProjectDependencyContext maven = context(ACME_APP);
-		TestProjectDependencyContext npm = new TestProjectDependencyContext(ACME_LIB,
-				new OtherEcosystemAssistant()) {
+		TestProjectDependencyContext npm = new TestProjectDependencyContext(ACME_LIB, new TestInterfaceAssistant()) {
 
 			@Override
 			public PackageSystem getPackageSystem() {
@@ -150,13 +148,19 @@ class DependencyCheckAggregatorTests {
 
 		};
 
-		aggregator.add(dependency(LETTUCE_CURRENT), maven, buildFile("pom.xml"), List.of());
-		aggregator.add(dependency(LETTUCE_CURRENT), npm, buildFile("package.json"), List.of());
+		Dependency mavenDependency = dependency(LETTUCE_CURRENT);
+		Dependency npmDependency = dependency(LETTUCE_CURRENT, PackageSystem.NPM);
+
+		aggregator.add(mavenDependency, maven, buildFile("pom.xml"), List.of());
+		aggregator.add(npmDependency, npm, buildFile("package.json"), List.of());
 
 		DependencyCheckResult result = aggregator.toDependencyCheckResult(
-				Map.of(LETTUCE_CURRENT.getArtifactId(), resolved(LETTUCE_CORE)));
+				Map.of(mavenDependency.getPackageIdentity(), resolved(LETTUCE_CORE),
+						npmDependency.getPackageIdentity(), resolved(LETTUCE_CORE)));
 
-		assertThat(result.upgrades()).hasSize(2);
+		assertThat(result.upgrades())
+				.extracting(upgrade -> upgrade.getPackageIdentity().getPackageSystem())
+				.containsExactlyInAnyOrder(PackageSystem.MAVEN, PackageSystem.NPM);
 	}
 
 	@Test
@@ -172,7 +176,7 @@ class DependencyCheckAggregatorTests {
 
 		DependencyCheckAggregator.Entry entry = new DependencyCheckAggregator.Entry(List.of(), List.of(),
 				List.of(new DeclarationSite(file, ACME_APP, first), new DeclarationSite(file, ACME_LIB, second)));
-		DeclaredDependency dependency = aggregator.mergeDeclarations(LETTUCE_CURRENT.getArtifactId(), entry);
+		DeclaredDependency dependency = aggregator.mergeDeclarations(LETTUCE_CURRENT.getPackageIdentity(), entry);
 
 		assertThat(dependency.getVersionSources()).hasSize(2);
 	}
@@ -182,8 +186,16 @@ class DependencyCheckAggregatorTests {
 	}
 
 	private static Dependency dependency(Coordinates coordinates, VersionSource versionSource) {
-		Dependency dependency = new Dependency(coordinates.getArtifactId(), coordinates.getVersion());
+		Dependency dependency = new Dependency(coordinates.getPackageIdentity(), coordinates.getVersion());
 		dependency.addVersionSource(versionSource);
+		return dependency;
+	}
+
+	private static Dependency dependency(Coordinates coordinates, PackageSystem packageSystem) {
+
+		Dependency dependency = new Dependency(PackageIdentity.of(coordinates.getArtifactId(), packageSystem),
+				coordinates.getVersion());
+		dependency.addVersionSource(VersionSource.declared(coordinates.getVersion().toString()));
 		return dependency;
 	}
 
@@ -198,10 +210,5 @@ class DependencyCheckAggregatorTests {
 	private static ReleaseLookupResult resolved(CachedArtifact artifact) {
 		return ReleaseLookupResult.of(Releases.of(artifact.getVersionOptions()));
 	}
-
-	static class OtherEcosystemAssistant extends TestInterfaceAssistant {
-
-	}
-
 
 }
