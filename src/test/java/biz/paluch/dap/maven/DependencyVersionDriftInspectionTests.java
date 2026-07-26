@@ -205,8 +205,37 @@ class DependencyVersionDriftInspectionTests {
 		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
 
 		assertThat(problems).flatMap(it -> List.of(it.getFixes()))
-				.extracting(QuickFix::getName).singleElement()
-				.isEqualTo("Downgrade to lowest used version '6.0.0'");
+				.extracting(QuickFix::getName)
+				.containsExactly("Downgrade to lowest used version '6.0.0'",
+						"Show all declaration sites of 'hello.world:drift-bom'");
+	}
+
+	@Test
+	@EditorFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+				<dependencies>
+					<dependency>
+						<groupId>hello.world</groupId>
+						<artifactId>drift-bom</artifactId>
+						<version>6.0.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void offersShowDeclarationSitesForDeclarationDrift(PsiFile pomFile) {
+
+		MavenFixtures.analyze(pomFile);
+		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.0",
+				VersionSource.property("drift.version"));
+
+		List<ProblemDescriptor> problems = Inspections.inspect(fixture.getProject(), pomFile);
+
+		assertThat(problems).flatMap(it -> List.of(it.getFixes()))
+				.extracting(QuickFix::getName)
+				.containsExactly("Show all declaration sites of 'hello.world:drift-bom'");
 	}
 
 	@Test

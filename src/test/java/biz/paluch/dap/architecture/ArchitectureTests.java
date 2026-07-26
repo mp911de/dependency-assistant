@@ -138,7 +138,8 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistantEditor = packageDependencies("assistant.editor",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.action", "checker", "metadata", "rule", "severity",
+			"biz.paluch.dap", "artifact", "assistant", "assistant.action", "assistant.check", "checker", "lookup",
+			"metadata", "rule", "severity",
 			"state", "support", "upgrade", "util");
 
 	@ArchTest

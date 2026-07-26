@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.ProjectDependencyContext;
@@ -39,6 +40,9 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.assistant.ArtifactReferenceContextVisitor;
+import biz.paluch.dap.assistant.action.StateRefresher;
+import biz.paluch.dap.assistant.check.DependencySiteNavigator;
+import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
@@ -46,6 +50,7 @@ import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.PriorityAction;
+import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
@@ -54,11 +59,16 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.modcommand.ModCommand;
 import com.intellij.modcommand.ModCommandQuickFix;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.util.Iconable;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.util.PsiEditorUtil;
+import com.intellij.ui.awt.RelativePoint;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -74,7 +84,6 @@ import org.jetbrains.annotations.NotNull;
  *
  * @author Mark Paluch
  */
-// TODO: Show all dependency drift in find window
 public class DependencyVersionDriftInspection extends LocalInspectionTool implements Iconable {
 
 	@Override
@@ -143,10 +152,12 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 					return;
 				}
 
+				ShowDriftingSitesAction showSites = new ShowDriftingSitesAction(artifactId, versionSources);
+
 				if (!versionDrift) {
 					String message = MessageBundle.message("inspection.version-drift.declaration.problem",
 							declaration.getArtifactId());
-					holder.registerProblem(anchor, message, ProblemHighlightType.WEAK_WARNING);
+					holder.registerProblem(anchor, message, ProblemHighlightType.WEAK_WARNING, showSites);
 					return;
 				}
 
@@ -167,6 +178,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 				if (!lowest.equals(currentVersion)) {
 					fixes.add(new AlignVersionAction(referenceContext, lowest, false));
 				}
+				fixes.add(showSites);
 
 				holder.registerProblem(anchor, message, fixes.toArray(new LocalQuickFix[0]));
 			}
@@ -203,6 +215,81 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 	@Override
 	public Icon getIcon(int flags) {
 		return DependencyAssistantIcons.ICON;
+	}
+
+	/**
+	 * Quick fix that finds every site participating in the drifting artifact's
+	 * version across the project's build files and hands the results to the Find
+	 * tool window.
+	 */
+	static class ShowDriftingSitesAction implements LocalQuickFix {
+
+		private final ArtifactId artifactId;
+
+		private final DependencySiteQuery query;
+
+		ShowDriftingSitesAction(ArtifactId artifactId, Set<VersionSource> versionSources) {
+
+			this.artifactId = artifactId;
+			this.query = DependencySiteQuery.create(builder -> {
+
+				builder.artifact(artifactId);
+				for (VersionSource versionSource : versionSources) {
+					if (versionSource instanceof VersionSource.VersionProperty property) {
+						builder.versionProperty(property.getProperty());
+					}
+				}
+			});
+		}
+
+		@Override
+		public boolean startInWriteAction() {
+			return false;
+		}
+
+		@Override
+		public IntentionPreviewInfo generatePreview(Project project, ProblemDescriptor previewDescriptor) {
+			return IntentionPreviewInfo.EMPTY;
+		}
+
+		@Override
+		public String getName() {
+			return MessageBundle.message("inspection.version-drift.fix.sites", artifactId);
+		}
+
+		@Override
+		public @IntentionFamilyName String getFamilyName() {
+			return MessageBundle.message("inspection.version-drift.fix.sites.family");
+		}
+
+		@Override
+		public void applyFix(Project project, ProblemDescriptor descriptor) {
+
+			Editor editor = PsiEditorUtil.findEditor(descriptor.getPsiElement());
+			if (editor == null) {
+				return;
+			}
+
+			RelativePoint where = JBPopupFactory.getInstance().guessBestPopupLocation(editor);
+			new DependencySiteNavigator(project, StateRefresher.getInstance(project),
+					() -> enumerateBuildFiles(project)).openInFindWindow(query, where);
+		}
+
+		private static Iterable<VirtualFile> enumerateBuildFiles(Project project) {
+
+			Set<VirtualFile> files = new LinkedHashSet<>();
+			for (DependencyAssistant assistant : DependencyAssistantDispatcher.findAll(project)) {
+				for (PsiFile anchor : assistant.enumerate(project)) {
+
+					VirtualFile file = anchor.getVirtualFile();
+					if (file != null) {
+						files.add(file);
+					}
+				}
+			}
+			return files;
+		}
+
 	}
 
 	/**

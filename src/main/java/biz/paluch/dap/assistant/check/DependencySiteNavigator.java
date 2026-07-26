@@ -31,6 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import javax.swing.Icon;
@@ -132,7 +133,7 @@ public class DependencySiteNavigator {
 
 	private final Runnable onTransferToFindWindow;
 
-	private final List<VirtualFile> files;
+	private final Supplier<? extends Iterable<VirtualFile>> files;
 
 	/**
 	 * Create a navigator that leaves its host open when results move to the Find
@@ -146,6 +147,26 @@ public class DependencySiteNavigator {
 	public DependencySiteNavigator(Project project, Disposable parentDisposable, Iterable<VirtualFile> files) {
 		this(project, parentDisposable, () -> {
 		}, files);
+	}
+
+	/**
+	 * Create a navigator that resolves the build files to search lazily inside the
+	 * search read action, for callers that would otherwise enumerate build files on
+	 * the UI thread.
+	 *
+	 * @param project the project owning the dependency sites.
+	 * @param parentDisposable the lifecycle that expires pending searches.
+	 * @param files supplies the build files to search; invoked inside the
+	 * non-blocking read action that runs the search.
+	 */
+	public DependencySiteNavigator(Project project, Disposable parentDisposable,
+			Supplier<? extends Iterable<VirtualFile>> files) {
+
+		this.project = project;
+		this.parentDisposable = parentDisposable;
+		this.onTransferToFindWindow = () -> {
+		};
+		this.files = files;
 	}
 
 	/**
@@ -169,7 +190,7 @@ public class DependencySiteNavigator {
 		this.project = project;
 		this.parentDisposable = parentDisposable;
 		this.onTransferToFindWindow = onTransferToFindWindow;
-		this.files = scope;
+		this.files = () -> scope;
 	}
 
 	/**
@@ -241,7 +262,7 @@ public class DependencySiteNavigator {
 			return;
 		}
 
-		ReadAction.nonBlocking(() -> findSites(query, files))
+		ReadAction.nonBlocking(() -> findSites(query, files.get()))
 				.expireWith(parentDisposable)
 				.finishOnUiThread(ModalityState.stateForComponent(where.getComponent()), entries -> {
 
