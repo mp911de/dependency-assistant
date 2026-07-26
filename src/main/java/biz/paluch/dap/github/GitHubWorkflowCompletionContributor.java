@@ -62,6 +62,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 		@Override
 		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
+			// result.stopHere();
 			if (showsFullHistory(parameters) || isCaretInsideRef(parameters)) {
 				return result.withPrefixMatcher("");
 			}

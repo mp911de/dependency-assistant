@@ -6,10 +6,10 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<postStartupActivity
+				implementation="biz.paluch.dap.github.GitHubInitService"/>
 		<projectService
 				serviceImplementation="biz.paluch.dap.github.GithubApiRequestExecutorFactory"/>
-		<projectService
-				serviceImplementation="biz.paluch.dap.github.GitHubTicketSystemAvailability"/>
 		<projectService serviceImplementation="biz.paluch.dap.github.GitHubTicketCache"/>
 		<localInspection id="dap.github.unpinned-action"
 				language="yaml"
