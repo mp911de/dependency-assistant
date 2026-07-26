@@ -19,6 +19,8 @@ When JetBrains Package Checker is available in the IDE, known Maven and npm vuln
 * Uses ecosystem-specific release metadata sources, including Maven repositories, the Gradle Plugin Portal, Gradle distribution metadata, GitHub, Git tags, and npmjs.
 * Supports Maven repository credentials declared in Maven `settings.xml` when they can be resolved by the active Maven installation.
 * Shows Package Checker vulnerability information for Maven and npm packages when available, and can suggest remediation.
+* Upgrade Plan: Staging of Dependency upgrades for later review, ticket creation and the plan as batch upgrade.
+* Links to release notes and issue trackes when project metadata (e.g. POM, NPM Registry) is available.
 * Inspections for Maven and Gradle wrappers.
 * Inspection for Version and Declaration drift.
 
