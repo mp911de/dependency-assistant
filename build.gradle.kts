@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "biz.paluch"
-version = "0.5.0-RC1"
+version = "0.5.0-SNAPSHOT"
 
 repositories {
 	mavenCentral()
