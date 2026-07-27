@@ -195,6 +195,12 @@
 			        icon="AllIcons.Actions.GC"/>
 		</group>
 		<group id="DependencyAssistant.UpgradePlan.Popup">
+			<action id="DependencyAssistant.UpgradePlan.ApplySelected"
+			        class="biz.paluch.dap.plan.ApplySelectedAction"
+			        icon="biz.paluch.dap.DependencyAssistantIcons.PLAN_APPLY_ALL"/>
+			<action id="DependencyAssistant.UpgradePlan.ApplySelectedAndCommit"
+			        class="biz.paluch.dap.plan.ApplySelectedAndCommitAction"
+			        icon="AllIcons.Actions.Commit"/>
 			<reference ref="DependencyAssistant.UpgradePlan.PreviewChanges"/>
 			<reference ref="EditSource"/>
 			<action id="DependencyAssistant.UpgradePlan.FindUsages"
