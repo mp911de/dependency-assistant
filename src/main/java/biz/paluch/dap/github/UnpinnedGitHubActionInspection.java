@@ -58,6 +58,10 @@ import org.jspecify.annotations.Nullable;
  * release SHA. Findings depend on cached release metadata; refreshing the
  * release cache may surface additional refs.
  *
+ * <p>The problem is reported on the whole {@code uses:} scalar rather than on the
+ * ref token alone, so the pin quick fix is offered from any caret position within
+ * the declaration.
+ *
  * @author Mark Paluch
  * @see GitHubArtifactReferenceResolver
  * @see RefStyle

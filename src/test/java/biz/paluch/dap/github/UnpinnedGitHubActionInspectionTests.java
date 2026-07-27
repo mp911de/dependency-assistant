@@ -65,14 +65,14 @@ class UnpinnedGitHubActionInspectionTests {
 			    steps:
 			      - uses: actions/checkout@v4.2.0
 			""")
-	void flagsSymbolicRefWithCachedShaOnTheRefToken(PsiFile workflowFile) {
+	void flagsSymbolicRefWithCachedShaOnTheWholeDeclaration(PsiFile workflowFile) {
 
 		GitHubFixtures.analyze(workflowFile);
 
 		assertThat(inspect(workflowFile)).singleElement().satisfies(problem -> {
 			assertThat(problem.getDescriptionTemplate()).isEqualTo("Unpinned GitHub action reference");
 			assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
-			assertThat(highlightText(workflowFile, problem)).isEqualTo("v4.2.0");
+			assertThat(highlightText(workflowFile, problem)).isEqualTo("actions/checkout@v4.2.0");
 			assertThat(problem.getFixes()).extracting(QuickFix::getName)
 					.containsExactly("Pin to commit SHA " + TestGitHubReleases.CHECKOUT_SHA_LATEST_SHORT + "…");
 			assertThat(problem.getFixes()).extracting(QuickFix::getFamilyName).containsExactly("Pin to commit SHA");
@@ -199,9 +199,13 @@ class UnpinnedGitHubActionInspectionTests {
 
 	private static String highlightText(PsiFile file, ProblemDescriptor problem) {
 		return ReadAction.compute(() -> {
+
+			TextRange elementRange = problem.getPsiElement().getTextRange();
 			TextRange inElement = problem.getTextRangeInElement();
-			int base = problem.getPsiElement().getTextRange().getStartOffset();
-			return file.getText().substring(base + inElement.getStartOffset(), base + inElement.getEndOffset());
+			TextRange range = inElement == null ? elementRange
+					: inElement.shiftRight(elementRange.getStartOffset());
+
+			return file.getText().substring(range.getStartOffset(), range.getEndOffset());
 		});
 	}
 
