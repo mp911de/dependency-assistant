@@ -33,7 +33,6 @@ import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.modcommand.ModCommand;
 import com.intellij.modcommand.ModCommandQuickFix;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
@@ -101,10 +100,7 @@ public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
 					return;
 				}
 
-				TextRange refRange = GitHubUtils.getVersionRange(scalar);
-				TextRange rangeInElement = refRange.shiftLeft(scalar.getTextRange().getStartOffset());
-
-				holder.registerProblem(scalar, rangeInElement,
+				holder.registerProblem(scalar,
 						MessageBundle.message("inspection.github.unpinned-action.display-name"),
 						new PinToShaQuickFix(pinTarget));
 			}
