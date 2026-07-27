@@ -290,7 +290,7 @@ class GradleUtils {
 	 * {@link #GROOVY_SETTINGS} or {@link #KOTLIN_SETTINGS} file.
 	 * <p>The walk is bounded by the linked Gradle project root, or by the content
 	 * root containing the file when it is not part of a linked Gradle project, so a
-	 * stray settings file outside the project cannot widen resolution scope.
+	 * stray settings file outside the project cannot expand resolution scope.
 	 *
 	 * @return the first directory containing a settings file; the linked Gradle
 	 * project root if none is found; the containing directory otherwise.

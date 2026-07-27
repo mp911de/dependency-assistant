@@ -22,7 +22,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Apply the selected planned upgrades to the build files, sharing the
  * confirmation, shelving, and notification behavior of {@link ApplyAllAction}.
- * Unlike its parent this action never widens to the whole plan: it stays
+ * Unlike its parent this action never expands to the whole plan: it stays
  * disabled without a plan-item selection and does nothing when invoked
  * regardless.
  *

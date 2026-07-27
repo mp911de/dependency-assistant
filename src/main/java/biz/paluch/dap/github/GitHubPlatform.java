@@ -150,10 +150,20 @@ public class GitHubPlatform implements Platform {
 		@Override
 		public TagSource getTagSource() {
 
+			// TODO: Allow anonymous tag sources
 			GithubApiRequestExecutorFactory factory = GithubApiRequestExecutorFactory.getInstance(project);
 			GithubServerPath path = GithubApiRequestExecutorFactory.serverPath(metadata.host());
 			GithubApiRequestExecutorFactory.ExecutorResult executor = factory.getExecutor(path);
-			return new GitHubReleases(path, executor.getRequiredExecutor());
+			if (executor.hasExecutor()) {
+				return new GitHubReleases(path, executor.getRequiredExecutor());
+			}
+
+			GithubApiRequestExecutorFactory.ExecutorResult maybeAnonymous = factory.getExecutor();
+			if (maybeAnonymous.hasExecutor()) {
+				return new GitHubReleases(path, maybeAnonymous.getRequiredExecutor());
+			}
+
+			return null;
 		}
 
 		@Override

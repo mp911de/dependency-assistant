@@ -51,6 +51,7 @@ import biz.paluch.dap.lookup.SiteRole;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
@@ -95,6 +96,7 @@ import com.intellij.usageView.UsageInfo;
 import com.intellij.usages.Usage;
 import com.intellij.usages.UsageInfo2UsageAdapter;
 import com.intellij.usages.UsageTarget;
+import com.intellij.usages.UsageView;
 import com.intellij.usages.UsageViewManager;
 import com.intellij.usages.UsageViewPresentation;
 import com.intellij.usages.impl.rules.UsageType;
@@ -432,7 +434,10 @@ public class DependencySiteNavigator {
 		presentation.setToolwindowTitle(title);
 		presentation.setSearchString(title);
 
-		UsageViewManager.getInstance(project).showUsages(UsageTarget.EMPTY_ARRAY, usages, presentation);
+		UsageView usageView = UsageViewManager.getInstance(project)
+				.showUsages(UsageTarget.EMPTY_ARRAY, usages, presentation);
+		ApplicationManager.getApplication().invokeLater(
+				() -> usageView.selectUsages(new Usage[] {usages[0]}), project.getDisposed());
 
 		onTransferToFindWindow.run();
 	}

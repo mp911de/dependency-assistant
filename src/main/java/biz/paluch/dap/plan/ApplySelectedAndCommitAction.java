@@ -22,7 +22,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Apply the selected planned upgrades and create one commit per upgrade,
  * sharing the confirmation, shelving, commit, and push behavior of
- * {@link ApplyAllAndCommitAction}. Unlike its parent this action never widens
+ * {@link ApplyAllAndCommitAction}. Unlike its parent this action never expands
  * to the whole plan: it stays disabled without a plan-item selection and does
  * nothing when invoked regardless.
  *

@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -80,11 +81,15 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 		if (StringUtils.isEmpty(rowName)) {
 			rowName = renderedArtifactId;
 		}
+		else {
+			labelByDependencyName();
+		}
 		this.rowName = rowName;
 
 		IconDependencyPresentation presentation = upgrade.getPresentation();
 		if (presentation.hasDependencyName()) {
 			this.dependencyOrProjectName = presentation.getDependencyName();
+
 		} else if (presentation.hasProjectName()) {
 			this.dependencyOrProjectName = presentation.getProjectName();
 		} else {
@@ -97,20 +102,25 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 	private String createToolTipText() {
 
+		DependencyPresentation presentation = upgrade.getPresentation();
 		Dependency dependency = upgrade.getDependency();
-		String tooltip = StringUtils.hasText(dependencyOrProjectName)
-				? "<code>%s</code> (%s)".formatted(StringUtil.escapeXmlEntities(getName()),
-						StringUtil.escapeXmlEntities(dependencyOrProjectName))
-				: "<code>" + StringUtil.escapeXmlEntities(getName()) + "</code>";
+		String tooltip = presentation.hasProjectName()
+				&& !presentation.getProjectName().equalsIgnoreCase(renderedArtifactId)
+						? (StringUtil.escapeXmlEntities(presentation.getProjectName()) + "<br/>")
+						: "";
+
+		tooltip += MessageBundle.message("dialog.tooltip.coordinates",
+				"<code>" + StringUtil.escapeXmlEntities(presentation.getArtifactIdDisplayName()) + "</code>");
 
 		if (!dependency.getDeclarationSources().isEmpty()
 				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin) {
-			tooltip = MessageBundle.message("dialog.tooltip.plugin") + ": " + tooltip;
+			tooltip += MessageBundle.message("dialog.tooltip.plugin") + ": " + tooltip;
 		}
 
 		if (dependency.hasPropertyVersion()) {
 			VersionSource.VersionProperty versionProperty = dependency.findPropertyVersion();
-			tooltip = MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
+			tooltip += "<br/>"
+					+ MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
 			if (versionProperty instanceof VersionSource.Profile profile) {
 				tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.profile",
 						"<code>" + profile.getProfileId() + "</code>");
@@ -134,13 +144,17 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 		int baseWidth = base.getIconWidth();
 		int baseHeight = base.getIconHeight();
-		LayeredIcon layered = new LayeredIcon(2);
+		LayeredIcon layered = new LayeredIcon(3);
 		layered.setIcon(base, 0);
-		Icon propertySmall = IconUtil.scale(AllIcons.Nodes.Property, null, 0.5f);
+
+		Icon propertySmall = IconUtil.scale(AllIcons.Nodes.Property, null, 0.6f);
+
 		int overlayWidth = propertySmall.getIconWidth();
 		int overlayHeight = propertySmall.getIconHeight();
-		layered.setIcon(propertySmall, 1, Math.max(0, baseWidth - overlayWidth),
+		layered.setIcon(propertySmall, 1, 1 + Math.max(0, baseWidth - overlayWidth),
 				Math.max(0, baseHeight - overlayHeight));
+
+
 		return layered;
 	}
 

@@ -83,6 +83,7 @@ class GroupRow extends TableRow {
 	private String createGroupToolTipText() {
 
 		String name = StringUtils.hasText(getDependencyOrProjectName())
+				&& !getName().equals(getDependencyOrProjectName())
 				? "</b><code>%s</code><b> (%s)".formatted(StringUtil.escapeXmlEntities(getName()),
 						StringUtil.escapeXmlEntities(getDependencyOrProjectName()))
 				: "</b><code>" + StringUtil.escapeXmlEntities(getName()) + "</code><b>";
