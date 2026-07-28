@@ -248,7 +248,8 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 		if (ex.getStatusCode() == 404) {
 			LOG.debug("[%s][%s] HTTP Status %d: %s %s".formatted(toString(artifactId), getId(),
 					ex.getStatusCode(), url, ex.getError()), ex);
-			throw new ArtifactNotFoundException("Repository (" + url + ") not found: " + artifactId, artifactId);
+			throw new ArtifactNotFoundException("Repository (" + url + ") not found: " + toString(artifactId),
+					artifactId);
 		}
 		LOG.warn("[%s][%s] HTTP Status %d: %s %s".formatted(toString(artifactId), getId(),
 				ex.getStatusCode(), url, ex.getError()), ex);

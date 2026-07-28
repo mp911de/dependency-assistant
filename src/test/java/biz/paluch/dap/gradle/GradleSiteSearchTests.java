@@ -21,7 +21,6 @@ import java.util.List;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
 import biz.paluch.dap.lookup.SiteRole;
@@ -170,25 +169,6 @@ class GradleSiteSearchTests {
 
 		assertThat(usages).hasSize(1);
 		assertThat(usages).first().satisfies(it -> assertThat(it.element()).containsText("libs.spring.core"));
-	}
-
-	@Test
-	@ProjectFile(name = "build.gradle", content = """
-			dependencies {
-			    implementation "org.springframework:spring-core:6.1.0"
-			}
-			""")
-	void inlineDefinitionsHelperLocatesDeclaration(PsiFile buildFile) {
-
-		GradleFixtures.analyze(buildFile);
-
-		List<DependencySiteSearchHit> definitions = ArtifactReferenceResolver
-				.inlineDefinitions(buildFile, DependencySiteQuery.ofArtifact("org.springframework", "spring-core"),
-						resolverFor(buildFile)::resolveArtifactReference)
-				.stream().filter(finding -> finding.role() == SiteRole.DECLARATION).toList();
-
-		assertThat(definitions).isNotEmpty();
-		assertThat(definitions).first().satisfies(it -> assertThat(it.element()).containsText("6.1.0"));
 	}
 
 	@Test

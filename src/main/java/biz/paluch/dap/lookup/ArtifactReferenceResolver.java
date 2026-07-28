@@ -16,16 +16,8 @@
 
 package biz.paluch.dap.lookup;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Function;
-
-import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.SyntaxTraverser;
 
 /**
  * Build-tool-specific component that parses the element under the caret and
@@ -78,51 +70,6 @@ public interface ArtifactReferenceResolver {
 	 */
 	default DependencySearchResults search(DependencySiteQuery query) {
 		return DependencySearchResults.empty();
-	}
-
-	/**
-	 * Inline-only search that derives a result purely from per-element resolution:
-	 * traverse {@code root}, resolve each element, and keep those resolving to a
-	 * query artifact as {@link SiteRole#DECLARATION} hits on the version literal.
-	 *
-	 * <p>This is the reusable fallback for ecosystems that have no version property
-	 * to follow (NPM, Antora, GitHub Actions) and therefore do not override
-	 * {@link #search(DependencySiteQuery)}. Hits are deduplicated by target
-	 * element.
-	 *
-	 * @param root the file (or subtree) to scan.
-	 * @param query the version this find is centered on; must not be
-	 * {@literal null}.
-	 * @param resolve resolves an element into an {@link ArtifactReference}; must
-	 * not be {@literal null}.
-	 * @return the inline definition hits; never {@literal null}, possibly empty.
-	 */
-	static DependencySearchResults inlineDefinitions(PsiElement root, DependencySiteQuery query,
-			Function<PsiElement, ArtifactReference> resolve) {
-
-		if (query.artifacts().isEmpty()) {
-			return DependencySearchResults.empty();
-		}
-
-		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		Set<PsiElement> seen = new HashSet<>();
-		for (PsiElement element : SyntaxTraverser.psiTraverser(root)) {
-
-			ArtifactReference reference = resolve.apply(element);
-			if (!reference.isResolved() || !query.artifacts().contains(reference.getArtifactId())) {
-				continue;
-			}
-
-			ArtifactDeclaration declaration = reference.getDeclaration();
-			PsiElement target = declaration.getVersionLiteral() != null ? declaration.getVersionLiteral()
-					: declaration.getDeclarationElement();
-			if (seen.add(target)) {
-				hits.add(DependencySiteSearchHit.declaration(target,
-						declaration.getVersion() != null ? declaration.getVersion().toString() : target.getText()));
-			}
-		}
-
-		return DependencySearchResults.of(hits);
 	}
 
 }

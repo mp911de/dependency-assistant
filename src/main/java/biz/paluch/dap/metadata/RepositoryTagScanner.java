@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
+import biz.paluch.dap.artifact.ArtifactNotFoundException;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.TagSource;
 import biz.paluch.dap.state.Cache;
@@ -200,6 +201,9 @@ public class RepositoryTagScanner {
 		} catch (ProcessCanceledException e) {
 			// ignore to avoid JVM default exception handler from handling this exception
 			return;
+		} catch (ArtifactNotFoundException e) {
+			LOG.info("[" + key + "] Repository not found", e);
+			recordFailure(key);
 		} catch (IOException | RuntimeException e) {
 			LOG.warn("[" + key + "] Repository tag scan failed", e);
 			recordFailure(key);

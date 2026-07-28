@@ -16,6 +16,11 @@
 
 package biz.paluch.dap.lookup;
 
+import java.util.function.Supplier;
+
+import biz.paluch.dap.util.MessageBundle;
+import org.jetbrains.annotations.Nls;
+
 /**
  * {@link DependencySiteSearchHit Search hit} role.
  *
@@ -35,7 +40,7 @@ public enum SiteRole {
 	 * {@code [versions]} entry, a {@code gradle.properties} or {@code extra} entry,
 	 * or a Maven {@code <properties>} entry) or an inline version literal.
 	 */
-	DECLARATION,
+	DECLARATION(MessageBundle.lazyMessage("dialog.findSites.role.DECLARATION")),
 
 	/**
 	 * Where the version is referenced indirectly rather than written inline: a
@@ -43,6 +48,21 @@ public enum SiteRole {
 	 * {@code libs.spring.core}), a Maven {@code ${prop}}, or a {@code $prop}
 	 * interpolation in a build script.
 	 */
-	VERSION_USAGE
+	VERSION_USAGE(MessageBundle.lazyMessage("dialog.findSites.role.VERSION_USAGE"));
+
+	private final Supplier<String> message;
+
+	SiteRole(Supplier<String> message) {
+		this.message = message;
+	}
+
+	/**
+	 * Return the message key for the localized role label.
+	 *
+	 * @return the complete message key.
+	 */
+	public @Nls String getName() {
+		return message.get();
+	}
 
 }

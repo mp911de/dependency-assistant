@@ -166,7 +166,7 @@ public class Notifications {
 
 		return new Notification(
 				UPGRADE_NOTIFICATIONS,
-				MessageBundle.message("notification.dependencies-updates"), message.toString(),
+				MessageBundle.message("notification.dependencies-updates", updates.size()), message.toString(),
 				NotificationType.INFORMATION);
 	}
 
@@ -195,7 +195,7 @@ public class Notifications {
 
 		Notification notification = new Notification(
 				STICKY_NOTIFICATION,
-				MessageBundle.message("notification.dependencies-updates"), message.toString(),
+				MessageBundle.message("notification.dependencies-updates", updates.size()), message.toString(),
 				NotificationType.INFORMATION);
 
 		notification.addAction(NotificationAction.createSimpleExpiring(
@@ -222,7 +222,6 @@ public class Notifications {
 	}
 
 	private static void renderApplied(Collection<AppliedDependencyUpdate> updates, StringBuilder message) {
-		message.append(MessageBundle.message("notification.dependencies-updates.description", updates.size()));
 
 		message.append("<ul>");
 		for (AppliedDependencyUpdate update : updates) {

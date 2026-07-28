@@ -26,10 +26,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -45,13 +43,11 @@ import javax.swing.ListSelectionModel;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.lookup.DependencySiteQuery;
-import biz.paluch.dap.lookup.DependencySiteSearch;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
 import biz.paluch.dap.lookup.SiteRole;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
@@ -92,15 +88,8 @@ import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBList;
 import com.intellij.ui.popup.list.SelectablePanel;
 import com.intellij.ui.speedSearch.SpeedSearchUtil;
-import com.intellij.usageView.UsageInfo;
-import com.intellij.usages.Usage;
-import com.intellij.usages.UsageInfo2UsageAdapter;
-import com.intellij.usages.UsageTarget;
 import com.intellij.usages.UsageView;
-import com.intellij.usages.UsageViewManager;
-import com.intellij.usages.UsageViewPresentation;
-import com.intellij.usages.impl.rules.UsageType;
-import com.intellij.usages.impl.rules.UsageWithType;
+import com.intellij.usages.UsageViewManager.UsageViewStateListener;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
@@ -108,10 +97,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Navigates the sites participating in a dependency's version: narrows the
- * files to search, runs the {@link DependencySiteSearch}, and presents the
- * result through direct navigation, a multi-result popup, or the Find tool
- * window. The popup shows a read-only preview of the focused declaration site
- * beside the list.
+ * files to search and presents the result through direct navigation, a
+ * multi-result popup, or the Find tool window. The popup shows a read-only
+ * preview of the focused declaration site beside the list.
  *
  * <p>Entry points express the caller's intent: {@link #browse} always shows the
  * popup, {@link #navigate} opens a single result directly in the editor, and
@@ -211,7 +199,9 @@ public class DependencySiteNavigator {
 	 * {@literal null}.
 	 */
 	public void browse(DependencySiteQuery query, RelativePoint where) {
-		find(query, where, result -> present(result, where));
+
+		DependencyUsageTarget target = new DependencyUsageTarget(project, query, files);
+		find(target, where, result -> present(target, result, where));
 	}
 
 	/**
@@ -225,38 +215,53 @@ public class DependencySiteNavigator {
 	 */
 	public void navigate(DependencySiteQuery query, RelativePoint where) {
 
-		find(query, where, result -> {
+		DependencyUsageTarget target = new DependencyUsageTarget(project, query, files);
+		find(target, where, result -> {
 
 			if (result.size() == 1) {
 				result.first().navigate();
 				return;
 			}
-			present(result, where);
+			present(target, result, where);
 		});
 	}
 
 	/**
 	 * Find every site backing the query and hand the results to the Find tool
-	 * window, skipping the intermediate popup. An empty result shows the no-sites
-	 * message at the anchor. Runs and fails fast like {@link #navigate}.
+	 * window, skipping the intermediate popup. The Find infrastructure owns the
+	 * background search, progress, cancellation, and result presentation. Runs and
+	 * fails fast during indexing like {@link #navigate}.
 	 *
 	 * @param query the dependency-site query to run.
-	 * @param where the screen anchor for the empty message or notice; must not be
+	 * @param where the screen anchor for the indexing notice; must not be
 	 * {@literal null}.
 	 */
 	public void openInFindWindow(DependencySiteQuery query, RelativePoint where) {
+		openInFindWindow(new DependencyUsageTarget(project, query, files), where);
+	}
 
-		find(query, where, result -> {
+	private void openInFindWindow(DependencyUsageTarget target, RelativePoint where) {
 
-			if (result.isEmpty()) {
-				present(result, where);
-				return;
+		if (DumbService.getInstance(project).isDumb()) {
+			showIndexingNotice(where);
+			return;
+		}
+
+		target.findUsages(new UsageViewStateListener() {
+
+			@Override
+			public void usageViewCreated(UsageView usageView) {
+				onTransferToFindWindow.run();
 			}
-			openInFindWindow(result);
+
+			@Override
+			public void findingUsagesFinished(@Nullable UsageView usageView) {
+			}
+
 		});
 	}
 
-	private void find(DependencySiteQuery query, RelativePoint where,
+	private void find(DependencyUsageTarget target, RelativePoint where,
 			Consumer<Sites> presenter) {
 
 		if (DumbService.getInstance(project).isDumb()) {
@@ -264,7 +269,8 @@ public class DependencySiteNavigator {
 			return;
 		}
 
-		ReadAction.nonBlocking(() -> findSites(query, files.get()))
+		ReadAction.nonBlocking(() -> new Sites(target.findSites().stream().map(SitePresentation::new).toList()))
+				.inSmartMode(project)
 				.expireWith(parentDisposable)
 				.finishOnUiThread(ModalityState.stateForComponent(where.getComponent()), entries -> {
 
@@ -282,17 +288,6 @@ public class DependencySiteNavigator {
 				.submit(AppExecutorUtil.getAppExecutorService());
 	}
 
-	private Sites findSites(DependencySiteQuery query,
-			Iterable<VirtualFile> files) {
-
-		List<SitePresentation> sites = DependencySiteSearch
-				.create(new DependencySiteSearchFunction(project))
-				.find(query, files)
-				.map(SitePresentation::new)
-				.toList();
-		return new Sites(sites);
-	}
-
 	private void showIndexingNotice(RelativePoint where) {
 
 		popupFactory
@@ -303,7 +298,7 @@ public class DependencySiteNavigator {
 				.show(where, Balloon.Position.above);
 	}
 
-	private void present(Sites result, RelativePoint where) {
+	private void present(DependencyUsageTarget target, Sites result, RelativePoint where) {
 
 		if (result.isEmpty()) {
 			popupFactory.createMessage(MessageBundle.message("dialog.findSites.empty")).show(where);
@@ -350,7 +345,7 @@ public class DependencySiteNavigator {
 
 		openInFind.addActionListener(event -> {
 			popup.closeOk(null);
-			openInFindWindow(result);
+			openInFindWindow(target, where);
 		});
 
 		new DoubleClickListener() {
@@ -411,35 +406,6 @@ public class DependencySiteNavigator {
 			}
 		});
 		return preview;
-	}
-
-	private void openInFindWindow(Sites result) {
-
-		Map<SiteRole, UsageType> usageTypes = new EnumMap<>(SiteRole.class);
-		Usage[] usages = ReadAction.compute(() -> result.stream()
-				.filter(SitePresentation::hasElement)
-				.flatMap(entry -> {
-					Usage usage = entry.toUsage(usageTypes);
-					return usage == null ? Stream.empty() : Stream.of(usage);
-				})
-				.toArray(Usage[]::new));
-
-		if (usages.length == 0) {
-			return;
-		}
-
-		String title = MessageBundle.message("dialog.findSites.title");
-		UsageViewPresentation presentation = new UsageViewPresentation();
-		presentation.setTabText(title);
-		presentation.setToolwindowTitle(title);
-		presentation.setSearchString(title);
-
-		UsageView usageView = UsageViewManager.getInstance(project)
-				.showUsages(UsageTarget.EMPTY_ARRAY, usages, presentation);
-		ApplicationManager.getApplication().invokeLater(
-				() -> usageView.selectUsages(new Usage[] {usages[0]}), project.getDisposed());
-
-		onTransferToFindWindow.run();
 	}
 
 	private boolean chooseSelected(JList<SitePresentation> list, JBPopup popup) {
@@ -550,16 +516,12 @@ public class DependencySiteNavigator {
 
 		private void renderOn(SimpleColoredComponent renderer) {
 			renderer.setIcon(icon);
-			renderer.append(MessageBundle.message("dialog.findSites.role." + role.name()) + "  ",
+			renderer.append(role.getName() + "  ",
 					SimpleTextAttributes.GRAYED_ATTRIBUTES);
 			renderer.append(label);
 			if (!location.isEmpty()) {
 				renderer.append("  " + location, SimpleTextAttributes.GRAYED_ATTRIBUTES);
 			}
-		}
-
-		public boolean hasElement() {
-			return element.getElement() != null;
 		}
 
 		private void updatePreview(EditorTextField preview) {
@@ -599,18 +561,6 @@ public class DependencySiteNavigator {
 					new OpenFileDescriptor(project, file, source.getTextOffset()).navigate(true);
 				}
 			});
-		}
-
-		private @Nullable Usage toUsage(Map<SiteRole, UsageType> usageTypes) {
-
-			PsiElement source = element.getElement();
-			if (source == null) {
-				return null;
-			}
-
-			UsageType usageType = usageTypes.computeIfAbsent(role,
-					it -> new UsageType(() -> MessageBundle.message("dialog.findSites.role." + it.name())));
-			return new SiteUsage(new UsageInfo(source), usageType);
 		}
 
 		FileType fileType() {
@@ -755,22 +705,6 @@ public class DependencySiteNavigator {
 			SpeedSearchUtil.applySpeedSearchHighlighting(list, component, true, selected);
 			panel.setSelectionColor(selected ? UIUtil.getListBackground(true, true) : null);
 			return panel;
-		}
-
-	}
-
-	static class SiteUsage extends UsageInfo2UsageAdapter implements UsageWithType {
-
-		private final UsageType usageType;
-
-		private SiteUsage(UsageInfo usageInfo, UsageType usageType) {
-			super(usageInfo);
-			this.usageType = usageType;
-		}
-
-		@Override
-		public UsageType getUsageType() {
-			return usageType;
 		}
 
 	}

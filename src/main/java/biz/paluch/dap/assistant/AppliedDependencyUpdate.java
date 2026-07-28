@@ -50,8 +50,7 @@ import org.jetbrains.annotations.Nullable;
  * @author Mark Paluch
  */
 public record AppliedDependencyUpdate(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion to,
-		String displayLabel,
-		Flag flag) implements Comparable<AppliedDependencyUpdate> {
+		String displayLabel, Flag flag) implements Comparable<AppliedDependencyUpdate> {
 
 	private static final Comparator<AppliedDependencyUpdate> COMPARATOR = Comparator
 			.comparing(AppliedDependencyUpdate::displayLabel);

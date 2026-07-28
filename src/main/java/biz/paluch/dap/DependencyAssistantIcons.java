@@ -48,7 +48,12 @@ public class DependencyAssistantIcons {
 	public static final Icon PROPERTY_NAVIGATE = load("/META-INF/icons/propertyNavigate.svg");
 
 	/**
-	 * Gutter icon marking a version property referenced by more than one dependency
+	 * Table icon marking a version property.
+	 */
+	public static final Icon PROPERTY = load("/META-INF/icons/property.svg");
+
+	/**
+	 * Table icon marking a version property referenced by more than one dependency
 	 * declaration.
 	 */
 	public static final Icon SHARED_PROPERTY = load("/META-INF/icons/sharedProperty.svg");

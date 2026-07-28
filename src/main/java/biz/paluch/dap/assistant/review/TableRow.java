@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -44,10 +45,7 @@ import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.icons.AllIcons;
 import com.intellij.openapi.util.text.StringUtil;
-import com.intellij.ui.LayeredIcon;
-import com.intellij.util.IconUtil;
 
 /**
  * Dialog-row presentation over one upgrade aggregate.
@@ -110,26 +108,27 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 						: "";
 
 		tooltip += MessageBundle.message("dialog.tooltip.coordinates",
-				"<code>" + StringUtil.escapeXmlEntities(presentation.getArtifactIdDisplayName()) + "</code>");
+				StringUtil.escapeXmlEntities(presentation.getArtifactIdDisplayName()));
 
 		if (!dependency.getDeclarationSources().isEmpty()
 				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin) {
-			tooltip += MessageBundle.message("dialog.tooltip.plugin") + ": " + tooltip;
+			tooltip = MessageBundle.message("dialog.tooltip.plugin", tooltip);
 		}
 
 		if (dependency.hasPropertyVersion()) {
 			VersionSource.VersionProperty versionProperty = dependency.findPropertyVersion();
 			tooltip += "<br/>"
-					+ MessageBundle.message("dialog.tooltip.property", "<code>" + versionProperty + "</code>");
+					+ MessageBundle.message("dialog.tooltip.property", versionProperty);
 			if (versionProperty instanceof VersionSource.Profile profile) {
 				tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.profile",
-						"<code>" + profile.getProfileId() + "</code>");
+						profile.getProfileId());
 			}
 		}
 
 		if (!dependency.getDeclarationSources().isEmpty()
 				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Profile profile) {
-			tooltip += MessageBundle.message("dialog.tooltip.profile", "<code>" + profile.getProfileId() + "</code>");
+			tooltip += "<br/>"
+					+ MessageBundle.message("dialog.tooltip.profile", profile.getProfileId());
 		}
 
 		return tooltip;
@@ -142,20 +141,7 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 			return base;
 		}
 
-		int baseWidth = base.getIconWidth();
-		int baseHeight = base.getIconHeight();
-		LayeredIcon layered = new LayeredIcon(3);
-		layered.setIcon(base, 0);
-
-		Icon propertySmall = IconUtil.scale(AllIcons.Nodes.Property, null, 0.6f);
-
-		int overlayWidth = propertySmall.getIconWidth();
-		int overlayHeight = propertySmall.getIconHeight();
-		layered.setIcon(propertySmall, 1, 1 + Math.max(0, baseWidth - overlayWidth),
-				Math.max(0, baseHeight - overlayHeight));
-
-
-		return layered;
+		return DependencyAssistantIcons.PROPERTY;
 	}
 
 	public DeclaredVersions getDeclaredVersions() {
