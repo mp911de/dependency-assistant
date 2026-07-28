@@ -32,13 +32,17 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
+import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
+import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.util.text.HtmlBuilder;
+import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.util.EventDispatcher;
 import org.jspecify.annotations.Nullable;
 
@@ -60,6 +64,8 @@ class UpgradeReview {
 	private final Set<String> ambiguousArtifactIds = new HashSet<>();
 
 	private final Map<TableRow, List<TableRow>> sharedPropertyPeers = new HashMap<>();
+
+	private final Map<TableRow, ToolTip> toolTips = new HashMap<>();
 
 	private final EventDispatcher<ReviewListener> listeners = EventDispatcher.create(ReviewListener.class);
 
@@ -135,6 +141,10 @@ class UpgradeReview {
 			}
 		});
 
+		for (TableRow row : candidates) {
+			toolTips.put(row, ToolTip.create(row, getSharedPropertyPeers(row)));
+		}
+
 		boolean hasSafeVersion = false;
 
 		for (TableRow row : this.candidates) {
@@ -169,6 +179,15 @@ class UpgradeReview {
 	 */
 	List<TableRow> getSharedPropertyPeers(TableRow row) {
 		return sharedPropertyPeers.getOrDefault(row, List.of());
+	}
+
+	/**
+	 * Return the fully rendered coordinate-column tooltip for the row. Pre-computed
+	 * once per row over the full candidate set so the rendering path stays cheap;
+	 * rows outside the candidate set are computed and cached on first request.
+	 */
+	String getToolTip(TableRow row) {
+		return toolTips.computeIfAbsent(row, it -> ToolTip.create(it, getSharedPropertyPeers(it))).text();
 	}
 
 	public UpgradeSelection getSelection(TableRow row) {
@@ -446,6 +465,56 @@ class UpgradeReview {
 				return DependencyUpgradeIcons.resolveIcon(VersionAge.SAME_OR_UNKNOWN);
 			}
 			return DependencyUpgradeIcons.resolveIcon(this.strategy);
+		}
+
+	}
+
+	/**
+	 * Fully rendered coordinate-column tooltip for one row: the row's own intro and
+	 * section rows, the Shared Version Property section when peers exist, and the
+	 * declaration-drift trailer, assembled into one section table and wrapped in
+	 * {@code <html>}. Canonical home of the tooltip section markup; row types build
+	 * their section rows through {@link TableRow#section(String, HtmlChunk)}.
+	 */
+	static class ToolTip {
+
+		private final String text;
+
+		private ToolTip(String text) {
+			this.text = text;
+		}
+
+		static ToolTip create(TableRow row, List<TableRow> peers) {
+
+			List<HtmlChunk> sections = new ArrayList<>(row.getToolTip());
+			if (!peers.isEmpty()) {
+				sections.add(sharedPropertySection(peers));
+			}
+
+			HtmlBuilder rows = new HtmlBuilder();
+			sections.forEach(rows::append);
+
+			HtmlBuilder html = new HtmlBuilder().append(row.toolTipIntro())
+					.append(rows.wrapWith(DocumentationMarkup.SECTIONS_TABLE));
+
+			DeclaredVersions declaredVersions = row.getDeclaredVersions();
+			if (declaredVersions.hasDeclarationDrift()) {
+				html.append(HtmlChunk.raw(declaredVersions.getDeclarationDriftToolTipText()));
+			}
+
+			return new ToolTip("<html>" + html + "</html>");
+		}
+
+		String text() {
+			return text;
+		}
+
+		private static HtmlChunk sharedPropertySection(List<TableRow> peers) {
+
+			HtmlBuilder peerLines = new HtmlBuilder();
+			peerLines.appendWithSeparators(HtmlChunk.br(),
+					peers.stream().map(peer -> HtmlChunk.text(peer.getName()).code()).toList());
+			return TableRow.section("dialog.tooltip.sharedProperty", peerLines.toFragment());
 		}
 
 	}

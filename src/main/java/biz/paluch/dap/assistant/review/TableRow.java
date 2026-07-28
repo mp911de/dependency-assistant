@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant.review;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,7 +46,12 @@ import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.lang.documentation.DocumentationMarkup;
+import com.intellij.openapi.util.text.HtmlBuilder;
+import com.intellij.openapi.util.text.HtmlChunk;
+import com.intellij.ui.ColorUtil;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
 
 /**
  * Dialog-row presentation over one upgrade aggregate.
@@ -62,7 +68,9 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 	private final String renderedArtifactId;
 
-	private final String toolTipText;
+	private final HtmlChunk toolTipIntro;
+
+	private final List<HtmlChunk> toolTipSections;
 
 	private final String rowName;
 
@@ -95,43 +103,82 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 		}
 
 		this.tableIcon = createTableIcon();
-		this.toolTipText = createToolTipText();
+		this.toolTipIntro = createToolTipIntro();
+		this.toolTipSections = createToolTipSections();
 	}
 
-	private String createToolTipText() {
+	/**
+	 * Render one label/value row in {@link DocumentationMarkup} section style.
+	 * Swing tooltips do not carry the documentation pane's stylesheet, so the
+	 * {@code section} class is inert and the label styling is inlined: context-help
+	 * gray plus a right padding separating the label column from the value column.
+	 */
+	static HtmlChunk section(String labelKey, HtmlChunk value) {
+
+		String labelStyle = "color: %s; padding-right: %dpx".formatted(
+				ColorUtil.toHtmlColor(UIUtil.getContextHelpForeground()), JBUI.scale(8));
+		return HtmlChunk.tag("tr").children(
+				DocumentationMarkup.SECTION_HEADER_CELL.style(labelStyle)
+						.addText(MessageBundle.message(labelKey)),
+				DocumentationMarkup.SECTION_CONTENT_CELL.child(value));
+	}
+
+	private HtmlChunk createToolTipIntro() {
+
+		DependencyPresentation presentation = upgrade.getPresentation();
+		if (presentation.hasProjectName()
+				&& !presentation.getProjectName().equalsIgnoreCase(renderedArtifactId)) {
+			return new HtmlBuilder().append(HtmlChunk.text(presentation.getProjectName()))
+					.append(HtmlChunk.br()).toFragment();
+		}
+		return HtmlChunk.empty();
+	}
+
+	private List<HtmlChunk> createToolTipSections() {
 
 		DependencyPresentation presentation = upgrade.getPresentation();
 		Dependency dependency = upgrade.getDependency();
-		String tooltip = presentation.hasProjectName()
-				&& !presentation.getProjectName().equalsIgnoreCase(renderedArtifactId)
-						? (StringUtil.escapeXmlEntities(presentation.getProjectName()) + "<br/>")
-						: "";
 
-		tooltip += MessageBundle.message("dialog.tooltip.coordinates",
-				StringUtil.escapeXmlEntities(presentation.getArtifactIdDisplayName()));
+		boolean plugin = !dependency.getDeclarationSources().isEmpty()
+				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin;
 
-		if (!dependency.getDeclarationSources().isEmpty()
-				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin) {
-			tooltip = MessageBundle.message("dialog.tooltip.plugin", tooltip);
-		}
-
-		if (dependency.hasPropertyVersion()) {
-			VersionSource.VersionProperty versionProperty = dependency.findPropertyVersion();
-			tooltip += "<br/>"
-					+ MessageBundle.message("dialog.tooltip.property", versionProperty);
-			if (versionProperty instanceof VersionSource.Profile profile) {
-				tooltip += "<br/>" + MessageBundle.message("dialog.tooltip.profile",
-						profile.getProfileId());
-			}
-		}
+		List<HtmlChunk> sections = new ArrayList<>();
+		sections.add(section(plugin ? "dialog.tooltip.plugin" : "dialog.tooltip.coordinates",
+				HtmlChunk.text(presentation.getArtifactIdDisplayName()).code()));
 
 		if (!dependency.getDeclarationSources().isEmpty()
 				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Profile profile) {
-			tooltip += "<br/>"
-					+ MessageBundle.message("dialog.tooltip.profile", profile.getProfileId());
+			sections.add(section("dialog.tooltip.profile",
+					HtmlChunk.text(profile.getProfileId()).code()));
 		}
 
-		return tooltip;
+		if (dependency.hasPropertyVersion()) {
+
+			VersionSource.VersionProperty versionProperty = dependency.findPropertyVersion();
+			sections.add(section("dialog.tooltip.property",
+					HtmlChunk.text(String.valueOf(versionProperty)).code()));
+			if (versionProperty instanceof VersionSource.Profile profile) {
+				sections.add(section("dialog.tooltip.profile",
+						HtmlChunk.text(profile.getProfileId()).code()));
+			}
+		}
+
+		return sections;
+	}
+
+	/**
+	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
+	 */
+	HtmlChunk toolTipIntro() {
+		return toolTipIntro;
+	}
+
+	/**
+	 * The label/value section rows of this row's tooltip, assembled and rendered by
+	 * {@link UpgradeReview.ToolTip}.
+	 */
+	List<HtmlChunk> getToolTip() {
+		return toolTipSections;
 	}
 
 	private Icon createTableIcon() {
@@ -204,10 +251,6 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 	public String getDependencyName() {
 		return upgrade.getPresentation().getDisplayName();
-	}
-
-	public String getToolTipText() {
-		return toolTipText;
 	}
 
 	public Set<String> getVersionPropertyNames() {

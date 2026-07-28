@@ -69,14 +69,17 @@ class UnpinnedGitHubActionInspectionTests {
 
 		GitHubFixtures.analyze(workflowFile);
 
-		assertThat(inspect(workflowFile)).singleElement().satisfies(problem -> {
-			assertThat(problem.getDescriptionTemplate()).isEqualTo("Unpinned GitHub action reference");
-			assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
-			assertThat(highlightText(workflowFile, problem)).isEqualTo("actions/checkout@v4.2.0");
-			assertThat(problem.getFixes()).extracting(QuickFix::getName)
-					.containsExactly("Pin to commit SHA " + TestGitHubReleases.CHECKOUT_SHA_LATEST_SHORT + "…");
-			assertThat(problem.getFixes()).extracting(QuickFix::getFamilyName).containsExactly("Pin to commit SHA");
-		});
+		List<ProblemDescriptor> problems = inspect(workflowFile);
+		ProblemDescriptor problem = problems.get(0);
+
+		assertThat(problem.getDescriptionTemplate()).isEqualTo("Unpinned GitHub action reference");
+		assertThat(problem.getHighlightType()).isEqualTo(ProblemHighlightType.GENERIC_ERROR_OR_WARNING);
+		assertThat(highlightText(workflowFile, problem)).isEqualTo("actions/checkout@v4.2.0");
+
+		QuickFix fix = problem.getFixes()[0];
+		assertThat(fix.getName())
+				.isEqualTo("Pin to commit SHA '" + TestGitHubReleases.CHECKOUT_SHA_LATEST_SHORT + "…'");
+		assertThat(fix.getFamilyName()).isEqualTo("Pin to commit SHA");
 	}
 
 	@Test

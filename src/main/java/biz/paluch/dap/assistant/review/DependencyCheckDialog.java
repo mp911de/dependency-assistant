@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1027,9 +1026,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 				}
 
 				setIcon(peers.isEmpty() ? candidate.getTableIcon() : DependencyAssistantIcons.SHARED_PROPERTY);
-
-				String tooltip = toolTip(candidate, peers);
-				setToolTipText(tooltip);
+				setToolTipText(review.getToolTip(candidate));
 			}
 
 		};
@@ -1037,53 +1034,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 		DependencyCoordinateColumn(UpgradeReview review) {
 			super(MessageBundle.message("dialog.column.dependency"));
 			this.review = review;
-		}
-
-		private static String toolTip(TableRow candidate, List<TableRow> peers) {
-			StringBuilder tooltip = new StringBuilder();
-			String toolTipText = candidate.getToolTipText();
-			tooltip.append(toolTipText);
-
-			if (!peers.isEmpty()) {
-				if (tooltip.toString().endsWith("code>")) {
-					tooltip.append("<br/>");
-					tooltip.append("<br/>");
-				}
-				tooltip.append(sharedPropertyToolTip(candidate, peers));
-			}
-
-			DeclaredVersions declaredVersions = candidate.getDeclaredVersions();
-			if (declaredVersions.hasDeclarationDrift()) {
-				if (tooltip.toString().endsWith("code>")) {
-					tooltip.append("<br/>");
-					tooltip.append("<br/>");
-				}
-				tooltip.append(declaredVersions.getDeclarationDriftToolTipText());
-			}
-
-			return "<html>" + tooltip + "</html>";
-		}
-
-		private static String sharedPropertyToolTip(TableRow candidate, List<TableRow> peers) {
-
-			Set<String> names = candidate.getVersionPropertyNames();
-			Set<String> shared = new LinkedHashSet<>();
-			for (TableRow peer : peers) {
-				Set<String> peerShared = new LinkedHashSet<>(peer.getVersionPropertyNames());
-				peerShared.retainAll(names);
-				shared.addAll(peerShared);
-			}
-
-			StringBuilder tooltip = new StringBuilder();
-			tooltip.append("<b>").append(MessageBundle.message("dialog.tooltip.sharedProperty",
-					"</b><code>" + String.join(", ", shared) + "</code><b>")).append("</b>");
-
-			tooltip.append("<ul>");
-			for (TableRow peer : peers) {
-				tooltip.append("<li><code>").append(peer.getName()).append("</code></li>");
-			}
-
-			return tooltip.append("</ul>").toString();
 		}
 
 		@Override

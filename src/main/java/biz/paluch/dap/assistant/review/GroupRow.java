@@ -25,9 +25,9 @@ import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.UpgradeGroup;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.util.text.HtmlBuilder;
+import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -43,7 +43,7 @@ class GroupRow extends TableRow {
 
 	private final String memberLabel;
 
-	private final String toolTipText;
+	private final List<HtmlChunk> toolTipSections;
 
 	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String derivedLabel) {
 
@@ -53,7 +53,7 @@ class GroupRow extends TableRow {
 		if (derivedLabel == null) {
 			labelByDependencyName();
 		}
-		this.toolTipText = createGroupToolTipText();
+		this.toolTipSections = createGroupToolTipSections();
 
 		List<String> artifactIds = members.stream().map(member -> member.getArtifactId().artifactId()).toList();
 		String label = String.join(", ", CoordinateShape.of(artifactIds).memberLabelParts());
@@ -80,21 +80,19 @@ class GroupRow extends TableRow {
 		return new GroupRow(group, members, derivedLabel);
 	}
 
-	private String createGroupToolTipText() {
+	private List<HtmlChunk> createGroupToolTipSections() {
 
-		String name = StringUtils.hasText(getDependencyOrProjectName())
-				&& !getName().equals(getDependencyOrProjectName())
-				? "</b><code>%s</code><b> (%s)".formatted(StringUtil.escapeXmlEntities(getName()),
-						StringUtil.escapeXmlEntities(getDependencyOrProjectName()))
-				: "</b><code>" + StringUtil.escapeXmlEntities(getName()) + "</code><b>";
-		StringBuilder tooltip = new StringBuilder();
-		tooltip.append("<b>")
-				.append(MessageBundle.message("dialog.tooltip.group.header", name))
-				.append("</b><ul>");
-		for (TableRow member : members) {
-			tooltip.append("<li><code>").append(member.getArtifactId()).append("</code></li>");
+		HtmlBuilder name = new HtmlBuilder().append(HtmlChunk.text(getName()).code());
+		if (StringUtils.hasText(getDependencyOrProjectName()) && !getName().equals(getDependencyOrProjectName())) {
+			name.append(HtmlChunk.text(" (%s)".formatted(getDependencyOrProjectName())));
 		}
-		return tooltip.append("</ul>").toString();
+
+		HtmlBuilder memberLines = new HtmlBuilder();
+		memberLines.appendWithSeparators(HtmlChunk.br(),
+				members.stream().map(member -> HtmlChunk.text(member.getArtifactId().toString()).code()).toList());
+
+		return List.of(section("dialog.tooltip.group", name.toFragment()),
+				section("dialog.tooltip.group.members", memberLines.toFragment()));
 	}
 
 	@Override
@@ -103,8 +101,13 @@ class GroupRow extends TableRow {
 	}
 
 	@Override
-	public String getToolTipText() {
-		return toolTipText;
+	HtmlChunk toolTipIntro() {
+		return HtmlChunk.empty();
+	}
+
+	@Override
+	List<HtmlChunk> getToolTip() {
+		return toolTipSections;
 	}
 
 	@Override
