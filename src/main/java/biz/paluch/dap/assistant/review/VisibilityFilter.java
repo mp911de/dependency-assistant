@@ -17,11 +17,13 @@
 package biz.paluch.dap.assistant.review;
 
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Decides what the dependency upgrade review shows: which rows are visible and
@@ -48,10 +50,12 @@ record VisibilityFilter(boolean hideUpToDate) {
 	}
 
 	/**
-	 * Return the upgrade targets to show for the given option.
+	 * Return the strategy target to offer for the given upgrade, or {@literal null}
+	 * if the strategy has no target or the target is hidden by this filter.
 	 */
-	UpgradeSuggestions visibleTargets(DependencyUpgradeCandidate upgrade) {
-		return hideUpToDate ? upgrade.getDisplaySuggestions() : upgrade.getSuggestions();
+	@Nullable
+	Release findRelease(DependencyUpgradeCandidate upgrade, UpgradeStrategy strategy) {
+		return hideUpToDate ? upgrade.findCuratedRelease(strategy) : upgrade.findRelease(strategy);
 	}
 
 	/**

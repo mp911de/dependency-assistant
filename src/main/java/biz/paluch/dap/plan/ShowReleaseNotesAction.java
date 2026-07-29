@@ -74,7 +74,7 @@ public class ShowReleaseNotesAction extends DumbAwareAction {
 	private static @Nullable URI releaseNotesUrl(Project project, UpgradePlanItem item) {
 
 		ProjectMetadata metadata = ProjectMetadataService.getInstance(project)
-				.getMetadata(item.getStoredMembers().getFirst().getArtifactId());
+				.getMetadata(item.getMembers().getFirst().getArtifactId());
 		return metadata.findReleaseNotesUrl(item.getToVersion());
 	}
 

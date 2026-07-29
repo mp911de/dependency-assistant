@@ -17,6 +17,7 @@
 package biz.paluch.dap.plan;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -24,7 +25,6 @@ import java.util.Set;
 import javax.swing.Icon;
 
 import biz.paluch.dap.InterfaceAssistant;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionAge;
@@ -34,6 +34,7 @@ import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.ticket.TicketKey;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import org.jspecify.annotations.Nullable;
 
@@ -53,13 +54,11 @@ import org.springframework.util.ObjectUtils;
  *
  * @author Mark Paluch
  */
-class UpgradePlanItem {
+class UpgradePlanItem implements Sequence<ItemDependency> {
 
 	private final ItemId itemId;
 
-	private final List<Dependency> members;
-
-	private final List<InterfaceAssistant> assistants;
+	private final List<ItemDependency> members;
 
 	private final String displayName;
 
@@ -100,7 +99,7 @@ class UpgradePlanItem {
 	 * order.
 	 */
 	UpgradePlanItem(ItemId itemId, @Nullable String displayName, ArtifactVersion to, boolean vulnerabilityFix,
-			int vulnerabilityCount, CvssSeverity highestVulnerabilitySeverity, List<Dependency> members,
+			int vulnerabilityCount, CvssSeverity highestVulnerabilitySeverity, List<ItemDependency> members,
 			List<InterfaceAssistant> assistants) {
 
 		Assert.isTrue(!members.isEmpty(), "Upgrade Plan item requires members");
@@ -108,29 +107,28 @@ class UpgradePlanItem {
 				"Each Upgrade Plan member requires interface metadata");
 
 		this.itemId = itemId;
-		this.members = members.stream()
-				.map(member -> Dependency.from(member, member.getCurrentVersion()))
-				.toList();
-		this.assistants = List.copyOf(assistants);
+		this.members = members;
 		this.to = to;
 
 		ArtifactVersion from = null;
 		for (Dependency member : members) {
-			ArtifactVersion current = getMemberFromVersion(member);
+			ArtifactVersion current = member.getCurrentVersion();
 			if (from == null || from.isNewer(current)) {
 				from = current;
 			}
 		}
 
 		this.from = from == null ? to : from;
+		ItemDependency dependency = members.getFirst();
+		InterfaceAssistant assistant = assistants.getFirst();
 		this.displayName = StringUtils.hasText(displayName) ? displayName
-				: assistants.getFirst().getDisplayName(getMemberArtifactId(members.getFirst()));
+				: assistant.getDisplayName(dependency.getArtifactId());
 		this.vulnerabilityFix = vulnerabilityFix;
 		this.vulnerabilityCount = vulnerabilityCount;
 		this.highestVulnerabilitySeverity = highestVulnerabilitySeverity;
 		this.attentionLevel = determineAttentionLevel();
 		this.attentionBadge = createAttentionBadge();
-		this.icon = assistants.getFirst().getTableIcon(members.getFirst());
+		this.icon = assistant.getTableIcon(dependency);
 	}
 
 	/**
@@ -169,20 +167,16 @@ class UpgradePlanItem {
 		return itemId;
 	}
 
+	public List<ItemDependency> getMembers() {
+		return members;
+	}
+
+	public boolean isGroup() {
+		return members.size() > 1;
+	}
+
 	public AttentionLevel getAttentionLevel() {
 		return attentionLevel;
-	}
-
-	boolean isVulnerabilityFix() {
-		return vulnerabilityFix;
-	}
-
-	int getVulnerabilityCount() {
-		return vulnerabilityCount;
-	}
-
-	CvssSeverity getHighestVulnerabilitySeverity() {
-		return highestVulnerabilitySeverity;
 	}
 
 	public Icon getIcon() {
@@ -203,36 +197,6 @@ class UpgradePlanItem {
 
 	public ArtifactVersion getToVersion() {
 		return to;
-	}
-
-	public boolean isGroup() {
-		return members.size() > 1;
-	}
-
-	/**
-	 * Return the persisted member facts of a group item, or an empty list for a
-	 * single dependency item.
-	 *
-	 * @return the group members in persisted order, or an empty list.
-	 */
-	public List<Dependency> getMembers() {
-		return isGroup() ? members : List.of();
-	}
-
-	List<Dependency> getStoredMembers() {
-		return members;
-	}
-
-	ArtifactId getMemberArtifactId(Dependency member) {
-		return member.getArtifactId();
-	}
-
-	ArtifactVersion getMemberFromVersion(Dependency member) {
-		return member.getCurrentVersion();
-	}
-
-	String getMemberDisplayName(Dependency member) {
-		return member.getArtifactId().artifactId();
 	}
 
 	/**
@@ -261,7 +225,7 @@ class UpgradePlanItem {
 	DependencySiteQuery toQuery() {
 		return DependencySiteQuery.create(builder -> {
 			for (Dependency member : members) {
-				builder.artifact(getMemberArtifactId(member));
+				builder.artifact(member.getArtifactId());
 			}
 			builder.versionProperties(getVersionPropertyNames());
 		});
@@ -311,10 +275,18 @@ class UpgradePlanItem {
 	public List<DependencyUpdate> createUpdates() {
 
 		List<DependencyUpdate> updates = new ArrayList<>(members.size());
-		for (Dependency member : members) {
+		for (ItemDependency member : members) {
+			if (!member.isActive()) {
+				continue;
+			}
 			updates.add(DependencyUpdate.from(member, getToVersion()));
 		}
-		return List.copyOf(updates);
+		return updates;
+	}
+
+	@Override
+	public Iterator<ItemDependency> iterator() {
+		return members.iterator();
 	}
 
 	@Override

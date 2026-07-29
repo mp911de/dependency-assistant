@@ -32,11 +32,15 @@ import org.jspecify.annotations.Nullable;
  */
 record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 
+	private static final ReviewChange RELOAD_VISIBLE = new ReviewChange(null, true);
+
+	private static final ReviewChange ALL_ROWS = new ReviewChange(null, false);
+
 	/**
 	 * The visible candidate set changed and must be reloaded.
 	 */
 	static ReviewChange reloadVisible() {
-		return new ReviewChange(null, true);
+		return RELOAD_VISIBLE;
 	}
 
 	/**
@@ -50,7 +54,7 @@ record ReviewChange(@Nullable TableRow candidate, boolean reload) {
 	 * Selections changed across many rows; refresh all rows without reloading.
 	 */
 	static ReviewChange allRows() {
-		return new ReviewChange(null, false);
+		return ALL_ROWS;
 	}
 
 }

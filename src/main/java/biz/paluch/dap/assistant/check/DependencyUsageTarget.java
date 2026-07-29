@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant.check;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -48,6 +49,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
 import com.intellij.usageView.UsageInfo;
+import com.intellij.usages.Usage;
 import com.intellij.usages.UsageInfo2UsageAdapter;
 import com.intellij.usages.UsageSearcher;
 import com.intellij.usages.UsageTarget;
@@ -56,6 +58,7 @@ import com.intellij.usages.UsageViewManager.UsageViewStateListener;
 import com.intellij.usages.UsageViewPresentation;
 import com.intellij.usages.impl.rules.UsageType;
 import com.intellij.usages.impl.rules.UsageWithType;
+import com.intellij.util.Processor;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.ObjectUtils;
@@ -88,7 +91,7 @@ public class DependencyUsageTarget implements UsageTarget, ItemPresentation {
 
 	DependencyUsageTarget(Project project, DependencySiteQuery query,
 			VirtualFile... files) {
-		this(project, query, () -> List.of(files));
+		this(project, query, () -> Arrays.asList(files));
 	}
 
 	/**
@@ -122,40 +125,41 @@ public class DependencyUsageTarget implements UsageTarget, ItemPresentation {
 	}
 
 	UsageSearcher createUsageSearcher() {
+		return this::search;
+	}
+
+	private void search(Processor<? super Usage> processor) {
 
 		Map<SiteRole, UsageType> usageTypes = new EnumMap<>(SiteRole.class);
 		for (SiteRole role : SiteRole.values()) {
 			usageTypes.put(role, new UsageType(role::getName));
 		}
 
-		return processor -> {
+		Iterable<VirtualFile> scope = files.get();
+		Set<UsageKey> seen = new LinkedHashSet<>();
+		for (VirtualFile file : scope) {
 
-			Iterable<VirtualFile> scope = files.get();
-			Set<UsageKey> seen = new LinkedHashSet<>();
-			for (VirtualFile file : scope) {
+			ProgressManager.checkCanceled();
+			List<SiteUsage> found = ReadAction.nonBlocking(() -> {
 
-				ProgressManager.checkCanceled();
-				List<SiteUsage> found = ReadAction.nonBlocking(() -> {
+				if (!file.isValid()) {
+					return List.<SiteUsage>of();
+				}
 
-					if (!file.isValid()) {
-						return List.<SiteUsage>of();
-					}
+				DependencySearchResults hits = find(file);
+				return hits.stream().map(hit -> {
+					UsageInfo usageInfo = new UsageInfo(hit.element());
+					UsageKey key = new UsageKey(usageInfo, hit.role(), hit.label());
+					return new SiteUsage(key, usageInfo, usageTypes.get(hit.role()));
+				}).toList();
+			}).inSmartMode(project).executeSynchronously();
 
-					DependencySearchResults hits = find(file);
-					return hits.stream().map(hit -> {
-						UsageInfo usageInfo = new UsageInfo(hit.element());
-						UsageKey key = new UsageKey(usageInfo, hit.role(), hit.label());
-						return new SiteUsage(key, usageInfo, usageTypes.get(hit.role()));
-					}).toList();
-				}).inSmartMode(project).executeSynchronously();
-
-				for (SiteUsage usage : found) {
-					if (seen.add(usage.getKey()) && !processor.process(usage)) {
-						return;
-					}
+			for (SiteUsage usage : found) {
+				if (seen.add(usage.getKey()) && !processor.process(usage)) {
+					return;
 				}
 			}
-		};
+		}
 	}
 
 	@Override
@@ -176,6 +180,66 @@ public class DependencyUsageTarget implements UsageTarget, ItemPresentation {
 	@Override
 	public Icon getIcon(boolean unused) {
 		return DependencyAssistantIcons.ICON;
+	}
+
+	public DependencySearchResults find(Iterable<? extends VirtualFile> files) {
+
+		List<DependencySearchResults> perFile = new ArrayList<>();
+		for (VirtualFile file : files) {
+			ProgressManager.checkCanceled();
+			perFile.add(find(file));
+		}
+
+		return DependencySearchResults.concat(perFile);
+	}
+
+	public DependencySearchResults find(VirtualFile file) {
+
+		PsiFile psiFile = psiManager.findFile(file);
+		if (psiFile == null) {
+			return DependencySearchResults.empty();
+		}
+
+		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, psiFile);
+		if (!context.isAvailable()) {
+			return DependencySearchResults.empty();
+		}
+
+		VersionUpgradeLookup lookup = context.getLookup(psiFile, file);
+		DependencySearchResults sites = lookup.search(query);
+
+		// Ecosystems without an explicit search (NPM, Antora, GitHub) fall back
+		// to the inline-only find over their declarations.
+		return sites.isEmpty() ? traverse(psiFile, lookup)
+				: sites;
+	}
+
+	private DependencySearchResults traverse(PsiElement root,
+			VersionUpgradeLookup lookup) {
+
+		if (query.artifacts().isEmpty()) {
+			return DependencySearchResults.empty();
+		}
+
+		List<DependencySiteSearchHit> hits = new ArrayList<>();
+		Set<PsiElement> seen = new HashSet<>();
+		for (PsiElement element : SyntaxTraverser.psiTraverser(root)) {
+
+			ArtifactReference reference = lookup.resolveArtifactReference(element);
+			if (!reference.isResolved() || !query.artifacts().contains(reference.getArtifactId())) {
+				continue;
+			}
+
+			ArtifactDeclaration declaration = reference.getDeclaration();
+			PsiElement target = declaration.getVersionLiteral() != null ? declaration.getVersionLiteral()
+					: declaration.getDeclarationElement();
+			if (seen.add(target)) {
+				hits.add(DependencySiteSearchHit.declaration(target,
+						declaration.isVersionDefined() ? declaration.getVersion().toString() : target.getText()));
+			}
+		}
+
+		return DependencySearchResults.of(hits);
 	}
 
 	private record UsageKey(UsageInfo usageInfo, SiteRole role, String label) {
@@ -215,66 +279,6 @@ public class DependencyUsageTarget implements UsageTarget, ItemPresentation {
 			return ObjectUtils.nullSafeHashCode(key);
 		}
 
-	}
-
-	public DependencySearchResults find(Iterable<? extends VirtualFile> files) {
-
-		List<DependencySearchResults> perFile = new ArrayList<>();
-		for (VirtualFile file : files) {
-			ProgressManager.checkCanceled();
-			perFile.add(find(file));
-		}
-
-		return DependencySearchResults.concat(perFile);
-	}
-
-	public DependencySearchResults find(VirtualFile file) {
-
-		PsiFile psiFile = psiManager.findFile(file);
-		if (psiFile == null) {
-			return DependencySearchResults.empty();
-		}
-
-		ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(project, psiFile);
-		if (!context.isAvailable()) {
-			return DependencySearchResults.empty();
-		}
-
-		VersionUpgradeLookup lookup = context.getLookup(psiFile, file);
-		DependencySearchResults sites = lookup.search(query);
-
-		// Ecosystems without an explicit search (NPM, Antora, GitHub) fall back
-		// to the inline-only find over their declarations.
-		return sites.isEmpty() ? inlineDefinitions(psiFile, lookup)
-				: sites;
-	}
-
-	private DependencySearchResults inlineDefinitions(PsiElement root,
-			VersionUpgradeLookup lookup) {
-
-		if (query.artifacts().isEmpty()) {
-			return DependencySearchResults.empty();
-		}
-
-		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		Set<PsiElement> seen = new HashSet<>();
-		for (PsiElement element : SyntaxTraverser.psiTraverser(root)) {
-
-			ArtifactReference reference = lookup.resolveArtifactReference(element);
-			if (!reference.isResolved() || !query.artifacts().contains(reference.getArtifactId())) {
-				continue;
-			}
-
-			ArtifactDeclaration declaration = reference.getDeclaration();
-			PsiElement target = declaration.getVersionLiteral() != null ? declaration.getVersionLiteral()
-					: declaration.getDeclarationElement();
-			if (seen.add(target)) {
-				hits.add(DependencySiteSearchHit.declaration(target,
-						declaration.isVersionDefined() ? declaration.getVersion().toString() : target.getText()));
-			}
-		}
-
-		return DependencySearchResults.of(hits);
 	}
 
 }

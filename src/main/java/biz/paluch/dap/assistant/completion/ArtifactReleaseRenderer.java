@@ -93,7 +93,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 		presentation.setItemText(itemText);
 
 		DependencyRuleEvaluator evaluator = DependencyRuleEvaluator.create(rule,
-				release.artifactId(), version);
+				version);
 
 		String typeText = "";
 		LocalDateTime releaseDate = release.getReleaseDate();

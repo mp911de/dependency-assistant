@@ -57,6 +57,6 @@ public interface PlannedUpgrade {
 	 *
 	 * @return an immutable, non-empty list of upgrades in update order.
 	 */
-	List<DependencyUpgradeCandidate> getUpgrades();
+	List<DependencyUpgradeCandidate> getUpgradeCandidates();
 
 }

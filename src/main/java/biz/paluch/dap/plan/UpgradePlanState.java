@@ -286,7 +286,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			}
 
 			content.setItems(items);
-			content.setAffectedFiles(List.copyOf(original.getAffectedFiles()));
+			content.getAffectedFiles().addAll(original.getAffectedFiles());
 			return content;
 		}
 
@@ -363,14 +363,21 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		static Item from(PlannedUpgrade plannedUpgrade, ArtifactVersion targetVersion) {
 
+			List<Member> members = plannedUpgrade.getUpgradeCandidates().stream().map(Member::of).toList();
+			return from(plannedUpgrade.getName(), targetVersion, members, plannedUpgrade.getUpgradeCandidates());
+		}
+
+		private static Item from(String displayName, ArtifactVersion targetVersion, List<Member> members,
+				List<DependencyUpgradeCandidate> upgrades) {
+
 			Item item = new Item();
 			item.setToVersion(targetVersion.toString());
-			item.displayName = plannedUpgrade.getName();
+			item.displayName = displayName;
+			item.members.addAll(members);
 
 			Vulnerabilities currentVulnerabilities = Vulnerabilities.clean();
 			Vulnerabilities targetVulnerabilities = Vulnerabilities.clean();
-			for (DependencyUpgradeCandidate upgrade : plannedUpgrade.getUpgrades()) {
-				item.members.add(Member.of(upgrade));
+			for (DependencyUpgradeCandidate upgrade : upgrades) {
 				currentVulnerabilities = currentVulnerabilities
 						.addAll(upgrade.getVulnerabilities(upgrade.getCurrentVersion()));
 				targetVulnerabilities = targetVulnerabilities.addAll(upgrade.getVulnerabilities(targetVersion));
@@ -792,6 +799,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	public static class Member {
 
 		@Attribute
+		public boolean active = true;
+
+		@Attribute
 		public @Nullable String groupId;
 
 		@Attribute
@@ -816,6 +826,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		}
 
 		Member(Member member) {
+			this.active = member.active;
 			this.groupId = member.groupId;
 			this.artifactId = member.artifactId;
 			this.packageSystem = member.packageSystem;
@@ -866,6 +877,9 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			if (!(o instanceof Member that)) {
 				return false;
 			}
+			if (active != that.active) {
+				return false;
+			}
 			if (!ObjectUtils.nullSafeEquals(packageSystem, that.packageSystem)) {
 				return false;
 			}
@@ -889,7 +903,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		@Override
 		public int hashCode() {
-			return ObjectUtils.nullSafeHash(packageSystem, groupId, artifactId, fromVersion, assistant,
+			return ObjectUtils.nullSafeHash(active, packageSystem, groupId, artifactId, fromVersion, assistant,
 					declarationSources,
 					versionSources);
 		}

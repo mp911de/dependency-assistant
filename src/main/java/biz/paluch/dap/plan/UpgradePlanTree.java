@@ -318,8 +318,10 @@ class UpgradePlanTree {
 		for (UpgradePlanItem item : shownItems) {
 
 			PlanTreeNode node = new PlanTreeNode(item, badgeColumns);
-			for (Dependency member : item.getMembers()) {
-				node.add(new DefaultMutableTreeNode(member, false));
+			if (item.isGroup()) {
+				for (Dependency member : item) {
+					node.add(new DefaultMutableTreeNode(member, false));
+				}
 			}
 			root.add(node);
 		}
@@ -456,13 +458,15 @@ class UpgradePlanTree {
 	private static String nodeText(TreePath path) {
 
 		Object value = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
+
 		if (value instanceof UpgradePlanItem item) {
 			return item.getDisplayName();
 		}
-		if (value instanceof Dependency member) {
-			UpgradePlanItem item = itemOf((DefaultMutableTreeNode) path.getLastPathComponent());
-			return item != null ? item.getMemberDisplayName(member) : "";
+
+		if (value instanceof ItemDependency member) {
+			return member.getArtifactCoordinates();
 		}
+
 		return "";
 	}
 
@@ -492,12 +496,7 @@ class UpgradePlanTree {
 
 	}
 
-	/**
-	 * Row renderer stretched to the full row width by the tree UI: item content on
-	 * the left, the badge gutter on the right. Non-opaque so the wide rounded
-	 * selection paints behind it.
-	 */
-	private class PlanCellRenderer implements TreeCellRenderer {
+	static class PlanCellRenderer implements TreeCellRenderer {
 
 		private final JPanel panel = new JPanel(new BorderLayout());
 
@@ -529,13 +528,14 @@ class UpgradePlanTree {
 						SimpleTextAttributes.GRAYED_ATTRIBUTES);
 
 				panel.add(node.getBadgeGutter(), BorderLayout.EAST);
-			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof Dependency member) {
+			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof ItemDependency member) {
 
-				UpgradePlanItem item = itemOf((DefaultMutableTreeNode) value);
 				text.setIcon(AllIcons.Nodes.Library);
-				text.append(item != null ? item.getMemberDisplayName(member) : member.getArtifactId().artifactId(),
-						SimpleTextAttributes.REGULAR_ATTRIBUTES);
-				text.append("   " + (item != null ? item.getMemberFromVersion(member) : member.getCurrentVersion()),
+				text.append(member.getArtifactCoordinates(),
+						member.isActive() ? SimpleTextAttributes.REGULAR_ATTRIBUTES
+								: SimpleTextAttributes.GRAYED_ATTRIBUTES);
+				text.append("   " + member.getCurrentVersion()
+						.toDocumentationString(),
 						SimpleTextAttributes.GRAYED_ATTRIBUTES);
 			}
 
@@ -553,7 +553,7 @@ class UpgradePlanTree {
 		private final BadgeGutter badgeGutter;
 
 		PlanTreeNode(UpgradePlanItem item, BadgeColumns badgeColumns) {
-			super(item, !item.getMembers().isEmpty());
+			super(item, item.isGroup());
 			this.badgeGutter = new BadgeGutter(badgeColumns, item.getTicketBadge(), item.getAttentionBadge());
 		}
 

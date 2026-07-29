@@ -38,7 +38,6 @@ import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.daemon.GutterIconNavigationHandler;
 import com.intellij.codeInsight.daemon.GutterName;
 import com.intellij.codeInsight.daemon.LineMarkerInfo;
@@ -47,6 +46,7 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.util.IconLoader;
+import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -106,7 +106,8 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 
 			} else if (evaluated.isPresent() && evaluated.isLocked()) {
 				return new LineMarkerInfo<>(anchor, context.getHighlightRange(anchor),
-						getRuleIcon(transparentIcon, evaluated), e -> evaluated.getToolTipText(presentation),
+						getRuleIcon(transparentIcon, evaluated),
+						e -> evaluated.getToolTipText(presentation).toString(),
 						new UpgradeDialogNavigationHandler(pkg),
 						GutterIconRenderer.Alignment.LEFT, evaluated::getAccessibleName);
 			}
@@ -132,8 +133,8 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 		}
 
 		if (evaluated.isPresent()) {
-			String evaluatedToolTip = evaluated.getToolTipText(presentation);
-			if (StringUtils.hasText(evaluatedToolTip)) {
+			HtmlChunk evaluatedToolTip = evaluated.getToolTipText(presentation);
+			if (!evaluatedToolTip.isEmpty()) {
 				tooltip += "<br>" + evaluatedToolTip;
 			}
 		}

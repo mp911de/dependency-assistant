@@ -38,9 +38,9 @@ class RefreshMilestonesActionUnitTests {
 	void rebindsPersistedMilestoneByTitle() {
 
 		InMemoryMilestone milestone = InMemoryMilestone.open("6.2");
-		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(List.of(milestone));
+		Milestones milestones = new Milestones(List.of(milestone));
 
-		assertThat(milestones.getSelection("6.2")).isSameAs(milestone);
+		assertThat(milestones.findMilestone("6.2")).isSameAs(milestone);
 	}
 
 	@Test
@@ -49,10 +49,10 @@ class RefreshMilestonesActionUnitTests {
 		InMemoryMilestone patch = InMemoryMilestone.open("6.2.1");
 		InMemoryMilestone line = InMemoryMilestone.open("6.2");
 		InMemoryMilestone closed = InMemoryMilestone.closed("6.1");
-		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(
+		Milestones milestones = new Milestones(
 				List.of(patch, closed, line));
 
-		Milestone selected = milestones.getDefaultMilestone("release/6.2.x", projectVersion("7.1.0"));
+		Milestone selected = milestones.findDefaultMilestone("release/6.2.x", projectVersion("7.1.0"));
 
 		assertThat(selected).isSameAs(line);
 	}
@@ -62,10 +62,10 @@ class RefreshMilestonesActionUnitTests {
 
 		InMemoryMilestone persisted = InMemoryMilestone.open("custom");
 		InMemoryMilestone branchDefault = InMemoryMilestone.open("6.2");
-		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(
+		Milestones milestones = new Milestones(
 				List.of(branchDefault, persisted));
 
-		Milestone selected = milestones.getSelectionOrDefault("custom", "release/6.2.x",
+		Milestone selected = milestones.findOrDefault("custom", "release/6.2.x",
 				Versioned.unversioned());
 
 		assertThat(selected).isSameAs(persisted);
@@ -76,9 +76,9 @@ class RefreshMilestonesActionUnitTests {
 
 		InMemoryMilestone patch = InMemoryMilestone.open("7.1.1");
 		InMemoryMilestone line = InMemoryMilestone.open("7.1");
-		RefreshMilestonesAction.Milestones milestones = new RefreshMilestonesAction.Milestones(List.of(patch, line));
+		Milestones milestones = new Milestones(List.of(patch, line));
 
-		Milestone selected = milestones.getDefaultMilestone("main", projectVersion("7.1.3"));
+		Milestone selected = milestones.findDefaultMilestone("main", projectVersion("7.1.3"));
 
 		assertThat(selected).isSameAs(line);
 	}

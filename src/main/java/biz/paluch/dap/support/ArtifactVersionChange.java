@@ -27,13 +27,11 @@ import org.springframework.util.ObjectUtils;
 /**
  * Immutable value object describing a target {@link ArtifactVersion} for an
  * {@link ArtifactId}.
+ *
  * <p>An {@code ArtifactVersionChange} carries the artifact being changed, the
- * selected target version, and optionally the version currently in use. It does
- * not describe where the version is declared in a build file or how it should
- * be written back; it captures the intent only.
- * <p>{@link DependencyUpdate} extends this intent with the declaration scope
- * needed to apply the change (for example a dependency in a profile or a
- * particular version property).
+ * selected target version, and the version currently in use. It does not
+ * describe where the version is declared in a build file or how it should be
+ * written back, it captures the intent only.
  *
  * @author Mark Paluch
  * @see DependencyUpdate
@@ -133,26 +131,6 @@ public class ArtifactVersionChange {
 
 		ArtifactVersion source = from.getVersion();
 		return source.scheme() != version.scheme() || !version.hasSameMajor(source);
-	}
-
-	/**
-	 * Return whether this change crosses a minor version line.
-	 *
-	 * <p>A change of {@link ArtifactVersion#scheme() versioning scheme} counts as a
-	 * major switch and therefore also as a minor switch. When the source version is
-	 * unknown no crossing is reported.
-	 *
-	 * @return {@literal true} if the source version is known and the target either
-	 * changes scheme or leaves the source major/minor line; {@literal false}
-	 * otherwise.
-	 */
-	public boolean crossesMinor() {
-		if (!from.isVersioned()) {
-			return false;
-		}
-
-		ArtifactVersion source = from.getVersion();
-		return source.scheme() != version.scheme() || !version.hasSameMajorMinor(source);
 	}
 
 	public @Nullable UpgradeStrategy getUpgradeStrategy() {

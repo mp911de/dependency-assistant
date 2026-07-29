@@ -125,7 +125,7 @@ class UpgradeGroupRowUnitTests {
 		TableRow support = member("support");
 		GroupRow group = GroupRow.inferred(List.of(core, support), "Example");
 
-		assertThat(group.getUpgrades()).containsExactly(core.getUpgrade(), support.getUpgrade());
+		assertThat(group.getUpgradeCandidates()).containsExactly(core.getUpgrade(), support.getUpgrade());
 		assertThat(group.getName()).isEqualTo("Example");
 	}
 

@@ -23,8 +23,8 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
-import com.intellij.openapi.editor.colors.impl.DefaultColorsScheme;
 import com.intellij.openapi.editor.markup.TextAttributes;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Safe access to the global {@link EditorColorsScheme} and the values derived
@@ -42,22 +42,21 @@ import com.intellij.openapi.editor.markup.TextAttributes;
  */
 public abstract class EditorSchemes {
 
-	private static final EditorColorsScheme SCHEME = globalScheme();
-
 	/**
-	 * Return the global editor color scheme.
+	 * Return the global editor color scheme, resolved per call so scheme switches
+	 * are picked up.
 	 *
-	 * @return the global scheme, or a fresh {@link DefaultColorsScheme} when the
-	 * {@link Application} or {@link EditorColorsManager} is not initialized; never
-	 * {@literal null}.
+	 * @return the global scheme, or {@literal null} when the {@link Application} or
+	 * {@link EditorColorsManager} is not initialized.
 	 */
-	private static EditorColorsScheme globalScheme() {
+	private static @Nullable EditorColorsScheme globalScheme() {
+
 		Application application = ApplicationManager.getApplication();
 		if (application == null) {
-			return new DefaultColorsScheme();
+			return null;
 		}
 		EditorColorsManager manager = EditorColorsManager.getInstance();
-		return manager != null ? manager.getGlobalScheme() : new DefaultColorsScheme();
+		return manager != null ? manager.getGlobalScheme() : null;
 	}
 
 	/**
@@ -69,7 +68,11 @@ public abstract class EditorSchemes {
 	 * scheme is unavailable or defines no attributes for the key.
 	 */
 	public static TextAttributes attributes(TextAttributesKey key, TextAttributes fallback) {
+
 		EditorColorsScheme scheme = globalScheme();
+		if (scheme == null) {
+			return fallback;
+		}
 		TextAttributes attributes = scheme.getAttributes(key);
 		return attributes != null ? attributes : fallback;
 	}
@@ -83,7 +86,9 @@ public abstract class EditorSchemes {
 	 * @return a font using the editor font family.
 	 */
 	public static Font editorFont(int style, int size) {
-		return new Font(SCHEME.getEditorFontName(), style, size);
+
+		EditorColorsScheme scheme = globalScheme();
+		return new Font(scheme != null ? scheme.getEditorFontName() : Font.MONOSPACED, style, size);
 	}
 
 }

@@ -19,10 +19,8 @@ package biz.paluch.dap.plan;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
-import java.util.List;
 import java.util.StringJoiner;
 
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ide.CopyPasteManager;
@@ -65,9 +63,7 @@ class Clipboard {
 	 * scope.
 	 */
 	Transferable copy(UpgradePlan plan) {
-		Content fragment = Content.from(service.getPlan().getContent(), plan);
-		return new PlanTransferable(toText(plan.toList()),
-				JDOMUtil.write(XmlSerializer.serialize(fragment)));
+		return new PlanTransferable(plan, service);
 	}
 
 	/**
@@ -99,57 +95,45 @@ class Clipboard {
 		return copyPasteManager.areDataFlavorsAvailable(PLAN_FLAVOR);
 	}
 
-	/**
-	 * Render the copy text. A single item reads as a commit message: the rendered
-	 * template, the member list for groups, and the closes-reference when a ticket
-	 * is linked. Several items read as a titled list separated by blank lines,
-	 * without closes-references. Review copies pass no service; they carry no
-	 * tickets to reference.
-	 */
-	private String toText(List<UpgradePlanItem> items) {
-
-		if (items.size() == 1) {
-			return service.getCommitMessage(items.getFirst());
-		}
-
-		StringJoiner joiner = new StringJoiner("\n\n");
-		for (UpgradePlanItem item : items) {
-			joiner.add(service.getTicketTitle(item) + memberLines(item));
-		}
-
-		return joiner.toString();
-	}
-
-	/**
-	 * Render the member list for a group item, one {@code " - "}-prefixed line per
-	 * member; empty for a single-member item whose title already carries the
-	 * coordinates.
-	 */
-	private static String memberLines(UpgradePlanItem item) {
-
-		List<Dependency> members = item.getMembers();
-		if (members.size() < 2) {
-			return "";
-		}
-
-		StringBuilder text = new StringBuilder();
-		for (Dependency member : members) {
-			text.append("\n - ").append(item.getMemberArtifactId(member))
-					.append(' ').append(item.getMemberFromVersion(member)).append(" -> ").append(item.getToVersion());
-		}
-
-		return text.toString();
-	}
-
 	private static class PlanTransferable implements Transferable {
 
 		private final String text;
 
 		private final String xml;
 
-		PlanTransferable(String text, String xml) {
-			this.text = text;
-			this.xml = xml;
+		public PlanTransferable(UpgradePlan plan, UpgradePlanService service) {
+			Content fragment = Content.from(service.getPlan().getContent(), plan);
+
+			this.text = render(plan, service);
+			this.xml = JDOMUtil.write(XmlSerializer.serialize(fragment));
+		}
+
+		private String render(UpgradePlan plan, UpgradePlanService service) {
+
+			if (plan.size() == 1) {
+				return service.getCommitMessage(plan.getItems().getFirst());
+			}
+
+			StringJoiner joiner = new StringJoiner("\n");
+			for (UpgradePlanItem item : plan) {
+
+				joiner.add(service.getTicketTitle(item));
+
+				if (item.isGroup()) {
+					for (ItemDependency dependency : item) {
+						String text = " - %s %s -> %s".formatted(dependency.getArtifactId(),
+								dependency.getCurrentVersion()
+										.toDocumentationString(),
+								item.getToVersion()
+										.toDocumentationString());
+						joiner.add(text);
+					}
+				}
+
+				joiner.add("");
+			}
+
+			return joiner.toString();
 		}
 
 		@Override

@@ -17,7 +17,6 @@
 package biz.paluch.dap.assistant.review;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -60,20 +59,9 @@ class AssistantReviewActions {
 
 	private final boolean fromEditor;
 
-	private final DependencyfileArtifactWriter writer;
-
 	public AssistantReviewActions(Project project, boolean fromEditor) {
 		this.project = project;
 		this.fromEditor = fromEditor;
-		this.writer = new DependencyfileArtifactWriter(project);
-	}
-
-	public boolean canAddToDependencyfile(TableRow row) {
-		return writer.canAdd(row);
-	}
-
-	public void addToDependencyfile(TableRow row) {
-		writer.add(row);
 	}
 
 	public void applyUpdates(Collection<VirtualFile> files, List<DependencyUpdate> updates,
@@ -113,8 +101,6 @@ class AssistantReviewActions {
 				(file, fileUpdates) -> applyToSupportingContexts(assistants, file, fileUpdates, context -> {
 				})).updateBuildFiles(applied.getReverseFiles(), applied.getReverse());
 
-		// the balloon undo triggers the platform undo of the global apply command:
-		// no confirmation of our own, only the platform's per the command's policy
 		Runnable undo = () -> {
 
 			UndoManager undoManager = UndoManager.getInstance(project);
@@ -132,19 +118,8 @@ class AssistantReviewActions {
 				Notifications.errorMessage(error));
 	}
 
-	public void openInUpgradePlan(Map<PlannedUpgrade, UpgradeSelection> upgrades, FileScope scope) {
-
-		Map<PlannedUpgrade, ArtifactVersion> targets = new LinkedHashMap<>();
-		for (Map.Entry<PlannedUpgrade, UpgradeSelection> entry : upgrades.entrySet()) {
-			ArtifactVersion target = entry.getValue().getTargetVersion();
-			if (target == null) {
-				throw new IllegalStateException(
-						"Target version for " + entry.getKey().getName() + " is required");
-			}
-			targets.put(entry.getKey(), target);
-		}
-
-		UpgradePlanToolWindowFactory.openWith(project, targets, scope);
+	public void openInUpgradePlan(Map<PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {
+		UpgradePlanToolWindowFactory.openWith(project, upgrades, scope);
 	}
 
 	/**

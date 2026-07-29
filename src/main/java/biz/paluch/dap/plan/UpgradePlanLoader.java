@@ -24,7 +24,6 @@ import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.plan.UpgradePlanState.DeclarationSourceState;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
@@ -62,7 +61,7 @@ class UpgradePlanLoader {
 		}
 
 		List<InterfaceAssistant> resolvedAssistants = new ArrayList<>(item.getMembers().size());
-		List<Dependency> dependencies = new ArrayList<>(item.getMembers().size());
+		List<ItemDependency> dependencies = new ArrayList<>(item.getMembers().size());
 		for (Member member : item.getMembers()) {
 			if (!isValid(member)) {
 				return null;
@@ -108,10 +107,10 @@ class UpgradePlanLoader {
 		return true;
 	}
 
-	private static Dependency toDependency(Member member) {
+	private static ItemDependency toDependency(Member member) {
 
 		ArtifactVersion fromVersion = ArtifactVersion.of(member.fromVersion);
-		Dependency dependency = new Dependency(member.getPackageIdentity(), fromVersion);
+		ItemDependency dependency = new ItemDependency(member.getPackageIdentity(), fromVersion, member.active);
 
 		if (member.declarationSources.isEmpty()) {
 			dependency.addDeclarationSource(DeclarationSource.dependency());
@@ -121,7 +120,7 @@ class UpgradePlanLoader {
 			}
 		}
 
-		if (member.versionSources.isEmpty()) {
+		if (member.versionSources.isEmpty() && member.active) {
 			dependency.addVersionSource(VersionSource.declared(member.fromVersion));
 		} else {
 			for (VersionSourceState source : member.versionSources) {

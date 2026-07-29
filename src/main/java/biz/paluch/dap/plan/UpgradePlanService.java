@@ -21,7 +21,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.DependencyAssistant;
+import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.plan.UpgradePlanState.Content;
 import biz.paluch.dap.plan.UpgradePlanState.Item;
 import biz.paluch.dap.support.FileScope;
@@ -33,10 +37,13 @@ import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.ticket.TicketSystemInvalidationListener;
 import biz.paluch.dap.ticket.TicketSystemProvider;
+import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.ActivityTracker;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.undo.DocumentReferenceManager;
@@ -44,9 +51,13 @@ import com.intellij.openapi.command.undo.GlobalUndoableAction;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.command.undo.UnexpectedUndoException;
 import com.intellij.openapi.components.Service;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiFile;
+import com.intellij.util.concurrency.AppExecutorUtil;
+import com.intellij.util.concurrency.annotations.RequiresReadLock;
 import com.intellij.util.messages.MessageBusConnection;
 import org.jspecify.annotations.Nullable;
 
@@ -66,6 +77,8 @@ import org.jspecify.annotations.Nullable;
 public final class UpgradePlanService implements Disposable {
 
 	private final Project project;
+
+	private final BetterPsiManager psiManager;
 
 	private final PlanVcs vcs;
 
@@ -97,6 +110,7 @@ public final class UpgradePlanService implements Disposable {
 	UpgradePlanService(Project project) {
 
 		this.project = project;
+		this.psiManager = BetterPsiManager.getInstance(project);
 		this.vcs = new PlanVcs(project);
 		this.events = project.getMessageBus().syncPublisher(UpgradePlanListener.TOPIC);
 		this.textTemplates = new PlanTextTemplates(project);
@@ -258,10 +272,6 @@ public final class UpgradePlanService implements Disposable {
 		this.disposed = true;
 	}
 
-	boolean isDisposed() {
-		return disposed || project.isDisposed();
-	}
-
 	/**
 	 * Return whether the plan currently holds any item.
 	 */
@@ -328,13 +338,26 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	/**
-	 * Capture the armed upgrades into a fresh plan, discarding any previous plan.
-	 * The front door of the review transfer: the persisted shape is derived here,
-	 * so callers hand over reviewed upgrades and their pinned targets, not stored
-	 * state.
+	 * Transfer the reviewed upgrades into a fresh plan, discarding any previous
+	 * plan. Also, re-select a milestone if milestones are available.
 	 */
 	void planUpgrades(Map<? extends PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {
 		execute(PlanAction.planUpgrades(upgrades, scope, getPlan()));
+
+		Milestones milestones = new Milestones(getMilestones());
+		if (milestones.isEmpty() || refreshingMilestones) {
+			return;
+		}
+		ReadAction.nonBlocking(this::getMilestoneSelector)
+				.inSmartMode(project)
+				.expireWith(this)
+				.finishOnUiThread(ModalityState.any(), it -> {
+					Milestone milestone = milestones.findOrDefault(getSelectedMilestoneName(), it);
+					if (milestone != null) {
+						setSelectedMilestone(milestone);
+						events.milestonesChanged();
+					}
+				}).submit(AppExecutorUtil.getAppExecutorService());
 	}
 
 	/**
@@ -530,6 +553,46 @@ public final class UpgradePlanService implements Disposable {
 		} else {
 			events.planItemChanged();
 		}
+	}
+
+	MilestoneSelector getMilestoneSelector() {
+
+		String branch = hasVcs() ? getVcs().getCurrentBranch() : null;
+		Versioned projectVersion = resolveProjectVersion(affectedFiles());
+		return new MilestoneSelector(branch, projectVersion);
+	}
+
+	/**
+	 * Resolve the project version from the first build file in the plan's scope
+	 * that declares one, to default the milestone from the project's version line.
+	 */
+	@RequiresReadLock
+	private Versioned resolveProjectVersion(List<String> affectedFiles) {
+
+		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
+
+		for (VirtualFile file : FileScope.from(affectedFiles)) {
+
+			ProgressManager.checkCanceled();
+			PsiFile psiFile = psiManager.findFile(file);
+			if (psiFile == null) {
+				continue;
+			}
+
+			for (DependencyAssistant assistant : assistants) {
+				if (!assistant.supports(psiFile)) {
+					continue;
+				}
+
+				ProjectDependencyContext context = assistant.createContext(psiFile);
+				Versioned projectVersion = context.getProjectVersion();
+				if (context.isAvailable() && projectVersion.isVersioned()) {
+					return projectVersion;
+				}
+			}
+		}
+
+		return Versioned.unversioned();
 	}
 
 	record VersionedUpgradePlan(PlanGeneration generation, UpgradePlan plan) {

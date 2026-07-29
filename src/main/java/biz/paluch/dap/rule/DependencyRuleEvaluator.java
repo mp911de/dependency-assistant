@@ -24,13 +24,13 @@ import javax.swing.Icon;
 
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.DependencyPresentation;
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
-import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.openapi.util.text.HtmlBuilder;
+import com.intellij.openapi.util.text.HtmlChunk;
 
 /**
  * Outcome of testing a {@link DependencyRule} against a concrete artifact
@@ -41,7 +41,7 @@ import com.intellij.openapi.util.text.StringUtil;
 public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
 	private static final DependencyRuleEvaluator ABSENT = new DependencyRuleEvaluator(DependencyRule.absent(),
-			ArtifactVersion.of("1.0"), "") {
+			ArtifactVersion.of("1.0")) {
 
 		@Override
 		public boolean isPresent() {
@@ -54,8 +54,8 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		}
 
 		@Override
-		public String getToolTipText(DependencyPresentation presentation) {
-			return MessageBundle.message("inspection.dependency-rule.absent");
+		public HtmlChunk getToolTipText(DependencyPresentation presentation) {
+			return HtmlChunk.text(MessageBundle.message("inspection.dependency-rule.absent"));
 		}
 
 	};
@@ -64,14 +64,13 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 
 	private final DependencyRule rule;
 
-	private final String renderedVersion;
+	private final ArtifactVersion version;
 
 	private final EvaluationState result;
 
-	private DependencyRuleEvaluator(DependencyRule rule, ArtifactVersion version,
-			String renderedVersion) {
+	private DependencyRuleEvaluator(DependencyRule rule, ArtifactVersion version) {
 		this.rule = rule;
-		this.renderedVersion = renderedVersion;
+		this.version = version;
 
 		if (rule.isPresent()) {
 			this.result = rule.test(version) ? EvaluationState.PASSED : EvaluationState.NOT_PASSED;
@@ -85,8 +84,8 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * version.
 	 * @return the evaluation outcome for the candidate's current version.
 	 */
-	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactId artifactId, ArtifactVersion version) {
-		return new DependencyRuleEvaluator(rule, version, version.toDocumentationString());
+	public static DependencyRuleEvaluator create(DependencyRule rule, ArtifactVersion version) {
+		return new DependencyRuleEvaluator(rule, version);
 	}
 
 	/**
@@ -98,21 +97,6 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 */
 	public static DependencyRuleEvaluator absent() {
 		return ABSENT;
-	}
-
-	/**
-	 * Evaluate the rule governing the given artifact against the supplied version.
-	 *
-	 * @param rules the rule service.
-	 * @param context the rule resolution context.
-	 * @param version the version to evaluate.
-	 * @return the evaluation outcome for the supplied version.
-	 */
-	public static DependencyRuleEvaluator evaluate(DependencyRuleService rules, ResolutionContext context,
-			ArtifactVersion version) {
-
-		DependencyRule rule = rules.resolve(context);
-		return DependencyRuleEvaluator.create(rule, context.getArtifactId(), version);
 	}
 
 	@Override
@@ -173,41 +157,48 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	}
 
 	/**
-	 * Build the HTML tooltip describing the rule outcome and the enabled upgrade
-	 * strategies.
+	 * Render the tool tip describing the rule outcome and whether semantic
+	 * upgrading is enabled.
 	 *
-	 * @return the tooltip markup; empty when there is nothing to report.
+	 * <p>Dependency name, version, and generation range originate from build files
+	 * and rule definitions and are escaped; the returned chunk is safe to embed in
+	 * HTML tooltips.
+	 *
+	 * @param presentation the presentation naming the evaluated dependency.
+	 * @return the tool tip markup; an empty chunk when there is nothing to report.
 	 */
-	public String getToolTipText(DependencyPresentation presentation) {
+	public HtmlChunk getToolTipText(DependencyPresentation presentation) {
 
-		StringBuilder sb = new StringBuilder();
+		HtmlBuilder tooltip = new HtmlBuilder();
 
 		if (isLocked()) {
 
-			String dependencyName;
-			if (presentation.hasDependencyName()) {
-				dependencyName = StringUtil.escapeXmlEntities(presentation.getDependencyName());
-				;
-			} else {
-				dependencyName = "'" + StringUtil.escapeXmlEntities(presentation.getDisplayName()) + "'";
-			}
+			HtmlChunk dependencyName = presentation.hasDependencyName()
+					? HtmlChunk.text(presentation.getDependencyName())
+					: HtmlChunk.text("'" + presentation.getDisplayName() + "'");
+			HtmlChunk version = HtmlChunk.text(this.version.toDocumentationString());
+			HtmlChunk generations = HtmlChunk.text(rule.getGenerations().value());
 
 			if (result == EvaluationState.NOT_PASSED) {
-				sb.append(MessageBundle.message("inspection.dependency-rule.problem",
-						dependencyName, renderedVersion, rule.getGenerations().value()));
+				tooltip.appendRaw(MessageBundle.message("inspection.dependency-rule.problem",
+						dependencyName, version, generations));
 			}
 
 			if (isPassed()) {
-				sb.append(MessageBundle.message("inspection.dependency-rule.description",
-						dependencyName, rule.getGenerations().value()));
+				tooltip.appendRaw(MessageBundle.message("inspection.dependency-rule.description",
+						dependencyName, generations));
 			}
 		}
 
 		if (isSemanticUpgradingEnabled()) {
-			sb.append(MessageBundle.message("inspection.dependency-rule.semantic-upgrade.enabled"));
+
+			if (!tooltip.isEmpty()) {
+				tooltip.br();
+			}
+			tooltip.append(MessageBundle.message("inspection.dependency-rule.semantic-upgrade.enabled"));
 		}
 
-		return sb.toString();
+		return tooltip.toFragment();
 	}
 
 	public String getAccessibleName() {

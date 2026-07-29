@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class UpgradeSelection {
+class UpgradeSelection {
 
 	private final ArtifactVersion currentVersion;
 
@@ -52,7 +52,7 @@ public class UpgradeSelection {
 	 * @return the selected target version, or {@literal null}.
 	 */
 	@Nullable
-	public ArtifactVersion getTargetVersion() {
+	ArtifactVersion getTargetVersion() {
 		return targetVersion;
 	}
 
@@ -60,7 +60,7 @@ public class UpgradeSelection {
 	 * Select the given target version and arm the apply flag when it differs from
 	 * the current version.
 	 */
-	void selectTarget(@Nullable ArtifactVersion targetVersion) {
+	void setTargetVersion(@Nullable ArtifactVersion targetVersion) {
 		this.targetVersion = targetVersion;
 		this.applyUpdate = !currentVersion.equals(targetVersion);
 	}

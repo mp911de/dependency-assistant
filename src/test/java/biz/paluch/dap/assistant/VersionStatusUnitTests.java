@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.checker.CvssSeverity;
@@ -114,7 +113,7 @@ class VersionStatusUnitTests {
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {
-		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(), ArtifactId.of("com.example", "demo"),
+		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(),
 				CURRENT);
 	}
 

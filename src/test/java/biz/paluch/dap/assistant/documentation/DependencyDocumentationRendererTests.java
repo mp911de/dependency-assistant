@@ -488,7 +488,7 @@ class DependencyDocumentationRendererTests {
 	}
 
 	private static DependencyRuleEvaluator rejectingRule() {
-		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(), Releases.LETTUCE_CORE.toArtifactId(),
+		return DependencyRuleEvaluator.create(TestDependencyRule.rejecting(),
 				ArtifactVersion.of("7.4.1.RELEASE"));
 	}
 

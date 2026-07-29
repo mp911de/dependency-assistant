@@ -76,6 +76,23 @@ class UpgradePlanLoaderUnitTests {
 		assertThat(loader().create(stored)).isNull();
 	}
 
+	@Test
+	void inactiveMemberRemainsVisibleWithoutCreatingAnUpdate() {
+
+		Member active = member("org.springframework", "spring-core", "6.2.1", "spring.version");
+		Member inactive = member("com.example", "addon", "6.2.1", "spring.version");
+		inactive.active = false;
+		inactive.versionSources.clear();
+
+		UpgradePlanItem planItem = loader().create(item("spring.version", "6.2.2", active, inactive));
+
+		assertThat(planItem).isNotNull();
+		assertThat(planItem.getMembers()).hasSize(2);
+		assertThat(planItem.getMembers()).extracting(ItemDependency::isActive).containsExactly(true, false);
+		assertThat(planItem.createUpdates()).singleElement()
+				.extracting(update -> update.artifactId().artifactId()).isEqualTo("spring-core");
+	}
+
 	private static UpgradePlanLoader loader() {
 		return new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null);
 	}

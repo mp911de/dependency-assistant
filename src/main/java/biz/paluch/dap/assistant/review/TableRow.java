@@ -38,12 +38,12 @@ import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
+import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
-import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.documentation.DocumentationMarkup;
@@ -52,13 +52,14 @@ import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.ui.ColorUtil;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Dialog-row presentation over one upgrade aggregate.
  */
 class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
-	private final DependencyUpgradeCandidate upgrade;
+	private final DependencyUpgradeCandidate upgradeCandidate;
 
 	private final DependencyRuleEvaluator evaluator;
 
@@ -68,20 +69,22 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 	private final String renderedArtifactId;
 
-	private final HtmlChunk toolTipIntro;
-
-	private final List<HtmlChunk> toolTipSections;
-
 	private final String rowName;
 
 	private final String dependencyOrProjectName;
 
-	TableRow(DependencyUpgradeCandidate upgrade) {
+	private final HtmlChunk toolTipIntro;
 
-		this.upgrade = upgrade;
-		this.evaluator = DependencyRuleEvaluator.create(upgrade.getRule(), getArtifactId(),
+	private final List<HtmlChunk> toolTipSections;
+
+	private @Nullable String renderedToolTip;
+
+	TableRow(DependencyUpgradeCandidate upgradeCandidate) {
+
+		this.upgradeCandidate = upgradeCandidate;
+		this.evaluator = DependencyRuleEvaluator.create(upgradeCandidate.getRule(),
 				getCurrentVersion());
-		this.renderedArtifactId = upgrade.getArtifactId().artifactId();
+		this.renderedArtifactId = upgradeCandidate.getArtifactId().artifactId();
 
 		String rowName = getRule().getDependencyName();
 		if (StringUtils.isEmpty(rowName)) {
@@ -92,7 +95,7 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 		}
 		this.rowName = rowName;
 
-		IconDependencyPresentation presentation = upgrade.getPresentation();
+		IconDependencyPresentation presentation = upgradeCandidate.getPresentation();
 		if (presentation.hasDependencyName()) {
 			this.dependencyOrProjectName = presentation.getDependencyName();
 
@@ -107,25 +110,19 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 		this.toolTipSections = createToolTipSections();
 	}
 
-	/**
-	 * Render one label/value row in {@link DocumentationMarkup} section style.
-	 * Swing tooltips do not carry the documentation pane's stylesheet, so the
-	 * {@code section} class is inert and the label styling is inlined: context-help
-	 * gray plus a right padding separating the label column from the value column.
-	 */
-	static HtmlChunk section(String labelKey, HtmlChunk value) {
+	private Icon createTableIcon() {
 
-		String labelStyle = "color: %s; padding-right: %dpx".formatted(
-				ColorUtil.toHtmlColor(UIUtil.getContextHelpForeground()), JBUI.scale(8));
-		return HtmlChunk.tag("tr").children(
-				DocumentationMarkup.SECTION_HEADER_CELL.style(labelStyle)
-						.addText(MessageBundle.message(labelKey)),
-				DocumentationMarkup.SECTION_CONTENT_CELL.child(value));
+		Icon base = upgradeCandidate.getPresentation().getTableIcon();
+		if (!upgradeCandidate.getDependency().hasPropertyVersion()) {
+			return base;
+		}
+
+		return DependencyAssistantIcons.PROPERTY;
 	}
 
 	private HtmlChunk createToolTipIntro() {
 
-		DependencyPresentation presentation = upgrade.getPresentation();
+		DependencyPresentation presentation = upgradeCandidate.getPresentation();
 		if (presentation.hasProjectName()
 				&& !presentation.getProjectName().equalsIgnoreCase(renderedArtifactId)) {
 			return new HtmlBuilder().append(HtmlChunk.text(presentation.getProjectName()))
@@ -136,8 +133,8 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 
 	private List<HtmlChunk> createToolTipSections() {
 
-		DependencyPresentation presentation = upgrade.getPresentation();
-		Dependency dependency = upgrade.getDependency();
+		DependencyPresentation presentation = upgradeCandidate.getPresentation();
+		Dependency dependency = upgradeCandidate.getDependency();
 
 		boolean plugin = !dependency.getDeclarationSources().isEmpty()
 				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin;
@@ -166,71 +163,36 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 		return sections;
 	}
 
-	/**
-	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
-	 */
-	HtmlChunk toolTipIntro() {
-		return toolTipIntro;
-	}
-
-	/**
-	 * The label/value section rows of this row's tooltip, assembled and rendered by
-	 * {@link UpgradeReview.ToolTip}.
-	 */
-	List<HtmlChunk> getToolTip() {
-		return toolTipSections;
-	}
-
-	private Icon createTableIcon() {
-
-		Icon base = upgrade.getPresentation().getTableIcon();
-		if (!upgrade.getDependency().hasPropertyVersion()) {
-			return base;
-		}
-
-		return DependencyAssistantIcons.PROPERTY;
-	}
-
-	public DeclaredVersions getDeclaredVersions() {
-		return upgrade.getDeclaredVersions();
-	}
-
 	@Override
 	public PackageIdentity getPackageIdentity() {
-		return upgrade.getPackageIdentity();
+		return upgradeCandidate.getPackageIdentity();
+	}
+
+	/**
+	 * Return whether this row stands for the given artifact, used to select the row
+	 * a gutter icon or documentation link points at.
+	 *
+	 * @param pkg the artifact to match.
+	 * @return {@literal true} if the row represents the artifact; {@literal false}
+	 * otherwise.
+	 */
+	public boolean represents(PackageIdentity pkg) {
+		return getPackageIdentity().equals(pkg);
 	}
 
 	@Override
 	public ArtifactId getArtifactId() {
-		return upgrade.getArtifactId();
+		return upgradeCandidate.getArtifactId();
 	}
 
-	public ArtifactVersion getCurrentVersion() {
-		return upgrade.getCurrentVersion();
-	}
 
 	public DependencyUpgradeCandidate getUpgrade() {
-		return upgrade;
+		return upgradeCandidate;
 	}
 
-	public Icon getTableIcon() {
-		return tableIcon;
-	}
-
-	public DependencyRule getRule() {
-		return upgrade.getRule();
-	}
-
-	public DependencyRuleEvaluator getRuleEvaluator() {
-		return evaluator;
-	}
-
-	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
-		return upgrade.getVulnerabilities(version);
-	}
-
-	public VersionStatus getStatus(ArtifactVersion version) {
-		return VersionStatus.of(evaluate(version), getCurrentVersion(), version, getVulnerabilities(version));
+	@Override
+	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
+		return List.of(upgradeCandidate);
 	}
 
 	public String getName() {
@@ -250,7 +212,15 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 	}
 
 	public String getDependencyName() {
-		return upgrade.getPresentation().getDisplayName();
+		return upgradeCandidate.getPresentation().getDisplayName();
+	}
+
+	public ArtifactVersion getCurrentVersion() {
+		return upgradeCandidate.getCurrentVersion();
+	}
+
+	public DeclaredVersions getDeclaredVersions() {
+		return upgradeCandidate.getDeclaredVersions();
 	}
 
 	public Set<String> getVersionPropertyNames() {
@@ -266,80 +236,107 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 		return names;
 	}
 
-	public DependencySiteQuery toQuery() {
-		return DependencySiteQuery
-				.create(it -> it.artifact(getArtifactId()).versionProperties(getVersionPropertyNames()));
+	public Set<VersionProperty> getVersionProperties() {
+		return upgradeCandidate.getVersionProperties();
 	}
 
-	public List<DependencyUpdate> createUpdates(ArtifactVersion target) {
-
-		Dependency dependency = upgrade.getDependency();
-		ArtifactId artifactId = new FriendlyArtifactId(dependency.getArtifactId(), getName());
-		return List.of(upgrade.createUpdate(artifactId, target));
+	public Icon getTableIcon() {
+		return tableIcon;
 	}
 
-	public DependencyRuleEvaluator evaluate(ArtifactVersion version) {
-		return DependencyRuleEvaluator.create(getRule(), getArtifactId(), version);
+	public DependencyRule getRule() {
+		return upgradeCandidate.getRule();
 	}
 
-	@Override
-	public List<DependencyUpgradeCandidate> getUpgrades() {
-		return List.of(upgrade);
+	public DependencyRuleEvaluator getRuleEvaluator() {
+		return evaluator;
 	}
 
-	public void doWithRow(Consumer<TableRow> consumer) {
-		consumer.accept(this);
+	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
+		return upgradeCandidate.getVulnerabilities(version);
+	}
+
+	public VersionStatus getStatus(ArtifactVersion version) {
+		return VersionStatus.of(DependencyRuleEvaluator.create(getRule(), version),
+				getCurrentVersion(), version, getVulnerabilities(version));
 	}
 
 	public String getSearchString() {
 		return getArtifactId() + " " + getDependencyName() + " " + getName();
 	}
 
-	@Override
-	public String toString() {
-		return (rowName) + "@" + getCurrentVersion() + " -> ["
-				+ upgrade.getDisplayReleases() + "]";
+	/**
+	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
+	 */
+	protected HtmlChunk getToolTipIntro() {
+		return toolTipIntro;
 	}
 
 	/**
-	 * Artifact identity rendering a friendly dependency name for notifications.
+	 * The label/value section rows of this row's tooltip, assembled and rendered by
+	 * {@link UpgradeReview#getToolTip(TableRow)}.
 	 */
-	private static class FriendlyArtifactId implements ArtifactId {
+	public List<HtmlChunk> getToolTip() {
+		return toolTipSections;
+	}
 
-		private final ArtifactId id;
+	public @Nullable String getToolTipText() {
 
-		private final String friendlyName;
+		if (renderedToolTip == null) {
 
-		FriendlyArtifactId(ArtifactId id, String friendlyName) {
-			this.id = id;
-			this.friendlyName = friendlyName;
+			HtmlBuilder tooltip = new HtmlBuilder();
+			DeclaredVersions declaredVersions = getDeclaredVersions();
+
+			if (declaredVersions.hasVersionDrift()) {
+				tooltip.append(declaredVersions.getVersionDriftToolTip(getCurrentVersion()));
+			}
+
+			if (getRule().isPresent()) {
+				tooltip.append(evaluator.getToolTipText(getUpgrade().getPresentation()));
+			}
+
+			if (tooltip.isEmpty()) {
+				renderedToolTip = "";
+			} else {
+				renderedToolTip = tooltip.wrapWith("html").toString();
+			}
 		}
 
-		@Override
-		public boolean equals(Object other) {
-			return id.equals(other instanceof FriendlyArtifactId friendly ? friendly.id : other);
-		}
+		return renderedToolTip;
+	}
 
-		@Override
-		public int hashCode() {
-			return id.hashCode();
-		}
+	public DependencySiteQuery toQuery() {
 
-		@Override
-		public String groupId() {
-			return id.groupId();
-		}
+		List<String> versionPropertyNames = getVersionProperties().stream().map(VersionProperty::property)
+				.toList();
+		return DependencySiteQuery
+				.create(it -> it.artifact(getArtifactId()).versionProperties(versionPropertyNames));
+	}
 
-		@Override
-		public String artifactId() {
-			return id.artifactId();
-		}
+	public void doWithRow(Consumer<TableRow> consumer) {
+		consumer.accept(this);
+	}
 
-		@Override
-		public String toString() {
-			return friendlyName;
-		}
+	@Override
+	public String toString() {
+		return (rowName) + "@" + getCurrentVersion() + " -> ["
+				+ upgradeCandidate.getDisplayReleases() + "]";
+	}
 
+	/**
+	 * Render one label/value row in {@link DocumentationMarkup} section style.
+	 * Swing tooltips do not carry the documentation pane's stylesheet, so the
+	 * {@code section} class is inert and the label styling is inlined: context-help
+	 * gray plus a right padding separating the label column from the value column.
+	 */
+	static HtmlChunk section(String labelKey, HtmlChunk value) {
+
+		String labelStyle = "color: %s; padding-right: %dpx".formatted(
+				ColorUtil.toHtmlColor(UIUtil.getContextHelpForeground()), JBUI.scale(8));
+		return HtmlChunk.tag("tr").children(
+				DocumentationMarkup.SECTION_HEADER_CELL.style(labelStyle)
+						.addText(MessageBundle.message(labelKey)),
+				DocumentationMarkup.SECTION_CONTENT_CELL.child(value));
 	}
 
 }

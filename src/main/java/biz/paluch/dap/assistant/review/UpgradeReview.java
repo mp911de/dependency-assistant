@@ -17,10 +17,10 @@
 package biz.paluch.dap.assistant.review;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,11 +34,12 @@ import biz.paluch.dap.artifact.VersionAge;
 import biz.paluch.dap.assistant.DependencyUpgradeIcons;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
+import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
+import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.checker.CheckerIcons;
-import biz.paluch.dap.rule.DependencyRuleEvaluator;
+import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
-import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import com.intellij.lang.documentation.DocumentationMarkup;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.text.HtmlBuilder;
@@ -57,23 +58,28 @@ class UpgradeReview {
 
 	private final List<String> errors;
 
-	private final Map<TableRow, UpgradeSelection> selections = new LinkedHashMap<>();
-
-	private final boolean hasRule;
+	private final Map<TableRow, UpgradeSelection> selections = new HashMap<>();
 
 	private final Set<String> ambiguousArtifactIds = new HashSet<>();
 
 	private final Map<TableRow, List<TableRow>> sharedPropertyPeers = new HashMap<>();
 
-	private final Map<TableRow, ToolTip> toolTips = new HashMap<>();
+	private final Map<TableRow, String> toolTips = new HashMap<>();
+
+	/**
+	 * Selected release per row, resolved lazily from the release universe.
+	 * Invalidated when the row's target version or the visibility filter changes so
+	 * the rendering path stays a map lookup.
+	 */
+	private final Map<TableRow, Release> selectedReleases = new HashMap<>();
 
 	private final EventDispatcher<ReviewListener> listeners = EventDispatcher.create(ReviewListener.class);
 
 	private VisibilityFilter filter = VisibilityFilter.HIDE_UP_TO_DATE;
 
-	private UpgradeStrategies upgradeStrategy = UpgradeStrategies.MANUAL;
+	private StrategySelection upgradeStrategy = StrategySelection.MANUAL;
 
-	private final boolean hasSafeVersion;
+	private final boolean hasVulnerableCandidate;
 
 	UpgradeReview(DependencyCheckResult result) {
 		this(createRows(result), result.errors());
@@ -104,57 +110,47 @@ class UpgradeReview {
 		this.candidates = candidates;
 		this.errors = errors;
 
-		boolean hasRule = false;
 		Set<String> coordinateLabels = new HashSet<>();
-		Map<TableRow, Set<String>> versionProperties = new LinkedHashMap<>();
+		Map<TableRow, Set<VersionProperty>> versionProperties = new LinkedHashMap<>();
 		for (TableRow row : candidates) {
-
-			if (row.getRule().isPresent()) {
-				hasRule = true;
-			}
 
 			if (!row.isLabeledByDependencyName()
 					&& !coordinateLabels.add(row.getArtifactId().artifactId())) {
 				ambiguousArtifactIds.add(row.getArtifactId().artifactId());
 			}
 
-			Set<String> propertyNames = row.getVersionPropertyNames();
-			if (!propertyNames.isEmpty()) {
-				versionProperties.put(row, propertyNames);
+			Set<VersionProperty> properties = row.getVersionProperties();
+			if (!properties.isEmpty()) {
+				versionProperties.put(row, properties);
+			}
+		}
+
+		Map<VersionProperty, List<TableRow>> rowsByProperty = new HashMap<>();
+		versionProperties.forEach((row, properties) -> properties
+				.forEach(property -> rowsByProperty.computeIfAbsent(property, key -> new ArrayList<>()).add(row)));
+
+		versionProperties.forEach((row, properties) -> {
+
+			Set<TableRow> peerSet = new LinkedHashSet<>();
+			for (VersionProperty property : properties) {
+				peerSet.addAll(rowsByProperty.get(property));
+			}
+			peerSet.remove(row);
+
+			if (peerSet.isEmpty()) {
+				return;
 			}
 
-			selections.put(row, new UpgradeSelection(row.getCurrentVersion()));
-		}
-		this.hasRule = hasRule;
-
-		versionProperties.forEach((row, propertyNames) -> {
-
-			List<TableRow> peers = new ArrayList<>();
-			versionProperties.forEach((other, otherNames) -> {
-				if (other != row && !Collections.disjoint(propertyNames, otherNames)) {
+			List<TableRow> peers = new ArrayList<>(peerSet.size());
+			for (TableRow other : versionProperties.keySet()) {
+				if (peerSet.contains(other)) {
 					peers.add(other);
 				}
-			});
-
-			if (!peers.isEmpty()) {
-				sharedPropertyPeers.put(row, peers);
 			}
+			sharedPropertyPeers.put(row, peers);
 		});
 
-		for (TableRow row : candidates) {
-			toolTips.put(row, ToolTip.create(row, getSharedPropertyPeers(row)));
-		}
-
-		boolean hasSafeVersion = false;
-
-		for (TableRow row : this.candidates) {
-			if (row.getUpgrade().isVulnerable()) {
-				hasSafeVersion = true;
-				break;
-			}
-		}
-
-		this.hasSafeVersion = hasSafeVersion;
+		this.hasVulnerableCandidate = candidates.stream().anyMatch(row -> row.getUpgrade().isVulnerable());
 	}
 
 	/**
@@ -168,11 +164,7 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Return the other rows coupled to the row through a Shared Version Property:
-	 * one bare property name backing the declared version of more than one row.
-	 * Computed once over the full row set so the rendering path stays cheap;
-	 * informative only, coupled rows are never pulled into a group or blocked from
-	 * applying.
+	 * Return the other rows coupled to the row through a Shared Version Property.
 	 *
 	 * @return the coupled rows in row order; empty when the row's version
 	 * properties back no other row.
@@ -182,15 +174,43 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Return the fully rendered coordinate-column tooltip for the row. Pre-computed
-	 * once per row over the full candidate set so the rendering path stays cheap;
-	 * rows outside the candidate set are computed and cached on first request.
+	 * Return the fully rendered coordinate-column tooltip for the row.
 	 */
 	String getToolTip(TableRow row) {
-		return toolTips.computeIfAbsent(row, it -> ToolTip.create(it, getSharedPropertyPeers(it))).text();
+		return toolTips.computeIfAbsent(row, this::renderToolTip);
 	}
 
-	public UpgradeSelection getSelection(TableRow row) {
+	private String renderToolTip(TableRow row) {
+
+		List<HtmlChunk> sections = new ArrayList<>(row.getToolTip());
+		List<TableRow> peers = getSharedPropertyPeers(row);
+		if (!peers.isEmpty()) {
+			sections.add(sharedPropertySection(peers));
+		}
+
+		HtmlBuilder rows = new HtmlBuilder();
+		sections.forEach(rows::append);
+
+		HtmlBuilder html = new HtmlBuilder().append(row.getToolTipIntro())
+				.append(rows.wrapWith(DocumentationMarkup.SECTIONS_TABLE));
+
+		DeclaredVersions declaredVersions = row.getDeclaredVersions();
+		if (declaredVersions.hasDeclarationDrift()) {
+			html.append(declaredVersions.getDeclarationDriftToolTip());
+		}
+
+		return html.wrapWith("html").toString();
+	}
+
+	private static HtmlChunk sharedPropertySection(List<TableRow> peers) {
+
+		HtmlBuilder peerLines = new HtmlBuilder();
+		peerLines.appendWithSeparators(HtmlChunk.br(),
+				peers.stream().map(peer -> HtmlChunk.text(peer.getName()).code()).toList());
+		return TableRow.section("dialog.tooltip.sharedProperty", peerLines.toFragment());
+	}
+
+	private UpgradeSelection getSelection(TableRow row) {
 		return selections.computeIfAbsent(row, it -> new UpgradeSelection(it.getCurrentVersion()));
 	}
 
@@ -198,7 +218,7 @@ class UpgradeReview {
 	 * Register a listener notified when the review state changes. The listener is
 	 * removed when {@code parent} is disposed.
 	 */
-	public void addListener(ReviewListener listener, Disposable parent) {
+	void addListener(ReviewListener listener, Disposable parent) {
 		listeners.addListener(listener, parent);
 	}
 
@@ -217,7 +237,7 @@ class UpgradeReview {
 	}
 
 	private boolean isVisible(TableRow row) {
-		return filter.includes(row.getUpgrade());
+		return isApplyUpdate(row) || filter.includes(row.getUpgrade());
 	}
 
 	/**
@@ -225,12 +245,8 @@ class UpgradeReview {
 	 * vulnerable row's Safe Version is pinned in so it stays selectable even when
 	 * the filter would otherwise hide every newer release.
 	 */
-	public Releases getReleases(TableRow row) {
+	Releases getReleases(TableRow row) {
 		return filter.visibleReleases(row.getUpgrade());
-	}
-
-	public UpgradeSuggestions getTargets(TableRow row) {
-		return filter.visibleTargets(row.getUpgrade());
 	}
 
 	/**
@@ -239,9 +255,8 @@ class UpgradeReview {
 	 * consistent with what the buttons and combo offer.
 	 */
 	@Nullable
-	Release resolveTarget(TableRow row, UpgradeStrategy strategy) {
-		return filter.hideUpToDate() ? row.getUpgrade().resolveDisplayTarget(strategy)
-				: row.getUpgrade().resolveTarget(strategy);
+	Release findRelease(TableRow row, UpgradeStrategy strategy) {
+		return filter.findRelease(row.getUpgrade(), strategy);
 	}
 
 	/**
@@ -252,7 +267,7 @@ class UpgradeReview {
 	 * @return {@literal true} if any row is vulnerable; {@literal false} otherwise.
 	 */
 	boolean isSafeStrategyAvailable() {
-		return hasSafeVersion;
+		return hasVulnerableCandidate;
 	}
 
 	/**
@@ -265,7 +280,7 @@ class UpgradeReview {
 	/**
 	 * Return the active upgrade strategy selection.
 	 */
-	UpgradeStrategies getUpgradeStrategy() {
+	StrategySelection getUpgradeStrategy() {
 		return upgradeStrategy;
 	}
 
@@ -285,16 +300,34 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Return the visible release matching the row's selected target version
-	 * (falling back to the current version), or {@literal null} if no visible
-	 * release matches.
+	 * Return the release matching the row's selected target version, falling back
+	 * to a synthetic release when that version is absent from the row's release
+	 * history.
 	 */
-	@Nullable
 	Release getSelectedRelease(TableRow row) {
+		return selectedReleases.computeIfAbsent(row, this::resolveSelectedRelease);
+	}
+
+	private Release resolveSelectedRelease(TableRow row) {
 
 		ArtifactVersion updateTo = getUpdateTo(row);
 		ArtifactVersion shown = updateTo != null ? updateTo : row.getCurrentVersion();
-		return getReleases(row).getRelease(shown);
+		Release release = getReleases(row).getRelease(shown);
+		if (release == null) {
+			release = row.getUpgrade().getReleases().getRelease(shown);
+		}
+		return release != null ? release : Release.of(shown);
+	}
+
+	List<Release> getReleaseOptions(TableRow row) {
+
+		Releases current = getReleases(row);
+		List<Release> releases = new ArrayList<>(current.toList());
+		Release selected = getSelectedRelease(row);
+		if (current.getRelease(selected.version()) == null) {
+			releases.addFirst(selected);
+		}
+		return releases;
 	}
 
 	/**
@@ -306,7 +339,7 @@ class UpgradeReview {
 		ArtifactVersion updateTo = getSelection(row).getTargetVersion();
 		if (updateTo == null) {
 			throw new IllegalStateException(
-					"Update version for " + row.getArtifactId().artifactId() + " is required but not set");
+					"Update version for %s is required but not set".formatted(row.getArtifactId().artifactId()));
 		}
 		return updateTo;
 	}
@@ -329,8 +362,13 @@ class UpgradeReview {
 		List<DependencyUpdate> updates = new ArrayList<>();
 		for (TableRow row : getCandidates()) {
 
-			if (isApplyUpdate(row)) {
-				updates.addAll(row.createUpdates(getRequiredUpdateTo(row)));
+			if (!isApplyUpdate(row)) {
+				continue;
+			}
+
+			ArtifactVersion version = getRequiredUpdateTo(row);
+			for (DependencyUpgradeCandidate upgrade : row.getUpgradeCandidates()) {
+				updates.add(upgrade.createUpdate(version));
 			}
 		}
 
@@ -338,26 +376,57 @@ class UpgradeReview {
 	}
 
 	/**
-	 * Select the given target version for the row.
+	 * Return the armed upgrades: every visible candidate selected to be applied,
+	 * mapped to its required target version, in row order. This is the canonical
+	 * form handed to the Upgrade Plan; review-internal selection state does not
+	 * leave the review.
+	 *
+	 * @throws IllegalStateException if an armed row has no target version.
 	 */
-	void selectTarget(TableRow row, ArtifactVersion version) {
-		getSelection(row).selectTarget(row.getUpgrade().selectTarget(version).version());
-		listeners.getMulticaster().changed(ReviewChange.row(row));
+	Map<PlannedUpgrade, ArtifactVersion> getArmedUpgrades() {
+
+		Map<PlannedUpgrade, ArtifactVersion> armed = new LinkedHashMap<>();
+		for (TableRow row : getCandidates()) {
+			if (isApplyUpdate(row)) {
+				armed.put(row, getRequiredUpdateTo(row));
+			}
+		}
+		return armed;
+	}
+
+	/**
+	 * Select the given target version for the row. A version absent from the row's
+	 * release universe is kept as-is: shared-property propagation and persisted
+	 * plans legitimately carry versions the row has never released.
+	 */
+	void setVersion(TableRow row, ArtifactVersion version) {
+
+		UpgradeSelection selection = getSelection(row);
+		if (version.matches(selection.getTargetVersion())) {
+			return;
+		}
+
+		List<TableRow> visibleBefore = getCandidates();
+		Release release = row.getUpgrade().getReleases().getRelease(version);
+		setArtifactVersion(row, release != null ? release.version() : version);
+		fireChange(row, visibleBefore);
 	}
 
 	/**
 	 * Select the row's target for the given strategy, if one is visible.
 	 */
 	void applyStrategyTarget(TableRow row, UpgradeStrategy strategy) {
+
+		List<TableRow> visibleBefore = getCandidates();
 		if (doApplyStrategyTarget(row, strategy)) {
-			listeners.getMulticaster().changed(ReviewChange.row(row));
+			fireChange(row, visibleBefore);
 		}
 	}
 
 	/**
 	 * Apply the given strategy selection to every visible row.
 	 */
-	void applyStrategyToAll(UpgradeStrategies selection) {
+	void applyStrategyToAll(StrategySelection selection) {
 
 		this.upgradeStrategy = selection;
 		UpgradeStrategy strategy = selection.getStrategy();
@@ -365,17 +434,20 @@ class UpgradeReview {
 			return;
 		}
 
-		for (TableRow row : getCandidates()) {
+		List<TableRow> visibleBefore = getCandidates();
+		for (TableRow row : visibleBefore) {
 			doApplyStrategyTarget(row, strategy);
 		}
-		listeners.getMulticaster().changed(ReviewChange.allRows());
+		fireBulkChange(visibleBefore);
 	}
 
 	/**
 	 * Set whether up-to-date rows and noise releases are hidden.
 	 */
 	void setHideUpToDate(boolean hide) {
+
 		this.filter = hide ? VisibilityFilter.HIDE_UP_TO_DATE : VisibilityFilter.SHOW_ALL;
+		selectedReleases.clear();
 		listeners.getMulticaster().changed(ReviewChange.reloadVisible());
 	}
 
@@ -383,8 +455,21 @@ class UpgradeReview {
 	 * Set whether the row should be applied.
 	 */
 	void setSelected(TableRow row, boolean apply) {
-		getSelection(row).setApplyUpdate(apply);
-		listeners.getMulticaster().changed(ReviewChange.row(row));
+
+		List<TableRow> visibleBefore = getCandidates();
+		boolean hasChanged = false;
+
+		for (TableRow candidate : selectionCohort(row)) {
+			UpgradeSelection selection = getSelection(candidate);
+			if (selection.isApplyUpdate() != apply) {
+				selection.setApplyUpdate(apply);
+				hasChanged = true;
+			}
+		}
+
+		if (hasChanged) {
+			fireChange(row, visibleBefore);
+		}
 	}
 
 	/**
@@ -392,32 +477,83 @@ class UpgradeReview {
 	 */
 	void selectAll(boolean apply) {
 
-		for (TableRow row : getCandidates()) {
+		List<TableRow> visibleBefore = getCandidates();
+		for (TableRow row : visibleBefore) {
 			getSelection(row).setApplyUpdate(apply);
 		}
-		listeners.getMulticaster().changed(ReviewChange.allRows());
+		fireBulkChange(visibleBefore);
 	}
 
 	private boolean doApplyStrategyTarget(TableRow row, UpgradeStrategy strategy) {
 
-		Release target = resolveTarget(row, strategy);
+		Release target = findRelease(row, strategy);
 		if (target == null) {
 			return false;
 		}
 
-		getSelection(row).selectTarget(row.getUpgrade().selectTarget(target.version()).version());
+		setArtifactVersion(row, target.version());
 		return true;
 	}
 
-	public DependencyRuleEvaluator getResult(DependencyRuleEvaluator rule) {
+	private void setArtifactVersion(TableRow row, ArtifactVersion version) {
 
-		if (!rule.isPresent() && hasRule) {
-			return DependencyRuleEvaluator.absent();
+		UpgradeSelection source = getSelection(row);
+		source.setTargetVersion(version);
+		boolean apply = source.isApplyUpdate();
+		for (TableRow candidate : selectionCohort(row)) {
+
+			selectedReleases.remove(candidate);
+			if (candidate == row) {
+				continue;
+			}
+
+			UpgradeSelection selection = getSelection(candidate);
+			selection.setTargetVersion(version);
+			selection.setApplyUpdate(apply);
 		}
-		return rule;
 	}
 
-	enum UpgradeStrategies {
+	private Set<TableRow> selectionCohort(TableRow row) {
+
+		Set<TableRow> cohort = new LinkedHashSet<>();
+		List<TableRow> pending = new ArrayList<>();
+		pending.add(row);
+		while (!pending.isEmpty()) {
+			TableRow candidate = pending.removeFirst();
+			if (cohort.add(candidate)) {
+				pending.addAll(getSharedPropertyPeers(candidate));
+			}
+		}
+		return cohort;
+	}
+
+	/**
+	 * Notify listeners after a change rooted in one row: a reload when the visible
+	 * row set changed, a single-row refresh when the row stands alone, or an
+	 * all-rows refresh when shared-property peers changed with it.
+	 */
+	private void fireChange(TableRow row, List<TableRow> visibleBefore) {
+
+		if (!visibleBefore.equals(getCandidates())) {
+			listeners.getMulticaster().changed(ReviewChange.reloadVisible());
+			return;
+		}
+
+		listeners.getMulticaster().changed(getSharedPropertyPeers(row).isEmpty() ? ReviewChange.row(row)
+				: ReviewChange.allRows());
+	}
+
+	/**
+	 * Notify listeners after a change spanning many rows: a reload when the visible
+	 * row set changed, an all-rows refresh otherwise.
+	 */
+	private void fireBulkChange(List<TableRow> visibleBefore) {
+
+		listeners.getMulticaster().changed(visibleBefore.equals(getCandidates()) ? ReviewChange.allRows()
+				: ReviewChange.reloadVisible());
+	}
+
+	enum StrategySelection {
 
 		MANUAL("dialog.upgradeStrategy.manual"), //
 		BUGFIX("dialog.upgradeStrategy.bugfix", UpgradeStrategy.PATCH), //
@@ -429,12 +565,12 @@ class UpgradeReview {
 
 		private final @Nullable UpgradeStrategy strategy;
 
-		UpgradeStrategies(String messageKey) {
+		StrategySelection(String messageKey) {
 			this.messageKey = messageKey;
 			this.strategy = null;
 		}
 
-		UpgradeStrategies(String messageKey, UpgradeStrategy strategy) {
+		StrategySelection(String messageKey, UpgradeStrategy strategy) {
 			this.messageKey = messageKey;
 			this.strategy = strategy;
 		}
@@ -443,7 +579,8 @@ class UpgradeReview {
 		 * Return the upgrade strategy represented by this selection, or {@literal null}
 		 * for manual selection.
 		 */
-		public @Nullable UpgradeStrategy getStrategy() {
+		@Nullable
+		UpgradeStrategy getStrategy() {
 			return strategy;
 		}
 
@@ -453,7 +590,7 @@ class UpgradeReview {
 
 		/**
 		 * Same visual language as
-		 * {@link DependencyCheckDialog.VersionOptionCellRenderer} / {@link VersionAge}
+		 * {@link DependencyUpdateTable.VersionOptionCellRenderer} / {@link VersionAge}
 		 * for version steps.
 		 */
 		Icon getIcon() {
@@ -461,60 +598,10 @@ class UpgradeReview {
 			if (this == SAFE) {
 				return CheckerIcons.SAFE;
 			}
-			if (this == MANUAL || this.strategy == null) {
+			if (strategy == null) {
 				return DependencyUpgradeIcons.resolveIcon(VersionAge.SAME_OR_UNKNOWN);
 			}
-			return DependencyUpgradeIcons.resolveIcon(this.strategy);
-		}
-
-	}
-
-	/**
-	 * Fully rendered coordinate-column tooltip for one row: the row's own intro and
-	 * section rows, the Shared Version Property section when peers exist, and the
-	 * declaration-drift trailer, assembled into one section table and wrapped in
-	 * {@code <html>}. Canonical home of the tooltip section markup; row types build
-	 * their section rows through {@link TableRow#section(String, HtmlChunk)}.
-	 */
-	static class ToolTip {
-
-		private final String text;
-
-		private ToolTip(String text) {
-			this.text = text;
-		}
-
-		static ToolTip create(TableRow row, List<TableRow> peers) {
-
-			List<HtmlChunk> sections = new ArrayList<>(row.getToolTip());
-			if (!peers.isEmpty()) {
-				sections.add(sharedPropertySection(peers));
-			}
-
-			HtmlBuilder rows = new HtmlBuilder();
-			sections.forEach(rows::append);
-
-			HtmlBuilder html = new HtmlBuilder().append(row.toolTipIntro())
-					.append(rows.wrapWith(DocumentationMarkup.SECTIONS_TABLE));
-
-			DeclaredVersions declaredVersions = row.getDeclaredVersions();
-			if (declaredVersions.hasDeclarationDrift()) {
-				html.append(HtmlChunk.raw(declaredVersions.getDeclarationDriftToolTipText()));
-			}
-
-			return new ToolTip("<html>" + html + "</html>");
-		}
-
-		String text() {
-			return text;
-		}
-
-		private static HtmlChunk sharedPropertySection(List<TableRow> peers) {
-
-			HtmlBuilder peerLines = new HtmlBuilder();
-			peerLines.appendWithSeparators(HtmlChunk.br(),
-					peers.stream().map(peer -> HtmlChunk.text(peer.getName()).code()).toList());
-			return TableRow.section("dialog.tooltip.sharedProperty", peerLines.toFragment());
+			return DependencyUpgradeIcons.resolveIcon(strategy);
 		}
 
 	}

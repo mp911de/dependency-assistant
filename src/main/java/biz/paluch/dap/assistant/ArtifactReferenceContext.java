@@ -197,7 +197,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 				branchSource, context.getProjectVersion(), metadata);
 		DependencyRule rule = ruleService.resolve(resolutionContext);
 		DependencyRuleEvaluator evaluator = currentVersion != null
-				? DependencyRuleEvaluator.create(rule, declaration.getArtifactId(), currentVersion)
+				? DependencyRuleEvaluator.create(rule, currentVersion)
 				: DependencyRuleEvaluator.absent();
 		StateService stateService = lookup.getStateService();
 		return new ArtifactReferenceContext(context, stateService, declaration, currentVersion, rule, evaluator,

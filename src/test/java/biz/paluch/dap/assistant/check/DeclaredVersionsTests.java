@@ -41,9 +41,9 @@ import static biz.paluch.dap.assertions.Assertions.*;
  */
 class DeclaredVersionsTests {
 
-	static ArtifactId LETTUCE = ArtifactId.of("io.lettuce", "lettuce-core");
+	private static final ArtifactId LETTUCE = ArtifactId.of("io.lettuce", "lettuce-core");
 
-	static PackageIdentity PKG = PackageIdentity.of(LETTUCE, PackageSystem.MAVEN);
+	private static final PackageIdentity PKG = PackageIdentity.of(LETTUCE, PackageSystem.MAVEN);
 
 	@Test
 	void emptyHasNoConflictAndNoVersion() {
@@ -121,6 +121,33 @@ class DeclaredVersionsTests {
 
 		assertThat(conflicts).containsExactlyInAnyOrder("7.4.1.RELEASE@" + a.getPath(),
 				"7.5.0.RELEASE@" + b.getPath());
+	}
+
+	@Test
+	void versionDriftToolTipEscapesLocations() {
+
+		VirtualFile a = new MockVirtualFile("safe/build.gradle", "// test");
+		VirtualFile b = new MockVirtualFile("<img src=x>/build.gradle", "// test");
+		DeclaredVersions declaredVersions = TestDeclaredVersions.from(site(a, "7.4.1.RELEASE"),
+				site(b, "7.5.0.RELEASE"));
+
+		String toolTip = declaredVersions.getVersionDriftToolTip(ArtifactVersion.of("7.4.1.RELEASE")).toString();
+
+		assertThat(toolTip).contains("&lt;img").doesNotContain("<img");
+	}
+
+	@Test
+	void declarationDriftToolTipEscapesLocations() {
+
+		VirtualFile a = new MockVirtualFile("<img src=x>/build.gradle", "// test");
+		VirtualFile b = new MockVirtualFile("drift-b/build.gradle", "// test");
+		DeclaredVersions declaredVersions = TestDeclaredVersions.from(
+				site(a, "7.4.1.RELEASE", VersionSource.property("lettuce.version")),
+				site(b, "7.4.1.RELEASE", VersionSource.declared("7.4.1.RELEASE")));
+
+		String toolTip = declaredVersions.getDeclarationDriftToolTip().toString();
+
+		assertThat(toolTip).contains("&lt;img").doesNotContain("<img");
 	}
 
 	private static DeclarationSite site(VirtualFile file, String groupId, String artifactId, String version) {

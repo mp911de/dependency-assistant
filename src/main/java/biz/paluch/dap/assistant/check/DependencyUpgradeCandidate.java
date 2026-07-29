@@ -17,7 +17,9 @@
 package biz.paluch.dap.assistant.check;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
@@ -28,6 +30,7 @@ import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilityRepository;
@@ -39,8 +42,6 @@ import biz.paluch.dap.upgrade.UpgradeSuggestion;
 import biz.paluch.dap.upgrade.UpgradeSuggestions;
 import biz.paluch.dap.upgrade.UpgradeSuggestionsFactory;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.Assert;
 
 /**
  * A collected dependency's complete upgrade picture: the dependency, its
@@ -82,6 +83,10 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 
 	private final UpgradeSuggestions displaySuggestions;
 
+	private final Set<VersionProperty> versionProperties = new HashSet<>();
+
+	private final Map<ArtifactVersion, Vulnerabilities> vulnerabilitiesByVersion = new ConcurrentHashMap<>();
+
 	private DependencyUpgradeCandidate(Dependency dependency, DependencyAssistant assistant, Releases releases,
 			VulnerabilityRepository vulnerabilities, DependencyRule rule,
 			IconDependencyPresentation presentation, DeclaredVersions declaredVersions) {
@@ -97,6 +102,12 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 				rule);
 		this.displayReleases = filterDisplayReleases();
 		this.displaySuggestions = suggestions.filter(this::isDisplaySuggestion);
+
+		for (VersionSource source : dependency.getVersionSources()) {
+			if (source instanceof VersionSource.VersionProperty property) {
+				versionProperties.add(new VersionProperty(assistant.getId(), property.getProperty()));
+			}
+		}
 	}
 
 	/**
@@ -224,12 +235,12 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Return suggestions enabled for the dependency check dialog.
+	 * Return version properties associates with this upgrade candidate.
 	 *
-	 * @return the display suggestion view.
+	 * @return the version properties.
 	 */
-	public UpgradeSuggestions getDisplaySuggestions() {
-		return displaySuggestions;
+	public Set<VersionProperty> getVersionProperties() {
+		return versionProperties;
 	}
 
 	/**
@@ -279,13 +290,14 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Return the known vulnerability state for the given version.
+	 * Return the known vulnerability state for the given version, sampled from the
+	 * repository on first request and cached for the aggregate's lifetime.
 	 *
 	 * @param version the version to inspect.
 	 * @return the known vulnerabilities for the version.
 	 */
 	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
-		return vulnerabilities.getVulnerabilities(version);
+		return vulnerabilitiesByVersion.computeIfAbsent(version, vulnerabilities::getVulnerabilities);
 	}
 
 	/**
@@ -315,8 +327,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	 * @return the target release, or {@literal null} if the strategy has no valid
 	 * target.
 	 */
-	public @Nullable Release resolveTarget(UpgradeStrategy strategy) {
-		return resolveTarget(strategy, suggestions, releases);
+	public @Nullable Release findRelease(UpgradeStrategy strategy) {
+		return resolveRelease(strategy, suggestions, releases);
 	}
 
 	/**
@@ -326,11 +338,11 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	 * @return the target release, or {@literal null} if the strategy has no visible
 	 * target.
 	 */
-	public @Nullable Release resolveDisplayTarget(UpgradeStrategy strategy) {
-		return resolveTarget(strategy, displaySuggestions, displayReleases);
+	public @Nullable Release findCuratedRelease(UpgradeStrategy strategy) {
+		return resolveRelease(strategy, displaySuggestions, displayReleases);
 	}
 
-	private static @Nullable Release resolveTarget(UpgradeStrategy strategy, UpgradeSuggestions suggestions,
+	private static @Nullable Release resolveRelease(UpgradeStrategy strategy, UpgradeSuggestions suggestions,
 			Releases releases) {
 
 		UpgradeSuggestion suggestion = suggestions.get(strategy);
@@ -341,43 +353,13 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Select a target from this upgrade's release universe.
-	 *
-	 * <p>The returned release is the canonical release retained by this upgrade.
-	 * Callers may keep the selected version as presentation state, while target
-	 * validity remains owned here.
-	 *
-	 * @param target the target version to select.
-	 * @return the matching release retained by this upgrade.
-	 * @throws IllegalArgumentException if the target is not part of this upgrade.
-	 */
-	public Release selectTarget(ArtifactVersion target) {
-
-		Release release = releases.getRelease(target);
-		Assert.notNull(release, "Target version is not part of the upgrade: " + target);
-		return release;
-	}
-
-	/**
 	 * Create the apply-ready update for the selected target.
 	 *
 	 * @param target the selected target version.
 	 * @return an update carrying the dependency's declaration and version sources.
 	 */
 	public DependencyUpdate createUpdate(ArtifactVersion target) {
-		return DependencyUpdate.from(dependency, selectTarget(target).version());
-	}
-
-	/**
-	 * Create the apply-ready update with a replacement artifact identity used for
-	 * rendering.
-	 *
-	 * @param artifactId the artifact identity to expose from the update.
-	 * @param target the selected target version.
-	 * @return an update carrying the dependency's declaration and version sources.
-	 */
-	public DependencyUpdate createUpdate(ArtifactId artifactId, ArtifactVersion target) {
-		return DependencyUpdate.from(artifactId, dependency, selectTarget(target).version());
+		return DependencyUpdate.from(dependency, target);
 	}
 
 	@Override

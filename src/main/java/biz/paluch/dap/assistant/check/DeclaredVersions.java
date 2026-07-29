@@ -40,7 +40,10 @@ import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectUtil;
+import com.intellij.openapi.util.text.HtmlBuilder;
+import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.annotations.Nls;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -256,18 +259,6 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	}
 
 	/**
-	 * Visit each declaration-style drift entry in display order.
-	 *
-	 * <p>File locations are rendered relative to the project base path when a
-	 * project is available.
-	 *
-	 * @param consumer the consumer receiving style labels and display locations.
-	 */
-	public void forEachDeclarationDrift(BiConsumer<String, String> consumer) {
-		declarationEntries.forEach(it -> consumer.accept(MessageBundle.message(it.style().messageKey), it.location()));
-	}
-
-	/**
 	 * Return whether any concrete version was found.
 	 *
 	 * @return {@literal true} if at least one version was found; {@literal false}
@@ -307,7 +298,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 
 
 	/**
-	 * Render the version-drift tool tip text.
+	 * Render the version-drift tool tip.
 	 *
 	 * <p>Declarations are grouped by their declared version, ordered by version. Up
 	 * to {@link #MAX_DISPLAYED_VERSIONS} version groups are listed, each naming up
@@ -315,15 +306,18 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 * into an overflow count. The {@code currentVersion} group is omitted because
 	 * it is already shown in the current-version column.
 	 *
+	 * <p>Declared versions and locations originate from build files and are
+	 * escaped; the returned chunk is safe to embed in HTML tooltips.
+	 *
 	 * @param currentVersion the version shown in the current-version column,
 	 * excluded from the listed groups.
-	 * @return the version-drift tool tip markup; an empty string when no version
+	 * @return the version-drift tool tip markup; an empty chunk when no version
 	 * drift exists.
 	 */
-	public String getVersionDriftToolTipText(ArtifactVersion currentVersion) {
+	public HtmlChunk getVersionDriftToolTip(ArtifactVersion currentVersion) {
 
 		if (!hasVersionDrift()) {
-			return "";
+			return HtmlChunk.empty();
 		}
 
 		String current = currentVersion.toString();
@@ -334,93 +328,87 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 			}
 		});
 
-		StringBuilder tooltip = new StringBuilder("<b>")
-				.append(MessageBundle.message("dialog.version-drift.tooltip.header"))
-				.append("</b><ul>");
-
+		HtmlBuilder groups = new HtmlBuilder();
 		int shown = 0;
 		for (Map.Entry<String, List<String>> group : locationsByVersion.entrySet()) {
+
 			if (shown == MAX_DISPLAYED_VERSIONS) {
 				break;
 			}
-			tooltip.append("<li>")
-					.append(MessageBundle.message("dialog.version-drift.tooltip.entry",
-							"<code>" + group.getKey() + "</code>", renderLocations(group.getValue())))
-					.append("</li>");
+			groups.append(HtmlChunk.tag("li")
+					.child(HtmlChunk.raw(MessageBundle.message("dialog.version-drift.tooltip.entry",
+							HtmlChunk.text(group.getKey()).code(), renderLocations(group.getValue())))));
 			shown++;
 		}
 
 		int overflow = locationsByVersion.size() - MAX_DISPLAYED_VERSIONS;
 		if (overflow > 0) {
-			tooltip.append("<li>")
-					.append(MessageBundle.message("dialog.version-drift.tooltip.more.versions", overflow))
-					.append("</li>");
+			groups.append(HtmlChunk.tag("li")
+					.addText(MessageBundle.message("dialog.version-drift.tooltip.more.versions", overflow)));
 		}
 
-		return tooltip.append("</ul>").toString();
+		return new HtmlBuilder()
+				.append(HtmlChunk.tag("b").addText(MessageBundle.message("dialog.version-drift.tooltip.header")))
+				.append(groups.wrapWith("ul")).toFragment();
 	}
 
 	/**
-	 * Render the declaration-drift tool tip text.
+	 * Render the declaration-drift tool tip.
 	 *
 	 * <p>Declarations are grouped by their declaration style. Both styles are
 	 * always listed, each naming up to {@link #MAX_DISPLAYED_FILES} locations
 	 * before collapsing the remainder into an overflow count.
 	 *
-	 * @return the declaration-drift tool tip markup; an empty string when no
-	 * declaration drift exists.
+	 * <p>Locations originate from build files and are escaped; the returned chunk
+	 * is safe to embed in HTML tooltips.
+	 *
+	 * @return the declaration-drift tool tip markup.
 	 */
-	public String getDeclarationDriftToolTipText() {
+	public HtmlChunk getDeclarationDriftToolTip() {
 
 		Set<String> styles = new TreeSet<>();
 		Set<String> files = new TreeSet<>();
-		forEachDeclarationDrift((style, file) -> {
-			styles.add(style);
-			files.add(file);
+
+		declarationEntries.forEach(it -> {
+			styles.add(it.style.getName());
+			files.add(it.location());
 		});
 
-		StringBuilder builder = new StringBuilder("<b>")
-				.append(MessageBundle.message("dialog.declaration-drift.tooltip.header"))
-				.append(": </b> ")
-				.append(org.springframework.util.StringUtils.collectionToDelimitedString(styles, ", "));
-
-		builder.append(renderLocations(files));
-
-		return builder.toString();
+		return new HtmlBuilder()
+				.append(HtmlChunk.tag("b")
+						.addText(MessageBundle.message("dialog.declaration-drift.tooltip.header") + ": "))
+				.append(HtmlChunk.text(String.join(", ", styles)))
+				.append(renderLocations(files)).toFragment();
 	}
 
 	/**
-	 * Render a comma-separated list of up to {@link #MAX_DISPLAYED_FILES}
-	 * declaration locations, collapsing any remaining locations into an overflow
-	 * count.
+	 * Render a list of up to {@link #MAX_DISPLAYED_FILES} declaration locations,
+	 * collapsing any remaining locations into an overflow count. Locations are
+	 * escaped.
 	 *
 	 * @param locations the locations to render, in display order.
 	 * @return the rendered location markup.
 	 */
-	private static String renderLocations(Collection<String> locations) {
+	private static HtmlChunk renderLocations(Collection<String> locations) {
 
-		int shown = Math.min(locations.size(), MAX_DISPLAYED_FILES);
-		StringBuilder rendered = new StringBuilder();
-
-		rendered.append("<ul>");
-		int count = 0;
+		HtmlBuilder rendered = new HtmlBuilder();
+		int shown = 0;
 		for (String location : locations) {
-			if (count++ > shown) {
+
+			if (shown == MAX_DISPLAYED_FILES) {
 				break;
 			}
-			rendered.append("<li>");
-			rendered.append("<code>").append(location).append("</code>");
-			rendered.append("</li>");
+			rendered.append(HtmlChunk.tag("li").child(HtmlChunk.text(location).code()));
+			shown++;
 		}
 
 		int overflow = locations.size() - MAX_DISPLAYED_FILES;
 		if (overflow > 0) {
-			rendered.append("<li>").append(MessageBundle.message("dialog.drift.tooltip.other.files", overflow))
-					.append("</li>");
+			rendered.append(HtmlChunk.tag("li")
+					.addText(MessageBundle.message("dialog.drift.tooltip.other.files", overflow)));
 		}
 
-		rendered.append("</ul>");
-		return rendered.toString();
+		return rendered.wrapWith("ul");
 	}
 
 	/**
@@ -455,7 +443,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 */
 	record VersionDrift(ArtifactVersion version, String location) implements Comparable<VersionDrift> {
 
-		static Comparator<VersionDrift> COMPARATOR = Comparator.comparing(VersionDrift::version)
+		static final Comparator<VersionDrift> COMPARATOR = Comparator.comparing(VersionDrift::version)
 				.thenComparing(VersionDrift::location, String.CASE_INSENSITIVE_ORDER);
 
 		@Override
@@ -474,7 +462,7 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 	 */
 	record DeclarationDrift(DeclarationStyle style, String location) implements Comparable<DeclarationDrift> {
 
-		static Comparator<DeclarationDrift> COMPARATOR = Comparator.comparing(DeclarationDrift::style)
+		static final Comparator<DeclarationDrift> COMPARATOR = Comparator.comparing(DeclarationDrift::style)
 				.thenComparing(DeclarationDrift::location, String.CASE_INSENSITIVE_ORDER);
 
 		@Override
@@ -496,6 +484,9 @@ public record DeclaredVersions(Set<ArtifactVersion> versions, Set<VersionDrift> 
 			this.messageKey = messageKey;
 		}
 
+		public @Nls String getName() {
+			return MessageBundle.message(messageKey);
+		}
 	}
 
 }

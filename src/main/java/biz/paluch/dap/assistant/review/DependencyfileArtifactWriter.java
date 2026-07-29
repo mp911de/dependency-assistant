@@ -92,26 +92,6 @@ class DependencyfileArtifactWriter {
 	}
 
 	/**
-	 * Return whether adding the candidate would write at least one new entry: when
-	 * no descriptor exists yet, or when at least one computed entry key is not
-	 * already declared in the active descriptor.
-	 *
-	 * @return {@literal true} if the add action has something to write;
-	 * {@literal false} otherwise.
-	 */
-	public boolean canAdd(TableRow row) {
-
-		VirtualFile descriptor = dependencyfileservice.getDescriptor();
-		if (descriptor == null) {
-			return true;
-		}
-
-		Set<String> existing = existingKeys(descriptor);
-		return entries(row).stream()
-				.anyMatch(entry -> !existing.contains(entry.key()));
-	}
-
-	/**
 	 * Add the candidate's entries to the active descriptor (creating it if absent),
 	 * then open it in the editor with the caret selecting the first new entry's
 	 * {@code name} value.
@@ -422,7 +402,7 @@ class DependencyfileArtifactWriter {
 	 */
 	static List<ArtifactEntry> entries(TableRow row) {
 
-		List<DependencyUpgradeCandidate> upgrades = row.getUpgrades();
+		List<DependencyUpgradeCandidate> upgrades = row.getUpgradeCandidates();
 		List<TableRow> rows = new ArrayList<>();
 		if (upgrades.size() > 1) {
 			String wildcardKey = wildcardKey(upgrades);

@@ -100,7 +100,7 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 	}
 
 	@Override
-	public List<DependencyUpgradeCandidate> getUpgrades() {
+	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
 		return upgrades;
 	}
 

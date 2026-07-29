@@ -16,20 +16,26 @@
 
 package biz.paluch.dap.assistant.review;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.AppliedDependencyUpdate;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
+import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.fixtures.TestCandidates;
 import biz.paluch.dap.fixtures.TestReleases;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.support.UpgradeStrategy;
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.util.Disposer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -76,7 +82,7 @@ class UpgradeReviewTests {
 		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
-		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
+		review.setVersion(group, ArtifactVersion.of("6.2.1"));
 
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 
@@ -96,7 +102,7 @@ class UpgradeReviewTests {
 		GroupRow group = GroupRow.governed(core, drifting);
 
 		UpgradeReview review = new UpgradeReview(group);
-		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
+		review.setVersion(group, ArtifactVersion.of("6.2.1"));
 
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 
@@ -111,12 +117,12 @@ class UpgradeReviewTests {
 		TableRow core = candidate(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
-		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
 
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 
 		assertThat(updates).hasSize(1);
-		assertThat(updates.getFirst().artifactId()).hasToString("spring-core");
+		assertThat(updates.getFirst().artifactId()).hasToString("org.springframework:spring-core");
 		assertThat(updates.getFirst().versionAsString()).isEqualTo("6.2.1");
 	}
 
@@ -126,21 +132,51 @@ class UpgradeReviewTests {
 		TableRow core = candidate(SPRING_CORE, "6.2.0");
 
 		UpgradeReview review = new UpgradeReview(core);
-		review.selectTarget(core, ArtifactVersion.of("6.2.1"));
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
 		review.setSelected(core, false);
 
 		assertThat(review.getSelectedUpdates()).isEmpty();
 	}
 
 	@Test
+	void selectAllTogglesApplyStateOfVisibleRows() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow test = candidate(SPRING_TEST, "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, test);
+		review.selectAll(true);
+
+		assertThat(review.isApplyUpdate(core)).isTrue();
+		assertThat(review.isApplyUpdate(test)).isTrue();
+
+		review.selectAll(false);
+
+		assertThat(review.isApplyUpdate(core)).isFalse();
+		assertThat(review.isApplyUpdate(test)).isFalse();
+	}
+
+	@Test
+	void applyStrategyTargetSelectsAndArmsStrategyRelease() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core);
+		review.applyStrategyTarget(core, UpgradeStrategy.LATEST);
+
+		assertThat(review.getUpdateTo(core)).hasToString("6.2.1");
+		assertThat(review.isApplyUpdate(core)).isTrue();
+	}
+
+	@Test
 	void strategySelectionOnGroupResolvesAgainstIntersectionReleases() {
 
-		TableRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"));
-		TableRow test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"));
+		TableRow core = candidate(SPRING_CORE, "6.2.0", TestReleases.from("6.2.0", "6.2.1", "6.3.0"), "6.2.0");
+		TableRow test = candidate(SPRING_TEST, "6.2.0", TestReleases.from("6.2.0", "6.2.1"), "6.2.0");
 		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
-		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.LATEST);
+		review.applyStrategyToAll(UpgradeReview.StrategySelection.LATEST);
 
 		assertThat(review.getUpdateTo(group)).hasToString("6.2.1");
 	}
@@ -153,32 +189,15 @@ class UpgradeReviewTests {
 		GroupRow group = GroupRow.governed(core, test);
 
 		UpgradeReview review = new UpgradeReview(group);
-		review.selectTarget(group, ArtifactVersion.of("6.2.1"));
+		review.setVersion(group, ArtifactVersion.of("6.2.1"));
 
 		Set<AppliedDependencyUpdate> applied = new TreeSet<>();
 		for (DependencyUpdate update : review.getSelectedUpdates()) {
-			applied.add(AppliedDependencyUpdate.of(update.artifactId(), update.from().getVersion(), update.version(),
-					biz.paluch.dap.rule.DependencyRule.absent(), update.getUpgradeStrategy()));
+			applied.add(AppliedDependencyUpdate.from(update, group.getRule()));
 		}
 
-	}
-
-	@Test
-	void ambiguityIsComputedOverFullCandidateSetRegardlessOfFilter() {
-
-		TableRow driver = candidate(POSTGRESQL, "6.2.0");
-		TableRow testcontainer = candidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
-		TableRow lettuce = candidate(LETTUCE_CORE, "6.2.0");
-
-		UpgradeReview review = new UpgradeReview(driver, testcontainer, lettuce);
-
-		assertThat(review.isAmbiguous(driver)).isTrue();
-		assertThat(review.isAmbiguous(testcontainer)).isTrue();
-		assertThat(review.isAmbiguous(lettuce)).isFalse();
-
-		review.setHideUpToDate(true);
-
-		assertThat(review.isAmbiguous(driver)).isTrue();
+		assertThat(review.getSelectedUpdates()).hasSize(2);
+		assertThat(applied).hasSize(1);
 	}
 
 	@Test
@@ -191,6 +210,18 @@ class UpgradeReviewTests {
 		UpgradeReview review = new UpgradeReview(driver, testcontainer);
 
 		assertThat(review.isAmbiguous(driver)).isFalse();
+	}
+
+	@Test
+	void bareCoordinatesSharingArtifactIdAreAmbiguous() {
+
+		TableRow driver = bareCandidate(POSTGRESQL, "6.2.0");
+		TableRow testcontainer = bareCandidate(TESTCONTAINERS_POSTGRESQL, "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(driver, testcontainer);
+
+		assertThat(review.isAmbiguous(driver)).isTrue();
+		assertThat(review.isAmbiguous(testcontainer)).isTrue();
 	}
 
 	@Test
@@ -221,6 +252,305 @@ class UpgradeReviewTests {
 		assertThat(review.getSharedPropertyPeers(ungoverned)).containsExactly(group);
 	}
 
+	@Test
+	void toolTipListsSharedPropertyPeers() {
+
+		TableRow core = new TableRow(TestCandidates.candidate(SPRING_CORE, "6.2.0",
+				it -> it.releases("6.2.1").versionProperty("spring.version")));
+		TableRow addon = new TableRow(TestCandidates.candidate(ADDON, "6.2.0",
+				it -> it.releases("6.2.1").versionProperty("spring.version")));
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+
+		assertThat(review.getToolTip(core)).contains("addon").startsWith("<html>");
+		assertThat(review.getToolTip(addon)).contains("spring-core");
+	}
+
+	@Test
+	void sharedVersionPropertySynchronizesTargetAndApplyState() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.profileProperty("dev", "spring.version"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		assertThat(review.getUpdateTo(core)).isEqualTo(ArtifactVersion.of("6.2.1"));
+		assertThat(review.getUpdateTo(addon)).isEqualTo(ArtifactVersion.of("6.2.1"));
+		assertThat(review.isApplyUpdate(core)).isTrue();
+		assertThat(review.isApplyUpdate(addon)).isTrue();
+
+		review.setSelected(addon, false);
+
+		assertThat(review.isApplyUpdate(core)).isFalse();
+		assertThat(review.isApplyUpdate(addon)).isFalse();
+	}
+
+	@Test
+	void sharedVersionTargetAbsentFromPeerReleasesProducesUpdates() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.property("spring.version"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		assertThat(review.getSelectedUpdates()).extracting(DependencyUpdate::versionAsString)
+				.containsExactly("6.2.1", "6.2.1");
+	}
+
+	@Test
+	void reselectingPropagatedTargetAbsentFromPeerReleasesKeepsSelection() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.property("spring.version"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		// the combo pre-selects the synthetic release; committing it again must
+		// not fail even though 6.2.1 is absent from the addon's release universe
+		review.setVersion(addon, review.getSelectedRelease(addon).version());
+
+		assertThat(review.getUpdateTo(addon)).isEqualTo(ArtifactVersion.of("6.2.1"));
+		assertThat(review.isApplyUpdate(addon)).isTrue();
+	}
+
+	@Test
+	void setVersionKeepsTargetAbsentFromReleaseUniverse() {
+
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(addon);
+		review.setVersion(addon, ArtifactVersion.of("6.9.9"));
+
+		assertThat(review.getUpdateTo(addon)).isEqualTo(ArtifactVersion.of("6.9.9"));
+	}
+
+	@Test
+	void singleRowVersionPickFiresSingleRowRefresh() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core);
+
+		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
+				.containsExactly(ReviewChange.row(core));
+	}
+
+	@Test
+	void repeatedVersionPickFiresNoChange() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1")))).isEmpty();
+	}
+
+	@Test
+	void versionPickRevealingSharedPropertyPeerFiresReload() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.property("spring.version"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+
+		// arming core propagates to the up-to-date addon, which becomes visible
+		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
+				.containsExactly(ReviewChange.reloadVisible());
+	}
+
+	@Test
+	void disarmingRowVisibleOnlyWhileArmedFiresReload() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.property("spring.version"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		assertThat(changes(review, () -> review.setSelected(addon, false)))
+				.containsExactly(ReviewChange.reloadVisible());
+	}
+
+	@Test
+	void checkboxToggleWithUnchangedVisibilityFiresSingleRowRefresh() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		// core keeps an upgrade target, so disarming does not hide it
+		assertThat(changes(review, () -> review.setSelected(core, false)))
+				.containsExactly(ReviewChange.row(core));
+	}
+
+	@Test
+	void versionPickOnCoupledVisibleRowsRefreshesAllRows() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", VersionSource.profileProperty("dev", "spring.version"));
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+
+		// both rows keep their own upgrade target, so propagation changes no
+		// visibility and the table only refreshes rows in place
+		assertThat(changes(review, () -> review.setVersion(core, ArtifactVersion.of("6.2.1"))))
+				.containsExactly(ReviewChange.allRows());
+	}
+
+	@Test
+	void togglingVersionFilterFiresReload() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core);
+
+		assertThat(changes(review, () -> review.setHideUpToDate(false)))
+				.containsExactly(ReviewChange.reloadVisible());
+	}
+
+	@Test
+	void applyStrategyTargetWithoutTargetFiresNoChange() {
+
+		TableRow targetless = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(targetless);
+
+		assertThat(changes(review, () -> review.applyStrategyTarget(targetless, UpgradeStrategy.LATEST)))
+				.isEmpty();
+	}
+
+	@Test
+	void selectAllWithUnchangedVisibilityRefreshesRowsWithoutReload() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0");
+		TableRow test = candidate(SPRING_TEST, "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, test);
+
+		assertThat(changes(review, () -> review.selectAll(true))).containsExactly(ReviewChange.allRows());
+	}
+
+	@Test
+	void selectAllHidingArmedOnlyRowsFiresReload() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.property("spring.version"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		// disarming all hides the addon, which was visible only while armed
+		assertThat(changes(review, () -> review.selectAll(false)))
+				.containsExactly(ReviewChange.reloadVisible());
+	}
+
+	@Test
+	void bulkStrategyUsesFirstPeerWithAnApplicableTarget() {
+
+		TableRow targetless = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.property("spring.version"), "6.2.0");
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+
+		UpgradeReview review = new UpgradeReview(targetless, core);
+		review.setHideUpToDate(false);
+
+		assertThat(review.findRelease(targetless, UpgradeStrategy.LATEST)).isNull();
+		assertThat(review.findRelease(core, UpgradeStrategy.LATEST)).isNotNull();
+
+		review.applyStrategyToAll(UpgradeReview.StrategySelection.LATEST);
+
+		assertThat(review.getSelectedUpdates()).extracting(DependencyUpdate::versionAsString)
+				.containsExactly("6.2.1", "6.2.1");
+	}
+
+	@Test
+	void selectedSharedPropertyPeerRemainsVisibleWithoutOwnUpgradeTarget() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.0", TestReleases.from("6.2.0"),
+				VersionSource.property("spring.version"), "6.2.0");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setHideUpToDate(true);
+
+		assertThat(review.getCandidates()).containsExactly(core);
+
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		assertThat(review.getCandidates()).containsExactly(core, addon);
+		assertThat(review.getReleaseOptions(addon)).first().extracting(Release::version)
+				.isEqualTo(ArtifactVersion.of("6.2.1"));
+	}
+
+	@Test
+	void samePropertyNameFromAnotherAssistantDoesNotCoupleRows() {
+
+		TestAssistant other = new TestAssistant() {
+
+			@Override
+			public String getId() {
+				return "other";
+			}
+
+		};
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = new TableRow(TestCandidates.candidate(ADDON, "6.2.0",
+				it -> it.releases("6.2.1").versionProperty("spring.version").assistant(other)));
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+
+		assertThat(review.getSharedPropertyPeers(core)).isEmpty();
+		assertThat(review.getSharedPropertyPeers(addon)).isEmpty();
+	}
+
+	@Test
+	void propagatedApplyStateDoesNotDependOnPeerCurrentVersion() {
+
+		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
+		TableRow addon = candidate(ADDON, "6.2.1", TestReleases.from("6.2.1"),
+				VersionSource.property("spring.version"), "6.2.1");
+
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setVersion(core, ArtifactVersion.of("6.2.1"));
+
+		assertThat(review.isApplyUpdate(core)).isTrue();
+		assertThat(review.isApplyUpdate(addon)).isTrue();
+	}
+
+	/**
+	 * Collect the {@link ReviewChange}s fired while running {@code interaction}.
+	 */
+	private static List<ReviewChange> changes(UpgradeReview review, Runnable interaction) {
+
+		List<ReviewChange> changes = new ArrayList<>();
+		Disposable parent = Disposer.newDisposable();
+		try {
+			review.addListener(changes::add, parent);
+			interaction.run();
+		} finally {
+			Disposer.dispose(parent);
+		}
+		return changes;
+	}
+
+	/**
+	 * A candidate without a governing rule, so the row stays labeled by its bare
+	 * coordinate.
+	 */
+	private static TableRow bareCandidate(ArtifactId artifactId, String version) {
+		return new TableRow(TestCandidates.candidate(artifactId, version, it -> it.releases(version, "6.2.1")));
+	}
 
 	private static TableRow candidate(ArtifactId artifactId, String version) {
 		return candidate(artifactId, version, VersionSource.declared(version));
@@ -232,8 +562,7 @@ class UpgradeReviewTests {
 
 	private static TableRow candidate(ArtifactId artifactId, String version, Releases releases,
 			String... declaredVersions) {
-		return candidate(artifactId, version, releases, VersionSource.declared(version),
-				declaredVersions.length == 0 ? new String[] {version} : declaredVersions);
+		return candidate(artifactId, version, releases, VersionSource.declared(version), declaredVersions);
 	}
 
 	private static TableRow candidate(ArtifactId artifactId, String version, Releases releases,

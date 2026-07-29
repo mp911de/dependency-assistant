@@ -87,7 +87,7 @@ class DependencyUsageTargetTests {
 			    implementation "org.springframework:spring-core:6.1.0"
 			}
 			""")
-	void fallsBackToInlineDefinitions(PsiFile buildFile) {
+	void fallsBackToTraverse(PsiFile buildFile) {
 
 		GradleFixtures.analyze(buildFile);
 

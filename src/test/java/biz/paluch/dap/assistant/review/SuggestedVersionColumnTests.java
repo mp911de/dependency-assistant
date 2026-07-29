@@ -20,9 +20,14 @@ import java.awt.Component;
 import java.awt.Insets;
 import java.util.List;
 
+import javax.swing.JComponent;
+import javax.swing.JList;
 import javax.swing.JTable;
 import javax.swing.border.Border;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.Release;
+import com.intellij.icons.AllIcons;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.ListTableModel;
 import org.junit.jupiter.api.Test;
@@ -31,28 +36,31 @@ import static biz.paluch.dap.fixtures.TestCandidates.*;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link DependencyCheckDialog.SuggestedVersionComboBoxEditor}.
+ * Unit tests for the suggested-version column of {@link DependencyUpdateTable}:
+ * {@link DependencyUpdateTable.SuggestedVersionComboBoxEditor} and
+ * {@link DependencyUpdateTable.VersionOptionCellRenderer}.
  *
  * @author Mark Paluch
  */
-class SuggestedVersionComboBoxEditorTests {
+class SuggestedVersionColumnTests {
 
 	@Test
 	void editorKeepsHorizontalCellPaddingWithoutUpgradeTargets() {
 
-		TableRow candidate = candidateWithoutUpgradeTargets();
+		TableRow candidate = new TableRow(candidate("com.example:demo:1.0.0"));
+		assertThat(candidate.getUpgrade().hasUpgradeTargets()).isFalse();
+
 		UpgradeReview review = new UpgradeReview(List.of(candidate), List.of());
 		review.setHideUpToDate(false);
 
-		DependencyCheckDialog.UpdateToColumn column = new DependencyCheckDialog.UpdateToColumn(review);
+		DependencyUpdateTable.UpdateToColumn column = new DependencyUpdateTable.UpdateToColumn(review);
 		ListTableModel<TableRow> model = new ListTableModel<>(column);
 		model.setItems(review.getCandidates());
 
 		Component component = column.getEditor(candidate).getTableCellEditorComponent(new JTable(model), null, false,
 				0, 0);
 
-		assertThat(candidate.getUpgrade().hasUpgradeTargets()).isFalse();
-		assertThat(component).isInstanceOfSatisfying(javax.swing.JComponent.class, it -> {
+		assertThat(component).isInstanceOfSatisfying(JComponent.class, it -> {
 			Border border = it.getBorder();
 			Insets insets = border.getBorderInsets(it);
 			assertThat(insets.left).isGreaterThanOrEqualTo(JBUI.scale(6));
@@ -60,8 +68,22 @@ class SuggestedVersionComboBoxEditorTests {
 		});
 	}
 
-	private static TableRow candidateWithoutUpgradeTargets() {
-		return new TableRow(candidate("com.example:demo:1.0.0"));
+	@Test
+	void absentSelectedReleaseUsesWarningIntroductionIcon() {
+
+		TableRow core = new TableRow(candidate("com.example:core:1.0.0",
+				it -> it.releases("1.1.0").versionProperty("shared.version")));
+		TableRow addon = new TableRow(candidate("com.example:addon:1.0.0",
+				it -> it.versionProperty("shared.version")));
+		UpgradeReview review = new UpgradeReview(core, addon);
+		review.setVersion(core, ArtifactVersion.of("1.1.0"));
+		Release selected = review.getSelectedRelease(addon);
+		DependencyUpdateTable.VersionOptionCellRenderer renderer = new DependencyUpdateTable.VersionOptionCellRenderer();
+		renderer.setCandidate(addon);
+
+		renderer.getListCellRendererComponent(new JList<>(), selected, -1, false, false);
+
+		assertThat(renderer.getIcon()).isEqualTo(AllIcons.Nodes.WarningIntroduction);
 	}
 
 }

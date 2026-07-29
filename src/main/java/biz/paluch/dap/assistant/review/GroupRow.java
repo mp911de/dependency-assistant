@@ -17,14 +17,16 @@
 package biz.paluch.dap.assistant.review;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.UpgradeGroup;
+import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.lookup.DependencySiteQuery;
-import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
@@ -39,25 +41,34 @@ class GroupRow extends TableRow {
 
 	private final List<TableRow> members;
 
-	private final @Nullable String derivedLabel;
+	private final List<DependencyUpgradeCandidate> upgrades = new ArrayList<>();
 
-	private final String memberLabel;
+	private final @Nullable String name;
+
+	private final String groupMembersOrCount;
 
 	private final List<HtmlChunk> toolTipSections;
 
-	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String derivedLabel) {
+	private final Set<VersionProperty> versionProperties = new HashSet<>();
+
+	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String name) {
 
 		super(group.getUpgrade());
 		this.members = members;
-		this.derivedLabel = derivedLabel;
-		if (derivedLabel == null) {
+		this.name = name;
+		if (name == null) {
 			labelByDependencyName();
 		}
 		this.toolTipSections = createGroupToolTipSections();
 
-		List<String> artifactIds = members.stream().map(member -> member.getArtifactId().artifactId()).toList();
+		List<String> artifactIds = new ArrayList<>();
+		for (TableRow member : members) {
+			versionProperties.addAll(member.getVersionProperties());
+			upgrades.add(member.getUpgrade());
+			artifactIds.add(member.getArtifactId().artifactId());
+		}
 		String label = String.join(", ", CoordinateShape.of(artifactIds).memberLabelParts());
-		this.memberLabel = !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label
+		this.groupMembersOrCount = !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label
 				: String.valueOf(members.size());
 	}
 
@@ -96,38 +107,44 @@ class GroupRow extends TableRow {
 	}
 
 	@Override
-	public String getName() {
-		return derivedLabel != null ? derivedLabel : super.getName();
-	}
-
-	@Override
-	HtmlChunk toolTipIntro() {
-		return HtmlChunk.empty();
-	}
-
-	@Override
-	List<HtmlChunk> getToolTip() {
-		return toolTipSections;
-	}
-
-	@Override
-	public void doWithRow(Consumer<TableRow> consumer) {
-		for (TableRow member : members) {
-			consumer.accept(member);
-		}
-	}
-
-	@Override
-	public List<DependencyUpgradeCandidate> getUpgrades() {
-		return getMembers().stream().flatMap(it -> it.getUpgrades().stream()).toList();
+	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
+		return upgrades;
 	}
 
 	public List<TableRow> getMembers() {
 		return members;
 	}
 
+	/**
+	 * A group row also stands for each of its members.
+	 */
+	@Override
+	public boolean represents(PackageIdentity pkg) {
+		return super.represents(pkg) || members.stream().anyMatch(member -> member.represents(pkg));
+	}
+
+	@Override
+	public String getName() {
+		return name != null ? name : super.getName();
+	}
+
 	public String getMemberLabel() {
-		return memberLabel;
+		return groupMembersOrCount;
+	}
+
+	@Override
+	public Set<VersionProperty> getVersionProperties() {
+		return versionProperties;
+	}
+
+	@Override
+	protected HtmlChunk getToolTipIntro() {
+		return HtmlChunk.empty();
+	}
+
+	@Override
+	public List<HtmlChunk> getToolTip() {
+		return toolTipSections;
 	}
 
 	@Override
@@ -136,13 +153,10 @@ class GroupRow extends TableRow {
 	}
 
 	@Override
-	public List<DependencyUpdate> createUpdates(ArtifactVersion target) {
-
-		List<DependencyUpdate> updates = new ArrayList<>(members.size());
+	public void doWithRow(Consumer<TableRow> consumer) {
 		for (TableRow member : members) {
-			updates.addAll(member.createUpdates(target));
+			consumer.accept(member);
 		}
-		return updates;
 	}
 
 }

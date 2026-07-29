@@ -98,7 +98,7 @@ public class PreviewChangesAction extends UpgradePlanAction {
 		PlanPreview preview = new PlanPreview(service, rebuilt);
 		ReadAction.nonBlocking(preview::createChanges)
 				.inSmartMode(project)
-				.expireWhen(service::isDisposed)
+				.expireWith(service)
 				.finishOnUiThread(ModalityState.nonModal(), changes -> show(project, changes))
 				.submit(AppExecutorUtil.getAppExecutorService());
 	}

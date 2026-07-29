@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -120,6 +121,8 @@ public class TestCandidates {
 
 		private DependencyRule rule = DependencyRule.absent();
 
+		private DependencyAssistant assistant = TestAssistant.INSTANCE;
+
 		private VersionSource versionSource;
 
 		CandidateSpec(ArtifactId artifactId, ArtifactVersion currentVersion) {
@@ -191,6 +194,14 @@ public class TestCandidates {
 		}
 
 		/**
+		 * Use the given dependency assistant as the candidate's integration identity.
+		 */
+		public CandidateSpec assistant(DependencyAssistant assistant) {
+			this.assistant = assistant;
+			return this;
+		}
+
+		/**
 		 * Declare the version through a property of the given name instead of a literal
 		 * declaration.
 		 */
@@ -226,7 +237,7 @@ public class TestCandidates {
 
 			IconDependencyPresentation presentation = IconDependencyPresentation.from(dependency,
 					TestInterfaceAssistant.INSTANCE);
-			return DependencyUpgradeCandidate.create(dependency, TestAssistant.INSTANCE, releases,
+			return DependencyUpgradeCandidate.create(dependency, assistant, releases,
 					vulnerabilityRepository(), rule, presentation, declaredVersions(pkg));
 		}
 

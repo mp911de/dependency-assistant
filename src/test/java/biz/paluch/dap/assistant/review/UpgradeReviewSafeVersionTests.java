@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.assistant.review;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
@@ -51,7 +49,7 @@ class UpgradeReviewSafeVersionTests {
 
 		TableRow clean = candidate(LETTUCE, CURRENT, VulnerabilityRepository.empty(), "6.0.0", "6.0.1");
 
-		assertThat(review(List.of(clean)).isSafeStrategyAvailable()).isFalse();
+		assertThat(new UpgradeReview(clean).isSafeStrategyAvailable()).isFalse();
 	}
 
 	@Test
@@ -59,7 +57,7 @@ class UpgradeReviewSafeVersionTests {
 
 		TableRow vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 
-		assertThat(review(List.of(vulnerable)).isSafeStrategyAvailable()).isTrue();
+		assertThat(new UpgradeReview(vulnerable).isSafeStrategyAvailable()).isTrue();
 	}
 
 	@Test
@@ -67,7 +65,7 @@ class UpgradeReviewSafeVersionTests {
 
 		TableRow vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
-		UpgradeReview review = review(List.of(vulnerable));
+		UpgradeReview review = new UpgradeReview(vulnerable);
 		review.setHideUpToDate(true);
 
 		assertThat(review.isSafeStrategyAvailable()).isTrue();
@@ -79,8 +77,8 @@ class UpgradeReviewSafeVersionTests {
 		TableRow vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 		TableRow clean = candidate(SPRING, CURRENT, VulnerabilityRepository.empty(), "6.0.0", "6.0.1");
 
-		UpgradeReview review = review(List.of(vulnerable, clean));
-		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
+		UpgradeReview review = new UpgradeReview(vulnerable, clean);
+		review.applyStrategyToAll(UpgradeReview.StrategySelection.SAFE);
 
 		assertThat(review.getUpdateTo(vulnerable)).isEqualTo("6.0.1");
 		assertThat(review.getUpdateTo(clean)).isEqualTo(CURRENT);
@@ -91,8 +89,8 @@ class UpgradeReviewSafeVersionTests {
 
 		TableRow vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
-		UpgradeReview review = review(List.of(vulnerable));
-		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
+		UpgradeReview review = new UpgradeReview(vulnerable);
+		review.applyStrategyToAll(UpgradeReview.StrategySelection.SAFE);
 
 		assertThat(review.getUpdateTo(vulnerable)).isEqualTo(CURRENT);
 	}
@@ -102,7 +100,7 @@ class UpgradeReviewSafeVersionTests {
 
 		TableRow vulnerable = candidate(LETTUCE, CURRENT, scanResults(), "6.0.0");
 
-		UpgradeReview review = review(List.of(vulnerable));
+		UpgradeReview review = new UpgradeReview(vulnerable);
 		review.setHideUpToDate(true);
 
 		assertThat(review.getCandidates()).containsExactly(vulnerable);
@@ -113,7 +111,7 @@ class UpgradeReviewSafeVersionTests {
 
 		TableRow clean = candidate(LETTUCE, CURRENT, VulnerabilityRepository.empty(), "6.0.0");
 
-		UpgradeReview review = review(List.of(clean));
+		UpgradeReview review = new UpgradeReview(clean);
 		review.setHideUpToDate(true);
 
 		assertThat(review.getCandidates()).isEmpty();
@@ -124,17 +122,13 @@ class UpgradeReviewSafeVersionTests {
 
 		TableRow vulnerable = candidate(LETTUCE, CURRENT, scanResults("6.0.1"), "6.0.0", "6.0.1");
 
-		UpgradeReview review = review(List.of(vulnerable));
+		UpgradeReview review = new UpgradeReview(vulnerable);
 		review.setHideUpToDate(true);
 
 		assertThat(review.getCandidates()).contains(vulnerable);
 		assertThat(review.getReleases(vulnerable).getRelease(ArtifactVersion.of("6.0.1"))).isNotNull();
-		review.applyStrategyToAll(UpgradeReview.UpgradeStrategies.SAFE);
+		review.applyStrategyToAll(UpgradeReview.StrategySelection.SAFE);
 		assertThat(review.getUpdateTo(vulnerable)).isEqualTo("6.0.1");
-	}
-
-	private static UpgradeReview review(List<TableRow> candidates) {
-		return new UpgradeReview(candidates, List.of());
 	}
 
 	/**

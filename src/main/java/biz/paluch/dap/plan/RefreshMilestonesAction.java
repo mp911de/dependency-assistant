@@ -20,30 +20,19 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import biz.paluch.dap.DependencyAssistant;
-import biz.paluch.dap.DependencyAssistantDispatcher;
-import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.Versioned;
-import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketSystem;
-import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -51,8 +40,6 @@ import org.jspecify.annotations.Nullable;
  * runs, like the selectors it feeds.
  */
 class RefreshMilestonesAction extends UpgradePlanAction {
-
-	private static final Pattern BRANCH_VERSION = Pattern.compile("(\\d+)\\.(\\d+)");
 
 	private static final Logger LOG = Logger.getInstance(RefreshMilestonesAction.class);
 
@@ -93,9 +80,7 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 
 			private boolean selectDefaultMilestone = false;
 
-			private Versioned projectVersion = Versioned.unversioned();
-
-			private @Nullable String branch;
+			private @Nullable MilestoneSelector milestoneSelector;
 
 			@Override
 			public void run(ProgressIndicator indicator) {
@@ -128,9 +113,9 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 				}
 
 				if (selectDefaultMilestone && new Milestones(milestones)
-						.getSelection(service.getSelectedMilestoneName()) == null) {
-					branch = service.hasVcs() ? service.getVcs().getCurrentBranch() : null;
-					projectVersion = resolveProjectVersion(project, service.affectedFiles());
+						.findMilestone(service.getSelectedMilestoneName()) == null) {
+					milestoneSelector = ReadAction.nonBlocking(() -> service.getMilestoneSelector())
+							.executeSynchronously();
 				}
 			}
 
@@ -146,11 +131,11 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 				Milestones milestones = new Milestones(this.milestones);
 
 				if (selectDefaultMilestone) {
-					service.setSelectedMilestone(milestones.getSelectionOrDefault(
-							service.getSelectedMilestoneName(), branch, projectVersion));
+					service.setSelectedMilestone(milestones.findOrDefault(
+							service.getSelectedMilestoneName(), milestoneSelector));
 				}
 				else {
-					service.setSelectedMilestone(milestones.getSelection(service.getSelectedMilestoneName()));
+					service.setSelectedMilestone(milestones.findMilestone(service.getSelectedMilestoneName()));
 				}
 
 				service.setMilestonesLabels(this.milestones, this.labels);
@@ -169,111 +154,6 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 			}
 
 		}.queue();
-	}
-
-	/**
-	 * Resolve the project version from the first build file in the plan's scope
-	 * that declares one, to default the milestone from the project's version line.
-	 * Runs as a cancellable read that yields to pending write actions; must be
-	 * called from a background thread.
-	 */
-	private static Versioned resolveProjectVersion(Project project, List<String> affectedFiles) {
-
-		return ReadAction.nonBlocking(() -> {
-			List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
-			BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-
-			for (VirtualFile file : FileScope.from(affectedFiles)) {
-
-				ProgressManager.checkCanceled();
-				PsiFile psiFile = psiManager.findFile(file);
-				if (psiFile == null) {
-					continue;
-				}
-
-				for (DependencyAssistant assistant : assistants) {
-					if (!assistant.supports(psiFile)) {
-						continue;
-					}
-
-					ProjectDependencyContext context = assistant.createContext(psiFile);
-					Versioned projectVersion = context.getProjectVersion();
-					if (context.isAvailable() && projectVersion.isVersioned()) {
-						return projectVersion;
-					}
-				}
-			}
-
-			return Versioned.unversioned();
-		}).executeSynchronously();
-	}
-
-	static class Milestones {
-
-		private final List<? extends Milestone> milestones;
-
-		Milestones(List<? extends Milestone> milestones) {
-			this.milestones = milestones;
-		}
-
-		public @Nullable Milestone getSelection(@Nullable String selectedTitle) {
-			if (selectedTitle == null) {
-				return null;
-			}
-			for (Milestone milestone : milestones) {
-				if (milestone.getTitle().equals(selectedTitle)) {
-					return milestone;
-				}
-			}
-			return null;
-		}
-
-		public @Nullable Milestone getDefaultMilestone(@Nullable String branch, Versioned projectVersion) {
-
-			if (milestones.isEmpty()) {
-				return null;
-			}
-
-			String prefix = versionPrefix(branch);
-			if (prefix == null && projectVersion.isVersioned()) {
-				prefix = versionPrefix(projectVersion.getVersion().toString());
-			}
-			if (prefix == null) {
-				return null;
-			}
-
-			Milestone lowest = null;
-			for (Milestone milestone : milestones) {
-
-				String title = milestone.getTitle();
-				if (!milestone.isOpen() || !title.equals(prefix) && !title.startsWith(prefix + ".")) {
-					continue;
-				}
-				if (lowest == null || MilestoneComparator.INSTANCE.compare(milestone, lowest) < 0) {
-					lowest = milestone;
-				}
-			}
-
-			return lowest;
-		}
-
-		public @Nullable Milestone getSelectionOrDefault(@Nullable String selectedTitle,
-				@Nullable String branch, Versioned projectVersion) {
-
-			Milestone selected = getSelection(selectedTitle);
-			return selected != null ? selected : getDefaultMilestone(branch, projectVersion);
-		}
-
-		private static @Nullable String versionPrefix(@Nullable String value) {
-
-			if (value == null) {
-				return null;
-			}
-
-			Matcher matcher = BRANCH_VERSION.matcher(value);
-			return matcher.find() ? matcher.group(1) + "." + matcher.group(2) : null;
-		}
-
 	}
 
 	static class Labels {

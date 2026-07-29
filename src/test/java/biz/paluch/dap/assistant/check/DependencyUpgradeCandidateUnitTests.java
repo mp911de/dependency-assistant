@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant.check;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.fixtures.TestVulnerabilities;
 import biz.paluch.dap.support.UpgradeStrategy;
 import org.junit.jupiter.api.Test;
@@ -39,28 +38,7 @@ class DependencyUpgradeCandidateUnitTests {
 
 		assertThat(upgrade.getReleases()).containsRelease("1.0.0");
 		assertThat(upgrade.getDisplayReleases()).containsRelease("1.1.0-RC1");
-		assertThat(upgrade.resolveDisplayTarget(UpgradeStrategy.SAFE)).hasVersion("1.1.0-RC1");
-	}
-
-	@Test
-	void omitsTargetsOutsideDisplayReleaseUniverse() {
-
-		DependencyUpgradeCandidate upgrade = candidate("com.example:demo:1.0.0", it -> it.releases("1.1.0-RC1"));
-
-		assertThat(upgrade.getSuggestions().get(UpgradeStrategy.PREVIEW).isPresent()).isTrue();
-		assertThat(upgrade.getDisplayReleases()).doesNotContainRelease("1.1.0-RC1");
-		assertThat(upgrade.getDisplaySuggestions().get(UpgradeStrategy.PREVIEW).isPresent()).isFalse();
-		assertThat(upgrade.resolveDisplayTarget(UpgradeStrategy.PREVIEW)).isNull();
-	}
-
-	@Test
-	void selectsOnlyTargetsFromItsReleaseUniverse() {
-
-		DependencyUpgradeCandidate upgrade = candidate("com.example:demo:1.0.0", it -> it.releases("1.1.0"));
-
-		assertThat(upgrade.selectTarget(ArtifactVersion.of("1.1.0"))).hasVersion("1.1.0");
-		assertThatIllegalArgumentException().isThrownBy(() -> upgrade.selectTarget(ArtifactVersion.of("2.0.0")))
-				.withMessageContaining("2.0.0");
+		assertThat(upgrade.findCuratedRelease(UpgradeStrategy.SAFE)).hasVersion("1.1.0-RC1");
 	}
 
 }
