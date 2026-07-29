@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.Map;
 
+import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.support.FileScope;
 import com.intellij.openapi.project.DumbAware;
@@ -27,6 +28,7 @@ import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.ex.ToolWindowEx;
 import com.intellij.openapi.wm.impl.content.ToolWindowContentUi;
+import com.intellij.ui.BadgeIconSupplier;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 
@@ -43,6 +45,9 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 	 * Matches the {@code toolWindow id} registered in {@code plugin.xml}.
 	 */
 	static final String ID = "Upgrade Plan";
+
+	private static final BadgeIconSupplier BADGE_ICON = new BadgeIconSupplier(
+			DependencyAssistantIcons.TOOL_WINDOW_UPGRADE_PLAN);
 
 	/**
 	 * Capture the armed upgrades into a fresh plan and reveal the Upgrade Plan tool
@@ -64,6 +69,44 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 		if (toolWindow != null) {
 			toolWindow.activate(null);
 		}
+	}
+
+	@Override
+	public void init(ToolWindow toolWindow) {
+
+		Project project = toolWindow.getProject();
+		ToolWindowManager windowManager = ToolWindowManager.getInstance(project);
+		UpgradePlanState planState = UpgradePlanState.getInstance(project);
+		project.getMessageBus().connect(toolWindow.getDisposable()).subscribe(UpgradePlanListener.TOPIC,
+				new UpgradePlanListener() {
+
+					@Override
+					public void planChanged() {
+						updateBadge(windowManager, toolWindow, planState);
+					}
+
+					@Override
+					public void planItemChanged() {
+						updateBadge(windowManager, toolWindow, planState);
+					}
+
+				});
+		updateBadge(windowManager, toolWindow, planState);
+	}
+
+	private static void updateBadge(ToolWindowManager windowManager, ToolWindow toolWindow,
+			UpgradePlanState planState) {
+
+		Project project = toolWindow.getProject();
+		windowManager.invokeLater(() -> {
+
+			if (project.isDisposed()) {
+				return;
+			}
+
+			boolean hasItems = !planState.getPlan().getContent().isEmpty();
+			toolWindow.setIcon(BADGE_ICON.getInfoIcon(hasItems));
+		});
 	}
 
 	@Override
