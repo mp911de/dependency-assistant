@@ -141,7 +141,8 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	private Rules loadRules() {
 		if (JSON_PRESENT) {
 			VirtualFile descriptor = findDescriptor();
-			return (descriptor != null ? ReadAction.compute(() -> parseDescriptor(descriptor)) : Rules.absent());
+			return (descriptor != null ? ReadAction.computeBlocking(() -> parseDescriptor(descriptor))
+					: Rules.absent());
 		}
 		return Rules.absent();
 	}

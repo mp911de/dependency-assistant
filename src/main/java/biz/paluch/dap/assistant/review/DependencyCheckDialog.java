@@ -34,8 +34,10 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.ListCellRenderer;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
@@ -415,11 +417,20 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 			strategyComboBox.setToolTipText(MessageBundle.message("dialog.upgradeStrategy.tooltip"));
 			strategyComboBox.setSelectedItem(this.review.getUpgradeStrategy());
-			strategyComboBox.setRenderer(SimpleListCellRenderer.create((label, value, index) -> {
-				label.setText(MessageBundle.message(value.getMessageKey()));
-				label.setIcon(value.getIcon());
-				label.setIconTextGap(JBUI.scale(4));
-			}));
+
+			ListCellRenderer<UpgradeReview.StrategySelection> renderer = new SimpleListCellRenderer<>() {
+
+				@Override
+				public void customize(JList<? extends UpgradeReview.StrategySelection> list,
+						UpgradeReview.StrategySelection value, int index, boolean selected, boolean hasFocus) {
+					setText(MessageBundle.message(value.getMessageKey()));
+					setIcon(value.getIcon());
+					setIconTextGap(JBUI.scale(4));
+				}
+
+			};
+
+			strategyComboBox.setRenderer(renderer);
 			strategyComboBox.addItemListener(e -> {
 				if (e.getStateChange() != ItemEvent.SELECTED) {
 					return;
@@ -653,7 +664,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private void restartHighlighting() {
 
-		ReadAction.run(() -> {
+		ReadAction.runBlocking(() -> {
 			DaemonCodeAnalyzer analyzer = DaemonCodeAnalyzer.getInstance(project);
 			BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
 			psiManager.stream(scope.toList()).forEach(psiFile -> analyzer.restart(psiFile, "Dependency Check"));

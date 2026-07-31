@@ -161,7 +161,7 @@ public class BomMembershipResolver {
 		for (DependencyAssistant assistant : assistants) {
 
 			Map<ArtifactId, ArtifactVersion> members = ReadAction
-					.compute(() -> assistant.resolveBillOfMaterials(project, pkg, version));
+					.computeBlocking(() -> assistant.resolveBillOfMaterials(project, pkg, version));
 			if (!members.isEmpty()) {
 				return members;
 			}

@@ -97,7 +97,7 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 					.withGlobalUndo()
 					.run(() -> upgradeTarget.applyVersion(version)));
 
-			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));
+			return ReadAction.computeBlocking(() -> LinkResolveResult.Async.resolvedTarget(target));
 		});
 	}
 
@@ -116,14 +116,14 @@ public class DependencyUpgradeLinkHandler implements DocumentationLinkHandler {
 				return null;
 			}
 
-			PsiFile declarationFile = ReadAction.compute(upgradeTarget::getDeclarationFile);
+			PsiFile declarationFile = ReadAction.computeBlocking(upgradeTarget::getDeclarationFile);
 			if (declarationFile != null) {
 				ApplicationManager.getApplication()
 						.invokeLater(() -> ProgressManager.getInstance().run(new DependencyCheckTask(project,
 								new UpgradeRequest(List.of(), declarationFile, upgradeTarget.getPackageIdentity()))));
 			}
 
-			return ReadAction.compute(() -> LinkResolveResult.Async.resolvedTarget(target));
+			return ReadAction.computeBlocking(() -> LinkResolveResult.Async.resolvedTarget(target));
 		});
 	}
 
