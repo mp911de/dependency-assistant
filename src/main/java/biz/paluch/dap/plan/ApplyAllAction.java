@@ -111,7 +111,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 			@Override
 			public void onSuccess() {
-				notifyDone(service, applied, unshelve);
+				notifyDone(service, items, applied, unshelve);
 			}
 
 			@Override
@@ -172,8 +172,8 @@ public class ApplyAllAction extends UpgradePlanAction {
 	 * Notify that the plan was applied, offering to restore a shelf created for the
 	 * run.
 	 */
-	void notifyDone(UpgradePlanService service, int applied, @Nullable Runnable unshelve) {
-		new PlanNotifications().applied(service.getProject(), false, applied, null, unshelve);
+	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, int applied, @Nullable Runnable unshelve) {
+		new PlanNotifications().applied(service.getProject(), false, items, applied, null, unshelve);
 	}
 
 	/**

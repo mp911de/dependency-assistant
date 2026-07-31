@@ -122,10 +122,8 @@ class Clipboard {
 				if (item.isGroup()) {
 					for (ItemDependency dependency : item) {
 						String text = " - %s %s -> %s".formatted(dependency.getArtifactId(),
-								dependency.getCurrentVersion()
-										.toDocumentationString(),
-								item.getToVersion()
-										.toDocumentationString());
+								dependency.getCurrentVersionString(),
+								item.getToVersionString());
 						joiner.add(text);
 					}
 				}

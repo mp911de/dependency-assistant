@@ -367,7 +367,10 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			return from(plannedUpgrade.getName(), targetVersion, members, plannedUpgrade.getUpgradeCandidates());
 		}
 
-		private static Item from(String displayName, ArtifactVersion targetVersion, List<Member> members,
+		/**
+		 * Create a persisted item from a planned upgrade.
+		 */
+		static Item from(String displayName, ArtifactVersion targetVersion, List<Member> members,
 				List<DependencyUpgradeCandidate> upgrades) {
 
 			Item item = new Item();
@@ -794,12 +797,15 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 	/**
 	 * Member artifact of a plan item, carrying its coordinate, current version, the
 	 * integration that owns it, and its declaration and version-source structure.
+	 *
+	 * <p>An implicit member joined its item through a shared version property; it
+	 * emits no update of its own because another member owns the property write.
 	 */
 	@Tag("member")
 	public static class Member {
 
 		@Attribute
-		public boolean active = true;
+		public boolean implicit;
 
 		@Attribute
 		public @Nullable String groupId;
@@ -826,7 +832,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		}
 
 		Member(Member member) {
-			this.active = member.active;
+			this.implicit = member.implicit;
 			this.groupId = member.groupId;
 			this.artifactId = member.artifactId;
 			this.packageSystem = member.packageSystem;
@@ -877,7 +883,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			if (!(o instanceof Member that)) {
 				return false;
 			}
-			if (active != that.active) {
+			if (implicit != that.implicit) {
 				return false;
 			}
 			if (!ObjectUtils.nullSafeEquals(packageSystem, that.packageSystem)) {
@@ -903,7 +909,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 
 		@Override
 		public int hashCode() {
-			return ObjectUtils.nullSafeHash(active, packageSystem, groupId, artifactId, fromVersion, assistant,
+			return ObjectUtils.nullSafeHash(implicit, packageSystem, groupId, artifactId, fromVersion, assistant,
 					declarationSources,
 					versionSources);
 		}

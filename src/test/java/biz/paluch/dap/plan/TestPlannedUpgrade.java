@@ -70,8 +70,10 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 		List<UpgradePlanItem> items = new ArrayList<>();
 		for (TestPlannedUpgrade candidate : candidates) {
 
-			Item stored = Item.from(candidate, target);
-			UpgradePlanItem item = new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null).create(stored);
+			List<UpgradePlanState.Member> members = candidate.getUpgradeCandidates().stream()
+					.map(UpgradePlanState.Member::of).toList();
+			Item stored = Item.from(candidate.name, target, members, candidate.getUpgradeCandidates());
+			UpgradePlanItem item = new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored);
 			stored.setMaterialized(item);
 			content.getItems().add(stored);
 			items.add(item);
@@ -96,7 +98,7 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 				TestCandidates.candidate(coordinates, it -> it.releases(target)));
 		Item stored = Item.from(candidate, ArtifactVersion.of(target));
 		return Objects
-				.requireNonNull(new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null).create(stored));
+				.requireNonNull(new UpgradePlanLoader(TestAssistant.INSTANCE, null).create(stored));
 	}
 
 	@Override

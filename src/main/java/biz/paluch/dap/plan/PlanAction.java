@@ -388,10 +388,7 @@ interface PlanAction {
 			this.plan = plan;
 
 			Content content = new Content();
-			List<Item> items = content.getItems();
-			upgrades.forEach((capture, version) -> {
-				items.add(Item.from(capture, version));
-			});
+			content.setItems(ImplicitGroups.create(upgrades).toList());
 			content.getAffectedFiles().addAll(scope.getPaths());
 
 			this.oldContent = plan.getContent();

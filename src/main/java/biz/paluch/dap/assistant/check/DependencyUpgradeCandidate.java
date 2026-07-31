@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant.check;
 
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,7 +84,7 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 
 	private final UpgradeSuggestions displaySuggestions;
 
-	private final Set<VersionProperty> versionProperties = new HashSet<>();
+	private final Set<VersionProperty> versionProperties = new LinkedHashSet<>();
 
 	private final Map<ArtifactVersion, Vulnerabilities> vulnerabilitiesByVersion = new ConcurrentHashMap<>();
 
@@ -235,9 +236,10 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Return version properties associates with this upgrade candidate.
+	 * Return version properties associated with this upgrade candidate, in
+	 * version-source order.
 	 *
-	 * @return the version properties.
+	 * @return the version properties in version-source order.
 	 */
 	public Set<VersionProperty> getVersionProperties() {
 		return versionProperties;

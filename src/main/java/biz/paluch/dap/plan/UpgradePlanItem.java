@@ -72,7 +72,11 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 
 	private final ArtifactVersion from;
 
+	private final String fromVersion;
+
 	private final ArtifactVersion to;
+
+	private final String toVersion;
 
 	private final Icon icon;
 
@@ -119,6 +123,8 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 		}
 
 		this.from = from == null ? to : from;
+		this.fromVersion = from == null ? "" : from.toDocumentationString();
+		this.toVersion = to.toDocumentationString();
 		ItemDependency dependency = members.getFirst();
 		InterfaceAssistant assistant = assistants.getFirst();
 		this.displayName = StringUtils.hasText(displayName) ? displayName
@@ -195,8 +201,16 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 		return from;
 	}
 
+	public String getFromVersionString() {
+		return fromVersion;
+	}
+
 	public ArtifactVersion getToVersion() {
 		return to;
+	}
+
+	public String getToVersionString() {
+		return toVersion;
 	}
 
 	/**
@@ -276,7 +290,7 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 
 		List<DependencyUpdate> updates = new ArrayList<>(members.size());
 		for (ItemDependency member : members) {
-			if (!member.isActive()) {
+			if (member.isImplicit()) {
 				continue;
 			}
 			updates.add(DependencyUpdate.from(member, getToVersion()));

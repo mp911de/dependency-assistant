@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.plan;
 
+import java.util.List;
+
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
@@ -46,21 +48,35 @@ class PlanNotifications {
 	 * Each action is one-shot: choosing it expires the notification.
 	 *
 	 * @param commit whether the upgrades were committed.
+	 * @param items
 	 * @param applied the number of applied upgrades.
 	 * @param push pushes the committed changes; {@literal null} when not offered.
 	 * @param unshelve restores the shelf created for the run; {@literal null} when
 	 * not offered.
 	 */
-	void applied(Project project, boolean commit, int applied, @Nullable Runnable push, @Nullable Runnable unshelve) {
+	void applied(Project project, boolean commit, List<UpgradePlanItem> items, int applied, @Nullable Runnable push,
+			@Nullable Runnable unshelve) {
 
 		Notification notification;
 		if (applied == 0) {
 			notification = group.createNotification(MessageBundle.message("plugin.name"),
 					MessageBundle.message("plan.apply.summary.none"), NotificationType.INFORMATION);
 		} else {
+
+
+			String message;
+			if (commit) {
+				message = MessageBundle.message("plan.apply.summary.committed", applied);
+			} else {
+				if (applied == 1 && items.size() == 1) {
+					UpgradePlanItem item = items.getFirst();
+					message = MessageBundle.message("notification.dependencies-updated", item.getDisplayName());
+				} else {
+					message = MessageBundle.message("notification.dependencies-updates", applied);
+				}
+			}
 			notification = group
-					.createNotification(MessageBundle.message(commit ? "plan.apply.summary.committed"
-							: "notification.dependencies-updates", applied), NotificationType.INFORMATION)
+					.createNotification(message, NotificationType.INFORMATION)
 					.setImportant(true);
 			addAction(notification, "plan.apply.push", push);
 			addAction(notification, "plan.apply.unshelve", unshelve);

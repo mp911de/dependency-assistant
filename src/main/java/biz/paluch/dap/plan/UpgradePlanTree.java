@@ -46,6 +46,7 @@ import javax.swing.tree.TreeSelectionModel;
 
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.ide.util.treeView.TreeState;
@@ -531,12 +532,19 @@ class UpgradePlanTree {
 			} else if (((DefaultMutableTreeNode) value).getUserObject() instanceof ItemDependency member) {
 
 				text.setIcon(AllIcons.Nodes.Library);
-				text.append(member.getArtifactCoordinates(),
-						member.isActive() ? SimpleTextAttributes.REGULAR_ATTRIBUTES
-								: SimpleTextAttributes.GRAYED_ATTRIBUTES);
-				text.append("   " + member.getCurrentVersion()
-						.toDocumentationString(),
-						SimpleTextAttributes.GRAYED_ATTRIBUTES);
+				text.append(member.getArtifactCoordinates(), SimpleTextAttributes.REGULAR_ATTRIBUTES);
+
+				String details = member.getCurrentVersionString();
+				String versionProperties = member.getVersionProperties();
+				if (StringUtils.hasText(versionProperties)) {
+					if (member.isImplicit()) {
+						details = MessageBundle.message("plan.member.version-properties.implicit", details,
+								versionProperties);
+					} else {
+						details = MessageBundle.message("plan.member.version-properties", details, versionProperties);
+					}
+				}
+				text.append("   " + details, SimpleTextAttributes.GRAYED_ATTRIBUTES);
 			}
 
 			SpeedSearchUtil.applySpeedSearchHighlighting(tree, text, true, selected);

@@ -17,6 +17,7 @@
 package biz.paluch.dap.plan;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.support.FileScope;
@@ -92,8 +93,8 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 	 * Notify that the upgrades were applied and committed.
 	 */
 	@Override
-	void notifyDone(UpgradePlanService service, int applied, @Nullable Runnable unshelve) {
-		new PlanNotifications().applied(service.getProject(), true, applied,
+	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, int applied, @Nullable Runnable unshelve) {
+		new PlanNotifications().applied(service.getProject(), true, items, applied,
 				service.getVcs().canPush() ? () -> push(service) : null, unshelve);
 	}
 

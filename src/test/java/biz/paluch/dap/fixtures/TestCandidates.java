@@ -123,13 +123,13 @@ public class TestCandidates {
 
 		private DependencyAssistant assistant = TestAssistant.INSTANCE;
 
-		private VersionSource versionSource;
+		private final List<VersionSource> versionSources = new ArrayList<>();
 
 		CandidateSpec(ArtifactId artifactId, ArtifactVersion currentVersion) {
 			this.artifactId = artifactId;
 			this.currentVersion = currentVersion;
 			this.releases = Releases.just(currentVersion);
-			this.versionSource = VersionSource.declared(currentVersion.toString());
+			this.versionSources.add(VersionSource.declared(currentVersion.toString()));
 		}
 
 		/**
@@ -213,7 +213,16 @@ public class TestCandidates {
 		 * Replace the default declared-version source.
 		 */
 		public CandidateSpec versionSource(VersionSource versionSource) {
-			this.versionSource = versionSource;
+			return versionSources(versionSource);
+		}
+
+		/**
+		 * Replace the version sources with the given sources, e.g. a version property
+		 * alongside an inline declaration.
+		 */
+		public CandidateSpec versionSources(VersionSource... versionSources) {
+			this.versionSources.clear();
+			this.versionSources.addAll(List.of(versionSources));
 			return this;
 		}
 
@@ -233,7 +242,7 @@ public class TestCandidates {
 			PackageIdentity pkg = PackageIdentity.of(artifactId, PackageSystem.MAVEN);
 			Dependency dependency = new Dependency(pkg, currentVersion);
 			dependency.addDeclarationSource(DeclarationSource.dependency());
-			dependency.addVersionSource(versionSource);
+			dependency.addAllVersionSources(versionSources);
 
 			IconDependencyPresentation presentation = IconDependencyPresentation.from(dependency,
 					TestInterfaceAssistant.INSTANCE);

@@ -40,13 +40,15 @@ import static biz.paluch.dap.assertions.Assertions.*;
  */
 class UpgradePlanLoaderUnitTests {
 
+	UpgradePlanLoader loader = new UpgradePlanLoader(TestAssistant.INSTANCE, null);
+
 	@Test
 	void reconstructsApplyAndNavigationFactsFromPersistedState() {
 
 		Item stored = item("Spring Core", "6.2.2",
 				member("org.springframework", "spring-core", "6.2.1", "spring.version"));
 
-		UpgradePlanItem planItem = loader().create(stored);
+		UpgradePlanItem planItem = loader.create(stored);
 
 		assertThat(planItem).isNotNull();
 		assertThat(planItem.getDisplayName()).isEqualTo("Spring Core");
@@ -73,28 +75,23 @@ class UpgradePlanLoaderUnitTests {
 				member("org.springframework", "spring-core", "6.2.1", "spring.version"));
 		stored.getMembers().getFirst().assistant = "missing.Assistant";
 
-		assertThat(loader().create(stored)).isNull();
+		assertThat(loader.create(stored)).isNull();
 	}
 
 	@Test
-	void inactiveMemberRemainsVisibleWithoutCreatingAnUpdate() {
+	void implicitMemberRemainsVisibleWithoutCreatingAnUpdate() {
 
-		Member active = member("org.springframework", "spring-core", "6.2.1", "spring.version");
-		Member inactive = member("com.example", "addon", "6.2.1", "spring.version");
-		inactive.active = false;
-		inactive.versionSources.clear();
+		Member owner = member("org.springframework", "spring-core", "6.2.1", "spring.version");
+		Member implicit = member("com.example", "addon", "6.2.1", "spring.version");
+		implicit.implicit = true;
 
-		UpgradePlanItem planItem = loader().create(item("spring.version", "6.2.2", active, inactive));
+		UpgradePlanItem planItem = loader.create(item("spring.version", "6.2.2", owner, implicit));
 
 		assertThat(planItem).isNotNull();
 		assertThat(planItem.getMembers()).hasSize(2);
-		assertThat(planItem.getMembers()).extracting(ItemDependency::isActive).containsExactly(true, false);
+		assertThat(planItem.getMembers()).extracting(ItemDependency::isImplicit).containsExactly(false, true);
 		assertThat(planItem.createUpdates()).singleElement()
 				.extracting(update -> update.artifactId().artifactId()).isEqualTo("spring-core");
-	}
-
-	private static UpgradePlanLoader loader() {
-		return new UpgradePlanLoader(List.of(TestAssistant.INSTANCE), null);
 	}
 
 	private static Item item(String displayName, String target, Member... members) {

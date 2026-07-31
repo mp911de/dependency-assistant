@@ -16,34 +16,58 @@
 
 package biz.paluch.dap.plan;
 
+import java.util.stream.Collectors;
+
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.VersionSource;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Materialized dependency member of an Upgrade Plan item.
  *
- * <p>An inactive member remains part of the item for display and risk facts but
- * emits no dependency update because another member owns its version-property
- * write.
+ * <p>An implicit group member remains a full member of the item for display and
+ * risk facts and is upgraded through the item's target, but emits no dependency
+ * update of its own because another member owns its version-property write.
  *
  * @author Mark Paluch
  */
 class ItemDependency extends Dependency {
 
-	private final boolean active;
+	private final boolean implicit;
 
-	ItemDependency(PackageIdentity pkg, ArtifactVersion currentVersion, boolean active) {
+	private final String currentVersionString;
+
+	private @Nullable String versionProperties;
+
+	ItemDependency(PackageIdentity pkg, ArtifactVersion currentVersion, boolean implicit) {
 		super(pkg, currentVersion);
-		this.active = active;
+		this.implicit = implicit;
+		this.currentVersionString = currentVersion.toDocumentationString();
 	}
 
-	boolean isActive() {
-		return active;
+	boolean isImplicit() {
+		return implicit;
 	}
 
 	public String getArtifactCoordinates() {
 		return getArtifactId().artifactId();
 	}
 
+	public String getCurrentVersionString() {
+		return currentVersionString;
+	}
+
+	public String getVersionProperties() {
+		if (versionProperties == null) {
+			this.versionProperties = getVersionSources().stream()
+					.filter(VersionSource::isProperty)
+					.map(it -> (VersionSource.VersionProperty) it)
+					.map(VersionSource.VersionProperty::getProperty)
+					.map(it -> "${" + it + "}")
+					.collect(Collectors.joining(", "));
+		}
+		return this.versionProperties;
+	}
 }

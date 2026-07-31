@@ -49,6 +49,10 @@ class UpgradePlanLoader {
 		this(DependencyAssistantDispatcher.findAll(), ticketSystem);
 	}
 
+	UpgradePlanLoader(DependencyAssistant assistant, @Nullable TicketSystem ticketSystem) {
+		this(List.of(assistant), ticketSystem);
+	}
+
 	UpgradePlanLoader(List<? extends DependencyAssistant> assistants, @Nullable TicketSystem ticketSystem) {
 		this.assistants = assistants;
 		this.ticketSystem = ticketSystem;
@@ -110,7 +114,7 @@ class UpgradePlanLoader {
 	private static ItemDependency toDependency(Member member) {
 
 		ArtifactVersion fromVersion = ArtifactVersion.of(member.fromVersion);
-		ItemDependency dependency = new ItemDependency(member.getPackageIdentity(), fromVersion, member.active);
+		ItemDependency dependency = new ItemDependency(member.getPackageIdentity(), fromVersion, member.implicit);
 
 		if (member.declarationSources.isEmpty()) {
 			dependency.addDeclarationSource(DeclarationSource.dependency());
@@ -120,7 +124,7 @@ class UpgradePlanLoader {
 			}
 		}
 
-		if (member.versionSources.isEmpty() && member.active) {
+		if (member.versionSources.isEmpty() && !member.implicit) {
 			dependency.addVersionSource(VersionSource.declared(member.fromVersion));
 		} else {
 			for (VersionSourceState source : member.versionSources) {

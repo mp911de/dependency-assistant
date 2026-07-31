@@ -58,8 +58,6 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 	 * @param upgrades the armed upgrades to transfer; they become the whole plan.
 	 * @param scope the build-file scope that becomes the plan's scope.
 	 */
-	// TODO: If two upgradeCandidates share the same property and the same
-	// assistant, keep only one of them.
 	public static void openWith(Project project, Map<? extends PlannedUpgrade, ArtifactVersion> upgrades,
 			FileScope scope) {
 
