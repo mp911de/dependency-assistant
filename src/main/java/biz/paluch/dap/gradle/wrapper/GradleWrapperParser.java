@@ -28,8 +28,8 @@ import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.lang.properties.psi.Property;
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,14 +49,14 @@ class GradleWrapperParser {
 		return Properties.from(propertiesFile).filterMap(GradleWrapperParser::parse).toList();
 	}
 
-	static @Nullable GradleWrapperEntry parse(PropertyImpl property) {
+	static @Nullable GradleWrapperEntry parse(Property property) {
 
 		if (!property.isValid()) {
 			return null;
 		}
 
 		WrapperProperty wp = WrapperProperty.forKey(property.getUnescapedKey());
-		PropertyValueImpl value = PropertyUtils.findPropertyValue(property);
+		PsiElement value = PropertyUtils.findPropertyValue(property);
 
 		if (wp == null || value == null || PropertyUtils.containsLineContinuation(value.getText())) {
 			return null;

@@ -115,14 +115,7 @@ class MavenUtils {
 		String tagName = currentTag.getLocalName();
 		String parentName = parentTag.getLocalName();
 
-		if (tagName.equals("properties") || parentName.equals("properties")
-				|| tagName.equals("extension") || parentName.equals("extension")
-				|| parentName.equals("dependency") || parentName.equals("plugin")
-				|| parentName.equals("parent")) {
-			return true;
-		}
-
-		return "version".equals(tagName)
+		return "properties".equals(parentName) || "version".equals(tagName)
 				&& ("dependency".equals(parentName) || "plugin".equals(parentName)
 						|| "extension".equals(parentName) || "parent".equals(parentName));
 	}

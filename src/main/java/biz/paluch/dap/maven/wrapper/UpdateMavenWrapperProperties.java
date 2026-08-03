@@ -25,15 +25,13 @@ import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
-import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.SyntaxTraverser;
 
 /**
  * Applies dependency updates to {@code .mvn/wrapper/maven-wrapper.properties}.
@@ -44,13 +42,13 @@ class UpdateMavenWrapperProperties {
 
 	/**
 	 * Apply a single update at the given wrapper version literal.
-	 * @param versionLiteral the {@link PropertyValueImpl} that owns the URL value;
-	 * must not be {@literal null}.
+	 * @param versionLiteral the PSI element that owns the URL value; must not be
+	 * {@literal null}.
 	 * @param update the update to apply.
 	 */
 	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
-		PropertyImpl property = PropertyUtils.findProperty(versionLiteral);
+		Property property = PropertyUtils.findProperty(versionLiteral);
 		if (property == null) {
 			return;
 		}
@@ -87,7 +85,7 @@ class UpdateMavenWrapperProperties {
 		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
-	private static void applyUpdate(PropertyImpl property, WrapperEntry entry, DependencyUpdate update,
+	private static void applyUpdate(Property property, WrapperEntry entry, DependencyUpdate update,
 			Collection<String> toCommentOut) {
 
 		if (!entry.hasArtifactId(update.artifactId())) {
@@ -99,15 +97,15 @@ class UpdateMavenWrapperProperties {
 			return;
 		}
 
-		ASTNode valueNode = property.getValueNode();
-		if (valueNode == null) {
+		TextRange valueRange = PropertyUtils.valueRangeInElement(property);
+		if (valueRange == null) {
 			return;
 		}
 
 		toCommentOut.add(entry.property().shaKey());
 
 		int propertyStart = property.getTextRange().getStartOffset();
-		int valueStart = valueNode.getTextRange().getStartOffset() - propertyStart;
+		int valueStart = valueRange.getStartOffset();
 		String updatedText = property.getText();
 
 		for (int i = ranges.size() - 1; i >= 0; i--) {
@@ -124,7 +122,7 @@ class UpdateMavenWrapperProperties {
 			return;
 		}
 
-		for (PropertyImpl property : PsiTreeUtil.findChildrenOfType(psiFile, PropertyImpl.class)) {
+		for (Property property : SyntaxTraverser.psiTraverser(psiFile).filter(Property.class)) {
 			if (toCommentOut.contains(property.getUnescapedKey())) {
 				PropertyUtils.commentOut(property);
 			}

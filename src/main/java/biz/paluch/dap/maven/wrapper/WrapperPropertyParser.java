@@ -12,8 +12,8 @@ import biz.paluch.dap.artifact.RepositoryCredentials;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.trustedProjects.TrustedProjects;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.lang.properties.psi.Property;
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -32,9 +32,9 @@ class WrapperPropertyParser {
 	 * @return the parsed wrapper entry, or {@literal null} if the property does not
 	 * match the expected wrapper property.
 	 */
-	public static @Nullable WrapperEntry parseProperty(WrapperProperty wrapperProperty, PropertyImpl property) {
+	public static @Nullable WrapperEntry parseProperty(WrapperProperty wrapperProperty, Property property) {
 
-		PropertyValueImpl value = PropertyUtils.findPropertyValue(property);
+		PsiElement value = PropertyUtils.findPropertyValue(property);
 		if (!wrapperProperty.key().equals(property.getUnescapedKey()) || value == null
 		    || PropertyUtils.containsLineContinuation(value.getText())) {
 			return null;

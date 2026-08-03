@@ -17,29 +17,27 @@
 package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
+import java.util.Set;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactUsage;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.Expression;
+import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.PsiElements;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -51,27 +49,24 @@ class MavenParser extends MavenPomSupport {
 
 	private final Cache cache;
 
-	private final DependencyCollector collector;
-
 	private final PropertyResolver propertyResolver;
 
 	/**
 	 * Create a new {@code MavenParser}.
-	 * @param collector the dependency collector to populate.
+	 * @param cache the cache used to resolve imported BOM contents.
 	 */
-	public MavenParser(DependencyCollector collector, Cache cache) {
-		this(collector, cache, PropertyResolver.empty());
+	MavenParser(Cache cache) {
+		this(cache, PropertyResolver.empty());
 	}
 
 	/**
 	 * Create a new {@code MavenParser}.
 	 *
-	 * @param collector the dependency collector to populate.
+	 * @param cache the cache used to resolve imported BOM contents.
 	 * @param propertyResolver Maven property resolver.
 	 */
-	public MavenParser(DependencyCollector collector, Cache cache, PropertyResolver propertyResolver) {
+	MavenParser(Cache cache, PropertyResolver propertyResolver) {
 		this.cache = cache;
-		this.collector = collector;
 		this.propertyResolver = propertyResolver;
 	}
 
@@ -79,16 +74,15 @@ class MavenParser extends MavenPomSupport {
 	 * Parse dependencies, plugins, and properties from the given POM file.
 	 * @param pomFile the POM file to parse.
 	 */
-	public void parsePomFile(XmlFile pomFile) {
+	public List<ArtifactDeclaration> parsePomFile(XmlFile pomFile) {
 
-		Map<String, PropertyValue> properties = parseProperties(pomFile);
-		collector.addProperties(properties.keySet());
+		MavenPomProperties properties = this.propertyResolver instanceof MavenPomProperties mavenProperties
+				? mavenProperties
+				: MavenPomProperties.forPom(pomFile, this.propertyResolver);
 
-		PropertyResolver resolver = MavenProjectMetadataPropertyResolver.from(pomFile)
-				.withFallback(PropertyResolver.fromMap(properties))
-				.withFallback(this.propertyResolver);
-
-		doParsePomFile(pomFile, properties, resolver);
+		List<ArtifactDeclaration> declarations = new ArrayList<>();
+		doWithArtifacts(properties, pomFile, declarations::add);
+		return declarations;
 	}
 
 	/**
@@ -96,153 +90,147 @@ class MavenParser extends MavenPomSupport {
 	 *
 	 * @param extensionsFile the extensions file to parse.
 	 */
-	public void parseExtensionsFile(XmlFile extensionsFile) {
-		doParseExtensionsFile(extensionsFile);
-	}
+	public List<ArtifactDeclaration> parseExtensionsFile(XmlFile extensionsFile) {
 
-	private void doParseExtensionsFile(XmlFile pomFile) {
-
-		doWithRoot(pomFile, root -> {
-			if (!EXTENSIONS.equals(root.getLocalName())) {
-				return;
-			}
-
-			PomTag.of(root).subtags(EXTENSION).forEach(extension -> {
-
-				doWithDependency(PropertyResolver.empty(), extension, DeclarationSource.dependency(),
-						(artifactId, usage) -> {
-							if (usage.version() instanceof VersionSource.DeclaredVersion declared) {
-								ArtifactVersion.from(declared.getVersion())
-										.ifPresent(it -> {
-											collector.registerUsage(artifactId, it, usage.declaration(),
-													usage.version());
-										});
-								collector.registerDeclaration(artifactId, usage.declaration(), usage.version());
-							}
-						});
-			});
-		});
-	}
-
-	private void doWithDependency(PropertyResolver resolver, PomTag tag, DeclarationSource declarationSource,
-			BiConsumer<ArtifactId, ArtifactUsage> callback) {
-
-		ArtifactId artifactId = parseArtifactId(tag, resolver);
-
-		if (artifactId == null) {
-			return;
-		}
-		VersionSource versionSource = tag.subtag(VERSION)
-				.eitherOr(version -> Expression.from(version).asVersionSource(), VersionSource::none);
-		callback.accept(artifactId, new ArtifactUsage(declarationSource, versionSource));
-	}
-
-	private void doParsePomFile(XmlFile pomFile, Map<String, PropertyValue> properties,
-			PropertyResolver propertyResolver) {
-
-		doWithArtifacts(propertyResolver, pomFile, (coordinate, usage) -> {
-
-			if (usage.version() instanceof VersionSource.VersionProperty versionProperty) {
-
-				String value = propertyResolver.getProperty(versionProperty.getProperty());
-				if (StringUtils.hasText(value) && properties.containsKey(versionProperty.getProperty())) {
-					ArtifactVersion.from(value).ifPresent(it -> {
-						collector.registerUsage(coordinate, it, usage.declaration(), usage.version());
-					});
-				}
-				collector.registerDeclaration(coordinate, usage.declaration(), usage.version());
-			} else if (usage.version() instanceof VersionSource.DeclaredVersion declared) {
-				ArtifactVersion.from(declared.getVersion()).ifPresent(it -> {
-					collector.registerUsage(coordinate, it, usage.declaration(), usage.version());
-				});
-				collector.registerDeclaration(coordinate, usage.declaration(), usage.version());
-			} else if (!usage.version().isDefined() && !usage.declaration().isPlugin()) {
-				// versionless dependencies count as use evidence for BOM members
-				collector.registerDeclaration(coordinate, usage.declaration(), usage.version());
-			}
-		});
-
-		cache.doWithProperties(property -> {
-			if (property.hasArtifacts() && properties.containsKey(property.name())) {
-
-				String value = propertyResolver.getProperty(property.name());
-
-				if (StringUtils.isEmpty(value)) {
-					return;
-				}
-
-				ArtifactVersion.from(value).ifPresent(version -> {
-					for (CachedArtifact artifact : property.artifacts()) {
-						collector.registerUsage(artifact.toArtifactId(), version, DeclarationSource.managed(),
-								VersionSource.property(property.name()));
+		MavenPomProperties properties = MavenPomProperties.forPom(extensionsFile, this.propertyResolver);
+		List<ArtifactDeclaration> declarations = new ArrayList<>();
+		doWithRoot(extensionsFile, root -> {
+			if (EXTENSIONS.equals(root.getLocalName())) {
+				PomTag.of(root).subtags(EXTENSION).forEach(extension -> {
+					ArtifactDeclaration declaration = parseDeclaration(properties, extension.getTag(),
+							DeclarationSource.dependency());
+					if (declaration != null) {
+						declarations.add(declaration);
 					}
 				});
 			}
 		});
+		return declarations;
 	}
 
-	private void doWithArtifacts(PropertyResolver resolver, XmlFile pomFile,
-			BiConsumer<ArtifactId, ArtifactUsage> callback) {
+	private @Nullable ArtifactDeclaration parseDeclaration(MavenPomProperties properties, XmlTag owner,
+			DeclarationSource declarationSource) {
+
+		PropertyResolver resolver = properties.forDeclaration(owner);
+		PomTag tag = PomTag.of(owner);
+		ArtifactId artifactId = parseArtifactId(tag, resolver);
+
+		if (artifactId == null) {
+			return null;
+		}
+
+		Subtag versionTag = tag.subtag(VERSION);
+		String versionText = versionTag.getText();
+		Expression expression = Expression.from(versionText != null ? versionText : "");
+		VersionSource versionSource = StringUtils.hasText(versionText) ? expression.asVersionSource()
+				: VersionSource.none();
+		if (expression.isProperty() && declarationSource instanceof DeclarationSource.Profile profile) {
+			versionSource = VersionSource.profileProperty(profile.getProfileId(), expression.getPropertyName());
+		}
+		Property resolvedProperty = resolveProperty(expression, resolver);
+		String resolvedVersion = resolvedProperty != null ? resolvedProperty.getValue() : expression.resolve(resolver);
+
+		ArtifactDeclaration.Builder builder = ArtifactDeclaration.builder()
+				.artifact(artifactId)
+				.packageSystem(PackageSystem.MAVEN)
+				.declarationElement(tag.getTag())
+				.declarationSource(declarationSource)
+				.versionSource(versionSource);
+
+		ArtifactVersion.from(resolvedVersion).ifPresent(builder::version);
+		if (resolvedProperty != null) {
+			builder.versionLiteral(resolvedProperty.getValueLiteral());
+		} else if (!expression.isProperty() && owner.findFirstSubTag(VERSION) != null) {
+			builder.versionLiteral(owner.findFirstSubTag(VERSION));
+		}
+		return builder.build();
+	}
+
+	private static @Nullable Property resolveProperty(Expression expression, PropertyResolver resolver) {
+
+		Set<String> visited = new HashSet<>();
+		Property property = null;
+		while (expression.isProperty() && visited.add(expression.getPropertyName())) {
+			property = resolver.getPropertyValue(expression.getPropertyName());
+			if (property == null) {
+				return null;
+			}
+			expression = Expression.from(property.getValue());
+		}
+		return expression.isProperty() ? null : property;
+	}
+
+	private void doWithArtifacts(MavenPomProperties properties, XmlFile pomFile,
+			Consumer<ArtifactDeclaration> callback) {
 
 		doWithRoot(pomFile, root -> {
 
 			PomTag pomTag = PomTag.of(root);
 			XmlTag parent = root.findFirstSubTag("parent");
 			if (isParentDependencyCandidate(root, parent)) {
-				doWithDependency(resolver, PomTag.of(parent), getDeclarationSource(parent), callback);
+				doWithDeclaration(properties, PomTag.of(parent), getDeclarationSource(parent), callback);
 			}
 
-			doWithPluginsAndDependencies(resolver, callback, pomTag);
+			doWithPluginsAndDependencies(properties, callback, pomTag);
 			doWithProfiles(pomTag, profile -> {
 
 				Subtag id = profile.subtag(ID);
 				if (id.isEmpty()) {
 					return;
 				}
-				doWithPluginsAndDependencies(resolver, callback, profile);
+				doWithPluginsAndDependencies(properties, callback, profile);
 			});
 		});
 	}
 
-	private void doWithPluginsAndDependencies(PropertyResolver resolver, BiConsumer<ArtifactId, ArtifactUsage> callback,
+	private void doWithPluginsAndDependencies(MavenPomProperties properties, Consumer<ArtifactDeclaration> callback,
 			PomTag root) {
 
 		root.subtags(DEPENDENCY_MANAGEMENT)
-				.forEach(dependencyManagement -> doWithDependencies(dependencyManagement, resolver, callback));
+				.forEach(dependencyManagement -> doWithDependencies(dependencyManagement, properties, callback));
 
-		doWithDependencies(root, resolver, callback);
+		doWithDependencies(root, properties, callback);
 
 		root.subtags(BUILD).forEach(build -> {
 			build.subtags(PLUGIN_MANAGEMENT)
-					.forEach(pluginManagement -> doWithPlugins(resolver, callback, pluginManagement));
-			doWithPlugins(resolver, callback, build);
-			doWithExtensions(resolver, callback, build);
+					.forEach(pluginManagement -> doWithPlugins(properties, callback, pluginManagement));
+			doWithPlugins(properties, callback, build);
+			doWithExtensions(properties, callback, build);
 		});
 
-		root.subtags(REPORTING).forEach(reporting -> doWithPlugins(resolver, callback, reporting));
+		root.subtags(REPORTING).forEach(reporting -> doWithPlugins(properties, callback, reporting));
 	}
 
-	private void doWithDependencies(PomTag root, PropertyResolver resolver,
-			BiConsumer<ArtifactId, ArtifactUsage> callback) {
+	private void doWithDependencies(PomTag root, MavenPomProperties properties,
+			Consumer<ArtifactDeclaration> callback) {
 		root.subtags(DEPENDENCIES).subtags(DEPENDENCY).forEach(dependency -> {
-			doWithDependency(resolver, dependency, getDeclarationSource(dependency.getTag(), resolver), callback);
+			doWithDeclaration(properties, dependency, getDeclarationSource(dependency.getTag(), properties), callback);
 		});
 	}
 
-	private void doWithPlugins(PropertyResolver resolver,
-			BiConsumer<ArtifactId, ArtifactUsage> callback, PomTag build) {
+	private void doWithPlugins(MavenPomProperties properties,
+			Consumer<ArtifactDeclaration> callback, PomTag build) {
 		build.subtags(PLUGINS).subtags(PLUGIN).forEach(plugin -> {
-			doWithDependency(resolver, plugin, getDeclarationSource(plugin.getTag()), callback);
+			doWithDeclaration(properties, plugin, getDeclarationSource(plugin.getTag()), callback);
 		});
 	}
 
-	private void doWithExtensions(PropertyResolver resolver,
-			BiConsumer<ArtifactId, ArtifactUsage> callback, PomTag build) {
+	private void doWithExtensions(MavenPomProperties properties,
+			Consumer<ArtifactDeclaration> callback, PomTag build) {
 		build.subtags(EXTENSIONS).subtags(EXTENSION).forEach(extension -> {
 			if (extension.subtag(GROUP_ID).isPresent()) {
-				doWithDependency(resolver, extension, getDeclarationSource(extension.getTag()), callback);
+				doWithDeclaration(properties, extension, getDeclarationSource(extension.getTag()), callback);
 			}
 		});
+	}
+
+	private void doWithDeclaration(MavenPomProperties properties, PomTag tag, DeclarationSource declarationSource,
+			Consumer<ArtifactDeclaration> callback) {
+
+		ArtifactDeclaration declaration = parseDeclaration(properties, tag.getTag(), declarationSource);
+		if (declaration != null) {
+			callback.accept(declaration);
+		}
 	}
 
 	/**
@@ -253,7 +241,9 @@ class MavenParser extends MavenPomSupport {
 	 * @param owner the dependency, plugin, or extension tag to classify.
 	 * @return the declaration source describing where the artifact is declared.
 	 */
-	public DeclarationSource getDeclarationSource(XmlTag owner, PropertyResolver propertyResolver) {
+	private DeclarationSource getDeclarationSource(XmlTag owner, MavenPomProperties properties) {
+
+		PropertyResolver propertyResolver = properties.forDeclaration(owner);
 
 		XmlTag profile = (XmlTag) PsiElements.findFirstParent(owner, false,
 				psiElement -> psiElement instanceof XmlTag tag && PROFILE.equals(tag.getLocalName()));
@@ -326,69 +316,6 @@ class MavenParser extends MavenPomSupport {
 		}
 
 		return profileTag.eitherOr(DeclarationSource::profileDependency, DeclarationSource::dependency);
-	}
-
-	/**
-	 * Parse Maven repositories from the given {@link PsiFile}.
-	 * @param pomFile the Maven POM file.
-	 * @return list of repositories.
-	 */
-	public static List<MavenRemoteRepository> parseRepositories(PsiFile pomFile) {
-
-		List<MavenRemoteRepository> repositories = new ArrayList<>();
-
-		if (!(pomFile instanceof XmlFile xmlFile)) {
-			return repositories;
-		}
-
-		doWithRoot(xmlFile, root -> {
-			PomTag pomTag = PomTag.of(root);
-
-			collectRepositories(pomTag, repositories);
-			doWithProfiles(pomTag, profile -> collectRepositories(profile, repositories));
-
-		});
-
-		return repositories;
-	}
-
-	private static void collectRepositories(PomTag parent, List<MavenRemoteRepository> target) {
-		collectRepositories(parent, "repositories", "repository", target);
-		collectRepositories(parent, "pluginRepositories", "pluginRepository", target);
-	}
-
-	private static void collectRepositories(PomTag parent, String containerTag, String entryTag,
-			List<MavenRemoteRepository> target) {
-		parent.subtags(containerTag).subtags(entryTag)
-				.forEach(entry -> target.add(toRemoteRepository(entry.getTag())));
-	}
-
-	private static MavenRemoteRepository toRemoteRepository(XmlTag repository) {
-
-		String id = text(repository, ID);
-		String name = text(repository, "name");
-		String url = text(repository, "url");
-		String layout = text(repository, "layout");
-
-		MavenRemoteRepository.Policy releases = parsePolicy(repository.findFirstSubTag("releases"));
-		MavenRemoteRepository.Policy snapshots = parsePolicy(repository.findFirstSubTag("snapshots"));
-
-		return new MavenRemoteRepository(id, name, url, layout, releases, snapshots);
-	}
-
-	private static MavenRemoteRepository.Policy parsePolicy(@Nullable XmlTag policy) {
-
-		if (policy == null) {
-			return new MavenRemoteRepository.Policy(true, "daily", "warn");
-		}
-
-		String enabled = text(policy, "enabled");
-		String updatePolicy = text(policy, "updatePolicy");
-		String checksumPolicy = text(policy, "checksumPolicy");
-
-		return new MavenRemoteRepository.Policy(!"false".equals(enabled),
-				updatePolicy.isEmpty() ? "daily" : updatePolicy,
-				checksumPolicy.isEmpty() ? "warn" : checksumPolicy);
 	}
 
 }

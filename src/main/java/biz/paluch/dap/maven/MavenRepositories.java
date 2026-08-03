@@ -28,6 +28,8 @@ import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.xml.XmlTag;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
@@ -38,7 +40,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class MavenRepositories {
+class MavenRepositories extends MavenPomSupport {
 
 	/**
 	 * Collect all remote repositories (dependency and plugin) from the given Maven
@@ -66,7 +68,7 @@ class MavenRepositories {
 				(id, url) -> urls.add(new RepositoryId(id, url)));
 
 		if (pomFile != null) {
-			List<MavenRemoteRepository> repositories = MavenParser.parseRepositories(pomFile);
+			List<MavenRemoteRepository> repositories = parseRepositories(pomFile);
 			forEach(repositories, (id, url) -> urls.add(new RepositoryId(id, url)));
 		}
 
@@ -78,6 +80,62 @@ class MavenRepositories {
 		}
 
 		return remoteRepositories;
+	}
+
+	/**
+	 * Parse Maven repositories from the given {@link PsiFile}.
+	 * @param pomFile the Maven POM file.
+	 * @return list of repositories.
+	 */
+	static List<MavenRemoteRepository> parseRepositories(PsiFile pomFile) {
+
+		List<MavenRemoteRepository> repositories = new java.util.ArrayList<>();
+		if (!(pomFile instanceof XmlFile xmlFile)) {
+			return repositories;
+		}
+
+		doWithRoot(xmlFile, root -> {
+			PomTag pomTag = PomTag.of(root);
+			collectRepositories(pomTag, repositories);
+			doWithProfiles(pomTag, profile -> collectRepositories(profile, repositories));
+		});
+		return repositories;
+	}
+
+	private static void collectRepositories(PomTag parent, List<MavenRemoteRepository> target) {
+		collectRepositories(parent, "repositories", "repository", target);
+		collectRepositories(parent, "pluginRepositories", "pluginRepository", target);
+	}
+
+	private static void collectRepositories(PomTag parent, String containerTag, String entryTag,
+			List<MavenRemoteRepository> target) {
+		parent.subtags(containerTag).subtags(entryTag)
+				.forEach(entry -> target.add(toRemoteRepository(entry.getTag())));
+	}
+
+	private static MavenRemoteRepository toRemoteRepository(XmlTag repository) {
+
+		String id = text(repository, ID);
+		String name = text(repository, "name");
+		String url = text(repository, "url");
+		String layout = text(repository, "layout");
+		MavenRemoteRepository.Policy releases = parsePolicy(repository.findFirstSubTag("releases"));
+		MavenRemoteRepository.Policy snapshots = parsePolicy(repository.findFirstSubTag("snapshots"));
+		return new MavenRemoteRepository(id, name, url, layout, releases, snapshots);
+	}
+
+	private static MavenRemoteRepository.Policy parsePolicy(@Nullable XmlTag policy) {
+
+		if (policy == null) {
+			return new MavenRemoteRepository.Policy(true, "daily", "warn");
+		}
+
+		String enabled = text(policy, "enabled");
+		String updatePolicy = text(policy, "updatePolicy");
+		String checksumPolicy = text(policy, "checksumPolicy");
+		return new MavenRemoteRepository.Policy(!"false".equals(enabled),
+				updatePolicy.isEmpty() ? "daily" : updatePolicy,
+				checksumPolicy.isEmpty() ? "warn" : checksumPolicy);
 	}
 
 	private static void forEach(Collection<MavenRemoteRepository> repositories, BiConsumer<String, String> consumer) {

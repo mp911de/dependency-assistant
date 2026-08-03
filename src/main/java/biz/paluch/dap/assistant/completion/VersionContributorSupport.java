@@ -32,9 +32,9 @@ import com.intellij.codeInsight.completion.InsertHandler;
 import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.lang.properties.parsing.PropertiesTokenTypes;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.PsiElementPattern;
@@ -61,7 +61,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	 * to refine this pattern with format-specific property names.
 	 */
 	protected static final PsiElementPattern.Capture<PsiElement> PROPERTY_VALUE = PlatformPatterns.psiElement()
-			.inside(PlatformPatterns.psiElement(PropertyValueImpl.class));
+			.inside(PlatformPatterns.psiElement().withElementType(PropertiesTokenTypes.VALUE_CHARACTERS));
 
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
@@ -86,7 +86,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
 			PsiElement element, ArtifactRelease option) {
 
-		PropertyImpl property = PropertyUtils.findProperty(element);
+		Property property = PropertyUtils.findProperty(element);
 		if (property == null) {
 			return builder;
 		}
@@ -113,7 +113,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	 * {@code property}, or an empty list when the value is not a supported wrapper
 	 * URL.
 	 */
-	protected abstract List<TextRange> getVersionRanges(PropertyImpl property);
+	protected abstract List<TextRange> getVersionRanges(Property property);
 
 	/**
 	 * Apply the dependency update at {@code versionLiteral}. Called from the insert
@@ -123,7 +123,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	protected abstract void applyVersionUpdate(PsiElement versionLiteral, DependencyUpdate update);
 
 	private BiFunction<ArtifactRelease, CompletionParameters, Optional<WrapperInsertHandler>> wrapperInsertHandler(
-			CompletionPrefix prefix, PropertyImpl property) {
+			CompletionPrefix prefix, Property property) {
 
 		if (StringUtils.isEmpty(property.getUnescapedKey()) || StringUtils.isEmpty(property.getUnescapedValue())) {
 			return (a, b) -> Optional.empty();
@@ -167,16 +167,16 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 		 * a supported version segment.
 		 */
 		public static CompletionPrefix from(CompletionParameters parameters,
-				Function<PropertyImpl, List<TextRange>> getVersionRanges) {
+				Function<Property, List<TextRange>> getVersionRanges) {
 			return CachedValuesManager.getProjectPsiDependentCache(parameters.getPosition(),
 					it -> from(it, parameters.getOffset(), getVersionRanges));
 		}
 
 		private static CompletionPrefix from(PsiElement element, int caretOffset,
-				Function<PropertyImpl, List<TextRange>> getVersionRanges) {
+				Function<Property, List<TextRange>> getVersionRanges) {
 
-			PropertyImpl property = PropertyUtils.findProperty(element);
-			PropertyValueImpl value = PropertyUtils.findPropertyValue(element);
+			Property property = PropertyUtils.findProperty(element);
+			PsiElement value = PropertyUtils.findPropertyValue(element);
 			if (property == null || value == null) {
 				return NONE;
 			}
@@ -248,10 +248,10 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 
 		private final ArtifactRelease release;
 
-		private final SmartPsiElementPointer<PropertyImpl> pointer;
+		private final SmartPsiElementPointer<Property> pointer;
 
 		private WrapperInsertHandler(CompletionPrefix prefix, ArtifactRelease release,
-				SmartPsiElementPointer<PropertyImpl> pointer) {
+				SmartPsiElementPointer<Property> pointer) {
 			this.prefix = prefix;
 			this.release = release;
 			this.pointer = pointer;
@@ -260,7 +260,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 		@Override
 		public void handleInsert(InsertionContext context, LookupElement lookupElement) {
 
-			PropertyImpl property = pointer.getElement();
+			Property property = pointer.getElement();
 			if (property == null || !property.isValid()) {
 				return;
 			}
@@ -269,7 +269,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 			context.commitDocument();
 			property.setValue(prefix.getOriginalText(), PropertyKeyValueFormat.FILE);
 
-			PropertyImpl freshProperty = pointer.getElement();
+			Property freshProperty = pointer.getElement();
 			if (freshProperty == null || !freshProperty.isValid()) {
 				return;
 			}
@@ -290,7 +290,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 			return -1;
 		}
 
-		private int caretOffsetAfterUpdate(PropertyImpl freshProperty, int caretRangeIndex) {
+		private int caretOffsetAfterUpdate(Property freshProperty, int caretRangeIndex) {
 
 			if (caretRangeIndex < 0) {
 				return prefix.getStartOffset();

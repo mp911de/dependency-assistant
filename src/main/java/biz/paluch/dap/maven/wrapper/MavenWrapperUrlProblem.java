@@ -19,7 +19,7 @@ package biz.paluch.dap.maven.wrapper;
 import java.util.List;
 
 import biz.paluch.dap.util.MessageBundle;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.modcommand.PsiUpdateModCommandAction;
 
 /**
@@ -44,7 +44,7 @@ sealed interface MavenWrapperUrlProblem {
 	 * @return the specific quick-fixes offered for this problem, excluding the
 	 * generic "use default URL" fallback added by the inspection.
 	 */
-	List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind);
+	List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind);
 
 	/**
 	 * Plaintext credentials are embedded in the URL authority.
@@ -57,7 +57,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of(MavenWrapperUrlFixes.stripCredentials());
 		}
 
@@ -75,7 +75,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of();
 		}
 
@@ -95,7 +95,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of(
 					MavenWrapperUrlFixes.replaceVersion(pathVersion),
 					MavenWrapperUrlFixes.replaceVersion(fileVersion));
@@ -117,7 +117,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of(MavenWrapperUrlFixes.replaceArtifact(kind));
 		}
 
@@ -136,7 +136,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of(MavenWrapperUrlFixes.replaceGroupPath(kind));
 		}
 
@@ -154,7 +154,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of(MavenWrapperUrlFixes.replaceArtifact(kind));
 		}
 
@@ -175,7 +175,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of(MavenWrapperUrlFixes.replaceFileName(kind, sharedVersion));
 		}
 
@@ -193,7 +193,7 @@ sealed interface MavenWrapperUrlProblem {
 		}
 
 		@Override
-		public List<PsiUpdateModCommandAction<PropertyImpl>> getFixes(WrapperProperty kind) {
+		public List<PsiUpdateModCommandAction<Property>> getFixes(WrapperProperty kind) {
 			return List.of();
 		}
 

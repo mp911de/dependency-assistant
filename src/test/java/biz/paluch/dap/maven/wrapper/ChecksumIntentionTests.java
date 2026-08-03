@@ -20,7 +20,10 @@ import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import com.intellij.ide.trustedProjects.TrustedProjects;
+import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.Test;
@@ -50,6 +53,7 @@ class ChecksumIntentionTests {
 
 		assertThat(action.isAvailable(fixture.getProject(), fixture.getEditor(), file)).isTrue();
 		assertThat(action.getText()).isEqualTo("Compute 'distributionUrl' SHA-256 checksum");
+		assertThat(action.startInWriteAction()).isFalse();
 	}
 
 	@Test
@@ -125,6 +129,30 @@ class ChecksumIntentionTests {
 						validateDistributionUrl=true
 						distributionSha256Sum=82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9
 						""");
+	}
+
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			<caret>
+			""")
+	void discardsChecksumWhenUrlChangesDuringComputation(PsiFile file) {
+
+		MavenWrapperChecksumIntention action = new MavenWrapperChecksumIntention.Distribution((project, url) -> {
+			Document document = fixture.getEditor().getDocument();
+			WriteCommandAction.runWriteCommandAction(project, () -> {
+				String current = document.getText();
+				document.replaceString(current.indexOf("3.9.6"), current.indexOf("3.9.6") + "3.9.6".length(),
+						"3.9.7");
+				PsiDocumentManager.getInstance(project).commitDocument(document);
+			});
+			return SHA;
+		});
+
+		invoke(action, file);
+
+		assertThat(file).containsText("apache-maven/3.9.7")
+				.doesNotContainText("distributionSha256Sum");
 	}
 
 	private void invoke(MavenWrapperChecksumIntention action, PsiFile file) {

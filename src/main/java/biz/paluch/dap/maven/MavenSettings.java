@@ -21,6 +21,7 @@ import java.util.Map;
 
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.RepositoryCredentials;
+import org.eclipse.aether.util.repository.DefaultMirrorSelector;
 
 /**
  * Effective Maven {@code settings.xml} state relevant to release lookups: server
@@ -34,11 +35,14 @@ public class MavenSettings {
 
 	private final Map<String, RepositoryCredentials> credentials;
 
-	private final List<Mirror> mirrors;
+	private final DefaultMirrorSelector mirrorSelector;
 
 	MavenSettings(Map<String, RepositoryCredentials> credentials, List<Mirror> mirrors) {
 		this.credentials = credentials;
-		this.mirrors = mirrors;
+		this.mirrorSelector = new DefaultMirrorSelector();
+		for (Mirror mirror : mirrors) {
+			mirrorSelector.add(mirror.id(), mirror.url(), "default", false, false, mirror.mirrorOf(), "*");
+		}
 	}
 
 	public static MavenSettings empty() {
@@ -60,13 +64,17 @@ public class MavenSettings {
 	 */
 	public RemoteRepository getRemoteRepository(String id, String url) {
 
-		for (Mirror mirror : mirrors) {
-			if (mirror.matches(id, url)) {
-				return new RemoteRepository(mirror.id(), mirror.url(), credentials.get(mirror.id()));
-			}
+		org.eclipse.aether.repository.RemoteRepository declared = new org.eclipse.aether.repository.RemoteRepository.Builder(
+				id, "default", url).build();
+		org.eclipse.aether.repository.RemoteRepository mirror = mirrorSelector.getMirror(declared);
+		String effectiveId = mirror != null ? mirror.getId() : id;
+		String effectiveUrl = mirror != null ? mirror.getUrl() : url;
+		RepositoryCredentials repositoryCredentials = credentials.get(effectiveId);
+		if (repositoryCredentials != null && !repositoryCredentials.allowsRepositoryUrl(effectiveUrl)) {
+			repositoryCredentials = null;
 		}
 
-		return new RemoteRepository(id, url, credentials.get(id));
+		return new RemoteRepository(effectiveId, effectiveUrl, repositoryCredentials);
 	}
 
 }

@@ -16,10 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.net.URI;
-
-import org.jspecify.annotations.Nullable;
-
 /**
  * A {@code settings.xml} mirror that redirects repositories matching its
  * {@code mirrorOf} pattern to a single URL.
@@ -35,74 +31,4 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  */
 record Mirror(String id, String url, String mirrorOf) {
-
-	/**
-	 * Test whether the given repository is mirrored by this mirror.
-	 *
-	 * @param repositoryId the original repository id.
-	 * @param repositoryUrl the original repository URL.
-	 * @return {@literal true} if this mirror replaces the repository;
-	 * {@literal false} otherwise.
-	 */
-	boolean matches(String repositoryId, String repositoryUrl) {
-
-		if ("*".equals(mirrorOf) || mirrorOf.equals(repositoryId)) {
-			return true;
-		}
-
-		boolean matched = false;
-		for (String token : mirrorOf.split(",")) {
-			String pattern = token.trim();
-
-			if (pattern.length() > 1 && pattern.startsWith("!")) {
-				if (pattern.substring(1).equals(repositoryId)) {
-					return false;
-				}
-			} else if (pattern.equals(repositoryId)) {
-				return true;
-			} else if ("external:http:*".equals(pattern)) {
-				matched |= isExternalHttpRepo(repositoryUrl);
-			} else if ("external:*".equals(pattern)) {
-				matched |= isExternalRepo(repositoryUrl);
-			} else if ("*".equals(pattern)) {
-				matched = true;
-			}
-		}
-
-		return matched;
-	}
-
-	private static boolean isExternalRepo(String repositoryUrl) {
-
-		URI uri = parse(repositoryUrl);
-		if (uri == null) {
-			return false;
-		}
-		return !(isLocal(uri.getHost()) || "file".equals(uri.getScheme()));
-	}
-
-	private static boolean isExternalHttpRepo(String repositoryUrl) {
-
-		URI uri = parse(repositoryUrl);
-		if (uri == null) {
-			return false;
-		}
-		String scheme = uri.getScheme();
-		boolean http = "http".equalsIgnoreCase(scheme) || "dav".equalsIgnoreCase(scheme)
-				|| "dav:http".equalsIgnoreCase(scheme) || "dav+http".equalsIgnoreCase(scheme);
-		return http && !isLocal(uri.getHost());
-	}
-
-	private static boolean isLocal(@Nullable String host) {
-		return "localhost".equals(host) || "127.0.0.1".equals(host);
-	}
-
-	private static @Nullable URI parse(String url) {
-		try {
-			return URI.create(url);
-		} catch (IllegalArgumentException e) {
-			return null;
-		}
-	}
-
 }

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclaredDependency;
@@ -50,6 +51,32 @@ import static biz.paluch.dap.fixtures.Releases.*;
  * @author Mark Paluch
  */
 class DependencyCheckAggregatorTests {
+
+	@Test
+	void loadsEachContextReleaseSourceOnceAndSharesItAcrossArtifacts() {
+
+		AtomicInteger loads = new AtomicInteger();
+		ReleaseSource source = new TestReleaseSource("context");
+		TestProjectDependencyContext context = new TestProjectDependencyContext(ACME_APP,
+				new TestInterfaceAssistant()) {
+
+			@Override
+			public List<ReleaseSource> getReleaseSources() {
+				loads.incrementAndGet();
+				return List.of(source);
+			}
+
+		};
+
+		aggregator.add(dependency(LETTUCE_CURRENT), context, buildFile("pom.xml"), List.of());
+		aggregator.add(dependency(VAVR_CURRENT), context, buildFile("pom.xml"), List.of());
+		aggregator.addContextReleaseSources();
+
+		List<Collection<ReleaseSource>> releaseSources = new ArrayList<>();
+		aggregator.forEachArtifact((artifact, sources) -> releaseSources.add(sources));
+		assertThat(loads).hasValue(1);
+		assertThat(releaseSources).allSatisfy(sources -> assertThat(sources).contains(source));
+	}
 
 	private static final Coordinates LETTUCE_CURRENT = Coordinates.of(LETTUCE_CORE, "7.4.1.RELEASE");
 

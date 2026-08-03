@@ -19,6 +19,7 @@ package biz.paluch.dap.artifact;
 import java.net.URI;
 import java.util.List;
 
+import biz.paluch.dap.util.HttpClientUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -78,6 +79,8 @@ public record RepositoryCredentials(String id, String username, String password,
 		if (repoHost == null) {
 			return false;
 		}
+		String repoScheme = repoUri.getScheme();
+		int repoPort = HttpClientUtil.getEffectivePort(repoUri);
 
 		String repoPath = pathOrSlash(repoUri);
 
@@ -90,10 +93,8 @@ public record RepositoryCredentials(String id, String username, String password,
 			if (!repoHost.equalsIgnoreCase(declaredHost)) {
 				continue;
 			}
-
-			int repoPort = repoUri.getPort();
-			int declaredPort = declared.getPort();
-			if (declaredPort != -1 && repoPort != -1 && repoPort != declaredPort) {
+			if (repoScheme == null || !repoScheme.equalsIgnoreCase(declared.getScheme())
+					|| repoPort != HttpClientUtil.getEffectivePort(declared)) {
 				continue;
 			}
 

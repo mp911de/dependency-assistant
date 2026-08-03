@@ -21,7 +21,7 @@ import biz.paluch.dap.assistant.completion.PropertyContributorSupport;
 import biz.paluch.dap.state.Cache;
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionResultSet;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.psi.PsiFileFactory;
 
 /**
@@ -34,7 +34,7 @@ class PropertyContributor extends PropertyContributorSupport {
 
 	@Override
 	protected void addCompletions(CompletionResultSet result, Cache cache, PsiFileFactory factory,
-			PropertyImpl propertyPosition) {
+			Property propertyPosition) {
 
 		for (WrapperProperty kind : WrapperProperty.values()) {
 			ArtifactRelease release = kind.getLatestArtifactRelease(cache);
@@ -44,7 +44,7 @@ class PropertyContributor extends PropertyContributorSupport {
 	}
 
 	@Override
-	protected boolean supports(PropertyImpl property) {
+	protected boolean supports(Property property) {
 		return WrapperProperty.isWrapperProperty(property);
 	}
 

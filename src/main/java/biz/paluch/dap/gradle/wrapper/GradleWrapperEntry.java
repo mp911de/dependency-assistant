@@ -22,8 +22,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.VersionedDependencySite;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
@@ -37,8 +36,8 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-record GradleWrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral,
-		PropertyValueImpl versionLiteral, String versionText, String flavor) implements VersionedDependencySite {
+record GradleWrapperEntry(WrapperProperty property, Property propertyLiteral,
+		PsiElement versionLiteral, String versionText, String flavor) implements VersionedDependencySite {
 
 	boolean hasArtifactId(ArtifactId coordinate) {
 		return property.artifactId().equals(coordinate);

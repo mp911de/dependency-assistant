@@ -85,10 +85,6 @@ public class VersionUpgradeLookup {
 		return this.stateService;
 	}
 
-	public ProjectMetadataService getMetadataService() {
-		return metadataService;
-	}
-
 	/**
 	 * Resolve the given PSI element into artifact declaration metadata.
 	 * @param element the PSI element under inspection.

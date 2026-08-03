@@ -40,7 +40,7 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.ProblemsHolder.ProblemBuilder;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
@@ -70,7 +70,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 			@Override
 			public void visitElement(PsiElement element) {
 
-				if (!(element instanceof PropertyImpl property)) {
+				if (!(element instanceof Property property)) {
 					return;
 				}
 
@@ -98,7 +98,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		};
 	}
 
-	private static void registerMissingChecksum(ProblemsHolder holder, PropertyImpl property, TextRange rangeInElement,
+	private static void registerMissingChecksum(ProblemsHolder holder, Property property, TextRange rangeInElement,
 			WrapperProperty kind, String decodedValue) {
 
 		if (!TrustedProjects.isProjectTrusted(holder.getProject())
@@ -111,7 +111,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		registerProblem(holder, property, rangeInElement, kind, new MissingChecksum(kind), null);
 	}
 
-	private static void registerProblem(ProblemsHolder holder, PropertyImpl property, TextRange rangeInElement,
+	private static void registerProblem(ProblemsHolder holder, Property property, TextRange rangeInElement,
 			WrapperProperty kind, MavenWrapperUrlProblem problem, @Nullable String latestVersion) {
 
 		for (TextRange range : rangesFor(property, rangeInElement, problem)) {
@@ -134,7 +134,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		}
 	}
 
-	private static List<TextRange> rangesFor(PropertyImpl property, TextRange fallback,
+	private static List<TextRange> rangesFor(Property property, TextRange fallback,
 			MavenWrapperUrlProblem problem) {
 
 		List<TextRange> ranges = switch (problem) {
@@ -151,7 +151,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		return ranges.isEmpty() ? List.of(fallback) : ranges;
 	}
 
-	private static List<TextRange> credentialsRange(PropertyImpl property) {
+	private static List<TextRange> credentialsRange(Property property) {
 
 		String decoded = property.getUnescapedValue();
 		if (decoded == null) {
@@ -172,7 +172,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		return PropertyUtils.mapDecodedRanges(property, List.of(TextRange.create(authorityStart, at + 1)));
 	}
 
-	private static List<TextRange> coordinateRanges(PropertyImpl property, String... groupNames) {
+	private static List<TextRange> coordinateRanges(Property property, String... groupNames) {
 
 		Matcher matcher = matcher(property);
 		if (matcher == null) {
@@ -188,7 +188,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		return PropertyUtils.mapDecodedRanges(property, decodedRanges);
 	}
 
-	private static List<TextRange> improperGroupRange(PropertyImpl property, String actualGroupPath) {
+	private static List<TextRange> improperGroupRange(Property property, String actualGroupPath) {
 
 		Matcher matcher = matcher(property);
 		if (matcher == null) {
@@ -206,7 +206,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 				List.of(TextRange.create(start, start + actualGroupPath.length())));
 	}
 
-	private static List<TextRange> unknownArtifactRanges(PropertyImpl property, String actualArtifactId) {
+	private static List<TextRange> unknownArtifactRanges(Property property, String actualArtifactId) {
 
 		Matcher matcher = matcher(property);
 		if (matcher == null) {
@@ -227,7 +227,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 		}
 	}
 
-	private static List<TextRange> fileNameRange(PropertyImpl property, String actualFileName) {
+	private static List<TextRange> fileNameRange(Property property, String actualFileName) {
 
 		String decoded = property.getUnescapedValue();
 		if (decoded == null) {
@@ -243,7 +243,7 @@ public class MavenWrapperUrlInspection extends LocalInspectionTool implements Du
 				List.of(TextRange.create(start, start + actualFileName.length())));
 	}
 
-	private static @Nullable Matcher matcher(PropertyImpl property) {
+	private static @Nullable Matcher matcher(Property property) {
 
 		String decoded = property.getUnescapedValue();
 		if (decoded == null) {

@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.github;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactRelease;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
@@ -26,6 +28,7 @@ import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
+import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
@@ -54,6 +57,15 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
 
 		@Override
+		protected void afterCompletion(CompletionResultSet result, List<LookupElement> elements) {
+			super.afterCompletion(result, elements);
+
+			if (!elements.isEmpty()) {
+				result.stopHere();
+			}
+		}
+
+		@Override
 		protected RefStyle getRefStyle(PsiElement element) {
 
 			UsesRepositoryAction action = GitHubArtifactReferenceResolver.findUsesRepository(element);
@@ -62,7 +74,7 @@ public class GitHubWorkflowCompletionContributor extends CompletionContributor {
 
 		@Override
 		protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
-			// result.stopHere();
+
 			if (showsFullHistory(parameters) || isCaretInsideRef(parameters)) {
 				return result.withPrefixMatcher("");
 			}

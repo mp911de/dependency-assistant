@@ -22,8 +22,11 @@ import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
+import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.xml.XmlFile;
+import com.intellij.psi.xml.XmlTag;
+import com.intellij.psi.xml.XmlText;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -64,6 +67,27 @@ class MavenExtensionsParserTests {
 				.hasDependencyUsage("commons-lang3")
 				.hasVersion("3.19.0")
 				.hasDeclaration(DeclarationSource.dependency());
+	}
+
+	@Test
+	@ProjectFile(name = "extensions.xml", content = """
+			<extensions>
+				<extension>
+					<groupId>org.apache.commons</groupId>
+					<artifactId>commons-lang3</artifactId>
+					<version>3.19.0</version>
+				</extension>
+			</extensions>
+			""")
+	void resolvesVersionTextAsArtifactReference(XmlFile file) {
+
+		XmlTag extension = file.getRootTag().findFirstSubTag("extension");
+		XmlText version = extension.findFirstSubTag("version").getValue().getTextElements()[0];
+
+		ArtifactReference reference = new MavenExtensionsReferenceResolver(file).resolveArtifactReference(version);
+
+		assertThat(reference.isResolved()).isTrue();
+		assertThat(reference.getArtifactId().toString()).isEqualTo("org.apache.commons:commons-lang3");
 	}
 
 }

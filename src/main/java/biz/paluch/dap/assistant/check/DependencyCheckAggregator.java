@@ -217,7 +217,6 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 		projectState.setDependencies(collector, context.getPackageSystem());
 
 		Collection<ReleaseSource> sources = new LinkedHashSet<>(collector.getReleaseSources());
-		sources.addAll(context.getReleaseSources());
 
 		for (Dependency usage : collector.getUsages()) {
 			add(usage, context, buildFile, sources);
@@ -225,6 +224,27 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 
 		for (DeclaredDependency declaration : collector.getDeclarations()) {
 			add(declaration, context, buildFile, sources);
+		}
+	}
+
+	/**
+	 * Load context-specific release sources after PSI scanning has left its read
+	 * action. Each context is loaded once and its sources are shared by all
+	 * artifact entries contributed by that context.
+	 */
+	public void addContextReleaseSources() {
+
+		Map<ProjectDependencyContext, Collection<ReleaseSource>> sourcesByContext = new LinkedHashMap<>();
+		for (Entry entry : entries.values()) {
+			for (ProjectDependencyContext context : entry.contexts()) {
+				sourcesByContext.computeIfAbsent(context, it -> new LinkedHashSet<>(it.getReleaseSources()));
+			}
+		}
+
+		for (Entry entry : entries.values()) {
+			for (ProjectDependencyContext context : entry.contexts()) {
+				entry.releaseSources().addAll(sourcesByContext.get(context));
+			}
 		}
 	}
 

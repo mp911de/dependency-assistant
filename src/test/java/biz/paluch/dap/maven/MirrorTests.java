@@ -16,6 +16,9 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.List;
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -47,18 +50,22 @@ class MirrorTests {
 	void appliesMavenMirrorSelectorSemantics(String mirrorOf, String repositoryId, String repositoryUrl,
 			boolean matches) {
 
-		Mirror mirror = new Mirror("mirror", "https://mirror.corp/repo/", mirrorOf);
+		MavenSettings settings = new MavenSettings(Map.of(),
+				List.of(new Mirror("mirror", "https://mirror.corp/repo/", mirrorOf)));
 
-		assertThat(mirror.matches(repositoryId, repositoryUrl)).isEqualTo(matches);
+		assertThat(settings.getRemoteRepository(repositoryId, repositoryUrl).id().equals("mirror")).isEqualTo(matches);
 	}
 
 	@Test
 	void negationStopsMatchingRegardlessOfOrder() {
 
-		Mirror mirror = new Mirror("mirror", "https://mirror.corp/repo/", "!central,*");
+		MavenSettings settings = new MavenSettings(Map.of(),
+				List.of(new Mirror("mirror", "https://mirror.corp/repo/", "!central,*")));
 
-		assertThat(mirror.matches("central", "https://repo1.maven.org/maven2/")).isFalse();
-		assertThat(mirror.matches("internal", "https://nexus.corp/repo/")).isTrue();
+		assertThat(settings.getRemoteRepository("central", "https://repo1.maven.org/maven2/").id())
+				.isEqualTo("central");
+		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp/repo/").id())
+				.isEqualTo("mirror");
 	}
 
 }

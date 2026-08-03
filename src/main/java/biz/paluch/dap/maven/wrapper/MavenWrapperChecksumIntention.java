@@ -22,20 +22,23 @@ import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.maven.wrapper.MavenWrapperChecksumQuickFix.ChecksumComputer;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
+import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.PropertiesFileType;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.RangeMarker;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.util.IncorrectOperationException;
 import org.jspecify.annotations.Nullable;
 
@@ -44,16 +47,16 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class MavenWrapperChecksumIntention extends BaseIntentionAction implements DumbAware {
+public class MavenWrapperChecksumIntention implements IntentionAction, DumbAware {
 
 	private static final String PREVIEW_VALUE = "<computing...>";
 
 	private final WrapperProperty property;
 
-	private final ChecksumComputer checksumComputer;
+	private final @Nullable ChecksumComputer checksumComputer;
 
 	MavenWrapperChecksumIntention(WrapperProperty property) {
-		this(property, WrapperChecksumDownloader::downloadAndComputeSha);
+		this(property, null);
 	}
 
 	MavenWrapperChecksumIntention(WrapperProperty property, ChecksumComputer checksumComputer) {
@@ -93,34 +96,74 @@ public class MavenWrapperChecksumIntention extends BaseIntentionAction implement
 	@Override
 	public void invoke(Project project, Editor editor, PsiFile file) throws IncorrectOperationException {
 
-		PropertyImpl urlProperty = findUrlProperty(project, file, property);
+		Property urlProperty = findUrlProperty(project, file, property);
 		if (urlProperty == null) {
 			return;
 		}
 
 		String url = urlProperty.getUnescapedValue();
-		String sha;
+		if (url == null) {
+			return;
+		}
+
+		RangeMarker marker = editor.getDocument().createRangeMarker(editor.getCaretModel().getOffset(),
+				editor.getCaretModel().getOffset());
+		SmartPsiElementPointer<Property> pointer = SmartPointerManager.createPointer(urlProperty);
+		if (checksumComputer == null) {
+			WrapperChecksumDownloader.downloadAndComputeSha(project, url,
+					sha -> applyChecksum(project, editor.getDocument(), marker, pointer, url, sha),
+					ex -> {
+						marker.dispose();
+						if (!project.isDisposed()) {
+							notifyError(project, url, ex);
+						}
+					}, marker::dispose);
+			return;
+		}
+
 		try {
-			sha = checksumComputer.compute(project, url);
+			applyChecksum(project, editor.getDocument(), marker, pointer, url,
+					checksumComputer.compute(project, url));
 		} catch (IOException ex) {
-			Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
-					MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(ex)));
-			return;
+			marker.dispose();
+			notifyError(project, url, ex);
 		}
-
-		if (!StringUtils.hasText(sha)) {
-			return;
-		}
-
-		Document document = editor.getDocument();
-		WriteCommandAction.runWriteCommandAction(project, MessageBundle.message("wrapper.checksum.command"), null,
-				() -> {
-					insert(document, editor.getCaretModel().getOffset(), property.shaKey() + "=" + sha);
-					PsiDocumentManager.getInstance(project).commitDocument(document);
-				});
 	}
 
-	private static @Nullable PropertyImpl findUrlProperty(Project project, PsiFile file, WrapperProperty property) {
+	@Override
+	public boolean startInWriteAction() {
+		return false;
+	}
+
+	private void applyChecksum(Project project, Document document, RangeMarker marker,
+			SmartPsiElementPointer<Property> pointer, String expectedUrl, String sha) {
+
+		if (project.isDisposed() || !StringUtils.hasText(sha) || !marker.isValid()) {
+			marker.dispose();
+			return;
+		}
+
+		int offset = marker.getStartOffset();
+		WriteCommandAction.runWriteCommandAction(project, MessageBundle.message("wrapper.checksum.command"), null,
+				() -> {
+					Property current = pointer.getElement();
+					if (current == null || !expectedUrl.equals(current.getUnescapedValue())
+							|| !(current.getContainingFile() instanceof PropertiesFile properties)
+							|| properties.findPropertyByKey(property.shaKey()) != null) {
+						return;
+					}
+					insert(document, offset, property.shaKey() + "=" + sha);
+					PsiDocumentManager.getInstance(project).commitDocument(document);
+				});
+		marker.dispose();
+	}
+
+	private static void notifyError(Project project, String url, IOException ex) {
+		Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
+				MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(ex)));
+	}
+
+	private static @Nullable Property findUrlProperty(Project project, PsiFile file, WrapperProperty property) {
 
 		if (!TrustedProjects.isProjectTrusted(project) || !MavenWrapperUtils.isWrapperFile(file)
 				|| !(file instanceof PropertiesFile properties)
@@ -129,7 +172,7 @@ public class MavenWrapperChecksumIntention extends BaseIntentionAction implement
 		}
 
 		IProperty candidate = properties.findPropertyByKey(property.key());
-		if (!(candidate instanceof PropertyImpl urlProperty)) {
+		if (!(candidate instanceof Property urlProperty)) {
 			return null;
 		}
 

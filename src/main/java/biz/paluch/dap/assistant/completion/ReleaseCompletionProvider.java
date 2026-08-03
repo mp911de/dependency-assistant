@@ -166,7 +166,12 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 			elements.add(element.withAutoCompletionPolicy(autoCompletionPolicy));
 		}
 
-		versionsResult.addAllElements(elements);
+
+		afterCompletion(versionsResult, elements);
+	}
+
+	protected void afterCompletion(CompletionResultSet result, List<LookupElement> elements) {
+		result.addAllElements(elements);
 	}
 
 	/**

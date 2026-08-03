@@ -20,8 +20,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.VersionSource;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.lang.properties.psi.Property;
+import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
  * 
  * @author Mark Paluch
  */
-record WrapperEntry(WrapperProperty property, PropertyImpl propertyLiteral, PropertyValueImpl versionLiteral,
+record WrapperEntry(WrapperProperty property, Property propertyLiteral, PsiElement versionLiteral,
 		RemoteRepository repository, String pathVersion, String fileVersion) {
 
 	public boolean hasArtifactId(ArtifactId coordinate) {

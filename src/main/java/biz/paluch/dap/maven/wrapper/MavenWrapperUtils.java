@@ -25,9 +25,10 @@ import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import org.jspecify.annotations.Nullable;
 
@@ -77,7 +78,7 @@ class MavenWrapperUtils {
 	 * @return the version ranges, or an empty list if the property value cannot be
 	 * parsed as a supported wrapper URL.
 	 */
-	public static List<TextRange> getVersionRanges(PropertyImpl property) {
+	public static List<TextRange> getVersionRanges(Property property) {
 
 		String value = property.getUnescapedValue();
 		if (value == null || value.length() > MAX_MATCH_LENGTH) {
@@ -155,6 +156,14 @@ class MavenWrapperUtils {
 	 */
 	static boolean isWrapperFile(@Nullable PsiFile file) {
 		return file instanceof PropertiesFile && WRAPPER_FILENAME.equals(file.getName());
+	}
+
+	static boolean isVersionElement(PsiElement element) {
+
+		Property property = PropertyUtils.findProperty(element);
+		PsiElement value = property != null ? PropertyUtils.findPropertyValue(property) : null;
+		return value == element && isWrapperFile(element.getContainingFile())
+				&& WrapperProperty.isWrapperProperty(property);
 	}
 
 	public static ProjectId createProjectId(VirtualFile virtualFile) {

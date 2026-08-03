@@ -377,6 +377,30 @@ class MavenWrapperUrlInspectionTests {
 						""");
 	}
 
+	@Test
+	@EditorFile(name = "maven-wrapper.properties", content = """
+			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
+			""")
+	void computeShaFixDiscardsResultWhenUrlChanges(PsiFile file) {
+
+		PropertyImpl property = ReadAction.compute(() -> SyntaxTraverser.psiTraverser(file)
+				.filter(PropertyImpl.class)
+				.filter(it -> WrapperProperty.DISTRIBUTION.key().equals(it.getUnescapedKey()))
+				.first());
+		ProblemDescriptor descriptor = ReadAction.compute(() -> InspectionManager.getInstance(fixture.getProject())
+				.createProblemDescriptor(property, "distributionUrl has no SHA-256 checksum", true,
+						LocalQuickFix.EMPTY_ARRAY, ProblemHighlightType.WEAK_WARNING));
+
+		new MavenWrapperChecksumQuickFix(WrapperProperty.DISTRIBUTION, (project, url) -> {
+			WriteCommandAction.runWriteCommandAction(project,
+					() -> property.setValue(url.replace("3.9.6", "3.9.7")));
+			return "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9";
+		}).applyFix(fixture.getProject(), descriptor);
+
+		assertThat(file).containsText("apache-maven/3.9.7")
+				.doesNotContainText("distributionSha256Sum");
+	}
+
 
 	@SuppressWarnings("rawtypes")
 	private void invokeQuickFix(String label) {

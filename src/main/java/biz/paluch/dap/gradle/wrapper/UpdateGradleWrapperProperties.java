@@ -27,14 +27,13 @@ import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.SyntaxTraverser;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -47,7 +46,7 @@ class UpdateGradleWrapperProperties {
 
 	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
-		PropertyImpl property = PropertyUtils.findProperty(versionLiteral);
+		Property property = PropertyUtils.findProperty(versionLiteral);
 		if (property == null) {
 			return;
 		}
@@ -75,7 +74,7 @@ class UpdateGradleWrapperProperties {
 		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
-	private static void applyUpdate(PropertyImpl property, GradleWrapperEntry entry, DependencyUpdate update) {
+	private static void applyUpdate(Property property, GradleWrapperEntry entry, DependencyUpdate update) {
 
 		if (!entry.hasArtifactId(update.artifactId())) {
 			return;
@@ -91,13 +90,13 @@ class UpdateGradleWrapperProperties {
 			return;
 		}
 
-		ASTNode valueNode = property.getValueNode();
-		if (valueNode == null) {
+		TextRange valueRange = PropertyUtils.valueRangeInElement(property);
+		if (valueRange == null) {
 			return;
 		}
 
 		int propertyStart = property.getTextRange().getStartOffset();
-		int valueStart = valueNode.getTextRange().getStartOffset() - propertyStart;
+		int valueStart = valueRange.getStartOffset();
 		String updatedText = property.getText();
 
 		for (int i = ranges.size() - 1; i >= 0; i--) {
@@ -113,7 +112,7 @@ class UpdateGradleWrapperProperties {
 
 	private static void postProcessSha(PsiFile file, GradleWrapperEntry entry, @Nullable String sha) {
 
-		for (PropertyImpl property : PsiTreeUtil.findChildrenOfType(file, PropertyImpl.class)) {
+		for (Property property : SyntaxTraverser.psiTraverser(file).filter(Property.class)) {
 			if (entry.property().shaKey().equals(property.getUnescapedKey())) {
 				if (StringUtils.hasText(sha)) {
 					property.setValue(sha, PropertyKeyValueFormat.FILE);
@@ -124,7 +123,7 @@ class UpdateGradleWrapperProperties {
 		}
 	}
 
-	private static @Nullable String resolveSha(PropertyImpl property, DependencyUpdate update) {
+	private static @Nullable String resolveSha(Property property, DependencyUpdate update) {
 
 		if (update.version() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
 			return gitVersion.getRequiredSha();

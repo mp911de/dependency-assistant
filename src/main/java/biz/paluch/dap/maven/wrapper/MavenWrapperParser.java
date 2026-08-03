@@ -28,7 +28,7 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.Properties;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,13 +55,13 @@ class MavenWrapperParser {
 	}
 
 	/**
-	 * Attempt to parse a {@link PropertyImpl} into a {@link WrapperEntry} by
-	 * matching it against every supported wrapper URL property.
+	 * Attempt to parse a {@link Property} into a {@link WrapperEntry} by matching
+	 * it against every supported wrapper URL property.
 	 * @param property the property to parse.
 	 * @return the parsed wrapper entry, or {@literal null} if no supported wrapper
 	 * property matches or the value cannot be parsed.
 	 */
-	public static @Nullable WrapperEntry parse(PropertyImpl property) {
+	public static @Nullable WrapperEntry parse(Property property) {
 
 		if (!property.isValid()) {
 			return null;

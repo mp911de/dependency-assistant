@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.maven;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -143,21 +144,13 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 			return Findings.NONE;
 		}
 
-		PropertyResolver propertyResolver = null;
-		for (XmlFile xmlFile : chain) {
-
+		MavenPomProperties propertyResolver = MavenPomProperties.combine(chain, xmlFile -> {
 			MavenDomProjectModel domModel = MavenDomUtil.getMavenDomModel(xmlFile,
 					MavenDomProjectModel.class);
-			PropertyResolver resolver = domModel != null
+			return domModel != null
 					? new MavenBomParser.DomPropertyResolver(xmlFile, domModel)
 					: new MavenProjectMetadataPropertyResolver(xmlFile);
-
-			if (propertyResolver == null) {
-				propertyResolver = resolver;
-			} else {
-				propertyResolver = propertyResolver.withFallback(resolver);
-			}
-		}
+		});
 
 		boolean first = true;
 		for (XmlFile xmlFile : chain) {
@@ -261,6 +254,7 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 			PomTag root = PomTag.of(it);
 			PomFacts facts = new PomFacts();
 			facts.projectName = root.getText(NAME, resolver);
+			facts.description = root.getText("description", resolver);
 
 			XmlTag scm = it.findFirstSubTag(SCM);
 			if (scm != null) {
@@ -272,11 +266,28 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 
 			XmlTag issueManagement = it.findFirstSubTag(ISSUE_MANAGEMENT);
 			if (issueManagement != null) {
-				facts.issueManagementUrl = Subtag.of(issueManagement, SCM_URL).getText(resolver);
+				String issueUrl = Subtag.of(issueManagement, SCM_URL).getText(resolver);
+				facts.issueManagementUrl = isAllowedBrowserUrl(issueUrl) ? issueUrl : null;
+				facts.issueManagementSystem = Subtag.of(issueManagement, "system").getText(resolver);
 			}
 
 			return facts;
 		});
+	}
+
+	private static boolean isAllowedBrowserUrl(@Nullable String value) {
+
+		if (!StringUtils.hasText(value)) {
+			return false;
+		}
+
+		try {
+			URI uri = URI.create(value);
+			String scheme = uri.getScheme();
+			return uri.getHost() != null && ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme));
+		} catch (IllegalArgumentException e) {
+			return false;
+		}
 	}
 
 	/**

@@ -22,12 +22,11 @@ import java.net.URI;
 import java.net.URLConnection;
 import java.security.DigestOutputStream;
 import java.util.HexFormat;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.io.HttpRequests;
@@ -47,36 +46,54 @@ class WrapperChecksumDownloader {
 	private WrapperChecksumDownloader() {
 	}
 
-	static String downloadAndComputeSha(Project project, String url) throws IOException {
+	static void downloadAndComputeSha(Project project, String url, Consumer<String> success,
+			Consumer<IOException> failure, Runnable canceled) {
 
 		URI uri;
 		try {
 			uri = URI.create(url);
 		} catch (IllegalArgumentException ex) {
-			throw new IOException("Invalid wrapper URL", ex);
+			failure.accept(new IOException("Invalid wrapper URL", ex));
+			return;
 		}
 
-		AtomicReference<String> result = new AtomicReference<>();
-		AtomicReference<IOException> error = new AtomicReference<>();
+		new Task.Backgroundable(project, MessageBundle.message("wrapper.checksum.task"), true) {
 
-		ProgressManager.getInstance().run(new Task.Modal(project, MessageBundle.message("wrapper.checksum.task"),
-				true) {
+			private @Nullable String result;
+
+			private @Nullable IOException error;
 
 			@Override
 			public void run(ProgressIndicator indicator) {
 				try {
-					result.set(downloadAndComputeSha(uri, indicator));
+					result = downloadAndComputeSha(uri, indicator);
 				} catch (IOException ex) {
-					error.set(ex);
+					error = ex;
 				}
 			}
 
-		});
+			@Override
+			public void onSuccess() {
+				if (project.isDisposed()) {
+					canceled.run();
+				} else if (error != null) {
+					failure.accept(error);
+				} else if (result != null) {
+					success.accept(result);
+				}
+			}
 
-		if (error.get() != null) {
-			throw error.get();
-		}
-		return result.get();
+			@Override
+			public void onCancel() {
+				canceled.run();
+			}
+
+			@Override
+			public void onThrowable(Throwable error) {
+				canceled.run();
+			}
+
+		}.queue();
 	}
 
 	static String downloadAndComputeSha(URI uri, ProgressIndicator indicator) throws IOException {

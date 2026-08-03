@@ -65,7 +65,12 @@ public interface IssueTracker {
 	 */
 	static @Nullable IssueTracker parse(String url) {
 		try {
-			return new StaticIssueTracker(new URI(url));
+			URI uri = new URI(url);
+			String scheme = uri.getScheme();
+			if (uri.getHost() == null || !("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))) {
+				return null;
+			}
+			return new StaticIssueTracker(uri);
 		} catch (URISyntaxException e) {
 			return null;
 		}

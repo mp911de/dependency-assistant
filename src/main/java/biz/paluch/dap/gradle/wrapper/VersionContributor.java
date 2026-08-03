@@ -20,7 +20,7 @@ import java.util.List;
 
 import biz.paluch.dap.assistant.completion.VersionContributorSupport;
 import biz.paluch.dap.support.DependencyUpdate;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.PsiElementPattern;
@@ -40,7 +40,7 @@ class VersionContributor extends VersionContributorSupport {
 	 * </pre>
 	 */
 	static final PsiElementPattern.Capture<PsiElement> WRAPPER_VERSION = PROPERTY_VALUE
-			.inside(PlatformPatterns.psiElement(PropertyImpl.class).withName(WrapperProperty.propertyNames()));
+			.inside(PlatformPatterns.psiElement(Property.class).withName(WrapperProperty.propertyNames()));
 
 	@Override
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
@@ -48,7 +48,7 @@ class VersionContributor extends VersionContributorSupport {
 	}
 
 	@Override
-	protected List<TextRange> getVersionRanges(PropertyImpl property) {
+	protected List<TextRange> getVersionRanges(Property property) {
 		return GradleWrapperUtils.getVersionRanges(property);
 	}
 

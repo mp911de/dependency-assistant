@@ -16,16 +16,14 @@
 
 package biz.paluch.dap.maven;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
+import biz.paluch.dap.state.StateService;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
-import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlText;
@@ -41,7 +39,7 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 
-	private final @Nullable XmlFile extensionsFile;
+	private final @Nullable SmartPsiElementPointer<XmlFile> extensionsFile;
 
 	private final boolean candidate;
 
@@ -51,7 +49,9 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 	 */
 	MavenExtensionsReferenceResolver(PsiFile extensionsFile) {
 
-		this.extensionsFile = extensionsFile instanceof XmlFile xmlFile ? xmlFile : null;
+		this.extensionsFile = extensionsFile instanceof XmlFile xmlFile
+				? SmartPointerManager.createPointer(xmlFile)
+				: null;
 		this.candidate = MavenUtils.isMavenExtensionsFile(extensionsFile);
 	}
 
@@ -62,7 +62,7 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag && MavenUtils.isVersionElement(versionTag)) {
+		if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag) {
 			return resolveArtifactDeclaration(versionTag);
 		}
 
@@ -70,7 +70,7 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 	}
 
 	private boolean canResolve() {
-		return candidate && extensionsFile != null;
+		return candidate && extensionsFile != null && extensionsFile.getElement() != null;
 	}
 
 	/**
@@ -86,23 +86,17 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 	private ArtifactReference resolveArtifactDeclaration(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
-		ArtifactId artifactId = MavenParser.parseArtifactId(parentTag, PropertyResolver.empty());
-		if (artifactId == null) {
+		XmlFile file = extensionsFile != null ? extensionsFile.getElement() : null;
+		if (parentTag == null || file == null) {
 			return ArtifactReference.unresolved();
 		}
-		DeclarationSource declarationSource = MavenParser.getDeclarationSource(parentTag);
-
-		String version = versionTag.getValue().getText().trim();
-		return ArtifactReference.from(it -> {
-			it.artifact(artifactId)
-					.packageSystem(PackageSystem.MAVEN)
-					.declarationElement(parentTag)
-					.declarationSource(MavenParser.getDeclarationSource(parentTag))
-					.versionSource(VersionSource.from(version))
-					.declarationSource(declarationSource);
-			ArtifactVersion.from(version).ifPresent(it::version);
-			it.versionLiteral(versionTag);
-		});
+		MavenParser parser = new MavenParser(StateService.getInstance(parentTag.getProject()).getCache());
+		for (ArtifactDeclaration declaration : parser.parseExtensionsFile(file)) {
+			if (declaration.getDeclarationElement() == parentTag) {
+				return ArtifactReference.from(declaration);
+			}
+		}
+		return ArtifactReference.unresolved();
 	}
 
 }

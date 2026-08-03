@@ -47,6 +47,7 @@ class MavenImportRefreshListener implements MavenImportListener {
 	@Override
 	public void importFinished(Collection<MavenProject> importedProjects, List<Module> newModules) {
 
+		SettingsXmlLoader.invalidate(project);
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, new EmptyProgressIndicator());
 		for (DependencyAssistant assistant : DependencyAssistantDispatcher.findAll()) {
 			if (assistant instanceof MavenAssistant) {

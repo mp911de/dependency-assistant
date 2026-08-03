@@ -21,8 +21,8 @@ import java.util.function.UnaryOperator;
 
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.util.IntentionFamilyName;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.ActionContext;
 import com.intellij.modcommand.ModPsiUpdater;
 import com.intellij.modcommand.Presentation;
@@ -32,9 +32,9 @@ import com.intellij.modcommand.PsiUpdateModCommandAction;
  * Quick-fix actions for {@link MavenWrapperUrlProblem} variants.
  *
  * <p>Each factory returns a fresh {@link PsiUpdateModCommandAction} bound to
- * {@link PropertyImpl} via the {@code Class}-based super constructor; the
- * action resolves its target property from the caret offset at execution time
- * and therefore holds no PSI reference of its own.
+ * {@link Property} via the {@code Class}-based super constructor; the action
+ * resolves its target property from the caret offset at execution time and
+ * therefore holds no PSI reference of its own.
  *
  * @author Mark Paluch
  */
@@ -47,7 +47,7 @@ class MavenWrapperUrlFixes {
 	 * Create a fix that strips embedded credentials from the wrapper URL.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> stripCredentials() {
+	static PsiUpdateModCommandAction<Property> stripCredentials() {
 		return new WrapperUrlFix(
 				MavenWrapperUrlRewriter::stripCredentials,
 				"inspection.maven-wrapper.credentials-in-url.fix");
@@ -59,7 +59,7 @@ class MavenWrapperUrlFixes {
 	 * @param version the canonical version to apply.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> replaceVersion(String version) {
+	static PsiUpdateModCommandAction<Property> replaceVersion(String version) {
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.replaceVersion(url, version),
 				"inspection.maven-wrapper.inconsistent-version.fix",
@@ -72,7 +72,7 @@ class MavenWrapperUrlFixes {
 	 * @param property the wrapper property.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> replaceArtifact(WrapperProperty property) {
+	static PsiUpdateModCommandAction<Property> replaceArtifact(WrapperProperty property) {
 
 		String canonicalArtifactId = property.canonicalArtifactId();
 		return new WrapperUrlFix(
@@ -88,7 +88,7 @@ class MavenWrapperUrlFixes {
 	 * @param property the wrapper property.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> replaceGroupPath(WrapperProperty property) {
+	static PsiUpdateModCommandAction<Property> replaceGroupPath(WrapperProperty property) {
 
 		String canonicalGroupPath = property.canonicalGroupPath();
 		return new WrapperUrlFix(
@@ -104,7 +104,7 @@ class MavenWrapperUrlFixes {
 	 * @param version the canonical version.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> replaceFileName(WrapperProperty property, String version) {
+	static PsiUpdateModCommandAction<Property> replaceFileName(WrapperProperty property, String version) {
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.replaceFileName(url, property, version),
 				"inspection.maven-wrapper.malformed-file-name.fix",
@@ -118,13 +118,13 @@ class MavenWrapperUrlFixes {
 	 * @param version the canonical version.
 	 * @return a fresh fix instance.
 	 */
-	static PsiUpdateModCommandAction<PropertyImpl> useDefaultUrl(WrapperProperty property, String version) {
+	static PsiUpdateModCommandAction<Property> useDefaultUrl(WrapperProperty property, String version) {
 		return new WrapperUrlFix(
 				url -> MavenWrapperUrlRewriter.canonicalUrl(property, version),
 				"inspection.maven-wrapper.default-url.fix", version);
 	}
 
-	static class WrapperUrlFix extends PsiUpdateModCommandAction<PropertyImpl> {
+	static class WrapperUrlFix extends PsiUpdateModCommandAction<Property> {
 
 		private final UnaryOperator<String> rewrite;
 
@@ -133,26 +133,26 @@ class MavenWrapperUrlFixes {
 		private final Function<String, Object[]> messageArgs;
 
 		WrapperUrlFix(UnaryOperator<String> rewrite, String messageKey, Object... staticArgs) {
-			super(PropertyImpl.class);
+			super(Property.class);
 			this.rewrite = rewrite;
 			this.messageKey = messageKey;
 			this.messageArgs = value -> staticArgs;
 		}
 
 		WrapperUrlFix(UnaryOperator<String> rewrite, String messageKey, Function<String, Object[]> messageArgs) {
-			super(PropertyImpl.class);
+			super(Property.class);
 			this.rewrite = rewrite;
 			this.messageKey = messageKey;
 			this.messageArgs = messageArgs;
 		}
 
 		@Override
-		protected void invoke(ActionContext context, PropertyImpl property, ModPsiUpdater updater) {
+		protected void invoke(ActionContext context, Property property, ModPsiUpdater updater) {
 			property.setValue(rewrite.apply(property.getUnescapedValue()), PropertyKeyValueFormat.FILE);
 		}
 
 		@Override
-		protected Presentation getPresentation(ActionContext context, PropertyImpl property) {
+		protected Presentation getPresentation(ActionContext context, Property property) {
 			Object[] args = messageArgs.apply(property.getUnescapedValue());
 			return Presentation.of(MessageBundle.message(messageKey, args));
 		}

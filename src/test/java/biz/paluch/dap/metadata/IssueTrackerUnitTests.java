@@ -41,7 +41,8 @@ class IssueTrackerUnitTests {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"https://example.com/my issues", "http://example.com/<issues>", "http://[malformed"})
+	@ValueSource(strings = {"https://example.com/my issues", "http://example.com/<issues>", "http://[malformed",
+			"file:///tmp/issues", "jar:file:///tmp/project.jar!/issues", "mailto:security@example.com"})
 	void yieldsNullForMalformedUrl(String url) {
 		assertThat(IssueTracker.parse(url)).isNull();
 	}

@@ -72,4 +72,8 @@ public interface ArtifactReferenceResolver {
 		return DependencySearchResults.empty();
 	}
 
+	static ArtifactReferenceResolver unresolved() {
+		return element -> ArtifactReference.unresolved();
+	}
+
 }

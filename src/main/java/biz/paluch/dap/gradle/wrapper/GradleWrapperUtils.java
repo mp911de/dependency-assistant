@@ -31,7 +31,7 @@ import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -76,7 +76,7 @@ class GradleWrapperUtils {
 	/**
 	 * Return file-absolute ranges for the version segment in a Gradle wrapper URL.
 	 */
-	static List<TextRange> getVersionRanges(PropertyImpl property) {
+	static List<TextRange> getVersionRanges(Property property) {
 
 		String value = property.getUnescapedValue();
 		if (value == null || value.length() > MAX_MATCH_LENGTH) {

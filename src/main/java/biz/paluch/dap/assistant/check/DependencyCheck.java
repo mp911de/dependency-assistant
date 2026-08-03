@@ -135,6 +135,7 @@ public class DependencyCheck {
 		});
 
 		steps.setText2("");
+		aggregator.addContextReleaseSources();
 		return aggregator;
 	}
 
@@ -154,6 +155,7 @@ public class DependencyCheck {
 		indexer.forEachAvailableEntry(assistant, (psiFile, context) -> {
 			aggregator.add(psiFile.getVirtualFile(), context, indicator);
 		});
+		aggregator.addContextReleaseSources();
 		return aggregator;
 	}
 

@@ -38,6 +38,7 @@ import biz.paluch.dap.artifact.RepositoryCredentials;
 import com.intellij.ide.trustedProjects.TrustedProjects;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
 import org.jetbrains.idea.maven.project.MavenHomeKt;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.jetbrains.idea.maven.project.StaticResolvedMavenHomeType;
@@ -53,7 +54,6 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-// TODO: Caching
 class SettingsXmlLoader {
 
 	private static final Logger LOG = Logger.getInstance(SettingsXmlLoader.class);
@@ -64,23 +64,48 @@ class SettingsXmlLoader {
 	 */
 	private static final Pattern STILL_ENCRYPTED = Pattern.compile("\\{[^}]+\\}");
 
-	private final static Map<File, URLClassLoader> MAVEN_CLASSLOADERS = new ConcurrentHashMap<>();
+	private static final Map<File, URLClassLoader> MAVEN_CLASSLOADERS = new ConcurrentHashMap<>();
+
+	private static final Key<MavenSettings> SETTINGS_KEY = Key.create("dependency-assistant.maven.settings");
 
 	private SettingsXmlLoader() {
 	}
 
 	/**
-	 * Loads credentials from the Maven settings files applicable to the given
-	 * project.
+	 * Obtains credentials from the Maven settings files applicable to the given
+	 * project. Settings are cached upon first invocation.
 	 * @param project the IntelliJ project.
 	 * @return the merged server credentials and mirrors, or
 	 * {@link MavenSettings#empty()} when no settings apply.
+	 * @see #invalidate(Project)
 	 */
 	public static MavenSettings load(Project project) {
 
 		if (!TrustedProjects.isProjectTrusted(project)) {
 			return MavenSettings.empty();
 		}
+
+		MavenSettings cached = project.getUserData(SETTINGS_KEY);
+		if (cached != null) {
+			return cached;
+		}
+
+		cached = project.getUserData(SETTINGS_KEY);
+		if (cached == null) {
+			cached = loadSettings(project);
+			project.putUserData(SETTINGS_KEY, cached);
+		}
+		return cached;
+	}
+
+	/**
+	 * Invalidate the cached settings for the given project.
+	 */
+	static void invalidate(Project project) {
+		project.putUserData(SETTINGS_KEY, null);
+	}
+
+	private static MavenSettings loadSettings(Project project) {
 
 		MavenProjectsManager mavenManager = MavenProjectsManager.getInstance(project);
 		if (mavenManager == null) {

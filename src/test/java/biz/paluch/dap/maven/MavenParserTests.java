@@ -27,6 +27,8 @@ import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
+import biz.paluch.dap.support.ArtifactDeclaration;
+import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
@@ -53,6 +55,63 @@ class MavenParserTests {
 	// -------------------------------------------------------------------------
 	// Dependencies
 	// -------------------------------------------------------------------------
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-lang3</artifactId>
+						<version>3.19.0</version>
+					</dependency>
+				</dependencies>
+			</project>
+			""")
+	void emitsArtifactDeclarationsAsCanonicalOutput(XmlFile pomFile) {
+
+		List<ArtifactDeclaration> declarations = new MavenParser(new Cache()).parsePomFile(pomFile);
+
+		assertThat(declarations).singleElement().satisfies(declaration -> {
+			assertThat(declaration.getArtifactId().toString()).isEqualTo("org.apache.commons:commons-lang3");
+			assertThat(declaration.getVersion().toString()).isEqualTo("3.19.0");
+			assertThat(declaration.getVersionLiteral()).isNotNull();
+		});
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<properties><shared.version>1.0</shared.version></properties>
+				<dependencies><dependency>
+					<groupId>com.example</groupId><artifactId>root</artifactId>
+					<version>${shared.version}</version>
+				</dependency></dependencies>
+				<profiles>
+					<profile><id>one</id>
+						<properties><shared.version>2.0</shared.version></properties>
+						<dependencies><dependency>
+							<groupId>com.example</groupId><artifactId>one</artifactId>
+							<version>${shared.version}</version>
+						</dependency></dependencies>
+					</profile>
+					<profile><id>two</id>
+						<properties><shared.version>3.0</shared.version></properties>
+						<dependencies><dependency>
+							<groupId>com.example</groupId><artifactId>two</artifactId>
+							<version>${shared.version}</version>
+						</dependency></dependencies>
+					</profile>
+				</profiles>
+			</project>
+			""")
+	void resolvesPropertiesWithinTheirDeclarationProfile(XmlFile pomFile) {
+
+		List<ArtifactDeclaration> declarations = new MavenParser(new Cache()).parsePomFile(pomFile);
+
+		assertThat(declarations).extracting(it -> it.getArtifactId().artifactId() + ":" + it.getVersion())
+				.containsExactly("root:1.0", "one:2.0", "two:3.0");
+	}
 
 	@Test
 	@ProjectFile(name = "pom.xml", content = """
@@ -271,9 +330,9 @@ class MavenParserTests {
 	void multiModuleChildAddsDependenciesAlongsideParent(XmlFile parent, XmlFile child) {
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
-		MavenParser parser = new MavenParser(collector, new Cache());
-		parser.parsePomFile(parent);
-		parser.parsePomFile(child);
+		MavenDependencyCollector parser = new MavenDependencyCollector(new Cache());
+		parser.doCollect(parent, PropertyResolver.empty(), collector);
+		parser.doCollect(child, PropertyResolver.empty(), collector);
 
 		assertThat(collector).hasDependencyUsage("assertj-core");
 		assertThat(collector).hasDependencyUsage("commons-lang3");
@@ -294,8 +353,7 @@ class MavenParserTests {
 	void parsesParentAsDependency(XmlFile pomFile) {
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
-		MavenParser parser = new MavenParser(collector, new Cache());
-		parser.parsePomFile(pomFile);
+		new MavenDependencyCollector(new Cache()).doCollect(pomFile, PropertyResolver.empty(), collector);
 
 		assertThat(collector)
 				.hasDependencyUsage("junit-jupiter")
@@ -557,7 +615,7 @@ class MavenParserTests {
 			""")
 	void parsesTopLevelRepository(XmlFile file) {
 
-		List<MavenRemoteRepository> repositories = MavenParser.parseRepositories(file);
+		List<MavenRemoteRepository> repositories = MavenRepositories.parseRepositories(file);
 
 		assertThat(repositories).extracting(MavenRemoteRepository::getId, MavenRemoteRepository::getUrl)
 				.containsExactly(tuple("central", "https://repo.maven.apache.org/maven2"));
@@ -579,7 +637,7 @@ class MavenParserTests {
 			""")
 	void parsesTopLevelPluginRepository(XmlFile file) {
 
-		List<MavenRemoteRepository> repositories = MavenParser.parseRepositories(file);
+		List<MavenRemoteRepository> repositories = MavenRepositories.parseRepositories(file);
 
 		assertThat(repositories).extracting(MavenRemoteRepository::getId, MavenRemoteRepository::getUrl)
 				.containsExactly(tuple("plugins", "https://plugins.example.com/maven2"));
@@ -612,7 +670,7 @@ class MavenParserTests {
 			""")
 	void parsesProfileRepositories(XmlFile file) {
 
-		List<MavenRemoteRepository> repositories = MavenParser.parseRepositories(file);
+		List<MavenRemoteRepository> repositories = MavenRepositories.parseRepositories(file);
 
 		assertThat(repositories).extracting(MavenRemoteRepository::getId, MavenRemoteRepository::getUrl)
 				.containsExactly(tuple("profile-repo", "https://profile.example.com/maven2"),
@@ -710,13 +768,12 @@ class MavenParserTests {
 
 		Cache cache = new Cache();
 		DependencyCollector propertyCollector = new DependencyCollector(PackageSystem.MAVEN);
-		MavenParser parser = new MavenParser(propertyCollector, cache);
-		parser.parsePomFile(child);
+		MavenDependencyCollector parser = new MavenDependencyCollector(cache);
+		parser.doCollect(child, PropertyResolver.empty(), propertyCollector);
 		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector, 0);
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
-		parser = new MavenParser(collector, cache);
-		parser.parsePomFile(parent);
+		parser.doCollect(parent, PropertyResolver.empty(), collector);
 
 		assertThat(collector)
 				.hasDependencyUsage("junit-jupiter")

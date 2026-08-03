@@ -18,7 +18,6 @@ package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -31,19 +30,21 @@ import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.DependencySearchResults;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
+import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectState;
+import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlText;
@@ -61,32 +62,33 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private final @Nullable ProjectState projectState;
+	private final Project project;
+
+	private final Cache cache;
+
+	private final ProjectState projectState;
 
 	private final MavenProjectContext buildContext;
 
-	private final @Nullable XmlFile pom;
+	private final SmartPsiElementPointer<XmlFile> pom;
 
 	private final boolean candidate;
 
-	private final PropertyResolver propertyResolver;
-
 	/**
 	 * Create a resolver for the given project state and build context.
-	 * @param projectState the project dependency state, or {@literal null} if it is
-	 * unavailable.
-	 * @param pomFile the {@code pom.xml} file to inspect.
-	 * @param projectContext the Maven project context.
+	 * @param project
+	 * @param pomFile
+	 * @param projectContext
 	 */
-	MavenArtifactReferenceResolver(@Nullable ProjectState projectState, PsiFile pomFile,
+	MavenArtifactReferenceResolver(Project project, XmlFile pomFile,
 			MavenProjectContext projectContext) {
-
-		this.projectState = projectState;
+		this.project = project;
+		StateService service = StateService.getInstance(project);
+		this.cache = service.getCache();
+		this.projectState = service.getProjectState(projectContext.getProjectId());
 		this.buildContext = projectContext;
-		this.pom = pomFile instanceof XmlFile xmlFile ? xmlFile : null;
+		this.pom = SmartPointerManager.createPointer(pomFile);
 		this.candidate = MavenUtils.isMavenPomFile(pomFile);
-		this.propertyResolver = this.pom != null ? MavenPropertyResolver.create(projectContext, this.pom)
-				: PropertyResolver.empty();
 	}
 
 	@Override
@@ -109,7 +111,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	@Override
 	public DependencySearchResults search(DependencySiteQuery query) {
 
-		XmlFile pomFile = this.pom;
+		XmlFile pomFile = getPom();
 		if (!candidate || pomFile == null) {
 			return DependencySearchResults.empty();
 		}
@@ -131,11 +133,8 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		Map<String, PropertyValue> defined = MavenParser.parseProperties(pomFile);
-		for (String property : properties) {
-
-			PropertyValue value = defined.get(property);
-			if (value != null) {
+		for (Property value : MavenPomProperties.getDeclaredProperties(pomFile)) {
+			if (properties.contains(value.getKey())) {
 				hits.add(DependencySiteSearchHit.declaration(value.getValueLiteral(), value.getValue()));
 			}
 		}
@@ -150,42 +149,32 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private List<DependencySiteSearchHit> findVersionSites(XmlFile pomFile, DependencySiteQuery query) {
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		for (XmlTag versionTag : PsiTreeUtil.findChildrenOfType(pomFile, XmlTag.class)) {
-
-			if (!"version".equals(versionTag.getName()) || !isDependencyVersion(versionTag)) {
-				continue;
-			}
-
-			String versionText = versionTag.getValue().getText().trim();
-			Expression expression = Expression.from(versionText);
-			XmlTag pluginOrDependency = versionTag.getParentTag();
-			if (expression.isProperty()) {
-				if (query.versionProperties().contains(expression.getPropertyName())) {
-
-					hits.add(DependencySiteSearchHit.usage(pluginOrDependency != null ? pluginOrDependency : versionTag,
-							versionText));
+		MavenParser parser = createParser(pomFile);
+		for (ArtifactDeclaration declaration : parser.parsePomFile(pomFile)) {
+			VersionSource versionSource = declaration.getVersionSource();
+			if (versionSource instanceof VersionSource.VersionProperty property) {
+				if (query.versionProperties().contains(property.getProperty())) {
+					hits.add(
+							DependencySiteSearchHit.usage(declaration.getDeclarationElement(), property.getProperty()));
 				}
-				continue;
-			}
-
-			ArtifactId artifactId = MavenParser.parseArtifactId(pluginOrDependency, propertyResolver);
-			if (artifactId != null && query.artifacts().contains(artifactId)) {
-				hits.add(DependencySiteSearchHit.declaration(pluginOrDependency, versionText));
+			} else if (query.artifacts().contains(declaration.getArtifactId())
+					&& declaration.getVersionLiteral() != null) {
+				hits.add(DependencySiteSearchHit.declaration(declaration.getRequiredVersionLiteral(),
+						declaration.isVersionDefined() ? declaration.getVersion().toString()
+								: declaration.getRequiredVersionLiteral().getText()));
 			}
 		}
 
 		return hits;
 	}
 
-	private static boolean isDependencyVersion(XmlTag versionTag) {
-
-		XmlTag parent = versionTag.getParentTag();
-		return parent != null && ("dependency".equals(parent.getName()) || "plugin".equals(parent.getName()));
+	private boolean canResolve() {
+		return candidate && getPom() != null
+				&& buildContext.isAvailable();
 	}
 
-	private boolean canResolve() {
-		return candidate && pom != null
-				&& buildContext.isAvailable();
+	private @Nullable XmlFile getPom() {
+		return pom.getElement();
 	}
 
 	/**
@@ -207,54 +196,29 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private ArtifactReference resolveDirect(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
-		ArtifactId artifactId = MavenParser.parseArtifactId(parentTag, propertyResolver);
-		if (artifactId == null) {
+		XmlFile pomFile = getPom();
+		if (parentTag == null || pomFile == null) {
 			return ArtifactReference.unresolved();
 		}
-		DeclarationSource declarationSource = MavenParser.getDeclarationSource(parentTag);
-
-		String version = versionTag.getValue().getText().trim();
-		Expression expression = Expression.from(version);
-
-		if (expression.isProperty()) {
-
-			ResolvedProperty property = resolveProperty(expression);
-			return ArtifactReference.from(it -> {
-				it.artifact(artifactId)
-						.packageSystem(PackageSystem.MAVEN)
-						.declarationElement(parentTag)
-						.versionSource(VersionSource.property(expression.getPropertyName()))
-						.declarationSource(declarationSource);
-				if (property != null) {
-					ArtifactVersion.from(property.value()).ifPresent(it::version);
-					it.versionLiteral(property.propertyValue().getValueLiteral());
-					return;
-				}
-
-				String projectProperty = buildContext.getMavenProject().getProperties()
-						.getProperty(expression.getPropertyName());
-				if (StringUtils.hasText(projectProperty)) {
-					ArtifactVersion.from(projectProperty).ifPresent(it::version);
-				}
-			});
+		for (ArtifactDeclaration declaration : createParser(pomFile).parsePomFile(pomFile)) {
+			if (declaration.getDeclarationElement() == parentTag) {
+				return ArtifactReference.from(declaration);
+			}
 		}
-
-		return ArtifactReference.from(it -> {
-			it.artifact(artifactId)
-					.packageSystem(PackageSystem.MAVEN)
-					.declarationElement(parentTag)
-					.declarationSource(declarationSource)
-					.versionSource(VersionSource.from(version));
-			ArtifactVersion.from(version).ifPresent(it::version);
-			it.versionLiteral(versionTag);
-		});
+		return ArtifactReference.unresolved();
 	}
 
 	@Nullable
-	private ResolvedProperty resolveProperty(Expression expression) {
+	private ResolvedProperty resolveProperty(Expression expression, XmlTag declaration) {
 
+		XmlFile pomFile = getPom();
+		if (pomFile == null) {
+			return null;
+		}
+		PropertyResolver propertyResolver = getProperties(pomFile).forDeclaration(declaration);
 		Property propertyValue = null;
-		while (expression.isProperty()) {
+		Set<String> visited = new java.util.HashSet<>();
+		while (expression.isProperty() && visited.add(expression.getPropertyName())) {
 
 			String propertyName = expression.getPropertyName();
 			propertyValue = propertyResolver.getPropertyValue(propertyName);
@@ -272,6 +236,14 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return new ResolvedProperty(propertyValue.getValue(), propertyValue);
 	}
 
+	private MavenPomProperties getProperties(XmlFile pomFile) {
+		return MavenPomProperties.forProject(buildContext, pomFile);
+	}
+
+	private MavenParser createParser(XmlFile pomFile) {
+		return new MavenParser(cache, getProperties(pomFile));
+	}
+
 	private ArtifactReference resolveProperty(XmlTag propertyTag) {
 
 		VersionProperty property = projectState != null ? projectState.findProperty(propertyTag.getLocalName()) : null;
@@ -282,7 +254,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		ArtifactVersion currentVersion = getCurrentVersion(property, propertyTag);
 
 		String tagName = propertyTag.getLocalName();
-		ResolvedProperty resolvedProperty = resolveProperty(Expression.property(tagName));
+		ResolvedProperty resolvedProperty = resolveProperty(Expression.property(tagName), propertyTag);
 		CachedArtifact firstArtifact = property.artifacts().getFirst();
 
 		return ArtifactReference.from(it -> {

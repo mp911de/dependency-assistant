@@ -466,6 +466,43 @@ class MavenPomMetadataIntrospectorTests {
 		assertThat(metadata.getIssueTrackerUrl()).isNull();
 	}
 
+	@Test
+	@ProjectFile(name = "member/pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>member-core</artifactId>
+				<version>1.0.0</version>
+				<description>Member component description</description>
+				<scm><url>https://github.com/example/example-repo</url></scm>
+				<issueManagement><system>JIRA</system></issueManagement>
+			</project>
+			""")
+	void capturesDescriptionAndUsesIssueManagementSystemHint(@ProjectFile("member/pom.xml") PsiFile pom) {
+
+		registerPom("com.example:member-core:1.0.0", pom);
+
+		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
+
+		assertThat(metadata.getProjectDescription()).isEqualTo("Member component description");
+		assertThat(metadata.getIssueTrackerUrl()).isNull();
+	}
+
+	@Test
+	@ProjectFile(name = "member/pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>member-core</artifactId>
+				<version>1.0.0</version>
+				<issueManagement><url>file:///tmp/issues.html</url></issueManagement>
+			</project>
+			""")
+	void rejectsNonHttpIssueManagementUrl(@ProjectFile("member/pom.xml") PsiFile pom) {
+
+		registerPom("com.example:member-core:1.0.0", pom);
+
+		assertThat(introspect("com.example:member-core:1.0.0").getIssueTrackerUrl()).isNull();
+	}
+
 	private void registerPom(String coordinates, PsiFile pomFile) {
 		pomsByCoordinates.put(Coordinates.of(coordinates), pomFile.getVirtualFile());
 	}

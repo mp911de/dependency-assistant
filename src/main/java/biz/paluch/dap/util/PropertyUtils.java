@@ -20,10 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.MatchResult;
 
-import com.intellij.lang.ASTNode;
 import com.intellij.lang.properties.PropertiesFileType;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.lang.properties.parsing.PropertiesTokenTypes;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.LiteralTextEscaper;
 import com.intellij.psi.PsiComment;
@@ -36,20 +35,18 @@ import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Helpers for inspecting and editing Java {@link PropertyImpl property}
- * elements in IntelliJ {@code .properties} PSI trees.
+ * Helpers for inspecting and editing Java {@link Property property} elements in
+ * IntelliJ {@code .properties} PSI trees.
  *
  * <p>Mainly for internal use within the plugin. Methods cover three concerns
  * that recur across inspections, completion contributors, and quick-fixes:
  * navigating from an arbitrary PSI element to its enclosing property,
- * translating ranges expressed against the
- * {@linkplain PropertyImpl#createLiteralTextEscaper() decoded value text} into
- * offsets the editor can highlight, and commenting out a property without
- * breaking up its physical lines.
+ * translating ranges expressed against the decoded value text into offsets the
+ * editor can highlight, and commenting out a property without breaking up its
+ * physical lines.
  *
  * @author Mark Paluch
- * @see PropertyImpl
- * @see PropertyValueImpl
+ * @see Property
  * @see MatchFunction
  */
 public class PropertyUtils {
@@ -58,10 +55,9 @@ public class PropertyUtils {
 	 * Translate ranges within the decoded value of {@code property} into ranges
 	 * relative to the property element.
 	 *
-	 * <p>Decoded ranges address offsets in the property's
-	 * {@linkplain PropertyImpl#getUnescapedValue() decoded value text}. Returned
-	 * ranges are mapped back through the literal-text escaper and shifted to
-	 * offsets relative to {@code property}, suitable for
+	 * <p>Decoded ranges address offsets in the property's decoded value text.
+	 * Returned ranges are mapped back through the literal-text escaper and shifted
+	 * to offsets relative to {@code property}, suitable for
 	 * {@code ProblemsHolder.problem(property, ...).range(range)} where the range
 	 * must be expressed relative to the reported element.
 	 *
@@ -72,7 +68,7 @@ public class PropertyUtils {
 	 * @return property-relative ranges in match order. Decoded ranges that fall
 	 * outside the value or fail to map back to host offsets are silently dropped.
 	 */
-	public static List<TextRange> mapDecodedRanges(PropertyImpl property, List<TextRange> decodedRanges) {
+	public static List<TextRange> mapDecodedRanges(Property property, List<TextRange> decodedRanges) {
 
 		if (decodedRanges.isEmpty()) {
 			return List.of();
@@ -97,13 +93,13 @@ public class PropertyUtils {
 	 * @return the enclosing property, or {@literal null} if {@code element} is
 	 * {@literal null} or no enclosing property exists.
 	 */
-	public static @Nullable PropertyImpl findProperty(@Nullable PsiElement element) {
+	public static @Nullable Property findProperty(@Nullable PsiElement element) {
 
-		if (element instanceof PropertyImpl property) {
+		if (element instanceof Property property) {
 			return property;
 		}
 		if (element != null) {
-			return PsiTreeUtil.getParentOfType(element, PropertyImpl.class, false);
+			return PsiTreeUtil.getParentOfType(element, Property.class, false);
 		}
 		return null;
 	}
@@ -117,14 +113,17 @@ public class PropertyUtils {
 	 * @return the property value element, or {@literal null} when {@code element}
 	 * is neither a property nor a value.
 	 */
-	public static @Nullable PropertyValueImpl findPropertyValue(PsiElement element) {
+	public static @Nullable PsiElement findPropertyValue(PsiElement element) {
 
-		if (element instanceof PropertyValueImpl pv) {
-			return pv;
+		if (element.getNode().getElementType() == PropertiesTokenTypes.VALUE_CHARACTERS) {
+			return element;
 		}
 
-		if (element instanceof PropertyImpl property) {
-			return PsiTreeUtil.findChildOfType(property, PropertyValueImpl.class);
+		if (element instanceof Property property) {
+			List<PsiElement> values = SyntaxTraverser.psiTraverser(property)
+					.filter(it -> it.getNode().getElementType() == PropertiesTokenTypes.VALUE_CHARACTERS)
+					.toList();
+			return values.isEmpty() ? null : values.getFirst();
 		}
 
 		return null;
@@ -139,14 +138,14 @@ public class PropertyUtils {
 	 * @return the value range relative to the property element, or {@literal null}
 	 * when no value node exists.
 	 */
-	public static @Nullable TextRange valueRangeInElement(PropertyImpl property) {
+	public static @Nullable TextRange valueRangeInElement(Property property) {
 
-		ASTNode valueNode = property.getValueNode();
-		if (valueNode == null) {
+		PsiElement value = findPropertyValue(property);
+		if (value == null) {
 			return null;
 		}
 		int propertyStart = property.getTextRange().getStartOffset();
-		return valueNode.getTextRange().shiftLeft(propertyStart);
+		return value.getTextRange().shiftLeft(propertyStart);
 	}
 
 	/**
@@ -158,7 +157,7 @@ public class PropertyUtils {
 	 * multi-line values into a single logical string that does not round-trip
 	 * cleanly through the regex-based URL matchers.
 	 *
-	 * @param rawText the raw PSI text of a {@link PropertyValueImpl}; must not be
+	 * @param rawText the raw PSI text of a property value; must not be
 	 * {@literal null}.
 	 * @return {@literal true} if {@code rawText} contains a line continuation.
 	 */
@@ -202,9 +201,9 @@ public class PropertyUtils {
 	 * must not be {@literal null}.
 	 * @return the first matching range, or {@code fallbackElement}'s range when no
 	 * match is available.
-	 * @see #findTextRanges(PropertyImpl, PsiElement, MatchFunction)
+	 * @see #findTextRanges(Property, PsiElement, MatchFunction)
 	 */
-	public static TextRange findTextRange(PropertyImpl property, PsiElement fallbackElement,
+	public static TextRange findTextRange(Property property, PsiElement fallbackElement,
 			MatchFunction matchFunction) {
 		return findTextRanges(property, fallbackElement, matchFunction).getFirst();
 	}
@@ -222,9 +221,9 @@ public class PropertyUtils {
 	 * @return file-absolute ranges in match order; never empty, falling back to a
 	 * single-element list with {@code fallbackElement}'s range when no match is
 	 * available.
-	 * @see #findTextRanges(PropertyImpl, MatchFunction)
+	 * @see #findTextRanges(Property, MatchFunction)
 	 */
-	public static List<TextRange> findTextRanges(PropertyImpl property, PsiElement fallbackElement,
+	public static List<TextRange> findTextRanges(Property property, PsiElement fallbackElement,
 			MatchFunction matchFunction) {
 
 		List<TextRange> ranges = findTextRanges(property, matchFunction);
@@ -235,14 +234,12 @@ public class PropertyUtils {
 	 * Locate ranges in {@code property}'s value that correspond to matches produced
 	 * by {@code matchFunction} against the decoded value text.
 	 *
-	 * <p>Matching runs against the value after applying the property's
-	 * {@linkplain PropertyImpl#createLiteralTextEscaper() literal text escaper}, so
-	 * {@code matchFunction} expresses coordinates in terms of the logical value
-	 * rather than the raw source. Decoding is restricted to the
-	 * {@linkplain PropertyImpl#getValueNode() value node}; the default
-	 * {@link LiteralTextEscaper#getRelevantTextRange() relevant text range} would
-	 * cover the whole property (key, separator, and value) and shift every decoded
-	 * position by the key length.
+	 * <p>Matching runs against the value after applying the property's literal text
+	 * escaper, so {@code matchFunction} expresses coordinates in terms of the
+	 * logical value rather than the raw source. Decoding is restricted to the value
+	 * node; the default {@link LiteralTextEscaper#getRelevantTextRange() relevant
+	 * text range} would cover the whole property (key, separator, and value) and
+	 * shift every decoded position by the key length.
 	 *
 	 * @param property the property whose value should be searched; must not be
 	 * {@literal null}.
@@ -252,16 +249,17 @@ public class PropertyUtils {
 	 * empty list when the property has no value node, the escaper rejects the
 	 * value, or the match function returns no matches.
 	 */
-	public static List<TextRange> findTextRanges(PropertyImpl property, MatchFunction matchFunction) {
+	public static List<TextRange> findTextRanges(Property property, MatchFunction matchFunction) {
 
-		LiteralTextEscaper<? extends PsiLanguageInjectionHost> escaper = property.createLiteralTextEscaper();
-		PropertyValueImpl first = SyntaxTraverser.psiTraverser(property)
-				.filter(PropertyValueImpl.class).first();
+		if (!(property instanceof PsiLanguageInjectionHost host)) {
+			return List.of();
+		}
+		LiteralTextEscaper<? extends PsiLanguageInjectionHost> escaper = host.createLiteralTextEscaper();
+		PsiElement first = findPropertyValue(property);
 
 		if (first == null) {
 			return List.of();
 		}
-
 		int startOffset = property.getTextRange().getStartOffset();
 		TextRange valueRangeInHost = first.getTextRange().shiftLeft(startOffset);
 		StringBuilder decoded = new StringBuilder();
@@ -344,7 +342,7 @@ public class PropertyUtils {
 	 *
 	 * @param property the property to comment out.
 	 */
-	public static void commentOut(PropertyImpl property) {
+	public static void commentOut(Property property) {
 
 		String commentedText = commentEveryPhysicalLine(property.getText());
 		PsiFile dummyFile = PsiFileFactory.getInstance(property.getProject()).createFileFromText(

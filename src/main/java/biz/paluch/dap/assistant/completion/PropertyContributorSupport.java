@@ -32,11 +32,11 @@ import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.PropertiesFileType;
-import com.intellij.lang.properties.psi.impl.PropertiesListImpl;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyKeyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.lang.properties.parsing.PropertiesTokenTypes;
+import com.intellij.lang.properties.psi.PropertiesFile;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PlatformPatterns;
@@ -44,7 +44,6 @@ import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiFileFactory;
-import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.ProcessingContext;
 
 /**
@@ -52,8 +51,8 @@ import com.intellij.util.ProcessingContext;
  * completions inside property keys, property values, and on blank lines in the
  * properties list (see {@link #PATTERNS}).
  *
- * <p>Subclasses implement {@link #supports(PropertyImpl)} and the
- * {@link #addCompletions(CompletionResultSet, Cache, PsiFileFactory, PropertyImpl)}
+ * <p>Subclasses implement {@link #supports(Property)} and the
+ * {@link #addCompletions(CompletionResultSet, Cache, PsiFileFactory, Property)}
  * hook to contribute format-specific lookup elements, typically through
  * {@link #addPropertyLineCompletion}.
  *
@@ -67,7 +66,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	 * </pre>
 	 */
 	private static final PsiElementPattern.Capture<PsiElement> PROPERTY_KEY = PlatformPatterns.psiElement()
-			.inside(PlatformPatterns.psiElement(PropertyKeyImpl.class));
+			.inside(PlatformPatterns.psiElement().withElementType(PropertiesTokenTypes.KEY_CHARACTERS));
 
 	/**
 	 * Matches a caret position inside a property value. <pre class="code">
@@ -75,7 +74,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	 * </pre>
 	 */
 	private static final PsiElementPattern.Capture<PsiElement> PROPERTY_VALUE = PlatformPatterns.psiElement()
-			.inside(PlatformPatterns.psiElement(PropertyValueImpl.class));
+			.inside(PlatformPatterns.psiElement().withElementType(PropertiesTokenTypes.VALUE_CHARACTERS));
 
 	/**
 	 * Matches a caret position inside the properties list body, including blank
@@ -84,7 +83,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	 * </pre>
 	 */
 	private static final PsiElementPattern.Capture<PsiElement> PROPERTY_LIST = PlatformPatterns.psiElement()
-			.inside(PlatformPatterns.psiElement(PropertiesListImpl.class));
+			.withLanguage(com.intellij.lang.properties.PropertiesLanguage.INSTANCE);
 
 	/**
 	 * Matches any caret position handled by this contributor: inside a property
@@ -103,7 +102,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 			CompletionResultSet result) {
 
 		PsiElement position = parameters.getPosition();
-		PropertyImpl propertyPosition = PropertyUtils.findProperty(position);
+		Property propertyPosition = PropertyUtils.findProperty(position);
 
 		if (propertyPosition == null) {
 			return;
@@ -124,7 +123,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	}
 
 	protected abstract void addCompletions(CompletionResultSet result, Cache cache, PsiFileFactory factory,
-			PropertyImpl propertyPosition);
+			Property propertyPosition);
 
 	/**
 	 * Add a wrapper {@code key=url} line completion item to {@code result}.
@@ -141,7 +140,7 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	 * {@literal null}.
 	 */
 	protected static void addPropertyLineCompletion(CompletionResultSet result, PsiFileFactory factory,
-			PropertyImpl propertyPosition, String key, ArtifactRelease release, String url) {
+			Property propertyPosition, String key, ArtifactRelease release, String url) {
 
 		String lookupString = key + "=" + url;
 		Set<String> lookupStrings = new LinkedHashSet<>();
@@ -150,7 +149,13 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 		lookupStrings.add(url);
 
 		PsiFile file = factory.createFileFromText("dummy.properties", PropertiesFileType.INSTANCE, lookupString);
-		PropertyImpl property = PsiTreeUtil.findChildOfType(file, PropertyImpl.class);
+		IProperty candidate = file instanceof PropertiesFile propertiesFile
+				? propertiesFile.findPropertyByKey(key)
+				: null;
+		Property property = candidate instanceof Property value ? value : null;
+		if (property == null) {
+			return;
+		}
 
 		result.addElement(LookupElementBuilder.create(property, lookupString)
 				.withLookupStrings(lookupStrings)
@@ -171,14 +176,14 @@ public abstract class PropertyContributorSupport extends CompletionProvider<Comp
 	}
 
 	private boolean autoPopupAfterEquals(PsiElement position) {
-		PropertyImpl property = PropertyUtils.findProperty(position);
+		Property property = PropertyUtils.findProperty(position);
 		if (property == null) {
 			return false;
 		}
 		return supports(property);
 	}
 
-	protected abstract boolean supports(PropertyImpl property);
+	protected abstract boolean supports(Property property);
 
 	protected abstract boolean isPropertyKeyTrigger(char typeChar);
 

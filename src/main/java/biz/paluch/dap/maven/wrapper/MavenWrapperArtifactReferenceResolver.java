@@ -20,10 +20,9 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.support.ArtifactReference;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import biz.paluch.dap.util.PropertyUtils;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.util.PsiTreeUtil;
 
 /**
  * {@link ArtifactReferenceResolver} implementation for Maven Wrapper
@@ -39,19 +38,8 @@ class MavenWrapperArtifactReferenceResolver implements ArtifactReferenceResolver
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		PropertyImpl property;
-		PropertyValueImpl literal;
-
-		if (element instanceof PropertyValueImpl propertyValue
-				&& element.getParent() instanceof PropertyImpl propertyImpl) {
-			property = propertyImpl;
-			literal = propertyValue;
-		} else if (element instanceof PropertyImpl propertyImpl) {
-			property = propertyImpl;
-			literal = PsiTreeUtil.findChildOfType(element, PropertyValueImpl.class);
-		} else {
-			return ArtifactReference.unresolved();
-		}
+		Property property = PropertyUtils.findProperty(element);
+		PsiElement literal = property != null ? PropertyUtils.findPropertyValue(property) : null;
 
 		if (literal == null || !WrapperProperty.isWrapperProperty(property)
 				|| !MavenWrapperUtils.isWrapperFile(element.getContainingFile())) {

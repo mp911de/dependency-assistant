@@ -16,13 +16,19 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.List;
+
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.xml.XmlFile;
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
@@ -35,6 +41,34 @@ import static biz.paluch.dap.maven.UpdateTestSupport.*;
  */
 @IdeaProjectTests
 class UpdatePomFileTests {
+
+	@Test
+	@ProjectFile(name = "child/pom.xml", content = """
+			<project>
+				<dependencies><dependency>
+					<groupId>org.springframework</groupId>
+					<artifactId>spring-core</artifactId>
+					<version>${spring.version}</version>
+				</dependency></dependencies>
+			</project>
+			""")
+	@ProjectFile(name = "parent/pom.xml", content = """
+			<project><properties><spring.version>6.1.0</spring.version></properties></project>
+			""")
+	void inheritedPropertyUpdateDoesNotMutateParent(@ProjectFile("child/pom.xml") XmlFile child,
+			@ProjectFile("parent/pom.xml") XmlFile parent) {
+
+		DependencyUpdate update = new DependencyUpdate(ArtifactId.of("org.springframework", "spring-core"),
+				ArtifactVersion.of("6.1.0"), ArtifactVersion.of("6.2.0"), DeclarationSource.dependency(),
+				VersionSource.property("spring.version"));
+
+		UpgradeResult result = new UpdatePomFile(MavenPomProperties.combined(child, List.of(parent)))
+				.applyUpdates(child, List.of(update));
+
+		assertThat(result.hasChanges()).isFalse();
+		assertThat(parent).containsText("<spring.version>6.1.0</spring.version>")
+				.doesNotContainText("6.2.0");
+	}
 
 	@Test
 	@ProjectFile(name = "pom.xml", content = """
@@ -262,6 +296,27 @@ class UpdatePomFileTests {
 			</project>
 			""")
 	void pluginInlineVersionIsUpdated(PsiFile pom) {
+
+		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.maven.plugins", "maven-compiler-plugin",
+				DeclarationSource.plugin(), "3.14.0");
+
+		assertThat(updated).hasDependency("maven-compiler-plugin", "3.14.0");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<build>
+					<plugins>
+						<plugin>
+							<artifactId>maven-compiler-plugin</artifactId>
+							<version>3.13.0</version>
+						</plugin>
+					</plugins>
+				</build>
+			</project>
+			""")
+	void pluginWithImplicitDefaultGroupIsUpdated(PsiFile pom) {
 
 		UpdatedBuildFile updated = applyUpdate(pom, "org.apache.maven.plugins", "maven-compiler-plugin",
 				DeclarationSource.plugin(), "3.14.0");

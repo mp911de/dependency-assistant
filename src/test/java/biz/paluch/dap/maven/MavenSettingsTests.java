@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.maven;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -84,6 +85,37 @@ class MavenSettingsTests {
 		RemoteRepository repository = settings.getRemoteRepository("central", "https://repo1.maven.org/maven2/");
 
 		assertThat(repository.id()).isEqualTo("specific");
+	}
+
+	@Test
+	void exactMirrorPrecedesEarlierWildcardMirror() {
+
+		Mirror wildcard = new Mirror("catch-all", "https://catch-all.corp/repo/", "*");
+		Mirror exact = new Mirror("central-mirror", "https://central.corp/repo/", "central");
+		MavenSettings settings = new MavenSettings(Map.of(), List.of(wildcard, exact));
+
+		RemoteRepository repository = settings.getRemoteRepository("central", "https://repo1.maven.org/maven2/");
+
+		assertThat(repository.id()).isEqualTo("central-mirror");
+	}
+
+	@Test
+	void attachesCredentialsOnlyToTheirSettingsDeclaredRepositoryBase() {
+
+		RepositoryCredentials bound = new RepositoryCredentials("internal", "alice", "secret",
+				List.of(URI.create("https://nexus.corp/releases/")));
+		MavenSettings settings = new MavenSettings(Map.of("internal", bound), List.of());
+
+		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp/releases/library/").credentials())
+				.isEqualTo(bound);
+		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp:443/releases/library/").credentials())
+				.isEqualTo(bound);
+		assertThat(settings.getRemoteRepository("internal", "http://nexus.corp/releases/library/").credentials())
+				.isNull();
+		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp:8443/releases/library/").credentials())
+				.isNull();
+		assertThat(settings.getRemoteRepository("internal", "https://attacker.example/releases/").credentials())
+				.isNull();
 	}
 
 }

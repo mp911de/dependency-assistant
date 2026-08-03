@@ -45,10 +45,8 @@ import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PropertyUtils;
-import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
@@ -56,7 +54,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValuesManager;
-import com.intellij.psi.util.PsiTreeUtil;
 import icons.MavenIcons;
 
 import org.springframework.util.Assert;
@@ -203,20 +200,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			if (!(element instanceof PropertyValueImpl value)) {
-				return false;
-			}
-
-			if (!MavenWrapperUtils.isWrapperFile(value.getContainingFile())) {
-				return false;
-			}
-
-			if (!(value.getParent() instanceof IProperty property)) {
-				return false;
-			}
-
-			return WrapperProperty.isWrapperProperty(property);
+			return MavenWrapperUtils.isVersionElement(element);
 		}
 
 		@Override
@@ -279,16 +263,12 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 		@Override
 		public TextRange getHighlightRange(PsiElement element) {
 
-			PropertyValueImpl literal = element instanceof PropertyValueImpl pv ? pv
-					: PsiTreeUtil.getParentOfType(element, PropertyValueImpl.class, false);
+			Property property = PropertyUtils.findProperty(element);
+			PsiElement literal = property != null ? PropertyUtils.findPropertyValue(property) : null;
 			if (literal == null
 					|| !(literal.getContainingFile() instanceof PropertiesFile propertiesFile)
 					|| !MavenWrapperUtils.isWrapperFile(propertiesFile)) {
 				return element.getTextRange();
-			}
-
-			if (!(literal.getParent() instanceof PropertyImpl property)) {
-				return literal.getTextRange();
 			}
 
 			WrapperEntry entry = MavenWrapperParser.parse(property);

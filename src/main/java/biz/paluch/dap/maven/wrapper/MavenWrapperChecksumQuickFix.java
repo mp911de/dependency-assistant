@@ -23,9 +23,12 @@ import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.lang.properties.psi.PropertiesFile;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
+import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.SmartPointerManager;
+import com.intellij.psi.SmartPsiElementPointer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Quick-fix that computes and inserts a missing Maven wrapper checksum.
@@ -36,10 +39,10 @@ class MavenWrapperChecksumQuickFix implements LocalQuickFix {
 
 	private final WrapperProperty property;
 
-	private final ChecksumComputer checksumComputer;
+	private final @Nullable ChecksumComputer checksumComputer;
 
 	MavenWrapperChecksumQuickFix(WrapperProperty property) {
-		this(property, WrapperChecksumDownloader::downloadAndComputeSha);
+		this(property, null);
 	}
 
 	MavenWrapperChecksumQuickFix(WrapperProperty property, ChecksumComputer checksumComputer) {
@@ -70,7 +73,7 @@ class MavenWrapperChecksumQuickFix implements LocalQuickFix {
 	@Override
 	public void applyFix(Project project, ProblemDescriptor descriptor) {
 
-		if (!(descriptor.getPsiElement() instanceof PropertyImpl urlProperty)
+		if (!(descriptor.getPsiElement() instanceof Property urlProperty)
 				|| !(urlProperty.getContainingFile() instanceof PropertiesFile properties)) {
 			return;
 		}
@@ -80,25 +83,48 @@ class MavenWrapperChecksumQuickFix implements LocalQuickFix {
 			return;
 		}
 
-		String sha;
+		SmartPsiElementPointer<Property> pointer = SmartPointerManager.createPointer(urlProperty);
+		if (checksumComputer == null) {
+			WrapperChecksumDownloader.downloadAndComputeSha(project, url,
+					sha -> applyChecksum(project, pointer, url, sha),
+					ex -> {
+						if (!project.isDisposed()) {
+							notifyError(project, url, ex);
+						}
+					}, () -> {
+					});
+			return;
+		}
+
 		try {
-			sha = checksumComputer.compute(project, url);
+			applyChecksum(project, pointer, url, checksumComputer.compute(project, url));
 		} catch (IOException ex) {
-			Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
-					MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(ex)));
+			notifyError(project, url, ex);
+		}
+	}
+
+	private void applyChecksum(Project project, SmartPsiElementPointer<Property> pointer, String expectedUrl,
+			String sha) {
+
+		Property urlProperty = pointer.getElement();
+		if (project.isDisposed() || urlProperty == null || !expectedUrl.equals(urlProperty.getUnescapedValue())
+				|| sha == null || sha.isBlank()
+				|| !(urlProperty.getContainingFile() instanceof PropertiesFile properties)) {
 			return;
 		}
-
-		if (sha == null || sha.isBlank()) {
-			return;
-		}
-
 		WriteCommandAction.runWriteCommandAction(project, MessageBundle.message("wrapper.checksum.command"), null,
 				() -> {
-					if (properties.findPropertyByKey(property.shaKey()) == null) {
-						properties.addPropertyAfter(property.shaKey(), sha, urlProperty);
+					Property current = pointer.getElement();
+					if (current != null && expectedUrl.equals(current.getUnescapedValue())
+							&& properties.findPropertyByKey(property.shaKey()) == null) {
+						properties.addPropertyAfter(property.shaKey(), sha, current);
 					}
 				});
+	}
+
+	private static void notifyError(Project project, String url, IOException ex) {
+		Notifications.error(project, MessageBundle.message("wrapper.checksum.error.title"),
+				MessageBundle.message("wrapper.checksum.error", url, Notifications.errorMessage(ex)));
 	}
 
 	@FunctionalInterface

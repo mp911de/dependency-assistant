@@ -35,8 +35,8 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
-import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
@@ -127,7 +127,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		Project project = anchor.getProject();
 		MavenProjectContext context = MavenProjectContext.of(project, anchor);
-		PropertyResolver propertyResolver = MavenPropertyResolver.create(context, anchor);
+		PropertyResolver propertyResolver = MavenPomProperties.forProject(context, anchor);
 
 		new MavenDependencyCollector(project)
 				.doCollect(anchor, propertyResolver, collector);
@@ -188,7 +188,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		private final MavenProjectContext projectContext;
 
-		private final MavenPropertyResolver propertyResolver;
+		private final MavenPomProperties propertyResolver;
 
 		private final DependencyFileDelegate delegate;
 
@@ -196,7 +196,7 @@ class MavenAssistant implements DependencyAssistant {
 				MavenProjectContext projectContext) {
 			super(projectContext);
 			this.assistant = assistant;
-			this.propertyResolver = MavenPropertyResolver.create(projectContext, pomFile);
+			this.propertyResolver = MavenPomProperties.forProject(projectContext, pomFile);
 			this.projectContext = projectContext;
 			this.delegate = DependencyFileDelegate.of(project, anchor);
 		}
@@ -226,11 +226,14 @@ class MavenAssistant implements DependencyAssistant {
 		private VersionUpgradeLookup createLookup(PsiFile pom) {
 
 			Project project = pom.getProject();
-			StateService stateService = StateService.getInstance(project);
-			ProjectState projectState = stateService.getProjectState(getProjectId());
+
+			if (pom instanceof XmlFile xmlFile) {
+				return VersionUpgradeLookup.of(project, getProjectId(),
+						new MavenArtifactReferenceResolver(project, xmlFile, projectContext));
+			}
 
 			return VersionUpgradeLookup.of(project, getProjectId(),
-					new MavenArtifactReferenceResolver(projectState, pom, projectContext));
+					ArtifactReferenceResolver.unresolved());
 		}
 
 		@Override
