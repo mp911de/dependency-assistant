@@ -101,6 +101,11 @@ public class NpmAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return isNpmVersionElement(element);
+	}
+
+	@Override
 	public List<PsiFile> enumerate(Project project) {
 
 		if (!AVAILABLE) {
@@ -150,6 +155,16 @@ public class NpmAssistant implements DependencyAssistant {
 				&& FileTypeManager.getInstance().findFileTypeByName("JSON") != null;
 	}
 
+	private static boolean isNpmVersionElement(PsiElement element) {
+		if (!NpmUtils.isPackageJson(element.getContainingFile())) {
+			return false;
+		}
+		// Only the JsonStringLiteral itself qualifies; firing for its child tokens
+		// would register a duplicate line marker on the same dependency value.
+		return element instanceof com.intellij.json.psi.JsonStringLiteral
+				&& NpmPsiUtils.findDependencyLiteral(element) != null;
+	}
+
 	private static class NpmDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final NpmAssistant assistant;
@@ -192,14 +207,7 @@ public class NpmAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			if (!NpmUtils.isPackageJson(element.getContainingFile())) {
-				return false;
-			}
-			// Only the JsonStringLiteral itself qualifies; firing for its child tokens
-			// would register a duplicate line marker on the same dependency value.
-			return element instanceof com.intellij.json.psi.JsonStringLiteral
-					&& NpmPsiUtils.findDependencyLiteral(element) != null;
+			return isNpmVersionElement(element);
 		}
 
 		@Override

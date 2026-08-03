@@ -111,6 +111,11 @@ class GradleAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return isGradleVersionelement(element);
+	}
+
+	@Override
 	public void prepare(Project project) {
 		new GradleInitService().execute(project, null);
 	}
@@ -207,6 +212,24 @@ class GradleAssistant implements DependencyAssistant {
 		return new GradleDependencyContext(this, project, anchor.getVirtualFile(), context);
 	}
 
+	private static boolean isGradleVersionelement(PsiElement element) {
+		PsiFile file = element.getContainingFile();
+
+		if (!GradleUtils.isGradleFile(file)) {
+			return false;
+		}
+
+		if (GradleUtils.isGradlePropertiesFile(file)) {
+			return GradlePropertiesParser.isPropertyValueElement(element);
+		}
+
+		if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file)) {
+			return KotlinArtifactReferenceLocator.isVersionElement(element);
+		}
+
+		return true;
+	}
+
 	static class GradleDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final GradleAssistant assistant;
@@ -236,22 +259,7 @@ class GradleAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			PsiFile file = element.getContainingFile();
-
-			if (!GradleUtils.isGradleFile(file)) {
-				return false;
-			}
-
-			if (GradleUtils.isGradlePropertiesFile(file)) {
-				return GradlePropertiesParser.isPropertyValueElement(element);
-			}
-
-			if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file)) {
-				return KotlinArtifactReferenceLocator.isVersionElement(element);
-			}
-
-			return true;
+			return isGradleVersionelement(element);
 		}
 
 		@Override

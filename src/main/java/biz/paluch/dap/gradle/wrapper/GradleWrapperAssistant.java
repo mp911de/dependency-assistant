@@ -97,6 +97,11 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return isGradleWrapperVersionElement(element);
+	}
+
+	@Override
 	public List<PsiFile> enumerate(Project project) {
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
@@ -133,6 +138,19 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		Project project = anchor.getProject();
 		ProjectId projectId = GradleWrapperUtils.createProjectId(virtualFile);
 		return new GradleWrapperDependencyContext(this, project, virtualFile, projectId);
+	}
+
+	private static boolean isGradleWrapperVersionElement(PsiElement element) {
+		if (!(element instanceof PropertyValueImpl value)) {
+			return false;
+		}
+		if (!GradleWrapperUtils.isWrapperFile(element.getContainingFile())) {
+			return false;
+		}
+		if (!(element.getParent() instanceof IProperty property)) {
+			return false;
+		}
+		return WrapperProperty.isWrapperProperty(property);
 	}
 
 	public static class GradleWrapperDependencyContext extends AbstractProjectBuildContext
@@ -179,17 +197,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			if (!(element instanceof PropertyValueImpl value)) {
-				return false;
-			}
-			if (!GradleWrapperUtils.isWrapperFile(value.getContainingFile())) {
-				return false;
-			}
-			if (!(value.getParent() instanceof IProperty property)) {
-				return false;
-			}
-			return WrapperProperty.isWrapperProperty(property);
+			return isGradleWrapperVersionElement(element);
 		}
 
 		@Override

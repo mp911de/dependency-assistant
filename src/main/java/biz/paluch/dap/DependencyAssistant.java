@@ -25,6 +25,7 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -96,6 +97,12 @@ public interface DependencyAssistant {
 	 * @param file the file to inspect.
 	 */
 	boolean supports(PsiFile file);
+
+	/**
+	 * Return whether the given element represents an editable dependency version.
+	 * @param element the PSI element to inspect.
+	 */
+	boolean isVersionElement(PsiElement element);
 
 	/**
 	 * Initialization hook after project startup.

@@ -133,8 +133,24 @@ public class DependencyAssistantDispatcher {
 	 * {@link ProjectDependencyContext#isAbsent() absent} context.
 	 */
 	public static ProjectDependencyContext findFirstContext(PsiElement element) {
-		return findFirstContext(element.getProject(),
-				element instanceof PsiFile file ? file : element.getContainingFile());
+
+		PsiFile psiFile = element instanceof PsiFile file ? file : element.getContainingFile();
+		if (psiFile == null) {
+			return ProjectDependencyContext.absent();
+		}
+
+		for (DependencyAssistant integration : INTEGRATIONS.getExtensionList()) {
+			if (!integration.supports(psiFile) || !integration.isVersionElement(element)) {
+				continue;
+			}
+
+			ProjectDependencyContext context = integration.createContext(psiFile.getProject(), psiFile);
+			if (context.isAvailable()) {
+				return context;
+			}
+		}
+
+		return ProjectDependencyContext.absent();
 	}
 
 	/**

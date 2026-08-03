@@ -64,8 +64,7 @@ public class BomUtil {
 			return Map.of();
 		}
 
-		Map<ArtifactId, ArtifactVersion> members = new MavenBomParser(project, bomPom).readMembers();
-		return members != null ? members : Map.of();
+		return new MavenBomParser(project, bomPom).readMembers();
 	}
 
 }

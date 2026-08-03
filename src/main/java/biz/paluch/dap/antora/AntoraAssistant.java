@@ -112,6 +112,11 @@ public class AntoraAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return isAntoraVersionElement(element);
+	}
+
+	@Override
 	public List<PsiFile> enumerate(Project project) {
 
 		if (!AVAILABLE) {
@@ -163,6 +168,19 @@ public class AntoraAssistant implements DependencyAssistant {
 		return PluginManagerCore.isPluginInstalled(GITHUB) && !PluginManagerCore.isDisabled(GITHUB);
 	}
 
+	private static boolean isAntoraVersionElement(PsiElement element) {
+		if (!AntoraUtils.isPlaybookFile(element.getContainingFile())) {
+			return false;
+		}
+
+		if (element instanceof YAMLQuotedText) {
+			return false;
+		}
+
+		YAMLScalar scalar = AntoraArtifactReferenceResolver.findBundleUrlScalar(PsiElements.unleaf(element));
+		return scalar != null;
+	}
+
 	private static class AntoraDependencyContext extends ProjectBuildContextWrapper implements ProjectDependencyContext {
 
 		private final AntoraAssistant assistant;
@@ -198,17 +216,7 @@ public class AntoraAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			if (!AntoraUtils.isPlaybookFile(element.getContainingFile())) {
-				return false;
-			}
-
-			if (element instanceof YAMLQuotedText) {
-				return false;
-			}
-
-			YAMLScalar scalar = AntoraArtifactReferenceResolver.findBundleUrlScalar(PsiElements.unleaf(element));
-			return scalar != null;
+			return isAntoraVersionElement(element);
 		}
 
 		@Override

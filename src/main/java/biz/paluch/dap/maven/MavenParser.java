@@ -108,6 +108,14 @@ class MavenParser extends MavenPomSupport {
 		return declarations;
 	}
 
+	protected @Nullable ArtifactDeclaration parseDeclaration(XmlTag owner) {
+
+		MavenPomProperties properties = this.propertyResolver instanceof MavenPomProperties mavenProperties
+				? mavenProperties
+				: MavenPomProperties.forPom((XmlFile) owner.getContainingFile(), this.propertyResolver);
+		return parseDeclaration(properties, owner, getDeclarationSource(owner));
+	}
+
 	private @Nullable ArtifactDeclaration parseDeclaration(MavenPomProperties properties, XmlTag owner,
 			DeclarationSource declarationSource) {
 

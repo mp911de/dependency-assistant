@@ -97,7 +97,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		if (isResolvableElement(element) && canResolve()) {
 
 			if (XmlUtil.findVersionTag(element) instanceof XmlTag versionTag) {
-				return resolveDirect(versionTag);
+				return resolveVersionTag(versionTag);
 			}
 
 			if (XmlUtil.findPropertyTag(element) instanceof XmlTag propertyTag) {
@@ -193,19 +193,17 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return (element instanceof XmlText || element instanceof XmlTag tag);
 	}
 
-	private ArtifactReference resolveDirect(XmlTag versionTag) {
+	private ArtifactReference resolveVersionTag(XmlTag versionTag) {
 
 		XmlTag parentTag = versionTag.getParentTag();
 		XmlFile pomFile = getPom();
 		if (parentTag == null || pomFile == null) {
 			return ArtifactReference.unresolved();
 		}
-		for (ArtifactDeclaration declaration : createParser(pomFile).parsePomFile(pomFile)) {
-			if (declaration.getDeclarationElement() == parentTag) {
-				return ArtifactReference.from(declaration);
-			}
-		}
-		return ArtifactReference.unresolved();
+		MavenParser parser = createParser(pomFile);
+		ArtifactDeclaration artifactDeclaration = parser.parseDeclaration(parentTag);
+		return artifactDeclaration != null ? ArtifactReference.from(artifactDeclaration)
+				: ArtifactReference.unresolved();
 	}
 
 	@Nullable
@@ -246,7 +244,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private ArtifactReference resolveProperty(XmlTag propertyTag) {
 
-		VersionProperty property = projectState != null ? projectState.findProperty(propertyTag.getLocalName()) : null;
+		VersionProperty property = projectState.findProperty(propertyTag.getLocalName());
 		if (property == null) {
 			return ArtifactReference.unresolved();
 		}

@@ -96,6 +96,11 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return MavenWrapperUtils.isVersionElement(element);
+	}
+
+	@Override
 	public List<PsiFile> enumerate(Project project) {
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);

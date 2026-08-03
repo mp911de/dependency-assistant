@@ -111,6 +111,11 @@ public class GitHubAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return isGitHubVersionElement(element);
+	}
+
+	@Override
 	public List<PsiFile> enumerate(Project project) {
 
 		if (!AVAILABLE) {
@@ -164,6 +169,19 @@ public class GitHubAssistant implements DependencyAssistant {
 				&& FileTypeManager.getInstance().findFileTypeByName("YAML") != null;
 	}
 
+	private static boolean isGitHubVersionElement(PsiElement element) {
+		PsiFile file = element.getContainingFile();
+
+		if (GitHubUtils.isWorkflowFile(file)
+				|| file != null && file.getUserData(GitHubProjectContext.KEY) != null) {
+
+			YAMLScalar usesScalar = GitHubUtils.findUsesScalar(PsiElements.unleaf(element));
+			return usesScalar != null;
+		}
+
+		return false;
+	}
+
 	private static class GitHubDependencyContext extends ProjectBuildContextWrapper
 			implements ProjectDependencyContext {
 
@@ -203,17 +221,7 @@ public class GitHubAssistant implements DependencyAssistant {
 
 		@Override
 		public boolean isVersionElement(PsiElement element) {
-
-			PsiFile file = element.getContainingFile();
-
-			if (GitHubUtils.isWorkflowFile(file)
-					|| file != null && file.getUserData(GitHubProjectContext.KEY) != null) {
-
-				YAMLScalar usesScalar = GitHubUtils.findUsesScalar(PsiElements.unleaf(element));
-				return usesScalar != null;
-			}
-
-			return false;
+			return isGitHubVersionElement(element);
 		}
 
 		@Override

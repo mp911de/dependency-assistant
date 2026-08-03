@@ -24,6 +24,7 @@ import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 
 public class TestAssistant implements DependencyAssistant {
@@ -58,6 +59,11 @@ public class TestAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return false;
+	}
+
+	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return true;
 	}
 
 	@Override

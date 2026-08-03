@@ -52,7 +52,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 	@Override
 	public String getId() {
-		return "maven";
+		return "maven-extensions";
 	}
 
 	@Override
@@ -78,6 +78,11 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 	@Override
 	public boolean supports(PsiFile file) {
 		return MavenUtils.isMavenExtensionsFile(file);
+	}
+
+	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return MavenUtils.isVersionElement(element);
 	}
 
 	@Override

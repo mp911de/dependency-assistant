@@ -98,6 +98,11 @@ class MavenAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public boolean isVersionElement(PsiElement element) {
+		return MavenUtils.isVersionElement(element);
+	}
+
+	@Override
 	public Map<ArtifactId, ArtifactVersion> resolveBillOfMaterials(Project project, PackageIdentity pkg,
 			ArtifactVersion version) {
 		return BomUtil.resolveBom(StateService.getInstance(project).getCache(), project, pkg, version);

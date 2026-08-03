@@ -42,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-public class MavenBomParser extends MavenPomSupport {
+class MavenBomParser extends MavenPomSupport {
 
 	private final @Nullable XmlFile pomFile;
 
@@ -70,10 +70,10 @@ public class MavenBomParser extends MavenPomSupport {
 	 * the file is no Maven POM.
 	 */
 	@RequiresReadLock
-	public @Nullable Map<ArtifactId, ArtifactVersion> readMembers() {
+	public Map<ArtifactId, ArtifactVersion> readMembers() {
 
 		if (!(pomFile instanceof XmlFile xmlFile)) {
-			return null;
+			return Map.of();
 		}
 		Map<ArtifactId, ArtifactVersion> members = new LinkedHashMap<>();
 		doWithRoot(xmlFile, root -> {
