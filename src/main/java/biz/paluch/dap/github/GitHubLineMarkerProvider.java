@@ -22,13 +22,14 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.assistant.editor.DependencyLineMarkerProvider;
 import biz.paluch.dap.github.GitHubAssistant.GitHubInterface;
 import biz.paluch.dap.util.MessageBundle;
+import com.intellij.openapi.project.DumbAware;
 
 /**
  * Gutter configurable for GitHub actions.
  *
  * @author Mark Paluch
  */
-public class GitHubLineMarkerProvider extends DependencyLineMarkerProvider {
+public class GitHubLineMarkerProvider extends DependencyLineMarkerProvider implements DumbAware {
 
 	@Override
 	public String getName() {

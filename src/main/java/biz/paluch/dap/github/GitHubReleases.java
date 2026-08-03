@@ -204,6 +204,7 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 			return shaByTag;
 		} catch (GithubStatusCodeException ex) {
 			handleException(ex, artifactId, request.getUrl());
+			exceptionConsumer.accept(ex);
 			return Map.of();
 		} catch (IOException ex) {
 			LOG.warn("[%s][%s] HTTP fetching of %s failed: %s".formatted(toString(artifactId),

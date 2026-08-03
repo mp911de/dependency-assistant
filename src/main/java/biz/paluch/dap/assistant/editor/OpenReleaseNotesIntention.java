@@ -23,12 +23,12 @@ import javax.swing.Icon;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
+import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.PriorityAction;
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.icons.AllIcons;
-import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
@@ -94,7 +94,7 @@ public class OpenReleaseNotesIntention extends BaseIntentionAction implements Pr
 			return;
 		}
 
-		BrowserUtil.browse(releaseNotesUrl);
+		HttpClientUtil.openBrowser(releaseNotesUrl);
 	}
 
 	@Override

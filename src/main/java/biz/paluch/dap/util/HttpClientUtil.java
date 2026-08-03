@@ -21,9 +21,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.concurrent.Semaphore;
 import java.util.function.Function;
 
+import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.ApplicationManager;
@@ -32,6 +34,8 @@ import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.io.HttpRequests;
 import com.intellij.util.io.RequestBuilder;
 import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * Shared helpers for IDE-aware HTTP access.
@@ -88,6 +92,27 @@ public class HttpClientUtil {
 		} finally {
 			semaphore.release();
 		}
+	}
+
+	/**
+	 * Open the given URI in the default browser.
+	 * @param uri
+	 */
+	public static void openBrowser(String uri) {
+		Assert.hasText(uri, "URI must not be empty");
+		String scheme = uri.toLowerCase(Locale.ROOT);
+		Assert.isTrue(scheme.startsWith("http:") || scheme.startsWith("https:"), "URI must start with http");
+		BrowserUtil.browse(uri);
+	}
+
+	/**
+	 * Open the given URI in the default browser.
+	 * @param uri
+	 */
+	public static void openBrowser(URI uri) {
+		String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+		Assert.isTrue(scheme.equals("http") || scheme.equals("https"), "URI must start with http");
+		BrowserUtil.browse(uri);
 	}
 
 	/**

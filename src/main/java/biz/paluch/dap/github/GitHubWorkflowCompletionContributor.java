@@ -30,6 +30,7 @@ import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PatternCondition;
@@ -52,7 +53,7 @@ import org.jetbrains.yaml.psi.YAMLScalar;
  *
  * @author Mark Paluch
  */
-public class GitHubWorkflowCompletionContributor extends CompletionContributor {
+public class GitHubWorkflowCompletionContributor extends CompletionContributor implements DumbAware {
 
 	private static final ReleaseCompletionProvider PROVIDER = new ReleaseCompletionProvider() {
 

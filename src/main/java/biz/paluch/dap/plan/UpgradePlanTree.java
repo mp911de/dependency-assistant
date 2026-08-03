@@ -45,10 +45,10 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import biz.paluch.dap.artifact.Dependency;
+import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
-import com.intellij.ide.BrowserUtil;
 import com.intellij.ide.util.treeView.TreeState;
 import com.intellij.openapi.actionSystem.CommonShortcuts;
 import com.intellij.openapi.actionSystem.IdeActions;
@@ -361,7 +361,7 @@ class UpgradePlanTree {
 			return false;
 		}
 
-		BrowserUtil.browse(ticket.getUrl());
+		HttpClientUtil.openBrowser(ticket.getUrl());
 		return true;
 	}
 

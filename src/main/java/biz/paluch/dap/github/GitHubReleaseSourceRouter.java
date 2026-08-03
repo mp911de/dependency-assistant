@@ -30,8 +30,6 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.github.api.GithubServerPath;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.util.ObjectUtils;
-
 /**
  * {@link ReleaseSource} facade for dependencies whose versions are discovered
  * from Git repositories.
@@ -136,25 +134,6 @@ public class GitHubReleaseSourceRouter implements ReleaseSource {
 		}
 
 		return releaseSources.computeIfAbsent(server, it -> new GitHubReleases(it, executor.getRequiredExecutor()));
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof GitHubReleaseSourceRouter that)) {
-			return false;
-		}
-		if (strict != that.strict) {
-			return false;
-		}
-		if (!ObjectUtils.nullSafeEquals(project, that.project)) {
-			return false;
-		}
-		return ObjectUtils.nullSafeEquals(releaseSources, that.releaseSources);
-	}
-
-	@Override
-	public int hashCode() {
-		return ObjectUtils.nullSafeHash(project, strict, releaseSources);
 	}
 
 	@Override

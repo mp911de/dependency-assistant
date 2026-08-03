@@ -21,13 +21,13 @@ import javax.swing.Icon;
 import biz.paluch.dap.assistant.ArtifactReferenceContext;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
+import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiElements;
 import com.intellij.codeInsight.intention.PriorityAction;
 import com.intellij.codeInsight.intention.impl.BaseIntentionAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
 import com.intellij.icons.AllIcons;
-import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Iconable;
@@ -87,7 +87,7 @@ public class ReportIssueIntention extends BaseIntentionAction implements Priorit
 		ProjectMetadata metadata = ProjectMetadataService.getMetadata(context.getDeclaration());
 		String url = metadata.getIssueTrackerUrl();
 		if (url != null) {
-			BrowserUtil.browse(url);
+			HttpClientUtil.openBrowser(url);
 		}
 	}
 

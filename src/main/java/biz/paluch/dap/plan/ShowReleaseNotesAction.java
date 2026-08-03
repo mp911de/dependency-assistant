@@ -20,7 +20,7 @@ import java.net.URI;
 
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
-import com.intellij.ide.BrowserUtil;
+import biz.paluch.dap.util.HttpClientUtil;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.DumbAwareAction;
@@ -62,7 +62,7 @@ public class ShowReleaseNotesAction extends DumbAwareAction {
 		PlanSelection.from(e).doWithFirst(item -> {
 			URI url = releaseNotesUrl(project, item);
 			if (url != null) {
-				BrowserUtil.browse(url);
+				HttpClientUtil.openBrowser(url);
 			}
 		});
 	}

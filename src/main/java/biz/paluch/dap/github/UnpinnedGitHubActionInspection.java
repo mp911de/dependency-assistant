@@ -32,6 +32,7 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.modcommand.ModCommand;
 import com.intellij.modcommand.ModCommandQuickFix;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiElementVisitor;
@@ -66,7 +67,7 @@ import org.jspecify.annotations.Nullable;
  * @see GitHubArtifactReferenceResolver
  * @see RefStyle
  */
-public class UnpinnedGitHubActionInspection extends LocalInspectionTool {
+public class UnpinnedGitHubActionInspection extends LocalInspectionTool implements DumbAware {
 
 	@Override
 	public PsiElementVisitor buildVisitor(ProblemsHolder holder, boolean isOnTheFly) {

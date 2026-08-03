@@ -16,7 +16,7 @@
 
 package biz.paluch.dap.plan;
 
-import com.intellij.ide.BrowserUtil;
+import biz.paluch.dap.util.HttpClientUtil;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.Presentation;
@@ -61,7 +61,7 @@ public class OpenTicketInBrowserAction extends DumbAwareAction {
 		PlanSelection.from(e).doWithFirst(it -> {
 			UpgradeTicket ticket = it.getTicket();
 			if (ticket != null) {
-				BrowserUtil.browse(ticket.getUrl());
+				HttpClientUtil.openBrowser(ticket.getUrl());
 			}
 		});
 	}
