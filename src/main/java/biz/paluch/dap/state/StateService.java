@@ -59,8 +59,7 @@ import org.jspecify.annotations.Nullable;
 @State(name = "DependencyAssistant", storages = @Storage("dependency-assistant.xml"))
 public class StateService
 		implements PersistentStateComponentWithModificationTracker<DependencyAssistantState>,
-		ModificationTracker,
-		VulnerabilitiesRepository {
+		ModificationTracker, VulnerabilitiesRepository {
 
 	private final DependencyAssistantState state = new DependencyAssistantState();
 
@@ -310,8 +309,8 @@ public class StateService
 	 * <p>Only the in-memory runtime dependency state is traversed; the persisted
 	 * cache is not consulted.
 	 *
-	 * @param projectFilter selects which modules are traversed .
-	 * @param consumer the action invoked with each declaration .
+	 * @param projectFilter selects which modules are traversed.
+	 * @param consumer the action invoked with each declaration.
 	 */
 	public void doWithDeclarations(Predicate<ProjectId> projectFilter, Consumer<DeclaredDependency> consumer) {
 		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {

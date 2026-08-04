@@ -1,9 +1,4 @@
 <idea-plugin>
-	<projectListeners>
-		<listener class="biz.paluch.dap.maven.MavenImportRefreshListener"
-		          topic="org.jetbrains.idea.maven.project.MavenImportListener"/>
-	</projectListeners>
-
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.maven.MavenAssistant"/>
 		<assistant implementation="biz.paluch.dap.maven.MavenExtensionsAssistant"/>
@@ -14,6 +9,8 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<postStartupActivity
+				implementation="biz.paluch.dap.maven.MavenSyncRefresher$Installer"/>
 		<completion.contributor
 				id="dap.maven.release-version-contributor"
 				language="XML"

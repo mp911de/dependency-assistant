@@ -75,7 +75,7 @@ public class DependencyLineMarkerProvider extends LineMarkerProviderDescriptor {
 	@Override
 	public @Nullable LineMarkerInfo<?> getLineMarkerInfo(PsiElement element) {
 
-		ArtifactReferenceContext context = ArtifactReferenceContext.from(element);
+		ArtifactReferenceContext context = ArtifactReferenceContext.from(element, this::getContext);
 		if (context.isAbsent()) {
 			return null;
 		}

@@ -116,6 +116,11 @@ public class GitHubAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public void prepare(Project project) {
+		new GitHubInitService().execute(project, null);
+	}
+
+	@Override
 	public List<PsiFile> enumerate(Project project) {
 
 		if (!AVAILABLE) {

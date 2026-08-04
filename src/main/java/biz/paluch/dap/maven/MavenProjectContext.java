@@ -78,7 +78,6 @@ interface MavenProjectContext extends ProjectBuildContext {
 	 * {@link VirtualFile}.
 	 */
 	static MavenProjectContext of(Project project, @Nullable VirtualFile file) {
-
 		MavenProjectsManager projectsManager = MavenProjectsManager.getInstance(project);
 		return of(project, projectsManager, file);
 	}

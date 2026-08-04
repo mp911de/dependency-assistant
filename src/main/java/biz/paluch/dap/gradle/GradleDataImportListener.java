@@ -16,11 +16,16 @@
 
 package biz.paluch.dap.gradle;
 
+import java.util.List;
+
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectStateIndexer;
+import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.openapi.externalSystem.service.project.manage.ProjectDataImportListener;
-import com.intellij.openapi.progress.EmptyProgressIndicator;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
 import org.jspecify.annotations.Nullable;
@@ -49,12 +54,23 @@ class GradleDataImportListener implements ProjectDataImportListener {
 			return;
 		}
 
-		ProjectStateIndexer indexer = new ProjectStateIndexer(project, new EmptyProgressIndicator());
-		for (DependencyAssistant assistant : DependencyAssistantDispatcher.findAll()) {
-			if (assistant instanceof GradleAssistant) {
-				indexer.refreshAfterImport(assistant);
+		new Task.Backgroundable(project, MessageBundle.message("refreshAfterImport.task"), true) {
+
+			@Override
+			public void run(ProgressIndicator indicator) {
+				List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll();
+				StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, assistants.size());
+				steps.setIndeterminate(false);
+				ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
+				for (DependencyAssistant assistant : assistants) {
+					if (assistant instanceof GradleAssistant) {
+						indexer.refreshAfterImport(assistant);
+					}
+					steps.nextStep();
+				}
 			}
-		}
+
+		}.queue();
 	}
 
 }

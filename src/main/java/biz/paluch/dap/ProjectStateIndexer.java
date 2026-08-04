@@ -24,17 +24,16 @@ import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ProjectBuildContext;
+import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
  * Cross-ecosystem coordinator that owns the collect-complete-store flow for one
@@ -55,6 +54,8 @@ import com.intellij.util.concurrency.AppExecutorUtil;
  */
 public class ProjectStateIndexer {
 
+	private static final Logger LOG = Logger.getInstance(ProjectStateIndexer.class);
+
 	private final Project project;
 
 	private final StateService service;
@@ -65,7 +66,7 @@ public class ProjectStateIndexer {
 	 * Create an indexer for the given project, using the project-scoped
 	 * {@link StateService}.
 	 * @param project the IntelliJ project.
-	 * @param indicator the progress indicator to report to .
+	 * @param indicator the progress indicator to report to.
 	 */
 	public ProjectStateIndexer(Project project, ProgressIndicator indicator) {
 		this(project, StateService.getInstance(project), indicator);
@@ -75,8 +76,8 @@ public class ProjectStateIndexer {
 	 * Create an indexer for the given project, state service, and progress
 	 * indicator.
 	 * @param project the IntelliJ project.
-	 * @param service the state service backing this run .
-	 * @param indicator the progress indicator to report to .
+	 * @param service the state service backing this run.
+	 * @param indicator the progress indicator to report to.
 	 */
 	public ProjectStateIndexer(Project project, StateService service, ProgressIndicator indicator) {
 		this.project = project;
@@ -104,14 +105,12 @@ public class ProjectStateIndexer {
 
 		ReadAction.nonBlocking(() -> {
 			updateAll(assistant);
-			return assistant;
-		})
-				.inSmartMode(project)
+		}).inSmartMode(project)
 				.coalesceBy(project, ProjectStateIndexer.class, assistant.getId())
-				.expireWhen(project::isDisposed)
-				.finishOnUiThread(ModalityState.nonModal(),
-						completed -> DaemonCodeAnalyzer.getInstance(project).restart("Build system import finished"))
-				.submit(AppExecutorUtil.getAppExecutorService());
+				.expireWith(project)
+				.executeSynchronously();
+
+		DaemonCodeAnalyzer.getInstance(project).restart("Build system import finished");
 	}
 
 	/**
@@ -128,10 +127,9 @@ public class ProjectStateIndexer {
 			return;
 		}
 
-
 		IntrospectedDependencies introspected = assistant.introspect(project);
-		List<ActiveScan> active = application
-				.runReadAction((Computable<List<ActiveScan>>) () -> collectPhase(assistant, introspected));
+		List<ActiveScan> active = ReadAction.nonBlocking(() -> collectPhase(assistant, introspected))
+				.executeSynchronously();
 		completeAndStore(assistant, introspected, active);
 	}
 
@@ -195,7 +193,7 @@ public class ProjectStateIndexer {
 	/**
 	 * Run a file-scoped invalidation: re-collect the state owned by the given file
 	 * and route it through the same complete-store flow.
-	 * @param assistant the assistant that owns the file .
+	 * @param assistant the assistant that owns the file.
 	 * @param file the saved PSI file.
 	 */
 	public void invalidate(DependencyAssistant assistant, PsiFile file) {
@@ -235,18 +233,23 @@ public class ProjectStateIndexer {
 	public void forEachAvailableEntry(DependencyAssistant assistant,
 			BiConsumer<PsiFile, ProjectDependencyContext> action) {
 
-		List<PsiFile> anchors = assistant.enumerate(project);
-		int processed = 0;
+		List<PsiFile> files = assistant.enumerate(project);
 
-		for (PsiFile anchor : anchors) {
+		LOG.debug("[%s] Enumerated %d entries".formatted(assistant.getId(), files.size()));
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, files.size());
 
-			indicator.checkCanceled();
-			ProjectDependencyContext context = assistant.createContext(project, anchor);
+		for (PsiFile file : files) {
+
+			steps.checkCanceled();
+			ProjectDependencyContext context = assistant.createContext(project, file);
 			if (context.isAvailable()) {
-				action.accept(anchor, context);
+				action.accept(file, context);
 			}
-			processed += 1;
-			indicator.setFraction((double) processed / anchors.size());
+			else {
+				LOG.warn("[%s] Skipping file '%s' because context is not available".formatted(assistant.getId(),
+						file.getVirtualFile()));
+			}
+			steps.nextStep();
 		}
 	}
 

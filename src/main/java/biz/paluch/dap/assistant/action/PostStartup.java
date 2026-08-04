@@ -61,7 +61,7 @@ public class PostStartup implements ProjectActivity {
 
 		DumbService.getInstance(project).runWhenSmart(() -> {
 
-			new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), false) {
+			new Task.Backgroundable(project, MessageBundle.message("post-startup.loading"), true) {
 
 						@Override
 						public void run(ProgressIndicator indicator) {
