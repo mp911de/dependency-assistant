@@ -62,7 +62,7 @@ class UpdatePomFileTests {
 				ArtifactVersion.of("6.1.0"), ArtifactVersion.of("6.2.0"), DeclarationSource.dependency(),
 				VersionSource.property("spring.version"));
 
-		UpgradeResult result = new UpdatePomFile(MavenPomProperties.combined(child, List.of(parent)))
+		UpgradeResult result = new UpdatePomFile(MavenPomProperties.empty())
 				.applyUpdates(child, List.of(update));
 
 		assertThat(result.hasChanges()).isFalse();

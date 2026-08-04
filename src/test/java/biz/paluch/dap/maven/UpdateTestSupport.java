@@ -70,7 +70,7 @@ class UpdateTestSupport {
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
 		new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates))
+				(file, updates) -> new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, updates))
 						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
 		return UpdateTestSupport.of(targetFile);
 	}
@@ -91,7 +91,7 @@ class UpdateTestSupport {
 		dependency.addVersionSource(VersionSource.declared(fromVersion));
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
-		return new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, List.of(update));
+		return new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, List.of(update));
 	}
 
 	static UpgradeResult applyUpdateResult(PsiFile targetFile, String groupId, String artifactId,
@@ -106,7 +106,7 @@ class UpdateTestSupport {
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
 		return new BuildActionDelegate(targetFile.getProject(),
-				(file, updates) -> new UpdatePomFile(PropertyResolver.empty()).applyUpdates(targetFile, updates))
+				(file, updates) -> new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, updates))
 						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
 	}
 

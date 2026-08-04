@@ -16,7 +16,10 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactVersion;
@@ -27,7 +30,6 @@ import biz.paluch.dap.artifact.RemoteRepository;
 import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
@@ -108,15 +110,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 		return new ProjectId(mavenId.getGroupId(), mavenId.getArtifactId(), null);
 	}
 
-	/**
-	 * Return the Maven project.
-	 */
-	MavenProject getMavenProject();
-
-	MavenProjectsManager getProjectsManager();
-
-	@Nullable
-	PsiFile findFile(VirtualFile virtualFile);
+	MavenPomProperties getPomProperties();
 
 	/**
 	 * Maven project context.
@@ -131,6 +125,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 
 		private final MavenProject mavenProject;
 
+		private final MavenPomProperties propertyResolver;
+
 		private final ProjectId projectId;
 
 		private final Versioned projectVersion;
@@ -144,23 +140,56 @@ interface MavenProjectContext extends ProjectBuildContext {
 			this.projectsManager = projectsManager;
 			this.psiManager = psiManager;
 			this.mavenProject = mavenProject;
+			PsiFile file = psiManager.findFile(mavenProject.getFile());
+			this.propertyResolver = file instanceof XmlFile pomFile ? createPomProperties(pomFile)
+					: MavenPomProperties.from(List.of());
 			this.projectId = createProjectId(mavenProject.getMavenId());
-			this.projectVersion = resolveProjectVersion(psiManager.findFile(mavenProject.getFile()));
+			this.projectVersion = resolveProjectVersion();
 		}
 
-		private static Versioned resolveProjectVersion(@Nullable PsiFile pom) {
+		private Versioned resolveProjectVersion() {
 
-			if (!(pom instanceof XmlFile xmlFile)) {
+			String version = propertyResolver.getProperty("project.version");
+			if (!StringUtils.hasText(version)) {
 				return Versioned.unversioned();
 			}
-
-			MavenProjectMetadataPropertyResolver resolver = MavenProjectMetadataPropertyResolver.from(xmlFile);
-			PropertyValue version = resolver.getVersion() != null ? resolver.getVersion() : resolver.getParentVersion();
-			if (version == null) {
-				return Versioned.unversioned();
-			}
-			return ArtifactVersion.from(version.getValue().trim()).map(Versioned::of)
+			return ArtifactVersion.from(version.trim()).map(Versioned::of)
 					.orElseGet(Versioned::unversioned);
+		}
+
+		private MavenPomProperties createPomProperties(XmlFile pomFile) {
+
+			List<MavenProject> projectAndParents = getProjectHierarchy();
+			List<XmlFile> pomFiles = new ArrayList<>();
+
+			pomFiles.add(pomFile);
+			for (int i = 1; i < projectAndParents.size(); i++) {
+				PsiFile parentPom = psiManager.findFile(projectAndParents.get(i).getFile());
+				if (parentPom instanceof XmlFile parentXml && MavenUtils.isMavenPomFile(parentXml)) {
+					pomFiles.add(parentXml);
+				}
+			}
+
+			MavenPomProperties projectProperties = MavenPomProperties.from(pomFiles);
+			if (projectsManager.findProject(mavenProject.getFile()) == null) {
+				return projectProperties;
+			}
+			Properties modelProperties = mavenProject.getProperties();
+			return projectProperties.withFallback(modelProperties::getProperty);
+		}
+
+		private List<MavenProject> getProjectHierarchy() {
+
+			List<MavenProject> hierarchy = new ArrayList<>();
+			Set<MavenId> visited = new HashSet<>();
+			MavenProject current = this.mavenProject;
+
+			while (current != null && visited.add(current.getMavenId())) {
+				hierarchy.add(current);
+				MavenId parentId = current.getParentId();
+				current = parentId != null ? projectsManager.findProject(parentId) : null;
+			}
+			return hierarchy;
 		}
 
 		@Override
@@ -182,8 +211,10 @@ interface MavenProjectContext extends ProjectBuildContext {
 		public List<ReleaseSource> getReleaseSources() {
 
 			MavenSettings settings = SettingsXmlLoader.load(project);
+			PsiFile file = psiManager.findFile(mavenProject.getFile());
+
 			Set<RemoteRepository> remoteRepositories = MavenRepositories.getRemoteRepositories(settings,
-					mavenProject, psiManager.findFile(mavenProject.getFile()));
+					mavenProject, file, this.propertyResolver);
 			return remoteRepositories.stream().map(MavenRepository::new)
 					.map(it -> (ReleaseSource) it)
 					.toList();
@@ -195,18 +226,8 @@ interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public MavenProject getMavenProject() {
-			return mavenProject;
-		}
-
-		@Override
-		public MavenProjectsManager getProjectsManager() {
-			return this.projectsManager;
-		}
-
-		@Override
-		public @Nullable PsiFile findFile(VirtualFile virtualFile) {
-			return psiManager.findFile(virtualFile);
+		public MavenPomProperties getPomProperties() {
+			return propertyResolver;
 		}
 
 		@Override
@@ -244,17 +265,7 @@ interface MavenProjectContext extends ProjectBuildContext {
 		}
 
 		@Override
-		public MavenProject getMavenProject() {
-			throw new IllegalStateException("Maven Context not available");
-		}
-
-		@Override
-		public MavenProjectsManager getProjectsManager() {
-			throw new IllegalStateException("Maven Context not available");
-		}
-
-		@Override
-		public @Nullable PsiFile findFile(VirtualFile virtualFile) {
+		public MavenPomProperties getPomProperties() {
 			throw new IllegalStateException("Maven Context not available");
 		}
 

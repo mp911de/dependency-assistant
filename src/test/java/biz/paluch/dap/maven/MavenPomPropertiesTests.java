@@ -30,12 +30,92 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Tests for {@link MavenPomProperties} inheritance order.
+ * Tests for {@link MavenPomProperties}.
  *
  * @author Mark Paluch
  */
 @IdeaProjectTests
 class MavenPomPropertiesTests {
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<modelVersion>4.0.0</modelVersion>
+				<parent>
+					<groupId>com.example.parent</groupId>
+					<artifactId>reactor</artifactId>
+					<version>2.5.0</version>
+				</parent>
+				<artifactId>module</artifactId>
+			</project>
+			""")
+	void resolvesParentCoordinatesFromPom(XmlFile pom) {
+
+		MavenPomProperties properties = MavenPomProperties.from(pom);
+
+		assertThat(properties.getProperty("project.parent.version")).isEqualTo("2.5.0");
+		assertThat(properties.getProperty("project.parent.groupId")).isEqualTo("com.example.parent");
+		assertThat(properties.getProperty("project.parent.artifactId")).isEqualTo("reactor");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<modelVersion>4.0.0</modelVersion>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+			</project>
+			""")
+	void resolvesLegacyPomAliasesToProjectValues(XmlFile pom) {
+
+		MavenPomProperties properties = MavenPomProperties.from(pom);
+
+		assertThat(properties.getProperty("pom.version")).isEqualTo(properties.getProperty("project.version"));
+		assertThat(properties.getProperty("pom.groupId")).isEqualTo("com.example");
+		assertThat(properties.getProperty("pom.artifactId")).isEqualTo("demo");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<modelVersion>4.0.0</modelVersion>
+				<artifactId>demo</artifactId>
+				<scm>
+					<tag>build-1.0</tag>
+				</scm>
+				<properties>
+					<repository.url>https://github.com/example/example-repo</repository.url>
+				</properties>
+			</project>
+			""")
+	void registersNestedElementsAndPropertiesEntries(XmlFile pom) {
+
+		MavenPomProperties properties = MavenPomProperties.from(pom);
+
+		assertThat(properties.getProperty("project.scm.tag")).isEqualTo("build-1.0");
+		assertThat(properties.getProperty("pom.scm.tag")).isEqualTo("build-1.0");
+		assertThat(properties.getProperty("repository.url")).isEqualTo("https://github.com/example/example-repo");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<modelVersion>4.0.0</modelVersion>
+				<groupId>com.example</groupId>
+				<artifactId>demo</artifactId>
+				<version>1.0.0</version>
+			</project>
+			""")
+	void leavesParentPlaceholdersUnresolvedWithoutParent(XmlFile pom) {
+
+		MavenPomProperties properties = MavenPomProperties.from(pom);
+
+		assertThat(properties.containsProperty("project.parent.version")).isFalse();
+		assertThat(properties.getProperty("project.parent.version")).isNull();
+		assertThat(properties.getProperty("project.parent.groupId")).isNull();
+		assertThat(properties.getProperty("pom.parent.version")).isNull();
+	}
 
 	@Test
 	@ProjectFile(name = "pom.xml", content = """
@@ -74,7 +154,7 @@ class MavenPomPropertiesTests {
 			@ProjectFile("parent/pom.xml") XmlFile parent,
 			@ProjectFile("grandparent/pom.xml") XmlFile grandparent) {
 
-		MavenPomProperties properties = MavenPomProperties.combined(child, List.of(parent, grandparent));
+		MavenPomProperties properties = MavenPomProperties.from(List.of(child, parent, grandparent));
 
 		assertThat(properties.getProperty("shared.version")).isEqualTo("2.0");
 	}
@@ -96,7 +176,7 @@ class MavenPomPropertiesTests {
 			@ProjectFile("parent/pom.xml") XmlFile parent,
 			@ProjectFile("grandparent/pom.xml") XmlFile grandparent) {
 
-		MavenPomProperties properties = MavenPomProperties.combined(child, List.of(parent, grandparent));
+		MavenPomProperties properties = MavenPomProperties.from(List.of(child, parent, grandparent));
 		List<ArtifactDeclaration> declarations = new MavenParser(new Cache(), properties).parsePomFile(child);
 
 		assertThat(declarations).singleElement()

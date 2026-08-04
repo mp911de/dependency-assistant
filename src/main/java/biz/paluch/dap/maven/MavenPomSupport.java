@@ -75,8 +75,6 @@ class MavenPomSupport {
 
 	static final String VERSION = "version";
 
-	static final String PARENT = "parent";
-
 	static final String NAME = "name";
 
 	static final String SCM = "scm";
@@ -87,13 +85,7 @@ class MavenPomSupport {
 
 	static final String SCM_DEVELOPER_CONNECTION = "developerConnection";
 
-	static final String SCM_TAG = "tag";
-
 	static final String ISSUE_MANAGEMENT = "issueManagement";
-
-	static final String CI_MANAGEMENT = "ciManagement";
-
-	static final String SYSTEM = "system";
 
 	/**
 	 * Return whether the given {@code parent} tag is a candidate for being a parent
@@ -123,18 +115,6 @@ class MavenPomSupport {
 		Subtag relativePath = Subtag.of(parent, "relativePath");
 		// skip local multi-module projects with relativePath
 		return !relativePath.isPresent();
-	}
-
-	/**
-	 * Parse artifact coordinates from the given XML tag.
-	 * @param tag the dependency or plugin tag.
-	 * @param propertyResolver resolver for Maven placeholders.
-	 * @return the artifact id, or {@literal null} if no artifact id is present.
-	 */
-	public static @Nullable ArtifactId parseArtifactId(@Nullable XmlTag tag, PropertyResolver propertyResolver) {
-		return tag != null
-				? parseArtifactId(PomTag.of(tag), propertyResolver)
-				: null;
 	}
 
 	static @Nullable ArtifactId parseArtifactId(@Nullable PomTag tag, PropertyResolver propertyResolver) {
@@ -185,9 +165,7 @@ class MavenPomSupport {
 		Map<String, PropertyValue> result = new LinkedHashMap<>();
 
 		doWithRoot(pomFile, root -> {
-
 			PomTag pomTag = PomTag.of(root);
-
 			doWithProfiles(pomTag, profile -> {
 				profile.subtags(PROPERTIES).forEach(properties -> collectProperties(properties, result));
 			});

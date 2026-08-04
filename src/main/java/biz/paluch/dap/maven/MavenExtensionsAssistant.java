@@ -30,7 +30,6 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileIndexLookup;
-import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.ide.highlighter.XmlFileType;
@@ -100,7 +99,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 		MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(
 				anchor.getProject());
-		dependencyCollector.doCollect(anchor, PropertyResolver.empty(), collector);
+		dependencyCollector.doCollect(anchor, MavenPomProperties.empty(), collector);
 	}
 
 	@Override
@@ -183,7 +182,7 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 
 			MavenDependencyCollector dependencyCollector = new MavenDependencyCollector(
 					delegate.getProject());
-			return dependencyCollector.collect(getPackageSystem(), file, PropertyResolver.empty());
+			return dependencyCollector.collect(getPackageSystem(), file, MavenPomProperties.empty());
 		}
 
 		@Override

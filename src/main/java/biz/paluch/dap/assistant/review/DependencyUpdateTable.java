@@ -66,6 +66,7 @@ import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.BooleanTableCellEditor;
 import com.intellij.ui.BooleanTableCellRenderer;
+import com.intellij.ui.ClickListener;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.ColoredTableCellRenderer;
@@ -204,11 +205,19 @@ class DependencyUpdateTable extends TableView<TableRow> {
 
 		});
 
+		new ClickListener() {
+
+			@Override
+			public boolean onClick(MouseEvent e, int clickCount) {
+				return applyStrategyOnClick(e, clickCount);
+			}
+
+		}.installOn(this);
+
 		addMouseListener(new MouseAdapter() {
 
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				applyStrategyOnClick(e);
 				navigateOnDoubleClick(e);
 			}
 
@@ -305,21 +314,21 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		return MessageBundle.message("dialog.upgradeTarget.tooltip", prefix, suffix);
 	}
 
-	private void applyStrategyOnClick(MouseEvent e) {
+	private boolean applyStrategyOnClick(MouseEvent e, int clickCount) {
 
-		if (e.getClickCount() != 1 || !SwingUtilities.isLeftMouseButton(e) || e.getModifiersEx() != 0) {
-			return;
+		if (clickCount != 1 || !SwingUtilities.isLeftMouseButton(e) || e.getModifiersEx() != 0) {
+			return false;
 		}
 
 		Point point = e.getPoint();
 		int row = rowAtPoint(point);
 		UpgradeStrategy strategy = strategyAt(point, row);
 		if (strategy == null) {
-			return;
+			return false;
 		}
 
-		e.consume();
 		review.applyStrategyTarget(ModelUtil.getRow(this, row), strategy);
+		return true;
 	}
 
 	private void trackStrategyHover(MouseEvent e) {

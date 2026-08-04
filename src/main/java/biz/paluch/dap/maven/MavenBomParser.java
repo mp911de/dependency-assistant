@@ -56,7 +56,7 @@ class MavenBomParser extends MavenPomSupport {
 			this.pomFile = xmlFile;
 			MavenDomProjectModel domModel = MavenDomUtil.getMavenDomModel(pomFile, MavenDomProjectModel.class);
 			this.propertyResolver = domModel != null ? new DomPropertyResolver(xmlFile, domModel)
-					: new MavenProjectMetadataPropertyResolver(xmlFile);
+					: MavenPomProperties.from(xmlFile);
 		} else {
 			this.pomFile = null;
 			propertyResolver = PropertyResolver.empty();
@@ -125,20 +125,19 @@ class MavenBomParser extends MavenPomSupport {
 
 		private final PropertyResolver localResolver;
 
-		private final MavenProjectMetadataPropertyResolver projectPropertyResolver;
+		private final MavenPomProperties projectProperties;
 
 		DomPropertyResolver(XmlFile xmlFile, MavenDomProjectModel model) {
 			this.model = model;
 			this.localResolver = PropertyResolver.fromMap(parseProperties(xmlFile));
-			this.projectPropertyResolver = new MavenProjectMetadataPropertyResolver(
-					xmlFile);
+			this.projectProperties = MavenPomProperties.from(xmlFile);
 		}
 
 		@Override
 		public @Nullable String getProperty(String key) {
 
-			if (projectPropertyResolver.containsProperty(key)) {
-				return projectPropertyResolver.getProperty(key);
+			if (projectProperties.containsProperty(key)) {
+				return projectProperties.getProperty(key);
 			}
 
 			if (localResolver.containsProperty(key)) {

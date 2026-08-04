@@ -16,31 +16,30 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
 import java.util.function.Function;
 
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
-import com.intellij.psi.PsiFile;
+import biz.paluch.dap.util.StringUtils;
+import com.intellij.psi.SyntaxTraverser;
+import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.xml.XmlDocument;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
-import org.jetbrains.idea.maven.model.MavenId;
-import org.jetbrains.idea.maven.project.MavenProject;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Effective Maven POM properties with child-first inheritance.
+ * Maven POM properties with child-first inheritance.
  *
- * <p>The POM itself is consulted first, followed by its direct parent and then
- * each remaining ancestor. The hierarchy walk is cycle-safe and preserves the
- * declaration PSI of the winning property.
+ * <p>Every value-carrying POM element is exposed under its {@code project.}
+ * path and legacy {@code pom.} alias. Entries from {@code <properties>} are
+ * additionally exposed under their plain name. When multiple POMs are combined,
+ * the first POM takes precedence, followed by each remaining ancestor.
  *
  * @author Mark Paluch
  */
@@ -54,19 +53,20 @@ class MavenPomProperties implements PropertyResolver {
 		this.delegate = delegate;
 	}
 
-	static MavenPomProperties forPom(XmlFile pom, PropertyResolver fallback) {
-		return new MavenPomProperties(MavenProjectMetadataPropertyResolver.from(pom).withFallback(fallback));
+	static MavenPomProperties from(XmlFile pom, PropertyResolver fallback) {
+		return from(pom).withFallback(fallback);
 	}
 
-	static MavenPomProperties combined(XmlFile pom, List<XmlFile> parents) {
-
-		List<XmlFile> pomsByPrecedence = new ArrayList<>();
-		pomsByPrecedence.add(pom);
-		pomsByPrecedence.addAll(parents);
-		return combine(pomsByPrecedence, MavenProjectMetadataPropertyResolver::from);
+	static MavenPomProperties from(XmlFile pom) {
+		return CachedValuesManager.getProjectPsiDependentCache(pom,
+				it -> new MavenPomProperties(readProjectProperties(it)));
 	}
 
-	static MavenPomProperties combine(List<XmlFile> pomsByPrecedence,
+	static MavenPomProperties from(List<XmlFile> pomFiles) {
+		return from(pomFiles, MavenPomProperties::from);
+	}
+
+	static MavenPomProperties from(List<XmlFile> pomsByPrecedence,
 			Function<XmlFile, PropertyResolver> properties) {
 
 		PropertyResolver combined = null;
@@ -77,29 +77,89 @@ class MavenPomProperties implements PropertyResolver {
 		return combined != null ? new MavenPomProperties(combined) : EMPTY;
 	}
 
-	static MavenPomProperties forProject(MavenProjectContext context, PsiFile pomFile) {
+	static MavenPomProperties empty() {
+		return EMPTY;
+	}
 
-		if (context.isAbsent() || !(pomFile instanceof XmlFile xmlFile)) {
-			return EMPTY;
+	@Override
+	public MavenPomProperties withFallback(PropertyResolver fallback) {
+		return new MavenPomProperties(this.delegate.withFallback(fallback));
+	}
+
+	private static PropertyResolver readProjectProperties(XmlFile pom) {
+
+		Map<String, PropertyValue> properties = new HashMap<>();
+		XmlDocument document = pom.getDocument();
+		XmlTag rootTag = document != null ? document.getRootTag() : null;
+		if (rootTag != null) {
+			registerProjectTags(rootTag, properties);
 		}
 
-		List<MavenProject> projectAndParents = projectAndParents(context);
-		List<XmlFile> parentPoms = new ArrayList<>();
+		registerEffectiveCoordinate("groupId", properties);
+		registerEffectiveCoordinate("artifactId", properties);
+		registerEffectiveCoordinate("version", properties);
+		return PropertyResolver.fromMap(properties);
+	}
 
-		for (int i = 1; i < projectAndParents.size(); i++) {
-			PsiFile parentPom = context.findFile(projectAndParents.get(i).getFile());
-			if (parentPom instanceof XmlFile parentXml && MavenUtils.isMavenPomFile(parentXml)) {
-				parentPoms.add(parentXml);
+	/**
+	 * Register every value-carrying leaf tag under its dot path. The first
+	 * occurrence of a path wins, matching document order.
+	 */
+	private static void registerProjectTags(XmlTag rootTag, Map<String, PropertyValue> properties) {
+
+		for (XmlTag tag : SyntaxTraverser.psiTraverser(rootTag).filter(XmlTag.class)) {
+
+			if (tag == rootTag || !tag.isValid() || tag.getSubTags().length > 0) {
+				continue;
+			}
+
+			String text = tag.getValue().getTrimmedText();
+			if (!StringUtils.hasText(text)) {
+				continue;
+			}
+
+			String path = pathOf(tag, rootTag);
+			if (path == null) {
+				continue;
+			}
+
+			PropertyValue value = new PropertyValue(path, text, tag);
+			properties.putIfAbsent("project." + path, value);
+			properties.putIfAbsent("pom." + path, value);
+
+			if (path.startsWith("properties.")) {
+				properties.putIfAbsent(tag.getLocalName(), value);
 			}
 		}
+	}
 
-		MavenPomProperties projectProperties = combined(xmlFile, parentPoms);
-		MavenProject mavenProject = context.getMavenProject();
-		if (context.getProjectsManager().findProject(mavenProject.getFile()) == null) {
-			return projectProperties;
+	private static @Nullable String pathOf(XmlTag tag, XmlTag rootTag) {
+
+		StringBuilder path = new StringBuilder(tag.getLocalName());
+		for (XmlTag parent = tag.getParentTag(); parent != rootTag; parent = parent.getParentTag()) {
+
+			if (parent == null) {
+				return null;
+			}
+			path.insert(0, '.').insert(0, parent.getLocalName());
 		}
-		Properties modelProperties = mavenProject.getProperties();
-		return new MavenPomProperties(projectProperties.delegate.withFallback(modelProperties::getProperty));
+		return path.toString();
+	}
+
+	private static void registerEffectiveCoordinate(String coordinate,
+			Map<String, PropertyValue> properties) {
+
+		PropertyValue effective = properties.get("project." + coordinate);
+		if (effective == null) {
+			effective = properties.get("project.parent." + coordinate);
+		}
+		if (effective == null) {
+			return;
+		}
+
+		properties.putIfAbsent(coordinate, effective);
+		properties.putIfAbsent("project." + coordinate, effective);
+		properties.putIfAbsent("pom." + coordinate, effective);
 	}
 
 	/**
@@ -122,19 +182,6 @@ class MavenPomProperties implements PropertyResolver {
 		Map<String, PropertyValue> properties = new LinkedHashMap<>();
 		MavenPomSupport.collectProperties(MavenPomSupport.PomTag.of(propertiesTag), properties);
 		return PropertyResolver.fromMap(properties).withFallback(this);
-	}
-
-	static List<Property> getDeclaredProperties(XmlFile pom) {
-
-		List<Property> properties = new ArrayList<>();
-		MavenPomSupport.doWithRoot(pom, root -> {
-			MavenPomSupport.PomTag project = MavenPomSupport.PomTag.of(root);
-			project.subtags(MavenPomSupport.PROPERTIES)
-					.forEach(tag -> collectDeclaredProperties(tag, properties));
-			MavenPomSupport.doWithProfiles(project, profile -> profile.subtags(MavenPomSupport.PROPERTIES)
-					.forEach(tag -> collectDeclaredProperties(tag, properties)));
-		});
-		return properties;
 	}
 
 	static @Nullable String profileId(Property property) {
@@ -160,20 +207,6 @@ class MavenPomProperties implements PropertyResolver {
 			}
 		}
 		return null;
-	}
-
-	private static List<MavenProject> projectAndParents(MavenProjectContext context) {
-
-		List<MavenProject> hierarchy = new ArrayList<>();
-		Set<MavenId> visited = new HashSet<>();
-		MavenProject current = context.getMavenProject();
-
-		while (current != null && visited.add(current.getMavenId())) {
-			hierarchy.add(current);
-			MavenId parentId = current.getParentId();
-			current = parentId != null ? context.getProjectsManager().findProject(parentId) : null;
-		}
-		return hierarchy;
 	}
 
 	@Override

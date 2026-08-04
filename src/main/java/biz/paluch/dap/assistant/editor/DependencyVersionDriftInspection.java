@@ -59,6 +59,7 @@ import com.intellij.codeInspection.ProblemsHolder;
 import com.intellij.codeInspection.util.IntentionFamilyName;
 import com.intellij.modcommand.ModCommand;
 import com.intellij.modcommand.ModCommandQuickFix;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
@@ -272,7 +273,8 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 
 			RelativePoint where = JBPopupFactory.getInstance().guessBestPopupLocation(editor);
 			new DependencySiteNavigator(project, StateRefresher.getInstance(project),
-					() -> enumerateBuildFiles(project)).openInFindWindow(query, where);
+					() -> ReadAction.nonBlocking(() -> enumerateBuildFiles(project)).executeSynchronously())
+							.openInFindWindow(query, where);
 		}
 
 		private static Iterable<VirtualFile> enumerateBuildFiles(Project project) {

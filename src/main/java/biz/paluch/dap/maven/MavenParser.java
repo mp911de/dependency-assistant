@@ -49,14 +49,14 @@ class MavenParser extends MavenPomSupport {
 
 	private final Cache cache;
 
-	private final PropertyResolver propertyResolver;
+	private final MavenPomProperties propertyResolver;
 
 	/**
 	 * Create a new {@code MavenParser}.
 	 * @param cache the cache used to resolve imported BOM contents.
 	 */
 	MavenParser(Cache cache) {
-		this(cache, PropertyResolver.empty());
+		this(cache, MavenPomProperties.empty());
 	}
 
 	/**
@@ -65,7 +65,7 @@ class MavenParser extends MavenPomSupport {
 	 * @param cache the cache used to resolve imported BOM contents.
 	 * @param propertyResolver Maven property resolver.
 	 */
-	MavenParser(Cache cache, PropertyResolver propertyResolver) {
+	MavenParser(Cache cache, MavenPomProperties propertyResolver) {
 		this.cache = cache;
 		this.propertyResolver = propertyResolver;
 	}
@@ -76,9 +76,7 @@ class MavenParser extends MavenPomSupport {
 	 */
 	public List<ArtifactDeclaration> parsePomFile(XmlFile pomFile) {
 
-		MavenPomProperties properties = this.propertyResolver instanceof MavenPomProperties mavenProperties
-				? mavenProperties
-				: MavenPomProperties.forPom(pomFile, this.propertyResolver);
+		MavenPomProperties properties = MavenPomProperties.from(pomFile, this.propertyResolver);
 
 		List<ArtifactDeclaration> declarations = new ArrayList<>();
 		doWithArtifacts(properties, pomFile, declarations::add);
@@ -92,7 +90,7 @@ class MavenParser extends MavenPomSupport {
 	 */
 	public List<ArtifactDeclaration> parseExtensionsFile(XmlFile extensionsFile) {
 
-		MavenPomProperties properties = MavenPomProperties.forPom(extensionsFile, this.propertyResolver);
+		MavenPomProperties properties = MavenPomProperties.from(extensionsFile, this.propertyResolver);
 		List<ArtifactDeclaration> declarations = new ArrayList<>();
 		doWithRoot(extensionsFile, root -> {
 			if (EXTENSIONS.equals(root.getLocalName())) {
@@ -109,11 +107,7 @@ class MavenParser extends MavenPomSupport {
 	}
 
 	protected @Nullable ArtifactDeclaration parseDeclaration(XmlTag owner) {
-
-		MavenPomProperties properties = this.propertyResolver instanceof MavenPomProperties mavenProperties
-				? mavenProperties
-				: MavenPomProperties.forPom((XmlFile) owner.getContainingFile(), this.propertyResolver);
-		return parseDeclaration(properties, owner, getDeclarationSource(owner));
+		return parseDeclaration(propertyResolver, owner, getDeclarationSource(owner));
 	}
 
 	private @Nullable ArtifactDeclaration parseDeclaration(MavenPomProperties properties, XmlTag owner,

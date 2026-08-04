@@ -28,7 +28,6 @@ import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.xml.XmlFile;
 import org.jetbrains.idea.maven.model.MavenRemoteRepository;
@@ -331,8 +330,8 @@ class MavenParserTests {
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		MavenDependencyCollector parser = new MavenDependencyCollector(new Cache());
-		parser.doCollect(parent, PropertyResolver.empty(), collector);
-		parser.doCollect(child, PropertyResolver.empty(), collector);
+		parser.doCollect(parent, MavenPomProperties.empty(), collector);
+		parser.doCollect(child, MavenPomProperties.empty(), collector);
 
 		assertThat(collector).hasDependencyUsage("assertj-core");
 		assertThat(collector).hasDependencyUsage("commons-lang3");
@@ -353,7 +352,7 @@ class MavenParserTests {
 	void parsesParentAsDependency(XmlFile pomFile) {
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
-		new MavenDependencyCollector(new Cache()).doCollect(pomFile, PropertyResolver.empty(), collector);
+		new MavenDependencyCollector(new Cache()).doCollect(pomFile, MavenPomProperties.empty(), collector);
 
 		assertThat(collector)
 				.hasDependencyUsage("junit-jupiter")
@@ -769,11 +768,13 @@ class MavenParserTests {
 		Cache cache = new Cache();
 		DependencyCollector propertyCollector = new DependencyCollector(PackageSystem.MAVEN);
 		MavenDependencyCollector parser = new MavenDependencyCollector(cache);
-		parser.doCollect(child, PropertyResolver.empty(), propertyCollector);
+		MavenPomProperties parentProperties = MavenPomProperties.from(parent);
+		MavenPomProperties childProperties = MavenPomProperties.from(child);
+		parser.doCollect(child, childProperties.withFallback(parentProperties), propertyCollector);
 		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector, 0);
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
-		parser.doCollect(parent, PropertyResolver.empty(), collector);
+		parser.doCollect(parent, parentProperties, collector);
 
 		assertThat(collector)
 				.hasDependencyUsage("junit-jupiter")

@@ -144,12 +144,12 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 			return Findings.NONE;
 		}
 
-		MavenPomProperties propertyResolver = MavenPomProperties.combine(chain, xmlFile -> {
+		MavenPomProperties propertyResolver = MavenPomProperties.from(chain, xmlFile -> {
 			MavenDomProjectModel domModel = MavenDomUtil.getMavenDomModel(xmlFile,
 					MavenDomProjectModel.class);
 			return domModel != null
 					? new MavenBomParser.DomPropertyResolver(xmlFile, domModel)
-					: new MavenProjectMetadataPropertyResolver(xmlFile);
+					: MavenPomProperties.from(xmlFile);
 		});
 
 		boolean first = true;

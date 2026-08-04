@@ -24,6 +24,8 @@ import java.util.function.BiConsumer;
 import biz.paluch.dap.artifact.MavenRepository;
 import biz.paluch.dap.artifact.ReleaseSource;
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.support.Expression;
+import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
@@ -51,11 +53,13 @@ class MavenRepositories extends MavenPomSupport {
 	 * @param project the Maven project to inspect.
 	 * @param pomFile the POM file whose declared repositories are also collected;
 	 * can be {@literal null} to inspect only the resolved project model.
+	 * @param propertyResolver
 	 * @return the deduplicated set of remote repositories; guaranteed to be not
 	 * {@literal null} but may be empty.
 	 */
 	public static Set<RemoteRepository> getRemoteRepositories(MavenSettings settings,
-			MavenProject project, @Nullable PsiFile pomFile) {
+			MavenProject project, @Nullable PsiFile pomFile,
+			@Nullable PropertyResolver propertyResolver) {
 
 		record RepositoryId(String id, String url) {
 		}
@@ -75,7 +79,19 @@ class MavenRepositories extends MavenPomSupport {
 		Set<RemoteRepository> remoteRepositories = new LinkedHashSet<>();
 
 		for (RepositoryId url : urls) {
-			RemoteRepository remoteRepository = settings.getRemoteRepository(url.id, url.url);
+
+			String id = url.id;
+			String resolvedUrl = url.url;
+			if (propertyResolver != null) {
+				id = Expression.from(url.id).resolve(propertyResolver);
+				resolvedUrl = Expression.from(url.url).resolve(propertyResolver);
+
+				if (StringUtils.isEmpty(id) || StringUtils.isEmpty(resolvedUrl) || resolvedUrl.contains("${")) {
+					continue;
+				}
+
+			}
+			RemoteRepository remoteRepository = settings.getRemoteRepository(id, resolvedUrl);
 			remoteRepositories.add(remoteRepository);
 		}
 
@@ -170,7 +186,11 @@ class MavenRepositories extends MavenPomSupport {
 
 		for (MavenProject candidate : manager.getProjects()) {
 			PsiFile pomFile = psiManager.findFile(candidate.getFile());
-			remoteRepositories.addAll(getRemoteRepositories(settings, candidate, pomFile));
+			PropertyResolver propertyResolver = PropertyResolver.empty();
+			if (pomFile instanceof XmlFile xmlFile) {
+				propertyResolver = MavenPomProperties.from(xmlFile);
+			}
+			remoteRepositories.addAll(getRemoteRepositories(settings, candidate, pomFile, propertyResolver));
 		}
 
 		return remoteRepositories.stream().map(MavenRepository::new)

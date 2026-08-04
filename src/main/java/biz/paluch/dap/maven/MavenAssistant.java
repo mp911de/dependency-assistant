@@ -132,7 +132,7 @@ class MavenAssistant implements DependencyAssistant {
 
 		Project project = anchor.getProject();
 		MavenProjectContext context = MavenProjectContext.of(project, anchor);
-		PropertyResolver propertyResolver = MavenPomProperties.forProject(context, anchor);
+		MavenPomProperties propertyResolver = context.getPomProperties();
 
 		new MavenDependencyCollector(project)
 				.doCollect(anchor, propertyResolver, collector);
@@ -167,7 +167,7 @@ class MavenAssistant implements DependencyAssistant {
 			context = MavenProjectContext.of(project, anchor.getVirtualFile());
 		}
 
-		return new MavenDependencyContext(this, project, anchor, anchor.getVirtualFile(), context);
+		return new MavenDependencyContext(this, project, anchor.getVirtualFile(), context);
 	}
 
 	private static Map<String, String> localPropertyValues(PsiFile anchor, PropertyResolver propertyResolver) {
@@ -193,15 +193,12 @@ class MavenAssistant implements DependencyAssistant {
 
 		private final MavenProjectContext projectContext;
 
-		private final MavenPomProperties propertyResolver;
-
 		private final DependencyFileDelegate delegate;
 
-		MavenDependencyContext(MavenAssistant assistant, Project project, PsiFile pomFile, VirtualFile anchor,
+		MavenDependencyContext(MavenAssistant assistant, Project project, VirtualFile anchor,
 				MavenProjectContext projectContext) {
 			super(projectContext);
 			this.assistant = assistant;
-			this.propertyResolver = MavenPomProperties.forProject(projectContext, pomFile);
 			this.projectContext = projectContext;
 			this.delegate = DependencyFileDelegate.of(project, anchor);
 		}
@@ -243,12 +240,12 @@ class MavenAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdate(PsiElement anchor, DependencyUpdate update) {
-			new UpdatePomFile(propertyResolver).applyUpdate(anchor, update);
+			new UpdatePomFile(projectContext.getPomProperties()).applyUpdate(anchor, update);
 		}
 
 		@Override
 		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			return new UpdatePomFile(propertyResolver).applyUpdates(psiFile, updates);
+			return new UpdatePomFile(projectContext.getPomProperties()).applyUpdates(psiFile, updates);
 		}
 
 		@Override

@@ -18,6 +18,7 @@ package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -40,6 +41,7 @@ import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PropertyValue;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
@@ -62,8 +64,6 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private final Project project;
-
 	private final Cache cache;
 
 	private final ProjectState projectState;
@@ -82,7 +82,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	 */
 	MavenArtifactReferenceResolver(Project project, XmlFile pomFile,
 			MavenProjectContext projectContext) {
-		this.project = project;
 		StateService service = StateService.getInstance(project);
 		this.cache = service.getCache();
 		this.projectState = service.getProjectState(projectContext.getProjectId());
@@ -133,7 +132,8 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		for (Property value : MavenPomProperties.getDeclaredProperties(pomFile)) {
+		Map<String, PropertyValue> declaredProperties = MavenPomSupport.parseProperties(pomFile);
+		for (Property value : declaredProperties.values()) {
 			if (properties.contains(value.getKey())) {
 				hits.add(DependencySiteSearchHit.declaration(value.getValueLiteral(), value.getValue()));
 			}
@@ -149,7 +149,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private List<DependencySiteSearchHit> findVersionSites(XmlFile pomFile, DependencySiteQuery query) {
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		MavenParser parser = createParser(pomFile);
+		MavenParser parser = new MavenParser(cache, buildContext.getPomProperties());
 		for (ArtifactDeclaration declaration : parser.parsePomFile(pomFile)) {
 			VersionSource versionSource = declaration.getVersionSource();
 			if (versionSource instanceof VersionSource.VersionProperty property) {
@@ -200,7 +200,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		if (parentTag == null || pomFile == null) {
 			return ArtifactReference.unresolved();
 		}
-		MavenParser parser = createParser(pomFile);
+		MavenParser parser = new MavenParser(cache, buildContext.getPomProperties());
 		ArtifactDeclaration artifactDeclaration = parser.parseDeclaration(parentTag);
 		return artifactDeclaration != null ? ArtifactReference.from(artifactDeclaration)
 				: ArtifactReference.unresolved();
@@ -213,7 +213,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		if (pomFile == null) {
 			return null;
 		}
-		PropertyResolver propertyResolver = getProperties(pomFile).forDeclaration(declaration);
+		PropertyResolver propertyResolver = buildContext.getPomProperties();
 		Property propertyValue = null;
 		Set<String> visited = new java.util.HashSet<>();
 		while (expression.isProperty() && visited.add(expression.getPropertyName())) {
@@ -232,14 +232,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		return new ResolvedProperty(propertyValue.getValue(), propertyValue);
-	}
-
-	private MavenPomProperties getProperties(XmlFile pomFile) {
-		return MavenPomProperties.forProject(buildContext, pomFile);
-	}
-
-	private MavenParser createParser(XmlFile pomFile) {
-		return new MavenParser(cache, getProperties(pomFile));
 	}
 
 	private ArtifactReference resolveProperty(XmlTag propertyTag) {

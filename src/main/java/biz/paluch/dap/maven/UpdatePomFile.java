@@ -16,16 +16,19 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
@@ -44,9 +47,9 @@ class UpdatePomFile {
 
 	private static final Logger LOG = Logger.getInstance(UpdatePomFile.class);
 
-	private final PropertyResolver propertyResolver;
+	private final MavenPomProperties propertyResolver;
 
-	public UpdatePomFile(PropertyResolver propertyResolver) {
+	UpdatePomFile(MavenPomProperties propertyResolver) {
 		this.propertyResolver = propertyResolver;
 	}
 
@@ -65,11 +68,24 @@ class UpdatePomFile {
 		}
 
 		String before = file.getText();
-		MavenParser parser = new MavenParser(StateService.getInstance(file.getProject()).getCache(), propertyResolver);
+		StateService stateService = StateService.getInstance(file.getProject());
+		MavenParser parser = new MavenParser(stateService.getCache(), propertyResolver);
 		List<ArtifactDeclaration> declarations = parser.parsePomFile(file);
-		for (DependencyUpdate update : updates) {
-			apply(declarations, update);
+		Map<ArtifactId, List<ArtifactDeclaration>> index = new HashMap<>();
+		for (ArtifactDeclaration d : declarations) {
+			index.computeIfAbsent(d.getArtifactId(), k -> new ArrayList<>()).add(d);
 		}
+
+		for (DependencyUpdate update : updates) {
+			List<ArtifactDeclaration> artifactDeclarations = index.get(update.artifactId());
+			if (artifactDeclarations == null) {
+				continue;
+			}
+			for (ArtifactDeclaration declaration : artifactDeclarations) {
+				apply(declaration, update);
+			}
+		}
+
 		return before.equals(file.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
@@ -93,16 +109,13 @@ class UpdatePomFile {
 		versionTag.getValue().setText(value);
 	}
 
-	private void apply(List<ArtifactDeclaration> declarations, DependencyUpdate update) {
+	private void apply(ArtifactDeclaration declaration, DependencyUpdate update) {
 
 		Set<PsiElement> updated = new HashSet<>();
 		for (VersionSource source : update.versionSources()) {
-			for (ArtifactDeclaration declaration : declarations) {
-				PsiElement literal = declaration.getVersionLiteral();
-				if (literal != null && declaration.isVersionDefinedInSameFile()
-						&& matches(declaration, update, source) && updated.add(literal)) {
-					applyUpdate(literal, update);
-				}
+			PsiElement literal = declaration.getVersionLiteral();
+			if (literal != null && matches(declaration, update, source) && updated.add(literal)) {
+				applyUpdate(literal, update);
 			}
 		}
 	}

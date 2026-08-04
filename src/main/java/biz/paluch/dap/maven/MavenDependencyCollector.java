@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.Map;
+
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
@@ -25,7 +27,7 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.Property;
-import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -63,7 +65,7 @@ class MavenDependencyCollector {
 	 * Collects artifact declarations from {@code buildFile}.
 	 */
 	public DependencyCollector collect(PackageSystem packageSystem, PsiFile buildFile,
-			PropertyResolver propertyResolver) {
+			MavenPomProperties propertyResolver) {
 
 		DependencyCollector collector = new DependencyCollector(packageSystem);
 		doCollect(buildFile, propertyResolver, collector);
@@ -73,21 +75,18 @@ class MavenDependencyCollector {
 	/**
 	 * Collect declarations from the given Maven PSI file into {@code collector}.
 	 */
-	protected void doCollect(PsiFile psiFile, PropertyResolver propertyResolver, DependencyCollector collector) {
+	protected void doCollect(PsiFile psiFile, MavenPomProperties propertyResolver, DependencyCollector collector) {
+
+		MavenParser parser = new MavenParser(cache, propertyResolver);
 
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenPomProperties properties = propertyResolver instanceof MavenPomProperties mavenProperties
-					? mavenProperties
-					: MavenPomProperties.forPom(xmlFile, propertyResolver);
-			MavenParser parser = new MavenParser(cache, properties);
-			collector.addProperties(MavenPomProperties.getDeclaredProperties(xmlFile).stream()
-					.map(Property::getKey).collect(java.util.stream.Collectors.toSet()));
+			Map<String, PropertyValue> properties = MavenPomSupport.parseProperties(xmlFile);
+			collector.addProperties(properties.keySet());
 			parser.parsePomFile(xmlFile).forEach(declaration -> register(collector, declaration));
-			registerCachedPropertyArtifacts(xmlFile, properties, collector);
+			registerCachedPropertyArtifacts(properties, propertyResolver, collector);
 		}
 
 		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			MavenParser parser = new MavenParser(cache, propertyResolver);
 			parser.parseExtensionsFile(xmlFile).forEach(declaration -> register(collector, declaration));
 		}
 	}
@@ -108,23 +107,21 @@ class MavenDependencyCollector {
 		}
 	}
 
-	private void registerCachedPropertyArtifacts(XmlFile pomFile, MavenPomProperties properties,
-			DependencyCollector collector) {
-
-		java.util.List<Property> declaredProperties = MavenPomProperties.getDeclaredProperties(pomFile);
+	private void registerCachedPropertyArtifacts(Map<String, PropertyValue> declaredProperties,
+			MavenPomProperties propertyResolver, DependencyCollector collector) {
 
 		cache.doWithProperties(property -> {
 			if (!property.hasArtifacts()) {
 				return;
 			}
 
-			for (Property declaration : declaredProperties) {
+			for (Property declaration : declaredProperties.values()) {
 				if (!property.name().equals(declaration.getKey())
 						|| !(declaration.getValueLiteral() instanceof XmlTag declarationTag)) {
 					continue;
 				}
 
-				String value = properties.forDeclaration(declarationTag).getProperty(property.name());
+				String value = propertyResolver.forDeclaration(declarationTag).getProperty(property.name());
 				if (StringUtils.isEmpty(value)) {
 					continue;
 				}
