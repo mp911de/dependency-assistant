@@ -184,21 +184,6 @@ class MavenPomProperties implements PropertyResolver {
 		return PropertyResolver.fromMap(properties).withFallback(this);
 	}
 
-	static @Nullable String profileId(Property property) {
-
-		XmlTag declaration = property.getValueLiteral() instanceof XmlTag tag ? tag : null;
-		XmlTag profile = declaration != null ? findEnclosingProfile(declaration) : null;
-		String id = profile != null ? MavenPomSupport.Subtag.of(profile, MavenPomSupport.ID).getText() : null;
-		return biz.paluch.dap.util.StringUtils.hasText(id) ? id : null;
-	}
-
-	private static void collectDeclaredProperties(MavenPomSupport.PomTag propertiesTag, List<Property> target) {
-
-		Map<String, PropertyValue> properties = new LinkedHashMap<>();
-		MavenPomSupport.collectProperties(propertiesTag, properties);
-		target.addAll(properties.values());
-	}
-
 	private static @Nullable XmlTag findEnclosingProfile(XmlTag declaration) {
 
 		for (XmlTag current = declaration; current != null; current = current.getParentTag()) {

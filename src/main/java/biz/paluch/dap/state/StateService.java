@@ -230,6 +230,21 @@ public class StateService
 	}
 
 	/**
+	 * Return the {@link DependencyCollector dependency collectors} currently held
+	 * for the analyzed modules, keyed by project identity.
+	 * <p>The map is a snapshot taken at call time, while the collectors themselves
+	 * are the live instances and may still be mutated by an ongoing scan. Intended
+	 * to seed scan-wide completion so a pass that re-collects only some modules can
+	 * still see what the remaining modules declared.
+	 *
+	 * @return an immutable snapshot keyed by project identity; empty when no module
+	 * has been collected yet.
+	 */
+	public Map<ProjectId, DependencyCollector> getCollectors() {
+		return Map.copyOf(dependencies);
+	}
+
+	/**
 	 * Perform the given action for every dependency declared across all modules
 	 * currently held in runtime dependency state.
 	 *
@@ -248,9 +263,8 @@ public class StateService
 	 * in-memory runtime dependency state is traversed; the persisted cache is not
 	 * consulted.
 	 *
-	 * @param projectFilter selects which modules are traversed .
-	 * @param consumer the action invoked with each dependency declaration; must not
-	 * be {@literal null}.
+	 * @param projectFilter selects which modules are traversed.
+	 * @param consumer the action invoked with each dependency declaration.
 	 */
 	public void doWithDependencies(Predicate<ProjectId> projectFilter, Consumer<Dependency> consumer) {
 		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {

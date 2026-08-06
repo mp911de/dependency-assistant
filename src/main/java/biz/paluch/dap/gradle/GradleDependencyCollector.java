@@ -87,7 +87,7 @@ class GradleDependencyCollector {
 		if (GradleUtils.isVersionCatalog(file)) {
 			TomlParser.parseVersionCatalog(psiFile).forEach(declaration -> registerCatalog(collector, declaration));
 		} else if (GradleUtils.isGradlePropertiesFile(file)) {
-			GradlePropertiesParser.collectGradleProperties(service.getCache(), psiFile, collector);
+			GradlePropertiesParser.collectGradleProperties(psiFile, collector);
 		} else if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
 			PropertyResolver propertyResolver = GradlePropertyResolver.create(psiFile).withFallback(properties::get);
 			KotlinDslFileParser parser = new KotlinDslFileParser(psiFile, propertyResolver);

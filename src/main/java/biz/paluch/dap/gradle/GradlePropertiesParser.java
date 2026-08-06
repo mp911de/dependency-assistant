@@ -20,14 +20,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.support.PropertyValue;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.Property;
@@ -93,40 +87,24 @@ class GradlePropertiesParser {
 	}
 
 	/**
-	 * Collect {@code gradle.properties} project properties that back known
-	 * dependency versions into {@code collector}.
+	 * Collect {@code gradle.properties} project properties into {@code collector}.
 	 *
-	 * <p>Every declared property name is registered, and a managed usage is
-	 * recorded for each cached artifact whose backing property resolves to a
-	 * parseable version.
+	 * <p>Every declared property name is registered together with its resolved
+	 * value. Linking a property to the artifacts it versions is deferred to
+	 * {@link biz.paluch.dap.VersionPropertyIntrospectedDependencies scan-wide
+	 * completion}, because the declarations a property backs usually live in a
+	 * different build file than the property itself.
 	 *
-	 * @param cache the artifact cache identifying version-backing properties; must
-	 * not be {@literal null}.
 	 * @param file the {@code gradle.properties} PSI file; must not be
 	 * {@literal null}.
 	 * @param collector the collector to populate in place; must not be
 	 * {@literal null}.
 	 */
-	public static void collectGradleProperties(Cache cache, PsiFile file, DependencyCollector collector) {
+	public static void collectGradleProperties(PsiFile file, DependencyCollector collector) {
 
 		Map<String, String> properties = getGradleProperties(file);
 		collector.addProperties(properties.keySet());
-
-		cache.doWithProperties(property -> {
-			if (property.hasArtifacts()) {
-				String value = properties.get(property.name());
-				if (StringUtils.isEmpty(value)) {
-					return;
-				}
-
-				ArtifactVersion.from(value).ifPresent(version -> {
-					for (CachedArtifact artifact : property.artifacts()) {
-						collector.registerUsage(artifact.toArtifactId(), version, DeclarationSource.managed(),
-								VersionSource.property(property.name()));
-					}
-				});
-			}
-		});
+		collector.addPropertyValues(properties);
 	}
 
 	/**

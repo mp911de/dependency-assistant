@@ -28,6 +28,7 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
+import biz.paluch.dap.VersionPropertyIntrospectedDependencies;
 import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
@@ -127,7 +128,18 @@ class MavenAssistant implements DependencyAssistant {
 	}
 
 	@Override
+	public IntrospectedDependencies introspect(Project project) {
+		return new VersionPropertyIntrospectedDependencies(StateService.getInstance(project).getCollectors());
+	}
+
+	@Override
 	public void collect(PsiFile anchor, DependencyCollector collector) {
+		collect(anchor, collector, introspect(anchor.getProject()));
+	}
+
+	@Override
+	public void collect(PsiFile anchor, DependencyCollector collector,
+			IntrospectedDependencies introspected) {
 
 		Project project = anchor.getProject();
 		MavenProjectContext context = MavenProjectContext.of(project, anchor);
@@ -136,22 +148,10 @@ class MavenAssistant implements DependencyAssistant {
 		new MavenDependencyCollector(project)
 				.doCollect(anchor, propertyResolver, collector);
 		collector.addPropertyValues(localPropertyValues(anchor, propertyResolver));
-	}
 
-	@Override
-	public void collect(PsiFile anchor, DependencyCollector collector,
-			IntrospectedDependencies introspected) {
-
-		collect(anchor, collector);
-
-		if (introspected instanceof MavenIntrospectedDependencies maven) {
-			maven.register(collector);
+		if (introspected instanceof VersionPropertyIntrospectedDependencies properties) {
+			properties.register(context.getProjectId(), collector);
 		}
-	}
-
-	@Override
-	public IntrospectedDependencies introspect(Project project) {
-		return new MavenIntrospectedDependencies();
 	}
 
 	@Override

@@ -79,7 +79,7 @@ public interface DependencyAssistant {
 	 * Plan resolve it from a stored integration class name to recover the correct
 	 * row icon.
 	 *
-	 * @return the interface metadata; guaranteed to be not {@literal null}.
+	 * @return the interface metadata.
 	 */
 	InterfaceAssistant getInterfaceAssistant();
 
@@ -139,6 +139,36 @@ public interface DependencyAssistant {
 	List<PsiFile> enumerate(Project project);
 
 	/**
+	 * Return a fresh {@link IntrospectedDependencies} instance scoped to one
+	 * indexer run.
+	 * <p>The default returns the empty instance, suitable for integrations that do
+	 * not derive scan-wide metadata.
+	 * @param project the IntelliJ project.
+	 */
+	default IntrospectedDependencies introspect(Project project) {
+		return IntrospectedDependencies.empty();
+	}
+
+	/**
+	 * Collect the given anchor file into a fresh, completed
+	 * {@link DependencyCollector}: run a single-file introspection, collect, attach
+	 * the given release sources, and complete the introspection.
+	 * <p>This is the single-file counterpart of the indexer's collect-complete
+	 * flow, used by file-scoped contexts that scan one build file on demand.
+	 *
+	 * @param anchor the anchor file to collect for.
+	 * @return the completed collector.
+	 */
+	default DependencyCollector collectCompleted(PsiFile anchor) {
+
+		IntrospectedDependencies introspected = introspect(anchor.getProject());
+		DependencyCollector collector = new DependencyCollector(getPackageSystem());
+		collect(anchor, collector, introspected);
+		introspected.complete(collector);
+		return collector;
+	}
+
+	/**
 	 * Collect dependencies for the given anchor file into the provided collector.
 	 * <p>The collector is the same instance the indexer later passes to
 	 * {@link IntrospectedDependencies#complete(DependencyCollector)} and stores in
@@ -163,36 +193,6 @@ public interface DependencyAssistant {
 	 */
 	default void collect(PsiFile anchor, DependencyCollector collector, IntrospectedDependencies introspected) {
 		collect(anchor, collector);
-	}
-
-	/**
-	 * Collect the given anchor file into a fresh, completed
-	 * {@link DependencyCollector}: run a single-file introspection, collect, attach
-	 * the given release sources, and complete the introspection.
-	 * <p>This is the single-file counterpart of the indexer's collect-complete
-	 * flow, used by file-scoped contexts that scan one build file on demand.
-	 *
-	 * @param anchor the anchor file to collect for.
-	 * @return the completed collector; guaranteed to be not {@literal null}.
-	 */
-	default DependencyCollector collectCompleted(PsiFile anchor) {
-
-		IntrospectedDependencies introspected = introspect(anchor.getProject());
-		DependencyCollector collector = new DependencyCollector(getPackageSystem());
-		collect(anchor, collector, introspected);
-		introspected.complete(collector);
-		return collector;
-	}
-
-	/**
-	 * Return a fresh {@link IntrospectedDependencies} instance scoped to one
-	 * indexer run.
-	 * <p>The default returns the empty instance, suitable for integrations that do
-	 * not derive scan-wide metadata.
-	 * @param project the IntelliJ project.
-	 */
-	default IntrospectedDependencies introspect(Project project) {
-		return IntrospectedDependencies.empty();
 	}
 
 	/**

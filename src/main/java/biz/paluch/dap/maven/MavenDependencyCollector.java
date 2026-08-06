@@ -16,23 +16,15 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.Map;
-
-import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
-import biz.paluch.dap.support.Property;
-import biz.paluch.dap.support.PropertyValue;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
-import com.intellij.psi.xml.XmlTag;
 
 /**
  * Collects dependency coordinates from Maven POM and extensions build files.
@@ -55,7 +47,7 @@ class MavenDependencyCollector {
 	/**
 	 * Create a collector using the given cache.
 	 *
-	 * @param cache the cache used while parsing POM files.
+	 * @param cache the cache consulted to resolve Bill of Materials members.
 	 */
 	public MavenDependencyCollector(Cache cache) {
 		this.cache = cache;
@@ -81,10 +73,8 @@ class MavenDependencyCollector {
 		Project project = psiFile.getProject();
 
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			Map<String, PropertyValue> properties = MavenPomSupport.parseProperties(xmlFile);
-			collector.addProperties(properties.keySet());
+			collector.addProperties(MavenPomSupport.parseProperties(xmlFile).keySet());
 			parser.parsePomFile(xmlFile).forEach(declaration -> register(project, collector, declaration));
-			registerCachedPropertyArtifacts(properties, propertyResolver, collector);
 		}
 
 		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
@@ -108,38 +98,6 @@ class MavenDependencyCollector {
 		}
 
 		BomUtil.registerBillOfMaterials(cache, project, declaration, collector);
-	}
-
-	private void registerCachedPropertyArtifacts(Map<String, PropertyValue> declaredProperties,
-			MavenPomProperties propertyResolver, DependencyCollector collector) {
-
-		cache.doWithProperties(property -> {
-			if (!property.hasArtifacts()) {
-				return;
-			}
-
-			for (Property declaration : declaredProperties.values()) {
-				if (!property.name().equals(declaration.getKey())
-						|| !(declaration.getValueLiteral() instanceof XmlTag declarationTag)) {
-					continue;
-				}
-
-				String value = propertyResolver.forDeclaration(declarationTag).getProperty(property.name());
-				if (StringUtils.isEmpty(value)) {
-					continue;
-				}
-
-				String profileId = MavenPomProperties.profileId(declaration);
-				VersionSource source = profileId != null
-						? VersionSource.profileProperty(profileId, property.name())
-						: VersionSource.property(property.name());
-				biz.paluch.dap.artifact.ArtifactVersion.from(value).ifPresent(version -> {
-					for (CachedArtifact artifact : property.artifacts()) {
-						collector.registerUsage(artifact.toArtifactId(), version, DeclarationSource.managed(), source);
-					}
-				});
-			}
-		});
 	}
 
 }

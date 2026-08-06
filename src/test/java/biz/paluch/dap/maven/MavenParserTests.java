@@ -19,6 +19,7 @@ package biz.paluch.dap.maven;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.VersionPropertyIntrospectedDependencies;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
@@ -769,16 +770,20 @@ class MavenParserTests {
 			""")
 	void multiModuleParentThenChildResolvesVersionFromParentProperty(XmlFile parent, XmlFile child) {
 
-		Cache cache = new Cache();
-		DependencyCollector propertyCollector = new DependencyCollector(PackageSystem.MAVEN);
-		MavenDependencyCollector parser = new MavenDependencyCollector(cache);
+		MavenDependencyCollector parser = new MavenDependencyCollector(new Cache());
 		MavenPomProperties parentProperties = MavenPomProperties.from(parent);
 		MavenPomProperties childProperties = MavenPomProperties.from(child);
-		parser.doCollect(child, childProperties.withFallback(parentProperties), propertyCollector);
-		cache.getProject(ProjectId.of("com.example", "module")).setProperties(propertyCollector, 0);
+
+		DependencyCollector childCollector = new DependencyCollector(PackageSystem.MAVEN);
+		parser.doCollect(child, childProperties.withFallback(parentProperties), childCollector);
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
 		parser.doCollect(parent, parentProperties, collector);
+		collector.addPropertyValues(Map.of("junit.version", "5.11.0"));
+
+		VersionPropertyIntrospectedDependencies introspected = new VersionPropertyIntrospectedDependencies(Map.of());
+		introspected.register(ProjectId.of("com.example", "module"), childCollector);
+		introspected.complete(collector);
 
 		assertThat(collector)
 				.hasDependencyUsage("junit-jupiter")

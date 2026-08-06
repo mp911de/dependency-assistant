@@ -19,11 +19,13 @@ package biz.paluch.dap.gradle;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import biz.paluch.dap.VersionPropertyIntrospectedDependencies;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
+import biz.paluch.dap.state.ProjectId;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.BeforeEach;
@@ -1213,6 +1215,32 @@ class GradleParserTests {
 		DependencyCollector collector = GradleFixtures.analyze(buildFile);
 
 		assertThat(collector)
+				.hasDependencyUsage("org.junit", "junit-bom")
+				.hasVersion("6.0.0")
+				.hasPropertyVersion("junitVersion");
+	}
+
+	@Test
+	@ProjectFile(name = "gradle.properties", content = """
+			junitVersion=6.0.0
+			""")
+	@ProjectFile(name = "build.gradle.kts", content = """
+			dependencies {
+			    implementation("org.junit:junit-bom:${property("junitVersion")}")
+			}
+			""")
+	void gradlePropertiesAnchorAdoptsUsageDeclaredByBuildScript(
+			@ProjectFile("gradle.properties") PsiFile propertiesFile,
+			@ProjectFile("build.gradle.kts") PsiFile buildFile) {
+
+		DependencyCollector script = GradleFixtures.analyze(buildFile);
+		DependencyCollector properties = GradleFixtures.analyze(propertiesFile);
+
+		VersionPropertyIntrospectedDependencies introspected = new VersionPropertyIntrospectedDependencies(Map.of());
+		introspected.register(ProjectId.of("demo", "script"), script);
+		introspected.complete(properties);
+
+		assertThat(properties)
 				.hasDependencyUsage("org.junit", "junit-bom")
 				.hasVersion("6.0.0")
 				.hasPropertyVersion("junitVersion");

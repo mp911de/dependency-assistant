@@ -121,6 +121,8 @@ public class PostStartup implements ProjectActivity {
 			return;
 		}
 
+		DaemonCodeAnalyzer.getInstance(project).restart(MessageBundle.message("post-startup.loading"));
+
 		Cache cache = service.getCache();
 
 		if (!cache.hasReleases()) {
@@ -162,10 +164,6 @@ public class PostStartup implements ProjectActivity {
 
 		indicator.setText(MessageBundle.message("checker-startup.loading"));
 		scanner.scanUsedVersions(indicator);
-
-		if (!project.isDisposed()) {
-			DaemonCodeAnalyzer.getInstance(project).restart(MessageBundle.message("post-startup.loading"));
-		}
 	}
 
 }
