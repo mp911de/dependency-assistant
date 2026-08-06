@@ -21,6 +21,7 @@ import java.net.URISyntaxException;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.util.HttpClientUtil;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -66,8 +67,7 @@ public interface IssueTracker {
 	static @Nullable IssueTracker parse(String url) {
 		try {
 			URI uri = new URI(url);
-			String scheme = uri.getScheme();
-			if (uri.getHost() == null || !("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme))) {
+			if (uri.getHost() == null || !HttpClientUtil.isBrowsable(uri)) {
 				return null;
 			}
 			return new StaticIssueTracker(uri);

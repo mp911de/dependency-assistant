@@ -56,6 +56,7 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.state.VersionProperty;
 import biz.paluch.dap.support.ReleaseDateFormatter;
+import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.icons.AllIcons;
 import com.intellij.lang.documentation.DocumentationMarkup;
@@ -501,20 +502,9 @@ class DependencyDocumentationRenderer {
 	private static HtmlChunk advisoryIdentifier(Vulnerability vulnerability) {
 
 		HtmlChunk identifier = HtmlChunk.text(vulnerability.getIdentifier());
-		return isHttpLink(vulnerability.getSourceUrl())
+		return HttpClientUtil.isBrowsable(vulnerability.getSourceUrl())
 				? HtmlChunk.link(vulnerability.getSourceUrl(), identifier)
 				: identifier;
-	}
-
-	private static boolean isHttpLink(String url) {
-
-		try {
-			URI uri = URI.create(url);
-			String scheme = uri.getScheme();
-			return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
-		} catch (IllegalArgumentException ex) {
-			return false;
-		}
 	}
 
 	/**

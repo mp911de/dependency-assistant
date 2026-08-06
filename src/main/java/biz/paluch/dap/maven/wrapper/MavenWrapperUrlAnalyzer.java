@@ -28,17 +28,11 @@ import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.InconsistentVersion;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.InvalidUrl;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.MalformedFileName;
 import biz.paluch.dap.maven.wrapper.MavenWrapperUrlProblem.UnknownArtifact;
+import biz.paluch.dap.util.HttpClientUtil;
 
 /**
  * Pure (PSI-free) classifier that maps a wrapper property value to a list of
  * {@link MavenWrapperUrlProblem} variants.
- * <p>The analyzer is text-only: credential detection runs through
- * {@link URI#getUserInfo()} (the same parser used by
- * {@link WrapperProperty#parseProperty}) and coordinate classification uses
- * {@link MavenWrapperUtils#MAVEN_ARTIFACT_PATTERN}. Whole-value classification
- * is skipped when the IntelliJ completion placeholder or a {@code ${}}
- * interpolation token is present outside the URL authority; credentials and
- * scheme checks always run.
  *
  * @author Mark Paluch
  */
@@ -78,8 +72,7 @@ class MavenWrapperUrlAnalyzer {
 		}
 
 		try {
-			String scheme = URI.create(decodedValue).getScheme();
-			return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+			return HttpClientUtil.isBrowsable(URI.create(decodedValue));
 		} catch (IllegalArgumentException ex) {
 			return false;
 		}
@@ -134,16 +127,6 @@ class MavenWrapperUrlAnalyzer {
 		}
 	}
 
-	/**
-	 * Return whether the URL embeds {@code user[:password]@} credentials.
-	 * <p>Credential detection delegates to {@link URI#getUserInfo()} so the
-	 * analyzer flags the same set of inputs that
-	 * {@link WrapperProperty#parseProperty} would parse as credentials, including
-	 * opaque and scheme-less URIs.
-	 * @param decodedValue the decoded property value.
-	 * @return {@literal true} if credentials are detected; {@literal false}
-	 * otherwise.
-	 */
 	static boolean containsCredentials(String decodedValue) {
 
 		try {

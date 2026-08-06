@@ -16,9 +16,7 @@
 
 package biz.paluch.dap.maven;
 
-import java.net.URI;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,16 +24,16 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.PomLocator;
+import biz.paluch.dap.artifact.VersionedArtifact;
 import biz.paluch.dap.metadata.IssueTracker;
 import biz.paluch.dap.metadata.Platform;
 import biz.paluch.dap.metadata.RepositoryConnection;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
-import biz.paluch.dap.state.CachedBom;
 import biz.paluch.dap.state.CachedMetadata;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.HttpClientUtil;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -92,44 +90,16 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 	public CachedMetadata getProjectMetadata(ArtifactId artifactId, ArtifactVersion inUseVersion,
 			ProgressIndicator indicator) {
 
-		Findings findings = ReadAction.nonBlocking(() -> inspectChain(artifactId, inUseVersion.toString(), indicator))
+		Findings findings = ReadAction
+				.nonBlocking(() -> inspectChain(VersionedArtifact.of(artifactId, inUseVersion), indicator))
 				.executeSynchronously();
 		String projectName = findings.projectName;
 		String projectDescription = findings.projectDescription;
-		if (findings.isEmpty()) {
-			findings = crossCheck(artifactId, indicator);
-		}
 
 		return CachedMetadata.of(findings.repositoryUrl, findings.issueTrackerUrl, projectName, projectDescription);
 	}
 
-	/**
-	 * Inspect the chain of a single deterministic same-groupId BOM candidate: any
-	 * persisted membership relation establishes the project connection, regardless
-	 * of version.
-	 */
-	private Findings crossCheck(ArtifactId artifactId, ProgressIndicator indicator) {
-
-		Gav candidate = findGoverningBom(artifactId);
-		if (candidate == null) {
-			candidate = findManagedMember(artifactId);
-		}
-		if (candidate == null) {
-			return Findings.NONE;
-		}
-
-		Gav candidateToUse = candidate;
-
-		return ReadAction.nonBlocking(() -> inspectChain(ArtifactId.of(candidateToUse.groupId(),
-				candidateToUse.artifactId()), candidateToUse.version(), indicator)).executeSynchronously();
-	}
-
-	// return
-	/**
-	 * The release tag is captured only from the artifact's own POM at the given
-	 * version; the project name from the artifact's own POM at any probed version.
-	 */
-	private Findings inspectChain(ArtifactId artifactId, String version, ProgressIndicator indicator) {
+	private Findings inspectChain(VersionedArtifact artifact, ProgressIndicator indicator) {
 
 		String repositoryUrl = null;
 		String issueTrackerUrl = null;
@@ -138,7 +108,7 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 		RepositoryConnection repositoryConnection = null;
 
 		List<XmlFile> chain = new ArrayList<>();
-		inspectChain(artifactId, version, indicator, chain::add);
+		inspectChain(artifact, indicator, chain::add);
 
 		if (chain.isEmpty()) {
 			return Findings.NONE;
@@ -197,41 +167,41 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 		return new Findings(projectName, description, repositoryUrl, issueTrackerUrl);
 	}
 
-	private void inspectChain(ArtifactId artifactId, String version, ProgressIndicator indicator,
+	private void inspectChain(VersionedArtifact artifact, ProgressIndicator indicator,
 			Consumer<XmlFile> pomFileConsumer) {
 
-		Set<Gav> visited = new HashSet<>();
-		visited.add(Gav.of(artifactId, version));
+		Set<VersionedArtifact> visited = new HashSet<>();
+		visited.add(artifact);
 
-		VirtualFile pomFile = findPom(artifactId, version);
+		VirtualFile pomFile = findPom(artifact.getArtifactId(), artifact.getVersion().toString());
 
 		for (int depth = 0; pomFile != null && depth < MAX_CHAIN_DEPTH; depth++) {
 
 			indicator.checkCanceled();
 
-			Gav parentGav = doWithRoot(psiManager.findFile(pomFile), it -> {
+			VersionedArtifact parent = doWithRoot(psiManager.findFile(pomFile), it -> {
 
 				pomFileConsumer.accept((XmlFile) it.getContainingFile());
 
-				XmlTag parent = it.findFirstSubTag("parent");
-				if (parent != null) {
-					PomTag pomTag = PomTag.of(parent);
+				XmlTag parentTag = it.findFirstSubTag("parent");
+				if (parentTag != null) {
+					PomTag pomTag = PomTag.of(parentTag);
 					String parentArtifactId = pomTag.getArtifactId();
 					String parentGroupId = pomTag.getGroupId();
-					String parentVersion = pomTag.getText("version");
+					ArtifactVersion parentVersion = ArtifactVersion.from(pomTag.getText("version")).orElse(null);
 					if (StringUtils.hasText(parentGroupId) && StringUtils.hasText(parentArtifactId)
-							&& StringUtils.hasText(parentVersion)) {
-						return new Gav(parentGroupId, parentArtifactId, parentVersion);
+							&& parentVersion != null) {
+						return VersionedArtifact.of(ArtifactId.of(parentGroupId, parentArtifactId), parentVersion);
 					}
 				}
 				return null;
 			});
 
-			if (parentGav == null || !visited.add(parentGav)) {
+			if (parent == null || !visited.add(parent)) {
 				break;
 			}
 
-			pomFile = findPom(ArtifactId.of(parentGav.groupId(), parentGav.artifactId()), parentGav.version());
+			pomFile = findPom(parent.getArtifactId(), parent.getVersion().toString());
 		}
 	}
 
@@ -267,97 +237,12 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 			XmlTag issueManagement = it.findFirstSubTag(ISSUE_MANAGEMENT);
 			if (issueManagement != null) {
 				String issueUrl = Subtag.of(issueManagement, SCM_URL).getText(resolver);
-				facts.issueManagementUrl = isAllowedBrowserUrl(issueUrl) ? issueUrl : null;
+				facts.issueManagementUrl = HttpClientUtil.isBrowsable(issueUrl) ? issueUrl : null;
 				facts.issueManagementSystem = Subtag.of(issueManagement, "system").getText(resolver);
 			}
 
 			return facts;
 		});
-	}
-
-	private static boolean isAllowedBrowserUrl(@Nullable String value) {
-
-		if (!StringUtils.hasText(value)) {
-			return false;
-		}
-
-		try {
-			URI uri = URI.create(value);
-			String scheme = uri.getScheme();
-			return uri.getHost() != null && ("https".equalsIgnoreCase(scheme) || "http".equalsIgnoreCase(scheme));
-		} catch (IllegalArgumentException e) {
-			return false;
-		}
-	}
-
-	/**
-	 * Find the first same-groupId BOM whose persisted membership lists the member,
-	 * at the newest such membership's version.
-	 */
-	private @Nullable Gav findGoverningBom(ArtifactId member) {
-
-		List<CachedArtifact> boms = new ArrayList<>();
-		for (CachedArtifact candidate : cache.getCachedArtifacts()) {
-			if (candidate.isBom() && member.groupId().equals(candidate.getGroupId())
-					&& candidate.getArtifactId() != null && !member.artifactId().equals(candidate.getArtifactId())) {
-				boms.add(candidate);
-			}
-		}
-		boms.sort(Comparator.comparing(CachedArtifact::artifactId));
-
-		for (CachedArtifact bom : boms) {
-
-			List<CachedBom> memberships = bom.getBomMemberships();
-			for (int i = memberships.size() - 1; i >= 0; i--) {
-
-				CachedBom membership = memberships.get(i);
-				if (!membership.isMember(member)) {
-					continue;
-				}
-
-				ArtifactVersion version = membership.getVersion();
-				return new Gav(bom.groupId(), bom.artifactId(), version.toString());
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * Find the first same-groupId member of the inspected BOM artifact, taken from
-	 * its newest persisted membership.
-	 */
-	private @Nullable Gav findManagedMember(ArtifactId bomId) {
-
-		CachedArtifact bom = cache.findCachedArtifact(bomId);
-		if (bom == null || !bom.isBom()) {
-			return null;
-		}
-
-		List<CachedBom> memberships = bom.getBomMemberships();
-		if (memberships.isEmpty()) {
-			return null;
-		}
-
-		CachedBom membership = memberships.getLast();
-		CachedBom.CachedBomMember first = null;
-		for (CachedBom.CachedBomMember member : membership.getMembers()) {
-
-			String memberArtifactId = member.getArtifactId();
-			if (!bomId.groupId().equals(member.getGroupId()) || bomId.artifactId()
-					.equals(memberArtifactId)) {
-				continue;
-			}
-			if (first == null || memberArtifactId.compareTo(first.getArtifactId()) < 0) {
-				first = member;
-			}
-		}
-
-		if (first == null) {
-			return null;
-		}
-
-		return Gav.of(first.toArtifactId(), first.getVersion());
 	}
 
 	/**
@@ -429,18 +314,6 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 
 		boolean isEmpty() {
 			return repositoryUrl == null && issueTrackerUrl == null;
-		}
-
-	}
-
-	record Gav(String groupId, String artifactId, String version) {
-
-		static Gav of(ArtifactId artifactId, String version) {
-			return new Gav(artifactId.groupId(), artifactId.artifactId(), version);
-		}
-
-		static Gav of(ArtifactId artifactId, ArtifactVersion version) {
-			return new Gav(artifactId.groupId(), artifactId.artifactId(), version.toString());
 		}
 
 	}

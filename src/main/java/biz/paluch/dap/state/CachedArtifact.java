@@ -370,20 +370,16 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		}
 
 		Map<ArtifactId, ArtifactVersion> predicted = new LinkedHashMap<>();
-		for (CachedBom.CachedBomMember member : reference.getMembers()) {
+		reference.toMembers().forEach((member, memberVersion) -> {
 
-			String memberGroupId = member.getGroupId();
-			if (StringUtils.isEmpty(memberGroupId) || StringUtils.isEmpty(member.getArtifactId())) {
-				continue;
-			}
-
-			boolean releaseTrainVersion = Objects.equals(member.getVersion(), reference.getVersion());
+			String memberGroupId = member.groupId();
+			boolean releaseTrainVersion = Objects.equals(memberVersion, reference.getVersion());
 			boolean groupAffinity = memberGroupId.equals(bomGroupId)
 					|| memberGroupId.startsWith(bomGroupId + ".");
 			if (releaseTrainVersion && groupAffinity) {
-				predicted.put(member.toArtifactId(), version);
+				predicted.put(member, version);
 			}
-		}
+		});
 		return predicted;
 	}
 

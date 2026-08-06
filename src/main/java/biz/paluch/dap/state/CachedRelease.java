@@ -300,12 +300,13 @@ public class CachedRelease {
 	public Vulnerabilities toVulnerabilities() {
 
 		Vulnerabilities view = this.vulnerabilitiesView;
-		if (view == null) {
+		synchronized (this) {
 
-			if (scanState() != ScanState.SCANNED) {
-				view = Vulnerabilities.absent();
-			} else {
-				synchronized (this) {
+			if (view == null) {
+				if (scanState() != ScanState.SCANNED) {
+					view = Vulnerabilities.absent();
+				} else {
+
 					List<Vulnerability> result = new ArrayList<>(vulnerabilities.size());
 					for (CachedVulnerability vulnerability : vulnerabilities) {
 						result.add(vulnerability.toVulnerability());

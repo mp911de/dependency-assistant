@@ -35,6 +35,7 @@ import com.intellij.util.io.HttpRequests;
 import com.intellij.util.io.RequestBuilder;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.lang.Contract;
 import org.springframework.util.Assert;
 
 /**
@@ -68,11 +69,29 @@ public class HttpClientUtil {
 	private HttpClientUtil() {
 	}
 
+	/**
+	 * Fetch the given URL using the given request function.
+	 * <p>Requests are read as UTF-8 strings, with a hard size cap at
+	 * {@link #MAX_RESPONSE_BODY_BYTES}.
+	 * @param uri the URL to fetch.
+	 * @param requestFunction request customization function.
+	 * @return the response body as a UTF-8 string.
+	 * @throws IOException if an I/O error occurs.
+	 */
 	public static @Nullable String fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction)
 			throws IOException {
 		return fetchUrl(uri, requestFunction, HttpClientUtil::readUtf8StreamCapped);
 	}
 
+	/**
+	 * Fetch the given URL using the given request function.
+	 * @param uri the URL to fetch.
+	 * @param requestFunction request customization function.
+	 * @param responseProcessor response processing function.
+	 * @return the processed response.
+	 * @param <T> the type of the processed response.
+	 * @throws IOException if an I/O error occurs.
+	 */
 	public static <T> @Nullable T fetchUrl(URI uri, Function<RequestBuilder, RequestBuilder> requestFunction,
 			HttpRequests.RequestProcessor<T> responseProcessor) throws IOException {
 
@@ -94,24 +113,33 @@ public class HttpClientUtil {
 		}
 	}
 
+	public static boolean isBrowsable(URI uri) {
+		String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
+		return StringUtils.hasText(scheme) && (scheme.equals("http") || scheme.equals("https"));
+	}
+
+	@Contract("null -> false")
+	public static boolean isBrowsable(@Nullable String scheme) {
+		return StringUtils.hasText(scheme) && (scheme.startsWith("http:") || scheme.startsWith("https:"));
+	}
+
 	/**
 	 * Open the given URI in the default browser.
-	 * @param uri
+	 * @param uri the URI to open.
 	 */
 	public static void openBrowser(String uri) {
 		Assert.hasText(uri, "URI must not be empty");
 		String scheme = uri.toLowerCase(Locale.ROOT);
-		Assert.isTrue(scheme.startsWith("http:") || scheme.startsWith("https:"), "URI must start with http");
+		Assert.isTrue(isBrowsable(scheme), "URI must start with http or https");
 		BrowserUtil.browse(uri);
 	}
 
 	/**
 	 * Open the given URI in the default browser.
-	 * @param uri
+	 * @param uri the URI to open.
 	 */
 	public static void openBrowser(URI uri) {
-		String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
-		Assert.isTrue(scheme.equals("http") || scheme.equals("https"), "URI must start with http");
+		Assert.isTrue(isBrowsable(uri), "URI must start with http or https");
 		BrowserUtil.browse(uri);
 	}
 

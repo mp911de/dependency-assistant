@@ -17,20 +17,33 @@
 package biz.paluch.dap.state;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.util.xmlb.annotations.Attribute;
 import com.intellij.util.xmlb.annotations.Tag;
 import com.intellij.util.xmlb.annotations.XCollection;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Persistent Bill of Materials membership for one BOM version
+ * Persistent Bill of Materials membership for one BOM version.
+ *
+ * <p>Members are stored grouped by group identifier and managed version rather
+ * than one element per member, because a BOM typically manages many artifacts
+ * of the same group at a single version. A group omits its version when the
+ * members are managed at the BOM version itself, which is the common case. The
+ * grouped form is produced by {@link #snapshot()} and expanded again on read,
+ * so callers never see it.
+ *
+ * <p>Documents written before grouping stored one member per element carrying
+ * its own {@code artifactId}; such elements still read correctly and are
+ * rewritten in grouped form on the next snapshot.
  *
  * @author Mark Paluch
  */
@@ -40,7 +53,7 @@ public class CachedBom {
 	@Attribute(converter = ArtifactVersionConverter.class)
 	private ArtifactVersion version;
 
-	private final @XCollection(propertyElementName = "members", elementName = "member", style = XCollection.Style.v2) List<CachedBomMember> members = new ArrayList<>();
+	private final @XCollection(propertyElementName = "members", elementName = "member", style = XCollection.Style.v2) List<CachedBomMembers> members = new ArrayList<>();
 
 	/**
 	 * Create an empty membership entry for XML deserialization.
@@ -66,8 +79,7 @@ public class CachedBom {
 	public static CachedBom from(String version, Map<ArtifactId, ArtifactVersion> members) {
 
 		CachedBom membership = new CachedBom(version);
-		members.forEach((artifactId, memberVersion) -> membership.members
-				.add(new CachedBomMember(artifactId.groupId(), artifactId.artifactId(), memberVersion.toString())));
+		membership.group(members);
 		return membership;
 	}
 
@@ -79,14 +91,6 @@ public class CachedBom {
 	}
 
 	/**
-	 * Return the backing member entries.
-	 * <p>This is the live storage list used for persistence.
-	 */
-	public List<CachedBomMember> getMembers() {
-		return members;
-	}
-
-	/**
 	 * Return whether the given artifact is listed as a member of this membership,
 	 * regardless of version.
 	 * @param artifactId the member coordinates to look up.
@@ -95,9 +99,9 @@ public class CachedBom {
 	 */
 	public boolean isMember(ArtifactId artifactId) {
 
-		for (CachedBomMember member : members) {
-			if (artifactId.groupId().equals(member.getGroupId())
-					&& artifactId.artifactId().equals(member.getArtifactId())) {
+		for (CachedBomMembers group : members) {
+			if (artifactId.groupId().equals(group.getGroupId())
+					&& group.getArtifactIds().contains(artifactId.artifactId())) {
 				return true;
 			}
 		}
@@ -106,85 +110,128 @@ public class CachedBom {
 	}
 
 	/**
-	 * Convert the member entries into a domain member map, skipping entries whose
-	 * version no longer parses.
+	 * Expand the stored groups into a domain member map, skipping entries whose
+	 * coordinates or version no longer parse.
 	 *
 	 * @return the managed members keyed by artifact coordinates; guaranteed to be
 	 * not {@literal null}.
 	 */
 	public Map<ArtifactId, ArtifactVersion> toMembers() {
+
 		Map<ArtifactId, ArtifactVersion> membersMap = new LinkedHashMap<>();
-		for (CachedBomMember member : members) {
-			membersMap.put(member.toArtifactId(), member.getVersion());
+		for (CachedBomMembers group : members) {
+
+			String groupId = group.getGroupId();
+			ArtifactVersion memberVersion = group.getVersion() != null ? group.getVersion() : version;
+			if (!StringUtils.hasText(groupId) || memberVersion == null) {
+				continue;
+			}
+
+			for (String artifactId : group.getArtifactIds()) {
+				membersMap.put(ArtifactId.of(groupId, artifactId), memberVersion);
+			}
 		}
 		return membersMap;
 	}
 
 	/**
-	 * Return a deep copy for persistence snapshots.
+	 * Return a copy in grouped form for persistence snapshots.
+	 * <p>Grouping runs off the {@link #toMembers() expanded} view rather than the
+	 * stored groups, so re-snapshotting an entry that was itself read from a
+	 * snapshot preserves every member.
 	 */
 	CachedBom snapshot() {
 
 		CachedBom copy = new CachedBom(version);
-		for (CachedBomMember member : members) {
-			copy.members.add(new CachedBomMember(member.getGroupId(), member.getArtifactId(), member.getVersion()));
-		}
+		copy.group(toMembers());
 		return copy;
+	}
+
+	/**
+	 * Replace the stored groups with the given members, grouped by group identifier
+	 * and managed version. Groups, and the identifiers within them, are ordered so
+	 * that equal memberships serialize to an identical document.
+	 */
+	private void group(Map<ArtifactId, ArtifactVersion> memberVersions) {
+
+		Map<String, Map<ArtifactVersion, List<String>>> grouped = new TreeMap<>();
+		memberVersions.forEach((artifactId, memberVersion) -> grouped
+				.computeIfAbsent(artifactId.groupId(), groupId -> new TreeMap<>())
+				.computeIfAbsent(memberVersion, key -> new ArrayList<>())
+				.add(artifactId.artifactId()));
+
+		members.clear();
+		grouped.forEach((groupId, byVersion) -> byVersion.forEach((memberVersion, artifactIds) -> {
+			artifactIds.sort(Comparator.naturalOrder());
+			members.add(new CachedBomMembers(groupId, memberVersion.equals(version) ? null : memberVersion,
+					artifactIds));
+		}));
 	}
 
 	@Override
 	public String toString() {
-		return "CachedBomMembership[%s, %d members]".formatted(version, members.size());
+		return "CachedBomMembership[%s, %d members]".formatted(version, toMembers().size());
 	}
 
 	/**
-	 * Persistent member coordinates with the managed version.
+	 * Persistent coordinates of the BOM members that share one group identifier and
+	 * one managed version.
 	 */
 	@Tag("member")
-	public static class CachedBomMember extends CachedArtifactSupport {
+	public static class CachedBomMembers {
 
 		private @Attribute String groupId;
 
-		private @Attribute String artifactId;
-
-		private @Nullable @Attribute PackageSystem packageSystem;
-
+		/**
+		 * Managed version of every artifact in this group, or {@literal null} when the
+		 * members are managed at the BOM version itself.
+		 */
 		@Attribute(converter = ArtifactVersionConverter.class)
-		private ArtifactVersion version;
+		private @Nullable ArtifactVersion version;
 
 		/**
-		 * Create an empty member entry for XML deserialization.
+		 * Grouped artifact identifiers. Not {@code final} because the platform replaces
+		 * the value through the converter on load.
 		 */
-		public CachedBomMember() {
+		@Attribute(converter = ArtifactIdsConverter.class)
+		private List<String> artifacts = new ArrayList<>();
+
+		/**
+		 * Single artifact identifier as written before members were grouped. Read for
+		 * backward compatibility and never written.
+		 */
+		private @Nullable @Attribute String artifactId;
+
+		/**
+		 * Create an empty group for XML deserialization.
+		 */
+		public CachedBomMembers() {
 		}
 
-		CachedBomMember(String groupId, String artifactId, String version) {
-			this(groupId, artifactId, ArtifactVersion.of(version));
-		}
-
-		CachedBomMember(String groupId, String artifactId, ArtifactVersion version) {
+		CachedBomMembers(String groupId, @Nullable ArtifactVersion version, List<String> artifacts) {
 			this.groupId = groupId;
-			this.artifactId = artifactId;
 			this.version = version;
+			this.artifacts = new ArrayList<>(artifacts);
 		}
 
-		@Override
-		public String getGroupId() {
+		public @Nullable String getGroupId() {
 			return groupId;
 		}
 
-		@Override
-		public String getArtifactId() {
-			return artifactId;
-		}
-
-		@Override
-		public @Nullable PackageSystem getPackageSystem() {
-			return packageSystem;
-		}
-
-		public ArtifactVersion getVersion() {
+		/**
+		 * Return the managed version shared by this group, or {@literal null} when the
+		 * group inherits the BOM version.
+		 */
+		public @Nullable ArtifactVersion getVersion() {
 			return version;
+		}
+
+		/**
+		 * Return the artifact identifiers in this group, falling back to the
+		 * single-member form used by documents written before grouping.
+		 */
+		public List<String> getArtifactIds() {
+			return artifacts.isEmpty() && StringUtils.hasText(artifactId) ? List.of(artifactId) : artifacts;
 		}
 
 	}

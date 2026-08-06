@@ -230,7 +230,7 @@ public class NpmRegistry implements ReleaseSource {
 		}
 
 		String scheme = candidate.getScheme();
-		if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+		if (!HttpClientUtil.isBrowsable(candidate)) {
 			return false;
 		}
 

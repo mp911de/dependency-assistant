@@ -24,7 +24,6 @@ import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.fixtures.Coordinates;
 import biz.paluch.dap.state.Cache;
-import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedMetadata;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
@@ -46,7 +45,7 @@ class MavenPomMetadataIntrospectorTests {
 
 	Cache cache = new Cache();
 
-	Map<Coordinates, VirtualFile> pomsByCoordinates = new HashMap<>();
+	Map<Coordinates, VirtualFile> poms = new HashMap<>();
 
 	MavenPomMetadataIntrospector inspector;
 
@@ -57,7 +56,7 @@ class MavenPomMetadataIntrospectorTests {
 
 			@Override
 			protected VirtualFile findPom(ArtifactId artifactId, String version) {
-				return pomsByCoordinates.get(Coordinates.of(artifactId, version));
+				return poms.get(Coordinates.of(artifactId, version));
 			}
 
 		};
@@ -107,7 +106,7 @@ class MavenPomMetadataIntrospectorTests {
 				</issueManagement>
 			</project>
 			""")
-	void selectsScmUrlOverConnectionAndKeepsDeclaredTracker(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void selectsScmUrlOverConnectionAndKeepsDeclaredTracker(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -129,7 +128,7 @@ class MavenPomMetadataIntrospectorTests {
 				</scm>
 			</project>
 			""")
-	void skipsUndetectableScmUrlInFavorOfConnection(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void skipsUndetectableScmUrlInFavorOfConnection(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -149,7 +148,7 @@ class MavenPomMetadataIntrospectorTests {
 				</scm>
 			</project>
 			""")
-	void derivesIssueTrackerFromDetectedRepository(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void derivesIssueTrackerFromDetectedRepository(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -182,7 +181,7 @@ class MavenPomMetadataIntrospectorTests {
 				</scm>
 			</project>
 			""")
-	void inheritsScmFromParentKeepingOwnTracker(@ProjectFile("member/pom.xml") PsiFile member,
+	void inheritsScmFromParentKeepingOwnTracker(PsiFile member,
 			@ProjectFile("parent/pom.xml") PsiFile parent) {
 
 		registerPom("com.example:member-core:1.0.0", member);
@@ -209,7 +208,7 @@ class MavenPomMetadataIntrospectorTests {
 				</scm>
 			</project>
 			""")
-	void interpolatesPropertiesAndDropsUnresolvedValues(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void interpolatesPropertiesAndDropsUnresolvedValues(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -297,7 +296,7 @@ class MavenPomMetadataIntrospectorTests {
 				</scm>
 			</project>
 			""")
-	void offPlatformScmContributesNothing(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void offPlatformScmContributesNothing(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -316,7 +315,7 @@ class MavenPomMetadataIntrospectorTests {
 				<name>Member Core</name>
 			</project>
 			""")
-	void capturesProjectNameFromOwnPom(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void capturesProjectNameFromOwnPom(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -337,7 +336,7 @@ class MavenPomMetadataIntrospectorTests {
 				</properties>
 			</project>
 			""")
-	void interpolatesProjectName(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void interpolatesProjectName(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -355,7 +354,7 @@ class MavenPomMetadataIntrospectorTests {
 				<name>${unresolvable.property} Core</name>
 			</project>
 			""")
-	void dropsUnresolvedProjectName(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void dropsUnresolvedProjectName(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -399,74 +398,6 @@ class MavenPomMetadataIntrospectorTests {
 	}
 
 	@Test
-	@ProjectFile(name = "bom/pom.xml", content = """
-			<project>
-				<groupId>com.example</groupId>
-				<artifactId>example-bom</artifactId>
-				<version>1.0.0</version>
-				<name>Example BOM</name>
-				<scm>
-					<url>https://github.com/example/example-repo</url>
-				</scm>
-			</project>
-			""")
-	void crossCheckResolvesMemberMetadataFromGoverningBom(@ProjectFile("bom/pom.xml") PsiFile bomPom) {
-
-		registerPom("com.example:example-bom:1.0.0", bomPom);
-		cacheBomMembership("com.example:example-bom:1.0.0",
-				"com.example:member-core:1.0.0");
-
-		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
-
-		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
-		assertThat(metadata.getProjectName()).isNull();
-	}
-
-	@Test
-	@ProjectFile(name = "member/pom.xml", content = """
-			<project>
-				<groupId>com.example</groupId>
-				<artifactId>member-core</artifactId>
-				<version>1.0.0</version>
-				<scm>
-					<url>https://github.com/example/example-repo</url>
-				</scm>
-			</project>
-			""")
-	void crossCheckResolvesBomMetadataFromManagedMember(@ProjectFile("member/pom.xml") PsiFile memberPom) {
-
-		registerPom("com.example:member-core:1.0.0", memberPom);
-		cacheBomMembership("com.example:example-bom:1.0.0",
-				"com.example:member-core:1.0.0");
-
-		CachedMetadata metadata = introspect("com.example:example-bom:1.0.0");
-
-		assertThat(metadata.getRepositoryUrl()).isEqualTo("https://github.com/example/example-repo");
-	}
-
-	@Test
-	@ProjectFile(name = "bom/pom.xml", content = """
-			<project>
-				<groupId>com.other</groupId>
-				<artifactId>aggregator-bom</artifactId>
-				<version>1.0.0</version>
-				<scm>
-					<url>https://github.com/other/aggregator</url>
-				</scm>
-			</project>
-			""")
-	void crossCheckNeverCrossesGroupIdBoundaries(@ProjectFile("bom/pom.xml") PsiFile bomPom) {
-
-		registerPom("com.other:aggregator-bom:1.0.0", bomPom);
-		cacheBomMembership("com.other:aggregator-bom:1.0.0", "com.example:member-core:1.0.0");
-
-		CachedMetadata metadata = introspect("com.example:member-core:1.0.0");
-
-		assertThat(metadata.getRepositoryUrl()).isNull();
-		assertThat(metadata.getIssueTrackerUrl()).isNull();
-	}
-
-	@Test
 	@ProjectFile(name = "member/pom.xml", content = """
 			<project>
 				<groupId>com.example</groupId>
@@ -477,7 +408,7 @@ class MavenPomMetadataIntrospectorTests {
 				<issueManagement><system>JIRA</system></issueManagement>
 			</project>
 			""")
-	void capturesDescriptionAndUsesIssueManagementSystemHint(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void capturesDescriptionAndUsesIssueManagementSystemHint(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -496,7 +427,7 @@ class MavenPomMetadataIntrospectorTests {
 				<issueManagement><url>file:///tmp/issues.html</url></issueManagement>
 			</project>
 			""")
-	void rejectsNonHttpIssueManagementUrl(@ProjectFile("member/pom.xml") PsiFile pom) {
+	void rejectsNonHttpIssueManagementUrl(PsiFile pom) {
 
 		registerPom("com.example:member-core:1.0.0", pom);
 
@@ -504,15 +435,7 @@ class MavenPomMetadataIntrospectorTests {
 	}
 
 	private void registerPom(String coordinates, PsiFile pomFile) {
-		pomsByCoordinates.put(Coordinates.of(coordinates), pomFile.getVirtualFile());
-	}
-
-	private void cacheBomMembership(String bomgav, String member) {
-
-		Coordinates bom = Coordinates.of(bomgav);
-		CachedArtifact bomArtifact = new CachedArtifact(bom.getArtifactId());
-		bomArtifact.setBillOfMaterials(Coordinates.bom(bom.toString(), it -> it.member(member)), 1_000L);
-		cache.addArtifacts(bomArtifact);
+		poms.put(Coordinates.of(coordinates), pomFile.getVirtualFile());
 	}
 
 	private CachedMetadata introspect(String gav) {

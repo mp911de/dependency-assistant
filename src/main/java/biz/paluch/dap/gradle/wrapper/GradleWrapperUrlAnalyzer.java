@@ -25,6 +25,7 @@ import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.CredentialsInUrl;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.InvalidUrl;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.MalformedFileName;
 import biz.paluch.dap.gradle.wrapper.GradleWrapperUrlProblem.UnknownArtifact;
+import biz.paluch.dap.util.HttpClientUtil;
 
 /**
  * Pure classifier for Gradle wrapper distribution URLs.
@@ -84,9 +85,8 @@ class GradleWrapperUrlAnalyzer {
 		}
 
 		try {
-			String scheme = URI.create(decodedValue).getScheme();
-			return "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
-		} catch (IllegalArgumentException ex) {
+			return HttpClientUtil.isBrowsable(URI.create(decodedValue));
+		} catch (IllegalArgumentException e) {
 			return false;
 		}
 	}
