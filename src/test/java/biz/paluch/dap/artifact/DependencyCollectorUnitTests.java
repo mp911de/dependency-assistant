@@ -18,10 +18,12 @@ package biz.paluch.dap.artifact;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import static biz.paluch.dap.assertions.Assertions.*;
+import static biz.paluch.dap.fixtures.Coordinates.*;
 
 /**
  * Unit tests for {@link DependencyCollector}.
@@ -33,6 +35,8 @@ class DependencyCollectorUnitTests {
 	private ArtifactId CHECKOUT = ArtifactId.of("actions", "checkout");
 
 	private ArtifactId SETUP_JAVA = ArtifactId.of("actions", "setup-java");
+
+	private static final ArtifactId CODEC_HTTP = ArtifactId.of("io.netty", "netty-codec-http");
 
 	@Test
 	void promoteResolvedDeclarationsRegistersUsageWhenResolverReturnsDependency() {
@@ -97,6 +101,33 @@ class DependencyCollectorUnitTests {
 		assertThat(collector.getUsages()).hasSize(1);
 		assertThat(collector.getUsage(CHECKOUT)).isNotNull();
 		assertThat(collector.getUsage(SETUP_JAVA)).isNull();
+	}
+
+	@Test
+	void registersOneBillOfMaterialsPerVersion() {
+
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
+		collector.registerBillOfMaterials(bom("io.netty:netty-bom:4.1.100", it -> {
+		}));
+		collector.registerBillOfMaterials(bom("io.netty:netty-bom:4.1.108", it -> {
+		}));
+
+		assertThat(collector.getBillOfMaterials()).extracting(BillOfMaterials::getVersion)
+				.containsExactly(ArtifactVersion.of("4.1.100"), ArtifactVersion.of("4.1.108"));
+	}
+
+	@Test
+	void keepsFirstRegistrationOfTheSameBillOfMaterialsVersion() {
+
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
+		collector.registerBillOfMaterials(
+				bom("io.netty:netty-bom:4.1.100", it -> it.member("io.netty:netty-codec-http:4.1.100")));
+		collector.registerBillOfMaterials(bom("io.netty:netty-bom:4.1.100", it -> {
+		}));
+
+		assertThat(collector.getBillOfMaterials()).singleElement()
+				.extracting(BillOfMaterials::getMembers)
+				.isEqualTo(Map.of(CODEC_HTTP, ArtifactVersion.of("4.1.100")));
 	}
 
 }

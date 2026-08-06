@@ -19,17 +19,14 @@ package biz.paluch.dap.maven;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.Expression;
 import biz.paluch.dap.support.Property;
@@ -47,26 +44,21 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenParser extends MavenPomSupport {
 
-	private final Cache cache;
-
 	private final MavenPomProperties propertyResolver;
 
 	/**
 	 * Create a new {@code MavenParser}.
-	 * @param cache the cache used to resolve imported BOM contents.
 	 */
-	MavenParser(Cache cache) {
-		this(cache, MavenPomProperties.empty());
+	MavenParser() {
+		this(MavenPomProperties.empty());
 	}
 
 	/**
 	 * Create a new {@code MavenParser}.
 	 *
-	 * @param cache the cache used to resolve imported BOM contents.
 	 * @param propertyResolver Maven property resolver.
 	 */
-	MavenParser(Cache cache, MavenPomProperties propertyResolver) {
-		this.cache = cache;
+	MavenParser(MavenPomProperties propertyResolver) {
 		this.propertyResolver = propertyResolver;
 	}
 
@@ -206,7 +198,7 @@ class MavenParser extends MavenPomSupport {
 	private void doWithDependencies(PomTag root, MavenPomProperties properties,
 			Consumer<ArtifactDeclaration> callback) {
 		root.subtags(DEPENDENCIES).subtags(DEPENDENCY).forEach(dependency -> {
-			doWithDeclaration(properties, dependency, getDeclarationSource(dependency.getTag(), properties), callback);
+			doWithDeclaration(properties, dependency, getDeclarationSource(dependency.getTag()), callback);
 		});
 	}
 
@@ -233,49 +225,6 @@ class MavenParser extends MavenPomSupport {
 		if (declaration != null) {
 			callback.accept(declaration);
 		}
-	}
-
-	/**
-	 * Return the {@link DeclarationSource} for the given dependency or plugin
-	 * declaration tag. A dependency-management entry with {@code scope=import} and
-	 * {@code type=pom} classifies as a Bill of Materials import.
-	 *
-	 * @param owner the dependency, plugin, or extension tag to classify.
-	 * @return the declaration source describing where the artifact is declared.
-	 */
-	private DeclarationSource getDeclarationSource(XmlTag owner, MavenPomProperties properties) {
-
-		PropertyResolver propertyResolver = properties.forDeclaration(owner);
-
-		XmlTag profile = (XmlTag) PsiElements.findFirstParent(owner, false,
-				psiElement -> psiElement instanceof XmlTag tag && PROFILE.equals(tag.getLocalName()));
-
-		Subtag profileTag = Subtag.of(profile, ID);
-
-		if (owner.getParentTag() instanceof XmlTag parent && parent.getParentTag() instanceof XmlTag grandParent) {
-
-			if (DEPENDENCY_MANAGEMENT.equals(grandParent.getLocalName()) && isBomImport(owner)) {
-				ArtifactId artifactId = parseArtifactId(PomTag.of(owner), propertyResolver);
-
-				String versionText = Subtag.of(owner, VERSION).getText();
-				if (artifactId != null && versionText != null) {
-					String resolvedVersion = Expression.from(versionText).resolve(propertyResolver);
-					if (!StringUtils.isEmpty(resolvedVersion) && !resolvedVersion.contains("${")) {
-
-						return ArtifactVersion.from(resolvedVersion).map(bomVersion -> {
-
-							Map<ArtifactId, ArtifactVersion> bom = BomUtil.resolveBom(cache, owner.getProject(),
-									PackageIdentity.of(artifactId, PackageSystem.MAVEN), bomVersion);
-
-							return profileTag.eitherOr(id -> DeclarationSource.profileBom(id, bom),
-									() -> DeclarationSource.bom(bom));
-						}).orElseGet(DeclarationSource::bom);
-					}
-				}
-			}
-		}
-
-		return getDeclarationSource(owner);
 	}
 
 	private static boolean isBomImport(XmlTag dependency) {

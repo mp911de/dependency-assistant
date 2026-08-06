@@ -31,7 +31,6 @@ import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.DependencySearchResults;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
@@ -64,8 +63,6 @@ import org.jspecify.annotations.Nullable;
  */
 class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 
-	private final Cache cache;
-
 	private final ProjectState projectState;
 
 	private final MavenProjectContext buildContext;
@@ -83,7 +80,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	MavenArtifactReferenceResolver(Project project, XmlFile pomFile,
 			MavenProjectContext projectContext) {
 		StateService service = StateService.getInstance(project);
-		this.cache = service.getCache();
 		this.projectState = service.getProjectState(projectContext.getProjectId());
 		this.buildContext = projectContext;
 		this.pom = SmartPointerManager.createPointer(pomFile);
@@ -149,7 +145,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private List<DependencySiteSearchHit> findVersionSites(XmlFile pomFile, DependencySiteQuery query) {
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
-		MavenParser parser = new MavenParser(cache, buildContext.getPomProperties());
+		MavenParser parser = new MavenParser(buildContext.getPomProperties());
 		for (ArtifactDeclaration declaration : parser.parsePomFile(pomFile)) {
 			VersionSource versionSource = declaration.getVersionSource();
 			if (versionSource instanceof VersionSource.VersionProperty property) {
@@ -160,7 +156,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 			} else if (query.artifacts().contains(declaration.getArtifactId())
 					&& declaration.getVersionLiteral() != null) {
 				hits.add(DependencySiteSearchHit.declaration(declaration.getRequiredVersionLiteral(),
-						declaration.isVersionDefined() ? declaration.getVersion().toString()
+						declaration.isVersioned() ? declaration.getVersion().toString()
 								: declaration.getRequiredVersionLiteral().getText()));
 			}
 		}
@@ -200,7 +196,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		if (parentTag == null || pomFile == null) {
 			return ArtifactReference.unresolved();
 		}
-		MavenParser parser = new MavenParser(cache, buildContext.getPomProperties());
+		MavenParser parser = new MavenParser(buildContext.getPomProperties());
 		ArtifactDeclaration artifactDeclaration = parser.parseDeclaration(parentTag);
 		return artifactDeclaration != null ? ArtifactReference.from(artifactDeclaration)
 				: ArtifactReference.unresolved();

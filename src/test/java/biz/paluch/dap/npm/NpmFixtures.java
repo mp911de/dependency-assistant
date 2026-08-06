@@ -58,7 +58,7 @@ class NpmFixtures {
 		NpmProjectContext context = NpmProjectContext.of(file);
 		file.putUserData(NpmProjectContext.KEY, context);
 
-		service.getProjectState(context.getProjectId()).setDependencies(collector, PackageSystem.NPM);
+		service.getProjectState(context.getProjectId()).setDependencies(collector);
 		return collector;
 	}
 

@@ -235,7 +235,7 @@ public class DependencyUsageTarget implements UsageTarget, ItemPresentation {
 					: declaration.getDeclarationElement();
 			if (seen.add(target)) {
 				hits.add(DependencySiteSearchHit.declaration(target,
-						declaration.isVersionDefined() ? declaration.getVersion().toString() : target.getText()));
+						declaration.isVersioned() ? declaration.getVersion().toString() : target.getText()));
 			}
 		}
 

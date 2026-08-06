@@ -185,7 +185,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 			return ABSENT;
 		}
 		ArtifactDeclaration declaration = artifactReference.getDeclaration();
-		if (requireDefinedVersion && !declaration.isVersionDefined()) {
+		if (requireDefinedVersion && !declaration.isVersioned()) {
 			return ABSENT;
 		}
 
@@ -316,7 +316,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		if (isAbsent()) {
 			return UpgradeSuggestions.empty();
 		}
-		if (!getDeclaration().isVersionDefined() || !getDeclaration().hasVersionSource()) {
+		if (!getDeclaration().isVersioned() || !getDeclaration().hasVersionSource()) {
 			return UpgradeSuggestions.empty();
 		}
 		if (suggestions == null) {

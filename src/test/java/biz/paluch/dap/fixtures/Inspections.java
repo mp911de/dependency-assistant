@@ -97,7 +97,7 @@ public class Inspections {
 				versionSource);
 		StateService.getInstance(project)
 				.getProjectState(ProjectId.of("com.example", projectId))
-				.setDependencies(collector, PackageSystem.MAVEN);
+				.setDependencies(collector);
 	}
 
 }

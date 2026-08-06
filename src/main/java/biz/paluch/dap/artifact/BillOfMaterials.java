@@ -28,33 +28,60 @@ import java.util.Map;
  * along with their managed versions. Member sets differ across BOM releases, so
  * membership is always scoped to one BOM version.
  *
- * <p>Instances are value objects; equality is defined over the full BOM
- * coordinates including the version (GAV), excluding the member map.
+ * <p>A Bill of Materials is always versioned, so {@link #isVersioned()} returns
+ * {@literal true} and {@link #getVersion()} never fails.
+ *
+ * <p>Instances are value objects; equality is defined over the BOM identity,
+ * that is its {@link #getPackageIdentity() package identity} and
+ * {@link #getVersion() version}, excluding the member map. Implementations must
+ * honour that definition across implementation types so a Bill of Materials can
+ * serve as a set element or map key regardless of where it was created.
  *
  * @author Mark Paluch
  * @see DeclarationSource.Bom
+ * @see VersionedPackage
  */
-public interface BillOfMaterials extends HasArtifactId, VersionAware {
+public interface BillOfMaterials extends VersionedPackage {
 
 	/**
 	 * Create a Bill of Materials for the given BOM coordinates and members.
 	 *
-	 * @param artifactId the BOM artifact coordinates.
+	 * @param pkg the BOM package identity.
 	 * @param version the BOM version the membership is scoped to.
-	 * @param members the managed members keyed by artifact coordinates.
+	 * @param members the managed members keyed by artifact coordinates; copied into
+	 * the returned instance.
 	 * @return the Bill of Materials; guaranteed to be not {@literal null}.
 	 */
-	static BillOfMaterials of(ArtifactId artifactId, ArtifactVersion version,
+	static BillOfMaterials of(PackageIdentity pkg, ArtifactVersion version,
 			Map<ArtifactId, ArtifactVersion> members) {
-		return new DefaultBillOfMaterials(artifactId, version, members);
+		return new DefaultBillOfMaterials(pkg, version, members);
+	}
+
+	/**
+	 * Create a Bill of Materials adopting the identity and version of the given BOM
+	 * coordinates.
+	 *
+	 * @param bom the BOM identity and version; typically the declaration that
+	 * imported the BOM or the candidate version being resolved.
+	 * @param members the managed members keyed by artifact coordinates; copied into
+	 * the returned instance.
+	 * @return the Bill of Materials; guaranteed to be not {@literal null}.
+	 */
+	static BillOfMaterials from(VersionedPackage bom, Map<ArtifactId, ArtifactVersion> members) {
+		return of(bom.getPackageIdentity(), bom.getVersion(), members);
 	}
 
 	/**
 	 * Return the managed members of this BOM keyed by artifact coordinates, each
 	 * mapped to its managed version.
 	 *
-	 * @return an unmodifiable member map; may be empty, guaranteed to be not .
+	 * @return the member map.
 	 */
 	Map<ArtifactId, ArtifactVersion> getMembers();
+
+	@Override
+	default boolean isVersioned() {
+		return true;
+	}
 
 }

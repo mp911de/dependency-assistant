@@ -57,7 +57,7 @@ class AntoraFixtures {
 				new ProjectId("antora", "antora-playbook", file.getVirtualFile().getPath()));
 		file.putUserData(AntoraProjectContext.KEY, projectContext);
 
-		service.getProjectState(projectContext.getProjectId()).setDependencies(collector, PackageSystem.OTHER);
+		service.getProjectState(projectContext.getProjectId()).setDependencies(collector);
 
 		return collector;
 	}

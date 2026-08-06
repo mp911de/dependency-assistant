@@ -28,13 +28,12 @@ import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.IntrospectedDependencies;
 import biz.paluch.dap.ProjectDependencyContext;
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.VersionedPackage;
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.StateService;
@@ -57,6 +56,7 @@ import com.intellij.psi.xml.XmlFile;
 import icons.MavenIcons;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -103,9 +103,8 @@ class MavenAssistant implements DependencyAssistant {
 	}
 
 	@Override
-	public Map<ArtifactId, ArtifactVersion> resolveBillOfMaterials(Project project, PackageIdentity pkg,
-			ArtifactVersion version) {
-		return BomUtil.resolveBom(StateService.getInstance(project).getCache(), project, pkg, version);
+	public @Nullable BillOfMaterials resolveBillOfMaterials(Project project, VersionedPackage bom) {
+		return BomUtil.resolveBillOfMaterials(StateService.getInstance(project).getCache(), project, bom);
 	}
 
 	@Override

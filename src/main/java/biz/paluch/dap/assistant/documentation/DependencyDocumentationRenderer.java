@@ -181,7 +181,7 @@ class DependencyDocumentationRenderer {
 			content.append(versionsTable(artifactId, digest, withIcons, formatter, presentation));
 		}
 
-		content.append(securityAdvisories(artifactId, withIcons));
+		content.append(renderSecurityAdvisories(artifactId, withIcons));
 
 		return document(HtmlChunk.text(artifactId.toString()), content);
 	}
@@ -237,7 +237,7 @@ class DependencyDocumentationRenderer {
 			content.append(sectionsTable(sections));
 		}
 
-		content.append(securityAdvisories(vulnerabilities, advisoriesNote, true));
+		content.append(renderSecurityAdvisories(vulnerabilities, advisoriesNote, true));
 
 		return document(HtmlChunk.text(artifactId + " " + version), content);
 	}
@@ -437,14 +437,14 @@ class DependencyDocumentationRenderer {
 	 * Render the security-advisories section for the current version of the given
 	 * artifact; cache-only, empty for clean or unscanned dependencies.
 	 */
-	private HtmlChunk securityAdvisories(ArtifactId artifactId, boolean withIcons) {
+	private HtmlChunk renderSecurityAdvisories(ArtifactId artifactId, boolean withIcons) {
 
 		if (currentVersion == null) {
 			return HtmlChunk.empty();
 		}
 
 		Vulnerabilities vulnerabilities = stateService.getVulnerabilities(artifactId, currentVersion);
-		return securityAdvisories(vulnerabilities, null, withIcons);
+		return renderSecurityAdvisories(vulnerabilities, null, withIcons);
 	}
 
 	/**
@@ -453,7 +453,7 @@ class DependencyDocumentationRenderer {
 	 * unscanned versions. With icons, each advisory row leads with its severity
 	 * shield instead of a list dot; the plain variant keeps the {@code ul} list.
 	 */
-	private static HtmlChunk securityAdvisories(Vulnerabilities vulnerabilities, @Nullable String note,
+	private static HtmlChunk renderSecurityAdvisories(Vulnerabilities vulnerabilities, @Nullable String note,
 			boolean withIcons) {
 
 		if (!vulnerabilities.isVulnerable()) {
@@ -565,7 +565,7 @@ class DependencyDocumentationRenderer {
 				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter, presentation));
 			}
 
-			content.append(securityAdvisories(group.artifactIds.getFirst(), withIcons));
+			content.append(renderSecurityAdvisories(group.artifactIds.getFirst(), withIcons));
 		}
 
 		return document(HtmlChunk.text(property.name()), content);

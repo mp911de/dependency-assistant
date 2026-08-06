@@ -24,29 +24,35 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Default {@link BillOfMaterials} implementation. Equality is based on the full
- * BOM coordinates including the version; the member map is excluded.
+ * Default {@link BillOfMaterials} implementation. Equality follows the
+ * {@link BillOfMaterials} contract: package identity plus version, excluding
+ * the member map.
  *
  * @author Mark Paluch
  */
 class DefaultBillOfMaterials implements BillOfMaterials {
 
-	private final ArtifactId artifactId;
+	private final PackageIdentity pkg;
 
 	private final ArtifactVersion version;
 
 	private final Map<ArtifactId, ArtifactVersion> members;
 
-	DefaultBillOfMaterials(ArtifactId artifactId, ArtifactVersion version,
+	DefaultBillOfMaterials(PackageIdentity pkg, ArtifactVersion version,
 			Map<ArtifactId, ArtifactVersion> members) {
-		this.artifactId = artifactId;
+		this.pkg = pkg;
 		this.version = version;
 		this.members = Collections.unmodifiableMap(new LinkedHashMap<>(members));
 	}
 
 	@Override
 	public ArtifactId getArtifactId() {
-		return artifactId;
+		return pkg.getArtifactId();
+	}
+
+	@Override
+	public PackageIdentity getPackageIdentity() {
+		return pkg;
 	}
 
 	@Override
@@ -61,20 +67,20 @@ class DefaultBillOfMaterials implements BillOfMaterials {
 
 	@Override
 	public boolean equals(@Nullable Object o) {
-		if (!(o instanceof DefaultBillOfMaterials that)) {
+		if (!(o instanceof BillOfMaterials that)) {
 			return false;
 		}
-		return Objects.equals(artifactId, that.artifactId) && Objects.equals(version, that.version);
+		return Objects.equals(pkg, that.getPackageIdentity()) && Objects.equals(version, that.getVersion());
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(artifactId, version);
+		return Objects.hash(pkg, version);
 	}
 
 	@Override
 	public String toString() {
-		return "%s:%s [%d members]".formatted(artifactId, version, members.size());
+		return "%s:%s [%d members]".formatted(pkg, version, members.size());
 	}
 
 }

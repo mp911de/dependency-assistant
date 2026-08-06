@@ -511,7 +511,7 @@ class MavenPomMetadataIntrospectorTests {
 
 		Coordinates bom = Coordinates.of(bomgav);
 		CachedArtifact bomArtifact = new CachedArtifact(bom.getArtifactId());
-		bomArtifact.setBillOfMaterials(Coordinates.bom(bom.toString(), it -> it.member(member)));
+		bomArtifact.setBillOfMaterials(Coordinates.bom(bom.toString(), it -> it.member(member)), 1_000L);
 		cache.addArtifacts(bomArtifact);
 	}
 

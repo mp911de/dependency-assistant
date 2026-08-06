@@ -22,29 +22,29 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionedPackage;
 import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedArtifact;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Resolves missing Bill of Materials memberships from local build-tool storage
  * through the registered {@link DependencyAssistant assistants} and stores them
  * in the {@link Cache}.
  *
- * <p>Only artifacts already carrying at least one cached membership are
- * considered BOMs. Candidate versions are the non-preview, non-snapshot
- * releases newer than three years that lack a membership. Resolved memberships
- * are immutable and cached forever; unresolvable versions carry no persisted
- * state and are simply retried on the next invocation.
+ * <p>Only artifacts a scan classified as a BOM are considered, whether or not
+ * they already carry a cached membership. Candidate versions are the
+ * non-preview, non-snapshot releases newer than three years that lack a
+ * membership. Resolved memberships are immutable and cached forever;
+ * unresolvable versions carry no persisted state and are simply retried on the
+ * next invocation.
  *
  * <p>Resolution parses BOM POMs and must run on a background thread; each
  * assistant call is wrapped in its own short read action.
@@ -123,7 +123,7 @@ public class BomMembershipResolver {
 
 		for (CachedArtifact bomCandidate : bomCandidates) {
 
-			if (!bomCandidate.hasBoms() || bomCandidate.getPackageSystem() == null) {
+			if (!bomCandidate.isBom() || bomCandidate.getPackageSystem() == null) {
 				continue;
 			}
 
@@ -144,29 +144,28 @@ public class BomMembershipResolver {
 					continue;
 				}
 
-				Map<ArtifactId, ArtifactVersion> members = resolveBom(bomCandidate.toPackageIdentity(),
-						release.version());
-				if (members.isEmpty()) {
+				BillOfMaterials bom = resolveBom(
+						VersionedPackage.of(bomCandidate.toPackageIdentity(), release.version()));
+				if (bom == null) {
 					continue;
 				}
 
-				cache.putBillOfMaterials(BillOfMaterials.of(bomCandidate, release.version(), members),
-						bomCandidate.getPackageSystem());
+				cache.putBillOfMaterials(bom);
 			}
 		}
 	}
 
-	private Map<ArtifactId, ArtifactVersion> resolveBom(PackageIdentity pkg, ArtifactVersion version) {
+	private @Nullable BillOfMaterials resolveBom(VersionedPackage candidate) {
 
 		for (DependencyAssistant assistant : assistants) {
 
-			Map<ArtifactId, ArtifactVersion> members = ReadAction
-					.computeBlocking(() -> assistant.resolveBillOfMaterials(project, pkg, version));
-			if (!members.isEmpty()) {
-				return members;
+			BillOfMaterials bom = ReadAction
+					.computeBlocking(() -> assistant.resolveBillOfMaterials(project, candidate));
+			if (bom != null) {
+				return bom;
 			}
 		}
-		return Map.of();
+		return null;
 	}
 
 }

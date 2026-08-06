@@ -32,7 +32,16 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import biz.paluch.dap.artifact.*;
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
+import biz.paluch.dap.artifact.GitArtifactId;
+import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.ReleaseSources;
+import biz.paluch.dap.artifact.Releases;
+import biz.paluch.dap.artifact.VersionedPackage;
 import biz.paluch.dap.checker.Vulnerabilities;
 import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.openapi.util.SimpleModificationTracker;
@@ -260,57 +269,45 @@ public class Cache implements ModificationTracker {
 		return Releases.empty();
 	}
 
-	public void putBillOfMaterials(DependencyCollector collector, PackageSystem packageSystem) {
-
-		collector.getUsages().forEach(it -> {
-
-			DeclarationSource.Bom bom = it.getDeclarationSource(DeclarationSource.Bom.class);
-
-			if (bom == null) {
-				return;
-			}
-
-			Map<ArtifactId, ArtifactVersion> members = bom.getArtifacts();
-			if (members.isEmpty()) {
-				return;
-			}
-			BillOfMaterials billOfMaterials = BillOfMaterials.of(it.getArtifactId(),
-					it.getCurrentVersion(), members);
-			putBillOfMaterials(billOfMaterials, packageSystem);
-		});
-	}
-
-	public void putBillOfMaterials(BillOfMaterials bom, PackageSystem packageSystem) {
+	/**
+	 * Record the given Bill of Materials, marking its artifact as a BOM.
+	 * <p>A Bill of Materials with no members marks the artifact without caching a
+	 * membership, so an unresolvable BOM stays resolvable later.
+	 *
+	 * @param bom the Bill of Materials to record; carries the ecosystem it belongs
+	 * to.
+	 * @see CachedArtifact#setBillOfMaterials(BillOfMaterials, long)
+	 */
+	public void putBillOfMaterials(BillOfMaterials bom) {
 
 		ArtifactId artifactId = bom.getArtifactId();
-		CachedArtifact cachedArtifact = findCachedArtifact(artifactId, packageSystem);
-		writeArtifacts(() -> {
-			CachedArtifact artifactToUse = getOrCreate(cachedArtifact, packageSystem, artifactId);
-			artifactToUse.setBillOfMaterials(bom);
-		});
+		PackageSystem packageSystem = bom.getPackageSystem();
+		CachedArtifact cachedArtifact = findCachedArtifact(bom.getPackageIdentity());
+		writeArtifacts(() -> getOrCreate(cachedArtifact, packageSystem, artifactId)
+				.setBillOfMaterials(bom, now()));
 	}
 
 	/**
-	 * Return the cached Bill of Materials for the given BOM coordinates and
-	 * version.
-	 * <p>Released BOM contents are immutable, so entries never expire by age; the
-	 * containing artifact's last-seen eviction bounds their lifetime.
+	 * Return the cached Bill of Materials for the given BOM identity and version.
+	 * <p>The lookup is ecosystem-aware, matching
+	 * {@link #putBillOfMaterials(BillOfMaterials)}. Released BOM contents are
+	 * immutable, so entries never expire by age; the containing artifact's
+	 * last-seen eviction bounds their lifetime.
 	 *
-	 * @param artifactId the BOM artifact coordinates.
-	 * @param version the BOM version.
+	 * @param bom the BOM identity and version to look up.
 	 * @return the Bill of Materials, or {@literal null} if no membership is cached
 	 * for the version.
 	 */
 	@Transient
-	public @Nullable BillOfMaterials getBillOfMaterials(ArtifactId artifactId, ArtifactVersion version) {
+	public @Nullable BillOfMaterials getBillOfMaterials(VersionedPackage bom) {
 
-		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
+		CachedArtifact cachedArtifact = findCachedArtifact(bom.getPackageIdentity());
 		if (cachedArtifact == null) {
 			return null;
 		}
 
-		CachedBom membership = cachedArtifact.getBomMembership(version.toString());
-		return membership != null ? BillOfMaterials.of(artifactId, version, membership.toMembers()) : null;
+		CachedBom membership = cachedArtifact.getBomMembership(bom.getVersion().toString());
+		return membership != null ? BillOfMaterials.from(bom, membership.toMembers()) : null;
 	}
 
 	/**
@@ -452,59 +449,6 @@ public class Cache implements ModificationTracker {
 		}
 
 		return cachedRelease.toVulnerabilities();
-	}
-
-	/**
-	 * Return the per-version {@link Vulnerabilities} for the given artifact across
-	 * all package systems.
-	 *
-	 * @param artifactId the artifact to look up.
-	 * @return a map of cached version to its vulnerability scan; empty if no entry
-	 * is present.
-	 */
-	@Transient
-	public Map<ArtifactVersion, Vulnerabilities> getVulnerabilities(ArtifactId artifactId) {
-		return getVulnerabilities(artifactId, (PackageSystem) null);
-	}
-
-	/**
-	 * Return the per-version {@link Vulnerabilities} for the artifact and package
-	 * system carried by the given identity.
-	 *
-	 * @param identity the package identity to look up.
-	 * @return a map of cached version to its vulnerability scan; empty if no entry
-	 * is present.
-	 */
-	@Transient
-	public Map<ArtifactVersion, Vulnerabilities> getVulnerabilities(PackageIdentity identity) {
-		return getVulnerabilities(identity.getArtifactId(), identity.getPackageSystem());
-	}
-
-	/**
-	 * Return the per-version {@link Vulnerabilities} for the given artifact,
-	 * optionally restricted to a package system.
-	 *
-	 * @param artifactId the artifact to look up.
-	 * @param packageSystem the package system to match, or {@literal null} to match
-	 * any package system.
-	 * @return a map of cached version to its vulnerability scan; empty if no entry
-	 * is present.
-	 */
-	@Transient
-	public Map<ArtifactVersion, Vulnerabilities> getVulnerabilities(ArtifactId artifactId,
-			@Nullable PackageSystem packageSystem) {
-
-		CachedArtifact cachedArtifact = findCachedArtifact(artifactId, packageSystem);
-		if (cachedArtifact == null) {
-			return Map.of();
-		}
-
-		Map<ArtifactVersion, Vulnerabilities> vulnerabilities = new HashMap<>();
-		for (CachedRelease release : cachedArtifact.getReleases()) {
-			vulnerabilities.put(release.toRelease().getVersion(), release.toVulnerabilities());
-		}
-
-		return vulnerabilities;
 	}
 
 	/**
@@ -818,17 +762,6 @@ public class Cache implements ModificationTracker {
 		artifacts.add(artifactToUse);
 		index(artifactToUse);
 		return artifactToUse;
-	}
-
-	/**
-	 * Return the cached tags of the repository with the given key.
-	 * @param key the repository key.
-	 * @return the tag names, or an empty list if the repository is not known.
-	 */
-	public List<String> getTags(String key) {
-
-		CachedRepository repository = findRepository(key);
-		return repository != null ? repository.getTags() : List.of();
 	}
 
 	/**

@@ -128,7 +128,7 @@ public class VersionUpgradeLookup {
 		}
 
 		ArtifactDeclaration declaration = reference.getDeclaration();
-		return declaration.isVersionDefined() ? declaration.getVersion() : null;
+		return declaration.isVersioned() ? declaration.getVersion() : null;
 	}
 
 	public @Nullable VersionProperty findProperty(String property) {

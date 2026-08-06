@@ -20,7 +20,6 @@ import java.util.List;
 
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
@@ -177,7 +176,7 @@ class MavenPomPropertiesTests {
 			@ProjectFile("grandparent/pom.xml") XmlFile grandparent) {
 
 		MavenPomProperties properties = MavenPomProperties.from(List.of(child, parent, grandparent));
-		List<ArtifactDeclaration> declarations = new MavenParser(new Cache(), properties).parsePomFile(child);
+		List<ArtifactDeclaration> declarations = new MavenParser(properties).parsePomFile(child);
 
 		assertThat(declarations).singleElement()
 				.extracting(it -> it.getVersion().toString()).isEqualTo("2.0");

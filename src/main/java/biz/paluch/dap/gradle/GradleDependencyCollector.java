@@ -18,12 +18,8 @@ package biz.paluch.dap.gradle;
 
 import java.util.Map;
 
-import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.artifact.VersionSource.DeclaredVersion;
 import biz.paluch.dap.maven.BomUtil;
@@ -113,9 +109,9 @@ class GradleDependencyCollector {
 		VersionSource versionSource = declaration.getVersionSource();
 		boolean concreteDeclaration = !(versionSource instanceof DeclaredVersion declared)
 				|| GradleRichVersion.parse(declared.getVersion()).isPresent();
-		DeclarationSource declarationSource = getDeclarationSource(declaration);
+		DeclarationSource declarationSource = declaration.getDeclarationSource();
 
-		if (declaration.isVersionDefined() && concreteDeclaration && !versionSource.isPrefix()
+		if (declaration.isVersioned() && concreteDeclaration && !versionSource.isPrefix()
 				&& !(versionSource instanceof VersionSource.VersionCatalog)) {
 			collector.registerUsage(declaration.getArtifactId(), declaration.getVersion(),
 					declarationSource, versionSource);
@@ -123,25 +119,13 @@ class GradleDependencyCollector {
 
 		collector.registerDeclaration(declaration.getArtifactId(), declarationSource,
 				versionSource);
-	}
 
-	private DeclarationSource getDeclarationSource(ArtifactDeclaration declaration) {
-
-		DeclarationSource declarationSource = declaration.getDeclarationSource();
-
-		if (declarationSource instanceof DeclarationSource.Bom && declaration.isVersionDefined()) {
-
-			Map<ArtifactId, ArtifactVersion> bom = BomUtil.resolveBom(service.getCache(), project,
-					PackageIdentity.of(declaration.getArtifactId(), PackageSystem.MAVEN), declaration.getVersion());
-			return DeclarationSource.bom(bom);
-		}
-
-		return declarationSource;
+		BomUtil.registerBillOfMaterials(service.getCache(), project, declaration, collector);
 	}
 
 	void registerCatalog(DependencyCollector collector, ArtifactDeclaration declaration) {
 
-		if (declaration.isVersionDefined()) {
+		if (declaration.isVersioned()) {
 			collector.registerUsage(declaration.getArtifactId(), declaration.getVersion(),
 					declaration.getDeclarationSource(), declaration.getVersionSource());
 		}

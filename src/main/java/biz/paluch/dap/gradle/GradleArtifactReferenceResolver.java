@@ -244,7 +244,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	private static String labelOf(SiteRole role, PsiElement element, ArtifactDeclaration declaration) {
 
 		if (role == SiteRole.DECLARATION) {
-			return declaration.isVersionDefined() ? declaration.getVersion().toString() : element.getText();
+			return declaration.isVersioned() ? declaration.getVersion().toString() : element.getText();
 		}
 
 		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property ? property.getProperty()

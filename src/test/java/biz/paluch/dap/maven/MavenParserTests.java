@@ -19,8 +19,12 @@ package biz.paluch.dap.maven;
 import java.util.List;
 import java.util.Map;
 
+import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
@@ -69,7 +73,7 @@ class MavenParserTests {
 			""")
 	void emitsArtifactDeclarationsAsCanonicalOutput(XmlFile pomFile) {
 
-		List<ArtifactDeclaration> declarations = new MavenParser(new Cache()).parsePomFile(pomFile);
+		List<ArtifactDeclaration> declarations = new MavenParser().parsePomFile(pomFile);
 
 		assertThat(declarations).singleElement().satisfies(declaration -> {
 			assertThat(declaration.getArtifactId().toString()).isEqualTo("org.apache.commons:commons-lang3");
@@ -106,7 +110,7 @@ class MavenParserTests {
 			""")
 	void resolvesPropertiesWithinTheirDeclarationProfile(XmlFile pomFile) {
 
-		List<ArtifactDeclaration> declarations = new MavenParser(new Cache()).parsePomFile(pomFile);
+		List<ArtifactDeclaration> declarations = new MavenParser().parsePomFile(pomFile);
 
 		assertThat(declarations).extracting(it -> it.getArtifactId().artifactId() + ":" + it.getVersion())
 				.containsExactly("root:1.0", "one:2.0", "two:3.0");
@@ -780,6 +784,61 @@ class MavenParserTests {
 				.hasDependencyUsage("junit-jupiter")
 				.hasVersion("5.11.0")
 				.hasPropertyVersion("junit.version");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<groupId>com.example</groupId>
+				<artifactId>parent</artifactId>
+				<version>1.0.0</version>
+				<properties>
+					<netty-bom.version>4.1.100</netty-bom.version>
+				</properties>
+			</project>
+			""")
+	@ProjectFile(name = "module/pom.xml", content = """
+			<project>
+				<parent>
+					<groupId>com.example</groupId>
+					<artifactId>parent</artifactId>
+					<version>1.0.0</version>
+				</parent>
+				<artifactId>module</artifactId>
+				<dependencyManagement>
+					<dependencies>
+						<dependency>
+							<groupId>io.netty</groupId>
+							<artifactId>netty-bom</artifactId>
+							<version>${netty-bom.version}</version>
+							<type>pom</type>
+							<scope>import</scope>
+						</dependency>
+					</dependencies>
+				</dependencyManagement>
+			</project>
+			""")
+	void registersBomVersionedByParentProperty(XmlFile parent, XmlFile child) {
+
+		ArtifactId nettyBom = ArtifactId.of("io.netty", "netty-bom");
+		ArtifactVersion version = ArtifactVersion.of("4.1.100");
+		ArtifactId codecHttp = ArtifactId.of("io.netty", "netty-codec-http");
+
+		// pre-seed the membership so resolution does not need a local repository
+		Cache cache = new Cache();
+		cache.putBillOfMaterials(BillOfMaterials.of(PackageIdentity.of(nettyBom, PackageSystem.MAVEN), version,
+				Map.of(codecHttp, version)));
+
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
+		new MavenDependencyCollector(cache).doCollect(child,
+				MavenPomProperties.from(child).withFallback(MavenPomProperties.from(parent)), collector);
+
+		// the version literal lives in the parent POM, so the import is a declaration
+		// and never a usage
+		assertThat(collector.getUsage(nettyBom)).isNull();
+		assertThat(collector.getBillOfMaterials()).singleElement()
+				.extracting(BillOfMaterials::getMembers)
+				.isEqualTo(Map.of(codecHttp, version));
 	}
 
 	// -------------------------------------------------------------------------

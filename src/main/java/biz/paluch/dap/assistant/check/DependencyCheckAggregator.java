@@ -214,7 +214,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 		ProjectState projectState = stateService.getProjectState(context.getProjectId());
 
 		DependencyCollector collector = context.scanDependencies(indicator);
-		projectState.setDependencies(collector, context.getPackageSystem());
+		projectState.setDependencies(collector);
 
 		Collection<ReleaseSource> sources = new LinkedHashSet<>(collector.getReleaseSources());
 

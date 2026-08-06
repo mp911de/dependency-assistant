@@ -298,7 +298,7 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 
 		List<CachedArtifact> boms = new ArrayList<>();
 		for (CachedArtifact candidate : cache.getCachedArtifacts()) {
-			if (candidate.hasBoms() && member.groupId().equals(candidate.getGroupId())
+			if (candidate.isBom() && member.groupId().equals(candidate.getGroupId())
 					&& candidate.getArtifactId() != null && !member.artifactId().equals(candidate.getArtifactId())) {
 				boms.add(candidate);
 			}
@@ -330,7 +330,7 @@ class MavenPomMetadataIntrospector extends MavenPomSupport {
 	private @Nullable Gav findManagedMember(ArtifactId bomId) {
 
 		CachedArtifact bom = cache.findCachedArtifact(bomId);
-		if (bom == null || !bom.hasBoms()) {
+		if (bom == null || !bom.isBom()) {
 			return null;
 		}
 

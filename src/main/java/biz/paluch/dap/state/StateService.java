@@ -23,11 +23,11 @@ import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.DeclaredDependency;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.VulnerabilitiesRepository;
 import com.intellij.openapi.components.PersistentStateComponent;
@@ -290,33 +290,30 @@ public class StateService
 	}
 
 	/**
-	 * Perform the given action for every version-constraint declaration across all
+	 * Perform the given action for every Bill of Materials resolved across all
 	 * modules currently held in runtime dependency state.
-	 * <p>The consumer is invoked once for each declaration in each module, so an
-	 * artifact declared by several modules is visited several times. Only the
-	 * in-memory runtime dependency state is traversed; the persisted cache is not
-	 * consulted.
 	 *
-	 * @param consumer the action invoked with each declaration .
+	 * @param consumer the action invoked with each Bill of Materials.
 	 */
-	public void doWithDeclarations(Consumer<DeclaredDependency> consumer) {
-		doWithDeclarations(Predicates.alwaysTrue(), consumer);
+	public void doWithBillOfMaterials(Consumer<BillOfMaterials> consumer) {
+		doWithBillOfMaterials(Predicates.alwaysTrue(), consumer);
 	}
 
 	/**
-	 * Perform the given action for every version-constraint declaration across the
+	 * Perform the given action for every Bill of Materials resolved across the
 	 * modules accepted by {@code projectFilter}.
-	 * <p>Only the in-memory runtime dependency state is traversed; the persisted
-	 * cache is not consulted.
+	 * <p>The consumer is invoked once per module, so a BOM imported by several
+	 * modules is visited several times. Only the in-memory runtime dependency state
+	 * is traversed; the persisted cache is not consulted.
 	 *
 	 * @param projectFilter selects which modules are traversed.
-	 * @param consumer the action invoked with each declaration.
+	 * @param consumer the action invoked with each Bill of Materials.
 	 */
-	public void doWithDeclarations(Predicate<ProjectId> projectFilter, Consumer<DeclaredDependency> consumer) {
+	public void doWithBillOfMaterials(Predicate<ProjectId> projectFilter, Consumer<BillOfMaterials> consumer) {
 		for (Map.Entry<ProjectId, DependencyCollector> entry : dependencies.entrySet()) {
 			if (projectFilter.test(entry.getKey())) {
-				for (DeclaredDependency declaration : entry.getValue().getDeclarations()) {
-					consumer.accept(declaration);
+				for (BillOfMaterials bom : entry.getValue().getBillOfMaterials()) {
+					consumer.accept(bom);
 				}
 			}
 		}
@@ -359,10 +356,15 @@ public class StateService
 		}
 
 		@Override
-		public void setDependencies(DependencyCollector collector, PackageSystem packageSystem) {
+		public void setDependencies(DependencyCollector collector) {
+
 			dependencies.put(identity, collector);
-			getCache().getProject(identity).setProperties(collector, getCache().now());
-			getCache().putBillOfMaterials(collector, packageSystem);
+
+			Cache cache = getCache();
+			cache.getProject(identity).setProperties(collector, cache.now());
+			for (BillOfMaterials bom : collector.getBillOfMaterials()) {
+				cache.putBillOfMaterials(bom);
+			}
 		}
 
 		@Override

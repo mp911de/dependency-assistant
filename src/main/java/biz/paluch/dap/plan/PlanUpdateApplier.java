@@ -44,8 +44,21 @@ interface PlanUpdateApplier {
 	 */
 	int apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException;
 
+	/**
+	 * Run the given consumer on each item in the given collection.
+	 *
+	 * @param items the collection of items to process.
+	 * @param indicator the progress and cancellation indicator for the run.
+	 * @param consumer the function to apply to each item.
+	 * @return the number of items that resulted in changes.
+	 * @throws VcsException if a required version-control operation fails.
+	 */
 	default int doWithItems(Collection<UpgradePlanItem> items, ProgressIndicator indicator,
 			ThrowableNotNullFunction<UpgradePlanItem, UpgradeResult, VcsException> consumer) throws VcsException {
+
+		if (items.isEmpty()) {
+			return 0;
+		}
 
 		int appliedCount = 0;
 		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, items.size());
@@ -63,7 +76,6 @@ interface PlanUpdateApplier {
 			steps.nextStep();
 		}
 		return appliedCount;
-
 	}
 
 }

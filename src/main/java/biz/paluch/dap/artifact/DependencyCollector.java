@@ -52,6 +52,8 @@ public class DependencyCollector {
 
 	private final Map<ArtifactId, Dependency> usages = new TreeMap<>();
 
+	private final Set<BillOfMaterials> billOfMaterials = new LinkedHashSet<>();
+
 	private final Set<ReleaseSource> releaseSources = new LinkedHashSet<>();
 
 	private final Set<String> properties = new TreeSet<>();
@@ -131,6 +133,28 @@ public class DependencyCollector {
 			DeclarationSource declarationSource, VersionSource versionSource) {
 		usages.computeIfAbsent(artifactId, ac -> new Dependency(PackageIdentity.of(ac, packageSystem), currentVersion))
 				.addDeclarationSource(declarationSource).addVersionSource(versionSource);
+	}
+
+	/**
+	 * Register a Bill of Materials resolved while scanning the build files.
+	 * <p>{@link BillOfMaterials} identity is its coordinates and version, so the
+	 * same BOM imported at two versions contributes two entries while a repeated
+	 * registration of one coordinate-version pair keeps the first. A Bill of
+	 * Materials with no members records that the declaration is a BOM whose
+	 * contents could not be resolved.
+	 * @param bom the resolved Bill of Materials.
+	 */
+	public void registerBillOfMaterials(BillOfMaterials bom) {
+		billOfMaterials.add(bom);
+	}
+
+	/**
+	 * Return the Bills of Materials registered while scanning the build files.
+	 * @return the Bills of Materials in registration order; empty when the scan
+	 * found none.
+	 */
+	public Collection<BillOfMaterials> getBillOfMaterials() {
+		return billOfMaterials;
 	}
 
 	/**

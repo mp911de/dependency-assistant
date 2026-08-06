@@ -17,7 +17,6 @@
 package biz.paluch.dap.artifact;
 
 import java.util.Collection;
-import java.util.Map;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -81,28 +80,12 @@ public abstract class DeclarationSource {
 	}
 
 	/**
-	 * Return the source for a Bill of Materials or a Gradle platform dependency.
-	 */
-	public static DeclarationSource bom(Map<ArtifactId, ArtifactVersion> artifacts) {
-		return new BomImport(artifacts);
-	}
-
-	/**
 	 * Return the source for a Bill of Materials import within the named Maven
 	 * profile.
 	 * @param id the profile identifier.
 	 */
 	public static DeclarationSource profileBom(String id) {
-		return new ProfileBomImport(id, Map.of());
-	}
-
-	/**
-	 * Return the source for a Bill of Materials import within the named Maven
-	 * profile.
-	 * @param id the profile identifier.
-	 */
-	public static DeclarationSource profileBom(String id, Map<ArtifactId, ArtifactVersion> artifacts) {
-		return new ProfileBomImport(id, artifacts);
+		return new ProfileBomImport(id);
 	}
 
 	/**
@@ -199,10 +182,13 @@ public abstract class DeclarationSource {
 	 *
 	 * <p>A BOM source is definitionally a managed dependency source, so every
 	 * {@code instanceof Managed} check keeps matching.
+	 *
+	 * <p>The source classifies the declaration only. The managed member set of a
+	 * BOM is resolved during the scan and registered with the
+	 * {@link DependencyCollector#registerBillOfMaterials(BillOfMaterials)
+	 * collector}, keyed by BOM coordinates and version.
 	 */
 	public interface Bom extends Managed {
-
-		Map<ArtifactId, ArtifactVersion> getArtifacts();
 
 	}
 
@@ -342,29 +328,9 @@ public abstract class DeclarationSource {
 		/**
 		 * Shared BOM import source.
 		 */
-		public static final BomImport INSTANCE = new BomImport(Map.of());
+		public static final BomImport INSTANCE = new BomImport();
 
-		private final Map<ArtifactId, ArtifactVersion> artifacts;
-
-		BomImport(Map<ArtifactId, ArtifactVersion> artifacts) {
-			this.artifacts = artifacts;
-		}
-
-		@Override
-		public Map<ArtifactId, ArtifactVersion> getArtifacts() {
-			return artifacts;
-		}
-
-		@Override
-		public boolean equals(@Nullable Object o) {
-			// identity is the source kind; the member map is metadata, as with
-			// ProfileBomImport
-			return o != null && getClass() == o.getClass();
-		}
-
-		@Override
-		public int hashCode() {
-			return getClass().hashCode();
+		private BomImport() {
 		}
 
 		@Override
@@ -381,11 +347,8 @@ public abstract class DeclarationSource {
 
 		private final String profileId;
 
-		private final Map<ArtifactId, ArtifactVersion> artifacts;
-
-		ProfileBomImport(String profileId, Map<ArtifactId, ArtifactVersion> artifacts) {
+		ProfileBomImport(String profileId) {
 			this.profileId = profileId;
-			this.artifacts = artifacts;
 		}
 
 		/**
@@ -393,11 +356,6 @@ public abstract class DeclarationSource {
 		 */
 		public String getProfileId() {
 			return profileId;
-		}
-
-		@Override
-		public Map<ArtifactId, ArtifactVersion> getArtifacts() {
-			return artifacts;
 		}
 
 		@Override

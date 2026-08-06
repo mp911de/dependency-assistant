@@ -17,7 +17,6 @@
 package biz.paluch.dap.maven;
 
 import biz.paluch.dap.lookup.ArtifactReferenceResolver;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
 import com.intellij.psi.PsiElement;
@@ -90,7 +89,7 @@ class MavenExtensionsReferenceResolver implements ArtifactReferenceResolver {
 		if (parentTag == null || file == null) {
 			return ArtifactReference.unresolved();
 		}
-		MavenParser parser = new MavenParser(StateService.getInstance(parentTag.getProject()).getCache());
+		MavenParser parser = new MavenParser();
 		for (ArtifactDeclaration declaration : parser.parseExtensionsFile(file)) {
 			if (declaration.getDeclarationElement() == parentTag) {
 				return ArtifactReference.from(declaration);

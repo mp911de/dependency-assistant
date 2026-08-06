@@ -26,7 +26,6 @@ import java.util.Set;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeResult;
@@ -68,8 +67,7 @@ class UpdatePomFile {
 		}
 
 		String before = file.getText();
-		StateService stateService = StateService.getInstance(file.getProject());
-		MavenParser parser = new MavenParser(stateService.getCache(), propertyResolver);
+		MavenParser parser = new MavenParser(propertyResolver);
 		List<ArtifactDeclaration> declarations = parser.parsePomFile(file);
 		Map<ArtifactId, List<ArtifactDeclaration>> index = new HashMap<>();
 		for (ArtifactDeclaration d : declarations) {

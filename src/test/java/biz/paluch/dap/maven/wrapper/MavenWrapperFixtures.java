@@ -52,7 +52,7 @@ class MavenWrapperFixtures {
 		ProjectState state = StateService.getInstance(file.getProject())
 				.getProjectState(assistant.createContext(file.getProject(), file).getProjectId());
 		state.invalidateDependencies();
-		state.setDependencies(collector, assistant.getPackageSystem());
+		state.setDependencies(collector);
 		return collector;
 	}
 

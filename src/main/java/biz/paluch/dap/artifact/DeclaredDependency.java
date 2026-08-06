@@ -36,7 +36,7 @@ import org.jspecify.annotations.Nullable;
  * @see VersionSource
  * @see DependencyCollector
  */
-public class DeclaredDependency implements HasArtifactId, HasPackageIdentity {
+public class DeclaredDependency implements VersionedPackage {
 
 	private final PackageIdentity pkg;
 
@@ -74,22 +74,6 @@ public class DeclaredDependency implements HasArtifactId, HasPackageIdentity {
 	 */
 	public Set<DeclarationSource> getDeclarationSources() {
 		return Collections.unmodifiableSet(declarationSources);
-	}
-
-	/**
-	 * Return the first declaration source that is an instance of the given type.
-	 * Accepts concrete source types and marker interfaces such as
-	 * {@link DeclarationSource.Bom}.
-	 * @param declarationSource the declaration source type or marker to look up.
-	 * @return the first matching declaration source; may be {@literal null}.
-	 */
-	public <T> @Nullable T getDeclarationSource(Class<T> declarationSource) {
-		for (DeclarationSource source : declarationSources) {
-			if (declarationSource.isInstance(source)) {
-				return declarationSource.cast(source);
-			}
-		}
-		return null;
 	}
 
 	/**
@@ -146,6 +130,16 @@ public class DeclaredDependency implements HasArtifactId, HasPackageIdentity {
 			}
 		}
 		return null;
+	}
+
+	@Override
+	public boolean isVersioned() {
+		return false;
+	}
+
+	@Override
+	public ArtifactVersion getVersion() {
+		throw new IllegalStateException("Not a versioned dependency");
 	}
 
 	@Override

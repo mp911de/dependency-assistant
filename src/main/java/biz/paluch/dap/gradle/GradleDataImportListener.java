@@ -59,6 +59,11 @@ class GradleDataImportListener implements ProjectDataImportListener {
 			@Override
 			public void run(ProgressIndicator indicator) {
 				List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll();
+
+				if (assistants.isEmpty()) {
+					return;
+				}
+
 				StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, assistants.size());
 				steps.setIndeterminate(false);
 				ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);

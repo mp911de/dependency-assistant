@@ -60,7 +60,7 @@ public class GradleFixtures {
 						.getPath()), "1.0.0", ""));
 		file.putUserData(GradleProjectContext.KEY, projectContext);
 		StateService.getInstance(file.getProject()).getProjectState(projectContext.getProjectId())
-				.setDependencies(collector, PackageSystem.MAVEN);
+				.setDependencies(collector);
 
 		return collector;
 	}

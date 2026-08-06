@@ -21,7 +21,6 @@ import java.util.function.Predicate;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.DependencyCollector;
-import biz.paluch.dap.artifact.PackageSystem;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -48,12 +47,12 @@ public interface ProjectState {
 
 	/**
 	 * Replace the current runtime dependency state of this project.
+	 * <p>Bills of Materials the scan resolved are seeded into the cache, keyed by
+	 * the ecosystem each Bill of Materials carries.
 	 *
 	 * @param collector the freshly analyzed dependency collector.
-	 * @param packageSystem the package ecosystem the analyzed dependencies belong
-	 * to.
 	 */
-	void setDependencies(DependencyCollector collector, PackageSystem packageSystem);
+	void setDependencies(DependencyCollector collector);
 
 	/**
 	 * Return whether dependencies are available.

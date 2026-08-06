@@ -48,7 +48,7 @@ class DependencyfileCompletionFixtures {
 
 		StateService.getInstance(project)
 				.getProjectState(ProjectId.of("test", "project"))
-				.setDependencies(collector, PackageSystem.MAVEN);
+				.setDependencies(collector);
 	}
 
 	private static void register(DependencyCollector collector, ArtifactId artifactId) {

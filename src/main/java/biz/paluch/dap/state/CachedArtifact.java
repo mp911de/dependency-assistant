@@ -107,6 +107,13 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	@Attribute
 	private long lastSeen = 0L;
 
+	/**
+	 * Whether this artifact was classified as a Bill of Materials import by a scan.
+	 * Persisted separately from the memberships so a BOM whose contents could not
+	 * be resolved is still recognized as one.
+	 */
+	private @Attribute boolean bom;
+
 	private final @XCollection(propertyElementName = "releases", elementName = "release", style = XCollection.Style.v2) List<CachedRelease> releases = new ArrayList<>();
 
 	private final @XCollection(propertyElementName = "boms", elementName = "bom", style = XCollection.Style.v2) List<CachedBom> boms = new ArrayList<>();
@@ -219,9 +226,20 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	}
 
 	/**
-	 * Return whether this entry has any cached Bill of Materials membership.
+	 * Return whether this artifact was classified as a Bill of Materials by any
+	 * scan, independently of whether a membership is cached for any version.
+	 * <p>Entries persisted before BOM classification report {@literal true} once a
+	 * membership is present, so previously cached BOMs keep their classification.
+	 *
+	 * @return {@literal true} if the artifact is known to be a BOM;
+	 * {@literal false} otherwise.
 	 */
-	public boolean hasBoms() {
+	public boolean isBom() {
+
+		if (bom) {
+			return true;
+		}
+
 		synchronized (boms) {
 			return !boms.isEmpty();
 		}
@@ -297,19 +315,32 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	}
 
 	/**
-	 * Cache the given Bill of Materials membership. Released BOM contents are
-	 * immutable, so an already-cached version is left unchanged.
+	 * Mark this artifact as a Bill of Materials, stamp it as seen, and cache the
+	 * given membership.
+	 * <p>Released BOM contents are immutable, so an already-cached version is left
+	 * unchanged. A Bill of Materials with no members marks the artifact without
+	 * caching a membership: the empty member set would otherwise be served for that
+	 * version for good, since memberships never expire by age.
+	 *
+	 * @param bom the Bill of Materials to cache.
+	 * @param timestamp the current epoch-millisecond timestamp.
 	 */
-	public void setBillOfMaterials(BillOfMaterials bom) {
+	public void setBillOfMaterials(BillOfMaterials bom, long timestamp) {
 
-		String version = bom.getVersion().toString();
+		this.bom = true;
+		this.lastSeen = timestamp;
+
+		if (bom.getMembers().isEmpty()) {
+			return;
+		}
+
 		synchronized (boms) {
 			for (CachedBom cachedBom : boms) {
 				if (cachedBom.getVersion().equals(bom.getVersion())) {
 					return;
 				}
 			}
-			boms.add(CachedBom.from(version, bom.getMembers()));
+			boms.add(CachedBom.from(bom.getVersion().toString(), bom.getMembers()));
 		}
 	}
 
@@ -635,6 +666,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		}
 		copy.projectMetadata = projectMetadata;
 		copy.preferredSource = preferredSource;
+		copy.bom = bom;
 		copy.emptyLookups = emptyLookups;
 		copy.sourcesCheckedSince = sourcesCheckedSince;
 		copy.emptyReleaseSources = emptyReleaseSources;

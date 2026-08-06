@@ -102,7 +102,7 @@ public class MavenFixtures {
 			ProjectState projectState = service
 					.getProjectState(assistant.createContext(file.getProject(), file).getProjectId());
 			projectState.invalidateDependencies();
-			projectState.setDependencies(collector, assistant.getPackageSystem());
+			projectState.setDependencies(collector);
 			return collector;
 		}
 
@@ -118,7 +118,7 @@ public class MavenFixtures {
 		StateService service = StateService.getInstance(file.getProject());
 		ProjectState projectState = service.getProjectState(projectContext.getProjectId());
 		projectState.invalidateDependencies();
-		projectState.setDependencies(collector, assistant.getPackageSystem());
+		projectState.setDependencies(collector);
 		return collector;
 	}
 

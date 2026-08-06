@@ -72,7 +72,7 @@ class GitHubFixtures {
 				new ProjectId("github:actions", "checkout", file.getVirtualFile().getPath()), releaseSource);
 		file.putUserData(GitHubProjectContext.KEY, projectContext);
 
-		service.getProjectState(projectContext.getProjectId()).setDependencies(collector, PackageSystem.GITHUB);
+		service.getProjectState(projectContext.getProjectId()).setDependencies(collector);
 
 		return collector;
 	}

@@ -77,24 +77,25 @@ class MavenDependencyCollector {
 	 */
 	protected void doCollect(PsiFile psiFile, MavenPomProperties propertyResolver, DependencyCollector collector) {
 
-		MavenParser parser = new MavenParser(cache, propertyResolver);
+		MavenParser parser = new MavenParser(propertyResolver);
+		Project project = psiFile.getProject();
 
 		if (MavenUtils.isMavenPomFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
 			Map<String, PropertyValue> properties = MavenPomSupport.parseProperties(xmlFile);
 			collector.addProperties(properties.keySet());
-			parser.parsePomFile(xmlFile).forEach(declaration -> register(collector, declaration));
+			parser.parsePomFile(xmlFile).forEach(declaration -> register(project, collector, declaration));
 			registerCachedPropertyArtifacts(properties, propertyResolver, collector);
 		}
 
 		if (MavenUtils.isMavenExtensionsFile(psiFile) && psiFile instanceof XmlFile xmlFile) {
-			parser.parseExtensionsFile(xmlFile).forEach(declaration -> register(collector, declaration));
+			parser.parseExtensionsFile(xmlFile).forEach(declaration -> register(project, collector, declaration));
 		}
 	}
 
-	private void register(DependencyCollector collector, ArtifactDeclaration declaration) {
+	private void register(Project project, DependencyCollector collector, ArtifactDeclaration declaration) {
 
 		VersionSource versionSource = declaration.getVersionSource();
-		if (declaration.isVersionDefined()
+		if (declaration.isVersioned()
 				&& (!(versionSource instanceof VersionSource.VersionProperty)
 						|| declaration.isVersionDefinedInSameFile())) {
 			collector.registerUsage(declaration.getArtifactId(), declaration.getVersion(),
@@ -105,6 +106,8 @@ class MavenDependencyCollector {
 			collector.registerDeclaration(declaration.getArtifactId(), declaration.getDeclarationSource(),
 					versionSource);
 		}
+
+		BomUtil.registerBillOfMaterials(cache, project, declaration, collector);
 	}
 
 	private void registerCachedPropertyArtifacts(Map<String, PropertyValue> declaredProperties,

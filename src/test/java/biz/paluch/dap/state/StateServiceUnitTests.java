@@ -24,6 +24,7 @@ import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.artifact.PackageSystem;
@@ -32,6 +33,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.checker.Vulnerabilities;
 import org.junit.jupiter.api.Test;
 
+import static biz.paluch.dap.fixtures.Coordinates.*;
 import static biz.paluch.dap.fixtures.TestVulnerabilities.*;
 import static org.assertj.core.api.Assertions.*;
 
@@ -118,11 +120,12 @@ class StateServiceUnitTests {
 		StateService service = new StateService();
 
 		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
-		collector.registerUsage(NETTY_BOM, ArtifactVersion.of("4.1.100"),
-				DeclarationSource.bom(Map.of(CODEC_HTTP, ArtifactVersion.of("4.1.100"))),
+		collector.registerUsage(NETTY_BOM, ArtifactVersion.of("4.1.100"), DeclarationSource.bom(),
 				VersionSource.declared("4.1.100"));
+		collector.registerBillOfMaterials(
+				bom("io.netty:netty-bom:4.1.100", it -> it.member("io.netty:netty-codec-http:4.1.100")));
 		collector.registerDeclaration(CODEC_HTTP, DeclarationSource.dependency(), VersionSource.none());
-		service.getProjectState(ProjectId.of("com.acme", "app")).setDependencies(collector, PackageSystem.MAVEN);
+		service.getProjectState(ProjectId.of("com.acme", "app")).setDependencies(collector);
 
 		CachedArtifact member = new CachedArtifact(CODEC_HTTP);
 		member.addRelease(new CachedRelease("4.1.108", null));
@@ -133,6 +136,39 @@ class StateServiceUnitTests {
 
 		assertThat(vulnerabilities.isVulnerable()).isTrue();
 		assertThat(vulnerabilities).isInstanceOf(BomAggregate.class);
+	}
+
+	@Test
+	void seedsCacheFromCollectedBillOfMaterials() {
+
+		StateService service = new StateService();
+		BillOfMaterials bom = bom("io.netty:netty-bom:4.1.100", it -> it.member("io.netty:netty-codec-http:4.1.100"));
+
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
+		collector.registerBillOfMaterials(bom);
+		service.getProjectState(ProjectId.of("com.acme", "app")).setDependencies(collector);
+
+		assertThat(service.getCache().getBillOfMaterials(bom))
+				.extracting(BillOfMaterials::getMembers)
+				.isEqualTo(Map.of(CODEC_HTTP, ArtifactVersion.of("4.1.100")));
+	}
+
+	@Test
+	void marksBomWithoutCachingUnresolvedMembership() {
+
+		StateService service = new StateService();
+		BillOfMaterials bom = bom("io.netty:netty-bom:4.1.100", it -> {
+		});
+
+		DependencyCollector collector = new DependencyCollector(PackageSystem.MAVEN);
+		collector.registerBillOfMaterials(bom);
+		service.getProjectState(ProjectId.of("com.acme", "app")).setDependencies(collector);
+
+		CachedArtifact cached = service.getCache().findCachedArtifact(NETTY_BOM);
+
+		assertThat(cached).isNotNull();
+		assertThat(cached.isBom()).isTrue();
+		assertThat(service.getCache().getBillOfMaterials(bom)).isNull();
 	}
 
 	private static void store(StateService service, String groupId, String artifactId, ArtifactId dependency,
@@ -147,7 +183,7 @@ class StateServiceUnitTests {
 		collector.registerUsage(dependency, ArtifactVersion.of(version), DeclarationSource.dependency(),
 				versionSource);
 		service.getProjectState(ProjectId.of(groupId, artifactId))
-				.setDependencies(collector, PackageSystem.MAVEN);
+				.setDependencies(collector);
 	}
 
 }

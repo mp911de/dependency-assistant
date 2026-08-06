@@ -30,7 +30,7 @@ package biz.paluch.dap.artifact;
  * @see DeclaredDependency
  * @see DependencyCollector#registerUsage
  */
-public class Dependency extends DeclaredDependency {
+public class Dependency extends DeclaredDependency implements VersionedArtifact {
 
 	private final ArtifactVersion currentVersion;
 
@@ -63,6 +63,16 @@ public class Dependency extends DeclaredDependency {
 	 * @return the current version; guaranteed to be not {@literal null}.
 	 */
 	public ArtifactVersion getCurrentVersion() {
+		return currentVersion;
+	}
+
+	@Override
+	public boolean isVersioned() {
+		return true;
+	}
+
+	@Override
+	public ArtifactVersion getVersion() {
 		return currentVersion;
 	}
 

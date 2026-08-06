@@ -22,9 +22,9 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.artifact.VersionedPackage;
 import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
@@ -37,9 +37,12 @@ import org.springframework.util.Assert;
  * version is defined in the same file, and optional PSI elements for the
  * declaration and version.
  *
+ * <p>A declaration is a {@link VersionedPackage} whose version may be absent,
+ * so callers check {@link #isVersioned()} before reading {@link #getVersion()}.
+ *
  * @author Mark Paluch
  */
-public class ArtifactDeclaration implements DependencySite, HasPackageIdentity {
+public class ArtifactDeclaration implements DependencySite, VersionedPackage {
 
 	private final PackageSystem packageSystem;
 
@@ -159,7 +162,8 @@ public class ArtifactDeclaration implements DependencySite, HasPackageIdentity {
 	/**
 	 * Return whether a resolved version is available.
 	 */
-	public boolean isVersionDefined() {
+	@Override
+	public boolean isVersioned() {
 		return version != null;
 	}
 
@@ -167,6 +171,7 @@ public class ArtifactDeclaration implements DependencySite, HasPackageIdentity {
 	 * Return the resolved version.
 	 * @throws IllegalStateException if no version is available.
 	 */
+	@Override
 	public ArtifactVersion getVersion() {
 		Assert.state(version != null, "Version must not be null");
 		return version;

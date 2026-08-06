@@ -24,6 +24,8 @@ import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.ReleaseSource;
+import biz.paluch.dap.artifact.VersionedArtifact;
+import biz.paluch.dap.artifact.VersionedPackage;
 import biz.paluch.dap.assistant.IconDependencyPresentation;
 import biz.paluch.dap.checker.VulnerabilityRepository;
 import biz.paluch.dap.metadata.IssueTracker;
@@ -51,6 +53,8 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.*;
 class ArchitectureTests {
 
 	private CycleExclusions EXCLUSIONS = CycleExclusions.none()
+			.excludingClass(VersionedArtifact.class, "intentional")
+			.excludingClass(VersionedPackage.class, "intentional")
 			.excludingClass("biz.paluch.dap.gradle.VersionCatalogRegistry",
 					"Gradle catalog caching still depends on settings parsers")
 			.excludingClass("biz.paluch.dap.support.PropertyResolverUtil",
@@ -77,6 +81,8 @@ class ArchitectureTests {
 						.withStrictClosedHierarchy(IssueTracker.class)
 						.withStrictClosedHierarchy(ProjectDependencyContext.class)
 						.withStrictClosedHierarchy(VulnerabilityRepository.class)
+						.withStrictClosedHierarchy(VersionedArtifact.class)
+						.withStrictClosedHierarchy(VersionedPackage.class)
 						.withClosedHierarchy(DependencySite.class)
 						.withClosedHierarchy(DependencyRuleService.class)
 						.withClosedHierarchy(ReleaseSource.class)
@@ -104,7 +110,7 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule root = packageDependencies("biz.paluch.dap",
-			"artifact", "state", "lookup", "support");
+			"artifact", "state", "lookup", "support", "util");
 
 	@ArchTest
 	ArchRule artifact = packageDependencies(

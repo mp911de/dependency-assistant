@@ -155,7 +155,7 @@ public class ProjectStateIndexer {
 		for (ActiveScan scan : active) {
 			ProjectState state = service.getProjectState(scan.context().getProjectId());
 			state.invalidateDependencies();
-			state.setDependencies(scan.collector(), assistant.getPackageSystem());
+			state.setDependencies(scan.collector());
 		}
 	}
 
@@ -214,7 +214,7 @@ public class ProjectStateIndexer {
 
 		ProjectState state = service.getProjectState(context.getProjectId());
 		state.invalidateDependencies();
-		state.setDependencies(collector, assistant.getPackageSystem());
+		state.setDependencies(collector);
 	}
 
 	private List<ActiveScan> collectPhase(DependencyAssistant assistant, IntrospectedDependencies introspected) {
@@ -234,9 +234,14 @@ public class ProjectStateIndexer {
 			BiConsumer<PsiFile, ProjectDependencyContext> action) {
 
 		List<PsiFile> files = assistant.enumerate(project);
+		if (files.isEmpty()) {
+			return;
+		}
+
 
 		LOG.debug("[%s] Enumerated %d entries".formatted(assistant.getId(), files.size()));
 		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, files.size());
+		steps.setIndeterminate(false);
 
 		for (PsiFile file : files) {
 

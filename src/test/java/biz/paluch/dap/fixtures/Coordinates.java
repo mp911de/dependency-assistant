@@ -24,11 +24,9 @@ import java.util.function.Consumer;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
-import biz.paluch.dap.artifact.HasArtifactId;
-import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
-import biz.paluch.dap.artifact.Versioned;
+import biz.paluch.dap.artifact.VersionedPackage;
 
 /**
  * Versioned artifact coordinates fixture parsed from the
@@ -38,7 +36,7 @@ import biz.paluch.dap.artifact.Versioned;
  *
  * @author Mark Paluch
  */
-public class Coordinates implements HasArtifactId, HasPackageIdentity, Versioned {
+public class Coordinates implements VersionedPackage {
 
 	private final ArtifactId artifactId;
 
@@ -151,7 +149,7 @@ public class Coordinates implements HasArtifactId, HasPackageIdentity, Versioned
 		}
 
 		private BillOfMaterials build() {
-			return BillOfMaterials.of(bom.getArtifactId(), bom.getVersion(), members);
+			return BillOfMaterials.from(bom, members);
 		}
 
 	}

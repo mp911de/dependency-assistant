@@ -24,6 +24,7 @@ import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.fixtures.Coordinates;
 import biz.paluch.dap.fixtures.TestFetchedReleases;
@@ -60,7 +61,7 @@ class CachedArtifactUnitTests {
 			it.member("io.netty.incubator:netty-incubator-codec-quic:4.1.100");
 			it.member("io.netty:netty-tcnative:2.0.61");
 			it.member("org.example:coincidence:4.1.100");
-		}));
+		}), 1_000L);
 
 		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108"))).containsOnly(
 				entry(codecHttp.getArtifactId(), ArtifactVersion.of("4.1.108")),
@@ -80,9 +81,9 @@ class CachedArtifactUnitTests {
 
 		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
 		bom.setBillOfMaterials(
-				Coordinates.bom("io.netty:netty-bom:2.0.0", it -> it.member("io.netty:netty-new:2.0.0")));
+				Coordinates.bom("io.netty:netty-bom:2.0.0", it -> it.member("io.netty:netty-new:2.0.0")), 1_000L);
 		bom.setBillOfMaterials(
-				Coordinates.bom("io.netty:netty-bom:1.0.0", it -> it.member("io.netty:netty-old:1.0.0")));
+				Coordinates.bom("io.netty:netty-bom:1.0.0", it -> it.member("io.netty:netty-old:1.0.0")), 1_000L);
 
 		assertThat(bom.predictBom(ArtifactVersion.of("1.5.0")))
 				.containsOnly(entry(OLD_MEMBER.getArtifactId(), ArtifactVersion.of("1.5.0")));
@@ -97,9 +98,9 @@ class CachedArtifactUnitTests {
 
 		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
 		bom.setBillOfMaterials(
-				Coordinates.bom("io.netty:netty-bom:2.0.0", it -> it.member("io.netty:netty-new:2.0.0")));
+				Coordinates.bom("io.netty:netty-bom:2.0.0", it -> it.member("io.netty:netty-new:2.0.0")), 1_000L);
 		bom.setBillOfMaterials(
-				Coordinates.bom("io.netty:netty-bom:1.0.0", it -> it.member("io.netty:netty-old:1.0.0")));
+				Coordinates.bom("io.netty:netty-bom:1.0.0", it -> it.member("io.netty:netty-old:1.0.0")), 1_000L);
 
 		assertThat(bom.getBomMemberships()).extracting(CachedBom::getVersion)
 				.extracting(Objects::toString)
@@ -267,6 +268,60 @@ class CachedArtifactUnitTests {
 		artifact.setPackageSystem(PackageSystem.MAVEN);
 
 		assertThat(artifact.snapshot().getPackageSystem()).isEqualTo(PackageSystem.MAVEN);
+	}
+
+	@Test
+	void roundTripsBomClassificationThroughXmlSerialization() {
+
+		CachedArtifact artifact = new CachedArtifact(NETTY_BOM);
+		artifact.setBillOfMaterials(unresolvedBom(), 1_000L);
+
+		Element element = XmlSerializer.serialize(artifact);
+		CachedArtifact deserialized = XmlSerializer.deserialize(element, CachedArtifact.class);
+
+		assertThat(deserialized.isBom()).isTrue();
+	}
+
+	@Test
+	void deserializedArtifactWithMembershipButWithoutFlagReadsAsBom() {
+
+		CachedArtifact artifact = new CachedArtifact(NETTY_BOM);
+		artifact.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:4.1.100", it -> it.member("io.netty:netty-codec-http:4.1.100")),
+				1_000L);
+
+		Element element = XmlSerializer.serialize(artifact);
+		// state written before BOM classification was persisted carries memberships
+		// only
+		element.removeAttribute("bom");
+		CachedArtifact deserialized = XmlSerializer.deserialize(element, CachedArtifact.class);
+
+		assertThat(deserialized.isBom()).isTrue();
+	}
+
+	@Test
+	void carriesBomClassificationIntoSnapshot() {
+
+		CachedArtifact artifact = new CachedArtifact(NETTY_BOM);
+		artifact.setBillOfMaterials(unresolvedBom(), 1_000L);
+
+		assertThat(artifact.snapshot().isBom()).isTrue();
+	}
+
+	@Test
+	void marksBomWithoutCachingUnresolvableMembership() {
+
+		CachedArtifact artifact = new CachedArtifact(NETTY_BOM);
+		artifact.setBillOfMaterials(unresolvedBom(), 1_000L);
+
+		assertThat(artifact.isBom()).isTrue();
+		assertThat(artifact.hasBom(ArtifactVersion.of("4.1.100"))).isFalse();
+		assertThat(artifact.getLastSeen()).isEqualTo(1_000L);
+	}
+
+	private static BillOfMaterials unresolvedBom() {
+		return Coordinates.bom("io.netty:netty-bom:4.1.100", it -> {
+		});
 	}
 
 	private static void updateReleases(CachedArtifact artifact, long timestamp, Collection<String> emptySources,
