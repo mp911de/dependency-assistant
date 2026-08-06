@@ -302,6 +302,10 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			return affectedFiles;
 		}
 
+		public void setAffectedFiles(String... affectedFiles) {
+			setAffectedFiles(List.of(affectedFiles));
+		}
+
 		public void setAffectedFiles(List<String> affectedFiles) {
 			this.affectedFiles = affectedFiles;
 		}

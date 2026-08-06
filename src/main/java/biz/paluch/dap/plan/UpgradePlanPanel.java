@@ -19,6 +19,9 @@ package biz.paluch.dap.plan;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.datatransfer.Transferable;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -29,6 +32,7 @@ import javax.swing.JPanel;
 import biz.paluch.dap.assistant.check.DependencySiteNavigator;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.CopyProvider;
 import com.intellij.ide.DataManager;
 import com.intellij.ide.DefaultTreeExpander;
@@ -45,17 +49,25 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.ide.CopyPasteManager;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.BaseProjectDirectories;
 import com.intellij.openapi.project.DumbAwareAction;
 import com.intellij.openapi.project.DumbAwareToggleAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.SimpleToolWindowPanel;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
+import com.intellij.openapi.util.io.NioFiles;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VfsUtilCore;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.pom.Navigatable;
 import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.ActionLink;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.util.concurrency.AppExecutorUtil;
+import com.intellij.util.concurrency.annotations.RequiresReadLock;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.NamedColorUtil;
 import org.jspecify.annotations.Nullable;
@@ -131,7 +143,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 		@Override
 		public boolean isPasteEnabled(DataContext dataContext) {
-			return !service.isBusy() && isPastePossible(dataContext);
+			return !pasteInProgress && !service.isBusy() && isPastePossible(dataContext);
 		}
 
 		@Override
@@ -148,6 +160,8 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	private @Nullable UpgradePlanItem selectionAfterReload;
 
 	private boolean focusTreeAfterReload;
+
+	private boolean pasteInProgress;
 
 	UpgradePlanPanel(UpgradePlanService service) {
 
@@ -353,10 +367,96 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 	private void pasteFromClipboard() {
 
-		UpgradePlanState.Content fragment = clipboard.paste();
-		if (fragment != null) {
-			service.pasteItems(fragment);
+		if (pasteInProgress || service.isBusy()) {
+			return;
 		}
+
+		UpgradePlanState.Content fragment = clipboard.paste();
+		if (fragment == null) {
+			return;
+		}
+
+		UpgradePlanState.Content snapshot = fragment.snapshot();
+		Project project = getProject();
+		Set<VirtualFile> roots = BaseProjectDirectories.getBaseDirectories(project);
+		pasteInProgress = true;
+
+		new Task.Backgroundable(project, MessageBundle.message("plan.paste.progress"), true) {
+
+			private List<String> affectedFiles = List.of();
+
+			@Override
+			public void run(ProgressIndicator indicator) {
+				affectedFiles = ReadAction.computeBlocking(() -> filterAffectedFiles(snapshot, indicator, roots));
+			}
+
+			@Override
+			public void onSuccess() {
+
+				if (affectedFiles.isEmpty()) {
+					new PlanNotifications().warning(project, MessageBundle.message("plan.paste.invalid.title"),
+							MessageBundle.message("plan.paste.invalid.message"));
+					return;
+				}
+
+				snapshot.setAffectedFiles(affectedFiles);
+				service.pasteItems(snapshot);
+			}
+
+			@Override
+			public void onFinished() {
+				pasteInProgress = false;
+			}
+
+		}.queue();
+	}
+
+	/**
+	 * Retain resolvable plan files located lexically and canonically below one of
+	 * the project base directories.
+	 */
+	@RequiresReadLock
+	static List<String> filterAffectedFiles(UpgradePlanState.Content content, ProgressIndicator indicator,
+			Collection<VirtualFile> roots) {
+
+		LocalFileSystem fileSystem = LocalFileSystem.getInstance();
+		Set<String> affectedFiles = new LinkedHashSet<>();
+		for (String path : content.getAffectedFiles()) {
+
+			indicator.checkCanceled();
+			if (StringUtils.isEmpty(path)) {
+				continue;
+			}
+			Path nioPath = NioFiles.toPath(path);
+			if (nioPath == null || !nioPath.isAbsolute()) {
+				continue;
+			}
+
+			VirtualFile file = fileSystem.findFileByNioFile(nioPath.normalize());
+			if (file == null || !file.isValid() || file.isDirectory()) {
+				continue;
+			}
+
+			VirtualFile canonicalFile = file.getCanonicalFile();
+			if (canonicalFile == null) {
+				continue;
+			}
+
+			for (VirtualFile root : roots) {
+
+				if (!root.isValid()) {
+					continue;
+				}
+				VirtualFile canonicalRoot = root.getCanonicalFile();
+				if (canonicalRoot != null && VfsUtilCore.isAncestor(root, file, true)
+						&& VfsUtilCore.isAncestor(canonicalRoot, canonicalFile, true)) {
+					affectedFiles.add(file.getPath());
+					break;
+				}
+			}
+		}
+
+		return List.copyOf(affectedFiles);
 	}
 
 	private void removeSelectedItems() {

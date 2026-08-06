@@ -290,7 +290,7 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	 * version.
 	 */
 	public @Nullable CachedBom getBomMembership(String version) {
-
+		// TODO: index
 		synchronized (boms) {
 			for (CachedBom membership : boms) {
 				if (version.equals(membership.getVersion().toString())) {

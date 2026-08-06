@@ -48,7 +48,7 @@ import org.jspecify.annotations.Nullable;
  * <p>{@link #apply()} and {@link #undo()} must be exact inverses: undo restores
  * the state that apply changed, and redo re-runs apply. An instance is
  * single-use and captures whatever it needs to reverse itself, either at
- * construction or on apply; {@link #undo()} is only invoked after a preceding
+ * construction or on apply. {@link #undo()} is only invoked after a preceding
  * {@link #apply()}. All methods run on the EDT inside the service's command and
  * plan-generation advance.
  *
@@ -476,7 +476,7 @@ interface PlanAction {
 
 		private PasteItems(Content pasteContent, Content content) {
 
-			this.pasteContent = pasteContent;
+			this.pasteContent = pasteContent.snapshot();
 			this.content = content;
 			this.oldFiles = new ArrayList<>(content.getAffectedFiles());
 			this.oldItems = new ArrayList<>(content.getItems());

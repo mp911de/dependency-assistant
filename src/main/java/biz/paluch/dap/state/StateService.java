@@ -209,10 +209,9 @@ public class StateService
 		BomAggregate.Builder aggregate = BomAggregate.builder(artifactId)
 				.member(artifactId, artifactVersion, vulnerabilities);
 
-		bom.forEach((memberId, managedVersion) -> {
+		for (DependencyCollector collector : dependencies.values()) {
 
-			for (DependencyCollector collector : dependencies.values()) {
-
+			bom.forEach((memberId, managedVersion) -> {
 				Dependency usage = collector.getUsage(memberId);
 				if (usage != null && managedVersion.equals(usage.getCurrentVersion())) {
 					aggregate.member(memberId, managedVersion, cache::getVulnerabilities);
@@ -224,8 +223,8 @@ public class StateService
 					aggregate.member(memberId, managedVersion, cache::getVulnerabilities);
 					return;
 				}
-			}
-		});
+			});
+		}
 
 		return aggregate.orElse(vulnerabilities);
 	}

@@ -70,6 +70,25 @@ class UpgradePlanServiceUnitTests {
 		}
 	}
 
+	@Test
+	void pasteActionSnapshotsContentForRedo() {
+
+		UpgradePlanState.Content pasted = new UpgradePlanState.Content();
+		pasted.getAffectedFiles().add("pasted.xml");
+		UpgradePlanState.Content content = new UpgradePlanState.Content();
+		content.getAffectedFiles().add("current.xml");
+		PlanAction action = PlanAction.pasteItems(pasted, content);
+
+		pasted.getAffectedFiles().add("later.xml");
+		action.apply();
+		assertThat(content.getAffectedFiles()).containsExactly("current.xml", "pasted.xml");
+
+		action.undo();
+		action.apply();
+
+		assertThat(content.getAffectedFiles()).containsExactly("current.xml", "pasted.xml");
+	}
+
 	private static TestPlannedUpgrade candidate(String name) {
 		return new TestPlannedUpgrade(TestCandidates.candidate(ArtifactId.of("org.example", name), CURRENT,
 				it -> it.releases(TARGET)));
