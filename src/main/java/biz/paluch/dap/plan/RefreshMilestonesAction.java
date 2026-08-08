@@ -115,6 +115,8 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 				if (selectDefaultMilestone && new Milestones(milestones)
 						.findMilestone(service.getSelectedMilestoneName()) == null) {
 					milestoneSelector = ReadAction.nonBlocking(() -> service.getMilestoneSelector())
+							.inSmartMode(project)
+							.expireWith(service)
 							.executeSynchronously();
 				}
 			}
@@ -169,7 +171,6 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 			Label containing = null;
 			if (selectedName != null) {
 				for (Label label : labels) {
-
 					if (label.getName().equals(selectedName)) {
 						return label;
 					}

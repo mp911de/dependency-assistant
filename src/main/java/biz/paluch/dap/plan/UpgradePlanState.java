@@ -35,6 +35,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.checker.CvssSeverity;
 import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.ticket.Label;
 import biz.paluch.dap.ticket.Milestone;
 import biz.paluch.dap.ticket.TicketKey;
@@ -328,6 +329,17 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			return snapshot;
 		}
 
+		UpgradePlan createUpgradePlan() {
+			FileScope scope = FileScope.from(getAffectedFiles());
+			List<UpgradePlanItem> items = new ArrayList<>();
+			for (Item item : this) {
+				UpgradePlanItem materialized = item.getMaterialized();
+				if (materialized != null) {
+					items.add(materialized);
+				}
+			}
+			return UpgradePlan.of(scope, items);
+		}
 	}
 
 	/**

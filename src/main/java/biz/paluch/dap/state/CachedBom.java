@@ -173,6 +173,14 @@ public class CachedBom {
 		return "CachedBomMembership[%s, %d members]".formatted(version, toMembers().size());
 	}
 
+	public void loadState() {
+		for (CachedBomMembers member : members) {
+			if (member.artifacts.isEmpty()) {
+
+			}
+		}
+	}
+
 	/**
 	 * Persistent coordinates of the BOM members that share one group identifier and
 	 * one managed version.

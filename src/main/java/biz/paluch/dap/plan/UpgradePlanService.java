@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.plan;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +101,8 @@ public final class UpgradePlanService implements Disposable {
 
 	private boolean disposed;
 
-	// transient: an apply or ticket-publishing run is in flight, muting plan actions
+	// transient: an apply or ticket-publishing run is in flight, muting plan
+	// actions
 	private volatile boolean busy;
 
 	private volatile boolean refreshingMilestones;
@@ -234,30 +234,19 @@ public final class UpgradePlanService implements Disposable {
 	}
 
 	UpgradePlan getUpgradePlan() {
+		return this.state.doWithContent((planGeneration, content) -> {
 
-		Snapshot snapshot = this.state.doWithContent(Snapshot::new);
-		VersionedUpgradePlan versioned = this.versionedPlan;
+			VersionedUpgradePlan versioned = this.versionedPlan;
 
-		if (versioned != null && versioned.hasGeneration(snapshot.planGeneration)) {
-			return versioned.plan();
-		}
-
-		UpgradePlan plan = createUpgradePlan(snapshot);
-		this.versionedPlan = new VersionedUpgradePlan(snapshot.planGeneration(), plan);
-
-		return plan;
-	}
-
-	private UpgradePlan createUpgradePlan(Snapshot snapshot) {
-		FileScope scope = FileScope.from(snapshot.content.getAffectedFiles());
-		List<UpgradePlanItem> items = new ArrayList<>();
-		for (Item item : snapshot.content()) {
-			UpgradePlanItem materialized = item.getMaterialized();
-			if (materialized != null) {
-				items.add(materialized);
+			if (versioned != null && versioned.hasGeneration(planGeneration)) {
+				return versioned.plan();
 			}
-		}
-		return UpgradePlan.of(scope, items);
+
+			UpgradePlan plan = content.createUpgradePlan();
+			this.versionedPlan = new VersionedUpgradePlan(planGeneration, plan);
+
+			return plan;
+		});
 	}
 
 	/**
@@ -314,15 +303,15 @@ public final class UpgradePlanService implements Disposable {
 
 		while (true) {
 
-			Snapshot snapshot = state.doWithContent(Snapshot::new);
-			FileScope scope = FileScope.from(snapshot.content().getAffectedFiles());
+			Snapshot snapshot = state
+					.doWithContent((planGeneration, content) -> new Snapshot(planGeneration, content.snapshot()));
 			UpgradePlanLoader loader = new UpgradePlanLoader(ticketSystem);
 
 			for (Item item : snapshot.content()) {
 				item.setMaterialized(loader.create(item));
 			}
 
-			UpgradePlan plan = createUpgradePlan(snapshot);
+			UpgradePlan plan = snapshot.content().createUpgradePlan();
 			if (state.isCurrent(snapshot.planGeneration())) {
 				this.versionedPlan = new VersionedUpgradePlan(snapshot.planGeneration(), plan);
 				return plan;

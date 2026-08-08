@@ -37,6 +37,7 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.DataManager;
 import com.intellij.ide.IdeTooltip;
@@ -54,6 +55,7 @@ import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.ui.popup.JBPopupListener;
 import com.intellij.openapi.ui.popup.LightweightWindowEvent;
 import com.intellij.openapi.util.IconLoader;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.ClickListener;
 import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.scale.JBUIScale;
@@ -120,7 +122,8 @@ class SelectorAction<T> extends DumbAwareAction implements CustomComponentAction
 
 	private String tooltipText(T value) {
 		String tooltip = model.getToolTip(value);
-		return tooltip != null && !tooltip.isBlank() ? tooltip : model.getText(value);
+		String tooltipToUse = tooltip != null && !tooltip.isBlank() ? tooltip : model.getText(value);
+		return StringUtils.hasText(tooltipToUse) ? StringUtil.escapeXmlEntities(tooltipToUse) : tooltipToUse;
 	}
 
 	@Override

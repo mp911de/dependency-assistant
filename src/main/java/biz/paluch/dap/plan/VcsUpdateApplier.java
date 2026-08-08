@@ -66,23 +66,14 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 		});
 	}
 
-	/**
-	 * Apply one item's updates, on the EDT and without an undo boundary.
-	 *
-	 * <p>The write action must be taken on the EDT because saving a document fires
-	 * {@code beforeAnyDocumentSaving}, which posts to the EDT and waits for it;
-	 * holding the write lock on the calling background thread meanwhile dead-locks
-	 * against an EDT that wants the write-intent lock. The command is
-	 * undo-transparent: the PSI mutation needs a command, but the item is committed
-	 * right after, so an undo entry would only offer to desynchronize the working
-	 * tree from the commit.
-	 */
 	private UpgradeResult applyItem(FileScope scope, UpgradePlanItem item) {
 
 		return WriteAction.computeAndWait(() -> {
 			CommandProcessor instance = CommandProcessor.getInstance();
 			try (AutoCloseable c = instance.withUndoTransparentAction()) {
 				return engine.apply(scope, item.createUpdates());
+			} catch (RuntimeException ex) {
+				throw ex;
 			} catch (Exception ex) {
 				throw new RuntimeException(ex);
 			}
@@ -98,19 +89,15 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 			// Some VCS implementations can report an error after creating the commit.
 			// Keep the plan aligned with the repository in that case.
 			if (!vcs.hasChanges(scope)) {
-				complete(item);
+				service.removeCommittedItem(item);
 			}
 			throw commitFailure;
 		}
 
-		complete(item);
+		service.removeCommittedItem(item);
 		if (!committed) {
 			throw new VcsException(MessageBundle.message("plan.vcs.commit.no-changes"));
 		}
-	}
-
-	private void complete(UpgradePlanItem item) {
-		service.removeCommittedItem(item);
 	}
 
 	private static List<UpgradePlanItem> ticketedFirst(UpgradePlan plan) {
