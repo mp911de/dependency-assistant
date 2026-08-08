@@ -63,6 +63,11 @@ public class MavenRepository implements ReleaseSource {
 	public static final MavenRepository MAVEN_CENTRAL = new MavenRepository(
 			RemoteRepository.mavenCentral());
 
+	private static final Pattern ARTIFACT_ID = Pattern.compile("^(?!\\.{1,2}$)[a-z0-9_.-]+$", Pattern.CASE_INSENSITIVE);
+
+	private static final Pattern GROUP_ID = Pattern.compile("^[a-z0-9_-]+(?:\\.[a-z0-9_-]+)*$",
+			Pattern.CASE_INSENSITIVE);
+
 	private static final Logger LOG = Logger.getInstance(MavenRepository.class);
 
 	private static final Pattern DIRECTORY_LISTING_PATTERN = Pattern
@@ -92,18 +97,18 @@ public class MavenRepository implements ReleaseSource {
 
 	@Override
 	public String getId() {
-		return "MavenRepository[%s@%s]".formatted(repository.id(), repository.uri().getHost());
+		return "MavenRepository[%s@%s]".formatted(repository.getId(), repository.getUrl().getHost());
 	}
 
 	@Override
 	public Sequence<Release> getReleases(ArtifactId artifactId, ProgressIndicator indicator) throws IOException {
 
+		validate(artifactId);
+
 		String path = artifactId.groupId().replace(".", "/") + "/" + artifactId.artifactId() + "/";
 		String metadataPath = path + "maven-metadata.xml";
 
-		String baseUrl = repository.url();
-		String base = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-		URI repositoryBaseUri = URI.create(base).normalize();
+		URI repositoryBaseUri = repository.getUrl().normalize();
 		URI metadataUri = repositoryBaseUri.resolve(metadataPath);
 		URI directoryUri = repositoryBaseUri.resolve(path);
 		indicator.checkCanceled();
@@ -138,6 +143,16 @@ public class MavenRepository implements ReleaseSource {
 		}
 
 		return Sequence.of(releases);
+	}
+
+	static void validate(ArtifactId artifactId) {
+		if (!ARTIFACT_ID.matcher(artifactId.artifactId()).matches()) {
+			throw new ArtifactNotFoundException("Invalid artifactId", artifactId);
+		}
+
+		if (!GROUP_ID.matcher(artifactId.groupId()).matches()) {
+			throw new ArtifactNotFoundException("Invalid groupId", artifactId);
+		}
 	}
 
 	private List<String> parseReleaseVersions(String xml) {

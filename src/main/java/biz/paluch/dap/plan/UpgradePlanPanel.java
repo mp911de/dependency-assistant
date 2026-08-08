@@ -20,6 +20,7 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.datatransfer.Transferable;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -416,11 +417,12 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 	 * the project base directories.
 	 */
 	@RequiresReadLock
-	static List<String> filterAffectedFiles(UpgradePlanState.Content content, ProgressIndicator indicator,
-			Collection<VirtualFile> roots) {
+	static List<String> filterAffectedFiles(UpgradePlanState.Content content,
+			ProgressIndicator indicator, Collection<VirtualFile> roots) {
 
 		LocalFileSystem fileSystem = LocalFileSystem.getInstance();
 		Set<String> affectedFiles = new LinkedHashSet<>();
+
 		for (String path : content.getAffectedFiles()) {
 
 			indicator.checkCanceled();
@@ -437,26 +439,15 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 				continue;
 			}
 
-			VirtualFile canonicalFile = file.getCanonicalFile();
-			if (canonicalFile == null) {
-				continue;
-			}
-
 			for (VirtualFile root : roots) {
-
-				if (!root.isValid()) {
-					continue;
-				}
-				VirtualFile canonicalRoot = root.getCanonicalFile();
-				if (canonicalRoot != null && VfsUtilCore.isAncestor(root, file, true)
-						&& VfsUtilCore.isAncestor(canonicalRoot, canonicalFile, true)) {
+				if (VfsUtilCore.isAncestor(root, file, true)) {
 					affectedFiles.add(file.getPath());
 					break;
 				}
 			}
 		}
 
-		return List.copyOf(affectedFiles);
+		return new ArrayList<>(affectedFiles);
 	}
 
 	private void removeSelectedItems() {

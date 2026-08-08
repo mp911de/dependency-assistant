@@ -158,7 +158,10 @@ public class ReleaseResolver {
 			if (fetchPlan.isSkip()) {
 				return ReleaseLookupResult.empty();
 			}
-			sources = sources.filter(it -> fetchPlan.test(it.getId()));
+			ReleaseSources filtered = sources.filter(it -> fetchPlan.test(it.getId()));
+			if (!filtered.isEmpty()) {
+				sources = filtered;
+			}
 		}
 
 		FetchResult result = fetch(sources);

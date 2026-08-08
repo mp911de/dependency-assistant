@@ -231,11 +231,6 @@ public abstract class VersionSource {
 		}
 
 		@Override
-		public String toString() {
-			return version;
-		}
-
-		@Override
 		public boolean equals(Object o) {
 			if (!(o instanceof InlineVersion that)) {
 				return false;
@@ -246,6 +241,11 @@ public abstract class VersionSource {
 		@Override
 		public int hashCode() {
 			return Objects.hashCode(version);
+		}
+
+		@Override
+		public String toString() {
+			return version;
 		}
 
 	}
@@ -341,6 +341,13 @@ public abstract class VersionSource {
 			super(version);
 		}
 
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof VersionCatalogVersion)) {
+				return false;
+			}
+			return super.equals(o);
+		}
 	}
 
 	/**
@@ -367,11 +374,6 @@ public abstract class VersionSource {
 		}
 
 		@Override
-		public String toString() {
-			return "${" + property + '}';
-		}
-
-		@Override
 		public boolean equals(Object o) {
 			if (!(o instanceof VersionCatalogProperty that)) {
 				return false;
@@ -382,6 +384,11 @@ public abstract class VersionSource {
 		@Override
 		public int hashCode() {
 			return Objects.hashCode(property);
+		}
+
+		@Override
+		public String toString() {
+			return "${" + property + '}';
 		}
 
 	}
@@ -406,11 +413,6 @@ public abstract class VersionSource {
 		}
 
 		@Override
-		public String toString() {
-			return "${" + property + '}';
-		}
-
-		@Override
 		public boolean equals(Object o) {
 			if (!(o instanceof VersionPropertySource that)) {
 				return false;
@@ -421,6 +423,11 @@ public abstract class VersionSource {
 		@Override
 		public int hashCode() {
 			return Objects.hashCode(property);
+		}
+
+		@Override
+		public String toString() {
+			return "${" + property + '}';
 		}
 
 	}

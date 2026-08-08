@@ -119,7 +119,7 @@ class MavenWrapperParserTests {
 
 		assertThat(entries).singleElement().satisfies(entry -> {
 			assertThat(entry.repository()).isNotEqualTo(RemoteRepository.mavenCentral());
-			assertThat(entry.repository().url()).startsWith("https://nexus.example.com/");
+			assertThat(entry.repository().getUrl().toASCIIString()).startsWith("https://nexus.example.com/");
 		});
 	}
 

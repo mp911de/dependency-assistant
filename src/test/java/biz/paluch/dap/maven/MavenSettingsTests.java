@@ -84,7 +84,7 @@ class MavenSettingsTests {
 
 		RemoteRepository repository = settings.getRemoteRepository("central", "https://repo1.maven.org/maven2/");
 
-		assertThat(repository.id()).isEqualTo("specific");
+		assertThat(repository.getId()).isEqualTo("specific");
 	}
 
 	@Test
@@ -96,7 +96,7 @@ class MavenSettingsTests {
 
 		RemoteRepository repository = settings.getRemoteRepository("central", "https://repo1.maven.org/maven2/");
 
-		assertThat(repository.id()).isEqualTo("central-mirror");
+		assertThat(repository.getId()).isEqualTo("central-mirror");
 	}
 
 	@Test

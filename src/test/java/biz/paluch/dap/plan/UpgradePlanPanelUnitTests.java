@@ -47,12 +47,13 @@ class UpgradePlanPanelUnitTests {
 			VirtualFile root = LocalFileSystem.getInstance()
 					.refreshAndFindFileByNioFile(temp);
 
-			VirtualFile firstRoot = root.createChildDirectory(UpgradePlanPanelUnitTests.class, "first");
-			VirtualFile secondRoot = root.createChildDirectory(UpgradePlanPanelUnitTests.class, "second");
-			VirtualFile outsideRoot = root.createChildDirectory(UpgradePlanPanelUnitTests.class, "outside");
-			VirtualFile first = firstRoot.createChildData(UpgradePlanPanelUnitTests.class, "pom.xml");
-			VirtualFile second = secondRoot.createChildData(UpgradePlanPanelUnitTests.class, "build.gradle");
-			VirtualFile outside = outsideRoot.createChildData(UpgradePlanPanelUnitTests.class, "package.json");
+			VirtualFile firstRoot = root.createChildDirectory(this, "first");
+			VirtualFile secondRoot = root.createChildDirectory(this, "second");
+			VirtualFile outsideRoot = root.createChildDirectory(this, "outside");
+
+			VirtualFile first = firstRoot.createChildData(this, "pom.xml");
+			VirtualFile second = secondRoot.createChildData(this, "build.gradle");
+			VirtualFile outside = outsideRoot.createChildData(this, "package.json");
 
 			UpgradePlanState.Content content = new UpgradePlanState.Content();
 			content.setAffectedFiles(first.getPath(), outside.getPath(), second.getPath(),

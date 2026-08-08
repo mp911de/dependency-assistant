@@ -18,8 +18,11 @@ package biz.paluch.dap.artifact;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
+
+import biz.paluch.dap.util.Sequence;
 
 /**
  * Release lookup inputs for one artifact: the artifact coordinates together
@@ -31,7 +34,8 @@ import java.util.function.Predicate;
  * artifact.
  * @see ReleaseSource
  */
-public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sources) {
+public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sources)
+		implements Sequence<ReleaseSource> {
 
 	/**
 	 * Return the artifact coordinates of {@link #pkg()}.
@@ -48,16 +52,13 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 	}
 
 	/**
-	 * Retain only the sources accepted by the given predicate. If the predicate
-	 * would reject every source, the original sources are kept so the artifact is
-	 * still queried rather than starved.
-	 * @param predicate the predicate selecting the sources to query .
+	 * Retain only the sources accepted by the given predicate.
+	 * @param predicate the predicate selecting the sources to query.
 	 * @return release sources narrowed to the accepted sources, or {@code this}
 	 * when none would remain.
 	 */
 	public ReleaseSources filter(Predicate<ReleaseSource> predicate) {
-		List<ReleaseSource> filtered = sources.stream().filter(predicate).toList();
-		return filtered.isEmpty() ? this : new ReleaseSources(pkg, filtered);
+		return new ReleaseSources(pkg, sources.stream().filter(predicate).toList());
 	}
 
 	/**
@@ -75,7 +76,7 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 	/**
 	 * Check whether the release sources contain only the given
 	 * {@link ReleaseSource#getId() identifiers}.
-	 * @param ids collection of release source identifers.
+	 * @param ids collection of release source identifiers.
 	 * @return {@literal true} if the sources contain only the given identifiers.
 	 */
 	public boolean containsOnlyReleaseSourceIds(Collection<String> ids) {
@@ -88,6 +89,16 @@ public record ReleaseSources(PackageIdentity pkg, Collection<ReleaseSource> sour
 			}
 		}
 		return true;
+	}
+
+	@Override
+	public Iterator<ReleaseSource> iterator() {
+		return sources.iterator();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return sources.isEmpty();
 	}
 
 }

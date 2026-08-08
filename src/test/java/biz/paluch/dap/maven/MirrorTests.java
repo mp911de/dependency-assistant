@@ -53,7 +53,8 @@ class MirrorTests {
 		MavenSettings settings = new MavenSettings(Map.of(),
 				List.of(new Mirror("mirror", "https://mirror.corp/repo/", mirrorOf)));
 
-		assertThat(settings.getRemoteRepository(repositoryId, repositoryUrl).id().equals("mirror")).isEqualTo(matches);
+		assertThat(settings.getRemoteRepository(repositoryId, repositoryUrl).getId().equals("mirror"))
+				.isEqualTo(matches);
 	}
 
 	@Test
@@ -62,9 +63,9 @@ class MirrorTests {
 		MavenSettings settings = new MavenSettings(Map.of(),
 				List.of(new Mirror("mirror", "https://mirror.corp/repo/", "!central,*")));
 
-		assertThat(settings.getRemoteRepository("central", "https://repo1.maven.org/maven2/").id())
+		assertThat(settings.getRemoteRepository("central", "https://repo1.maven.org/maven2/").getId())
 				.isEqualTo("central");
-		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp/repo/").id())
+		assertThat(settings.getRemoteRepository("internal", "https://nexus.corp/repo/").getId())
 				.isEqualTo("mirror");
 	}
 

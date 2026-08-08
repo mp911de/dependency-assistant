@@ -30,9 +30,9 @@ import static org.assertj.core.api.Assertions.*;
  */
 class ReleaseSourcesUnitTests {
 
-	private static final ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
+	ArtifactId LETTUCE_CORE = ArtifactId.of("io.lettuce", "lettuce-core");
 
-	static final PackageIdentity LETTUCE = PackageIdentity.of(LETTUCE_CORE, PackageSystem.MAVEN);
+	PackageIdentity LETTUCE = PackageIdentity.of(LETTUCE_CORE, PackageSystem.MAVEN);
 
 	@Test
 	void exposesSourceIdentifiersInOrder() {
@@ -50,15 +50,6 @@ class ReleaseSourcesUnitTests {
 				List.of(new TestReleaseSource("central"), new TestReleaseSource("github")));
 
 		assertThat(sources.filter(source -> source.getId().equals("github")).sourceIds()).containsExactly("github");
-	}
-
-	@Test
-	void keepsAllSourcesWhenPredicateRejectsEveryone() {
-
-		ReleaseSources sources = new ReleaseSources(LETTUCE,
-				List.of(new TestReleaseSource("central"), new TestReleaseSource("portal")));
-
-		assertThat(sources.filter(source -> false).sourceIds()).containsExactly("central", "portal");
 	}
 
 }

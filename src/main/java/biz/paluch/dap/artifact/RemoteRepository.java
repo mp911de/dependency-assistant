@@ -28,19 +28,16 @@ import org.springframework.util.ObjectUtils;
  *
  * @author Mark Paluch
  */
-public final class RemoteRepository {
+public class RemoteRepository {
 
 	static final RemoteRepository MAVEN_CENTRAL = new RemoteRepository("central", "https://repo1.maven.org/maven2/",
 			null);
 
 	private final String id;
 
-	private final String url;
-
-	private final URI uri;
+	private final URI url;
 
 	private final @Nullable RepositoryCredentials credentials;
-
 
 	public RemoteRepository(String id, String url, @Nullable RepositoryCredentials credentials) {
 		Assert.hasText(id, "Id must not be null or empty!");
@@ -50,9 +47,20 @@ public final class RemoteRepository {
 			url = url + "/";
 		}
 		this.id = id;
-		this.url = url;
-		this.uri = URI.create(url);
+		this.url = URI.create(url);
 		this.credentials = credentials;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public URI getUrl() {
+		return url;
+	}
+
+	public @Nullable RepositoryCredentials credentials() {
+		return credentials;
 	}
 
 	@Override
@@ -64,22 +72,6 @@ public final class RemoteRepository {
 			return false;
 		}
 		return ObjectUtils.nullSafeEquals(credentials, that.credentials);
-	}
-
-	public String id() {
-		return id;
-	}
-
-	public String url() {
-		return url;
-	}
-
-	public URI uri() {
-		return uri;
-	}
-
-	public @Nullable RepositoryCredentials credentials() {
-		return credentials;
 	}
 
 	@Override

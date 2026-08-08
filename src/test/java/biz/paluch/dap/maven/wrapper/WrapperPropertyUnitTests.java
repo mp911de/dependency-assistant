@@ -36,7 +36,7 @@ class WrapperPropertyUnitTests {
 		RemoteRepository repository = WrapperPropertyParser.parseRemoteRepository(WrapperProperty.DISTRIBUTION,
 				URI.create("https://foo.bar.baz/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip"), null);
 
-		assertThat(repository.url()).isEqualTo("https://foo.bar.baz/");
+		assertThat(repository.getUrl().toASCIIString()).isEqualTo("https://foo.bar.baz/");
 	}
 
 	@Test
@@ -46,7 +46,7 @@ class WrapperPropertyUnitTests {
 				URI.create("https://foo.bar.baz/x/y/z/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip"),
 				null);
 
-		assertThat(repository.url()).isEqualTo("https://foo.bar.baz/x/y/z/");
+		assertThat(repository.getUrl().toASCIIString()).isEqualTo("https://foo.bar.baz/x/y/z/");
 	}
 
 	@Test
@@ -56,7 +56,7 @@ class WrapperPropertyUnitTests {
 				URI.create("https://foo.bar.baz/x/y/z/org/apache/maven"),
 				null);
 
-		assertThat(repository.url()).isEqualTo("https://foo.bar.baz/x/y/z/");
+		assertThat(repository.getUrl().toASCIIString()).isEqualTo("https://foo.bar.baz/x/y/z/");
 	}
 
 	@Test
@@ -66,7 +66,8 @@ class WrapperPropertyUnitTests {
 				URI.create("https://foo.bar.baz/x/z/org/"),
 				null);
 
-		assertThat(repository.url()).isEqualTo(RemoteRepository.mavenCentral().url());
+		assertThat(repository.getUrl().toASCIIString())
+				.isEqualTo(RemoteRepository.mavenCentral().getUrl().toASCIIString());
 	}
 
 }

@@ -481,7 +481,7 @@ class GradleUtils {
 			if (!StringUtils.hasText(url) || (!url.startsWith("http://") && !url.startsWith("https://"))) {
 				continue;
 			}
-			if (url.equals(RemoteRepository.mavenCentral().url())) {
+			if (url.equals(RemoteRepository.mavenCentral().getUrl().toASCIIString())) {
 				repositories.add(RemoteRepository.mavenCentral());
 			} else {
 				String urlToUse = url.endsWith("/") ? url : url + "/";

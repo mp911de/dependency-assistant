@@ -93,7 +93,7 @@ class WrapperPropertyParser {
 		if (repositoryBase == null) {
 			return RemoteRepository.mavenCentral();
 		}
-		URI defaultMaven = URI.create(RemoteRepository.mavenCentral().url());
+		URI defaultMaven = RemoteRepository.mavenCentral().getUrl();
 		if (credentials == null && repositoryBase.normalize()
 				.equals(defaultMaven.normalize())) {
 			return RemoteRepository.mavenCentral();
