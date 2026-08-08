@@ -30,8 +30,8 @@ class GitHubActionUnitTests {
 
 	@Test
 	void parsesSimpleReference() {
-		assertThat(GitHubAction.from("foo/bar@version")).isEqualTo(ArtifactId.of("foo", "bar"));
-		assertThat(GitHubAction.from("foo/bar/some/path@version")).isEqualTo(ArtifactId.of("foo", "bar"));
+		assertThat(parseArtifactId("foo/bar@version")).isEqualTo(ArtifactId.of("foo", "bar"));
+		assertThat(parseArtifactId("foo/bar/some/path@version")).isEqualTo(ArtifactId.of("foo", "bar"));
 	}
 
 	@Test
@@ -44,8 +44,8 @@ class GitHubActionUnitTests {
 
 	@Test
 	void parsesReferenceWithComment() {
-		assertThat(GitHubAction.from("foo/bar@version # 1.2.3")).isEqualTo(ArtifactId.of("foo", "bar"));
-		assertThat(GitHubAction.from("foo/bar/some/path@1.2.3 ")).isEqualTo(ArtifactId.of("foo", "bar"));
+		assertThat(parseArtifactId("foo/bar@version # 1.2.3")).isEqualTo(ArtifactId.of("foo", "bar"));
+		assertThat(parseArtifactId("foo/bar/some/path@1.2.3 ")).isEqualTo(ArtifactId.of("foo", "bar"));
 	}
 
 	@Test
@@ -79,10 +79,14 @@ class GitHubActionUnitTests {
 
 	@Test
 	void parsesRepositoryWithDotsAndUnderscores() {
-		assertThat(GitHubAction.from("foo/my.repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my.repo"));
-		assertThat(GitHubAction.from("foo/my_repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my_repo"));
-		assertThat(GitHubAction.from("foo/my.dotted_repo-name@1.2.3"))
+		assertThat(parseArtifactId("foo/my.repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my.repo"));
+		assertThat(parseArtifactId("foo/my_repo@1.2.3")).isEqualTo(ArtifactId.of("foo", "my_repo"));
+		assertThat(parseArtifactId("foo/my.dotted_repo-name@1.2.3"))
 				.isEqualTo(ArtifactId.of("foo", "my.dotted_repo-name"));
+	}
+
+	private ArtifactId parseArtifactId(String s) {
+		return GitHubAction.from(s).getArtifactId();
 	}
 
 }

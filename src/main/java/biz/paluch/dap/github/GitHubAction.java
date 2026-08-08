@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
+import biz.paluch.dap.artifact.HasArtifactId;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -44,7 +45,7 @@ import org.springframework.util.StringUtils;
  * @author Mark Paluch
  * @see UsesRepositoryAction
  */
-interface GitHubAction extends ArtifactId {
+interface GitHubAction extends HasArtifactId {
 
 	/**
 	 * Pattern for repository-backed GitHub Action {@code uses:} values.
@@ -59,6 +60,10 @@ interface GitHubAction extends ArtifactId {
 					"(?<repo>(?!\\.\\.?[/@])[A-Za-z0-9._-]{1,100})" +
 					"(?<paths>[/A-Za-z0-9._-]*)@" +
 					"(?<version>\\S*)\\s*(#(?<comment>[\\sA-Za-z0-9._-]+))?$");
+
+	String owner();
+
+	String repository();
 
 	/**
 	 * Return the raw workflow ref for this action.
@@ -115,25 +120,19 @@ interface GitHubAction extends ArtifactId {
 	record DefaultGitHubAction(String owner, String repository, String version) implements GitHubAction {
 
 		@Override
-		public String groupId() {
-			return owner;
-		}
-
-		@Override
-		public String artifactId() {
-			return repository;
+		public ArtifactId getArtifactId() {
+			return ArtifactId.of(owner, repository);
 		}
 
 		@Override
 		public boolean equals(Object o) {
 
 			if (o instanceof GitHubAction that) {
-				return Objects.equals(owner, that.groupId()) && Objects.equals(version, that.version())
-						&& Objects.equals(repository, that.artifactId());
+				return Objects.equals(owner, that.owner()) && Objects.equals(version, that.version())
+						&& Objects.equals(repository, that.repository());
 			}
 
-			return o instanceof ArtifactId that && Objects.equals(owner, that.groupId())
-					&& Objects.equals(repository, that.artifactId());
+			return false;
 		}
 
 		@Override

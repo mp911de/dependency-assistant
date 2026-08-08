@@ -18,6 +18,7 @@ package biz.paluch.dap.github;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
+import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.util.StringUtils;
@@ -40,9 +41,8 @@ import org.jspecify.annotations.Nullable;
  * to be updated as an SHA while still allowing the user-facing version to be
  * shown as explanatory metadata.
  *
- * @param owner the GitHub repository owner, used as the dependency group.
- * @param repository the GitHub repository name, used as the dependency
- * artifact.
+ * @param artifactId the GitHub repository owner and repository, used as the
+ * dependency artifact.
  * @param version the version ref portion of the declaration, or {@literal null}
  * if the declaration has no usable version reference.
  *
@@ -50,20 +50,15 @@ import org.jspecify.annotations.Nullable;
  * @see GitHubWorkflowParser
  * @see RefStyle
  */
-record UsesRepositoryAction(String owner, String repository, @Nullable String version) {
+record UsesRepositoryAction(ArtifactId artifactId, @Nullable String version) implements HasArtifactId {
 
 	public UsesRepositoryAction(GitHubAction action) {
-		this(action.groupId(), action.artifactId(), action.version());
+		this(action.getArtifactId(), action.version());
 	}
 
-	/**
-	 * Return the dependency identity represented by this workflow action.
-	 * <p>
-	 * The identity is repository-scoped so that release lookup, caching, and
-	 * update matching are independent of the workflow-local action path.
-	 */
-	public ArtifactId toArtifactId() {
-		return GitHubAction.of(owner, repository);
+	@Override
+	public ArtifactId getArtifactId() {
+		return artifactId;
 	}
 
 	/**

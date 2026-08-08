@@ -36,8 +36,6 @@ import org.jetbrains.plugins.github.util.GHGitRepositoryMapping;
 import org.jetbrains.plugins.github.util.GHHostedRepositoriesManager;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.lang.Contract;
-
 /**
  * Selector for the GitHub account and hosted-repository sets for removals that
  * invalidate an already bound ticket system. Additions become visible when the
@@ -71,19 +69,14 @@ final class GitHubAccountSelector {
 		Pair<String, GithubAccount> remembered = GithubPullRequestsProjectUISettings.getInstance(project)
 				.getSelectedUrlAndAccount();
 
-		Selection selection = selectSaved(remembered);
-		if (selection != null) {
-			return selection;
+		if (remembered != null) {
+			Selection selection = selectSaved(remembered.getFirst(), remembered.getSecond());
+			if (selection != null) {
+				return selection;
+			}
 		}
 
 		return selectImplicit();
-	}
-
-
-	@Contract("null -> null")
-	public @Nullable Selection selectSaved(
-			@Nullable Pair<String, GithubAccount> remembered) {
-		return remembered == null ? null : selectSaved(remembered.getFirst(), remembered.getSecond());
 	}
 
 	@Nullable
@@ -94,8 +87,9 @@ final class GitHubAccountSelector {
 		}
 
 		for (GHGitRepositoryMapping repository : repositories) {
-			if (matches(repository, url, account)) {
-				return new Selection(repository, account);
+			Selection selection = new Selection(repository, account);
+			if (selection.matches(url)) {
+				return selection;
 			}
 		}
 
@@ -104,30 +98,16 @@ final class GitHubAccountSelector {
 
 	@Nullable
 	Selection selectImplicit() {
-		Selection result = null;
 		for (GHGitRepositoryMapping repository : repositories) {
 			for (GithubAccount account : accounts) {
-				if (!matches(repository, account)) {
-					continue;
+				Selection selection = new Selection(repository, account);
+				if (selection.matches()) {
+					return selection;
 				}
-				if (result != null) {
-					return null;
-				}
-				result = new Selection(repository, account);
 			}
 		}
 
-		return result;
-	}
-
-	private static boolean matches(GHGitRepositoryMapping repository, String url, GithubAccount account) {
-		return repository.getRemote().getUrl().equals(url)
-				&& matches(repository, account);
-	}
-
-	private static boolean matches(GHGitRepositoryMapping repository, GithubAccount account) {
-		return repository.getRepository().getServerPath()
-				.equals(account.getServer(), true);
+		return null;
 	}
 
 	private synchronized void accountsChanged(Set<GithubAccount> current) {
@@ -178,6 +158,16 @@ final class GitHubAccountSelector {
 
 		GithubAccount getAccount() {
 			return account;
+		}
+
+		public boolean matches(String url) {
+			return repository.getRemote().getUrl().equals(url) && matches();
+		}
+
+		public boolean matches() {
+			return repository.getRepository().getServerPath()
+					.equals(account.getServer(), false);
+
 		}
 
 	}

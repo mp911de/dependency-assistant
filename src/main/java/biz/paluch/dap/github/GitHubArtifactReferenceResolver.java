@@ -26,7 +26,6 @@ import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
-import com.intellij.psi.impl.source.tree.LeafPsiElement;
 import org.jetbrains.yaml.psi.YAMLKeyValue;
 import org.jetbrains.yaml.psi.YAMLScalar;
 import org.jspecify.annotations.Nullable;
@@ -67,7 +66,7 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
 
-		if (element instanceof LeafPsiElement) {
+		if (element.getFirstChild() == null) {
 			return ArtifactReference.unresolved();
 		}
 
@@ -81,7 +80,7 @@ class GitHubArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return ArtifactReference.unresolved();
 		}
 
-		ArtifactId artifactId = ref.toArtifactId();
+		ArtifactId artifactId = ref.getArtifactId();
 		return ArtifactReference.from(builder -> {
 			builder.artifact(artifactId)
 					.packageSystem(PackageSystem.GITHUB)

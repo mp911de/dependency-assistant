@@ -81,7 +81,7 @@ class GitHubDependencyCollector {
 
 		List<UsesRepositoryAction> refs = parser.parse(file);
 		for (UsesRepositoryAction ref : refs) {
-			ArtifactId artifactId = ref.toArtifactId();
+			ArtifactId artifactId = ref.getArtifactId();
 			VersionSource versionSource = ref.toVersionSource();
 
 			collector.registerDeclaration(artifactId, DeclarationSource.dependency(),

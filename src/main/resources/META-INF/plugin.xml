@@ -72,7 +72,6 @@
 
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<pomLocator implementation="biz.paluch.dap.maven.SimpleMavenPomLocator"/>
-		<platform implementation="biz.paluch.dap.github.GitHubPlatform"/>
 		<platform implementation="biz.paluch.dap.metadata.GitLabPlatform"/>
 		<platform implementation="biz.paluch.dap.metadata.BitbucketPlatform"/>
 		<platform implementation="biz.paluch.dap.metadata.CodebergPlatform"/>

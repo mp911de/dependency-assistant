@@ -88,7 +88,7 @@ class UpdateGitHubWorkflowFile {
 			return;
 		}
 
-		ArtifactId artifactId = ref.toArtifactId();
+		ArtifactId artifactId = ref.getArtifactId();
 
 		for (DependencyUpdate update : updates) {
 

@@ -144,13 +144,13 @@ public class GitHubPlatform implements Platform {
 		@Override
 		public Sequence<String> getTags(ProgressIndicator indicator) throws IOException {
 			ArtifactId artifactId = ArtifactId.of(metadata.owner(), metadata.repository());
-			return getTagSource().getTags(artifactId, indicator);
+			TagSource tagSource = getTagSource();
+			return tagSource != null ? tagSource.getTags(artifactId, indicator) : Sequence.empty();
 		}
 
 		@Override
-		public TagSource getTagSource() {
+		public @Nullable TagSource getTagSource() {
 
-			// TODO: Allow anonymous tag sources
 			GithubApiRequestExecutorFactory factory = GithubApiRequestExecutorFactory.getInstance(project);
 			GithubServerPath path = GithubApiRequestExecutorFactory.serverPath(metadata.host());
 			GithubApiRequestExecutorFactory.ExecutorResult executor = factory.getExecutor(path);

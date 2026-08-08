@@ -21,6 +21,9 @@ import java.util.Map;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.util.MessageBundle;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
@@ -111,7 +114,16 @@ public class UpgradePlanToolWindowFactory implements ToolWindowFactory, DumbAwar
 	public void createToolWindowContent(Project project, ToolWindow toolWindow) {
 
 		UpgradePlanService service = UpgradePlanService.getInstance(project);
-		service.refreshTicketSystem();
+
+		new Task.Backgroundable(project, MessageBundle.message("plan.refresh.lists.progress"), true) {
+
+			@Override
+			public void run(ProgressIndicator indicator) {
+				service.refreshTicketSystem();
+			}
+
+		}.queue();
+
 		UpgradePlanPanel panel = new UpgradePlanPanel(service);
 		Content content = ContentFactory.getInstance().createContent(panel, null, false);
 		content.setDisposer(panel);

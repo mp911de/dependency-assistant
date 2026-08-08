@@ -62,8 +62,6 @@ class GithubApiRequestExecutorFactory {
 
 	private final GithubProjectDefaultAccountHolder defaultAccountHolder;
 
-	private volatile @Nullable Decision lastDecision;
-
 	/**
 	 * Production constructor invoked by the IntelliJ service container.
 	 */
@@ -84,22 +82,21 @@ class GithubApiRequestExecutorFactory {
 	 */
 	ExecutorResult getExecutor() {
 
-		List<GHGitRepositoryMapping> repositories = getRepositoryMappings();
-		GHGitRepositoryMapping repository = repositories.isEmpty() ? null : repositories.getFirst();
+		Collection<GHGitRepositoryMapping> repositories = getRepositoryMappings();
+		GHGitRepositoryMapping repository = firstOrNull(repositories);
 		GithubServerPath server = repository != null ? repository.getRepository().getServerPath()
 				: GithubServerPath.DEFAULT_SERVER;
 		SelectionDetails selectionDetails = getSelectionDetails(server,
 				repository != null ? List.of(repository) : List.of());
 
-		GithubAccount firstMatchingAccount = selectionDetails.getAccounts().isEmpty() ? null
-				: selectionDetails.getAccounts().getFirst();
+		GithubAccount firstMatchingAccount = firstOrNull(selectionDetails.getAccounts());
 		ExecutorResult executor = createAuthenticatedIfPossible(server, repository, firstMatchingAccount,
 				selectionDetails, Reason.FIRST_MATCHING_ACCOUNT);
 		if (executor != null) {
 			return executor;
 		}
 
-		GithubAccount defaultAccount = lookupDefaultAccount();
+		GithubAccount defaultAccount = defaultAccountHolder.getAccount();
 		if (defaultAccount != null && !defaultAccount.equals(firstMatchingAccount)) {
 			executor = createAuthenticatedIfPossible(server, repository, defaultAccount, selectionDetails,
 					Reason.DEFAULT_ACCOUNT);
@@ -160,16 +157,6 @@ class GithubApiRequestExecutorFactory {
 		return getSelectionDetails(server, getRepositoryMappings(server));
 	}
 
-	/**
-	 * Return the last resolution decision made by this factory.
-	 * @return the last decision, or {@literal null} if the factory has not been
-	 * used yet.
-	 */
-	@Nullable
-	Decision getLastDecision() {
-		return lastDecision;
-	}
-
 	static GithubServerPath serverPath(String gitHost) {
 
 		if (!StringUtils.hasText(gitHost)) {
@@ -186,7 +173,7 @@ class GithubApiRequestExecutorFactory {
 
 	private ExecutorResult resolve(GithubServerPath server, SelectionDetails selectionDetails) {
 
-		GHGitRepositoryMapping repository = selectRepository(selectionDetails);
+		GHGitRepositoryMapping repository = uniqueOrNull(selectionDetails.getRepositories());
 		GithubAccount account = selectAccount(server, selectionDetails);
 		if (account == null) {
 			if (!selectionDetails.getAccounts().isEmpty()) {
@@ -198,13 +185,12 @@ class GithubApiRequestExecutorFactory {
 			return anonymous(server, selectionDetails);
 		}
 
-		if (selectionDetails.getAccounts().size() > 1 && !matchesLastDecision(repository, account)
+		if (selectionDetails.getAccounts().size() > 1
 				&& !isDefaultAccount(account, server)) {
 			return selectionRequired(server, repository, account, selectionDetails, Reason.MULTIPLE_ACCOUNTS);
 		}
 
-		Reason reason = matchesLastDecision(repository, account) ? Reason.REMEMBERED_SELECTION
-				: isDefaultAccount(account, server) ? Reason.DEFAULT_ACCOUNT : Reason.SINGLE_ACCOUNT;
+		Reason reason = isDefaultAccount(account, server) ? Reason.DEFAULT_ACCOUNT : Reason.SINGLE_ACCOUNT;
 		return createAuthenticated(server, repository, account, selectionDetails, reason);
 	}
 
@@ -255,56 +241,28 @@ class GithubApiRequestExecutorFactory {
 
 	private ExecutorResult result(Decision decision, SelectionDetails selectionDetails,
 			@Nullable GithubApiRequestExecutor executor) {
-		lastDecision = decision;
 		return new ExecutorResult(decision, selectionDetails, executor);
-	}
-
-	private @Nullable GHGitRepositoryMapping selectRepository(SelectionDetails details) {
-
-		Decision previous = lastDecision;
-		if (previous != null && previous.getRepository() != null
-				&& details.getRepositories().contains(previous.getRepository())) {
-			return previous.getRepository();
-		}
-
-		List<GHGitRepositoryMapping> repositories = details.getRepositories();
-		return repositories.size() == 1 ? repositories.getFirst() : null;
 	}
 
 	private @Nullable GithubAccount selectAccount(GithubServerPath server, SelectionDetails details) {
 
-		Decision previous = lastDecision;
-		if (previous != null && previous.getAccount() != null
-				&& details.getAccounts().contains(previous.getAccount())) {
-			return previous.getAccount();
-		}
-
-		GithubAccount defaultAccount = lookupDefaultAccount();
+		GithubAccount defaultAccount = defaultAccountHolder.getAccount();
 		if (defaultAccount != null && details.getAccounts().contains(defaultAccount)
 				&& accountMatchesServer(defaultAccount, server)) {
 			return defaultAccount;
 		}
 
-		List<GithubAccount> accounts = details.getAccounts();
-		return accounts.size() == 1 ? accounts.getFirst() : null;
-	}
-
-	private boolean matchesLastDecision(@Nullable GHGitRepositoryMapping repository, GithubAccount account) {
-
-		Decision previous = lastDecision;
-		return previous != null && previous.getKind() == Kind.AUTHENTICATED
-				&& (previous.getRepository() == null || previous.getRepository().equals(repository))
-				&& previous.getAccount() != null && previous.getAccount().equals(account);
+		return uniqueOrNull(details.getAccounts());
 	}
 
 	private boolean isDefaultAccount(GithubAccount account, GithubServerPath server) {
 
-		GithubAccount defaultAccount = lookupDefaultAccount();
+		GithubAccount defaultAccount = defaultAccountHolder.getAccount();
 		return defaultAccount != null && defaultAccount.equals(account) && accountMatchesServer(defaultAccount, server);
 	}
 
 	private boolean accountMatchesServer(GithubAccount account, GithubServerPath server) {
-		return server.equals(account.getServer(), true);
+		return server.equals(account.getServer(), false);
 	}
 
 	private SelectionDetails getSelectionDetails(GithubServerPath server,
@@ -315,71 +273,46 @@ class GithubApiRequestExecutorFactory {
 	private SelectionDetails getSelectionDetails(GithubServerPath server,
 			Collection<GHGitRepositoryMapping> repositories) {
 
-		List<GHGitRepositoryMapping> repositoryMappings = List.copyOf(repositories);
 		List<GithubAccount> accounts = getAccounts(server);
-		Decision previous = lastDecision;
-		return new SelectionDetails(project, repositoriesManager, accountManager, server, repositoryMappings,
-				accounts, selectRepository(repositoryMappings, previous), selectAccount(accounts, previous), previous);
+		return new SelectionDetails(project, repositoriesManager, accountManager, server, repositories,
+				accounts, uniqueOrNull(repositories), selectAccount(accounts));
 	}
 
-	private @Nullable GHGitRepositoryMapping selectRepository(List<GHGitRepositoryMapping> repositories,
-			@Nullable Decision previous) {
+	private @Nullable GithubAccount selectAccount(List<GithubAccount> accounts) {
 
-		if (previous != null && previous.getRepository() != null && repositories.contains(previous.getRepository())) {
-			return previous.getRepository();
-		}
-		return repositories.size() == 1 ? repositories.getFirst() : null;
-	}
-
-	private @Nullable GithubAccount selectAccount(List<GithubAccount> accounts, @Nullable Decision previous) {
-
-		if (previous != null && previous.getAccount() != null && accounts.contains(previous.getAccount())) {
-			return previous.getAccount();
-		}
-
-		GithubAccount defaultAccount = lookupDefaultAccount();
+		GithubAccount defaultAccount = defaultAccountHolder.getAccount();
 		if (defaultAccount != null && accounts.contains(defaultAccount)) {
 			return defaultAccount;
 		}
-		return accounts.size() == 1 ? accounts.getFirst() : null;
+		return uniqueOrNull(accounts);
 	}
 
 	private List<GHGitRepositoryMapping> getRepositoryMappings(GithubServerPath server) {
 
 		List<GHGitRepositoryMapping> result = new ArrayList<>();
 		for (GHGitRepositoryMapping mapping : getRepositoryMappings()) {
-			if (server.equals(mapping.getRepository().getServerPath(), true)) {
+			if (server.equals(mapping.getRepository().getServerPath(), false)) {
 				result.add(mapping);
 			}
 		}
 		return result;
 	}
 
-	private List<GHGitRepositoryMapping> getRepositoryMappings() {
-
-		List<GHGitRepositoryMapping> result = new ArrayList<>();
-		for (GHGitRepositoryMapping mapping : repositoriesManager.getKnownRepositoriesState()
-				.getValue()) {
-			result.add(mapping);
-		}
-		return result;
+	private Collection<GHGitRepositoryMapping> getRepositoryMappings() {
+		return repositoriesManager.getKnownRepositoriesState()
+				.getValue();
 	}
 
 	private List<GithubAccount> getAccounts(GithubServerPath server) {
 
 		List<GithubAccount> result = new ArrayList<>();
-		GHAccountManager manager = accountManager;
-		for (GithubAccount account : (Collection<GithubAccount>) (manager != null ? manager.getAccountsState()
-				.getValue() : List.of())) {
+		for (GithubAccount account : accountManager.getAccountsState()
+				.getValue()) {
 			if (accountMatchesServer(account, server)) {
 				result.add(account);
 			}
 		}
 		return result;
-	}
-
-	protected @Nullable GithubAccount lookupDefaultAccount() {
-		return defaultAccountHolder.getAccount();
 	}
 
 	protected @Nullable String lookupToken(GithubAccount account) {
@@ -401,6 +334,14 @@ class GithubApiRequestExecutorFactory {
 		return GithubApiRequestExecutor.Factory.getInstance().create();
 	}
 
+	private static <T> @Nullable T firstOrNull(Collection<T> items) {
+		return !items.isEmpty() ? items.iterator().next() : null;
+	}
+
+	private static <T> @Nullable T uniqueOrNull(Collection<T> items) {
+		return items.size() == 1 ? items.iterator().next() : null;
+	}
+
 	enum Kind {
 
 		AUTHENTICATED,
@@ -412,8 +353,6 @@ class GithubApiRequestExecutorFactory {
 	}
 
 	enum Reason {
-
-		REMEMBERED_SELECTION(true),
 
 		EXPLICIT_SELECTION(true),
 
@@ -457,31 +396,27 @@ class GithubApiRequestExecutorFactory {
 
 		private final GithubServerPath server;
 
-		private final List<GHGitRepositoryMapping> repositories;
+		private final Collection<GHGitRepositoryMapping> repositories;
 
-		private final List<GithubAccount> accounts;
+		private final Collection<GithubAccount> accounts;
 
 		private final @Nullable GHGitRepositoryMapping suggestedRepository;
 
 		private final @Nullable GithubAccount suggestedAccount;
 
-		private final @Nullable Decision previousDecision;
-
 		SelectionDetails(@Nullable Project project, @Nullable GHHostedRepositoriesManager repositoriesManager,
 				@Nullable GHAccountManager accountManager, GithubServerPath server,
-				List<GHGitRepositoryMapping> repositories, List<GithubAccount> accounts,
-				@Nullable GHGitRepositoryMapping suggestedRepository, @Nullable GithubAccount suggestedAccount,
-				@Nullable Decision previousDecision) {
+				Collection<GHGitRepositoryMapping> repositories, Collection<GithubAccount> accounts,
+				@Nullable GHGitRepositoryMapping suggestedRepository, @Nullable GithubAccount suggestedAccount) {
 
 			this.project = project;
 			this.repositoriesManager = repositoriesManager;
 			this.accountManager = accountManager;
 			this.server = server;
-			this.repositories = List.copyOf(repositories);
-			this.accounts = List.copyOf(accounts);
+			this.repositories = repositories;
+			this.accounts = accounts;
 			this.suggestedRepository = suggestedRepository;
 			this.suggestedAccount = suggestedAccount;
-			this.previousDecision = previousDecision;
 		}
 
 		@Nullable
@@ -503,11 +438,11 @@ class GithubApiRequestExecutorFactory {
 			return server;
 		}
 
-		List<GHGitRepositoryMapping> getRepositories() {
+		Collection<GHGitRepositoryMapping> getRepositories() {
 			return repositories;
 		}
 
-		List<GithubAccount> getAccounts() {
+		Collection<GithubAccount> getAccounts() {
 			return accounts;
 		}
 
@@ -519,11 +454,6 @@ class GithubApiRequestExecutorFactory {
 		@Nullable
 		GithubAccount getSuggestedAccount() {
 			return suggestedAccount;
-		}
-
-		@Nullable
-		Decision getPreviousDecision() {
-			return previousDecision;
 		}
 
 		boolean canShowSelector() {

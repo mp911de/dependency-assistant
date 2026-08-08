@@ -2,6 +2,7 @@
 	<extensions defaultExtensionNs="biz.paluch.dap">
 		<assistant implementation="biz.paluch.dap.antora.AntoraAssistant"/>
 		<assistant implementation="biz.paluch.dap.github.GitHubAssistant"/>
+		<platform implementation="biz.paluch.dap.github.GitHubPlatform"/>
 		<ticketSystem implementation="biz.paluch.dap.github.GitHubTicketSystemProvider"/>
 	</extensions>
 

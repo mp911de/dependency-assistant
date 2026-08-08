@@ -51,15 +51,18 @@ public class GitHubTicketSystemProvider implements TicketSystemProvider {
 		}
 		ExecutorResult result = GithubApiRequestExecutorFactory.getInstance(project)
 				.getExecutor(selection.getRepository(), selection.getAccount());
+		GithubApiRequestExecutorFactory.Decision decision = result.getDecision();
 		if (!result.hasExecutor()) {
 			throw new IllegalStateException(
-					"Project %s has no usable GitHub ticket system".formatted(project.getName()));
+					"Project %s has no usable GitHub ticket system (%s)".formatted(project.getName(),
+							decision.getReason()));
 		}
 
-		GHGitRepositoryMapping mapping = result.getDecision().getRepository();
+		GHGitRepositoryMapping mapping = decision.getRepository();
 		if (mapping == null) {
 			throw new IllegalStateException(
-					"Project %s has no selected GitHub repository".formatted(project.getName()));
+					"Project %s has no selected GitHub repository (%s)".formatted(project.getName(),
+							decision.getReason()));
 		}
 
 		GithubApiRequestExecutor executor = result.getRequiredExecutor();

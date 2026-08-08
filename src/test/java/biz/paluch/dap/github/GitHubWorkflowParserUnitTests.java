@@ -24,7 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.*;
 
 /**
- * Unit tests for {@link GitHubWorkflowParser#parseUses(String)}.
+ * Unit tests for {@link GitHubWorkflowParser}.
  *
  * @author Mark Paluch
  */
@@ -36,8 +36,8 @@ class GitHubWorkflowParserUnitTests {
 		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses("actions/checkout@v4.2.0");
 
 		assertThat(ref).isNotNull();
-		assertThat(ref.owner()).isEqualTo("actions");
-		assertThat(ref.repository()).isEqualTo("checkout");
+		assertThat(ref.getArtifactId().groupId()).isEqualTo("actions");
+		assertThat(ref.getArtifactId().artifactId()).isEqualTo("checkout");
 		assertThat(ref.version()).isEqualTo("v4.2.0");
 	}
 
@@ -68,8 +68,8 @@ class GitHubWorkflowParserUnitTests {
 				.parseUses("actions/aws-actions/configure-aws-credentials@v4");
 
 		assertThat(ref).isNotNull();
-		assertThat(ref.owner()).isEqualTo("actions");
-		assertThat(ref.repository()).isEqualTo("aws-actions");
+		assertThat(ref.getArtifactId().groupId()).isEqualTo("actions");
+		assertThat(ref.getArtifactId().artifactId()).isEqualTo("aws-actions");
 		assertThat(ref.version()).isEqualTo("v4");
 	}
 
@@ -79,8 +79,7 @@ class GitHubWorkflowParserUnitTests {
 		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses("actions/checkout@v4");
 
 		assertThat(ref).isNotNull();
-		assertThat(ref.toArtifactId()).isEqualTo(ArtifactId.of("actions", "checkout"));
-		assertThat(ref.toArtifactId()).isEqualTo(GitHubAction.of("actions", "checkout"));
+		assertThat(ref.getArtifactId()).isEqualTo(ArtifactId.of("actions", "checkout"));
 	}
 
 	@ParameterizedTest
