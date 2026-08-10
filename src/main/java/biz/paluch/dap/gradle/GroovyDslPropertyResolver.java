@@ -22,8 +22,8 @@ import java.util.Set;
 
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.util.PsiFileCache;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.CachedValuesManager;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -52,7 +52,7 @@ class GroovyDslPropertyResolver implements PropertyResolver {
 	 */
 	static GroovyDslPropertyResolver from(PsiFile file) {
 
-		return CachedValuesManager.getProjectPsiDependentCache(file, it -> {
+		return PsiFileCache.get(file, it -> {
 
 			Map<String, PropertyValue> properties = new LinkedHashMap<>(GroovyDslExtParser.parseExtProperties(file));
 			properties.putAll(GroovyDslExtParser.parseLocalVariables(file));
@@ -62,7 +62,7 @@ class GroovyDslPropertyResolver implements PropertyResolver {
 	}
 
 	Set<String> getDeclaredPropertyNames() {
-		return Set.copyOf(properties.keySet());
+		return properties.keySet();
 	}
 
 	@Override

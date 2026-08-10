@@ -89,6 +89,9 @@ public class Cache implements ModificationTracker {
 	@Attribute
 	private volatile long lastUpdateTimestamp = 0L;
 
+	@Attribute
+	private volatile long doNotNagUntil = 0L;
+
 	private final @XCollection(propertyElementName = "artifacts", elementName = "artifact", style = XCollection.Style.v2) List<CachedArtifact> artifacts = new ArrayList<>();
 
 	@Transient
@@ -655,6 +658,7 @@ public class Cache implements ModificationTracker {
 
 		Cache copy = new Cache();
 		copy.lastUpdateTimestamp = this.lastUpdateTimestamp;
+		copy.doNotNagUntil = this.doNotNagUntil;
 		long threshold = clock.millis() - STALE_THRESHOLD_MILLIS;
 
 		Comparator<CachedArtifact> artifactComparator = Comparator
@@ -871,6 +875,24 @@ public class Cache implements ModificationTracker {
 			action.run();
 			return null;
 		});
+	}
+
+	public boolean shouldNag() {
+
+		Duration age = getAge();
+		Instant lastUpdate = getLastUpdate();
+		if (age != null && lastUpdate != null && age.compareTo(Duration.ofDays(2)) > 0) {
+			if (doNotNagUntil == 0 || doNotNagUntil < clock.millis()) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	public void doNotNag() {
+		doNotNagUntil = clock.instant().plus(Duration.ofHours(12)).toEpochMilli();
+		modificationTracker.incModificationCount();
 	}
 
 }

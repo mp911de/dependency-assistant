@@ -30,7 +30,7 @@ import biz.paluch.dap.artifact.Versioned;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.util.BetterPsiManager;
-import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import com.intellij.openapi.externalSystem.model.project.ProjectData;
@@ -39,7 +39,6 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -147,9 +146,8 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		return ApplicationManager.getApplication().runReadAction((Computable<GradleProjectContext>) () -> {
-			return psiManager.optional(file).map(GradleProjectContext::of).orElse(EmptyGradleBuildContext.INSTANCE);
-		});
+		return ReadAction.computeBlocking(
+				() -> psiManager.optional(file).map(GradleProjectContext::of).orElse(EmptyGradleBuildContext.INSTANCE));
 	}
 
 	static boolean isGradleProject(Project project) {

@@ -46,13 +46,13 @@ import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.PsiFileCache;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.xml.XmlFile;
 import icons.MavenIcons;
 import org.jetbrains.idea.maven.project.MavenProject;
@@ -220,20 +220,20 @@ class MavenAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			return CachedValuesManager.getProjectPsiDependentCache(element.getContainingFile(),
-					this::createLookup);
+			return PsiFileCache.withProjectRoot(element.getContainingFile(), MavenDependencyContext::createLookup);
 		}
 
-		private VersionUpgradeLookup createLookup(PsiFile pom) {
+		private static VersionUpgradeLookup createLookup(PsiFile pom) {
 
 			Project project = pom.getProject();
+			MavenProjectContext projectContext = MavenProjectContext.of(project, pom);
 
 			if (pom instanceof XmlFile xmlFile) {
-				return VersionUpgradeLookup.of(project, getProjectId(),
+				return VersionUpgradeLookup.of(project, projectContext.getProjectId(),
 						new MavenArtifactReferenceResolver(project, xmlFile, projectContext));
 			}
 
-			return VersionUpgradeLookup.of(project, getProjectId(),
+			return VersionUpgradeLookup.of(project, projectContext.getProjectId(),
 					ArtifactReferenceResolver.unresolved());
 		}
 

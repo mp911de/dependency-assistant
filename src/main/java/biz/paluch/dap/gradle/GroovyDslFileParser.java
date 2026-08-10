@@ -78,15 +78,6 @@ class GroovyDslFileParser {
 	}
 
 	@Nullable
-	TomlReference findCatalogReference(GrMethodCall call) {
-		return parser.findCatalogReference(call);
-	}
-
-	boolean containsProperty(String name) {
-		return propertyResolver.containsProperty(name);
-	}
-
-	@Nullable
 	Property getPropertyValue(String name) {
 		return propertyResolver.getPropertyValue(name);
 	}

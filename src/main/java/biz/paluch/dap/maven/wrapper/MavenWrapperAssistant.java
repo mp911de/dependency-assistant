@@ -45,6 +45,7 @@ import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PropertyUtils;
+import biz.paluch.dap.util.PsiFileCache;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.Property;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -149,7 +150,7 @@ public class MavenWrapperAssistant implements DependencyAssistant {
 	 */
 	public static List<ReleaseSource> collectReleaseSources(PsiFile wrapperFile) {
 
-		return CachedValuesManager.getProjectPsiDependentCache(wrapperFile, it -> {
+		return PsiFileCache.get(wrapperFile, it -> {
 			if (!(it instanceof PropertiesFile propertiesFile)) {
 				return List.of();
 			}

@@ -25,6 +25,7 @@ import java.util.Map;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.PsiFileCache;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.TextRange;
@@ -51,9 +52,6 @@ class GradlePropertyResolver implements PropertyResolver {
 	private static final Key<CachedValue<GradlePropertyResolver>> TREE = Key
 			.create("biz.paluch.dap.gradle.CACHED_GRADLE_PROPERTY_RESOLVER_TREE");
 
-	private static final Key<CachedValue<GradlePropertyResolver>> FILE = Key
-			.create("biz.paluch.dap.gradle.CACHED_GRADLE_PROPERTY_RESOLVER_FILE");
-
 	private static final GradlePropertyResolver ABSENT = new GradlePropertyResolver(Map.of());
 
 	private final Map<String, Property> propertyElements;
@@ -79,7 +77,7 @@ class GradlePropertyResolver implements PropertyResolver {
 	 * Return a resolver containing only properties from the given file.
 	 */
 	public static GradlePropertyResolver forFile(PsiFile file) {
-		return CachedValuesManager.getProjectPsiDependentCache(file, GradlePropertyResolver::parseFile);
+		return PsiFileCache.get(file, GradlePropertyResolver::parseFile);
 	}
 
 	private static GradlePropertyResolver parseTree(PsiFile file) {

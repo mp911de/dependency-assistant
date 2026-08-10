@@ -180,7 +180,7 @@ class RefreshMilestonesAction extends UpgradePlanAction {
 			for (Label label : labels) {
 
 				String name = label.getName().toLowerCase(Locale.ROOT);
-				if (name.equals("dependencies") || name.equals("dependency")) {
+				if (name.equals("dependency-upgrade")) {
 					return label;
 				}
 				if (containing == null && name.contains("dependenc")) {

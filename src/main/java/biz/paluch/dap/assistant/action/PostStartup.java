@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.assistant.action;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -125,16 +124,15 @@ public class PostStartup implements ProjectActivity {
 
 		Cache cache = service.getCache();
 
-		if (!cache.hasReleases()) {
-			Notifications.releaseMetadataUnavailable(project, RefreshReleaseMetadata::new);
+		if (!cache.hasReleases() && cache.shouldNag()) {
+			Notifications.releaseMetadataUnavailable(project, RefreshReleaseMetadata::new, cache::doNotNag);
 			return;
 		}
 
-		Duration age = cache.getAge();
 		Instant lastUpdate = cache.getLastUpdate();
-		if (age != null && lastUpdate != null && age.compareTo(Duration.ofDays(2)) > 0) {
+		if (lastUpdate != null && cache.shouldNag()) {
 			Notifications.releaseMetadataStale(project, lastUpdate,
-					RefreshReleaseMetadata::new);
+					RefreshReleaseMetadata::new, cache::doNotNag);
 		}
 	}
 

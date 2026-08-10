@@ -25,9 +25,9 @@ import java.util.function.Function;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
+import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.xml.XmlDocument;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
@@ -58,7 +58,7 @@ class MavenPomProperties implements PropertyResolver {
 	}
 
 	static MavenPomProperties from(XmlFile pom) {
-		return CachedValuesManager.getProjectPsiDependentCache(pom,
+		return PsiFileCache.get(pom,
 				it -> new MavenPomProperties(readProjectProperties(it)));
 	}
 

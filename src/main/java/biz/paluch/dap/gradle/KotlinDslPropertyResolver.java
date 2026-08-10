@@ -21,8 +21,8 @@ import java.util.Set;
 
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
+import biz.paluch.dap.util.PsiFileCache;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.util.CachedValuesManager;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,7 +49,7 @@ class KotlinDslPropertyResolver implements PropertyResolver {
 	 */
 	public static KotlinDslPropertyResolver from(PsiFile file) {
 
-		return CachedValuesManager.getProjectPsiDependentCache(file, it -> {
+		return PsiFileCache.get(file, it -> {
 
 			Map<String, ? extends Property> extra = KotlinDslExtraParser.parseExtraProperties(file);
 			Map<String, ? extends Property> local = KotlinDslExtraParser.parseValProperties(file);

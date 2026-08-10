@@ -61,6 +61,8 @@ class GradleDataImportListener implements ProjectDataImportListener {
 			return;
 		}
 
+		GradleModelModificationTracker.getInstance(project).modelImported();
+
 		new Task.Backgroundable(project, MessageBundle.message("refreshAfterImport.task"), true) {
 
 			@Override

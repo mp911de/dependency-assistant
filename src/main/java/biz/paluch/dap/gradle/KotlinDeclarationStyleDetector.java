@@ -20,11 +20,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 import biz.paluch.dap.gradle.KotlinDslParser.KotlinDeclarationCall;
+import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
 import org.jspecify.annotations.Nullable;
@@ -330,8 +330,7 @@ class KotlinDeclarationStyleDetector implements DeclarationStyleDetector {
 	 * repeated completion-position checks do not each re-traverse the file.
 	 */
 	private Set<String> referencedVersionPropertyNames(PsiFile file) {
-		return CachedValuesManager.getProjectPsiDependentCache(file,
-				psiFile -> computeReferencedVersionPropertyNames(file));
+		return PsiFileCache.get(file, this::computeReferencedVersionPropertyNames);
 	}
 
 	private Set<String> computeReferencedVersionPropertyNames(PsiFile file) {

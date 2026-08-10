@@ -24,6 +24,7 @@ import java.util.Objects;
 import biz.paluch.dap.support.ArtifactReference;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
@@ -87,7 +88,7 @@ class VersionCatalogRegistry {
 	 */
 	public static VersionCatalogRegistry from(PsiFile file) {
 
-		return CachedValuesManager.getProjectPsiDependentCache(file, it -> {
+		return PsiFileCache.withProjectRoot(file, it -> {
 
 			Project project = it.getProject();
 			VirtualFile virtualFile = it.getVirtualFile();
@@ -120,7 +121,7 @@ class VersionCatalogRegistry {
 			}
 
 			return defaults().withContext(project, projectRoot);
-		});
+		}, GradleModelModificationTracker.getInstance(file.getProject()));
 	}
 
 	private static @Nullable VersionCatalogRegistry fromImportedCatalogs(Project project, VirtualFile file,

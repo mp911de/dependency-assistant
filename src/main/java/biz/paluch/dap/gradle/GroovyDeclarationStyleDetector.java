@@ -19,11 +19,11 @@ package biz.paluch.dap.gradle;
 import java.util.HashSet;
 import java.util.Set;
 
+import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.SyntaxTraverser;
-import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArgument;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
@@ -280,7 +280,7 @@ class GroovyDeclarationStyleDetector implements DeclarationStyleDetector {
 	 * repeated completion-position checks do not each re-traverse the file.
 	 */
 	private Set<String> referencedVersionPropertyNames(PsiFile file) {
-		return CachedValuesManager.getProjectPsiDependentCache(file,
+		return PsiFileCache.get(file,
 				psiFile -> {
 
 					Set<String> names = new HashSet<>();

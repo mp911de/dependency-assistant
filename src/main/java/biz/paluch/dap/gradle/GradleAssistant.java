@@ -48,6 +48,7 @@ import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.icons.AllIcons;
 import com.intellij.openapi.externalSystem.model.DataNode;
@@ -280,10 +281,16 @@ class GradleAssistant implements DependencyAssistant {
 		@Override
 		public VersionUpgradeLookup getLookup(PsiElement element, VirtualFile file) {
 			Assert.state(isAvailable(), "Project context is not available");
-			PsiFile psiFile = element.getContainingFile();
-			StateService stateService = StateService.getInstance(delegate.getProject());
-			ProjectState projectState = stateService.getProjectState(getProjectId());
-			return VersionUpgradeLookup.of(delegate.getProject(), getProjectId(),
+			return PsiFileCache.withProjectRoot(element.getContainingFile(), GradleDependencyContext::createLookup);
+		}
+
+		private static VersionUpgradeLookup createLookup(PsiFile psiFile) {
+
+			Project project = psiFile.getProject();
+			GradleProjectContext projectContext = GradleProjectContext.of(project, psiFile);
+			ProjectState projectState = StateService.getInstance(project)
+					.getProjectState(projectContext.getProjectId());
+			return VersionUpgradeLookup.of(project, projectContext.getProjectId(),
 					new GradleArtifactReferenceResolver(projectState, psiFile));
 		}
 

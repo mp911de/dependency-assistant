@@ -114,7 +114,8 @@ public class Notifications {
 	 * Notify the user that release metadata is unavailable and offer to update the
 	 * cache.
 	 */
-	public static void releaseMetadataUnavailable(Project project, Function<Project, Task> taskFunction) {
+	public static void releaseMetadataUnavailable(Project project, Function<Project, Task> taskFunction,
+			Runnable notNow) {
 
 		Notification notification = new Notification(
 				STICKY_NOTIFICATION, MessageBundle.message("notification.cache.no.releases.title"),
@@ -129,7 +130,10 @@ public class Notifications {
 									ProgressManager.getInstance().run(taskFunction.apply(project));
 								}))
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
-						notification::expire))
+						() -> {
+							notNow.run();
+							notification.expire();
+						}))
 				.notify(project);
 	}
 
@@ -246,7 +250,7 @@ public class Notifications {
 	 * cache.
 	 */
 	public static void releaseMetadataStale(Project project, Instant cacheUpdate,
-			Function<Project, Task> taskFunction) {
+			Function<Project, Task> taskFunction, Runnable notNow) {
 
 		String ago = getDurationMessage(cacheUpdate);
 
@@ -263,7 +267,10 @@ public class Notifications {
 									ProgressManager.getInstance().run(taskFunction.apply(project));
 								}))
 				.addAction(NotificationAction.createSimple(MessageBundle.message("notification.not-now"),
-						notification::expire))
+						() -> {
+							notNow.run();
+							notification.expire();
+						}))
 				.notify(project);
 	}
 
