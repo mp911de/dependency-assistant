@@ -35,13 +35,13 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.lang.properties.parsing.PropertiesTokenTypes;
 import com.intellij.lang.properties.psi.Property;
 import com.intellij.lang.properties.psi.PropertyKeyValueFormat;
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.patterns.PsiElementPattern;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.SmartPointerManager;
 import com.intellij.psi.SmartPsiElementPointer;
-import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.util.ProcessingContext;
 
 /**
@@ -56,6 +56,9 @@ import com.intellij.util.ProcessingContext;
  */
 public abstract class VersionContributorSupport extends ReleaseCompletionProvider {
 
+	private static final Key<CompletionPrefix> COMPLETION_PREFIX = Key
+			.create("biz.paluch.dap.assistant.completion.versionPrefix");
+
 	/**
 	 * Matches a caret position inside any property value. Subclasses are expected
 	 * to refine this pattern with format-specific property names.
@@ -67,34 +70,45 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
 			CompletionResultSet result) {
 
-		if (CompletionPrefix.from(parameters, this::getVersionRanges).isPresent()) {
+		CompletionPrefix prefix = CompletionPrefix.from(parameters, this::getVersionRanges);
+		context.put(COMPLETION_PREFIX, prefix);
+		if (prefix.isPresent()) {
 			super.addCompletions(parameters, context, result);
 		}
 	}
 
 	@Override
-	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
+	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, ProcessingContext context,
+			CompletionResultSet result) {
 
 		if (showsFullHistory(parameters)) {
 			return result.withPrefixMatcher("");
 		}
 
-		return result.withPrefixMatcher(CompletionPrefix.from(parameters, this::getVersionRanges).toString());
+		return result.withPrefixMatcher(getCompletionPrefix(context).toString());
 	}
 
 	@Override
-	protected LookupElementBuilder postProcess(CompletionParameters parameters, LookupElementBuilder builder,
-			PsiElement element, ArtifactRelease option) {
+	protected LookupElementBuilder postProcess(CompletionParameters parameters, ProcessingContext context,
+			LookupElementBuilder builder, PsiElement element, ArtifactRelease option) {
 
 		Property property = PropertyUtils.findProperty(element);
 		if (property == null) {
 			return builder;
 		}
 
-		CompletionPrefix prefix = CompletionPrefix.from(parameters, this::getVersionRanges);
+		CompletionPrefix prefix = getCompletionPrefix(context);
 		return wrapperInsertHandler(prefix, property).apply(option, parameters)
 				.map(builder::withInsertHandler)
 				.orElse(builder);
+	}
+
+	private static CompletionPrefix getCompletionPrefix(ProcessingContext context) {
+		CompletionPrefix prefix = context.get(COMPLETION_PREFIX);
+		if (prefix == null) {
+			throw new IllegalStateException("Completion prefix was not initialized");
+		}
+		return prefix;
 	}
 
 	/**
@@ -168,8 +182,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 		 */
 		public static CompletionPrefix from(CompletionParameters parameters,
 				Function<Property, List<TextRange>> getVersionRanges) {
-			return CachedValuesManager.getProjectPsiDependentCache(parameters.getPosition(),
-					it -> from(it, parameters.getOffset(), getVersionRanges));
+			return from(parameters.getPosition(), parameters.getOffset(), getVersionRanges);
 		}
 
 		private static CompletionPrefix from(PsiElement element, int caretOffset,

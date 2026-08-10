@@ -90,13 +90,15 @@ import org.jspecify.annotations.Nullable;
  */
 public class ReleaseCompletionProvider extends CompletionProvider<CompletionParameters> {
 
+	private final NumberFormat format = NumberFormat.getIntegerInstance();
+
 	/**
 	 * Add release completions for the artifact resolved at the current completion
 	 * position.
 	 *
-	 * @param parameters the IntelliJ completion parameters .
-	 * @param context the processing context supplied by IntelliJ .
-	 * @param result the result set to receive release lookup elements .
+	 * @param parameters the IntelliJ completion parameters.
+	 * @param context the processing context supplied by IntelliJ.
+	 * @param result the result set to receive release lookup elements.
 	 */
 	@Override
 	protected void addCompletions(CompletionParameters parameters, ProcessingContext context,
@@ -127,7 +129,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 
 		DependencyRule rule = referenceContext.getRule();
 
-		CompletionResultSet prefixed = getPrefixMatcher(parameters, result);
+		CompletionResultSet prefixed = getPrefixMatcher(parameters, context, result);
 		List<ArtifactRelease> proposals = proposals(parameters, history, referenceContext.getCurrentVersion(), rule,
 				pkg);
 
@@ -162,7 +164,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 				element = element
 						.withInsertHandler(new LookupElementInsertHandler(versionLiteral));
 			}
-			element = postProcess(parameters, element, position, release);
+			element = postProcess(parameters, context, element, position, release);
 			elements.add(element.withAutoCompletionPolicy(autoCompletionPolicy));
 		}
 
@@ -205,7 +207,7 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	 * history regardless of the typed prefix, including the history size when the
 	 * curated first invocation hides releases.
 	 */
-	private static void advertiseShowAllReleases(CompletionParameters parameters,
+	private void advertiseShowAllReleases(CompletionParameters parameters,
 			CompletionResultSet result, int total, int shown) {
 
 		if (showsFullHistory(parameters)) {
@@ -216,8 +218,6 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 		if (!StringUtils.hasText(shortcut)) {
 			return;
 		}
-
-		NumberFormat format = NumberFormat.getIntegerInstance();
 
 		result.addLookupAdvertisement(shown < total
 				? MessageBundle.message("completion.advertisement.show-all-count", shortcut, format.format(total))
@@ -303,6 +303,26 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	}
 
 	/**
+	 * Customize the lookup element for a release option using temporary state from
+	 * the current completion invocation.
+	 *
+	 * <p>The default implementation delegates to
+	 * {@link #postProcess(CompletionParameters, LookupElementBuilder, PsiElement, ArtifactRelease)}.
+	 * State stored in {@code context} is available only during the synchronous
+	 * provider invocation and must not be retained.
+	 * @param parameters the IntelliJ completion parameters.
+	 * @param context the processing context for the current provider invocation.
+	 * @param builder the lookup element builder prepared by this provider.
+	 * @param element the PSI element used to resolve the artifact reference.
+	 * @param option the release option represented by the lookup element.
+	 * @return the lookup element builder to add to the result set.
+	 */
+	protected LookupElementBuilder postProcess(CompletionParameters parameters, ProcessingContext context,
+			LookupElementBuilder builder, PsiElement element, ArtifactRelease option) {
+		return postProcess(parameters, builder, element, option);
+	}
+
+	/**
 	 * Return the result set with the prefix matcher used for release lookup
 	 * elements.
 	 *
@@ -318,6 +338,24 @@ public class ReleaseCompletionProvider extends CompletionProvider<CompletionPara
 	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, CompletionResultSet result) {
 		return showsFullHistory(parameters) ? result.withPrefixMatcher("")
 				: result.withPrefixMatcher(getPrefix(parameters));
+	}
+
+	/**
+	 * Return the result set with the prefix matcher for the current completion
+	 * invocation.
+	 *
+	 * <p>The default implementation delegates to
+	 * {@link #getPrefixMatcher(CompletionParameters, CompletionResultSet)}. State
+	 * stored in {@code context} is available only during the synchronous provider
+	 * invocation and must not be retained.
+	 * @param parameters the IntelliJ completion parameters.
+	 * @param context the processing context for the current provider invocation.
+	 * @param result the original completion result set.
+	 * @return the result set to receive release lookup elements.
+	 */
+	protected CompletionResultSet getPrefixMatcher(CompletionParameters parameters, ProcessingContext context,
+			CompletionResultSet result) {
+		return getPrefixMatcher(parameters, result);
 	}
 
 	/**
