@@ -24,7 +24,6 @@ import java.util.Map;
 
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.PropertyValue;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -211,21 +210,14 @@ class GradlePropertyResolver implements PropertyResolver {
 	@Override
 	public @Nullable String getProperty(String key) {
 
-		PropertyValue element = getPropertyValue(key);
-		if (element != null) {
-			return element.getValue();
-		}
-		return null;
+		Property property = propertyElements.get(key);
+		return property != null && property.isValid() ? property.getValue() : null;
 	}
 
 	@Override
-	public @Nullable PropertyValue getPropertyValue(String key) {
+	public @Nullable Property getPropertyValue(String key) {
 		Property property = propertyElements.get(key);
-		if (property == null) {
-			return null;
-		}
-		PsiElement literal = property.getValueLiteral();
-		return literal != null ? new PropertyValue(property.getKey(), property.getValue(), literal) : null;
+		return property != null && property.isValid() ? property : null;
 	}
 
 	/**
@@ -235,10 +227,11 @@ class GradlePropertyResolver implements PropertyResolver {
 	public @Nullable Property findBindingForValueLiteral(PsiElement literal) {
 
 		for (Property binding : propertyElements.values()) {
-			PsiElement psi = binding.getValueLiteral();
-			if (psi == null) {
+			if (!binding.isValid()) {
 				continue;
 			}
+
+			PsiElement psi = binding.getValueLiteral();
 			if (psi.equals(literal) || PsiTreeUtil.isAncestor(psi, literal, false)
 					|| literal.getManager().areElementsEquivalent(psi, literal)) {
 				return binding;

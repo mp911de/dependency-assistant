@@ -284,6 +284,11 @@ sealed interface KotlinExtraAssignment extends ExtraDeclaration {
 		}
 
 		@Override
+		public boolean isValid() {
+			return getValueLiteral.isValid();
+		}
+
+		@Override
 		public String getValue() {
 			return KtLiterals.from(getValueLiteral()).toString();
 		}

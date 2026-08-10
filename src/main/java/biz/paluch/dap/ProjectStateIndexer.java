@@ -25,7 +25,6 @@ import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.util.StepsProgressIndicator;
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
@@ -34,6 +33,8 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.util.concurrency.AppExecutorUtil;
+import org.jetbrains.concurrency.CancellablePromise;
 
 /**
  * Cross-ecosystem coordinator that owns the collect-complete-store flow for one
@@ -99,18 +100,18 @@ public class ProjectStateIndexer {
 	 * model surfaces without plugin-side scheduling.
 	 * <p>The re-index runs as a non-blocking read action in smart mode, coalesced
 	 * per assistant so bursts of import events collapse into one pass.
+	 *
 	 * @param assistant the assistant whose project state is re-indexed.
+	 * @return
 	 */
-	public void refreshAfterImport(DependencyAssistant assistant) {
+	public CancellablePromise<Void> refreshAfterImport(DependencyAssistant assistant) {
 
-		ReadAction.nonBlocking(() -> {
+		return ReadAction.nonBlocking(() -> {
 			updateAll(assistant);
 		}).inSmartMode(project)
 				.coalesceBy(project, ProjectStateIndexer.class, assistant.getId())
 				.expireWith(project)
-				.executeSynchronously();
-
-		DaemonCodeAnalyzer.getInstance(project).restart("Build system import finished");
+				.submit(AppExecutorUtil.getAppExecutorService());
 	}
 
 	/**

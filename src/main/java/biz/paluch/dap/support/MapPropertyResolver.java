@@ -18,35 +18,35 @@ package biz.paluch.dap.support;
 
 import java.util.Map;
 
-import com.intellij.psi.PsiElement;
 import org.jspecify.annotations.Nullable;
 
 /**
  * {@link PropertyResolver} backed by a {@link Map}.
+ *
+ * <p>Entries whose declaration PSI has been invalidated (for example after a
+ * reparse that dropped the declaring element) are treated as absent rather than
+ * handed out to callers.
  *
  * @author Mark Paluch
  */
 record MapPropertyResolver(Map<String, ? extends Property> properties) implements PropertyResolver {
 
 	@Override
-	public @Nullable PropertyValue getPropertyValue(String key) {
+	public @Nullable Property getPropertyValue(String key) {
 		Property property = properties.get(key);
-		if (property == null) {
-			return null;
-		}
-		PsiElement literal = property.getValueLiteral();
-		return literal != null ? new PropertyValue(property.getKey(), property.getValue(), literal) : null;
+		return property != null && property.isValid() ? property : null;
 	}
 
 	@Override
 	public boolean containsProperty(String key) {
-		return properties.containsKey(key);
+		Property property = properties.get(key);
+		return property != null && property.isValid();
 	}
 
 	@Override
-	public @Nullable String getProperty(String propertyKey) {
-		Property element = properties.get(propertyKey);
-		return element != null ? element.getValue() : null;
+	public @Nullable String getProperty(String key) {
+		Property property = getPropertyValue(key);
+		return property != null ? property.getValue() : null;
 	}
 
 }

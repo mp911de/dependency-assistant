@@ -54,6 +54,12 @@ public class PropertyValue implements Property {
 	}
 
 	@Override
+	public boolean isValid() {
+		PsiElement valueLiteral = getValueLiteral();
+		return valueLiteral != null && valueLiteral.isValid();
+	}
+
+	@Override
 	public PsiElement getValueLiteral() {
 		PsiElement resolved = this.pointer.getElement();
 		return resolved != null ? resolved : this.originalElement;

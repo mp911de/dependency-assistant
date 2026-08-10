@@ -42,6 +42,17 @@ public interface Property {
 	String getValue();
 
 	/**
+	 * Return whether the declaration this property points to is still valid.
+	 * <p>Cached properties can outlive their PSI. Callers that intend to use
+	 * {@link #getValueLiteral()} must skip invalid properties.
+	 * @return {@literal true} if the declaring PSI can still be used;
+	 * {@literal false} otherwise.
+	 */
+	default boolean isValid() {
+		return getValueLiteral().isValid();
+	}
+
+	/**
 	 * Return the PSI element that holds the declared value.
 	 */
 	PsiElement getValueLiteral();

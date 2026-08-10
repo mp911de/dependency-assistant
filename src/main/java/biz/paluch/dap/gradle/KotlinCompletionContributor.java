@@ -27,6 +27,7 @@ import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.openapi.application.Application;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
@@ -90,6 +91,12 @@ public class KotlinCompletionContributor extends CompletionContributor {
 	private static final PsiElementPattern.Capture<PsiElement> VERSION_POSITION = PlatformPatterns.psiElement()
 			.with(VERSION_POSITION_CONDITION)
 			.inside(PlatformPatterns.psiFile().with(IS_GRADLE_KOTLIN_DSL_FILE));
+
+	// something complained about a missing KotlinCompletionContributor(Application
+	// application) constructor...
+	public KotlinCompletionContributor(Application application) {
+		extend(CompletionType.BASIC, VERSION_POSITION, provider);
+	}
 
 	public KotlinCompletionContributor() {
 		extend(CompletionType.BASIC, VERSION_POSITION, provider);
