@@ -42,16 +42,16 @@ public class ArtifactVersionChange {
 
 	private final Versioned from;
 
-	private final ArtifactVersion version;
+	private final ArtifactVersion to;
 
-	ArtifactVersionChange(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion version) {
-		this(artifactId, Versioned.of(from), version);
+	ArtifactVersionChange(ArtifactId artifactId, ArtifactVersion from, ArtifactVersion to) {
+		this(artifactId, Versioned.of(from), to);
 	}
 
-	private ArtifactVersionChange(ArtifactId artifactId, Versioned from, ArtifactVersion version) {
+	private ArtifactVersionChange(ArtifactId artifactId, Versioned from, ArtifactVersion to) {
 		this.artifactId = artifactId;
 		this.from = from;
-		this.version = version;
+		this.to = to;
 	}
 
 	/**
@@ -91,18 +91,18 @@ public class ArtifactVersionChange {
 	 *
 	 * @return the target version.
 	 */
-	public ArtifactVersion version() {
-		return version;
+	public ArtifactVersion to() {
+		return to;
 	}
 
 	/**
-	 * Return the {@link #version()} as String.
+	 * Return the {@link #to()} as String.
 	 *
 	 * @return the string representation of the target version.
-	 * @see #version()
+	 * @see #to()
 	 */
 	public String versionAsString() {
-		return version.toString();
+		return to.toString();
 	}
 
 	/**
@@ -130,7 +130,7 @@ public class ArtifactVersionChange {
 		}
 
 		ArtifactVersion source = from.getVersion();
-		return source.scheme() != version.scheme() || !version.hasSameMajor(source);
+		return source.scheme() != to.scheme() || !to.hasSameMajor(source);
 	}
 
 	public @Nullable UpgradeStrategy getUpgradeStrategy() {
@@ -139,7 +139,7 @@ public class ArtifactVersionChange {
 			return null;
 		}
 
-		VersionAge age = VersionAge.between(from, () -> version);
+		VersionAge age = VersionAge.between(from, () -> to);
 
 		switch (age) {
 		case NEWER_MAJOR -> {
@@ -171,18 +171,18 @@ public class ArtifactVersionChange {
 		if (!ObjectUtils.nullSafeEquals(from, that.from)) {
 			return false;
 		}
-		return ObjectUtils.nullSafeEquals(version, that.version);
+		return ObjectUtils.nullSafeEquals(to, that.to);
 	}
 
 	@Override
 	public int hashCode() {
-		return ObjectUtils.nullSafeHash(artifactId, from, version);
+		return ObjectUtils.nullSafeHash(artifactId, from, to);
 	}
 
 	@Override
 	public String toString() {
 		return "ArtifactVersionChange[" +
-				artifactId + "@" + from + " -> " + version + ']';
+				artifactId + "@" + from + " -> " + to + ']';
 	}
 
 }

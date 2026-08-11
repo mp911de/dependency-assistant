@@ -138,7 +138,7 @@ class UpdatePackageJsonFile {
 	}
 
 	private static @Nullable String render(NpmVersionExpression expression, String rawValue, DependencyUpdate update) {
-		return render(expression, rawValue, update.version());
+		return render(expression, rawValue, update.to());
 	}
 
 	static @Nullable String render(NpmVersionExpression expression, String rawValue,

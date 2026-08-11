@@ -80,7 +80,7 @@ class UpdateDependencyVersionQuickFix extends LocalQuickFixOnPsiElement
 	protected UpdateDependencyVersionQuickFix(PsiElement element, UpgradeStrategy strategy,
 			ArtifactReferenceContext context, DependencyUpdate update) {
 		this(element, strategy, context.getDependencyContext(), update, context.getDeclaration(),
-				context.getStatus(update.version()));
+				context.getStatus(update.to()));
 	}
 
 	protected UpdateDependencyVersionQuickFix(PsiElement element, UpgradeStrategy strategy,

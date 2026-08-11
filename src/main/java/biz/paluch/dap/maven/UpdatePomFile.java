@@ -103,7 +103,7 @@ class UpdatePomFile {
 			return;
 		}
 
-		String value = update.version().toString();
+		String value = update.to().toString();
 		versionTag.getValue().setText(value);
 	}
 

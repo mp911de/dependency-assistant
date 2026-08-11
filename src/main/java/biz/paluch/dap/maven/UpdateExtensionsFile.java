@@ -78,13 +78,13 @@ class UpdateExtensionsFile {
 			return;
 		}
 
-		String value = update.version().toString();
+		String value = update.to().toString();
 		versionTag.getValue().setText(value);
 	}
 
 	private void apply(XmlTag root, DependencyUpdate update) {
 
-		String newVersion = update.version().toString();
+		String newVersion = update.to().toString();
 		updateDeclaration(root, update.artifactId(), newVersion);
 	}
 

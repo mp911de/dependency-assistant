@@ -92,7 +92,7 @@ class UpdateGitHubWorkflowFile {
 
 		for (DependencyUpdate update : updates) {
 
-			if (!artifactId.equals(update.artifactId()) || !(update.version() instanceof GitVersion gitVersion)) {
+			if (!artifactId.equals(update.artifactId()) || !(update.to() instanceof GitVersion gitVersion)) {
 				continue;
 			}
 
@@ -110,7 +110,7 @@ class UpdateGitHubWorkflowFile {
 			return;
 		}
 
-		if (!(update.version() instanceof GitVersion gitVersion)) {
+		if (!(update.to() instanceof GitVersion gitVersion)) {
 			return;
 		}
 

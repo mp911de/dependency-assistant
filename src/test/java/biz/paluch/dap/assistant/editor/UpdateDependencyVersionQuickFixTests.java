@@ -115,7 +115,7 @@ class UpdateDependencyVersionQuickFixTests {
 		DependencyUpdate update = DependencyUpdate.from(declaration, Release.of(targetVersion));
 		VersionStatus status = VersionStatus.of(referenceContext.getEvaluator(),
 				declaration.getVersion(),
-				update.version(), targetVulnerabilities);
+				update.to(), targetVulnerabilities);
 		return new UpdateDependencyVersionQuickFix(declaration.getVersionLiteral(), strategy, context,
 				update, declaration, status);
 	}

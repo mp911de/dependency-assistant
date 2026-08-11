@@ -383,15 +383,15 @@ class UpgradeReview {
 	 *
 	 * @throws IllegalStateException if an armed row has no target version.
 	 */
-	Map<PlannedUpgrade, ArtifactVersion> getArmedUpgrades() {
+	Map<PlannedUpgrade, ArtifactVersion> getSelectedUpgrades() {
 
-		Map<PlannedUpgrade, ArtifactVersion> armed = new LinkedHashMap<>();
+		Map<PlannedUpgrade, ArtifactVersion> selected = new LinkedHashMap<>();
 		for (TableRow row : getCandidates()) {
 			if (isApplyUpdate(row)) {
-				armed.put(row, getRequiredUpdateTo(row));
+				selected.put(row, getRequiredUpdateTo(row));
 			}
 		}
-		return armed;
+		return selected;
 	}
 
 	/**

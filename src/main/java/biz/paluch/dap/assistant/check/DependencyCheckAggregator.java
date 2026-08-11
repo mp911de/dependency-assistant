@@ -309,7 +309,7 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 					BranchSource.of(entry.declarationSites().iterator().next().file()), versioned, metadata);
 			DependencyRule rule = evaluator.resolve(resolutionContext);
 
-			VulnerabilityRepository vulnerabilities = getVulnerabilities(pkg, scanner);
+			VulnerabilityRepository vulnerabilities = version -> stateService.getVulnerabilities(pkg, version);
 			ProjectDependencyContext next = entry.contexts().iterator().next();
 			DependencyAssistant assistant = next.getAssistant();
 
@@ -324,16 +324,6 @@ public class DependencyCheckAggregator implements Sequence<PackageIdentity> {
 		upgrades.sort(Comparator.comparing(DependencyUpgradeCandidate::getArtifactId, ArtifactId.BY_ARTIFACT_ID));
 
 		return new DependencyCheckResult(upgrades, FileScope.of(new ArrayList<>(files)), errors);
-	}
-
-	private VulnerabilityRepository getVulnerabilities(PackageIdentity pkg,
-			VulnerabilityScanner scanner) {
-
-		if (!scanner.isPresent()) {
-			return VulnerabilityRepository.empty();
-		}
-
-		return version -> stateService.getVulnerabilities(pkg, version);
 	}
 
 	private static List<String> getErrors(Map<?, ReleaseLookupResult> map) {

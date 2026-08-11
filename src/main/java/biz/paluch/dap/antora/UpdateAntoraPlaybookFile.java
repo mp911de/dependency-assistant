@@ -91,7 +91,7 @@ class UpdateAntoraPlaybookFile {
 		}
 
 		if (!bundleUrl.toArtifactId().equals(update.artifactId())
-				|| !(update.version() instanceof GitVersion gitVersion)) {
+				|| !(update.to() instanceof GitVersion gitVersion)) {
 			return;
 		}
 
@@ -153,7 +153,7 @@ class UpdateAntoraPlaybookFile {
 
 		for (DependencyUpdate update : updates) {
 
-			if (!artifactId.equals(update.artifactId()) || !(update.version() instanceof GitVersion gitVersion)) {
+			if (!artifactId.equals(update.artifactId()) || !(update.to() instanceof GitVersion gitVersion)) {
 				continue;
 			}
 

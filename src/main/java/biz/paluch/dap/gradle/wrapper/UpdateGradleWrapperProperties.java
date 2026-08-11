@@ -101,7 +101,7 @@ class UpdateGradleWrapperProperties {
 
 		for (int i = ranges.size() - 1; i >= 0; i--) {
 			TextRange rangeInProperty = ranges.get(i).shiftLeft(propertyStart);
-			updatedText = rangeInProperty.replace(updatedText, update.version().toString());
+			updatedText = rangeInProperty.replace(updatedText, update.to().toString());
 		}
 
 		property.setValue(updatedText.substring(valueStart), PropertyKeyValueFormat.FILE);
@@ -125,13 +125,13 @@ class UpdateGradleWrapperProperties {
 
 	private static @Nullable String resolveSha(Property property, DependencyUpdate update) {
 
-		if (update.version() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
+		if (update.to() instanceof GitVersion gitVersion && gitVersion.hasSha()) {
 			return gitVersion.getRequiredSha();
 		}
 
 		Cache cache = StateService.getInstance(property.getProject()).getCache();
 		for (CachedRelease release : cache.getCachedReleases(update.artifactId())) {
-			if (update.version().compareTo(release.version()) == 0) {
+			if (update.to().compareTo(release.version()) == 0) {
 				return release.sha();
 			}
 		}

@@ -17,12 +17,19 @@
 package biz.paluch.dap.assistant;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.Sequence;
+import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.openapi.vfs.VirtualFile;
 
 /**
@@ -38,7 +45,7 @@ import com.intellij.openapi.vfs.VirtualFile;
  * @author Mark Paluch
  * @see AppliedDependencyUpdate
  */
-public class AppliedUpdates {
+public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 
 	private final Set<AppliedDependencyUpdate> applied = new TreeSet<>();
 
@@ -47,17 +54,38 @@ public class AppliedUpdates {
 	/**
 	 * Record an applied update with its governing rule, flagging it for undo when
 	 * the applied version is out of bounds.
-	 *
-	 * @param file the file the update was written to.
-	 * @param update the applied update.
-	 * @param rule the dependency's governing rule.
 	 */
-	public void record(VirtualFile file, DependencyUpdate update, DependencyRule rule) {
+	public void record(VirtualFile file, DependencyUpdate update, DependencyRule rule,
+			DependencyPresentation presentation) {
 
-		AppliedDependencyUpdate summary = AppliedDependencyUpdate.from(update, rule);
+		AppliedDependencyUpdate summary = AppliedDependencyUpdate.from(update, rule, presentation);
 		applied.add(summary);
 		if (summary.isFlagged()) {
 			outOfBounds.add(new Reversible(file, update));
+		}
+	}
+
+	/**
+	 * Record an applied update with its governing rule, flagging it for undo when
+	 * the applied version is out of bounds.
+	 */
+	public void record(Iterable<VirtualFile> files, List<DependencyUpdate> updates, String displayName) {
+		for (DependencyUpdate update : updates) {
+			record(files, update, displayName);
+		}
+	}
+
+	/**
+	 * Record an applied update with its governing rule, flagging it for undo when
+	 * the applied version is out of bounds.
+	 */
+	public void record(Iterable<VirtualFile> files, DependencyUpdate update, String displayName) {
+		AppliedDependencyUpdate summary = AppliedDependencyUpdate.from(update, displayName);
+		applied.add(summary);
+		if (summary.isFlagged()) {
+			for (VirtualFile file : files) {
+				outOfBounds.add(new Reversible(file, update));
+			}
 		}
 	}
 
@@ -76,10 +104,71 @@ public class AppliedUpdates {
 		return outOfBounds.stream().map(Reversible::file).toList();
 	}
 
+	public String renderOutOfBounds(String heading,
+			Collection<AppliedDependencyUpdate> entries) {
+
+		HtmlChunk.Element ul = HtmlChunk.ul();
+
+		for (AppliedDependencyUpdate update : entries) {
+			ul = ul.children(HtmlChunk.li()
+					.addText(MessageBundle.message("notification.dependencies-updates.out-of-bounds.entry",
+							update.displayName(), update.getTargetVersion())));
+		}
+
+		return heading + ul;
+	}
+
+	public String renderApplied() {
+
+		HtmlChunk.Element ul = HtmlChunk.ul();
+		for (AppliedDependencyUpdate update : this) {
+
+			HtmlChunk li;
+			if (update.getTargetVersion().isNewer(update.getFromVersion())) {
+				li = HtmlChunk.li().addText(MessageBundle.message("notification.dependencies-updates.upgrade",
+						update.displayName(), update.getTargetVersion()));
+			} else if (update.getFromVersion().isNewer(update.getTargetVersion())) {
+				li = HtmlChunk.li().addText(MessageBundle.message("notification.dependencies-updates.downgrade",
+						update.displayName(), update.getTargetVersion()));
+			} else {
+				li = HtmlChunk.li().addText(MessageBundle.message("notification.dependencies-updates.update",
+						update.displayName(), update.getTargetVersion()));
+			}
+			ul = ul.children(li);
+		}
+
+		return ul.toString();
+	}
+
+	@Override
+	public Iterator<AppliedDependencyUpdate> iterator() {
+		return applied.iterator();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return applied.isEmpty();
+	}
+
+	public int size() {
+		return applied.size();
+	}
+
+	@Override
+	public List<AppliedDependencyUpdate> toList() {
+		return List.copyOf(applied);
+	}
+
+	@Override
+	public String toString() {
+		return stream().map(it -> "%s %s".formatted(it.displayName(), it.getTargetVersion()))
+				.collect(Collectors.joining(", "));
+	}
+
 	record Reversible(VirtualFile file, DependencyUpdate update) {
 
 		DependencyUpdate reverse() {
-			return new DependencyUpdate(update.artifactId(), update.version(), update.from().getVersion(),
+			return new DependencyUpdate(update.artifactId(), update.to(), update.from().getVersion(),
 					update.declarationSources(), update.versionSources());
 		}
 

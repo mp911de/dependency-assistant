@@ -18,15 +18,12 @@ package biz.paluch.dap.assistant.review;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.artifact.VersionSource;
-import biz.paluch.dap.assistant.AppliedDependencyUpdate;
 import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.fixtures.TestAssistant;
 import biz.paluch.dap.fixtures.TestCandidates;
@@ -179,25 +176,6 @@ class UpgradeReviewTests {
 		review.applyStrategyToAll(UpgradeReview.StrategySelection.LATEST);
 
 		assertThat(review.getUpdateTo(group)).hasToString("6.2.1");
-	}
-
-	@Test
-	void appliedGroupUpdatesCollapseToOneNotificationEntry() {
-
-		TableRow core = candidate(SPRING_CORE, "6.2.0", VersionSource.property("spring.version"));
-		TableRow test = candidate(SPRING_TEST, "6.2.0");
-		GroupRow group = GroupRow.governed(core, test);
-
-		UpgradeReview review = new UpgradeReview(group);
-		review.setVersion(group, ArtifactVersion.of("6.2.1"));
-
-		Set<AppliedDependencyUpdate> applied = new TreeSet<>();
-		for (DependencyUpdate update : review.getSelectedUpdates()) {
-			applied.add(AppliedDependencyUpdate.from(update, group.getRule()));
-		}
-
-		assertThat(review.getSelectedUpdates()).hasSize(2);
-		assertThat(applied).hasSize(1);
 	}
 
 	@Test

@@ -167,8 +167,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 	}
 
 	/**
-	 * OK and Cancel stay on the right; OK still applies the armed updates directly.
-	 * The transfer button is left-aligned via {@link #createLeftSideActions()}.
+	 * OK and Cancel stay on the right.
 	 */
 	@Override
 	protected Action[] createActions() {
@@ -232,7 +231,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		this.components.stopEditing();
 
-		Map<PlannedUpgrade, ArtifactVersion> upgrades = review.getArmedUpgrades();
+		Map<PlannedUpgrade, ArtifactVersion> upgrades = review.getSelectedUpgrades();
 		if (upgrades.isEmpty()) {
 			return;
 		}
@@ -588,7 +587,6 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		this.components.stopEditing();
 
-		// TODO: Capture dependency name for notifications.
 		List<DependencyUpdate> updates = review.getSelectedUpdates();
 		if (updates.isEmpty()) {
 			restartHighlighting();

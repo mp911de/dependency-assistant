@@ -79,7 +79,7 @@ class UpdateGradleFile {
 
 	private void applyUpdate(PsiFile buildFile, GradlePropertyResolver propertyResolver, DependencyUpdate update) {
 
-		String newVersion = update.version().toString();
+		String newVersion = update.to().toString();
 
 		for (VersionSource source : update.versionSources()) {
 
@@ -106,7 +106,7 @@ class UpdateGradleFile {
 	 */
 	public void applyUpdate(PsiElement literal, DependencyUpdate update) {
 
-		String newVersion = update.version().toString();
+		String newVersion = update.to().toString();
 
 		switch (literal) {
 		case PropertyValueImpl propertyValue -> {

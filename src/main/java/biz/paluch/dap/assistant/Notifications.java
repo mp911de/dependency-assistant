@@ -146,7 +146,7 @@ public class Notifications {
 	 * @param undo reverses the whole batch through the platform undo.
 	 * @param undoFlagged reverse-applies only the flagged entries.
 	 */
-	public static void updatesApplied(Project project, Collection<AppliedDependencyUpdate> updates,
+	public static void updatesApplied(Project project, AppliedUpdates updates,
 			Runnable undo, Runnable undoFlagged) {
 
 		if (updates.isEmpty()) {
@@ -163,38 +163,34 @@ public class Notifications {
 		notification.notify(project);
 	}
 
-	private static Notification updatesApplied(Collection<AppliedDependencyUpdate> updates) {
+	private static Notification updatesApplied(AppliedUpdates updates) {
 
-		StringBuilder message = new StringBuilder();
-		renderApplied(updates, message);
-
-		return new Notification(
-				UPGRADE_NOTIFICATIONS,
-				MessageBundle.message("notification.dependencies-updates", updates.size()), message.toString(),
+		return new Notification(UPGRADE_NOTIFICATIONS,
+				MessageBundle.message("notification.dependencies-updates", updates.size()), updates.toString(),
 				NotificationType.INFORMATION);
 	}
 
-	private static Notification updatesAppliedFlagged(Collection<AppliedDependencyUpdate> updates,
+	private static Notification updatesAppliedFlagged(AppliedUpdates updates,
 			Collection<AppliedDependencyUpdate> flagged,
 			Runnable undoFlagged) {
 
 		StringBuilder message = new StringBuilder();
-		renderApplied(updates, message);
+		message.append(updates);
 
 		List<AppliedDependencyUpdate> outOfBounds = flagged.stream()
-				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.OUT_OF_BOUNDS).toList();
+				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.COMPLIANCE).toList();
 		if (!outOfBounds.isEmpty()) {
-			renderOutOfBounds(message,
+			message.append(updates.renderOutOfBounds(
 					MessageBundle.message("notification.dependencies-updates.out-of-bounds", outOfBounds.size()),
-					outOfBounds);
+					outOfBounds));
 		}
 
 		List<AppliedDependencyUpdate> majorCrossings = flagged.stream()
 				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.MAJOR_CROSSING).toList();
 		if (!majorCrossings.isEmpty()) {
-			renderOutOfBounds(message,
+			message.append(updates.renderOutOfBounds(
 					MessageBundle.message("notification.dependencies-updates.major-crossing", majorCrossings.size()),
-					majorCrossings);
+					majorCrossings));
 		}
 
 		Notification notification = new Notification(
@@ -211,39 +207,6 @@ public class Notifications {
 		return notification;
 	}
 
-	private static void renderOutOfBounds(StringBuilder message, String heading,
-			Collection<AppliedDependencyUpdate> entries) {
-
-		message.append(heading);
-		message.append("<ul>");
-		for (AppliedDependencyUpdate update : entries) {
-			message.append("<li>")
-					.append(MessageBundle.message("notification.dependencies-updates.out-of-bounds.entry",
-							update.displayLabel(), update.to()))
-					.append("</li>");
-		}
-		message.append("</ul>");
-	}
-
-	private static void renderApplied(Collection<AppliedDependencyUpdate> updates, StringBuilder message) {
-
-		message.append("<ul>");
-		for (AppliedDependencyUpdate update : updates) {
-			message.append("<li>");
-			if (update.to().isNewer(update.from())) {
-				message.append(MessageBundle.message("notification.dependencies-updates.upgrade",
-						update.displayLabel(), update.to()));
-			} else if (update.from().isNewer(update.to())) {
-				message.append(MessageBundle.message("notification.dependencies-updates.downgrade",
-						update.displayLabel(), update.to()));
-			} else {
-				message.append(MessageBundle.message("notification.dependencies-updates.update",
-						update.displayLabel(), update.to()));
-			}
-			message.append("</li>");
-		}
-		message.append("</ul>");
-	}
 
 	/**
 	 * Notify the user that release metadata is probably old and offer to update the

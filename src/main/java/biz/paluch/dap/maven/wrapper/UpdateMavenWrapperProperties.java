@@ -110,7 +110,7 @@ class UpdateMavenWrapperProperties {
 
 		for (int i = ranges.size() - 1; i >= 0; i--) {
 			TextRange rangeInProperty = ranges.get(i).shiftLeft(propertyStart);
-			updatedText = rangeInProperty.replace(updatedText, update.version().toString());
+			updatedText = rangeInProperty.replace(updatedText, update.to().toString());
 		}
 
 		property.setValue(updatedText.substring(valueStart), PropertyKeyValueFormat.FILE);

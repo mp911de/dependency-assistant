@@ -19,13 +19,16 @@ package biz.paluch.dap.assistant.review;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
+import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.artifact.ArtifactVersion;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.assistant.DependencyPresentationFactory;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
@@ -83,22 +86,23 @@ class AssistantReviewActions {
 
 			indicator.checkCanceled();
 			indicator.setText2(file.getName());
-			return applyToSupportingContexts(assistants, file, fileUpdates, context -> {
+			return applyToSupportingContexts(assistants, file, fileUpdates, (context, fileUpdate) -> {
 
-				for (DependencyUpdate fileUpdate : fileUpdates) {
+				ProjectMetadata metadata = metadataService.getMetadata(fileUpdate.artifactId());
+				DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(fileUpdate.artifactId(),
+						fileUpdate.declarationSources(), BranchSource.of(file), context.getProjectVersion(),
+						metadata));
 
-					ProjectMetadata metadata = metadataService.getMetadata(fileUpdate.artifactId());
-					DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(fileUpdate.artifactId(),
-							fileUpdate.declarationSources(), BranchSource.of(file), context.getProjectVersion(),
-							metadata));
+				PackageIdentity pkg = PackageIdentity.of(fileUpdate.artifactId(), context.getPackageSystem());
+				DependencyPresentation presentation = DependencyPresentationFactory.create(pkg,
+						metadata.getProjectName(), rule, context.getInterfaceAssistant());
 
-					applied.record(file.getVirtualFile(), fileUpdate, rule);
-				}
+				applied.record(file.getVirtualFile(), fileUpdate, rule, presentation);
 			});
 		}).withGlobalUndo(undoConfirmationPolicy).updateBuildFiles(files, updates);
 
 		Runnable undoFlagged = () -> new BuildActionDelegate(project,
-				(file, fileUpdates) -> applyToSupportingContexts(assistants, file, fileUpdates, context -> {
+				(file, fileUpdates) -> applyToSupportingContexts(assistants, file, fileUpdates, (context, update) -> {
 				})).updateBuildFiles(applied.getReverseFiles(), applied.getReverse());
 
 		Runnable undo = () -> {
@@ -109,7 +113,7 @@ class AssistantReviewActions {
 			}
 		};
 
-		Notifications.updatesApplied(project, applied.applied(), undo, undoFlagged);
+		Notifications.updatesApplied(project, applied, undo, undoFlagged);
 	}
 
 	public void reportApplyError(Throwable error) {
@@ -127,7 +131,7 @@ class AssistantReviewActions {
 	 * context, invoking {@code afterApply} per applied context.
 	 */
 	private static UpgradeResult applyToSupportingContexts(List<DependencyAssistant> assistants, PsiFile file,
-			List<DependencyUpdate> fileUpdates, Consumer<ProjectDependencyContext> afterApply) {
+			List<DependencyUpdate> fileUpdates, BiConsumer<ProjectDependencyContext, DependencyUpdate> afterApply) {
 
 		UpgradeResult result = UpgradeResult.none();
 
@@ -142,8 +146,14 @@ class AssistantReviewActions {
 				continue;
 			}
 
-			result = result.merge(context.applyUpdates(file, fileUpdates));
-			afterApply.accept(context);
+			for (DependencyUpdate fileUpdate : fileUpdates) {
+				UpgradeResult fileResult = context.applyUpdates(file, List.of(fileUpdate));
+				fileResult = fileResult.merge(fileResult);
+				if (fileResult.hasChanges()) {
+					afterApply.accept(context, fileUpdate);
+				}
+			}
+
 		}
 		return result;
 	}

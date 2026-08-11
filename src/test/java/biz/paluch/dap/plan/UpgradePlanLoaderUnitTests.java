@@ -63,7 +63,7 @@ class UpgradePlanLoaderUnitTests {
 		DependencyUpdate update = planItem.createUpdates().getFirst();
 		assertThat(update.artifactId()).isEqualTo(ArtifactId.of("org.springframework", "spring-core"));
 		assertThat(update.from().getVersion()).isEqualTo("6.2.1");
-		assertThat(update.version()).isEqualTo("6.2.2");
+		assertThat(update.to()).isEqualTo("6.2.2");
 		assertThat(update.declarationSources()).containsExactly(DeclarationSource.dependency());
 		assertThat(update.versionSources()).containsExactly(VersionSource.property("spring.version"));
 	}

@@ -327,7 +327,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 
 		@Override
 		public String getName() {
-			return MessageBundle.message(messageKey(), update.version().toString());
+			return MessageBundle.message(messageKey(), update.to().toString());
 		}
 
 		@Override
