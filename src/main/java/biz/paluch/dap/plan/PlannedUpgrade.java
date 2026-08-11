@@ -45,9 +45,11 @@ public interface PlannedUpgrade {
 	 * the artifact id for a single upgrade, the governing rule's dependency name,
 	 * or the derived group name for a collapsed group.
 	 *
-	 * @return the stable plan-item name; never {@literal null} or empty.
+	 * @return the stable plan-item name.
 	 */
 	String getName();
+
+	String getDependencyName();
 
 	/**
 	 * Return the upgrades this planned upgrade contributes, in update order.

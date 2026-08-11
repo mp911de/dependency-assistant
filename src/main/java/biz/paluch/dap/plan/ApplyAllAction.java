@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
+import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.ide.util.PropertiesComponent;
@@ -44,7 +45,6 @@ import org.jspecify.annotations.Nullable;
 public class ApplyAllAction extends UpgradePlanAction {
 
 	private static final Logger LOG = Logger.getInstance(ApplyAllAction.class);
-
 
 	@Override
 	void perform(Project project) {
@@ -88,7 +88,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 			private @Nullable Runnable unshelve;
 
-			private int applied;
+			private AppliedUpdates appliedUpdates = new AppliedUpdates();
 
 			@Override
 			public void run(ProgressIndicator indicator) {
@@ -103,7 +103,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 							unshelve = () -> service.getVcs().unshelve(shelf);
 						}
 					}
-					applied = applier.apply(toApply, indicator);
+					appliedUpdates = applier.apply(toApply, indicator);
 				} catch (VcsException e) {
 					throw new RuntimeException(e);
 				}
@@ -111,7 +111,7 @@ public class ApplyAllAction extends UpgradePlanAction {
 
 			@Override
 			public void onSuccess() {
-				notifyDone(service, items, applied, unshelve);
+				notifyDone(service, items, appliedUpdates, unshelve);
 			}
 
 			@Override
@@ -172,7 +172,8 @@ public class ApplyAllAction extends UpgradePlanAction {
 	 * Notify that the plan was applied, offering to restore a shelf created for the
 	 * run.
 	 */
-	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, int applied, @Nullable Runnable unshelve) {
+	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, AppliedUpdates applied,
+			@Nullable Runnable unshelve) {
 		new PlanNotifications().applied(service.getProject(), false, items, applied, null, unshelve);
 	}
 

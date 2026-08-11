@@ -17,6 +17,7 @@
 package biz.paluch.dap.plan;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
@@ -63,7 +64,7 @@ class FileUpdateEngine {
 	 * boundary is created. Changed documents are saved, so the caller's write
 	 * action must be held on the EDT: saving posts to the EDT and waits for it.
 	 */
-	UpgradeResult apply(FileScope scope, List<DependencyUpdate> updates) {
+	UpgradeResult apply(FileScope scope, List<DependencyUpdate> updates, Consumer<DependencyUpdate> afterApply) {
 
 		ApplicationManager.getApplication().assertWriteAccessAllowed();
 
@@ -82,11 +83,20 @@ class FileUpdateEngine {
 			if (psiFile == null) {
 				throw new IllegalStateException("Cannot resolve build file " + file.getPresentableUrl());
 			}
-			applied = applied.merge(applyToFile(psiFile, psiFile, updates));
-			if (document != null) {
-				documentManager.commitDocument(document);
-				fileDocumentManager.saveDocument(document);
+
+			for (DependencyUpdate update : updates) {
+				UpgradeResult result = applyToFile(psiFile, psiFile, updates);
+				applied = applied.merge(result);
+				if (document != null) {
+					documentManager.commitDocument(document);
+					fileDocumentManager.saveDocument(document);
+
+					if (result.hasChanges()) {
+						afterApply.accept(update);
+					}
+				}
 			}
+
 		}
 
 		return applied;

@@ -18,12 +18,12 @@ package biz.paluch.dap.plan;
 
 import java.util.Collection;
 
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.util.ThrowableNotNullFunction;
 import com.intellij.openapi.vcs.VcsException;
+import com.intellij.util.ThrowableConsumer;
 
 /**
  * Transaction boundary for applying an Upgrade Plan.
@@ -37,12 +37,12 @@ interface PlanUpdateApplier {
 	 *
 	 * @param plan the plan items to apply in plan order.
 	 * @param indicator the progress and cancellation indicator for the run.
-	 * @return the number of plan items that changed files and left the plan.
+	 * @return the applied updates.
 	 * @throws VcsException if a required version-control operation fails.
 	 * @implNote Implementations run on the invoking background thread and own their
 	 * transaction-specific write boundary. They do not schedule UI work.
 	 */
-	int apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException;
+	AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException;
 
 	/**
 	 * Run the given consumer on each item in the given collection.
@@ -50,17 +50,15 @@ interface PlanUpdateApplier {
 	 * @param items the collection of items to process.
 	 * @param indicator the progress and cancellation indicator for the run.
 	 * @param consumer the function to apply to each item.
-	 * @return the number of items that resulted in changes.
 	 * @throws VcsException if a required version-control operation fails.
 	 */
-	default int doWithItems(Collection<UpgradePlanItem> items, ProgressIndicator indicator,
-			ThrowableNotNullFunction<UpgradePlanItem, UpgradeResult, VcsException> consumer) throws VcsException {
+	default void doWithItems(Collection<UpgradePlanItem> items, ProgressIndicator indicator,
+			ThrowableConsumer<UpgradePlanItem, VcsException> consumer) throws VcsException {
 
 		if (items.isEmpty()) {
-			return 0;
+			return;
 		}
 
-		int appliedCount = 0;
 		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, items.size());
 		for (UpgradePlanItem item : items) {
 
@@ -69,13 +67,9 @@ interface PlanUpdateApplier {
 			indicator.checkCanceled();
 			indicator.setText2(progress);
 
-			UpgradeResult result = consumer.fun(item);
-			if (result.hasChanges()) {
-				appliedCount++;
-			}
+			consumer.consume(item);
 			steps.nextStep();
 		}
-		return appliedCount;
 	}
 
 }

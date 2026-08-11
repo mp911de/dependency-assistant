@@ -16,7 +16,11 @@
 
 package biz.paluch.dap.plan;
 
-import biz.paluch.dap.support.UpgradeResult;
+import java.util.List;
+
+import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -44,24 +48,30 @@ class UpdateApplier implements PlanUpdateApplier {
 	}
 
 	@Override
-	public int apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException {
+	public AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException {
 
-		return doWithItems(plan.toList(), indicator, it -> {
+		AppliedUpdates appliedUpdates = new AppliedUpdates();
+
+		FileScope scope = plan.getScope();
+		doWithItems(plan.toList(), indicator, it -> {
 
 			String commandName = MessageBundle.message("plan.apply.upgrade", it.getDisplayName(),
 					it.getToVersion());
 
-			return WriteCommandAction.writeCommandAction(service.getProject())
+			WriteCommandAction.writeCommandAction(service.getProject())
 					.withName(commandName)
 					.withGlobalUndo()
-					.compute(() -> {
-						UpgradeResult result = engine.apply(plan.getScope(), it.createUpdates());
-						if (result.hasChanges()) {
+					.run(() -> {
+						List<DependencyUpdate> updates = it.createUpdates();
+
+						engine.apply(scope, updates, applied -> {
+							appliedUpdates.record(scope, applied, it.getDisplayName());
 							service.removeItem(it);
-						}
-						return result;
+						});
 					});
 		});
+
+		return appliedUpdates;
 	}
 
 }

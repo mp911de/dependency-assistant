@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -33,9 +34,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Apply all planned upgrades and create one commit per upgrade. When touched
  * files already carry uncommitted changes the run offers to shelve them and
- * continue on the clean scope; a clean scope falls back to a confirmation with
- * a "do not ask again" option. Disabled when the project has no version control
- * to commit into.
+ * continue on the clean scope.
  *
  * @author Mark Paluch
  */
@@ -60,8 +59,6 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 	ApplyDecision confirm(Project project, int itemCount, FileScope dirty) {
 
 		if (!dirty.isEmpty()) {
-			// applying on top of a dirty scope would fold foreign edits into the
-			// per-item commits; shelving is the only way to continue
 			boolean shelve = MessageDialogBuilder.yesNo(MessageBundle.message("plan.commit.dirty.title"),
 					MessageBundle.message("plan.commit.dirty.message", dirty.getPresentablePaths()))
 					.yesText(MessageBundle.message("plan.dirty.shelve"))
@@ -89,19 +86,14 @@ public class ApplyAllAndCommitAction extends ApplyAllAction {
 		}
 	}
 
-	/**
-	 * Notify that the upgrades were applied and committed.
-	 */
 	@Override
-	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, int applied, @Nullable Runnable unshelve) {
+	void notifyDone(UpgradePlanService service, List<UpgradePlanItem> items, AppliedUpdates applied,
+			@Nullable Runnable unshelve) {
 		new PlanNotifications().applied(service.getProject(), true, items, applied,
 				service.getVcs().canPush() ? () -> push(service) : null, unshelve);
 	}
 
-	// the push support queues its own background task and posts its own result
-	// notification; only the synchronous "nothing to push to" case surfaces here
 	private static void push(UpgradePlanService service) {
-
 		try {
 			service.getVcs().push();
 		} catch (IllegalStateException e) {

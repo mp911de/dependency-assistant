@@ -18,7 +18,10 @@ package biz.paluch.dap.plan;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
+import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.MessageBundle;
@@ -53,25 +56,31 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 	}
 
 	@Override
-	public int apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException {
+	public AppliedUpdates apply(UpgradePlan plan, ProgressIndicator indicator) throws VcsException {
 
+		AppliedUpdates appliedUpdates = new AppliedUpdates();
 		List<UpgradePlanItem> ordered = ticketedFirst(plan);
-		return doWithItems(ordered, indicator, it -> {
+		FileScope scope = plan.getScope();
+		doWithItems(ordered, indicator, it -> {
 
-			UpgradeResult result = applyItem(plan.getScope(), it);
+			List<DependencyUpdate> updates = it.createUpdates();
+			UpgradeResult result = applyItem(scope, updates,
+					applied -> appliedUpdates.record(scope, applied, it.getDisplayName()));
 			if (result.hasChanges()) {
-				commit(plan.getScope(), it);
+				commit(scope, it);
 			}
-			return result;
 		});
+
+		return appliedUpdates;
 	}
 
-	private UpgradeResult applyItem(FileScope scope, UpgradePlanItem item) {
+	private UpgradeResult applyItem(FileScope scope, List<DependencyUpdate> updates,
+			Consumer<DependencyUpdate> afterApply) {
 
 		return WriteAction.computeAndWait(() -> {
 			CommandProcessor instance = CommandProcessor.getInstance();
 			try (AutoCloseable c = instance.withUndoTransparentAction()) {
-				return engine.apply(scope, item.createUpdates());
+				return engine.apply(scope, updates, afterApply);
 			} catch (RuntimeException ex) {
 				throw ex;
 			} catch (Exception ex) {

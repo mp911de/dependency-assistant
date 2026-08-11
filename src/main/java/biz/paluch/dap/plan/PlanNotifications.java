@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
+import biz.paluch.dap.assistant.AppliedUpdates;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
@@ -54,11 +55,11 @@ class PlanNotifications {
 	 * @param unshelve restores the shelf created for the run; {@literal null} when
 	 * not offered.
 	 */
-	void applied(Project project, boolean commit, List<UpgradePlanItem> items, int applied, @Nullable Runnable push,
-			@Nullable Runnable unshelve) {
+	void applied(Project project, boolean commit, List<UpgradePlanItem> items, AppliedUpdates applied,
+			@Nullable Runnable push, @Nullable Runnable unshelve) {
 
 		Notification notification;
-		if (applied == 0) {
+		if (applied.isEmpty()) {
 			notification = group.createNotification(MessageBundle.message("plugin.name"),
 					MessageBundle.message("plan.apply.summary.none"), NotificationType.INFORMATION);
 		} else {
@@ -68,15 +69,15 @@ class PlanNotifications {
 			if (commit) {
 				message = MessageBundle.message("plan.apply.summary.committed", applied);
 			} else {
-				if (applied == 1 && items.size() == 1) {
+				if (applied.size() == 1) {
 					UpgradePlanItem item = items.getFirst();
 					message = MessageBundle.message("notification.dependencies-updated", item.getDisplayName());
 				} else {
-					message = MessageBundle.message("notification.dependencies-updates", applied);
+					message = MessageBundle.message("notification.dependencies-updates", applied.size());
 				}
 			}
 			notification = group
-					.createNotification(message, NotificationType.INFORMATION)
+					.createNotification(message, applied.toString(), NotificationType.INFORMATION)
 					.setImportant(true);
 			addAction(notification, "plan.apply.push", push);
 			addAction(notification, "plan.apply.unshelve", unshelve);
@@ -86,7 +87,6 @@ class PlanNotifications {
 	}
 
 	private static void addAction(Notification notification, String key, @Nullable Runnable action) {
-
 		if (action != null) {
 			notification.addAction(NotificationAction.createSimpleExpiring(MessageBundle.message(key), action));
 		}

@@ -380,7 +380,8 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		static Item from(PlannedUpgrade plannedUpgrade, ArtifactVersion targetVersion) {
 
 			List<Member> members = plannedUpgrade.getUpgradeCandidates().stream().map(Member::of).toList();
-			return from(plannedUpgrade.getName(), targetVersion, members, plannedUpgrade.getUpgradeCandidates());
+			return from(plannedUpgrade.getDependencyName(), targetVersion, members,
+					plannedUpgrade.getUpgradeCandidates());
 		}
 
 		/**

@@ -304,7 +304,11 @@ public final class UpgradePlanService implements Disposable {
 		while (true) {
 
 			Snapshot snapshot = state
-					.doWithContent((planGeneration, content) -> new Snapshot(planGeneration, content.snapshot()));
+					.doWithContent((planGeneration, content) -> {
+						Content copy = content.snapshot();
+						copy.setItems(List.copyOf(content.getItems()));
+						return new Snapshot(planGeneration, copy);
+					});
 			UpgradePlanLoader loader = new UpgradePlanLoader(ticketSystem);
 
 			for (Item item : snapshot.content()) {
