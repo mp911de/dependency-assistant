@@ -18,23 +18,30 @@ package biz.paluch.dap;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 import biz.paluch.dap.artifact.DependencyCollector;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ProjectBuildContext;
 import biz.paluch.dap.util.StepsProgressIndicator;
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jetbrains.concurrency.CancellablePromise;
+import org.jetbrains.concurrency.Promises;
 
 /**
  * Cross-ecosystem coordinator that owns the collect-complete-store flow for one
@@ -95,6 +102,44 @@ public class ProjectStateIndexer {
 	}
 
 	/**
+	 * Composed action running the collect-complete-store flow for all registered
+	 * assistants and restarting highlighting so state derived from the import model
+	 * surfaces in the editor.
+	 */
+	public static void refreshAfterImport(Project project, ProgressIndicator indicator,
+			Predicate<DependencyAssistant> filter) {
+
+		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll();
+
+		if (assistants.isEmpty()) {
+			return;
+		}
+
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, assistants.size());
+		steps.setIndeterminate(false);
+		List<CancellablePromise<Void>> promises = new ArrayList<>();
+		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
+		for (DependencyAssistant assistant : assistants) {
+			if (filter.test(assistant)) {
+				promises.add(indexer.refreshAfterImport(assistant).onSuccess(__ -> steps.nextStep()));
+			}
+		}
+
+		try {
+			Promises.all(promises).onSuccess(__ -> steps.nextStep()).blockingGet(60, TimeUnit.SECONDS);
+		} catch (TimeoutException e) {
+			throw new RuntimeException(e);
+		} catch (ExecutionException e) {
+			if (e.getCause() instanceof ProcessCanceledException pce) {
+				throw pce;
+			}
+			throw new RuntimeException(e);
+		}
+
+		DaemonCodeAnalyzer.getInstance(project).restart("Build system import finished");
+	}
+
+	/**
 	 * Re-run the collect-complete-store flow for the given assistant after a
 	 * build-system import and restart highlighting so state derived from the import
 	 * model surfaces without plugin-side scheduling.
@@ -102,7 +147,7 @@ public class ProjectStateIndexer {
 	 * per assistant so bursts of import events collapse into one pass.
 	 *
 	 * @param assistant the assistant whose project state is re-indexed.
-	 * @return
+	 * @return a promise representing the refresh operation.
 	 */
 	public CancellablePromise<Void> refreshAfterImport(DependencyAssistant assistant) {
 

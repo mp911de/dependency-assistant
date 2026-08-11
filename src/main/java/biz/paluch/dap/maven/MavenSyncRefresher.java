@@ -16,26 +16,19 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import biz.paluch.dap.DependencyAssistant;
-import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.ProjectStateIndexer;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StepsProgressIndicator;
-import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
@@ -43,8 +36,6 @@ import com.intellij.openapi.startup.ProjectActivity;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
-import org.jetbrains.concurrency.CancellablePromise;
-import org.jetbrains.concurrency.Promises;
 import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenSyncListener;
 import org.jspecify.annotations.Nullable;
@@ -152,34 +143,8 @@ final class MavenSyncRefresher implements MavenSyncListener, Disposable {
 			@Override
 			public void run(ProgressIndicator indicator) {
 				SettingsXmlLoader.invalidate(project);
-				List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll();
-
-				if (assistants.isEmpty()) {
-					return;
-				}
-
-				StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, assistants.size());
-				steps.setIndeterminate(false);
-				List<CancellablePromise<Void>> promises = new ArrayList<>();
-				ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
-				for (DependencyAssistant assistant : assistants) {
-					if (assistant instanceof MavenAssistant) {
-						promises.add(indexer.refreshAfterImport(assistant).onSuccess(__ -> steps.nextStep()));
-					}
-				}
-
-				try {
-					Promises.all(promises).onSuccess(__ -> steps.nextStep()).blockingGet(0);
-				} catch (TimeoutException e) {
-					throw new RuntimeException(e);
-				} catch (ExecutionException e) {
-					if (e.getCause() instanceof ProcessCanceledException pce) {
-						throw pce;
-					}
-					throw new RuntimeException(e);
-				}
-
-				DaemonCodeAnalyzer.getInstance(project).restart("Build system import finished");
+				ProjectStateIndexer.refreshAfterImport(project, indicator,
+						assistant -> assistant instanceof MavenAssistant);
 			}
 
 		}.queue();
