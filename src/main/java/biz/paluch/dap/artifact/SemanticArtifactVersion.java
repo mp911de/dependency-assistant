@@ -257,7 +257,16 @@ class SemanticArtifactVersion implements NumericVersion {
 	 */
 	@Override
 	public boolean isReleaseVersion() {
-		return suffix instanceof Release;
+
+		if (suffix instanceof Release) {
+			return true;
+		}
+
+		if (suffix.isMilestone() || suffix.isReleaseCandidate()) {
+			return false;
+		}
+
+		return !isSnapshotVersion();
 	}
 
 	/**

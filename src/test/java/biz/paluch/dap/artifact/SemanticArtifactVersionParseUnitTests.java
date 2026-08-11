@@ -31,15 +31,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static biz.paluch.dap.assertions.Assertions.*;
 
 /**
- * Unit tests for {@link SemanticArtifactVersion} and v-prefixed
- * {@link ArtifactVersion} wrapping.
+ * Unit tests for {@link SemanticArtifactVersion}.
  *
  * @author Mark Paluch
  */
 class SemanticArtifactVersionParseUnitTests {
 
 	@ParameterizedTest(name = "{0}")
-	@ValueSource(strings = {"7.2.4.Final", "1.4.5", "1.0.0", "1.0.0.RELEASE"})
+	@ValueSource(strings = {"7.2.4.Final", "1.4.5", "1.0.0", "1.0.0.RELEASE", "7.7.1.202607240634-r"})
 	void parsesRelease(String version) {
 		assertThat(SemanticArtifactVersion.isVersion(version)).isTrue();
 		assertThat(version(version)).isRelease().isNotPreview().hasToString(version);
