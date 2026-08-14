@@ -123,15 +123,6 @@ public class Cache implements ModificationTracker {
 		this.clock = clock;
 	}
 
-	@Override
-	public long getModificationCount() {
-		return modificationTracker.getModificationCount();
-	}
-
-	public void incrementModification() {
-		this.modificationTracker.incModificationCount();
-	}
-
 	public Clock getClock() {
 		return this.clock;
 	}
@@ -145,6 +136,24 @@ public class Cache implements ModificationTracker {
 		return clock.millis();
 	}
 
+	@Override
+	public long getModificationCount() {
+		return modificationTracker.getModificationCount();
+	}
+
+	public void incrementModification() {
+		this.modificationTracker.incModificationCount();
+	}
+
+	/**
+	 * Record a successful cache update, stamping the current time from this cache's
+	 * {@link Clock}.
+	 */
+	public void recordUpdate() {
+		this.lastUpdateTimestamp = clock.millis();
+		this.modificationTracker.incModificationCount();
+	}
+
 	/**
 	 * Return the {@link Instant} of the last recorded cache update.
 	 *
@@ -154,6 +163,74 @@ public class Cache implements ModificationTracker {
 	public @Nullable Instant getLastUpdate() {
 		long timestamp = lastUpdateTimestamp;
 		return timestamp == 0L ? null : Instant.ofEpochMilli(timestamp);
+	}
+
+	/**
+	 * Return whether the user should be asked to refresh because release metadata
+	 * is unavailable or outdated.
+	 *
+	 * @return {@literal true} when the cache should nag the user; {@literal false}
+	 * otherwise.
+	 */
+	public boolean shouldNag() {
+
+		Duration age = getAge();
+		Instant lastUpdate = getLastUpdate();
+		if (age != null && lastUpdate != null && age.compareTo(Duration.ofDays(2)) > 0) {
+			return doNotNagUntil == 0 || doNotNagUntil < clock.millis();
+		}
+		return false;
+	}
+
+	/**
+	 * Silence the nag automatism for {@code 12} hours.
+	 */
+	public void doNotNag() {
+		doNotNagUntil = clock.instant().plus(Duration.ofHours(12)).toEpochMilli();
+		modificationTracker.incModificationCount();
+	}
+
+	/**
+	 * Rebuild the lookup indexes from the persisted entries, e.g. after state
+	 * initialization repopulated the backing lists without passing through the
+	 * mutator methods.
+	 */
+	public void reindex() {
+		synchronized (this.artifacts) {
+			artifactsById.clear();
+			artifactsByPackageIdentity.clear();
+			ensureIndexed();
+		}
+		synchronized (this.repositories) {
+			repositoriesByKey.clear();
+			ensureRepositoriesIndexed();
+		}
+	}
+
+	private void ensureIndexed() {
+		if (artifactsById.isEmpty() && artifactsByPackageIdentity.isEmpty() && !artifacts.isEmpty()) {
+			for (CachedArtifact artifact : artifacts) {
+				index(artifact);
+			}
+		}
+	}
+
+	/**
+	 * Register the given entry in the lookup indexes. First-registered entries win
+	 * so index lookups return the same artifact as the former first-match list
+	 * scan. Must be called under the {@code artifacts} monitor.
+	 */
+	private void index(CachedArtifact artifact) {
+
+		if (!artifact.hasCoordinates()) {
+			return;
+		}
+
+		artifact.reindexBoms();
+		artifactsById.putIfAbsent(artifact.toArtifactId(), artifact);
+		if (artifact.getPackageSystem() != null) {
+			artifactsByPackageIdentity.putIfAbsent(artifact.toPackageIdentity(), artifact);
+		}
 	}
 
 	/**
@@ -266,7 +343,7 @@ public class Cache implements ModificationTracker {
 
 		CachedArtifact cachedArtifact = findCachedArtifact(artifactIdToUse);
 		if (cachedArtifact != null) {
-			return Releases.of(cachedArtifact.getVersionOptions());
+			return Releases.of(cachedArtifact.getReleases());
 		}
 
 		return Releases.empty();
@@ -298,28 +375,14 @@ public class Cache implements ModificationTracker {
 	 * last-seen eviction bounds their lifetime.
 	 *
 	 * @param bom the BOM identity and version to look up.
-	 * @return the Bill of Materials, or {@literal null} if no membership is cached
+	 * @return the indexed Bill of Materials, a cached membership or a prediction
+	 * from {@link CachedArtifact#predictBom}; {@literal null} if none is indexed
 	 * for the version.
 	 */
 	@Transient
 	public @Nullable BillOfMaterials getBillOfMaterials(VersionedPackage bom) {
-
 		CachedArtifact cachedArtifact = findCachedArtifact(bom.getPackageIdentity());
-		if (cachedArtifact == null) {
-			return null;
-		}
-
-		CachedBom membership = cachedArtifact.getBomMembership(bom.getVersion().toString());
-		return membership != null ? BillOfMaterials.from(bom, membership.toMembers()) : null;
-	}
-
-	/**
-	 * Record a successful cache update, stamping the current time from this cache's
-	 * {@link Clock}.
-	 */
-	public void recordUpdate() {
-		this.lastUpdateTimestamp = clock.millis();
-		this.modificationTracker.incModificationCount();
+		return cachedArtifact == null ? null : cachedArtifact.getBom(bom.getVersion());
 	}
 
 	/**
@@ -427,7 +490,7 @@ public class Cache implements ModificationTracker {
 	 */
 	public List<CachedRelease> getCachedReleases(ArtifactId artifactId) {
 		CachedArtifact cachedArtifact = findCachedArtifact(artifactId);
-		return cachedArtifact != null ? cachedArtifact.getReleases() : Collections.emptyList();
+		return cachedArtifact != null ? cachedArtifact.getCachedReleases() : Collections.emptyList();
 	}
 
 	/**
@@ -504,38 +567,6 @@ public class Cache implements ModificationTracker {
 		});
 	}
 
-	/**
-	 * Build the lookup indexes from the artifact entries. Required before any index
-	 * access because deserialization populates {@link #artifacts} without passing
-	 * through the mutator methods. Must be called under the {@code artifacts}
-	 * monitor.
-	 */
-	private void ensureIndexed() {
-
-		if (artifactsById.isEmpty() && artifactsByPackageIdentity.isEmpty() && !artifacts.isEmpty()) {
-			for (CachedArtifact artifact : artifacts) {
-				index(artifact);
-			}
-		}
-	}
-
-	/**
-	 * Register the given entry in the lookup indexes. First-registered entries win
-	 * so index lookups return the same artifact as the former first-match list
-	 * scan. Must be called under the {@code artifacts} monitor.
-	 */
-	private void index(CachedArtifact artifact) {
-
-		if (!artifact.hasCoordinates()) {
-			return;
-		}
-
-		artifactsById.putIfAbsent(artifact.toArtifactId(), artifact);
-		if (artifact.getPackageSystem() != null) {
-			artifactsByPackageIdentity.putIfAbsent(artifact.toPackageIdentity(), artifact);
-		}
-	}
-
 	public boolean requiresMetadataRefresh(@Nullable CachedArtifact cachedArtifact) {
 
 		if (cachedArtifact == null) {
@@ -580,7 +611,7 @@ public class Cache implements ModificationTracker {
 		Set<String> knownEmpty = cached.getEmptyReleaseSources();
 		boolean isAllKnownEmpty = sources.containsOnlyReleaseSourceIds(knownEmpty);
 
-		if (!cached.getReleases().isEmpty()) {
+		if (!cached.getCachedReleases().isEmpty()) {
 			if (knownEmpty.isEmpty() || staleThreshold > cached.getSourcesCheckedSince()
 					|| isAllKnownEmpty) {
 				return FetchPlan.fetch(true, preferred, Set.of());
@@ -836,7 +867,6 @@ public class Cache implements ModificationTracker {
 	 * {@code repositories} monitor.
 	 */
 	private void ensureRepositoriesIndexed() {
-
 		if (repositoriesByKey.isEmpty() && !repositories.isEmpty()) {
 			for (CachedRepository repository : repositories) {
 				repositoriesByKey.putIfAbsent(repository.getKey(), repository);
@@ -875,24 +905,6 @@ public class Cache implements ModificationTracker {
 			action.run();
 			return null;
 		});
-	}
-
-	public boolean shouldNag() {
-
-		Duration age = getAge();
-		Instant lastUpdate = getLastUpdate();
-		if (age != null && lastUpdate != null && age.compareTo(Duration.ofDays(2)) > 0) {
-			if (doNotNagUntil == 0 || doNotNagUntil < clock.millis()) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	public void doNotNag() {
-		doNotNagUntil = clock.instant().plus(Duration.ofHours(12)).toEpochMilli();
-		modificationTracker.incModificationCount();
 	}
 
 }

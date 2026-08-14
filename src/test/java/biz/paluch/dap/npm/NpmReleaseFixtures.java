@@ -87,7 +87,7 @@ class NpmReleaseFixtures {
 	private static CachedArtifact copy(CachedArtifact template) {
 
 		CachedArtifact copy = new CachedArtifact(template.getGroupId(), template.getArtifactId());
-		for (CachedRelease release : template.getReleases()) {
+		for (CachedRelease release : template.getCachedReleases()) {
 			copy.addRelease(new CachedRelease(release.version(), release.date(), release.sha()));
 		}
 		return copy;

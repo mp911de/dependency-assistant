@@ -235,7 +235,7 @@ class DependencyCheckAggregatorTests {
 	}
 
 	private static ReleaseLookupResult resolved(CachedArtifact artifact) {
-		return ReleaseLookupResult.of(Releases.of(artifact.getVersionOptions()));
+		return ReleaseLookupResult.of(Releases.of(artifact.getReleases()));
 	}
 
 }

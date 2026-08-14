@@ -16,9 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.Map;
-
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -71,8 +68,10 @@ public class BomUtil {
 			return;
 		}
 
-		collector.registerBillOfMaterials(
-				BillOfMaterials.from(declaration, resolveBom(cache, project, declaration)));
+		BillOfMaterials billOfMaterials = resolveBillOfMaterials(cache, project, declaration);
+		if (billOfMaterials != null) {
+			collector.registerBillOfMaterials(billOfMaterials);
+		}
 	}
 
 	/**
@@ -91,12 +90,6 @@ public class BomUtil {
 	public static @Nullable BillOfMaterials resolveBillOfMaterials(Cache cache, Project project,
 			VersionedPackage bom) {
 
-		Map<ArtifactId, ArtifactVersion> members = resolveBom(cache, project, bom);
-		return members.isEmpty() ? null : BillOfMaterials.from(bom, members);
-	}
-
-	private static Map<ArtifactId, ArtifactVersion> resolveBom(Cache cache, Project project, VersionedPackage bom) {
-
 		ArtifactVersion version = bom.getVersion();
 		CachedArtifact cachedArtifact = cache.findCachedArtifact(bom.getPackageIdentity());
 		if (cachedArtifact != null && cachedArtifact.hasBom(version)) {
@@ -105,10 +98,11 @@ public class BomUtil {
 
 		VirtualFile bomPom = PomLocator.findPom(project, bom.getArtifactId(), version);
 		if (bomPom == null) {
-			return Map.of();
+			return null;
 		}
 
-		return new MavenBomParser(project, bomPom).readMembers();
+		MavenBomParser mavenBomParser = new MavenBomParser(project, bomPom);
+		return BillOfMaterials.from(bom, mavenBomParser.readMembers());
 	}
 
 }

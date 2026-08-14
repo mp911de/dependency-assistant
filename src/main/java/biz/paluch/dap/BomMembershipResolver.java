@@ -127,7 +127,7 @@ public class BomMembershipResolver {
 				continue;
 			}
 
-			for (Release release : bomCandidate.getVersionOptions()) {
+			for (Release release : bomCandidate.getReleases()) {
 
 				indicator.checkCanceled();
 

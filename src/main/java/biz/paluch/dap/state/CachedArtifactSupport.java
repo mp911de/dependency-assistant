@@ -104,8 +104,11 @@ public abstract class CachedArtifactSupport implements ArtifactId {
 	 */
 	@Transient
 	public PackageIdentity toPackageIdentity() {
-		Assert.state(getPackageSystem() != null, "Package ecosystem not set");
-		return PackageIdentity.of(toArtifactId(), getPackageSystem());
+		PackageSystem packageSystem = getPackageSystem();
+		if (packageSystem == null) {
+			packageSystem = PackageSystem.OTHER;
+		}
+		return PackageIdentity.of(toArtifactId(), packageSystem);
 	}
 
 	@Override

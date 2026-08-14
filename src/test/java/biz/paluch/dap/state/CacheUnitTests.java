@@ -35,7 +35,7 @@ class CacheUnitTests {
 	private final Cache cache = new Cache();
 
 	@Test
-	void identityLookupDisambiguatesSameCoordinatesAcrossEcosystems() {
+	void shouldFindByIdentity() {
 
 		CachedArtifact maven = artifact(PackageSystem.MAVEN);
 		CachedArtifact npm = artifact(PackageSystem.NPM);

@@ -72,6 +72,13 @@ public interface BillOfMaterials extends VersionedPackage {
 	}
 
 	/**
+	 * Return {@code true} if this BOM has no members.
+	 *
+	 * @return {@code true} if this BOM has no members; {@code false} otherwise.
+	 */
+	boolean isEmpty();
+
+	/**
 	 * Return the managed members of this BOM keyed by artifact coordinates, each
 	 * mapped to its managed version.
 	 *

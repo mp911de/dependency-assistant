@@ -248,7 +248,7 @@ class UpgradeStrategyUnitTests {
 	void selectReturnsNullForOpaqueCurrent() {
 
 		biz.paluch.dap.artifact.Releases history = biz.paluch.dap.artifact.Releases
-				.of(Releases.REACTOR_BOM.getVersionOptions());
+				.of(Releases.REACTOR_BOM.getReleases());
 
 		Release release = UpgradeStrategy.LATEST.select(new GitRef("main"), history);
 
@@ -257,7 +257,7 @@ class UpgradeStrategyUnitTests {
 
 	private static Release select(UpgradeStrategy strategy, String currentVersion, CachedArtifact artifact) {
 		return strategy.select(ArtifactVersion.of(currentVersion),
-				biz.paluch.dap.artifact.Releases.of(artifact.getVersionOptions()));
+				biz.paluch.dap.artifact.Releases.of(artifact.getReleases()));
 	}
 
 	private static Release select(UpgradeStrategy strategy, String currentVersion, String... releases) {

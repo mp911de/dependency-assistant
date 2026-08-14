@@ -67,12 +67,20 @@ public class DependencyAssistantState {
 
 	/**
 	 * Set whether Dependency Assistant has been used actively.
-	 * 
+	 *
 	 * @param usedOnce {@literal true} if Dependency Assistant has been used
 	 * actively.
 	 */
 	public void setUsedOnce(boolean usedOnce) {
 		this.usedOnce = usedOnce;
+		this.cache.incrementModification();
+	}
+
+	/**
+	 * Prepare the cache for use after reloading it.
+	 */
+	public void postLoad() {
+		this.cache.reindex();
 	}
 
 }

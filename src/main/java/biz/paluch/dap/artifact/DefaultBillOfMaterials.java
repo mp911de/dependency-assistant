@@ -61,6 +61,11 @@ class DefaultBillOfMaterials implements BillOfMaterials {
 	}
 
 	@Override
+	public boolean isEmpty() {
+		return members.isEmpty();
+	}
+
+	@Override
 	public Map<ArtifactId, ArtifactVersion> getMembers() {
 		return members;
 	}

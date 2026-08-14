@@ -63,7 +63,7 @@ class CachedArtifactUnitTests {
 			it.member("org.example:coincidence:4.1.100");
 		}), 1_000L);
 
-		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108"))).containsOnly(
+		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108")).getMembers()).containsOnly(
 				entry(codecHttp.getArtifactId(), ArtifactVersion.of("4.1.108")),
 				entry(incubatorQuic.getArtifactId(), ArtifactVersion.of("4.1.108")));
 	}
@@ -73,7 +73,7 @@ class CachedArtifactUnitTests {
 
 		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
 
-		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108"))).isEmpty();
+		assertThat(bom.predictBom(ArtifactVersion.of("4.1.108")).isEmpty()).isTrue();
 	}
 
 	@Test
@@ -85,12 +85,47 @@ class CachedArtifactUnitTests {
 		bom.setBillOfMaterials(
 				Coordinates.bom("io.netty:netty-bom:1.0.0", it -> it.member("io.netty:netty-old:1.0.0")), 1_000L);
 
-		assertThat(bom.predictBom(ArtifactVersion.of("1.5.0")))
-				.containsOnly(entry(OLD_MEMBER.getArtifactId(), ArtifactVersion.of("1.5.0")));
-		assertThat(bom.predictBom(ArtifactVersion.of("3.0.0")))
-				.containsOnly(entry(NEW_MEMBER.getArtifactId(), ArtifactVersion.of("3.0.0")));
-		assertThat(bom.predictBom(ArtifactVersion.of("0.5.0")))
-				.containsOnly(entry(OLD_MEMBER.getArtifactId(), ArtifactVersion.of("0.5.0")));
+		assertThat(bom.predictBom(ArtifactVersion.of("1.5.0")).getMembers())
+				.hasSize(1)
+				.containsEntry(OLD_MEMBER.getArtifactId(), ArtifactVersion.of("1.5.0"));
+		assertThat(bom.predictBom(ArtifactVersion.of("3.0.0")).getMembers())
+				.hasSize(1)
+				.containsEntry(NEW_MEMBER.getArtifactId(), ArtifactVersion.of("3.0.0"));
+		assertThat(bom.predictBom(ArtifactVersion.of("0.5.0")).getMembers())
+				.hasSize(1)
+				.containsEntry(OLD_MEMBER.getArtifactId(), ArtifactVersion.of("0.5.0"));
+	}
+
+	@Test
+	void predictionDoesNotCountAsPersistedMembership() {
+
+		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
+		bom.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:4.1.100", it -> it.member("io.netty:netty-codec-http:4.1.100")),
+				1_000L);
+
+		bom.predictBom(ArtifactVersion.of("4.1.108"));
+
+		assertThat(bom.hasBom(ArtifactVersion.of("4.1.108"))).isFalse();
+		assertThat(bom.getBom(ArtifactVersion.of("4.1.108"))).isNotNull();
+	}
+
+	@Test
+	void cachedMembershipReplacesEarlierPrediction() {
+
+		CachedArtifact bom = new CachedArtifact(NETTY_BOM);
+		bom.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:4.1.100", it -> it.member("io.netty:netty-codec-http:4.1.100")),
+				1_000L);
+		bom.predictBom(ArtifactVersion.of("4.1.108"));
+
+		bom.setBillOfMaterials(
+				Coordinates.bom("io.netty:netty-bom:4.1.108", it -> it.member("io.netty:netty-handler:4.1.108")),
+				2_000L);
+
+		assertThat(bom.hasBom(ArtifactVersion.of("4.1.108"))).isTrue();
+		assertThat(bom.getBom(ArtifactVersion.of("4.1.108")).getMembers())
+				.containsOnlyKeys(ArtifactId.of("io.netty", "netty-handler"));
 	}
 
 	@Test
@@ -115,7 +150,7 @@ class CachedArtifactUnitTests {
 
 		updateReleases(artifact, 2_000L, Set.of(), FetchPlan.fullFetch(), "1.0.0", "1.1.0");
 
-		assertThat(artifact.getReleases()).extracting(CachedRelease::version)
+		assertThat(artifact.getCachedReleases()).extracting(CachedRelease::version)
 				.extracting(Objects::toString)
 				.containsExactlyInAnyOrder("0.9.0", "1.0.0", "1.1.0");
 	}

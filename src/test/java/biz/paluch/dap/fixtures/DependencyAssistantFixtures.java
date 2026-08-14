@@ -57,7 +57,7 @@ public class DependencyAssistantFixtures {
 
 			CachedArtifact copy = artifact.snapshot();
 			List<CachedRelease> releases = new ArrayList<>();
-			for (CachedRelease release : artifact.getReleases()) {
+			for (CachedRelease release : artifact.getCachedReleases()) {
 				releases.add(new CachedRelease(release.version(), release.date(), release.sha()));
 			}
 			copy.setCachedReleases(releases, copy.getLastSeen());

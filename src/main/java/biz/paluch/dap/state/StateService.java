@@ -83,6 +83,24 @@ public class StateService
 	}
 
 	/**
+	 * Return the persistent cache backing this service.
+	 *
+	 * @return the current cache instance.
+	 */
+	public Cache getCache() {
+		return state.getCache();
+	}
+
+	/**
+	 * Replace the persistent cache backing this service.
+	 *
+	 * @param cache the cache to store.
+	 */
+	public void setCache(Cache cache) {
+		state.setCache(cache);
+	}
+
+	/**
 	 * Return the state object managed by IntelliJ persistence.
 	 * <p>The returned state is a snapshot that decouples platform serialization
 	 * from concurrent cache mutations performed by background tasks.
@@ -96,6 +114,17 @@ public class StateService
 		snapshot.setCache(state.getCache().snapshot());
 		snapshot.setUsedOnce(state.isUsedOnce());
 		return snapshot;
+	}
+
+	/**
+	 * Copy the persisted state into this service instance.
+	 *
+	 * @param state the state loaded by IntelliJ persistence.
+	 */
+	@Override
+	public void loadState(DependencyAssistantState state) {
+		XmlSerializerUtil.copyBean(state, this.state);
+		this.state.postLoad();
 	}
 
 	@Override
@@ -120,40 +149,10 @@ public class StateService
 	 * Record that Dependency Assistant has been used actively.
 	 */
 	public void markUsed() {
-
 		if (state.isUsedOnce()) {
 			return;
 		}
-		state.getCache().incrementModification();
 		state.setUsedOnce(true);
-	}
-
-	/**
-	 * Return the persistent cache backing this service.
-	 *
-	 * @return the current cache instance.
-	 */
-	public Cache getCache() {
-		return state.getCache();
-	}
-
-	/**
-	 * Replace the persistent cache backing this service.
-	 *
-	 * @param cache the cache to store.
-	 */
-	public void setCache(Cache cache) {
-		state.setCache(cache);
-	}
-
-	/**
-	 * Copy the persisted state into this service instance.
-	 *
-	 * @param state the state loaded by IntelliJ persistence.
-	 */
-	@Override
-	public void loadState(DependencyAssistantState state) {
-		XmlSerializerUtil.copyBean(state, this.state);
 	}
 
 	/**
@@ -199,13 +198,15 @@ public class StateService
 			return vulnerabilities;
 		}
 
-		Map<ArtifactId, ArtifactVersion> cachedBom = cachedArtifact.getBom(artifactVersion);
-		Map<ArtifactId, ArtifactVersion> bom = cachedBom.isEmpty() ? cachedArtifact.predictBom(artifactVersion)
-				: cachedBom;
-		if (bom.isEmpty()) {
+		BillOfMaterials billOfMaterials = cachedArtifact.getBom(artifactVersion);
+		if (billOfMaterials == null) {
+			billOfMaterials = cachedArtifact.predictBom(artifactVersion);
+		}
+		if (billOfMaterials.isEmpty()) {
 			return vulnerabilities;
 		}
 
+		Map<ArtifactId, ArtifactVersion> bom = billOfMaterials.getMembers();
 		BomAggregate.Builder aggregate = BomAggregate.builder(artifactId)
 				.member(artifactId, artifactVersion, vulnerabilities);
 

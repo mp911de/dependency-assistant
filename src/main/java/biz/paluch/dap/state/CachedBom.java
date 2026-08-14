@@ -61,10 +61,6 @@ public class CachedBom {
 	public CachedBom() {
 	}
 
-	public CachedBom(String version) {
-		this(ArtifactVersion.of(version));
-	}
-
 	public CachedBom(ArtifactVersion version) {
 		this.version = version;
 	}
@@ -76,7 +72,7 @@ public class CachedBom {
 	 * @param members the managed members keyed by artifact coordinates.
 	 * @return the membership entry.
 	 */
-	public static CachedBom from(String version, Map<ArtifactId, ArtifactVersion> members) {
+	public static CachedBom from(ArtifactVersion version, Map<ArtifactId, ArtifactVersion> members) {
 
 		CachedBom membership = new CachedBom(version);
 		membership.group(members);

@@ -16,23 +16,16 @@
 
 package biz.paluch.dap.state;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.BillOfMaterials;
+import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.Release;
+import biz.paluch.dap.artifact.VersionedPackage;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.diagnostic.Logger;
@@ -118,6 +111,9 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 
 	private final @XCollection(propertyElementName = "boms", elementName = "bom", style = XCollection.Style.v2) List<CachedBom> boms = new ArrayList<>();
 
+	@Transient
+	private final Map<ArtifactVersion, BillOfMaterials> bomIndex = new TreeMap<>();
+
 	/**
 	 * Project metadata captured for this artifact, or {@literal null} if the
 	 * artifact was never inspected.
@@ -199,242 +195,6 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		this.packageSystem = packageSystem;
 	}
 
-	/**
-	 * Return the backing release entries.
-	 * <p>
-	 * This is the live storage list used for persistence.
-	 *
-	 * @return the mutable backing release entries.
-	 */
-	public List<CachedRelease> getReleases() {
-		synchronized (releases) {
-			return List.copyOf(releases);
-		}
-	}
-
-	/**
-	 * Return whether this entry has any cached releases.
-	 */
-	public boolean hasReleases() {
-		synchronized (releases) {
-			return !releases.isEmpty();
-		}
-	}
-
-	public long getLastSeen() {
-		return lastSeen;
-	}
-
-	/**
-	 * Return whether this artifact was classified as a Bill of Materials by any
-	 * scan, independently of whether a membership is cached for any version.
-	 * <p>Entries persisted before BOM classification report {@literal true} once a
-	 * membership is present, so previously cached BOMs keep their classification.
-	 *
-	 * @return {@literal true} if the artifact is known to be a BOM;
-	 * {@literal false} otherwise.
-	 */
-	public boolean isBom() {
-
-		if (bom) {
-			return true;
-		}
-
-		synchronized (boms) {
-			return !boms.isEmpty();
-		}
-	}
-
-	/**
-	 * Return whether a Bill of Materials membership is cached for the given BOM
-	 * version.
-	 */
-	public boolean hasBom(ArtifactVersion version) {
-		return hasBom(version.toString());
-	}
-
-	/**
-	 * Return whether a Bill of Materials membership is cached for the given BOM
-	 * version.
-	 */
-	public boolean hasBom(String version) {
-		return getBomMembership(version) != null;
-	}
-
-	/**
-	 * Return the managed members cached for the given BOM version.
-	 *
-	 * @return the members keyed by artifact coordinates; empty when no membership
-	 * is cached for the version.
-	 */
-	public Map<ArtifactId, ArtifactVersion> getBom(ArtifactVersion version) {
-		return getBom(version.toString());
-	}
-
-	/**
-	 * Return the managed members cached for the given BOM version string.
-	 *
-	 * @return the members keyed by artifact coordinates; empty when no membership
-	 * is cached for the version.
-	 */
-	public Map<ArtifactId, ArtifactVersion> getBom(String version) {
-		CachedBom membership = getBomMembership(version);
-		return membership != null ? membership.toMembers() : Map.of();
-	}
-
-	/**
-	 * Return the Bill of Materials membership for the given BOM version.
-	 *
-	 * @param version the BOM version string.
-	 * @return the membership, or {@literal null} if no membership is cached for the
-	 * version.
-	 */
-	public @Nullable CachedBom getBomMembership(String version) {
-		// TODO: index
-		synchronized (boms) {
-			for (CachedBom membership : boms) {
-				if (version.equals(membership.getVersion().toString())) {
-					return membership;
-				}
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Return the cached Bill of Materials memberships of this artifact, ordered by
-	 * ascending BOM version.
-	 *
-	 * @return an immutable snapshot of the memberships; empty when this artifact
-	 * carries no membership.
-	 */
-	public List<CachedBom> getBomMemberships() {
-		synchronized (boms) {
-			return boms.stream().sorted(Comparator.comparing(CachedBom::getVersion)).toList();
-		}
-	}
-
-	/**
-	 * Mark this artifact as a Bill of Materials, stamp it as seen, and cache the
-	 * given membership.
-	 * <p>Released BOM contents are immutable, so an already-cached version is left
-	 * unchanged. A Bill of Materials with no members marks the artifact without
-	 * caching a membership: the empty member set would otherwise be served for that
-	 * version for good, since memberships never expire by age.
-	 *
-	 * @param bom the Bill of Materials to cache.
-	 * @param timestamp the current epoch-millisecond timestamp.
-	 */
-	public void setBillOfMaterials(BillOfMaterials bom, long timestamp) {
-
-		this.bom = true;
-		this.lastSeen = timestamp;
-
-		if (bom.getMembers().isEmpty()) {
-			return;
-		}
-
-		synchronized (boms) {
-			for (CachedBom cachedBom : boms) {
-				if (cachedBom.getVersion().equals(bom.getVersion())) {
-					return;
-				}
-			}
-			boms.add(CachedBom.from(bom.getVersion().toString(), bom.getMembers()));
-		}
-	}
-
-	/**
-	 * Predict the managed members of a BOM version that has no cached membership,
-	 * based on the release-train heuristic: a member of the nearest cached
-	 * membership whose group id matches this BOM's group id (equal or a subgroup)
-	 * and whose managed version equals that membership's BOM version is assumed to
-	 * follow the BOM's release train, so its pin for {@code version} is predicted
-	 * as {@code version} itself. Members with independent versioning are omitted
-	 * rather than guessed.
-	 *
-	 * @param version the BOM version to predict members for.
-	 * @return the predicted members keyed by artifact coordinates; empty when no
-	 * membership is cached at all or no member follows the release train.
-	 */
-	public Map<ArtifactId, ArtifactVersion> predictBom(ArtifactVersion version) {
-
-		String bomGroupId = getGroupId();
-		if (bomGroupId == null) {
-			return Map.of();
-		}
-
-		CachedBom reference = getNearestBomMembership(version);
-		if (reference == null) {
-			return Map.of();
-		}
-
-		Map<ArtifactId, ArtifactVersion> predicted = new LinkedHashMap<>();
-		reference.toMembers().forEach((member, memberVersion) -> {
-
-			String memberGroupId = member.groupId();
-			boolean releaseTrainVersion = Objects.equals(memberVersion, reference.getVersion());
-			boolean groupAffinity = memberGroupId.equals(bomGroupId)
-					|| memberGroupId.startsWith(bomGroupId + ".");
-			if (releaseTrainVersion && groupAffinity) {
-				predicted.put(member, version);
-			}
-		});
-		return predicted;
-	}
-
-	/**
-	 * Return the cached membership closest to the given version: the highest cached
-	 * version at or below it, or the lowest cached one when all cached memberships
-	 * are newer.
-	 *
-	 * @param version the version to find the nearest membership for.
-	 * @return the nearest membership, or {@literal null} when no membership is
-	 * cached at all.
-	 */
-	private @Nullable CachedBom getNearestBomMembership(ArtifactVersion version) {
-
-		List<CachedBom> memberships = getBomMemberships();
-		if (memberships.isEmpty()) {
-			return null;
-		}
-
-		CachedBom nearest = memberships.getFirst();
-		for (CachedBom membership : memberships) {
-			if (membership.getVersion().isNewer(version)) {
-				break;
-			}
-			nearest = membership;
-		}
-		return nearest;
-	}
-
-	/**
-	 * Return this entry's releases as domain {@link Release} objects.
-	 *
-	 * @return a newly created list of releases.
-	 */
-	@Transient
-	public List<Release> getVersionOptions() {
-
-		List<Release> options = new ArrayList<>();
-		synchronized (releases) {
-			for (CachedRelease release : releases) {
-				try {
-					options.add(release.toRelease());
-				} catch (RuntimeException e) {
-					if (LOG.isDebugEnabled()) {
-						LOG.debug(
-								"Failed to parse release '%s:%s': '%s'".formatted(getGroupId(), getArtifactId(),
-										release),
-								e);
-					}
-				}
-			}
-		}
-		return options;
-	}
-
 	public @Nullable String getPreferredSource() {
 		return preferredSource;
 	}
@@ -451,19 +211,8 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		return sourcesCheckedSince;
 	}
 
-	public @Transient @Nullable String getProjectName() {
-		return projectMetadata != null ? projectMetadata.getProjectName() : null;
-	}
-
-	public @Nullable CachedRelease getCachedRelease(ArtifactVersion version) {
-		synchronized (releases) {
-			for (CachedRelease release : releases) {
-				if (version.compareTo(release.version()) == 0) {
-					return release;
-				}
-			}
-		}
-		return null;
+	public long getLastSeen() {
+		return lastSeen;
 	}
 
 	/**
@@ -497,6 +246,246 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 			}
 		}
 		return Set.copyOf(ids);
+	}
+
+	/**
+	 * Rebuild the BOM index from the persisted membership entries, discarding any
+	 * indexed predictions.
+	 */
+	public void reindexBoms() {
+		synchronized (boms) {
+			bomIndex.clear();
+			ensureBomIndexed();
+		}
+	}
+
+	private void ensureBomIndexed() {
+		if (!boms.isEmpty() && bomIndex.isEmpty()) {
+			boms.forEach(this::index);
+		}
+	}
+
+	private void index(CachedBom bom) {
+
+		BillOfMaterials billOfMaterials = BillOfMaterials
+				.from(VersionedPackage.of(toPackageIdentity(), bom.getVersion()), bom.toMembers());
+		bomIndex.put(bom.getVersion(), billOfMaterials);
+	}
+
+	/**
+	 * Return whether this artifact was classified as a Bill of Materials by any
+	 * scan, independently of whether a membership is cached for any version.
+	 * <p>Entries persisted before BOM classification report {@literal true} once a
+	 * membership is present, so previously cached BOMs keep their classification.
+	 *
+	 * @return {@literal true} if the artifact is known to be a BOM;
+	 * {@literal false} otherwise.
+	 */
+	public boolean isBom() {
+		if (bom) {
+			return true;
+		}
+		synchronized (boms) {
+			return !boms.isEmpty();
+		}
+	}
+
+	/**
+	 * Return whether a Bill of Materials membership is persisted for the given BOM
+	 * version. Predictions indexed by {@link #predictBom} do not count, so a
+	 * heuristic guess never suppresses resolving and caching the real membership.
+	 */
+	public boolean hasBom(ArtifactVersion version) {
+		synchronized (boms) {
+			for (CachedBom membership : boms) {
+				if (membership.getVersion().equals(version)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Return the Bill of Materials indexed for the given version: a persisted
+	 * membership or, in its absence, a previously indexed prediction.
+	 *
+	 * @return the Bill of Materials, or {@literal null} when neither a membership
+	 * nor a prediction is indexed for the version.
+	 */
+	public @Nullable BillOfMaterials getBom(ArtifactVersion version) {
+		synchronized (boms) {
+			ensureBomIndexed();
+			return bomIndex.get(version);
+		}
+	}
+
+	/**
+	 * Return the cached Bill of Materials memberships of this artifact, ordered by
+	 * ascending BOM version.
+	 *
+	 * @return an immutable snapshot of the memberships; empty when this artifact
+	 * carries no membership.
+	 */
+	public List<CachedBom> getBomMemberships() {
+		synchronized (boms) {
+			return boms.stream().sorted(Comparator.comparing(CachedBom::getVersion)).toList();
+		}
+	}
+
+	/**
+	 * Mark this artifact as a Bill of Materials, stamp it as seen, and cache the
+	 * given membership.
+	 * <p>Released BOM contents are immutable, so an already-cached version is left
+	 * unchanged. A Bill of Materials with no members marks the artifact without
+	 * caching a membership: the empty member set would otherwise be served for that
+	 * version for good, since memberships never expire by age.
+	 *
+	 * @param bom the Bill of Materials to cache.
+	 * @param timestamp the current epoch-millisecond timestamp.
+	 */
+	public void setBillOfMaterials(BillOfMaterials bom, long timestamp) {
+
+		this.bom = true;
+		this.lastSeen = timestamp;
+
+		if (bom.getMembers().isEmpty() || hasBom(bom.getVersion())) {
+			return;
+		}
+
+		synchronized (boms) {
+			ensureBomIndexed();
+			boms.add(CachedBom.from(bom.getVersion(), bom.getMembers()));
+			index(boms.getLast());
+		}
+	}
+
+	/**
+	 * Predict the managed members of a BOM version that has no cached membership,
+	 * based on the release-train heuristic: a member of the nearest cached
+	 * membership whose group id matches this BOM's group id (equal or a subgroup)
+	 * and whose managed version equals that membership's BOM version is assumed to
+	 * follow the BOM's release train, so its pin for {@code version} is predicted
+	 * as {@code version} itself. Members with independent versioning are omitted
+	 * rather than guessed.
+	 * <p>A non-empty prediction is indexed for subsequent {@link #getBom} lookups
+	 * until the real membership is cached or the index is rebuilt.
+	 *
+	 * @param version the BOM version to predict members for.
+	 * @return the predicted Bill of Materials; empty when no membership is cached
+	 * at all or no member follows the release train.
+	 */
+	public BillOfMaterials predictBom(ArtifactVersion version) {
+
+		String bomGroupId = getGroupId();
+		PackageIdentity pkg = toPackageIdentity();
+		if (bomGroupId == null) {
+			return BillOfMaterials.of(pkg, version, Map.of());
+		}
+
+		CachedBom reference = getNearestBomMembership(version);
+		if (reference == null) {
+			return BillOfMaterials.of(pkg, version, Map.of());
+		}
+
+		Map<ArtifactId, ArtifactVersion> predicted = new LinkedHashMap<>();
+		reference.toMembers().forEach((member, memberVersion) -> {
+
+			String memberGroupId = member.groupId();
+			boolean releaseTrainVersion = Objects.equals(memberVersion, reference.getVersion());
+			boolean groupAffinity = memberGroupId.equals(bomGroupId)
+					|| memberGroupId.startsWith(bomGroupId + ".");
+			if (releaseTrainVersion && groupAffinity) {
+				predicted.put(member, version);
+			}
+		});
+
+		BillOfMaterials prediction = BillOfMaterials.of(pkg, version, predicted);
+		synchronized (boms) {
+			ensureBomIndexed();
+			bomIndex.put(version, prediction);
+		}
+
+		return prediction;
+	}
+
+	/**
+	 * Return the cached membership closest to the given version assuming that BOM
+	 * composition remains generally stable throughout several versions.
+	 */
+	private @Nullable CachedBom getNearestBomMembership(ArtifactVersion version) {
+
+		List<CachedBom> memberships = getBomMemberships();
+		if (memberships.isEmpty()) {
+			return null;
+		}
+
+		CachedBom nearest = memberships.getFirst();
+		for (CachedBom membership : memberships) {
+			if (membership.getVersion().isNewer(version)) {
+				break;
+			}
+			nearest = membership;
+		}
+		return nearest;
+	}
+
+	/**
+	 * Return the release entries in their serialized form.
+	 *
+	 * @return an immutable snapshot of the release entries.
+	 */
+	@Transient
+	public List<CachedRelease> getCachedReleases() {
+		synchronized (releases) {
+			return List.copyOf(releases);
+		}
+	}
+
+	/**
+	 * Return whether this entry has any cached releases.
+	 */
+	public boolean hasReleases() {
+		synchronized (releases) {
+			return !releases.isEmpty();
+		}
+	}
+
+	public @Nullable CachedRelease getCachedRelease(ArtifactVersion version) {
+		synchronized (releases) {
+			for (CachedRelease release : releases) {
+				if (version.compareTo(release.version()) == 0) {
+					return release;
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Return releases as {@link Release} objects.
+	 *
+	 * @return a newly created list of releases.
+	 */
+	@Transient
+	public List<Release> getReleases() {
+
+		List<Release> options = new ArrayList<>();
+		synchronized (releases) {
+			for (CachedRelease release : releases) {
+				try {
+					options.add(release.toRelease());
+				} catch (RuntimeException e) {
+					if (LOG.isDebugEnabled()) {
+						LOG.debug(
+								"Failed to parse release '%s:%s': '%s'".formatted(getGroupId(), getArtifactId(),
+										release),
+								e);
+					}
+				}
+			}
+		}
+		return options;
 	}
 
 	public void addRelease(CachedRelease release) {
@@ -592,6 +581,10 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 		}
 	}
 
+	public @Transient @Nullable String getProjectName() {
+		return projectMetadata != null ? projectMetadata.getProjectName() : null;
+	}
+
 	/**
 	 * Return the project metadata captured for this artifact.
 	 *
@@ -674,4 +667,5 @@ public class CachedArtifact extends CachedArtifactSupport implements ArtifactId 
 	public String toString() {
 		return getGroupId() + ":" + getArtifactId() + ", Release count: " + releases.size();
 	}
+
 }
