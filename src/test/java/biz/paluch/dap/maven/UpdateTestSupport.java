@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -30,6 +29,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.assistant.review.BuildActionDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.psi.PsiFile;
@@ -71,7 +71,7 @@ class UpdateTestSupport {
 
 		new BuildActionDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, updates))
-						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
+						.updateBuildFile(targetFile.getVirtualFile(), update);
 		return UpdateTestSupport.of(targetFile);
 	}
 
@@ -80,7 +80,7 @@ class UpdateTestSupport {
 	 * delegate. Works on non-physical files (such as preview copies) that have no
 	 * virtual file.
 	 */
-	static UpgradeResult applyUpdateDirect(PsiFile targetFile, String groupId, String artifactId,
+	static void applyUpdateDirect(PsiFile targetFile, String groupId, String artifactId,
 			String fromVersion, String toVersion) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
@@ -91,7 +91,7 @@ class UpdateTestSupport {
 		dependency.addVersionSource(VersionSource.declared(fromVersion));
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
-		return new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, List.of(update));
+		new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, DependencyUpdates.of(update));
 	}
 
 	static UpgradeResult applyUpdateResult(PsiFile targetFile, String groupId, String artifactId,
@@ -105,9 +105,12 @@ class UpdateTestSupport {
 		dependency.addVersionSource(VersionSource.declared(fromVersion));
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
-		return new BuildActionDelegate(targetFile.getProject(),
+		String before = targetFile.getText();
+		new BuildActionDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, updates))
-						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
+						.updateBuildFile(targetFile.getVirtualFile(), update);
+		return before.equals(targetFile.getText()) ? UpgradeResult.none()
+				: UpgradeResult.changed();
 	}
 
 	/**

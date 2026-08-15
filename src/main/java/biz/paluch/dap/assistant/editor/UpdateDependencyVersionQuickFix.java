@@ -29,6 +29,7 @@ import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.FileModifier;
@@ -181,7 +182,7 @@ class UpdateDependencyVersionQuickFix extends LocalQuickFixOnPsiElement
 
 	@Override
 	public void invoke(Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
-		dependencyContext.applyUpdates(psiFile, List.of(update));
+		dependencyContext.applyUpdates(psiFile, DependencyUpdates.of(update));
 	}
 
 	@Override

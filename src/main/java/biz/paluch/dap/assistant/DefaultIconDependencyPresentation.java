@@ -64,6 +64,11 @@ class DefaultIconDependencyPresentation implements IconDependencyPresentation {
 	}
 
 	@Override
+	public String getArtifactCoordinatesDisplayName() {
+		return presentation.getArtifactCoordinatesDisplayName();
+	}
+
+	@Override
 	public String getDisplayName() {
 		return presentation.getDisplayName();
 	}

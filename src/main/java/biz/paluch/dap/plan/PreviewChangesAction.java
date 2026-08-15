@@ -21,6 +21,7 @@ import java.util.List;
 
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.diff.DiffContentFactory;
@@ -173,5 +174,6 @@ public class PreviewChangesAction extends UpgradePlanAction {
 	record FileChange(VirtualFile file, String before, String after) {
 
 	}
+
 
 }

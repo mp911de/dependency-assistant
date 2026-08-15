@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -91,7 +89,7 @@ class UpdateTestSupport {
 
 		new BuildActionDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdateGradleFile(targetFile.getProject()).applyUpdates(targetFile, updates))
-						.updateBuildFile(targetFile.getVirtualFile(), List.of(update));
+						.updateBuildFile(targetFile.getVirtualFile(), update);
 		return UpdateTestSupport.of(targetFile);
 	}
 

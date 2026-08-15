@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.gradle.wrapper;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.assistant.review.BuildActionDelegate;
@@ -106,7 +104,7 @@ class UpdateGradleWrapperPropertiesTests {
 	private void applyUpdate(PsiFile targetFile, String toVersion) {
 		new BuildActionDelegate(targetFile.getProject(),
 				UpdateGradleWrapperProperties::applyUpdates)
-						.updateBuildFile(targetFile.getVirtualFile(), List.of(update(toVersion)));
+						.updateBuildFile(targetFile.getVirtualFile(), update(toVersion));
 	}
 
 	private DependencyUpdate update(String toVersion) {

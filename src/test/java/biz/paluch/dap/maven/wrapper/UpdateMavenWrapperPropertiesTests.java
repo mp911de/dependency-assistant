@@ -154,7 +154,7 @@ class UpdateMavenWrapperPropertiesTests {
 	private void applyUpdate(PsiFile targetFile, ArtifactId artifactId, String fromVersion, String toVersion) {
 		new BuildActionDelegate(targetFile.getProject(),
 				UpdateMavenWrapperProperties::applyUpdates)
-						.updateBuildFile(targetFile.getVirtualFile(), List.of(update(artifactId, toVersion)));
+						.updateBuildFile(targetFile.getVirtualFile(), update(artifactId, toVersion));
 	}
 
 	private DependencyUpdate update(ArtifactId artifactId, String toVersion) {

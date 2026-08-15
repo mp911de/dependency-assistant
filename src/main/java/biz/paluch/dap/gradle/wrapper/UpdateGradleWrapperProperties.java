@@ -23,7 +23,7 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
@@ -57,21 +57,21 @@ class UpdateGradleWrapperProperties {
 		}
 	}
 
-	public static UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public static void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		if (!(psiFile instanceof PropertiesFile properties)) {
-			return UpgradeResult.none();
+			return;
 		}
 
-		String before = psiFile.getText();
 		List<GradleWrapperEntry> entries = Properties.from(properties).filterMap(GradleWrapperParser::parse)
 				.toList();
-		for (GradleWrapperEntry entry : entries) {
-			for (DependencyUpdate update : updates) {
+
+		updates.updateAll(psiFile, update -> {
+			for (GradleWrapperEntry entry : entries) {
 				applyUpdate(entry.propertyLiteral(), entry, update);
 			}
-		}
-		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
+		});
+
 	}
 
 	private static void applyUpdate(Property property, GradleWrapperEntry entry, DependencyUpdate update) {

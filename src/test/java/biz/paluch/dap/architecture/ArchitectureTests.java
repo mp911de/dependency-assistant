@@ -118,24 +118,24 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistant = packageDependencies(
-			"assistant", "biz.paluch.dap", "artifact", "checker", "lookup", "metadata", "rule", "state", "support",
-			"upgrade",
+			"assistant", "biz.paluch.dap", "artifact",
+			"checker", "lookup", "metadata", "rule", "state", "support", "upgrade",
 			"util");
 
 	@ArchTest
 	ArchRule assistantAction = packageDependencies("assistant.action",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "assistant.review", "metadata", "rule",
-			"state", "support", "upgrade", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.check",
+			"assistant.review", "metadata", "rule", "state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantCheck = packageDependencies("assistant.check",
-			"biz.paluch.dap", "artifact", "assistant", "checker", "lookup", "metadata", "rule", "state", "support",
-			"upgrade", "util");
+			"biz.paluch.dap", "artifact", "assistant", "checker", "lookup",
+			"metadata", "rule", "state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantCompletion = packageDependencies("assistant.completion",
-			"biz.paluch.dap", "artifact", "assistant", "checker", "lookup", "metadata", "rule", "state", "support",
-			"util");
+			"biz.paluch.dap", "artifact", "assistant", "checker", "lookup",
+			"metadata", "rule", "state", "support", "util");
 
 	@ArchTest
 	ArchRule assistantDocumentation = packageDependencies("assistant.documentation",
@@ -144,44 +144,47 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule assistantEditor = packageDependencies("assistant.editor",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.action", "assistant.check", "checker", "lookup",
-			"metadata", "rule", "severity",
+			"biz.paluch.dap", "artifact", "assistant", "assistant.action",
+			"assistant.check", "checker", "lookup", "metadata", "rule", "severity",
 			"state", "support", "upgrade", "util");
 
 	@ArchTest
 	ArchRule assistantReview = packageDependencies("assistant.review",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "checker", "lookup", "metadata", "plan",
-			"rule", "state",
-			"support", "upgrade", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.check",
+			"checker", "lookup", "metadata", "plan", "rule", "state", "support", "upgrade",
+			"util");
 
 	@ArchTest
 	ArchRule antora = packageDependencies("antora",
-			"biz.paluch.dap", "artifact", "assistant.completion", "assistant.editor", "state",
-			"lookup", "support", "support.yaml", "util", "github");
+			"biz.paluch.dap", "artifact", "assistant.completion",
+			"assistant.editor", "state", "lookup", "support", "support.yaml", "util",
+			"github");
 
 	@ArchTest
-	ArchRule checker = packageDependencies("checker", "artifact", "util");
+	ArchRule checker = packageDependencies("checker", "artifact",
+			"util");
 
 	@ArchTest
 	ArchRule github = packageDependencies("github",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.completion", "assistant.editor", "metadata", "state",
-			"lookup", "support", "support.yaml", "ticket", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.completion",
+			"assistant.editor", "metadata", "state", "lookup", "support", "support.yaml",
+			"ticket", "util");
 
 	@ArchTest
 	ArchRule gradle = packageDependencies("gradle",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.completion", "assistant.editor", "maven", "state",
-			"lookup", "support", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.completion",
+			"assistant.editor", "maven", "state", "lookup", "support", "util");
 
 	@ArchTest
 	ArchRule gradleWrapper = packageDependencies("gradle.wrapper",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.completion", "assistant.editor", "gradle", "state",
+			"biz.paluch.dap", "artifact", "assistant",
+			"assistant.completion", "assistant.editor", "gradle", "state",
 			"lookup", "support", "util");
 
 	@ArchTest
 	ArchRule maven = packageDependencies("maven",
-			"biz.paluch.dap",
-			"artifact", "assistant.completion", "assistant.editor", "metadata", "state",
-			"lookup", "support", "util", "maven.wrapper");
+			"biz.paluch.dap", "artifact", "assistant.completion",
+			"assistant.editor", "metadata", "state", "lookup", "support", "util", "maven.wrapper");
 
 	@ArchTest
 	ArchRule metadata = packageDependencies("metadata",
@@ -189,37 +192,37 @@ class ArchitectureTests {
 
 	@ArchTest
 	ArchRule mavenWrapper = packageDependencies("maven.wrapper",
-			"biz.paluch.dap",
-			"artifact", "assistant", "assistant", "assistant.completion", "state", "lookup", "support",
-			"util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant",
+			"assistant.completion", "state", "lookup", "support", "util");
 
 	@ArchTest
 	ArchRule npm = packageDependencies("npm", "biz.paluch.dap",
-			"artifact", "assistant.completion", "assistant.documentation", "assistant.editor", "metadata", "state",
-			"lookup", "support", "util", "github");
+			"artifact", "assistant.completion", "assistant.documentation", "assistant.editor",
+			"metadata", "state", "lookup", "support", "util", "github");
 
 	@ArchTest
-	ArchRule lookup = packageDependencies("lookup", "artifact", "metadata", "state", "support", "util");
+	ArchRule lookup = packageDependencies("lookup", "artifact",
+			"metadata", "state", "support", "util");
 
 	@ArchTest
 	ArchRule plan = packageDependencies("plan",
-			"biz.paluch.dap", "artifact", "assistant", "assistant.check", "checker", "lookup", "metadata", "rule",
-			"state", "support", "ticket", "upgrade", "util");
+			"biz.paluch.dap", "artifact", "assistant", "assistant.check",
+			"checker", "lookup", "metadata", "rule", "state", "support", "ticket", "upgrade", "util");
 
 	@ArchTest
 	ArchRule rule = packageDependencies("rule",
 			"biz.paluch.dap", "artifact", "metadata", "state", "support", "util");
 
 	@ArchTest
-	ArchRule severity = packageDependencies("severity",
-			"biz.paluch.dap", "util");
+	ArchRule severity = packageDependencies("severity", "biz.paluch.dap", "util");
 
 	@ArchTest
-	ArchRule state = packageDependencies("state", "artifact", "checker", "util");
+	ArchRule state = packageDependencies("state", "artifact",
+			"checker", "util");
 
 	@ArchTest
-	ArchRule upgrade = packageDependencies(
-			"upgrade", "artifact", "checker", "rule", "state", "support", "util");
+	ArchRule upgrade = packageDependencies("upgrade", "biz.paluch.dap",
+			"artifact", "checker", "rule", "state", "support", "util");
 
 	@ArchTest
 	ArchRule support = packageDependencies("support", "artifact",

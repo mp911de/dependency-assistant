@@ -62,7 +62,7 @@ public class FileScope implements Sequence<VirtualFile> {
 	 *
 	 * @param files the resolved build files.
 	 * @return the scope.
-	 * @see #of(List)
+	 * @see #of(Collection)
 	 */
 	public static FileScope of(VirtualFile... files) {
 		return new FileScope(List.of(files));
@@ -74,8 +74,8 @@ public class FileScope implements Sequence<VirtualFile> {
 	 * @param files the resolved build files.
 	 * @return the scope.
 	 */
-	public static FileScope of(List<VirtualFile> files) {
-		return new FileScope(files);
+	public static FileScope of(Collection<VirtualFile> files) {
+		return new FileScope(List.copyOf(files));
 	}
 
 	/**

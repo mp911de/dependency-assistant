@@ -29,8 +29,8 @@ import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileIndexLookup;
-import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -174,8 +174,8 @@ class MavenExtensionsAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			return new UpdateExtensionsFile().applyUpdates(psiFile, updates);
+		public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
+			new UpdateExtensionsFile().applyUpdates(psiFile, updates);
 		}
 
 		private DependencyCollector collect(PsiFile file) {

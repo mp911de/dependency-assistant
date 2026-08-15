@@ -35,8 +35,8 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.support.AbstractProjectBuildContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileIndexLookup;
-import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MatchFunction;
 import biz.paluch.dap.util.MessageBundle;
@@ -213,8 +213,8 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			return UpdateGradleWrapperProperties.applyUpdates(psiFile, updates);
+		public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
+			UpdateGradleWrapperProperties.applyUpdates(psiFile, updates);
 		}
 
 		@Override

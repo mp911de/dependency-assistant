@@ -48,6 +48,7 @@ import biz.paluch.dap.state.ProjectId;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.PriorityAction;
 import com.intellij.codeInsight.intention.preview.IntentionPreviewInfo;
@@ -322,7 +323,7 @@ public class DependencyVersionDriftInspection extends LocalInspectionTool implem
 		public ModCommand perform(Project project, ProblemDescriptor descriptor) {
 			PsiElement versionLiteral = descriptor.getPsiElement();
 			return ModCommand.psiUpdate(versionLiteral,
-					element -> context.applyUpdates(element.getContainingFile(), List.of(update)));
+					element -> context.applyUpdates(element.getContainingFile(), DependencyUpdates.of(update)));
 		}
 
 		@Override

@@ -138,7 +138,7 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 			if (StringUtils.hasText(dependencyName)) {
 				tailText += dependencyName;
 			} else {
-				tailText += this.presentation.getArtifactIdDisplayName();
+				tailText += this.presentation.getArtifactCoordinatesDisplayName();
 			}
 		}
 

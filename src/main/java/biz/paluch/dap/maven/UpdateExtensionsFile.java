@@ -22,7 +22,7 @@ import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -45,22 +45,18 @@ class UpdateExtensionsFile {
 	/**
 	 * Apply updates to the extensions file.
 	 */
-	public UpgradeResult applyUpdates(PsiFile extensionsFile, List<DependencyUpdate> updates) {
+	public void applyUpdates(PsiFile extensionsFile, DependencyUpdates updates) {
 
 		if (!(extensionsFile instanceof XmlFile file)) {
 			LOG.warn("Cannot update Extensions file: PSI file is not XmlFile for " + extensionsFile.getName());
-			return UpgradeResult.none();
+			return;
 		}
 		XmlTag root = file.getDocument() != null ? file.getDocument().getRootTag() : null;
 		if (root == null || !MavenUtils.isMavenExtensionsFile(file)) {
-			return UpgradeResult.none();
+			return;
 		}
 
-		String before = file.getText();
-		for (DependencyUpdate update : updates) {
-			apply(root, update);
-		}
-		return before.equals(file.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
+		updates.updateAll(extensionsFile, update -> apply(root, update));
 	}
 
 	/**

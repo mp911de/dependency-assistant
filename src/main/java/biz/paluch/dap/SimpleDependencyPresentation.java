@@ -29,25 +29,30 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 
 	private final PackageIdentity pkg;
 
-	private final String artifactIdDisplayName;
+	private final String displayName;
+
+	private final String artifactId;
 
 	private final @Nullable String dependencyName;
 
 	private final @Nullable String projectName;
 
-	public SimpleDependencyPresentation(PackageIdentity pkg, String artifactIdDisplayName,
+	public SimpleDependencyPresentation(PackageIdentity pkg, String displayName,
+			String artifactId,
 			@Nullable String dependencyName, @Nullable String projectName) {
 		this.pkg = pkg;
-		this.artifactIdDisplayName = artifactIdDisplayName;
+		this.displayName = displayName;
+		this.artifactId = artifactId;
 		this.dependencyName = dependencyName;
 		this.projectName = projectName;
 	}
 
-	public static SimpleDependencyPresentation of(PackageIdentity pkg, String renderedArtifactId,
-			@Nullable String dependencyName,
+	public static SimpleDependencyPresentation of(PackageIdentity pkg,
+			String renderedArtifactId, String renderedArtifactCoordinates, @Nullable String dependencyName,
 			@Nullable String projectName) {
 
-		return new SimpleDependencyPresentation(pkg, renderedArtifactId, dependencyName, projectName);
+		return new SimpleDependencyPresentation(pkg, renderedArtifactId, renderedArtifactCoordinates, dependencyName,
+				projectName);
 	}
 
 	@Override
@@ -62,7 +67,12 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 
 	@Override
 	public String getArtifactIdDisplayName() {
-		return artifactIdDisplayName;
+		return artifactId;
+	}
+
+	@Override
+	public String getArtifactCoordinatesDisplayName() {
+		return displayName;
 	}
 
 	@Override
@@ -102,9 +112,9 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 	@Override
 	public String toString() {
 		if (hasDependencyName()) {
-			return artifactIdDisplayName + " (" + dependencyName + ")";
+			return displayName + " (" + dependencyName + ")";
 		}
-		return artifactIdDisplayName;
+		return displayName;
 	}
 
 }

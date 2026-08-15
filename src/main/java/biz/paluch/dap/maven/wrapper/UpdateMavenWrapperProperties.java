@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import com.intellij.lang.properties.psi.PropertiesFile;
@@ -67,22 +67,20 @@ class UpdateMavenWrapperProperties {
 	 * @param psiFile the wrapper PSI file.
 	 * @param updates the updates to apply.
 	 */
-	public static UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public static void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		if (!(psiFile instanceof PropertiesFile properties)) {
-			return UpgradeResult.none();
+			return;
 		}
 
-		String before = psiFile.getText();
 		Set<String> toCommentOut = new HashSet<>();
-		Properties.from(properties).filterMap(MavenWrapperParser::parse).toList().forEach(it -> {
-			for (DependencyUpdate update : updates) {
-				applyUpdate(it.propertyLiteral(), it, update, toCommentOut);
-			}
+		Properties.from(properties).filterMap(MavenWrapperParser::parse)
+				.toList().forEach(it -> {
+					updates.updateAll(psiFile, update -> applyUpdate(it.propertyLiteral(), it, update, toCommentOut));
+
 		});
 
 		postProcess(psiFile, new HashSet<>(toCommentOut));
-		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	private static void applyUpdate(Property property, WrapperEntry entry, DependencyUpdate update,

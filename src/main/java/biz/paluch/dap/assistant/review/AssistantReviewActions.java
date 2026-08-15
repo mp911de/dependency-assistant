@@ -19,9 +19,8 @@ package biz.paluch.dap.assistant.review;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.ProjectDependencyContext;
@@ -39,9 +38,10 @@ import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleService;
 import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileScope;
-import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -70,7 +70,6 @@ class AssistantReviewActions {
 	public void applyUpdates(Collection<VirtualFile> files, List<DependencyUpdate> updates,
 			ProgressIndicator indicator) {
 
-		List<DependencyAssistant> assistants = DependencyAssistantDispatcher.findAll(project);
 		DependencyRuleService ruleService = DependencyRuleService.getInstance(project);
 		AppliedUpdates applied = new AppliedUpdates();
 
@@ -81,29 +80,49 @@ class AssistantReviewActions {
 				? UndoConfirmationPolicy.REQUEST_CONFIRMATION
 				: UndoConfirmationPolicy.DO_NOT_REQUEST_CONFIRMATION;
 
+
+		FileScope scope = FileScope.of(files);
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, files.size());
+		AtomicInteger updateCount = new AtomicInteger(files.size());
 		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
-		new BuildActionDelegate(project, (file, fileUpdates) -> {
 
-			indicator.checkCanceled();
-			indicator.setText2(file.getName());
-			return applyToSupportingContexts(assistants, file, fileUpdates, (context, fileUpdate) -> {
+		DependencyUpdates dependencyUpdates = new DependencyUpdates(updates) {
 
-				ProjectMetadata metadata = metadataService.getMetadata(fileUpdate.artifactId());
-				DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(fileUpdate.artifactId(),
-						fileUpdate.declarationSources(), BranchSource.of(file), context.getProjectVersion(),
+			@Override
+			protected void afterDependencyUpdate(PsiFile file, DependencyUpdate update) {
+
+				ProjectDependencyContext context = DependencyAssistantDispatcher.findFirstContext(file);
+				ProjectMetadata metadata = metadataService.getMetadata(update.artifactId());
+				DependencyRule rule = ruleService.resolve(ResolutionContext.forAggregate(update.artifactId(),
+						update.declarationSources(), BranchSource.of(file), context.getProjectVersion(),
 						metadata));
 
-				PackageIdentity pkg = PackageIdentity.of(fileUpdate.artifactId(), context.getPackageSystem());
+				PackageIdentity pkg = PackageIdentity.of(update.artifactId(), context.getPackageSystem());
 				DependencyPresentation presentation = DependencyPresentationFactory.create(pkg,
 						metadata.getProjectName(), rule, context.getInterfaceAssistant());
 
-				applied.record(file.getVirtualFile(), fileUpdate, rule, presentation);
-			});
-		}).withGlobalUndo(undoConfirmationPolicy).updateBuildFiles(files, updates);
+				applied.record(file.getVirtualFile(), update, rule, presentation);
+			}
 
-		Runnable undoFlagged = () -> new BuildActionDelegate(project,
-				(file, fileUpdates) -> applyToSupportingContexts(assistants, file, fileUpdates, (context, update) -> {
-				})).updateBuildFiles(applied.getReverseFiles(), applied.getReverse());
+		};
+
+		new BuildActionDelegate(project) {
+
+			@Override
+			protected void applyToFile(VirtualFile file, DependencyUpdates updates) {
+
+				if (updateCount.decrementAndGet() >= 0) {
+					steps.nextStep();
+				}
+				indicator.checkCanceled();
+				indicator.setText2(file.getName());
+				super.applyToFile(file, updates);
+			}
+
+		}.withGlobalUndo(undoConfirmationPolicy).updateBuildFiles(scope, dependencyUpdates);
+
+		Runnable undoFlagged = () -> new BuildActionDelegate(project).updateBuildFiles(applied.getReverseFiles(),
+				applied.getReverse());
 
 		Runnable undo = () -> {
 
@@ -124,38 +143,6 @@ class AssistantReviewActions {
 
 	public void openInUpgradePlan(Map<PlannedUpgrade, ArtifactVersion> upgrades, FileScope scope) {
 		UpgradePlanToolWindowFactory.openWith(project, upgrades, scope);
-	}
-
-	/**
-	 * Apply the file's updates through every supporting assistant with an available
-	 * context, invoking {@code afterApply} per applied context.
-	 */
-	private static UpgradeResult applyToSupportingContexts(List<DependencyAssistant> assistants, PsiFile file,
-			List<DependencyUpdate> fileUpdates, BiConsumer<ProjectDependencyContext, DependencyUpdate> afterApply) {
-
-		UpgradeResult result = UpgradeResult.none();
-
-		for (DependencyAssistant assistant : assistants) {
-
-			if (!assistant.supports(file)) {
-				continue;
-			}
-
-			ProjectDependencyContext context = assistant.createContext(file);
-			if (!context.isAvailable()) {
-				continue;
-			}
-
-			for (DependencyUpdate fileUpdate : fileUpdates) {
-				UpgradeResult fileResult = context.applyUpdates(file, List.of(fileUpdate));
-				fileResult = fileResult.merge(fileResult);
-				if (fileResult.hasChanges()) {
-					afterApply.accept(context, fileUpdate);
-				}
-			}
-
-		}
-		return result;
 	}
 
 }

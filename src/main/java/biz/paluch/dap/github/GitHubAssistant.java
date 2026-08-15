@@ -37,9 +37,9 @@ import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileIndexLookup;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
-import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiElements;
@@ -244,8 +244,8 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			return new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
+		public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
+			new UpdateGitHubWorkflowFile(project).applyUpdates(psiFile, updates);
 		}
 
 		@Override
@@ -268,8 +268,13 @@ public class GitHubAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public String getDisplayName(ArtifactId artifactId) {
+		public String getArtifactId(ArtifactId artifactId) {
 			return GitHubUtils.toString(artifactId);
+		}
+
+		@Override
+		public String getDisplayName(ArtifactId artifactId) {
+			return getArtifactId(artifactId);
 		}
 
 		@Override

@@ -128,7 +128,7 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 		ItemDependency dependency = members.getFirst();
 		InterfaceAssistant assistant = assistants.getFirst();
 		this.displayName = StringUtils.hasText(displayName) ? displayName
-				: assistant.getDisplayName(dependency.getArtifactId());
+				: assistant.getArtifactId(dependency.getArtifactId());
 		this.vulnerabilityFix = vulnerabilityFix;
 		this.vulnerabilityCount = vulnerabilityCount;
 		this.highestVulnerabilitySeverity = highestVulnerabilitySeverity;

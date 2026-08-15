@@ -16,12 +16,11 @@
 
 package biz.paluch.dap.fixtures;
 
-import java.util.List;
-import java.util.function.BiFunction;
+import java.util.function.BiConsumer;
 
 import biz.paluch.dap.assistant.review.BuildActionDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -38,10 +37,10 @@ public class BuildFileUpdates {
 	 * into a {@link BuildActionDelegate} and running it over the file.
 	 */
 	public static void applyUpdate(PsiFile file, DependencyUpdate update,
-			BiFunction<PsiFile, List<DependencyUpdate>, UpgradeResult> updateStep) {
+			BiConsumer<PsiFile, DependencyUpdates> updateStep) {
 
 		new BuildActionDelegate(file.getProject(), updateStep)
-				.updateBuildFile(file.getVirtualFile(), List.of(update));
+				.updateBuildFile(file.getVirtualFile(), update);
 	}
 
 }

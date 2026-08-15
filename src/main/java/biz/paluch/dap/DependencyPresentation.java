@@ -65,12 +65,20 @@ public interface DependencyPresentation extends HasArtifactId {
 	String getDisplayName();
 
 	/**
+	 * Return the artifactId rendered for display, typically in the notation of the
+	 * declaring build system.
+	 *
+	 * @return the rendered artifact coordinates.
+	 */
+	String getArtifactIdDisplayName();
+
+	/**
 	 * Return the artifact coordinates rendered for display, typically in the
 	 * notation of the declaring build system.
 	 *
 	 * @return the rendered artifact coordinates.
 	 */
-	String getArtifactIdDisplayName();
+	String getArtifactCoordinatesDisplayName();
 
 	/**
 	 * Return whether this presentation carries a curated dependency name.
@@ -127,7 +135,8 @@ public interface DependencyPresentation extends HasArtifactId {
 	 * @return a presentation rendering the plain artifact coordinates.
 	 */
 	public static DependencyPresentation of(PackageIdentity pkg) {
-		return SimpleDependencyPresentation.of(pkg, pkg.getArtifactId().toString(), null, null);
+		return SimpleDependencyPresentation.of(pkg, pkg.getArtifactId().artifactId(), pkg.getArtifactId().toString(),
+				null, null);
 	}
 
 	/**
@@ -136,15 +145,17 @@ public interface DependencyPresentation extends HasArtifactId {
 	 * @param pkg the artifact coordinates to present.
 	 * @param displayName the rendered artifact coordinates returned from
 	 * {@link #getArtifactIdDisplayName()}.
+	 * @param artifactId the rendered artifact coordinates.
 	 * @param dependencyName the curated dependency name; can be {@literal null} if
 	 * no curated name is known.
 	 * @param projectName the project name from the artifact's metadata; can be
 	 * {@literal null} if the metadata does not declare one.
 	 * @return the presentation carrying the given name facets.
 	 */
-	static DependencyPresentation of(PackageIdentity pkg, String displayName, @Nullable String dependencyName,
+	static DependencyPresentation of(PackageIdentity pkg, String displayName,
+			String artifactId, @Nullable String dependencyName,
 			@Nullable String projectName) {
-		return new SimpleDependencyPresentation(pkg, displayName, dependencyName, projectName);
+		return new SimpleDependencyPresentation(pkg, displayName, artifactId, dependencyName, projectName);
 	}
 
 }

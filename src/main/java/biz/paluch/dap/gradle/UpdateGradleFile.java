@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import java.util.List;
 import java.util.Map;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -24,9 +23,9 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.gradle.TomlParser.TomlCatalogDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
-import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
@@ -66,15 +65,11 @@ class UpdateGradleFile {
 	 * @param buildFile the Gradle file to update.
 	 * @param updates dependency updates to apply.
 	 */
-	public UpgradeResult applyUpdates(PsiFile buildFile, List<DependencyUpdate> updates) {
+	public void applyUpdates(PsiFile buildFile, DependencyUpdates updates) {
 
-		String before = buildFile.getText();
 		GradlePropertyResolver propertyResolver = GradlePropertyResolver.create(buildFile);
 
-		for (DependencyUpdate update : updates) {
-			applyUpdate(buildFile, propertyResolver, update);
-		}
-		return before.equals(buildFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
+		updates.updateAll(buildFile, update -> applyUpdate(buildFile, propertyResolver, update));
 	}
 
 	private void applyUpdate(PsiFile buildFile, GradlePropertyResolver propertyResolver, DependencyUpdate update) {

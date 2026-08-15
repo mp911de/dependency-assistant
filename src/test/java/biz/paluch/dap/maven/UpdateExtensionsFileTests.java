@@ -72,7 +72,7 @@ class UpdateExtensionsFileTests {
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 		UpdateExtensionsFile updater = new UpdateExtensionsFile();
 
-		BuildFileUpdates.applyUpdate(targetFile, update, (file, updates) -> updater.applyUpdates(file, updates));
+		BuildFileUpdates.applyUpdate(targetFile, update, updater::applyUpdates);
 		return UpdateTestSupport.of(targetFile);
 	}
 

@@ -60,8 +60,10 @@ public final class DependencyPresentationFactory {
 					projectName);
 		}
 
-		return DependencyPresentation.of(pkg,
-				assistant.getDisplayName(pkg.getArtifactId()), dependencyName, projectName);
+		String displayName = assistant.getDisplayName(pkg.getArtifactId());
+		String artifactId = assistant.getArtifactId(pkg.getArtifactId());
+		return DependencyPresentation.of(pkg, displayName,
+				artifactId, dependencyName, projectName);
 	}
 
 	public IconDependencyPresentation create(Dependency dependency, DependencyRule rule, InterfaceAssistant assistant) {

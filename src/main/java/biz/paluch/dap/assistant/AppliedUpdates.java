@@ -27,6 +27,8 @@ import java.util.stream.Collectors;
 import biz.paluch.dap.DependencyPresentation;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.Sequence;
 import com.intellij.openapi.util.text.HtmlChunk;
@@ -96,12 +98,12 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 		return applied;
 	}
 
-	public List<DependencyUpdate> getReverse() {
-		return outOfBounds.stream().map(Reversible::reverse).toList();
+	public DependencyUpdates getReverse() {
+		return new DependencyUpdates(outOfBounds.stream().map(Reversible::reverse).toList());
 	}
 
-	public List<VirtualFile> getReverseFiles() {
-		return outOfBounds.stream().map(Reversible::file).toList();
+	public FileScope getReverseFiles() {
+		return FileScope.of(outOfBounds.stream().map(Reversible::file).toList());
 	}
 
 	public String renderOutOfBounds(String heading,

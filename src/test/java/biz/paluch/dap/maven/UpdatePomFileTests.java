@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -26,6 +24,7 @@ import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.xml.XmlFile;
@@ -62,10 +61,9 @@ class UpdatePomFileTests {
 				ArtifactVersion.of("6.1.0"), ArtifactVersion.of("6.2.0"), DeclarationSource.dependency(),
 				VersionSource.property("spring.version"));
 
-		UpgradeResult result = new UpdatePomFile(MavenPomProperties.empty())
-				.applyUpdates(child, List.of(update));
+		new UpdatePomFile(MavenPomProperties.empty())
+				.applyUpdates(child, DependencyUpdates.of(update));
 
-		assertThat(result.hasChanges()).isFalse();
 		assertThat(parent).containsText("<spring.version>6.1.0</spring.version>")
 				.doesNotContainText("6.2.0");
 	}
@@ -124,9 +122,8 @@ class UpdatePomFileTests {
 
 		PsiFile copy = (PsiFile) pom.copy();
 
-		UpgradeResult result = applyUpdateDirect(copy, "org.apache.commons", "commons-lang3", "3.19.0", "3.20.0");
+		applyUpdateDirect(copy, "org.apache.commons", "commons-lang3", "3.19.0", "3.20.0");
 
-		assertThat(result.getChangeCount()).isOne();
 		assertThat(copy).containsText("3.20.0");
 		assertThat(pom).containsText("3.19.0").doesNotContainText("3.20.0");
 	}

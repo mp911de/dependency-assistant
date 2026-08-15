@@ -16,28 +16,23 @@
 
 package biz.paluch.dap.assistant.review;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
+import java.util.function.BiConsumer;
 
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.upgrade.BuildFileUpdater;
+import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Ref;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 
 /**
@@ -50,13 +45,20 @@ import com.intellij.psi.PsiFile;
  * @author Mark Paluch
  * @see BuildFileUpdater
  */
-public class BuildActionDelegate implements BuildFileUpdater {
+public class BuildActionDelegate {
+
+	/**
+	 * Command group shared by every dependency-update write command, so writes
+	 * issued back-to-back coalesce into a single undoable step regardless of which
+	 * surface (review dialog, upgrade plan) issued them.
+	 */
+	public static final String UPDATE_COMMAND_GROUP = "biz.paluch.dap.UpdateDependencies";
 
 	private static final Logger LOG = Logger.getInstance(BuildActionDelegate.class);
 
 	private final Project project;
 
-	private final BiFunction<PsiFile, List<DependencyUpdate>, UpgradeResult> updateAction;
+	private final FileUpdateEngine engine;
 
 	private final BetterPsiManager psiManager;
 
@@ -67,14 +69,29 @@ public class BuildActionDelegate implements BuildFileUpdater {
 	/**
 	 * Create a delegate using the update action from the given dependency context.
 	 */
+	public BuildActionDelegate(Project project) {
+		this(project, new FileUpdateEngine(project));
+	}
+
+	/**
+	 * Create a delegate using the update action from the given dependency context.
+	 */
 	public BuildActionDelegate(Project project, ProjectDependencyContext dependencyContext) {
-		this(project, dependencyContext::applyUpdates);
+		this(project, new FileUpdateEngine(project, FileUpdateEngine.context(dependencyContext)));
 	}
 
 	public BuildActionDelegate(Project project,
-			BiFunction<PsiFile, List<DependencyUpdate>, UpgradeResult> updateAction) {
+			BiConsumer<PsiFile, DependencyUpdates> updateFunction) {
 		this.project = project;
-		this.updateAction = updateAction;
+		this.engine = new FileUpdateEngine(project,
+				(source, target, updates) -> updateFunction.accept(target, updates));
+		this.psiManager = BetterPsiManager.getInstance(project);
+	}
+
+	public BuildActionDelegate(Project project,
+			FileUpdateEngine engine) {
+		this.project = project;
+		this.engine = engine;
 		this.psiManager = BetterPsiManager.getInstance(project);
 	}
 
@@ -93,35 +110,25 @@ public class BuildActionDelegate implements BuildFileUpdater {
 		return this;
 	}
 
-	@Override
-	public UpgradeResult updateBuildFile(VirtualFile file, List<DependencyUpdate> updates) {
-
-		if (updates.isEmpty()) {
-			return UpgradeResult.none();
-		}
-
-		return runCommand(() -> applyToFile(file, updates));
+	public void updateBuildFile(VirtualFile file, DependencyUpdate update) {
+		runCommand(() -> applyToFile(file, DependencyUpdates.of(update)));
 	}
 
-	@Override
-	public UpgradeResult updateBuildFiles(Collection<VirtualFile> files, List<DependencyUpdate> updates) {
+	public void updateBuildFiles(FileScope files, DependencyUpdates updates) {
 
 		if (files.isEmpty() || updates.isEmpty()) {
-			return UpgradeResult.none();
+			return;
 		}
 
-		return runCommand(() -> {
-			UpgradeResult result = UpgradeResult.none();
+		runCommand(() -> {
 			for (VirtualFile file : files) {
-				result = result.merge(applyToFile(file, updates));
+				applyToFile(file, updates);
 			}
-			return result;
 		});
 	}
 
-	private UpgradeResult runCommand(Supplier<UpgradeResult> command) {
+	private void runCommand(Runnable command) {
 
-		Ref<UpgradeResult> result = Ref.create(UpgradeResult.none());
 		WriteCommandAction.Builder action = WriteCommandAction.writeCommandAction(project)
 				.withName(MessageBundle.message("UpdateBuildFile.title"))
 				.withGroupId(UPDATE_COMMAND_GROUP)
@@ -129,26 +136,20 @@ public class BuildActionDelegate implements BuildFileUpdater {
 		if (globalUndo) {
 			action = action.withGlobalUndo();
 		}
-		action.run(() -> result.set(command.get()));
-		return result.get();
+		action.run(command::run);
 	}
 
-	private UpgradeResult applyToFile(VirtualFile file, List<DependencyUpdate> updates) {
-
-		Document document = FileDocumentManager.getInstance().getDocument(file);
-		if (document != null) {
-			PsiDocumentManager.getInstance(project).commitDocument(document);
-		}
+	protected void applyToFile(VirtualFile file, DependencyUpdates updates) {
 
 		PsiFile psiFile = psiManager.findFile(file);
 		if (psiFile == null) {
 			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
 					MessageBundle.message("UpdateBuildFile.notification.no-file", file.getPresentableUrl()));
-			return UpgradeResult.none();
+			return;
 		}
 
 		try {
-			return updateAction.apply(psiFile, updates);
+			engine.applyUpdates(file, updates);
 		} catch (ProcessCanceledException ex) {
 			throw ex;
 		} catch (Exception ex) {
@@ -156,7 +157,6 @@ public class BuildActionDelegate implements BuildFileUpdater {
 			Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
 					MessageBundle.message("UpdateBuildFile.notification.failed", file.getPresentableUrl(),
 							Notifications.errorMessage(ex)));
-			return UpgradeResult.none();
 		}
 	}
 

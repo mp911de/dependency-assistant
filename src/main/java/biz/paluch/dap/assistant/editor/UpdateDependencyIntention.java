@@ -16,11 +16,10 @@
 
 package biz.paluch.dap.assistant.editor;
 
-import java.util.List;
-
 import biz.paluch.dap.ProjectDependencyContext;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.codeInsight.intention.FileModifier;
 import com.intellij.codeInsight.intention.IntentionAction;
@@ -83,7 +82,7 @@ class UpdateDependencyIntention implements IntentionAction, FileModifier {
 
 	@Override
 	public void invoke(@NotNull Project project, Editor editor, PsiFile psiFile) throws IncorrectOperationException {
-		dependencyContext.applyUpdates(psiFile, List.of(update));
+		dependencyContext.applyUpdates(psiFile, DependencyUpdates.of(update));
 	}
 
 	@Override

@@ -28,7 +28,7 @@ import biz.paluch.dap.artifact.DeclarationSource;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -55,36 +55,33 @@ class UpdatePomFile {
 	/**
 	 * Apply updates to the POM.
 	 */
-	public UpgradeResult applyUpdates(PsiFile pomFile, List<DependencyUpdate> updates) {
+	public void applyUpdates(PsiFile pomFile, DependencyUpdates updates) {
 
 		if (!(pomFile instanceof XmlFile file)) {
 			LOG.warn("Cannot update POM: PSI file is not XmlFile for " + pomFile.getName());
-			return UpgradeResult.none();
+			return;
 		}
 		XmlTag root = file.getDocument() != null ? file.getDocument().getRootTag() : null;
 		if (root == null || !MavenUtils.isMavenPomFile(file)) {
-			return UpgradeResult.none();
+			return;
 		}
 
-		String before = file.getText();
 		MavenParser parser = new MavenParser(propertyResolver);
 		List<ArtifactDeclaration> declarations = parser.parsePomFile(file);
 		Map<ArtifactId, List<ArtifactDeclaration>> index = new HashMap<>();
 		for (ArtifactDeclaration d : declarations) {
 			index.computeIfAbsent(d.getArtifactId(), k -> new ArrayList<>()).add(d);
 		}
-
-		for (DependencyUpdate update : updates) {
+		updates.updateAll(file, update -> {
 			List<ArtifactDeclaration> artifactDeclarations = index.get(update.artifactId());
 			if (artifactDeclarations == null) {
-				continue;
+				return;
 			}
+
 			for (ArtifactDeclaration declaration : artifactDeclarations) {
 				apply(declaration, update);
 			}
-		}
-
-		return before.equals(file.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
+		});
 	}
 
 	/**

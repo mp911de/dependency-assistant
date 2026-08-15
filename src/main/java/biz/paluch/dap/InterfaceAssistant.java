@@ -49,10 +49,18 @@ public interface InterfaceAssistant {
 	}
 
 	/**
-	 * Return the human-readable name for an {@link ArtifactId}.
+	 * Return the human-readable name for an {@link ArtifactId#artifactId()}.
 	 * @param artifactId the artifact Id to render.
 	 */
-	default String getDisplayName(ArtifactId artifactId){
+	default String getArtifactId(ArtifactId artifactId) {
+		return artifactId.artifactId();
+	}
+
+	/**
+	 * Return the human-readable name for an {@link ArtifactId}.
+	 * @param artifactId the artifact and potentially groupId to render.
+	 */
+	default String getDisplayName(ArtifactId artifactId) {
 		return artifactId.toString();
 	}
 

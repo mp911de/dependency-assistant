@@ -16,14 +16,12 @@
 
 package biz.paluch.dap.github;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
@@ -69,19 +67,17 @@ class UpdateGitHubWorkflowFile {
 	 * @param psiFile the GitHub Actions YAML PSI file
 	 * @param updates the dependency updates to apply
 	 */
-	public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
-		String before = psiFile.getText();
 		SyntaxTraverser.psiTraverser(psiFile).filter(YAMLKeyValue.class)
 				.filter(it -> "uses".equals(it.getKeyText()))
 				.map(YAMLKeyValue::getValue)
 				.filter(YAMLScalar.class)
 				.filter(YAMLScalar::isValid)
-				.forEach(it -> applyUpdates(updates, it));
-		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
+				.forEach(it -> applyUpdates(it, updates));
 	}
 
-	private void applyUpdates(List<DependencyUpdate> updates, YAMLScalar scalar) {
+	private void applyUpdates(YAMLScalar scalar, DependencyUpdates updates) {
 
 		UsesRepositoryAction ref = GitHubWorkflowParser.parseUses(scalar.getTextValue());
 		if (ref == null || !StringUtils.hasText(ref.version())) {
@@ -90,14 +86,13 @@ class UpdateGitHubWorkflowFile {
 
 		ArtifactId artifactId = ref.getArtifactId();
 
-		for (DependencyUpdate update : updates) {
-
+		updates.updateAll(scalar.getContainingFile(), update -> {
 			if (!artifactId.equals(update.artifactId()) || !(update.to() instanceof GitVersion gitVersion)) {
-				continue;
+				return;
 			}
 
 			updateVersionAndComment(scalar, ref.getVersion(gitVersion));
-		}
+		});
 	}
 
 	/**

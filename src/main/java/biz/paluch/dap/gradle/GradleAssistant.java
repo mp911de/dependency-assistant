@@ -44,8 +44,8 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyFileDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
-import biz.paluch.dap.support.UpgradeResult;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiFileCache;
@@ -300,8 +300,8 @@ class GradleAssistant implements DependencyAssistant {
 		}
 
 		@Override
-		public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
-			return new UpdateGradleFile(delegate.getProject()).applyUpdates(psiFile, updates);
+		public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
+			new UpdateGradleFile(delegate.getProject()).applyUpdates(psiFile, updates);
 		}
 
 		@Override

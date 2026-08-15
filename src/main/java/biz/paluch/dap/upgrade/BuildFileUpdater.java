@@ -16,12 +16,8 @@
 
 package biz.paluch.dap.upgrade;
 
-import java.util.Collection;
-import java.util.List;
-
-import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
-import com.intellij.openapi.vfs.VirtualFile;
+import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileScope;
 
 /**
  * Strategy interface for writing dependency updates back into build files.
@@ -30,32 +26,17 @@ import com.intellij.openapi.vfs.VirtualFile;
  */
 public interface BuildFileUpdater {
 
-	/**
-	 * Command group shared by every dependency-update write command, so writes
-	 * issued back-to-back coalesce into a single undoable step regardless of which
-	 * surface (review dialog, upgrade plan) issued them.
-	 */
-	String UPDATE_COMMAND_GROUP = "biz.paluch.dap.UpdateDependencies";
+
 
 	/**
-	 * Apply the given updates to a single build file inside one undoable command.
+	 * Apply the given updates to every build file in {@code files}.
 	 *
-	 * @param file the build file to write.
-	 * @param updates the updates to apply; an empty list is a no-op.
+	 * <p>The same {@code updates} are routed to each file. Updates that do not
+	 * match a file are skipped by the underlying writer.
+	 *
+	 * @param files the build files to write. An empty collection is a no-op.
+	 * @param updates the updates to apply to each file. An empty list is a no-op.
 	 */
-	UpgradeResult updateBuildFile(VirtualFile file, List<DependencyUpdate> updates);
-
-	/**
-	 * Apply the given updates to every build file in {@code files} inside one
-	 * undoable command.
-	 *
-	 * <p>The same {@code updates} are routed to each file; updates that do not
-	 * match a file are skipped by the underlying writer. Use when a single chosen
-	 * target fans out to several files that share one writer.
-	 *
-	 * @param files the build files to write; an empty collection is a no-op.
-	 * @param updates the updates to apply to each file; an empty list is a no-op.
-	 */
-	UpgradeResult updateBuildFiles(Collection<VirtualFile> files, List<DependencyUpdate> updates);
+	void updateBuildFiles(FileScope files, DependencyUpdates updates);
 
 }

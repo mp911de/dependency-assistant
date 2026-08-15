@@ -27,8 +27,8 @@ import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.lookup.VersionUpgradeLookup;
 import biz.paluch.dap.state.GitVersionResolver;
 import biz.paluch.dap.support.DependencyUpdate;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.ProjectBuildContext;
-import biz.paluch.dap.support.UpgradeResult;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
@@ -130,7 +130,7 @@ public interface ProjectDependencyContext extends ProjectBuildContext, HasPackag
 	 * {@literal null}.
 	 * @param updates the updates to apply.
 	 */
-	UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates);
+	void applyUpdates(PsiFile psiFile, DependencyUpdates updates);
 
 	/**
 	 * Return an absent {@link ProjectDependencyContext}.

@@ -23,7 +23,7 @@ import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import com.intellij.json.psi.JsonElementGenerator;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
@@ -63,13 +63,12 @@ class UpdatePackageJsonFile {
 	 * @param psiFile the {@code package.json} PSI file.
 	 * @param updates the dependency updates to apply.
 	 */
-	public UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {
-			return UpgradeResult.none();
+			return;
 		}
 
-		String before = psiFile.getText();
 		for (String key : List.of("dependencies", "devDependencies")) {
 
 			JsonProperty property = root.findProperty(key);
@@ -81,7 +80,6 @@ class UpdatePackageJsonFile {
 				applyUpdates(entry, updates);
 			}
 		}
-		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
 	}
 
 	/**
@@ -102,10 +100,10 @@ class UpdatePackageJsonFile {
 					"Unsupported version literal element: %s".formatted(literal.getClass().getName()));
 		}
 
-		applyUpdates(property, List.of(update));
+		applyUpdates(property, DependencyUpdates.of(update));
 	}
 
-	private void applyUpdates(JsonProperty entry, List<DependencyUpdate> updates) {
+	private void applyUpdates(JsonProperty entry, DependencyUpdates updates) {
 
 		String name = entry.getName();
 		if (!NpmPackageParser.NAME_ALLOWLIST.matcher(name).matches()) {
@@ -122,10 +120,11 @@ class UpdatePackageJsonFile {
 		}
 
 		ArtifactId artifactId = NpmPackageParser.toArtifactId(name);
-		for (DependencyUpdate update : updates) {
+
+		updates.updateAll(entry.getContainingFile(), update -> {
 
 			if (!artifactId.equals(update.artifactId())) {
-				continue;
+				return;
 			}
 
 			String replacement = render(expression, literal.getValue(), update);
@@ -133,8 +132,7 @@ class UpdatePackageJsonFile {
 				JsonStringLiteral replacementLiteral = factory.createStringLiteral(replacement);
 				literal.replace(replacementLiteral);
 			}
-			return;
-		}
+		});
 	}
 
 	private static @Nullable String render(NpmVersionExpression expression, String rawValue, DependencyUpdate update) {

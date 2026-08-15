@@ -16,13 +16,11 @@
 
 package biz.paluch.dap.antora;
 
-import java.util.List;
-
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.support.DependencyUpdate;
-import biz.paluch.dap.support.UpgradeResult;
+import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -65,17 +63,15 @@ class UpdateAntoraPlaybookFile {
 	 * @param psiFile the Antora playbook PSI file.
 	 * @param updates the dependency updates to apply.
 	 */
-	UpgradeResult applyUpdates(PsiFile psiFile, List<DependencyUpdate> updates) {
+	void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
-		String before = psiFile.getText();
 		SyntaxTraverser.psiTraverser(psiFile)
 				.filter(YAMLKeyValue.class)
 				.filter(AntoraPlaybookParser::isBundleUrlKeyValue)
 				.filter(it -> it.isValid() && it.getValue() instanceof YAMLScalar)
 				.map(it -> (YAMLScalar) it.getValue())
 				.filter(YAMLScalar::isValid)
-				.forEach(scalar -> applyUpdates(updates, scalar));
-		return before.equals(psiFile.getText()) ? UpgradeResult.none() : UpgradeResult.changed();
+				.forEach(scalar -> applyUpdates(scalar, updates));
 	}
 
 	/**
@@ -142,7 +138,7 @@ class UpdateAntoraPlaybookFile {
 		return replaced.getValue() instanceof YAMLScalar updatedScalar ? updatedScalar : null;
 	}
 
-	private void applyUpdates(List<DependencyUpdate> updates, YAMLScalar scalar) {
+	private void applyUpdates(YAMLScalar scalar, DependencyUpdates updates) {
 
 		AntoraBundleUrl bundleUrl = AntoraBundleUrl.from(scalar.getTextValue());
 		if (bundleUrl == null) {
@@ -151,15 +147,12 @@ class UpdateAntoraPlaybookFile {
 
 		ArtifactId artifactId = bundleUrl.toArtifactId();
 
-		for (DependencyUpdate update : updates) {
-
+		updates.updateAll(scalar.getContainingFile(), update -> {
 			if (!artifactId.equals(update.artifactId()) || !(update.to() instanceof GitVersion gitVersion)) {
-				continue;
+				return;
 			}
-
 			updateVersion(scalar, gitVersion);
-			break;
-		}
+		});
 	}
 
 }
