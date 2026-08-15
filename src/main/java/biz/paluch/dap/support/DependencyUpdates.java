@@ -74,7 +74,7 @@ public class DependencyUpdates implements Sequence<DependencyUpdate> {
 	}
 
 	/**
-	 * Template-method called after a dependency update.
+	 * Template-method called after a dependency update changed the file.
 	 *
 	 * @param file file that is being updated.
 	 * @param update the dependency update.

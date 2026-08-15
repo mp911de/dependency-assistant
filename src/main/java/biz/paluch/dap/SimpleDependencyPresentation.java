@@ -38,8 +38,7 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 	private final @Nullable String projectName;
 
 	public SimpleDependencyPresentation(PackageIdentity pkg, String displayName,
-			String artifactId,
-			@Nullable String dependencyName, @Nullable String projectName) {
+			String artifactId, @Nullable String dependencyName, @Nullable String projectName) {
 		this.pkg = pkg;
 		this.displayName = displayName;
 		this.artifactId = artifactId;
@@ -48,10 +47,10 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 	}
 
 	public static SimpleDependencyPresentation of(PackageIdentity pkg,
-			String renderedArtifactId, String renderedArtifactCoordinates, @Nullable String dependencyName,
+			String displayName, String artifactId, @Nullable String dependencyName,
 			@Nullable String projectName) {
 
-		return new SimpleDependencyPresentation(pkg, renderedArtifactId, renderedArtifactCoordinates, dependencyName,
+		return new SimpleDependencyPresentation(pkg, displayName, artifactId, dependencyName,
 				projectName);
 	}
 

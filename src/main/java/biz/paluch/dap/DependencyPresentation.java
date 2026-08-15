@@ -65,7 +65,7 @@ public interface DependencyPresentation extends HasArtifactId {
 	String getDisplayName();
 
 	/**
-	 * Return the artifactId rendered for display, typically in the notation of the
+	 * Return the artifact Id rendered for display, typically in the notation of the
 	 * declaring build system.
 	 *
 	 * @return the rendered artifact coordinates.

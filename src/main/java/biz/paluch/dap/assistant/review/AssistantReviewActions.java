@@ -40,6 +40,7 @@ import biz.paluch.dap.rule.ResolutionContext;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileScope;
+import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
@@ -48,6 +49,7 @@ import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
+import com.intellij.util.Consumer;
 
 /**
  * Effects triggered from the dependency review dialog: applying updates to
@@ -80,13 +82,21 @@ class AssistantReviewActions {
 				? UndoConfirmationPolicy.REQUEST_CONFIRMATION
 				: UndoConfirmationPolicy.DO_NOT_REQUEST_CONFIRMATION;
 
-
 		FileScope scope = FileScope.of(files);
 		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, files.size());
 		AtomicInteger updateCount = new AtomicInteger(files.size());
 		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
 
 		DependencyUpdates dependencyUpdates = new DependencyUpdates(updates) {
+
+			@Override
+			public void update(PsiFile file, DependencyUpdate update, Consumer<DependencyUpdate> updateTask) {
+				FileUpdateEngine.ChangeTracker changeTracker = FileUpdateEngine.ChangeTracker.of(file);
+				updateTask.accept(update);
+				if (changeTracker.update(file)) {
+					afterDependencyUpdate(file, update);
+				}
+			}
 
 			@Override
 			protected void afterDependencyUpdate(PsiFile file, DependencyUpdate update) {

@@ -92,7 +92,6 @@ public class FileUpdateEngine {
 		return new ProjectDependencyContextUpdateFunction(context);
 	}
 
-	@RequiresWriteLock
 	public UpgradeResult apply(FileScope scope, List<DependencyUpdate> updates, Consumer<DependencyUpdate> afterApply) {
 
 		ApplicationManager.getApplication().assertWriteAccessAllowed();
@@ -116,7 +115,6 @@ public class FileUpdateEngine {
 		});
 	}
 
-	@RequiresWriteLock
 	public UpgradeResult applyUpdates(VirtualFile file, List<DependencyUpdate> updates,
 			Consumer<DependencyUpdate> afterApply) {
 		return doWithFile(file, psiFile -> apply(psiFile, psiFile, updates, afterApply));
@@ -177,7 +175,7 @@ public class FileUpdateEngine {
 	/**
 	 * Tracks changes to a {@link PsiFile}.
 	 */
-	static class ChangeTracker {
+	public static class ChangeTracker {
 
 		private int changeCount;
 
@@ -218,6 +216,9 @@ public class FileUpdateEngine {
 
 	}
 
+	/**
+	 * Functional interface for updating a {@link PsiFile}.
+	 */
 	@FunctionalInterface
 	public interface UpdateFunction {
 
