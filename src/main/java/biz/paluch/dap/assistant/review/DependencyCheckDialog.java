@@ -595,7 +595,7 @@ public class DependencyCheckDialog extends DialogWrapper {
 		}
 
 		setBusy(true);
-		new ApplyUpdatesTask(project, this.getContentPanel(), updates).queue();
+		new ApplyUpdatesTask(project, updates).queue();
 	}
 
 	@Override
@@ -618,12 +618,12 @@ public class DependencyCheckDialog extends DialogWrapper {
 		this.components.setControlsEnabled(!busy);
 	}
 
-	class ApplyUpdatesTask extends Task.Modal {
+	class ApplyUpdatesTask extends Task.Backgroundable {
 
 		private final List<DependencyUpdate> updates;
 
-		private ApplyUpdatesTask(Project project, JComponent parent, List<DependencyUpdate> updates) {
-			super(project, parent, MessageBundle.message("intention.UpgradingDependencies.text"), true);
+		private ApplyUpdatesTask(Project project, List<DependencyUpdate> updates) {
+			super(project, MessageBundle.message("intention.UpgradingDependencies.text"), true);
 			this.updates = updates;
 		}
 

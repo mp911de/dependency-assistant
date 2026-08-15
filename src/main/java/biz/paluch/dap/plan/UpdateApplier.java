@@ -58,13 +58,12 @@ class UpdateApplier implements PlanUpdateApplier {
 
 			String commandName = MessageBundle.message("plan.apply.upgrade", it.getDisplayName(),
 					it.getToVersion());
+			List<DependencyUpdate> updates = it.createUpdates();
 
 			WriteCommandAction.writeCommandAction(service.getProject())
 					.withName(commandName)
 					.withGlobalUndo()
 					.run(() -> {
-						List<DependencyUpdate> updates = it.createUpdates();
-
 						engine.apply(scope, updates, applied -> {
 							appliedUpdates.record(scope, applied, it.getDisplayName());
 							service.removeItem(it);

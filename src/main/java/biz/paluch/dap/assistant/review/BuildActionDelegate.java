@@ -16,6 +16,7 @@
 
 package biz.paluch.dap.assistant.review;
 
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import biz.paluch.dap.ProjectDependencyContext;
@@ -27,10 +28,14 @@ import biz.paluch.dap.upgrade.BuildFileUpdater;
 import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StepsProgressIndicator;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
+import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -38,9 +43,10 @@ import com.intellij.psi.PsiFile;
 /**
  * Delegate to update build files providing write action guarding.
  *
- * <p>Every write runs inside a {@link WriteCommandAction} tagged with a shared
- * command group, so a fan-out of writes issued back-to-back (one chosen target
- * routed to several files) coalesces into a single undoable command.
+ * <p>Every file's writes run inside their own {@link WriteCommandAction} tagged
+ * with a shared command group, so a fan-out of writes issued back-to-back (one
+ * chosen target routed to several files) coalesces into a single undoable step
+ * while the EDT stays free between files.
  *
  * @author Mark Paluch
  * @see BuildFileUpdater
@@ -114,17 +120,32 @@ public class BuildActionDelegate {
 		runCommand(() -> applyToFile(file, DependencyUpdates.of(update)));
 	}
 
-	public void updateBuildFiles(FileScope files, DependencyUpdates updates) {
+	public void updateBuildFiles(ProgressIndicator indicator, FileScope files, DependencyUpdates updates) {
 
-		if (files.isEmpty() || updates.isEmpty()) {
+		List<VirtualFile> filesList = files.toList();
+		if (filesList.isEmpty() || updates.isEmpty()) {
 			return;
 		}
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, filesList.size());
+		steps.setIndeterminate(false);
+		steps.setFraction(0);
 
-		runCommand(() -> {
-			for (VirtualFile file : files) {
-				applyToFile(file, updates);
-			}
-		});
+		for (VirtualFile file : filesList) {
+			steps.checkCanceled();
+			steps.setText2(file.getName());
+			runFileCommand(() -> applyToFile(file, updates));
+			steps.nextStep();
+		}
+	}
+
+	/**
+	 * Run one file's writes as its own command on the EDT. Hopping per file keeps
+	 * the EDT free between files so progress paints and cancellation applies at
+	 * file boundaries.
+	 */
+	private void runFileCommand(Runnable command) {
+		ApplicationManager.getApplication().invokeAndWait(
+				() -> CommandProcessor.getInstance().allowMergeGlobalCommands(() -> runCommand(command)));
 	}
 
 	private void runCommand(Runnable command) {

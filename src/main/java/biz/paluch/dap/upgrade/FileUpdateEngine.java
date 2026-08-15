@@ -35,7 +35,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
-import com.intellij.util.concurrency.annotations.RequiresWriteLock;
 
 /**
  * File-mutation engine.
@@ -102,7 +101,7 @@ public class FileUpdateEngine {
 
 		UpgradeResult applied = UpgradeResult.none();
 		for (VirtualFile file : scope.toList()) {
-			applied.merge(applyUpdates(file, updates, afterApply));
+			applied = applied.merge(applyUpdates(file, updates, afterApply));
 		}
 
 		return applied;
@@ -144,7 +143,6 @@ public class FileUpdateEngine {
 	 * Preview uses a non-physical target copy while real apply uses the source as
 	 * target.
 	 */
-	@RequiresWriteLock
 	public void applyToFile(PsiFile source, PsiFile target, List<DependencyUpdate> updates) {
 		if (updates.isEmpty()) {
 			return;

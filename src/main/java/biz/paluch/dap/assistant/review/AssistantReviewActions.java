@@ -19,7 +19,6 @@ package biz.paluch.dap.assistant.review;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyPresentation;
@@ -42,9 +41,10 @@ import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.FileScope;
 import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StepsProgressIndicator;
+import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
 import com.intellij.openapi.command.undo.UndoManager;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -83,8 +83,6 @@ class AssistantReviewActions {
 				: UndoConfirmationPolicy.DO_NOT_REQUEST_CONFIRMATION;
 
 		FileScope scope = FileScope.of(files);
-		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, files.size());
-		AtomicInteger updateCount = new AtomicInteger(files.size());
 		ProjectMetadataService metadataService = ProjectMetadataService.getInstance(project);
 
 		DependencyUpdates dependencyUpdates = new DependencyUpdates(updates) {
@@ -116,22 +114,12 @@ class AssistantReviewActions {
 
 		};
 
-		new BuildActionDelegate(project) {
+		new BuildActionDelegate(project).withGlobalUndo(undoConfirmationPolicy)
+				.updateBuildFiles(indicator, scope, dependencyUpdates);
 
-			@Override
-			protected void applyToFile(VirtualFile file, DependencyUpdates updates) {
-
-				if (updateCount.decrementAndGet() >= 0) {
-					steps.nextStep();
-				}
-				indicator.checkCanceled();
-				indicator.setText2(file.getName());
-				super.applyToFile(file, updates);
-			}
-
-		}.withGlobalUndo(undoConfirmationPolicy).updateBuildFiles(scope, dependencyUpdates);
-
-		Runnable undoFlagged = () -> new BuildActionDelegate(project).updateBuildFiles(applied.getReverseFiles(),
+		Runnable undoFlagged = () -> new BuildActionDelegate(project)
+				.updateBuildFiles(new EmptyProgressIndicator(ModalityState.NON_MODAL),
+						applied.getReverseFiles(),
 				applied.getReverse());
 
 		Runnable undo = () -> {
