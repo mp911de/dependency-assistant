@@ -305,8 +305,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	/**
 	 * Return whether the current dependency version is known to be vulnerable.
 	 *
-	 * @return {@code true} if the current version is vulnerable; {@code false}
-	 * otherwise.
+	 * @return {@literal true} if the current version is vulnerable;
+	 * {@literal false} otherwise.
 	 */
 	public boolean isVulnerable() {
 		return getVulnerabilities(getCurrentVersion()).isVulnerable();
@@ -315,8 +315,8 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	/**
 	 * Return whether the display view contains an automatic upgrade target.
 	 *
-	 * @return {@code true} if at least one display suggestion is available;
-	 * {@code false} otherwise.
+	 * @return {@literal true} if at least one display suggestion is available;
+	 * {@literal false} otherwise.
 	 */
 	public boolean hasUpgradeTargets() {
 		return !displaySuggestions.isEmpty();

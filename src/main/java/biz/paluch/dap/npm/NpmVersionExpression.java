@@ -37,8 +37,7 @@ import org.springframework.util.Assert;
  * Contract for the NPM dependency version expressions that Dependency Assistant
  * can reason about.
  *
- * <p>
- * This type intentionally models a smaller set than the full npm semver
+ * <p>This type intentionally models a smaller set than the full npm semver
  * grammar. A {@code package.json} value is represented only when the framework
  * can derive a single version-bearing segment for lookup, highlighting, and
  * safe replacement. Unsupported shapes such as {@code latest}, {@code *},
@@ -46,21 +45,19 @@ import org.springframework.util.Assert;
  * return {@literal null} from {@link #parse(String)}; there is no sentinel
  * expression for skipped inputs.
  *
- * <p>
- * Each variant owns three related contracts:
+ * <p>Each variant owns three related contracts:
  * <ul>
  * <li>{@link #text()} exposes the version-bearing text used for version
  * resolution and {@link VersionSource} creation.</li>
  * <li>{@link #replaceableRange(String)} identifies the substring in the raw
  * JSON string value that the IDE may highlight and, when {@link #isUpdatable()}
- * is {@code true}, rewrite.</li>
+ * is {@literal true}, rewrite.</li>
  * <li>{@link #renderUpdate(ArtifactVersion)} renders the expression as it would
  * look after applying a target version while preserving variant-specific syntax
  * such as modifiers, aliases, range separators, or Git URL prefixes.</li>
  * </ul>
  *
- * <p>
- * Ranges and aliases expose the version-bearing part of their nested or
+ * <p>Ranges and aliases expose the version-bearing part of their nested or
  * upper-bound expression. Git dependencies resolve their repository through
  * {@link GitRepositoryMetadata} and model the committish as another
  * {@code NpmVersionExpression}, allowing semantic Git refs, SHA refs, branches,

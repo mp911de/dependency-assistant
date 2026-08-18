@@ -71,8 +71,8 @@ record VersionAgreement(ArtifactVersion version, List<TableRow> members) {
 	 * more agreeing members, or equally many at a higher version.
 	 *
 	 * @param other the agreement to compare against.
-	 * @return {@code true} if this agreement supersedes {@code other};
-	 * {@code false} otherwise.
+	 * @return {@literal true} if this agreement supersedes {@code other};
+	 * {@literal false} otherwise.
 	 */
 	boolean isBetterFit(VersionAgreement other) {
 

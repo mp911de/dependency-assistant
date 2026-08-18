@@ -70,8 +70,8 @@ public interface TicketSystemProvider {
 	 * <p>This method may access credentials and block.
 	 *
 	 * @param project the project to probe.
-	 * @return {@code true} if {@link #create(Project)} may be called; {@code false}
-	 * otherwise.
+	 * @return {@literal true} if {@link #create(Project)} may be called;
+	 * {@literal false} otherwise.
 	 */
 	boolean supports(Project project);
 
@@ -79,12 +79,12 @@ public interface TicketSystemProvider {
 	 * Create the ticket system bound to the given project's resolved target.
 	 *
 	 * <p>Callers must invoke this method only after {@link #supports(Project)}
-	 * returned {@code true}. This method may access credentials and block.
+	 * returned {@literal true}. This method may access credentials and block.
 	 *
 	 * @param project the project to bind against.
 	 * @return the project-scoped ticket system.
 	 * @throws IllegalStateException if {@link #supports(Project)} would return
-	 * {@code false} for the project.
+	 * {@literal false} for the project.
 	 * @see #supports(Project)
 	 */
 	TicketSystem create(Project project);

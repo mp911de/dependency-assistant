@@ -253,7 +253,7 @@ class SemanticArtifactVersion implements NumericVersion {
 	/**
 	 * Return whether the version is a release version.
 	 *
-	 * @return {@code true} if this version is a release version.
+	 * @return {@literal true} if this version is a release version.
 	 */
 	@Override
 	public boolean isReleaseVersion() {
@@ -272,7 +272,7 @@ class SemanticArtifactVersion implements NumericVersion {
 	/**
 	 * Return whether the version is a milestone version.
 	 *
-	 * @return {@code true} if this version is a milestone version.
+	 * @return {@literal true} if this version is a milestone version.
 	 */
 	@Override
 	public boolean isMilestoneVersion() {
@@ -288,7 +288,7 @@ class SemanticArtifactVersion implements NumericVersion {
 	/**
 	 * Return whether the version is a RC version.
 	 *
-	 * @return {@code true} if this version is a release candidate version.
+	 * @return {@literal true} if this version is a release candidate version.
 	 */
 	@Override
 	public boolean isReleaseCandidateVersion() {

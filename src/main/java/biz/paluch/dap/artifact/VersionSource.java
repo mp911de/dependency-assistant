@@ -158,7 +158,7 @@ public abstract class VersionSource {
 
 	/**
 	 * Version source representing an absent version.
-	 * <p>{@link #isDefined()} returns {@code false} for this type.
+	 * <p>{@link #isDefined()} returns {@literal false} for this type.
 	 */
 	public static class NoVersionSource extends VersionSource {
 

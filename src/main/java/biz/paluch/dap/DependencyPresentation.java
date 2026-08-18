@@ -83,7 +83,7 @@ public interface DependencyPresentation extends HasArtifactId {
 	/**
 	 * Return whether this presentation carries a curated dependency name.
 	 *
-	 * @return {@code true} if a dependency name is present; {@code false}
+	 * @return {@literal true} if a dependency name is present; {@literal false}
 	 * otherwise.
 	 */
 	boolean hasDependencyName();
@@ -101,7 +101,8 @@ public interface DependencyPresentation extends HasArtifactId {
 	 * Return whether this presentation carries a project name captured from the
 	 * artifact's metadata.
 	 *
-	 * @return {@code true} if a project name is present; {@code false} otherwise.
+	 * @return {@literal true} if a project name is present; {@literal false}
+	 * otherwise.
 	 */
 	boolean hasProjectName();
 

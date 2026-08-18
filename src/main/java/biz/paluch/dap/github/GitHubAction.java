@@ -76,11 +76,10 @@ interface GitHubAction extends HasArtifactId {
 	/**
 	 * Determine whether the given value is a repository-backed GitHub Action
 	 * {@code uses:} declaration.
-	 * <p>
-	 * A {@code false} result does not mean the workflow entry is invalid YAML;
-	 * it means the entry is outside the dependency model handled here.
+	 * <p>A {@literal false} result does not mean the workflow entry is invalid
+	 * YAML; it means the entry is outside the dependency model handled here.
 	 * @param uses the workflow value to inspect
-	 * @return {@code true} if the value can be represented as a
+	 * @return {@literal true} if the value can be represented as a
 	 * {@code GitHubAction}
 	 */
 	static boolean isValidUsage(@Nullable String uses) {

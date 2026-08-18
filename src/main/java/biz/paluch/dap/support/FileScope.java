@@ -147,8 +147,8 @@ public class FileScope implements Sequence<VirtualFile> {
 	 * Return whether the scope declares any path that does not currently resolve to
 	 * a file.
 	 *
-	 * @return {@code true} if at least one declared path is missing; {@code false}
-	 * otherwise.
+	 * @return {@literal true} if at least one declared path is missing;
+	 * {@literal false} otherwise.
 	 */
 	public boolean hasMissingFiles() {
 		return !missingPaths.isEmpty();

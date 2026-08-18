@@ -116,7 +116,7 @@ public abstract class VersionContributorSupport extends ReleaseCompletionProvide
 	 * character in a supported wrapper URL.
 	 * @param position the PSI position at the caret.
 	 * @param typeChar the typed character.
-	 * @return {@code true} if completion should open automatically.
+	 * @return {@literal true} if completion should open automatically.
 	 */
 	public boolean invokeAutoPopup(PsiElement position, char typeChar) {
 		return isVersionCharacter(typeChar) && PROPERTY_VALUE.accepts(position);

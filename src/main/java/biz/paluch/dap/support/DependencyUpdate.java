@@ -167,10 +167,11 @@ public class DependencyUpdate extends ArtifactVersionChange {
 
 	/**
 	 * Evaluate the {@link Predicate} against the {@link VersionSource}s and return
-	 * {@code true} if any match.
+	 * {@literal true} if any match.
 	 *
 	 * @param versionSourcePredicate the predicate to apply to the version sources.
-	 * @return {@code true} if any version source matches; {@code false} otherwise.
+	 * @return {@literal true} if any version source matches; {@literal false}
+	 * otherwise.
 	 */
 	public boolean hasVersionSource(Predicate<VersionSource> versionSourcePredicate) {
 		for (VersionSource versionSource : versionSources) {

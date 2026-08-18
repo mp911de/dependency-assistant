@@ -84,7 +84,7 @@ enum WrapperProperty {
 	/**
 	 * Return whether the property is a supported wrapper URL property.
 	 * @param property the property to inspect.
-	 * @return {@code true} if the property key is supported.
+	 * @return {@literal true} if the property key is supported.
 	 */
 	static boolean isWrapperProperty(IProperty property) {
 		return forKey(property.getUnescapedKey()) != null;

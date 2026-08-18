@@ -80,6 +80,10 @@ public class Cache implements ModificationTracker {
 	 */
 	private static final int EMPTY_THRESHOLD = 3;
 
+	public static final Duration PLEASE_BE_SILENT_FOR = Duration.ofHours(12);
+
+	public static final Duration LAST_TIME_CACHE_WAS_UPDATED = Duration.ofDays(2);
+
 	@Transient
 	private final Clock clock;
 

@@ -205,16 +205,16 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	}
 
 	/**
-	 * @return {@code true} if the element resolved to an artifact declaration;
-	 * {@code false} otherwise.
+	 * @return {@literal true} if the element resolved to an artifact declaration;
+	 * {@literal false} otherwise.
 	 */
 	public boolean isPresent() {
 		return declaration != null;
 	}
 
 	/**
-	 * @return {@code true} if the element did not resolve to an artifact
-	 * declaration; {@code false} otherwise.
+	 * @return {@literal true} if the element did not resolve to an artifact
+	 * declaration; {@literal false} otherwise.
 	 */
 	public boolean isAbsent() {
 		return !isPresent();
@@ -390,8 +390,8 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 	}
 
 	/**
-	 * @return {@code true} if a governing {@link DependencyRule} applies to the
-	 * resolved artifact; {@code false} otherwise.
+	 * @return {@literal true} if a governing {@link DependencyRule} applies to the
+	 * resolved artifact; {@literal false} otherwise.
 	 */
 	public boolean hasRule() {
 		return rule.isPresent();
