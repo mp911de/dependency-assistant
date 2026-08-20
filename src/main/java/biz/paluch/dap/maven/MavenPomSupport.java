@@ -357,7 +357,6 @@ class MavenPomSupport {
 		public boolean textEquals(Subtag other) {
 			return text != null && text.equals(other.text);
 		}
-
 	}
 
 }

@@ -58,12 +58,15 @@ class MavenPomProperties implements PropertyResolver {
 	}
 
 	static MavenPomProperties from(XmlFile pom) {
-		return PsiFileCache.get(pom,
-				it -> new MavenPomProperties(readProjectProperties(it)));
+		return PsiFileCache.get(pom, MavenPomProperties::create);
 	}
 
 	static MavenPomProperties from(List<XmlFile> pomFiles) {
 		return from(pomFiles, MavenPomProperties::from);
+	}
+
+	static MavenPomProperties create(XmlFile it) {
+		return new MavenPomProperties(readProjectProperties(it));
 	}
 
 	static MavenPomProperties from(List<XmlFile> pomsByPrecedence,

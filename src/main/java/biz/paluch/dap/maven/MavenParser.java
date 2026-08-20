@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -71,7 +72,7 @@ class MavenParser extends MavenPomSupport {
 		MavenPomProperties properties = MavenPomProperties.from(pomFile, this.propertyResolver);
 
 		List<ArtifactDeclaration> declarations = new ArrayList<>();
-		doWithArtifacts(properties, pomFile, declarations::add);
+		doWithArtifacts(properties, pomFile, (tag, declaration) -> declarations.add(declaration));
 		return declarations;
 	}
 
@@ -102,7 +103,8 @@ class MavenParser extends MavenPomSupport {
 		return parseDeclaration(propertyResolver, owner, getDeclarationSource(owner));
 	}
 
-	private @Nullable ArtifactDeclaration parseDeclaration(MavenPomProperties properties, XmlTag owner,
+	@Nullable
+	static ArtifactDeclaration parseDeclaration(MavenPomProperties properties, XmlTag owner,
 			DeclarationSource declarationSource) {
 
 		PropertyResolver resolver = properties.forDeclaration(owner);
@@ -156,6 +158,11 @@ class MavenParser extends MavenPomSupport {
 
 	private void doWithArtifacts(MavenPomProperties properties, XmlFile pomFile,
 			Consumer<ArtifactDeclaration> callback) {
+		doWithArtifacts(properties, pomFile, (tag, declaration) -> callback.accept(declaration));
+	}
+
+	static void doWithArtifacts(MavenPomProperties properties, XmlFile pomFile,
+			BiConsumer<PomTag, ArtifactDeclaration> callback) {
 
 		doWithRoot(pomFile, root -> {
 
@@ -177,7 +184,8 @@ class MavenParser extends MavenPomSupport {
 		});
 	}
 
-	private void doWithPluginsAndDependencies(MavenPomProperties properties, Consumer<ArtifactDeclaration> callback,
+	private static void doWithPluginsAndDependencies(MavenPomProperties properties,
+			BiConsumer<PomTag, ArtifactDeclaration> callback,
 			PomTag root) {
 
 		root.subtags(DEPENDENCY_MANAGEMENT)
@@ -195,22 +203,22 @@ class MavenParser extends MavenPomSupport {
 		root.subtags(REPORTING).forEach(reporting -> doWithPlugins(properties, callback, reporting));
 	}
 
-	private void doWithDependencies(PomTag root, MavenPomProperties properties,
-			Consumer<ArtifactDeclaration> callback) {
+	private static void doWithDependencies(PomTag root, MavenPomProperties properties,
+			BiConsumer<PomTag, ArtifactDeclaration> callback) {
 		root.subtags(DEPENDENCIES).subtags(DEPENDENCY).forEach(dependency -> {
 			doWithDeclaration(properties, dependency, getDeclarationSource(dependency.getTag()), callback);
 		});
 	}
 
-	private void doWithPlugins(MavenPomProperties properties,
-			Consumer<ArtifactDeclaration> callback, PomTag build) {
+	private static void doWithPlugins(MavenPomProperties properties,
+			BiConsumer<PomTag, ArtifactDeclaration> callback, PomTag build) {
 		build.subtags(PLUGINS).subtags(PLUGIN).forEach(plugin -> {
 			doWithDeclaration(properties, plugin, getDeclarationSource(plugin.getTag()), callback);
 		});
 	}
 
-	private void doWithExtensions(MavenPomProperties properties,
-			Consumer<ArtifactDeclaration> callback, PomTag build) {
+	private static void doWithExtensions(MavenPomProperties properties,
+			BiConsumer<PomTag, ArtifactDeclaration> callback, PomTag build) {
 		build.subtags(EXTENSIONS).subtags(EXTENSION).forEach(extension -> {
 			if (extension.subtag(GROUP_ID).isPresent()) {
 				doWithDeclaration(properties, extension, getDeclarationSource(extension.getTag()), callback);
@@ -218,12 +226,13 @@ class MavenParser extends MavenPomSupport {
 		});
 	}
 
-	private void doWithDeclaration(MavenPomProperties properties, PomTag tag, DeclarationSource declarationSource,
-			Consumer<ArtifactDeclaration> callback) {
+	private static void doWithDeclaration(MavenPomProperties properties, PomTag tag,
+			DeclarationSource declarationSource,
+			BiConsumer<PomTag, ArtifactDeclaration> callback) {
 
 		ArtifactDeclaration declaration = parseDeclaration(properties, tag.getTag(), declarationSource);
 		if (declaration != null) {
-			callback.accept(declaration);
+			callback.accept(tag, declaration);
 		}
 	}
 

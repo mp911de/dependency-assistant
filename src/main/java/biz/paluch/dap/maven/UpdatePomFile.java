@@ -18,10 +18,8 @@ package biz.paluch.dap.maven;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -55,33 +53,91 @@ class UpdatePomFile {
 	/**
 	 * Apply updates to the POM.
 	 */
-	public void applyUpdates(PsiFile pomFile, DependencyUpdates updates) {
+	public void applyUpdates(PsiFile file, DependencyUpdates updates) {
 
-		if (!(pomFile instanceof XmlFile file)) {
-			LOG.warn("Cannot update POM: PSI file is not XmlFile for " + pomFile.getName());
+		if (!(file instanceof XmlFile pomFile)) {
+			LOG.warn("Cannot update POM: PSI file is not XmlFile for " + file.getName());
 			return;
 		}
-		XmlTag root = file.getDocument() != null ? file.getDocument().getRootTag() : null;
+		XmlTag root = pomFile.getDocument() != null ? pomFile.getDocument().getRootTag() : null;
 		if (root == null || !MavenUtils.isMavenPomFile(file)) {
 			return;
 		}
 
-		MavenParser parser = new MavenParser(propertyResolver);
-		List<ArtifactDeclaration> declarations = parser.parsePomFile(file);
-		Map<ArtifactId, List<ArtifactDeclaration>> index = new HashMap<>();
-		for (ArtifactDeclaration d : declarations) {
-			index.computeIfAbsent(d.getArtifactId(), k -> new ArrayList<>()).add(d);
-		}
-		updates.updateAll(file, update -> {
-			List<ArtifactDeclaration> artifactDeclarations = index.get(update.artifactId());
-			if (artifactDeclarations == null) {
-				return;
-			}
+		record TagAndDeclaration(MavenPomSupport.PomTag tag, ArtifactDeclaration declaration) {
 
-			for (ArtifactDeclaration declaration : artifactDeclarations) {
-				apply(declaration, update);
+		}
+
+		Map<ArtifactId, List<TagAndDeclaration>> index = new HashMap<>();
+		MavenParser.doWithArtifacts(propertyResolver, pomFile, (tag, declaration) -> {
+			index.computeIfAbsent(declaration.getArtifactId(), k -> new ArrayList<>())
+					.add(new TagAndDeclaration(tag, declaration));
+		});
+
+		updates.updateAll(file, update -> {
+
+			for (VersionSource source : update.versionSources()) {
+				if (source instanceof VersionSource.VersionProperty versionProperty) {
+					updateProperty(pomFile, update, versionProperty);
+				} else {
+
+
+					List<TagAndDeclaration> declarations = index.get(update.artifactId());
+					if (declarations == null || declarations.isEmpty()) {
+						return;
+					}
+
+					for (TagAndDeclaration declaration : declarations) {
+						updateDeclaration(declaration.tag().getTag(), declaration.declaration(), update, source);
+					}
+				}
 			}
 		});
+	}
+
+
+	private void updateProperty(XmlFile file, DependencyUpdate update, VersionSource.VersionProperty versionProperty) {
+
+		MavenPomSupport.doWithRoot(file, rootTag -> {
+
+			if (versionProperty instanceof VersionSource.Profile profileProperty) {
+
+				MavenPomSupport.doWithProfiles(MavenPomSupport.PomTag.of(rootTag), profile -> {
+
+					String id = profile.getText("id");
+					if (!profileProperty.getProfileId().equals(id)) {
+						return;
+					}
+
+					XmlTag propertiesTag = profile.getTag().findFirstSubTag("properties");
+					if (propertiesTag != null) {
+						XmlTag propertyTag = propertiesTag.findFirstSubTag(versionProperty.getProperty());
+						if (propertyTag != null) {
+							applyUpdate(propertyTag, update);
+						}
+					}
+				});
+			} else {
+
+				XmlTag propertiesTag = rootTag.findFirstSubTag("properties");
+				if (propertiesTag != null) {
+					XmlTag propertyTag = propertiesTag.findFirstSubTag(versionProperty.getProperty());
+					if (propertyTag != null) {
+						applyUpdate(propertyTag, update);
+					}
+				}
+			}
+		});
+	}
+
+	private void updateDeclaration(XmlTag owner, ArtifactDeclaration declaration, DependencyUpdate update,
+			VersionSource source) {
+		if (matches(declaration, update, source)) {
+			XmlTag version = owner.findFirstSubTag("version");
+			if (version != null) {
+				applyUpdate(version, update);
+			}
+		}
 	}
 
 	/**
@@ -102,17 +158,6 @@ class UpdatePomFile {
 
 		String value = update.to().toString();
 		versionTag.getValue().setText(value);
-	}
-
-	private void apply(ArtifactDeclaration declaration, DependencyUpdate update) {
-
-		Set<PsiElement> updated = new HashSet<>();
-		for (VersionSource source : update.versionSources()) {
-			PsiElement literal = declaration.getVersionLiteral();
-			if (literal != null && matches(declaration, update, source) && updated.add(literal)) {
-				applyUpdate(literal, update);
-			}
-		}
 	}
 
 	private boolean matches(ArtifactDeclaration declaration, DependencyUpdate update, VersionSource source) {
