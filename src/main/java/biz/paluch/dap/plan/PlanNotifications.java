@@ -18,7 +18,9 @@ package biz.paluch.dap.plan;
 
 import java.util.List;
 
+import biz.paluch.dap.assistant.AppliedDependencyUpdate;
 import biz.paluch.dap.assistant.AppliedUpdates;
+import biz.paluch.dap.assistant.Notifications;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
@@ -60,30 +62,27 @@ class PlanNotifications {
 
 		Notification notification;
 		if (applied.isEmpty()) {
-			notification = group.createNotification(MessageBundle.message("plugin.name"),
-					MessageBundle.message("plan.apply.summary.none"), NotificationType.INFORMATION);
+			notification = group.createNotification(MessageBundle.message("plan.notifications.apply.none"),
+					NotificationType.INFORMATION);
 		} else {
 
-
-			String message;
-			if (commit) {
-				message = MessageBundle.message("plan.apply.summary.committed", applied);
-			} else {
-				if (applied.size() == 1) {
-					UpgradePlanItem item = items.getFirst();
-					message = MessageBundle.message("notification.dependencies-updated", item.getDisplayName());
-				} else {
-					message = MessageBundle.message("notification.dependencies-updates", applied.size());
-				}
-			}
+			String title = commit ? getCommitTitle(applied) : Notifications.getTitle(applied);
 			notification = group
-					.createNotification(message, applied.toString(), NotificationType.INFORMATION)
+					.createNotification(title, applied.toString(), NotificationType.INFORMATION)
 					.setImportant(true);
 			addAction(notification, "plan.apply.push", push);
 			addAction(notification, "plan.apply.unshelve", unshelve);
 		}
 
 		notification.notify(project);
+	}
+
+	public static String getCommitTitle(AppliedUpdates updates) {
+		if (updates.size() == 1) {
+			AppliedDependencyUpdate item = updates.iterator().next();
+			return MessageBundle.message("plan.notifications.apply.updated", item.displayName());
+		}
+		return MessageBundle.message("plan.notifications.apply.updates", updates.size());
 	}
 
 	private static void addAction(Notification notification, String key, @Nullable Runnable action) {
@@ -105,7 +104,7 @@ class PlanNotifications {
 	 * the balloon content.
 	 */
 	void error(Project project, String message, Throwable error) {
-		error(project, message, reason(error));
+		error(project, message, unwrapReason(error));
 	}
 
 	/**
@@ -114,12 +113,12 @@ class PlanNotifications {
 	 */
 	void error(Project project, String message, Throwable error, @Nullable Runnable unshelve) {
 
-		Notification notification = group.createNotification(message, reason(error), NotificationType.ERROR);
+		Notification notification = group.createNotification(message, unwrapReason(error), NotificationType.ERROR);
 		addAction(notification, "plan.apply.unshelve", unshelve);
 		notification.notify(project);
 	}
 
-	private void error(Project project, String message, String reason) {
+	public void error(Project project, String message, String reason) {
 		group.createNotification(message, reason, NotificationType.ERROR)
 				.notify(project);
 	}
@@ -143,7 +142,7 @@ class PlanNotifications {
 
 	// unwrap wrappers that add no message of their own (UncheckedIOException,
 	// RuntimeException(cause)) so the balloon shows the failure, not the wrapper
-	private static String reason(Throwable error) {
+	public static String unwrapReason(Throwable error) {
 
 		Throwable cause = error;
 		while (cause.getCause() != null

@@ -43,7 +43,6 @@ import biz.paluch.dap.upgrade.FileUpdateEngine;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.command.UndoConfirmationPolicy;
-import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
@@ -122,20 +121,11 @@ class AssistantReviewActions {
 						applied.getReverseFiles(),
 				applied.getReverse());
 
-		Runnable undo = () -> {
-
-			UndoManager undoManager = UndoManager.getInstance(project);
-			if (undoManager.isUndoAvailable(null)) {
-				undoManager.undo(null);
-			}
-		};
-
-		Notifications.updatesApplied(project, applied, undo, undoFlagged);
+		Notifications.updatesApplied(project, applied, undoFlagged);
 	}
 
 	public void reportApplyError(Throwable error) {
-		Notifications.error(project,
-				MessageBundle.message("UpdateBuildFile.notification.error.title"),
+		Notifications.error(project, MessageBundle.message("UpdateBuildFile.notification.error.title"),
 				Notifications.errorMessage(error));
 	}
 

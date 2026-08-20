@@ -548,6 +548,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 			summaryText.setForeground(NamedColorUtil.getInactiveTextColor());
 			summaryText.setFont(JBUI.Fonts.smallFont());
 			createTicketsLink.setFont(JBUI.Fonts.smallFont());
+			createTicketsLink.setVisible(false);
 
 			add(summaryText);
 			add(createTicketsLink);

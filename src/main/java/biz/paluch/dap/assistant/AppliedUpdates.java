@@ -113,7 +113,7 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 
 		for (AppliedDependencyUpdate update : entries) {
 			ul = ul.children(HtmlChunk.li()
-					.addText(MessageBundle.message("notification.dependencies-updates.out-of-bounds.entry",
+					.addText(MessageBundle.message("notification.out-of-bounds.entry",
 							update.displayName(), update.getTargetVersion())));
 		}
 
@@ -127,13 +127,13 @@ public class AppliedUpdates implements Sequence<AppliedDependencyUpdate> {
 
 			HtmlChunk li;
 			if (update.getTargetVersion().isNewer(update.getFromVersion())) {
-				li = HtmlChunk.li().addText(MessageBundle.message("notification.dependencies-updates.upgrade",
+				li = HtmlChunk.li().addText(MessageBundle.message("notification.upgrade",
 						update.displayName(), update.getTargetVersion()));
 			} else if (update.getFromVersion().isNewer(update.getTargetVersion())) {
-				li = HtmlChunk.li().addText(MessageBundle.message("notification.dependencies-updates.downgrade",
+				li = HtmlChunk.li().addText(MessageBundle.message("notification.downgrade",
 						update.displayName(), update.getTargetVersion()));
 			} else {
-				li = HtmlChunk.li().addText(MessageBundle.message("notification.dependencies-updates.update",
+				li = HtmlChunk.li().addText(MessageBundle.message("notification.update",
 						update.displayName(), update.getTargetVersion()));
 			}
 			ul = ul.children(li);

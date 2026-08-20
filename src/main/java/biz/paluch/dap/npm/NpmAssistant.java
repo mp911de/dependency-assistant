@@ -248,12 +248,16 @@ public class NpmAssistant implements DependencyAssistant {
 
 		@Override
 		public String getArtifactId(ArtifactId artifactId) {
-			return NpmUtils.toString(artifactId);
+			return artifactId.artifactId();
 		}
 
 		@Override
 		public String getDisplayName(ArtifactId artifactId) {
-			return getArtifactId(artifactId);
+			String displayName = NpmUtils.toString(artifactId);
+			if (displayName.startsWith("@")) {
+				displayName = displayName.substring(1);
+			}
+			return displayName;
 		}
 
 		@Override

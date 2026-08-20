@@ -29,6 +29,7 @@ import com.intellij.ide.nls.NlsMessages;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
+import com.intellij.openapi.command.undo.UndoManager;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
@@ -143,11 +144,10 @@ public class Notifications {
 	 * is flagged.
 	 *
 	 * @param updates the applied updates; an empty collection is a no-op.
-	 * @param undo reverses the whole batch through the platform undo.
 	 * @param undoFlagged reverse-applies only the flagged entries.
 	 */
 	public static void updatesApplied(Project project, AppliedUpdates updates,
-			Runnable undo, Runnable undoFlagged) {
+			Runnable undoFlagged) {
 
 		if (updates.isEmpty()) {
 			return;
@@ -158,15 +158,22 @@ public class Notifications {
 
 		Notification notification = flagged.isEmpty() ? updatesApplied(updates)
 				: updatesAppliedFlagged(updates, flagged, undoFlagged);
+
+		Runnable undo = () -> {
+
+			UndoManager undoManager = UndoManager.getInstance(project);
+			if (undoManager.isUndoAvailable(null)) {
+				undoManager.undo(null);
+			}
+		};
+
 		notification.addAction(NotificationAction.createSimpleExpiring(
-				MessageBundle.message("notification.dependencies-updates.undo"), undo));
+				MessageBundle.message("notification.undo"), undo));
 		notification.notify(project);
 	}
 
 	private static Notification updatesApplied(AppliedUpdates updates) {
-
-		return new Notification(UPGRADE_NOTIFICATIONS,
-				MessageBundle.message("notification.dependencies-updates", updates.size()), updates.toString(),
+		return new Notification(UPGRADE_NOTIFICATIONS, getTitle(updates), updates.toString(),
 				NotificationType.INFORMATION);
 	}
 
@@ -175,38 +182,41 @@ public class Notifications {
 			Runnable undoFlagged) {
 
 		StringBuilder message = new StringBuilder();
-		message.append(updates);
+		message.append("<p>").append(updates).append("</p>");
 
 		List<AppliedDependencyUpdate> outOfBounds = flagged.stream()
 				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.COMPLIANCE).toList();
 		if (!outOfBounds.isEmpty()) {
-			message.append(updates.renderOutOfBounds(
-					MessageBundle.message("notification.dependencies-updates.out-of-bounds", outOfBounds.size()),
-					outOfBounds));
+			message.append("<br/><p>").append(updates.renderOutOfBounds(
+					MessageBundle.message("notification.out-of-bounds", outOfBounds.size()),
+					outOfBounds)).append("</p>");
 		}
 
 		List<AppliedDependencyUpdate> majorCrossings = flagged.stream()
 				.filter(update -> update.flag() == AppliedDependencyUpdate.Flag.MAJOR_CROSSING).toList();
 		if (!majorCrossings.isEmpty()) {
-			message.append(updates.renderOutOfBounds(
-					MessageBundle.message("notification.dependencies-updates.major-crossing", majorCrossings.size()),
-					majorCrossings));
+			message.append("<br/><p>").append(updates.renderOutOfBounds(
+					MessageBundle.message("notification.major-crossing", majorCrossings.size()),
+					majorCrossings)).append("</p>");
 		}
 
-		Notification notification = new Notification(
-				STICKY_NOTIFICATION,
-				MessageBundle.message("notification.dependencies-updates", updates.size()), message.toString(),
+		Notification notification = new Notification(STICKY_NOTIFICATION, getTitle(updates), message.toString(),
 				NotificationType.INFORMATION);
 
 		notification.addAction(NotificationAction.createSimpleExpiring(
-				MessageBundle.message("notification.dependencies-updates.undo-out-of-bounds"),
+				MessageBundle.message("notification.undo-out-of-bounds"),
 				undoFlagged));
-		notification.addAction(NotificationAction.createSimple(
-				MessageBundle.message("notification.dependencies-updates.dismiss"), notification::expire));
 
 		return notification;
 	}
 
+	public static String getTitle(AppliedUpdates updates) {
+		if (updates.size() == 1) {
+			AppliedDependencyUpdate item = updates.iterator().next();
+			return MessageBundle.message("notification.updated", item.displayName());
+		}
+		return MessageBundle.message("notification.updates", updates.size());
+	}
 
 	/**
 	 * Notify the user that release metadata is probably old and offer to update the

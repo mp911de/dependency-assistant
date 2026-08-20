@@ -104,7 +104,7 @@
 		<notificationGroup id="biz.paluch.dependency-assistant.upgrades"
 		                   displayType="NONE"
 		                   isLogByDefault="true"
-		                   bundle="messages.MessageBundle" key="notification.dependencies-updates"/>
+		                   bundle="messages.MessageBundle" key="notification.updates"/>
 		<notificationGroup id="biz.paluch.dependency-assistant.plan"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plan.notification.group"/>

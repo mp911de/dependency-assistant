@@ -32,12 +32,15 @@ import biz.paluch.dap.ticket.TicketRepository;
 import biz.paluch.dap.ticket.TicketState;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
+import biz.paluch.dap.util.StringUtils;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.util.text.HtmlBuilder;
+import com.intellij.openapi.util.text.HtmlChunk;
 import com.intellij.util.ExceptionUtil;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jspecify.annotations.Nullable;
@@ -74,6 +77,8 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 	private final AtomicInteger failed = new AtomicInteger();
 
+	private final PlanNotifications notifications = new PlanNotifications();
+
 	FindOrCreateUpgradeTickets(UpgradePlanService service, TicketSystem ticketSystem, List<Milestone> milestones,
 			List<Label> labels, List<UpgradePlanItem> items) {
 
@@ -85,6 +90,9 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		this.items = items;
 	}
 
+	/**
+	 * Start the task if not already running.
+	 */
 	void start() {
 
 		if (service.isBusy() || items.stream()
@@ -174,7 +182,8 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 		} catch (IOException | RuntimeException e) {
 			failed.incrementAndGet();
 			LOG.warn("Failed to create or find ticket for " + title, e);
-			taskFailure.compareAndSet(null, e);
+			TicketCreationFailed failure = new TicketCreationFailed(e, title);
+			taskFailure.compareAndSet(null, failure);
 		} finally {
 			indicator.nextStep();
 		}
@@ -182,7 +191,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 	@Override
 	public void onSuccess() {
-		new PlanNotifications().info(service.getProject(), summary());
+		notifications.info(service.getProject(), summary());
 	}
 
 	private String summary() {
@@ -206,7 +215,23 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 	public void onThrowable(Throwable error) {
 
 		LOG.warn("Ticket creation failed", error);
-		new PlanNotifications().error(service.getProject(), MessageBundle.message("plan.tickets.error"), error);
+
+		String title = MessageBundle.message("plan.tickets.error.title", ticketSystem.getDisplayName());
+
+		if (error instanceof TicketCreationFailed failure) {
+			HtmlBuilder builder = new HtmlBuilder();
+			builder.append(
+					HtmlChunk.p().addText(MessageBundle.message("plan.tickets.error.detail", failure.getTicket())));
+			String detail = PlanNotifications.unwrapReason(failure);
+
+			if (StringUtils.hasText(detail)) {
+				builder.append(HtmlChunk.p().addText(detail));
+			}
+
+			notifications.error(service.getProject(), title, builder.toString());
+		}
+
+		notifications.error(service.getProject(), title, error);
 	}
 
 	@Override
@@ -238,6 +263,21 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 			}
 			spec.label(labels);
 		});
+	}
+
+	static class TicketCreationFailed extends RuntimeException {
+
+		private final String ticket;
+
+		public TicketCreationFailed(Throwable cause, String ticket) {
+			super(cause);
+			this.ticket = ticket;
+		}
+
+		public String getTicket() {
+			return ticket;
+		}
+
 	}
 
 }

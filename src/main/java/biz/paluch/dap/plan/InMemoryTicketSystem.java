@@ -26,6 +26,11 @@ import biz.paluch.dap.ticket.TicketSystem;
 class InMemoryTicketSystem implements TicketSystem {
 
 	@Override
+	public String getDisplayName() {
+		return "InMemory";
+	}
+
+	@Override
 	public TicketRepository getRepository() {
 		return InMemoryTicketRepository.INSTANCE;
 	}

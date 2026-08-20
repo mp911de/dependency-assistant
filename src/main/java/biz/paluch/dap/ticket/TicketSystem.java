@@ -42,6 +42,13 @@ package biz.paluch.dap.ticket;
 public interface TicketSystem {
 
 	/**
+	 * Return the user-facing name of this ticket system.
+	 *
+	 * @return the name of the ticket system, for example "GitHub" or "Jira".
+	 */
+	String getDisplayName();
+
+	/**
 	 * Return the repository bound to this ticket system target.
 	 *
 	 * @return the repository for searching, creating, and listing tickets.

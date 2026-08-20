@@ -32,13 +32,11 @@ import com.intellij.diff.contents.DiffContent;
 import com.intellij.diff.requests.DiffRequest;
 import com.intellij.diff.requests.SimpleDiffRequest;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.application.ModalityState;
-import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.util.concurrency.AppExecutorUtil;
 
 /**
  * Preview the planned changes as a multi-file diff without modifying any file:
@@ -97,11 +95,8 @@ public class PreviewChangesAction extends UpgradePlanAction {
 		}
 
 		PlanPreview preview = new PlanPreview(service, rebuilt);
-		ReadAction.nonBlocking(preview::createChanges)
-				.inSmartMode(project)
-				.expireWith(service)
-				.finishOnUiThread(ModalityState.nonModal(), changes -> show(project, changes))
-				.submit(AppExecutorUtil.getAppExecutorService());
+		List<FileChange> fileChanges = WriteAction.computeAndWait(preview::createChanges);
+		show(project, fileChanges);
 	}
 
 	private static void show(Project project, List<FileChange> changes) {
@@ -152,6 +147,7 @@ public class PreviewChangesAction extends UpgradePlanAction {
 			for (VirtualFile file : plan.getScope()) {
 
 				ProgressManager.checkCanceled();
+
 				psiManager.doWithFile(file, original -> {
 					PsiFile copy = (PsiFile) original.copy();
 					engine.applyToFile(original, copy, updates);

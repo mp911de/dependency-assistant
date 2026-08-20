@@ -35,6 +35,11 @@ class GitHubTicketSystem implements TicketSystem {
 	}
 
 	@Override
+	public String getDisplayName() {
+		return "GitHub";
+	}
+
+	@Override
 	public TicketRepository getRepository() {
 		return repository;
 	}
