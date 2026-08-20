@@ -29,7 +29,6 @@ import com.intellij.codeInspection.InspectionManager;
 import com.intellij.codeInspection.LocalInspectionTool;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemsHolder;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElementVisitor;
 import com.intellij.psi.PsiFile;
@@ -55,13 +54,12 @@ public class Inspections {
 	 * Run the given inspection over the given file and collect its problems.
 	 */
 	public static List<ProblemDescriptor> inspect(Project project, PsiFile file, LocalInspectionTool inspection) {
-		return ReadAction.compute(() -> {
+
 			InspectionManager manager = InspectionManager.getInstance(project);
 			ProblemsHolder holder = new ProblemsHolder(manager, file, true);
 			PsiElementVisitor visitor = inspection.buildVisitor(holder, true);
 			SyntaxTraverser.psiTraverser(file).forEach(visitor::visitElement);
 			return holder.getResults();
-		});
 	}
 
 	/**

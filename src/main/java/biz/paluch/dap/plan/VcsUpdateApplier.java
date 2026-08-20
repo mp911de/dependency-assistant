@@ -18,6 +18,7 @@ package biz.paluch.dap.plan;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.assistant.AppliedUpdates;
@@ -79,14 +80,19 @@ class VcsUpdateApplier implements PlanUpdateApplier {
 			Consumer<DependencyUpdate> afterApply) {
 
 		return WriteAction.computeAndWait(() -> {
+			AtomicReference<UpgradeResult> result = new AtomicReference<>();
 			CommandProcessor instance = CommandProcessor.getInstance();
-			try (AutoCloseable c = instance.withUndoTransparentAction()) {
-				return engine.apply(scope, updates, afterApply);
-			} catch (RuntimeException ex) {
-				throw ex;
-			} catch (Exception ex) {
-				throw new RuntimeException(ex);
-			}
+			instance.runUndoTransparentAction(() -> {
+				try {
+					result.set(engine.apply(scope, updates, afterApply));
+				} catch (RuntimeException ex) {
+					throw ex;
+				} catch (Exception ex) {
+					throw new RuntimeException(ex);
+				}
+			});
+
+			return result.get();
 		});
 	}
 

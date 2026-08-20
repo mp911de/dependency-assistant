@@ -118,7 +118,7 @@ class AssistantReviewActions {
 				.updateBuildFiles(indicator, scope, dependencyUpdates);
 
 		Runnable undoFlagged = () -> new BuildActionDelegate(project)
-				.updateBuildFiles(new EmptyProgressIndicator(ModalityState.NON_MODAL),
+				.updateBuildFiles(new EmptyProgressIndicator(ModalityState.nonModal()),
 						applied.getReverseFiles(),
 				applied.getReverse());
 

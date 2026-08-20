@@ -1,18 +1,18 @@
 /*
- * Copyright 2026-present the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+* Copyright 2026-present the original author or authors.
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      https://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 package biz.paluch.dap.github;
 
@@ -31,7 +31,6 @@ import com.intellij.modcommand.ActionContext;
 import com.intellij.modcommand.ModCommand;
 import com.intellij.modcommand.ModCommandExecutor;
 import com.intellij.modcommand.ModCommandQuickFix;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.util.TextRange;
@@ -62,8 +61,8 @@ class UnpinnedGitHubActionInspectionTests {
 	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
-			    steps:
-			      - uses: actions/checkout@v4.2.0
+				steps:
+				  - uses: actions/checkout@v4.2.0
 			""")
 	void flagsSymbolicRefWithCachedShaOnTheWholeDeclaration(PsiFile workflowFile) {
 
@@ -86,8 +85,8 @@ class UnpinnedGitHubActionInspectionTests {
 	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
-			    steps:
-			      - uses: actions/checkout@v4.2.0
+				steps:
+				  - uses: actions/checkout@v4.2.0
 			""")
 	void pinsSymbolicRefToCommitShaWithVersionComment(PsiFile workflowFile) {
 
@@ -104,8 +103,8 @@ class UnpinnedGitHubActionInspectionTests {
 	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
-			    steps:
-			      - uses: actions/checkout@v4
+				steps:
+				  - uses: actions/checkout@v4
 			""")
 	void pinsVersionLineRefToNewestStableShaBackedRelease(PsiFile workflowFile) {
 
@@ -122,8 +121,8 @@ class UnpinnedGitHubActionInspectionTests {
 	@EditorFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
-			    steps:
-			      - uses: actions/checkout@v4<caret>.2.0
+				steps:
+				  - uses: actions/checkout@v4<caret>.2.0
 			""")
 	void pinFixLeavesCaretAfterShaNotInsideComment(PsiFile workflowFile) {
 
@@ -140,8 +139,8 @@ class UnpinnedGitHubActionInspectionTests {
 	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
-			    steps:
-			      - uses: actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530
+				steps:
+				  - uses: actions/checkout@d1185ce59f7757407fe6a5febb1e03e3dba2a530
 			""")
 	void doesNotFlagShaPinnedRef(PsiFile workflowFile) {
 
@@ -154,8 +153,8 @@ class UnpinnedGitHubActionInspectionTests {
 	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
-			    steps:
-			      - uses: actions/checkout@v4.1.0
+				steps:
+				  - uses: actions/checkout@v4.1.0
 			""")
 	void doesNotFlagSymbolicRefWithoutCachedSha(PsiFile workflowFile) {
 
@@ -168,8 +167,8 @@ class UnpinnedGitHubActionInspectionTests {
 	@ProjectFile(name = ".github/workflows/ci.yml", content = """
 			jobs:
 			  build:
-			    steps:
-			      - uses: actions/checkout@main
+				steps:
+				  - uses: actions/checkout@main
 			""")
 	void doesNotFlagBranchRef(PsiFile workflowFile) {
 
@@ -195,21 +194,19 @@ class UnpinnedGitHubActionInspectionTests {
 		ProblemDescriptor problem = inspect(file).getFirst();
 		ModCommandQuickFix fix = (ModCommandQuickFix) problem.getFixes()[0];
 		Editor editor = fixture.getEditor();
-		ModCommand command = ReadAction.compute(() -> fix.perform(fixture.getProject(), problem));
+		ModCommand command = fix.perform(fixture.getProject(), problem);
 		WriteCommandAction.runWriteCommandAction(fixture.getProject(), () -> ModCommandExecutor.getInstance()
 				.executeInteractively(ActionContext.from(editor, file), command, editor));
 	}
 
 	private static String highlightText(PsiFile file, ProblemDescriptor problem) {
-		return ReadAction.compute(() -> {
 
-			TextRange elementRange = problem.getPsiElement().getTextRange();
-			TextRange inElement = problem.getTextRangeInElement();
-			TextRange range = inElement == null ? elementRange
-					: inElement.shiftRight(elementRange.getStartOffset());
+		TextRange elementRange = problem.getPsiElement().getTextRange();
+		TextRange inElement = problem.getTextRangeInElement();
+		TextRange range = inElement == null ? elementRange
+				: inElement.shiftRight(elementRange.getStartOffset());
 
-			return file.getText().substring(range.getStartOffset(), range.getEndOffset());
-		});
+		return file.getText().substring(range.getStartOffset(), range.getEndOffset());
 	}
 
 }

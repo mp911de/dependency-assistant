@@ -43,7 +43,6 @@ import org.jetbrains.plugins.github.api.GithubApiRequest;
 import org.jetbrains.plugins.github.api.GithubApiRequestExecutor;
 import org.jetbrains.plugins.github.api.GithubServerPath;
 import org.jetbrains.plugins.github.api.data.GithubResponsePage;
-import org.jetbrains.plugins.github.api.util.GithubApiPagesLoader;
 import org.jetbrains.plugins.github.exceptions.GithubStatusCodeException;
 import org.jspecify.annotations.Nullable;
 
@@ -223,17 +222,10 @@ public class GitHubReleases implements ReleaseSource, TagSource {
 				pageSize);
 		GithubApiRequest<GithubResponsePage<GitHubReleaseDto>> initial = new GithubApiRequest.Get.JsonPage<>(
 				apiBase + url, GitHubReleaseDto.class, "application/vnd.github+json");
-		GithubApiPagesLoader.Request<GitHubReleaseDto> pages = new GithubApiPagesLoader.Request<>(initial,
-				nextUrl -> {
-					if (!nextUrl.startsWith(apiBase)) {
-						throw new IllegalStateException(
-								"Pagination URL does not match expected server: %s".formatted(nextUrl));
-					}
-					return new GithubApiRequest.Get.JsonPage<>(nextUrl, GitHubReleaseDto.class,
-							"application/vnd.github+json");
-				});
 		try {
-			return GithubApiPagesLoader.loadAll(executor, indicator, pages);
+			return GitHubApiPages.loadAll(executor, indicator, apiBase, initial,
+					nextUrl -> new GithubApiRequest.Get.JsonPage<>(nextUrl, GitHubReleaseDto.class,
+							"application/vnd.github+json"));
 		} catch (GithubStatusCodeException ex) {
 			handleException(ex, artifactId, initial.getUrl());
 			exceptionConsumer.accept(ex);

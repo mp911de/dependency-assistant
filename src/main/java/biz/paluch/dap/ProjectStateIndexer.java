@@ -153,9 +153,9 @@ public class ProjectStateIndexer {
 
 		return ReadAction.nonBlocking(() -> {
 			updateAll(assistant);
+			return (Void) null;
 		}).inSmartMode(project)
 				.coalesceBy(project, ProjectStateIndexer.class, assistant.getId())
-				.expireWith(project)
 				.submit(AppExecutorUtil.getAppExecutorService());
 	}
 

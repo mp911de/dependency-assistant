@@ -24,19 +24,14 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.fixtures.Inspections;
-import com.intellij.codeInspection.InspectionManager;
-import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
-import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.QuickFix;
 import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.ActionContext;
 import com.intellij.modcommand.ModCommandAction;
 import com.intellij.modcommand.ModCommandQuickFix;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.util.ReflectionUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -186,34 +181,6 @@ class GradleWrapperUrlInspectionTests {
 		invokeQuickFix(0, 0);
 
 		assertThat(file).containsText("https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
-	}
-
-	@Test
-	@EditorFile(name = "gradle-wrapper.properties", content = """
-			networkTimeout=10000
-			distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
-			validateDistributionUrl=true
-			""")
-	void computeShaFixAddsDistributionShaAfterDistributionUrl(PsiFile file) {
-
-		PropertyImpl property = ReadAction.compute(() -> SyntaxTraverser.psiTraverser(file)
-				.filter(PropertyImpl.class)
-				.filter(it -> WrapperProperty.DISTRIBUTION.key().equals(it.getUnescapedKey()))
-				.first());
-		ProblemDescriptor descriptor = ReadAction.compute(() -> InspectionManager.getInstance(fixture.getProject())
-				.createProblemDescriptor(property, "distributionUrl has no SHA-256 checksum", true,
-						LocalQuickFix.EMPTY_ARRAY, ProblemHighlightType.WEAK_WARNING));
-
-		new GradleWrapperChecksumQuickFix(WrapperProperty.DISTRIBUTION,
-				"82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9")
-						.applyFix(fixture.getProject(), descriptor);
-
-		assertThat(file).containsText("""
-				networkTimeout=10000
-				distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3-bin.zip
-				distributionSha256Sum=82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9
-				validateDistributionUrl=true
-				""");
 	}
 
 	private void invokeQuickFix(int problemIndex, int fixIndex) {

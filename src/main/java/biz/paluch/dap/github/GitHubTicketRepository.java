@@ -46,7 +46,6 @@ import org.jetbrains.plugins.github.api.data.GithubIssueLabel;
 import org.jetbrains.plugins.github.api.data.GithubResponsePage;
 import org.jetbrains.plugins.github.api.data.request.GithubCreateIssueRequest;
 import org.jetbrains.plugins.github.api.data.request.GithubRequestPagination;
-import org.jetbrains.plugins.github.api.util.GithubApiPagesLoader;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -276,16 +275,9 @@ class GitHubTicketRepository implements TicketRepository {
 		String apiBase = repository.getServerPath().toApiUrl();
 		GithubApiRequest<GithubResponsePage<T>> initial = new GithubApiRequest.Get.JsonPage<>(apiBase + path, type,
 				ACCEPT);
-		GithubApiPagesLoader.Request<T> pages = new GithubApiPagesLoader.Request<>(initial, nextUrl -> {
 
-			if (!nextUrl.startsWith(apiBase)) {
-				throw new IllegalStateException("Pagination URL does not match expected server: %s".formatted(nextUrl));
-			}
-
-			return new GithubApiRequest.Get.JsonPage<>(nextUrl, type, ACCEPT);
-		});
-
-		return GithubApiPagesLoader.loadAll(executor, indicator, pages);
+		return GitHubApiPages.loadAll(executor, indicator, apiBase, initial,
+				nextUrl -> new GithubApiRequest.Get.JsonPage<>(nextUrl, type, ACCEPT));
 	}
 
 	private <T> List<T> loadSearchPages(GitHubTicketQuery query, Class<T> type, ProgressIndicator indicator)
@@ -294,16 +286,9 @@ class GitHubTicketRepository implements TicketRepository {
 		GithubServerPath server = repository.getServerPath();
 		String apiBase = server.toApiUrl();
 		GithubApiRequest<GithubResponsePage<T>> initial = searchIssuesRequest(server, query, type);
-		GithubApiPagesLoader.Request<T> pages = new GithubApiPagesLoader.Request<>(initial, nextUrl -> {
 
-			if (!nextUrl.startsWith(apiBase)) {
-				throw new IllegalStateException("Pagination URL does not match expected server: %s".formatted(nextUrl));
-			}
-
-			return new GithubApiRequest.Get.JsonSearchPage<>(nextUrl, type, ACCEPT);
-		});
-
-		return GithubApiPagesLoader.loadAll(executor, indicator, pages);
+		return GitHubApiPages.loadAll(executor, indicator, apiBase, initial,
+				nextUrl -> new GithubApiRequest.Get.JsonSearchPage<>(nextUrl, type, ACCEPT));
 	}
 
 	private <T> GithubApiRequest<GithubResponsePage<T>> searchIssuesRequest(GithubServerPath server,

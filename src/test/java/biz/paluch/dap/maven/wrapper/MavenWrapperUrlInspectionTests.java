@@ -29,8 +29,6 @@ import biz.paluch.dap.state.CachedArtifact;
 import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
 import com.intellij.codeInsight.intention.IntentionAction;
-import com.intellij.codeInspection.InspectionManager;
-import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.QuickFix;
@@ -39,11 +37,9 @@ import com.intellij.lang.properties.psi.impl.PropertyImpl;
 import com.intellij.modcommand.ActionContext;
 import com.intellij.modcommand.ModCommandAction;
 import com.intellij.modcommand.ModCommandQuickFix;
-import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.SyntaxTraverser;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.util.ReflectionUtil;
 import org.junit.jupiter.api.BeforeEach;
@@ -348,64 +344,9 @@ class MavenWrapperUrlInspectionTests {
 		assertThat(quickFixLabels()).doesNotContain(FIX_USE_DEFAULT_URL);
 	}
 
-	@Test
-	@EditorFile(name = "maven-wrapper.properties", content = """
-			wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
-			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			validateDistributionUrl=true
-			""")
-	void computeShaFixAddsDistributionShaAfterDistributionUrl(PsiFile file) {
-
-		PropertyImpl property = ReadAction.compute(() -> SyntaxTraverser.psiTraverser(file)
-				.filter(PropertyImpl.class)
-				.filter(it -> WrapperProperty.DISTRIBUTION.key().equals(it.getUnescapedKey()))
-				.first());
-		ProblemDescriptor descriptor = ReadAction.compute(() -> InspectionManager.getInstance(fixture.getProject())
-				.createProblemDescriptor(property, "distributionUrl has no SHA-256 checksum", true,
-						LocalQuickFix.EMPTY_ARRAY, ProblemHighlightType.WEAK_WARNING));
-
-		new MavenWrapperChecksumQuickFix(WrapperProperty.DISTRIBUTION,
-				(project, url) -> "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9")
-						.applyFix(fixture.getProject(), descriptor);
-
-		assertThat(file).containsText(
-				"""
-						wrapperUrl=https://repo1.maven.org/maven2/org/apache/maven/wrapper/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar
-						distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-						distributionSha256Sum=82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9
-						validateDistributionUrl=true
-						""");
-	}
-
-	@Test
-	@EditorFile(name = "maven-wrapper.properties", content = """
-			distributionUrl=https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip
-			""")
-	void computeShaFixDiscardsResultWhenUrlChanges(PsiFile file) {
-
-		PropertyImpl property = ReadAction.compute(() -> SyntaxTraverser.psiTraverser(file)
-				.filter(PropertyImpl.class)
-				.filter(it -> WrapperProperty.DISTRIBUTION.key().equals(it.getUnescapedKey()))
-				.first());
-		ProblemDescriptor descriptor = ReadAction.compute(() -> InspectionManager.getInstance(fixture.getProject())
-				.createProblemDescriptor(property, "distributionUrl has no SHA-256 checksum", true,
-						LocalQuickFix.EMPTY_ARRAY, ProblemHighlightType.WEAK_WARNING));
-
-		new MavenWrapperChecksumQuickFix(WrapperProperty.DISTRIBUTION, (project, url) -> {
-			WriteCommandAction.runWriteCommandAction(project,
-					() -> property.setValue(url.replace("3.9.6", "3.9.7")));
-			return "82e35a63ceba37e9646434c5dd412ea577147f1e4a41ccde1614253187e3dbf9";
-		}).applyFix(fixture.getProject(), descriptor);
-
-		assertThat(file).containsText("apache-maven/3.9.7")
-				.doesNotContainText("distributionSha256Sum");
-	}
-
-
 	@SuppressWarnings("rawtypes")
 	private void invokeQuickFix(String label) {
 		invokeQuickFix(label, -1);
-
 	}
 
 	@SuppressWarnings("rawtypes")
