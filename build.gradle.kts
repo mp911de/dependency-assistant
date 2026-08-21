@@ -5,8 +5,7 @@ import kotlin.streams.asSequence
 
 plugins {
 	id("java")
-	id("org.jetbrains.intellij.platform") version "2.16.0"
-	id("org.asciidoctor.jvm.convert") version "4.0.5"
+	id("org.jetbrains.intellij.platform") version "2.17.0"
 }
 
 group = "biz.paluch"
