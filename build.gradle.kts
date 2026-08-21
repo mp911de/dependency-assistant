@@ -50,7 +50,7 @@ dependencies {
 	compileOnly("org.jspecify:jspecify:1.0.1")
 
 	testImplementation("org.assertj:assertj-core:3.27.7")
-	testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
+	testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
 	testImplementation("org.wiremock:wiremock-standalone:3.13.1")
 
 	// https://youtrack.jetbrains.com/issue/IJPL-159134/JUnit5-Test-Framework-refers-to-JUnit4-java.lang.NoClassDefFoundError-junit-framework-TestCase
