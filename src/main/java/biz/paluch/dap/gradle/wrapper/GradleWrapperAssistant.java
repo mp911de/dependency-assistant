@@ -156,6 +156,8 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 	public static class GradleWrapperDependencyContext extends AbstractProjectBuildContext
 			implements ProjectDependencyContext {
 
+		private static final UpdateGradleWrapperProperties UPDATER = new UpdateGradleWrapperProperties();
+
 		private final DependencyAssistant assistant;
 
 		private final Project project;
@@ -214,7 +216,7 @@ public class GradleWrapperAssistant implements DependencyAssistant {
 
 		@Override
 		public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
-			UpdateGradleWrapperProperties.applyUpdates(psiFile, updates);
+			UPDATER.applyUpdates(psiFile, updates);
 		}
 
 		@Override

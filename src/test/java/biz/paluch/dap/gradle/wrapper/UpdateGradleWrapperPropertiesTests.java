@@ -18,7 +18,7 @@ package biz.paluch.dap.gradle.wrapper;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.review.BuildActionDelegate;
+import biz.paluch.dap.assistant.review.TestFileUpdateDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.support.DependencyUpdate;
@@ -102,9 +102,9 @@ class UpdateGradleWrapperPropertiesTests {
 	}
 
 	private void applyUpdate(PsiFile targetFile, String toVersion) {
-		new BuildActionDelegate(targetFile.getProject(),
-				UpdateGradleWrapperProperties::applyUpdates)
-						.updateBuildFile(targetFile.getVirtualFile(), update(toVersion));
+		new TestFileUpdateDelegate(targetFile.getProject(),
+				new UpdateGradleWrapperProperties())
+						.updateFile(targetFile.getVirtualFile(), update(toVersion));
 	}
 
 	private DependencyUpdate update(String toVersion) {

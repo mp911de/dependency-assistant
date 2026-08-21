@@ -21,6 +21,7 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileDependencyUpdater;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -41,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class UpdateAntoraPlaybookFile {
+class UpdateAntoraPlaybookFile implements FileDependencyUpdater {
 
 	private static final String RELEASE_DOWNLOAD_FRAGMENT = "/releases/download/";
 
@@ -63,7 +64,8 @@ class UpdateAntoraPlaybookFile {
 	 * @param psiFile the Antora playbook PSI file.
 	 * @param updates the dependency updates to apply.
 	 */
-	void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
+	@Override
+	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		SyntaxTraverser.psiTraverser(psiFile)
 				.filter(YAMLKeyValue.class)

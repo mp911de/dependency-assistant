@@ -24,9 +24,9 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.assistant.review.TestFileUpdateDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.fixtures.BuildFileUpdates;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
@@ -145,7 +145,7 @@ class UpdateAntoraPlaybookFileTests {
 		DependencyUpdate update = DependencyUpdate.from(dependency, targetVersion);
 		UpdateAntoraPlaybookFile updater = new UpdateAntoraPlaybookFile(file.getProject());
 
-		BuildFileUpdates.applyUpdate(file, update, updater::applyUpdates);
+		TestFileUpdateDelegate.update(file, updater, update);
 	}
 
 }

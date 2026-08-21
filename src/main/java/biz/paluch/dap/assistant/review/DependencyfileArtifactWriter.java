@@ -34,6 +34,7 @@ import biz.paluch.dap.rule.ArtifactPattern;
 import biz.paluch.dap.rule.DependencyfileService;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.json.psi.JsonElementGenerator;
@@ -320,7 +321,7 @@ class DependencyfileArtifactWriter {
 	private @Nullable VirtualFile newEmptyDescriptor() throws IOException {
 
 		VirtualFile root = projectRoot();
-		if (root == null || !root.isDirectory()) {
+		if (!FileUtils.isDirectory(root)) {
 			return null;
 		}
 

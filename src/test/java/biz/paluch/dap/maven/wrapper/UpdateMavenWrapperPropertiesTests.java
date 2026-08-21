@@ -20,7 +20,7 @@ import java.util.List;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.assistant.review.BuildActionDelegate;
+import biz.paluch.dap.assistant.review.TestFileUpdateDelegate;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
@@ -152,9 +152,9 @@ class UpdateMavenWrapperPropertiesTests {
 	}
 
 	private void applyUpdate(PsiFile targetFile, ArtifactId artifactId, String fromVersion, String toVersion) {
-		new BuildActionDelegate(targetFile.getProject(),
+		new TestFileUpdateDelegate(targetFile.getProject(),
 				UpdateMavenWrapperProperties::applyUpdates)
-						.updateBuildFile(targetFile.getVirtualFile(), update(artifactId, toVersion));
+						.updateFile(targetFile.getVirtualFile(), update(artifactId, toVersion));
 	}
 
 	private DependencyUpdate update(ArtifactId artifactId, String toVersion) {

@@ -46,6 +46,10 @@ class UpdateKotlinDsl {
 	 * Applies a version update to a Kotlin DSL file, handling both
 	 * {@code extra["key"] = "value"} property assignments and
 	 * {@code "group:artifact:version"} string-notation dependency declarations.
+	 * <p>The version literal may resolve into another build file (for example a
+	 * {@code val} in the root build script); such literals are only updated when
+	 * {@code file} is physical, so previews on non-physical copies never mutate
+	 * physical PSI.
 	 *
 	 * @param file the Kotlin DSL build file.
 	 * @param artifactId the artifact whose version is being updated.

@@ -140,7 +140,7 @@ class SettingsXmlLoader {
 
 			File libDir = new File(mavenHome, "lib");
 			if (!libDir.isDirectory()) {
-				LOG.debug("Maven lib dir not found at " + libDir + "; skipping credential loading");
+				LOG.debug("Maven lib dir not found at " + libDir + ", skipping credential loading");
 			}
 
 			try {

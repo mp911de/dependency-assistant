@@ -25,7 +25,7 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
-import biz.paluch.dap.assistant.review.BuildActionDelegate;
+import biz.paluch.dap.assistant.review.TestFileUpdateDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.psi.PsiFile;
 
@@ -47,49 +47,39 @@ class UpdateTestSupport {
 	static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
 			String toVersion) {
 
-		return applyUpdate(targetFile, groupId, artifactId, toVersion, DeclarationSource.dependency(),
+		return applyUpdate(targetFile, groupId, artifactId, DeclarationSource.dependency(),
 				VersionSource.declared(toVersion), toVersion);
 	}
 
-	static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
-			String fromVersion,
+	static UpdatedBuildFile applyPluginUpdate(PsiFile targetFile, String pluginId,
 			String toVersion) {
 
-		return applyUpdate(targetFile, groupId, artifactId, fromVersion, DeclarationSource.dependency(),
-				VersionSource.declared(fromVersion), toVersion);
-	}
-
-	static UpdatedBuildFile applyPluginUpdate(PsiFile targetFile, String pluginId, String fromVersion,
-			String toVersion) {
-
-		return applyUpdate(targetFile, pluginId, pluginId, fromVersion, DeclarationSource.plugin(),
-				VersionSource.declared(fromVersion), toVersion);
+		return applyUpdate(targetFile, pluginId, pluginId, DeclarationSource.plugin(),
+				VersionSource.declared(toVersion), toVersion);
 	}
 
 	static UpdatedBuildFile applyPropertyUpdate(PsiFile targetFile, String groupId, String artifactId,
-			String propertyName, String fromVersion, String toVersion) {
+			String propertyName, String toVersion) {
 
-		return applyUpdate(targetFile, groupId, artifactId, fromVersion, DeclarationSource.dependency(),
+		return applyUpdate(targetFile, groupId, artifactId, DeclarationSource.dependency(),
 				VersionSource.property(propertyName), toVersion);
 	}
 
 	static UpdatedBuildFile applyUpdate(PsiFile targetFile, String groupId, String artifactId,
-			String fromVersion,
 			DeclarationSource declarationSource, VersionSource versionSource, String toVersion) {
 
 		ArtifactId id = ArtifactId.of(groupId, artifactId);
-		ArtifactVersion current = ArtifactVersion.of(fromVersion);
 		ArtifactVersion updateTo = ArtifactVersion.of(toVersion);
 
-		Dependency dependency = new Dependency(PackageIdentity.of(id, PackageSystem.MAVEN), current);
+		Dependency dependency = new Dependency(PackageIdentity.of(id, PackageSystem.MAVEN), updateTo);
 		dependency.addDeclarationSource(declarationSource);
 		dependency.addVersionSource(versionSource);
 
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
-		new BuildActionDelegate(targetFile.getProject(),
+		new TestFileUpdateDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdateGradleFile(targetFile.getProject()).applyUpdates(targetFile, updates))
-						.updateBuildFile(targetFile.getVirtualFile(), update);
+						.updateFile(targetFile.getVirtualFile(), update);
 		return UpdateTestSupport.of(targetFile);
 	}
 

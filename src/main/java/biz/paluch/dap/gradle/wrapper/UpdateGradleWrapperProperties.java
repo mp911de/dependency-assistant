@@ -24,6 +24,7 @@ import biz.paluch.dap.state.CachedRelease;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileDependencyUpdater;
 import biz.paluch.dap.util.Properties;
 import biz.paluch.dap.util.PropertyUtils;
 import biz.paluch.dap.util.StringUtils;
@@ -42,7 +43,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class UpdateGradleWrapperProperties {
+class UpdateGradleWrapperProperties implements FileDependencyUpdater {
 
 	public static void applyUpdate(PsiElement versionLiteral, DependencyUpdate update) {
 
@@ -57,7 +58,8 @@ class UpdateGradleWrapperProperties {
 		}
 	}
 
-	public static void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
+	@Override
+	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		if (!(psiFile instanceof PropertiesFile properties)) {
 			return;

@@ -24,6 +24,7 @@ import biz.paluch.dap.artifact.GitVersion;
 import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileDependencyUpdater;
 import com.intellij.json.psi.JsonElementGenerator;
 import com.intellij.json.psi.JsonFile;
 import com.intellij.json.psi.JsonObject;
@@ -50,7 +51,7 @@ import org.jspecify.annotations.Nullable;
  * @author Mark Paluch
  * @see NpmVersionExpression
  */
-class UpdatePackageJsonFile {
+class UpdatePackageJsonFile implements FileDependencyUpdater {
 
 	private final JsonElementGenerator factory;
 
@@ -63,6 +64,7 @@ class UpdatePackageJsonFile {
 	 * @param psiFile the {@code package.json} PSI file.
 	 * @param updates the dependency updates to apply.
 	 */
+	@Override
 	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		if (!(psiFile instanceof JsonFile jsonFile) || !(jsonFile.getTopLevelValue() instanceof JsonObject root)) {

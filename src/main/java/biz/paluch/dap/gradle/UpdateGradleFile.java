@@ -24,13 +24,13 @@ import biz.paluch.dap.gradle.GradleDependency.SimpleDependency;
 import biz.paluch.dap.gradle.TomlParser.TomlCatalogDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileDependencyUpdater;
 import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import com.intellij.lang.properties.IProperty;
 import com.intellij.lang.properties.psi.PropertiesFile;
 import com.intellij.lang.properties.psi.impl.PropertyValueImpl;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -48,7 +48,7 @@ import org.toml.lang.psi.TomlTable;
  *
  * @author Mark Paluch
  */
-class UpdateGradleFile {
+class UpdateGradleFile implements FileDependencyUpdater {
 
 	private final Project project;
 
@@ -65,6 +65,7 @@ class UpdateGradleFile {
 	 * @param buildFile the Gradle file to update.
 	 * @param updates dependency updates to apply.
 	 */
+	@Override
 	public void applyUpdates(PsiFile buildFile, DependencyUpdates updates) {
 
 		GradlePropertyResolver propertyResolver = GradlePropertyResolver.create(buildFile);
@@ -147,12 +148,12 @@ class UpdateGradleFile {
 
 		// Groovy DSL: ext { key = 'value' } / ext.key = 'value' / ext { set('key',
 		// 'value') }
-		if (GradleUtils.isGroovyDsl(file.getVirtualFile())) {
+		if (GradleUtils.isGroovyDsl(file)) {
 			new UpdateGroovyDsl(PropertyResolver.empty()).updateExtProperty(file, propertyKey, newVersion);
 		}
 
 		// Kotlin DSL: extra["key"] = "value" or val key = "value"
-		if (GradleUtils.isKotlinDsl(file.getVirtualFile()) && GradleUtils.KOTLIN_AVAILABLE) {
+		if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
 			if (!UpdateKotlinDsl.updateExtraProperty(file, propertyKey, newVersion)) {
 				UpdateKotlinDsl.updateValProperty(file, propertyKey, newVersion);
 			}
@@ -198,21 +199,19 @@ class UpdateGradleFile {
 			String newVersion) {
 
 		// TOML
-		VirtualFile virtualFile = file.getVirtualFile();
-
-		if (GradleUtils.isVersionCatalog(virtualFile) && file instanceof TomlFile tomlFile) {
+		if (file instanceof TomlFile tomlFile && GradleUtils.isVersionCatalog(file)) {
 			updateDeclaration(tomlFile, artifactId, newVersion);
 			return;
 		}
 
 		// Groovy DSL
-		if (GradleUtils.isGroovyDsl(virtualFile)) {
+		if (GradleUtils.isGroovyDsl(file)) {
 			new UpdateGroovyDsl(propertyResolver).updateDeclaration(file, artifactId, newVersion);
 			return;
 		}
 
 		// Kotlin DSL
-		if (GradleUtils.isKotlinDsl(virtualFile) && GradleUtils.KOTLIN_AVAILABLE) {
+		if (GradleUtils.isKotlinDsl(file) && GradleUtils.KOTLIN_AVAILABLE) {
 			new UpdateKotlinDsl(propertyResolver).updateDeclaration(file, artifactId, newVersion);
 		}
 	}

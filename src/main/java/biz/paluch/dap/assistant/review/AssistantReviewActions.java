@@ -113,11 +113,11 @@ class AssistantReviewActions {
 
 		};
 
-		new BuildActionDelegate(project).withGlobalUndo(undoConfirmationPolicy)
-				.updateBuildFiles(indicator, scope, dependencyUpdates);
+		new FileUpdateDelegate(project).withGlobalUndo(undoConfirmationPolicy)
+				.updateFiles(indicator, scope, dependencyUpdates);
 
-		Runnable undoFlagged = () -> new BuildActionDelegate(project)
-				.updateBuildFiles(new EmptyProgressIndicator(ModalityState.nonModal()),
+		Runnable undoFlagged = () -> new FileUpdateDelegate(project)
+				.updateFiles(new EmptyProgressIndicator(ModalityState.nonModal()),
 						applied.getReverseFiles(),
 				applied.getReverse());
 

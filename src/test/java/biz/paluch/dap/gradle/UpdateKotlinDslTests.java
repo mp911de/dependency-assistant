@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
@@ -45,7 +43,7 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinPluginVersionIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyPluginUpdate(buildFile, "org.springframework.boot", "3.5.0", "4.0.3");
+		UpdatedBuildFile updated = applyPluginUpdate(buildFile, "org.springframework.boot", "4.0.3");
 
 		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 		assertThat(updated).hasDependency("io.spring.dependency-management", "1.1.7");
@@ -62,7 +60,7 @@ class UpdateKotlinDslTests {
 			""")
 	void settingsKtsPluginVersionIsUpdated(PsiFile settingsFile) {
 
-		UpdatedBuildFile updated = applyPluginUpdate(settingsFile, "org.springframework.boot", "3.5.0", "4.0.3");
+		UpdatedBuildFile updated = applyPluginUpdate(settingsFile, "org.springframework.boot", "4.0.3");
 
 		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 	}
@@ -90,7 +88,7 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinConstraintRangeUpperBoundIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -105,7 +103,7 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinConstraintRangeLowerBoundIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -120,7 +118,7 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinConstraintBangBangPreferVersionIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -135,7 +133,7 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinConstraintBangBangStrictVersionIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -151,10 +149,8 @@ class UpdateKotlinDslTests {
 			""")
 	void kotlinDynamicConstraintVersionsAreNotUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
-				VersionSource.declared("0.10.+"), "6.0.3");
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
-				VersionSource.declared("latest.release"), "6.0.3");
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.3");
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.3");
 
 		assertThat(buildFile)
 				.containsText("implementation(\"org.junit:junit-bom:0.10.+\")")
@@ -191,7 +187,7 @@ class UpdateKotlinDslTests {
 	void kotlinExtraPropertyIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -209,7 +205,7 @@ class UpdateKotlinDslTests {
 	void kotlinExtraPropertyViaAlsoWithItIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -229,7 +225,7 @@ class UpdateKotlinDslTests {
 	void kotlinExtraPropertyViaBuildStringIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -247,7 +243,7 @@ class UpdateKotlinDslTests {
 	void kotlinExtraPropertyViaTripleQuotedStringIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -265,7 +261,7 @@ class UpdateKotlinDslTests {
 	void kotlinValLiteralPropertyIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("otherVersion",
 				"1.1.7");
@@ -282,7 +278,7 @@ class UpdateKotlinDslTests {
 	void kotlinValByExtraDefaultIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0");
 	}
@@ -300,7 +296,7 @@ class UpdateKotlinDslTests {
 	void kotlinValByExtraDelegateRoutesThroughExtra(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -349,7 +345,7 @@ class UpdateKotlinDslTests {
 	void kotlinMapBareRefVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "com.google.guava", "guava",
-				"guavaVersion", "33.0-jre", "33.1.0-jre");
+				"guavaVersion", "33.1.0-jre");
 
 		assertThat(updated).hasProperty("guavaVersion", "33.1.0-jre");
 	}

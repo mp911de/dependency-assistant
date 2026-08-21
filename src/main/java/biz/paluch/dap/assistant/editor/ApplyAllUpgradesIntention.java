@@ -109,14 +109,25 @@ class ApplyAllUpgradesIntention implements IntentionAction, Iconable {
 	@Override
 	public IntentionPreviewInfo generatePreview(Project project, Editor editor, PsiFile psiFile) {
 
-		Map<PsiElement, DependencyUpdate> updates = collectUpdates(project, psiFile.getOriginalFile());
+		PsiFile originalFile = psiFile.getOriginalFile();
+		Map<PsiElement, DependencyUpdate> updates = collectUpdates(project, originalFile);
 		if (updates.isEmpty()) {
 			return IntentionPreviewInfo.EMPTY;
 		}
 
 		Map<PsiElement, DependencyUpdate> updatesInCopy = new LinkedHashMap<>();
-		updates.forEach((versionLiteral, update) -> updatesInCopy
-				.put(PsiTreeUtil.findSameElementInCopy(versionLiteral, psiFile), update));
+		updates.forEach((versionLiteral, update) -> {
+
+			// literals resolved into other files (e.g. an inherited version property)
+			// have no counterpart in the preview copy
+			if (versionLiteral.getContainingFile() == originalFile) {
+				updatesInCopy.put(PsiTreeUtil.findSameElementInCopy(versionLiteral, psiFile), update);
+			}
+		});
+
+		if (updatesInCopy.isEmpty()) {
+			return IntentionPreviewInfo.EMPTY;
+		}
 
 		applyUpdates(updatesInCopy);
 		return IntentionPreviewInfo.DIFF;

@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileDependencyUpdater;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -38,13 +39,14 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class UpdateExtensionsFile {
+class UpdateExtensionsFile implements FileDependencyUpdater {
 
 	private static final Logger LOG = Logger.getInstance(UpdateExtensionsFile.class);
 
 	/**
 	 * Apply updates to the extensions file.
 	 */
+	@Override
 	public void applyUpdates(PsiFile extensionsFile, DependencyUpdates updates) {
 
 		if (!(extensionsFile instanceof XmlFile file)) {

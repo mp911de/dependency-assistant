@@ -27,6 +27,7 @@ import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileDependencyUpdater;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -40,7 +41,7 @@ import com.intellij.psi.xml.XmlTag;
  *
  * @author Mark Paluch
  */
-class UpdatePomFile {
+class UpdatePomFile implements FileDependencyUpdater {
 
 	private static final Logger LOG = Logger.getInstance(UpdatePomFile.class);
 
@@ -53,6 +54,7 @@ class UpdatePomFile {
 	/**
 	 * Apply updates to the POM.
 	 */
+	@Override
 	public void applyUpdates(PsiFile file, DependencyUpdates updates) {
 
 		if (!(file instanceof XmlFile pomFile)) {

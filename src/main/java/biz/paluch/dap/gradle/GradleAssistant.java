@@ -47,6 +47,7 @@ import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.ProjectBuildContextWrapper;
 import biz.paluch.dap.util.BetterPsiManager;
+import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.PsiFileCache;
 import biz.paluch.dap.util.StringUtils;
@@ -150,7 +151,7 @@ class GradleAssistant implements DependencyAssistant {
 				ModuleData moduleData = moduleNode.getData();
 				VirtualFile directory = resolveLinkedDirectory(moduleData.getLinkedExternalProjectPath(), lfs);
 
-				if (!GradleUtils.isDirectory(directory) || seenDirectories.contains(directory.getPath())) {
+				if (!FileUtils.isDirectory(directory) || seenDirectories.contains(directory.getPath())) {
 					continue;
 				}
 
@@ -161,7 +162,7 @@ class GradleAssistant implements DependencyAssistant {
 				}
 
 				VirtualFile gradle = directory.findFileByRelativePath(GradleUtils.GRADLE_DIR);
-				if (GradleUtils.isDirectory(gradle)) {
+				if (FileUtils.isDirectory(gradle)) {
 					VirtualFile[] children = gradle.getChildren();
 					for (VirtualFile child : children) {
 						if (GradleUtils.isVersionCatalog(child)) {
@@ -203,7 +204,7 @@ class GradleAssistant implements DependencyAssistant {
 			return null;
 		}
 		VirtualFile directory = lfs.findFileByPath(path);
-		return GradleUtils.isDirectory(directory) ? directory : null;
+		return FileUtils.isDirectory(directory) ? directory : null;
 	}
 
 	private static void addAnchor(BetterPsiManager psiManager, VirtualFile directory, String relativePath,

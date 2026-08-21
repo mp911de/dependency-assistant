@@ -23,6 +23,7 @@ import javax.swing.Icon;
 import biz.paluch.dap.DependencyAssistantDispatcher;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.assistant.check.UpgradeScope;
+import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -89,7 +90,7 @@ public class UpgradeDependenciesAction extends AnAction implements DumbAware, Ic
 
 		VirtualFile[] selectedFiles = event.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY);
 		List<VirtualFile> selection = (selectedFiles != null ? List.of(selectedFiles) : List.of());
-		selection = selection.stream().filter(it -> !it.isDirectory() && it.isValid()).toList();
+		selection = selection.stream().filter(FileUtils::isFile).toList();
 		PsiFile editorFile = event.getData(CommonDataKeys.PSI_FILE);
 
 		ProgressManager.getInstance().run(new DependencyCheckTask(project, new UpgradeRequest(selection, editorFile)));

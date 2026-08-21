@@ -45,7 +45,7 @@ class UpdateTomlFileTests {
 	void propertyInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(tomlFile, "org.springframework.boot", "spring-boot-starter",
-				"spring-boot", "3.5.0", "3.6.0");
+				"spring-boot", "3.6.0");
 
 		assertThat(updated).hasProperty("spring-boot", "3.6.0").hasProperty("commons-lang",
 				"3.17.0");
@@ -88,7 +88,7 @@ class UpdateTomlFileTests {
 			""")
 	void libraryLiteralUpdateKeepsVersionTextInArtifactName(PsiFile tomlFile) {
 
-		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.foo", "bar1.0", "1.0", "2.0");
+		UpdatedBuildFile updated = applyUpdate(tomlFile, "org.foo", "bar1.0", "2.0");
 
 		assertThat(updated).hasDependency("bar1.0", "2.0");
 		assertThat(tomlFile).containsText("versioned-artifact = \"org.foo:bar1.0:2.0\"");
@@ -102,7 +102,7 @@ class UpdateTomlFileTests {
 			""")
 	void pluginLiteralVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
-		UpdatedBuildFile updated = applyPluginUpdate(tomlFile, "org.springframework.boot", "3.5.0", "4.0.0");
+		UpdatedBuildFile updated = applyPluginUpdate(tomlFile, "org.springframework.boot", "4.0.0");
 
 		assertThat(updated).hasDependency("org.springframework.boot", "4.0.0");
 	}
@@ -117,7 +117,7 @@ class UpdateTomlFileTests {
 			""")
 	void pluginVersionInTomlVersionCatalogIsUpdated(PsiFile tomlFile) {
 
-		UpdatedBuildFile updated = applyPluginUpdate(tomlFile, "io.spring.dependency-management", "1.1.6", "1.1.7");
+		UpdatedBuildFile updated = applyPluginUpdate(tomlFile, "io.spring.dependency-management", "1.1.7");
 
 		assertThat(updated).hasDependency("io.spring.dependency-management", "1.1.7");
 		assertThat(updated).hasProperty("commons-lang", "3.17.0");

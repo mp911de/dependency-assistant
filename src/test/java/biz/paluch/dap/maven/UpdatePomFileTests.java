@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.maven;
 
+import java.util.List;
+
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.DeclarationSource;
@@ -65,6 +67,60 @@ class UpdatePomFileTests {
 				.applyUpdates(child, DependencyUpdates.of(update));
 
 		assertThat(parent).containsText("<spring.version>6.1.0</spring.version>")
+				.doesNotContainText("6.2.0");
+	}
+
+	@Test
+	@ProjectFile(name = "child/pom.xml", content = """
+			<project>
+				<dependencies><dependency>
+					<groupId>org.springframework</groupId>
+					<artifactId>spring-core</artifactId>
+					<version>${spring.version}</version>
+				</dependency></dependencies>
+			</project>
+			""")
+	@ProjectFile(name = "parent/pom.xml", content = """
+			<project><properties><spring.version>6.1.0</spring.version></properties></project>
+			""")
+	void inheritedPropertyUpdateOnPreviewCopyDoesNotMutateParent(@ProjectFile("child/pom.xml") XmlFile child,
+			@ProjectFile("parent/pom.xml") XmlFile parent) {
+
+		DependencyUpdate update = new DependencyUpdate(ArtifactId.of("org.springframework", "spring-core"),
+				ArtifactVersion.of("6.1.0"), ArtifactVersion.of("6.2.0"), DeclarationSource.dependency(),
+				VersionSource.property("spring.version"));
+		XmlFile copy = (XmlFile) child.copy();
+
+		new UpdatePomFile(MavenPomProperties.from(List.of(child, parent)))
+				.applyUpdates(copy, DependencyUpdates.of(update));
+
+		assertThat(parent).containsText("<spring.version>6.1.0</spring.version>")
+				.doesNotContainText("6.2.0");
+	}
+
+	@Test
+	@ProjectFile(name = "pom.xml", content = """
+			<project>
+				<properties><spring.version>6.1.0</spring.version></properties>
+				<dependencies><dependency>
+					<groupId>org.springframework</groupId>
+					<artifactId>spring-core</artifactId>
+					<version>${spring.version}</version>
+				</dependency></dependencies>
+			</project>
+			""")
+	void propertyUpdateOnPreviewCopyStaysInCopy(XmlFile pom) {
+
+		DependencyUpdate update = new DependencyUpdate(ArtifactId.of("org.springframework", "spring-core"),
+				ArtifactVersion.of("6.1.0"), ArtifactVersion.of("6.2.0"), DeclarationSource.dependency(),
+				VersionSource.property("spring.version"));
+		XmlFile copy = (XmlFile) pom.copy();
+
+		new UpdatePomFile(MavenPomProperties.from(List.of(pom)))
+				.applyUpdates(copy, DependencyUpdates.of(update));
+
+		assertThat(copy).containsText("<spring.version>6.2.0</spring.version>");
+		assertThat(pom).containsText("<spring.version>6.1.0</spring.version>")
 				.doesNotContainText("6.2.0");
 	}
 

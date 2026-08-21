@@ -22,6 +22,7 @@ import biz.paluch.dap.artifact.RefStyle;
 import biz.paluch.dap.github.UsesRepositoryAction.VersionText;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
+import biz.paluch.dap.support.FileDependencyUpdater;
 import biz.paluch.dap.support.yaml.YamlVersionSite;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.project.Project;
@@ -52,7 +53,7 @@ import org.jspecify.annotations.Nullable;
  * @see UsesRepositoryAction
  * @see RefStyle
  */
-class UpdateGitHubWorkflowFile {
+class UpdateGitHubWorkflowFile implements FileDependencyUpdater {
 
 	private final YAMLElementGenerator factory;
 
@@ -67,6 +68,7 @@ class UpdateGitHubWorkflowFile {
 	 * @param psiFile the GitHub Actions YAML PSI file
 	 * @param updates the dependency updates to apply
 	 */
+	@Override
 	public void applyUpdates(PsiFile psiFile, DependencyUpdates updates) {
 
 		SyntaxTraverser.psiTraverser(psiFile).filter(YAMLKeyValue.class)

@@ -24,9 +24,9 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
+import biz.paluch.dap.assistant.review.TestFileUpdateDelegate;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
-import biz.paluch.dap.fixtures.BuildFileUpdates;
 import biz.paluch.dap.support.DependencyUpdate;
 import com.intellij.psi.PsiFile;
 import org.junit.jupiter.api.Test;
@@ -72,7 +72,7 @@ class UpdateExtensionsFileTests {
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 		UpdateExtensionsFile updater = new UpdateExtensionsFile();
 
-		BuildFileUpdates.applyUpdate(targetFile, update, updater::applyUpdates);
+		TestFileUpdateDelegate.update(targetFile, updater, update);
 		return UpdateTestSupport.of(targetFile);
 	}
 

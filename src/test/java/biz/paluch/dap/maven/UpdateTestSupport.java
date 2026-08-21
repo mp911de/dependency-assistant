@@ -27,7 +27,7 @@ import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
 import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
-import biz.paluch.dap.assistant.review.BuildActionDelegate;
+import biz.paluch.dap.assistant.review.TestFileUpdateDelegate;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.DependencyUpdates;
 import biz.paluch.dap.support.PropertyResolver;
@@ -69,9 +69,9 @@ class UpdateTestSupport {
 
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
-		new BuildActionDelegate(targetFile.getProject(),
+		new TestFileUpdateDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, updates))
-						.updateBuildFile(targetFile.getVirtualFile(), update);
+						.updateFile(targetFile.getVirtualFile(), update);
 		return UpdateTestSupport.of(targetFile);
 	}
 
@@ -106,9 +106,9 @@ class UpdateTestSupport {
 		DependencyUpdate update = DependencyUpdate.from(dependency, updateTo);
 
 		String before = targetFile.getText();
-		new BuildActionDelegate(targetFile.getProject(),
+		new TestFileUpdateDelegate(targetFile.getProject(),
 				(file, updates) -> new UpdatePomFile(MavenPomProperties.empty()).applyUpdates(targetFile, updates))
-						.updateBuildFile(targetFile.getVirtualFile(), update);
+						.updateFile(targetFile.getVirtualFile(), update);
 		return before.equals(targetFile.getText()) ? UpgradeResult.none()
 				: UpgradeResult.changed();
 	}

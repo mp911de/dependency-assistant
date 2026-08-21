@@ -152,10 +152,6 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return List.of();
 	}
 
-	/**
-	 * Reconstruct declaration and version-usage hits from forward-parsed
-	 * declarations.
-	 */
 	private static List<DependencySiteSearchHit> toDeclarationHits(List<ArtifactDeclaration> declarations,
 			DependencySiteQuery query) {
 
@@ -261,16 +257,13 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private ArtifactReference locateGradlePropertySite(Property property) {
 
-		if (StringUtils.isEmpty(property.getUnescapedKey())) {
+		if (StringUtils.isEmpty(property.getUnescapedKey()) || StringUtils.isEmpty(property.getName())
+				|| StringUtils.isEmpty(property.getUnescapedValue())) {
 			return ArtifactReference.unresolved();
 		}
 
-		if (StringUtils.hasText(property.getName())) {
-			return ArtifactReferenceUtils.resolve(property.getName(), property.getUnescapedValue(), property, property,
-					projectState);
-		}
-
-		return ArtifactReference.unresolved();
+		return ArtifactReferenceUtils.resolve(property.getName(), property.getUnescapedValue(), property, property,
+				projectState);
 	}
 
 }

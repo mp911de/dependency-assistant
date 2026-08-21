@@ -41,6 +41,8 @@ import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.util.ObjectUtils;
+
 /**
  * Gradle-specific {@link PropertyResolver} that resolves properties from Gradle
  * files associated with a given PSI element's containing file.
@@ -159,17 +161,21 @@ class GradlePropertyResolver implements PropertyResolver {
 		return new GradlePropertyResolver(properties);
 	}
 
+	/**
+	 * Anchors the resolver at the physical file behind the given PSI so injected
+	 * fragments and preview copies resolve against the real file tree.
+	 */
 	static class TreeProvider implements CachedValueProvider<GradlePropertyResolver> {
 
 		private final Project project;
 
-		private final VirtualFile virtualFile;
+		private final @Nullable VirtualFile virtualFile;
 
 		private final PsiManager psiManager;
 
 		TreeProvider(Project project, PsiFile psiFile) {
 			this.project = project;
-			this.virtualFile = psiFile.getVirtualFile();
+			this.virtualFile = GradleUtils.getSourceFile(psiFile);
 			this.psiManager = PsiManager.getInstance(project);
 		}
 
@@ -195,12 +201,12 @@ class GradlePropertyResolver implements PropertyResolver {
 			if (!(o instanceof TreeProvider that)) {
 				return false;
 			}
-			return project.equals(that.project) && virtualFile.equals(that.virtualFile);
+			return project.equals(that.project) && ObjectUtils.nullSafeEquals(virtualFile, that.virtualFile);
 		}
 
 		@Override
 		public int hashCode() {
-			return 31 * project.hashCode() + virtualFile.hashCode();
+			return 31 * project.hashCode() + ObjectUtils.nullSafeHashCode(virtualFile);
 		}
 
 	}

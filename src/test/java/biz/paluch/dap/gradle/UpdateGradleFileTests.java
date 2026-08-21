@@ -16,8 +16,6 @@
 
 package biz.paluch.dap.gradle;
 
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assertions.UpdatedBuildFile;
 import biz.paluch.dap.extension.IdeaProjectTests;
 import biz.paluch.dap.extension.ProjectFile;
@@ -45,7 +43,7 @@ class UpdateGradleFileTests {
 			""")
 	void groovyPluginVersionIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyPluginUpdate(buildFile, "org.springframework.boot", "3.5.0", "4.0.3");
+		UpdatedBuildFile updated = applyPluginUpdate(buildFile, "org.springframework.boot", "4.0.3");
 
 		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 		assertThat(updated).hasDependency("io.spring.dependency-management", "1.1.7");
@@ -59,7 +57,7 @@ class UpdateGradleFileTests {
 			""")
 	void groovyPluginVersionInParenthesisStyleIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyPluginUpdate(buildFile, "org.springframework.boot", "3.5.0", "4.0.3");
+		UpdatedBuildFile updated = applyPluginUpdate(buildFile, "org.springframework.boot", "4.0.3");
 
 		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 	}
@@ -75,7 +73,7 @@ class UpdateGradleFileTests {
 			""")
 	void settingsGradlePluginVersionIsUpdated(PsiFile settingsFile) {
 
-		UpdatedBuildFile updated = applyPluginUpdate(settingsFile, "org.springframework.boot", "3.5.0", "4.0.3");
+		UpdatedBuildFile updated = applyPluginUpdate(settingsFile, "org.springframework.boot", "4.0.3");
 
 		assertThat(updated).hasDependency("org.springframework.boot", "4.0.3");
 	}
@@ -116,7 +114,7 @@ class UpdateGradleFileTests {
 			""")
 	void groovyConstraintRangeUpperBoundIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -131,7 +129,7 @@ class UpdateGradleFileTests {
 			""")
 	void groovyConstraintRangeLowerBoundIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -146,7 +144,7 @@ class UpdateGradleFileTests {
 			""")
 	void groovyConstraintBangBangPreferVersionIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -161,7 +159,7 @@ class UpdateGradleFileTests {
 			""")
 	void groovyConstraintBangBangStrictVersionIsUpdated(PsiFile buildFile) {
 
-		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0",
+		UpdatedBuildFile updated = applyUpdate(buildFile, "org.junit", "junit-bom",
 				"6.0.3");
 
 		assertThat(updated).hasDependency("junit-bom", "6.0.3");
@@ -177,10 +175,8 @@ class UpdateGradleFileTests {
 			""")
 	void groovyDynamicConstraintVersionsAreNotUpdated(PsiFile buildFile) {
 
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
-				VersionSource.declared("0.10.+"), "6.0.3");
-		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.0", DeclarationSource.dependency(),
-				VersionSource.declared("latest.release"), "6.0.3");
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.3");
+		applyUpdate(buildFile, "org.junit", "junit-bom", "6.0.3");
 
 		assertThat(buildFile)
 				.containsText("implementation 'org.junit:junit-bom:0.10.+'")
@@ -215,7 +211,7 @@ class UpdateGradleFileTests {
 	void propertyInGradlePropertiesIsUpdated(PsiFile propsFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(propsFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -235,7 +231,7 @@ class UpdateGradleFileTests {
 	void propertyInGroovyExtBlockIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -253,7 +249,7 @@ class UpdateGradleFileTests {
 	void propertyInGroovyExtDotAssignmentIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -273,7 +269,7 @@ class UpdateGradleFileTests {
 	void propertyInGroovyExtSetCallIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.springframework", "spring-core",
-				"springVersion", "2.0.4", "3.5.0");
+				"springVersion", "3.5.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.5.0").hasProperty("lombokVersion",
 				"1.18.36");
@@ -284,7 +280,7 @@ class UpdateGradleFileTests {
 	void gradlePropertiesTakesPriorityOverExtBlock(PsiFile propsFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(propsFile, "org.springframework", "spring-core",
-				"springVersion", "3.5.0", "3.6.0");
+				"springVersion", "3.6.0");
 
 		assertThat(updated).hasProperty("springVersion", "3.6.0");
 	}
@@ -353,7 +349,7 @@ class UpdateGradleFileTests {
 	void groovyMapGStringVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "com.google.guava", "guava",
-				"guavaVersion", "33.0-jre", "33.1.0-jre");
+				"guavaVersion", "33.1.0-jre");
 
 		assertThat(updated).hasProperty("guavaVersion", "33.1.0-jre");
 	}
@@ -371,7 +367,7 @@ class UpdateGradleFileTests {
 	void groovyLocalVariableVersionIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.junit", "junit-bom",
-				"junitVersion", "6.0.0", "6.0.3");
+				"junitVersion", "6.0.3");
 
 		assertThat(updated).hasProperty("junitVersion", "6.0.3").hasProperty("otherVersion",
 				"1.0.0");
@@ -392,7 +388,7 @@ class UpdateGradleFileTests {
 	void groovyVersionBlockStrictlyVariableIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.junit", "junit-bom",
-				"junitVersion", "6.0.0", "6.0.3");
+				"junitVersion", "6.0.3");
 
 		assertThat(updated).hasProperty("junitVersion", "6.0.3");
 	}
@@ -413,7 +409,7 @@ class UpdateGradleFileTests {
 	void groovyVersionBlockPreferVariableIsUpdated(PsiFile buildFile) {
 
 		UpdatedBuildFile updated = applyPropertyUpdate(buildFile, "org.junit", "junit-bom",
-				"junitVersion", "6.0.0", "6.0.3");
+				"junitVersion", "6.0.3");
 
 		assertThat(updated).hasProperty("junitVersion", "6.0.3");
 		assertThat(buildFile).containsText("strictly '[5.0, 7.0['");

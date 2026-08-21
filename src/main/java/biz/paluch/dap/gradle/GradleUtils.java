@@ -25,9 +25,10 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import biz.paluch.dap.artifact.RemoteRepository;
+import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.externalSystem.MavenRepositoryData;
-import com.intellij.injected.editor.VirtualFileWindow;
+import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import com.intellij.openapi.externalSystem.model.project.ProjectData;
@@ -109,25 +110,19 @@ class GradleUtils {
 	 */
 	static final String VERSION = "version";
 
-	/** Name of the Gradle Settings file. */
 	static final String GROOVY_SETTINGS = "settings.gradle";
 
-	/** Name of the Gradle Settings.kts file. */
 	static final String KOTLIN_SETTINGS = "settings.gradle.kts";
 
-	/** Name of the Gradle properties file. */
 	static final String GRADLE_PROPERTIES = "gradle.properties";
 
-	/** Name of the Gradle version catalog file. */
 	static final String LIBS_VERSIONS_TOML = "libs.versions.toml";
 
 	static final String GRADLE_DIR = "gradle";
 
-	/** Default relative path of the Gradle version catalog file. */
 	static final String DEFAULT_TOML_LOCATION = GRADLE_DIR + "/" + LIBS_VERSIONS_TOML;
 
-	/** File name suffixes of Gradle build/settings script files. */
-	private static final Set<String> GRADLE_SCRIPT_SUFFIXES = Set.of(".gradle", ".gradle.kts");
+	static final Set<String> GRADLE_SCRIPT_SUFFIXES = Set.of(".gradle", ".gradle.kts");
 
 	private GradleUtils() {
 	}
@@ -135,64 +130,35 @@ class GradleUtils {
 	/**
 	 * Return whether the given {@link PsiFile} is a Gradle-related file.
 	 */
-	static boolean isGradleFile(@Nullable PsiFile file) {
-		if (file == null || isVirtualFileWindow(file.getVirtualFile())) {
-			return false;
-		}
+	public static boolean isGradleFile(@Nullable PsiFile file) {
 		return isGradleScript(file) || isGradlePropertiesFile(file) || isVersionCatalog(file);
 	}
 
 	/**
 	 * Return whether the given {@link VirtualFile} is a Gradle-related file.
 	 */
-	static boolean isGradleFile(@Nullable VirtualFile file) {
-		if (file == null || isVirtualFileWindow(file)) {
-			return false;
-		}
+	public static boolean isGradleFile(@Nullable VirtualFile file) {
 		return isGradleScript(file) || isGradlePropertiesFile(file) || isVersionCatalog(file);
 	}
 
 	/**
 	 * Return {@literal true} if the file is a Gradle build or settings script
 	 * ({@code *.gradle}, {@code *.gradle.kts}).
-	 * <p>Build scripts may use any base name (e.g.
-	 * {@code spring-security-config.gradle}); settings scripts are the files named
-	 * {@link #GROOVY_SETTINGS} / {@link #KOTLIN_SETTINGS}. Code that deliberately
-	 * parses settings content must check those names explicitly. Directories and
-	 * files without a base name (such as the {@code .gradle} cache directory) do
-	 * not qualify.
+	 * <p>Directories and files without a base name (such as the {@code .gradle}
+	 * cache directory) do not qualify.
 	 */
-	static boolean isGradleScript(@Nullable VirtualFile file) {
-		return file != null && !isVirtualFileWindow(file) && !file.isDirectory() && hasGradleScriptName(file.getName());
+	public static boolean isGradleScript(@Nullable VirtualFile file) {
+		return FileUtils.isFile(file) && hasGradleScriptName(file.getName());
 	}
 
 	/**
 	 * Return {@literal true} if the file is a Gradle build or settings script
 	 * ({@code *.gradle}, {@code *.gradle.kts}).
-	 * <p>Build scripts may use any base name (e.g.
-	 * {@code spring-security-config.gradle}); settings scripts are the files named
-	 * {@link #GROOVY_SETTINGS} / {@link #KOTLIN_SETTINGS}. Code that deliberately
-	 * parses settings content must check those names explicitly. Files without a
-	 * base name (a file named just {@code .gradle}) do not qualify.
+	 * <p>Directories and files without a base name (such as the {@code .gradle}
+	 * cache directory) do not qualify.
 	 */
-	static boolean isGradleScript(@Nullable PsiFile file) {
-		return file != null && hasGradleScriptName(file.getName()) && !isVirtualFileWindow(file);
-	}
-
-	/**
-	 * Return the Gradle scripts directly contained in {@code directory}, sorted by
-	 * file name.
-	 */
-	static List<VirtualFile> findGradleScripts(VirtualFile directory) {
-
-		List<VirtualFile> scripts = new ArrayList<>();
-		for (VirtualFile child : directory.getChildren()) {
-			if (isGradleScript(child)) {
-				scripts.add(child);
-			}
-		}
-		scripts.sort(Comparator.comparing(VirtualFile::getName));
-		return scripts;
+	public static boolean isGradleScript(@Nullable PsiFile file) {
+		return file != null && hasGradleScriptName(file.getName());
 	}
 
 	private static boolean hasGradleScriptName(String fileName) {
@@ -206,57 +172,57 @@ class GradleUtils {
 	}
 
 	/**
-	 * Return {@literal true} if the file is a {@code gradle.properties} file.
+	 * Return the Gradle scripts directly contained in {@code directory}, sorted by
+	 * file name.
 	 */
-	static boolean isGradlePropertiesFile(@Nullable VirtualFile file) {
-		return file != null && !isVirtualFileWindow(file) && GRADLE_PROPERTIES.equals(file.getName());
+	public static List<VirtualFile> findGradleScripts(VirtualFile directory) {
+
+		List<VirtualFile> scripts = new ArrayList<>();
+		for (VirtualFile child : directory.getChildren()) {
+			if (isGradleScript(child)) {
+				scripts.add(child);
+			}
+		}
+		scripts.sort(Comparator.comparing(VirtualFile::getName));
+		return scripts;
 	}
 
 	/**
 	 * Return {@literal true} if the file is a {@code gradle.properties} file.
 	 */
-	static boolean isGradlePropertiesFile(@Nullable PsiFile file) {
-		return file != null && GRADLE_PROPERTIES.equals(file.getName()) && !isVirtualFileWindow(file);
+	public static boolean isGradlePropertiesFile(@Nullable VirtualFile file) {
+		return FileUtils.isFile(file) && GRADLE_PROPERTIES.equals(file.getName());
+	}
+
+	/**
+	 * Return {@literal true} if the file is a {@code gradle.properties} file.
+	 */
+	public static boolean isGradlePropertiesFile(@Nullable PsiFile file) {
+		return file != null && GRADLE_PROPERTIES.equals(file.getName());
 	}
 
 	/**
 	 * Return {@literal true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
-	static boolean isVersionCatalog(@Nullable VirtualFile file) {
-		return file != null && !isVirtualFileWindow(file) && file.getName().endsWith(".versions.toml");
+	public static boolean isVersionCatalog(@Nullable VirtualFile file) {
+		return FileUtils.isFile(file) && file.getName().endsWith(".versions.toml");
 	}
 
 	/**
 	 * Return {@literal true} if the file is a {@code *.versions.toml} version
 	 * catalog.
 	 */
-	static boolean isVersionCatalog(@Nullable PsiFile file) {
-		return file != null && file.getName().endsWith(".versions.toml") && !isVirtualFileWindow(file);
-	}
-
-	/**
-	 * Return {@literal true} if the file uses the Kotlin DSL ({@code .kts}
-	 * extension).
-	 */
-	static boolean isKotlinDsl(@Nullable VirtualFile file) {
-		return file != null && !isVirtualFileWindow(file) && file.getName().endsWith(".kts");
-	}
-
-	/**
-	 * Return {@literal true} if the file uses the Kotlin DSL ({@code .kts}
-	 * extension).
-	 */
-	static boolean isKotlinDsl(@Nullable PsiFile file) {
-		return file != null && file.getName().endsWith(".kts");
+	public static boolean isVersionCatalog(@Nullable PsiFile file) {
+		return file != null && file.getName().endsWith(".versions.toml");
 	}
 
 	/**
 	 * Return {@literal true} if the file uses the Groovy DSL ({@code .gradle}
 	 * without a {@code .kts} suffix).
 	 */
-	static boolean isGroovyDsl(@Nullable PsiFile file) {
-		return isGradleScript(file) && !isKotlinDsl(file);
+	public static boolean isGroovyDsl(@Nullable PsiFile file) {
+		return isGradleScript(file) && !file.getName().endsWith(".kts");
 	}
 
 	/**
@@ -267,21 +233,54 @@ class GradleUtils {
 		return isGradleScript(file) && !isKotlinDsl(file);
 	}
 
-	private static boolean isVirtualFileWindow(PsiFile file) {
-		return isVirtualFileWindow(file.getVirtualFile());
-	}
-
-	private static boolean isVirtualFileWindow(VirtualFile file) {
-		return file instanceof VirtualFileWindow;
+	/**
+	 * Return {@literal true} if the file uses the Kotlin DSL ({@code .kts}
+	 * extension).
+	 */
+	public static boolean isKotlinDsl(@Nullable VirtualFile file) {
+		return FileUtils.isFile(file) && file.getName().endsWith(".kts");
 	}
 
 	/**
-	 * Locate the Gradle project root for the given file.
+	 * Return {@literal true} if the file uses the Kotlin DSL ({@code .kts}
+	 * extension).
+	 */
+	public static boolean isKotlinDsl(@Nullable PsiFile file) {
+		return file != null && file.getName().endsWith(".kts");
+	}
+
+	/**
+	 * Return the physical file behind the given PSI file: the host file for an
+	 * injected fragment, the source file for a non-physical copy (such as a preview
+	 * copy), and the file's own {@link VirtualFile} otherwise.
+	 * <p>Use this for path-based lookups (project root, sibling scripts, version
+	 * catalogs) so they resolve against the real file tree regardless of how the
+	 * PSI was obtained.
+	 * @param file the PSI file to resolve.
+	 * @return the physical file, or {@literal null} for light files without a
+	 * physical origin.
+	 */
+	public static @Nullable VirtualFile getSourceFile(PsiFile file) {
+
+		PsiFile topLevel = InjectedLanguageManager.getInstance(file.getProject()).getTopLevelFile(file);
+		return topLevel != null ? topLevel.getOriginalFile().getVirtualFile() : null;
+	}
+
+	/**
+	 * Locate the Gradle project root for the given file, resolving injected
+	 * fragments and preview copies to their physical file first.
 	 *
+	 * @throws IllegalStateException if the file has no physical origin.
+	 * @see #getSourceFile(PsiFile)
 	 * @see #findProjectRoot(Project, VirtualFile)
 	 */
-	static VirtualFile findProjectRoot(PsiFile file) {
-		return findProjectRoot(file.getProject(), file.getVirtualFile());
+	public static VirtualFile findProjectRoot(PsiFile file) {
+
+		VirtualFile sourceFile = getSourceFile(file);
+		if (sourceFile == null) {
+			throw new IllegalStateException("Cannot determine Gradle project root for %s".formatted(file.getName()));
+		}
+		return findProjectRoot(file.getProject(), sourceFile);
 	}
 
 	/**
@@ -296,7 +295,7 @@ class GradleUtils {
 	 * project root if none is found; the containing directory otherwise.
 	 * @throws IllegalStateException if the file has no parent directory.
 	 */
-	static VirtualFile findProjectRoot(Project project, VirtualFile file) {
+	public static VirtualFile findProjectRoot(Project project, VirtualFile file) {
 
 		VirtualFile start = file.isDirectory() ? file : file.getParent();
 		if (start == null) {
@@ -323,14 +322,14 @@ class GradleUtils {
 	/**
 	 * Return whether the call name refers to a plugin configuration.
 	 */
-	static boolean isPlugin(@Nullable String name) {
+	public static boolean isPlugin(@Nullable String name) {
 		return ID.equals(name);
 	}
 
 	/**
 	 * Return whether the call name refers to a plugin section configuration.
 	 */
-	static boolean isPluginSection(@Nullable String name) {
+	public static boolean isPluginSection(@Nullable String name) {
 		return StringUtils.hasText(name) && PLUGINS.equals(name);
 	}
 
@@ -340,7 +339,7 @@ class GradleUtils {
 	 * that follow Gradle's camelCase derivation convention, such as
 	 * {@code optionalApi} or {@code integrationTestImplementation}.
 	 */
-	static boolean isDependencySection(@Nullable String name) {
+	public static boolean isDependencySection(@Nullable String name) {
 
 		if (!StringUtils.hasText(name)) {
 			return false;
@@ -362,7 +361,7 @@ class GradleUtils {
 	/**
 	 * Return whether the call name refers to a managed (platform) configuration.
 	 */
-	static boolean isPlatformSection(@Nullable String name) {
+	public static boolean isPlatformSection(@Nullable String name) {
 		return StringUtils.hasText(name) && PLATFORM_FUNCTIONS.contains(name);
 	}
 
@@ -373,7 +372,7 @@ class GradleUtils {
 	/**
 	 * Replace the version segment in a Gradle GAV string.
 	 */
-	static @Nullable String updateGavVersion(String gav, String newVersion) {
+	public static @Nullable String updateGavVersion(String gav, String newVersion) {
 		if (StringUtils.isEmpty(gav)) {
 			return null;
 		}
@@ -402,7 +401,7 @@ class GradleUtils {
 	/**
 	 * Apply a version update to the given GAV text, if it contains text.
 	 */
-	static void updateVersion(@Nullable String gav, String newVersion, Consumer<String> updateConsumer) {
+	public static void updateVersion(@Nullable String gav, String newVersion, Consumer<String> updateConsumer) {
 		if (StringUtils.isEmpty(gav)) {
 			return;
 		}
@@ -421,7 +420,7 @@ class GradleUtils {
 	 * @return the linked Gradle project root, or {@literal null} if the file is not
 	 * part of a linked Gradle project.
 	 */
-	static @Nullable VirtualFile findLinkedProjectRoot(Project project, VirtualFile file) {
+	public static @Nullable VirtualFile findLinkedProjectRoot(Project project, VirtualFile file) {
 
 		Collection<GradleProjectSettings> linkedProjects = GradleSettings.getInstance(project)
 				.getLinkedProjectsSettings();
@@ -446,7 +445,7 @@ class GradleUtils {
 	 * direct consumer side of MavenRepositoriesProjectResolver: that resolver has
 	 * already written MavenRepositoryData nodes into the project node.
 	 */
-	static List<RemoteRepository> getRepositoriesFromImportedProject(Project ideaProject,
+	public static List<RemoteRepository> getRepositoriesFromImportedProject(Project ideaProject,
 			String externalProjectPath) {
 
 		ExternalProjectInfo projectInfo = ExternalSystemUtil.getExternalProjectInfo(ideaProject,
@@ -469,7 +468,7 @@ class GradleUtils {
 	 * Read repositories from a ProjectData node. MavenRepositoriesProjectResolver
 	 * stores MavenRepositoryData as direct children of the project node.
 	 */
-	static List<RemoteRepository> getRepositories(DataNode<ProjectData> projectNode) {
+	public static List<RemoteRepository> getRepositories(DataNode<ProjectData> projectNode) {
 
 		Collection<DataNode<MavenRepositoryData>> repoNodes = ExternalSystemApiUtil.getChildren(projectNode,
 				MavenRepositoryData.KEY);
@@ -496,7 +495,7 @@ class GradleUtils {
 	/**
 	 * Return {@literal true} if {@code version} contains range syntax characters.
 	 */
-	static boolean isVersionRange(@Nullable String version) {
+	public static boolean isVersionRange(@Nullable String version) {
 		if (version == null) {
 			return false;
 		}
@@ -508,7 +507,7 @@ class GradleUtils {
 	 * Return whether the call name can consume a version-catalog accessor.
 	 */
 	@Contract("null -> false")
-	static boolean isCatalogConsumerCall(@Nullable String name) {
+	public static boolean isCatalogConsumerCall(@Nullable String name) {
 
 		if (StringUtils.isEmpty(name)) {
 			return false;
@@ -522,8 +521,4 @@ class GradleUtils {
 		return false;
 	}
 
-	@Contract("null -> false")
-	static boolean isDirectory(@Nullable VirtualFile directory) {
-		return directory != null && directory.isDirectory() && directory.exists();
-	}
 }
