@@ -36,7 +36,8 @@
 	<depends>com.intellij.modules.xml</depends>
 	<depends>com.intellij.modules.vcs</depends>
 	<depends optional="true" config-file="maven.xml">org.jetbrains.idea.maven</depends>
-	<depends optional="true" config-file="kotlin.xml">org.jetbrains.kotlin</depends>
+	<depends optional="true" config-file="gradle-kotlin.xml">org.jetbrains.kotlin
+	</depends>
 	<depends optional="true" config-file="gradle.xml">org.jetbrains.plugins.gradle</depends>
 	<depends optional="true" config-file="java.xml">com.intellij.modules.java</depends>
 	<depends optional="true" config-file="yaml.xml">org.jetbrains.plugins.yaml</depends>

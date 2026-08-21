@@ -34,7 +34,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class KotlinArtifactReferenceLocator {
+class KotlinArtifactReferenceLocator implements ArtifactReferenceLocator<KtElement> {
 
 	private final PropertyResolver propertyResolver;
 
@@ -54,97 +54,6 @@ class KotlinArtifactReferenceLocator {
 	}
 
 	/**
-	 * Return whether the given PSI element is a version element suitable for
-	 * highlighting or annotation.
-	 */
-	public static boolean isVersionElement(PsiElement element) {
-		return !isLeadingTemplateEntry(element);
-	}
-
-	/**
-	 * Return whether the element is the leading entry of a multi-entry string
-	 * template (e.g. the {@code "group:artifact:"} prefix before a {@code $version}
-	 * interpolation). Such an entry is the coordinate, not the version.
-	 */
-	private static boolean isLeadingTemplateEntry(PsiElement element) {
-		return element instanceof KtStringTemplateEntry
-				&& element.getParent() instanceof KtStringTemplateExpression expression
-				&& expression.getChildren().length > 1 && expression.getChildren()[0] == element;
-	}
-
-	/**
-	 * Find the dependency or plugin call that owns the given version element.
-	 * <p>Delegates to {@link KotlinDeclarationStyleDetector} so reverse lookup and
-	 * version completion share one version-position grammar. Returns
-	 * {@literal null} for positions resolved through a dedicated path (backing
-	 * properties and {@code extra} assignments) and for range-only version
-	 * constraints, which carry no single navigable version.
-	 */
-	private static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
-
-		if (PsiTreeUtil.getParentOfType(element, KtArrayAccessExpression.class) != null) {
-			return null;
-		}
-
-		DeclarationStyle site = KotlinDeclarationStyleDetector.getInstance().detect(element);
-		if (site.isAbsent() || !site.kind().isInlineInCall() || isVersionConstraintRange(site)) {
-			return null;
-		}
-
-		return site.owningCall() instanceof KtCallExpression call ? call : null;
-	}
-
-	private static boolean isVersionConstraintRange(DeclarationStyle site) {
-		return (site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_PREFER
-				|| site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY)
-				&& site.versionElement() instanceof KtStringTemplateExpression template
-				&& GradleUtils.isVersionRange(KtLiterals.from(template).toString());
-	}
-
-	/**
-	 * Find the Kotlin property declaration that owns the given PSI element.
-	 * <p>Used for literal entries nested within property initializers.
-	 */
-	public static @Nullable KtProperty findProperty(KtElement element) {
-		return element instanceof KtLiteralStringTemplateEntry
-				? PsiTreeUtil.getParentOfType(element, KtProperty.class)
-				: null;
-	}
-
-	/**
-	 * Find the {@code extra["key"] = ...} assignment that owns the given value PSI.
-	 * <p>Also supports the {@code "value".also { extra["key"] = it }} form.
-	 */
-	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
-
-		if (element.getParent() instanceof KtContainerNode) {
-			return null;
-		}
-
-		KtBinaryExpression binaryExpression = PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class);
-		KotlinExtraAssignment extra = null;
-		if (binaryExpression != null) {
-			extra = KotlinExtraAssignment.from(binaryExpression);
-		}
-
-		if (extra == null) {
-			extra = KotlinExtraAssignment.fromAlsoReceiver(element);
-		}
-
-		return extra != null ? extra.getDeclaration() : null;
-	}
-
-	/**
-	 * Extract the property key from an {@code extra["key"] = ...} assignment.
-	 */
-	@Contract("null -> null")
-	public static @Nullable String findProperty(@Nullable KtBinaryExpression element) {
-
-		KotlinExtraAssignment assignment = KotlinExtraAssignment.from(element);
-		return assignment != null ? assignment.getKey() : null;
-	}
-
-	/**
 	 * Resolve the artifact reference owning the given Kotlin PSI element.
 	 * <p>Supports direct dependency literals, property-backed declarations,
 	 * {@code extra} assignments, and version catalog references such as:
@@ -159,6 +68,7 @@ class KotlinArtifactReferenceLocator {
 	 * @return the artifact reference, or an unresolved reference if no supported
 	 * declaration can be derived.
 	 */
+	@Override
 	public ArtifactReference locate(KtElement element) {
 
 		ArtifactReference catalogReference = locateCatalogReference(element);
@@ -309,5 +219,97 @@ class KotlinArtifactReferenceLocator {
 		}
 		return cachedParser;
 	}
+
+	/**
+	 * Return whether the given PSI element is a version element suitable for
+	 * highlighting or annotation.
+	 */
+	public static boolean isVersionElement(PsiElement element) {
+		return !isLeadingTemplateEntry(element);
+	}
+
+	/**
+	 * Return whether the element is the leading entry of a multi-entry string
+	 * template (e.g. the {@code "group:artifact:"} prefix before a {@code $version}
+	 * interpolation). Such an entry is the coordinate, not the version.
+	 */
+	private static boolean isLeadingTemplateEntry(PsiElement element) {
+		return element instanceof KtStringTemplateEntry
+				&& element.getParent() instanceof KtStringTemplateExpression expression
+				&& expression.getChildren().length > 1 && expression.getChildren()[0] == element;
+	}
+
+	/**
+	 * Find the dependency or plugin call that owns the given version element.
+	 * <p>Delegates to {@link KotlinDeclarationStyleDetector} so reverse lookup and
+	 * version completion share one version-position grammar. Returns
+	 * {@literal null} for positions resolved through a dedicated path (backing
+	 * properties and {@code extra} assignments) and for range-only version
+	 * constraints, which carry no single navigable version.
+	 */
+	private static @Nullable KtCallExpression findDependencyExpression(PsiElement element) {
+
+		if (PsiTreeUtil.getParentOfType(element, KtArrayAccessExpression.class) != null) {
+			return null;
+		}
+
+		DeclarationStyle site = KotlinDeclarationStyleDetector.getInstance().detect(element);
+		if (site.isAbsent() || !site.kind().isInlineInCall() || isVersionConstraintRange(site)) {
+			return null;
+		}
+
+		return site.owningCall() instanceof KtCallExpression call ? call : null;
+	}
+
+	private static boolean isVersionConstraintRange(DeclarationStyle site) {
+		return (site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_PREFER
+				|| site.kind() == DeclarationStyle.Kind.VERSION_BLOCK_STRICTLY)
+				&& site.versionElement() instanceof KtStringTemplateExpression template
+				&& GradleUtils.isVersionRange(KtLiterals.from(template).toString());
+	}
+
+	/**
+	 * Find the Kotlin property declaration that owns the given PSI element.
+	 * <p>Used for literal entries nested within property initializers.
+	 */
+	public static @Nullable KtProperty findProperty(KtElement element) {
+		return element instanceof KtLiteralStringTemplateEntry
+				? PsiTreeUtil.getParentOfType(element, KtProperty.class)
+				: null;
+	}
+
+	/**
+	 * Find the {@code extra["key"] = ...} assignment that owns the given value PSI.
+	 * <p>Also supports the {@code "value".also { extra["key"] = it }} form.
+	 */
+	public static @Nullable KtBinaryExpression findPropertyExpression(KtElement element) {
+
+		if (element.getParent() instanceof KtContainerNode) {
+			return null;
+		}
+
+		KtBinaryExpression binaryExpression = PsiTreeUtil.getParentOfType(element, KtBinaryExpression.class);
+		KotlinExtraAssignment extra = null;
+		if (binaryExpression != null) {
+			extra = KotlinExtraAssignment.from(binaryExpression);
+		}
+
+		if (extra == null) {
+			extra = KotlinExtraAssignment.fromAlsoReceiver(element);
+		}
+
+		return extra != null ? extra.getDeclaration() : null;
+	}
+
+	/**
+	 * Extract the property key from an {@code extra["key"] = ...} assignment.
+	 */
+	@Contract("null -> null")
+	public static @Nullable String findProperty(@Nullable KtBinaryExpression element) {
+
+		KotlinExtraAssignment assignment = KotlinExtraAssignment.from(element);
+		return assignment != null ? assignment.getKey() : null;
+	}
+
 
 }

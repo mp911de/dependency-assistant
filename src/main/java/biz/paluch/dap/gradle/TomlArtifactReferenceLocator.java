@@ -33,7 +33,7 @@ import org.toml.lang.psi.TomlValue;
  *
  * @author Mark Paluch
  */
-class TomlArtifactReferenceLocator {
+class TomlArtifactReferenceLocator implements ArtifactReferenceLocator<TomlLiteral> {
 
 	private final @Nullable ProjectState projectState;
 
@@ -41,6 +41,7 @@ class TomlArtifactReferenceLocator {
 		this.projectState = projectState;
 	}
 
+	@Override
 	public ArtifactReference locate(TomlLiteral literal) {
 
 		TomlKeyValue keyValue = PsiTreeUtil.getParentOfType(literal, TomlKeyValue.class);

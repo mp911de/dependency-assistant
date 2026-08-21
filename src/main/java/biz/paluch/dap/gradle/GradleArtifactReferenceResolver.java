@@ -62,11 +62,11 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 	private final VersionCatalogRegistry registry;
 
-	private final GroovyArtifactReferenceLocator groovyLocator;
+	private final ArtifactReferenceLocator<GroovyPsiElement> groovyLocator;
 
-	private final KotlinArtifactReferenceLocator kotlinLocator;
+	private final @Nullable ArtifactReferenceLocator<KtElement> kotlinLocator;
 
-	private final TomlArtifactReferenceLocator tomlLocator;
+	private final ArtifactReferenceLocator<TomlLiteral> tomlLocator;
 
 	private final @Nullable ProjectState projectState;
 
@@ -86,19 +86,19 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 		this.registry = VersionCatalogRegistry.from(file);
 		this.groovyLocator = new GroovyArtifactReferenceLocator(this.propertyResolver, this.registry,
 				projectState);
-		this.kotlinLocator = new KotlinArtifactReferenceLocator(this.propertyResolver, this.registry,
-				projectState);
+
+		if (GradleUtils.KOTLIN_AVAILABLE) {
+			this.kotlinLocator = new KotlinArtifactReferenceLocator(this.propertyResolver, this.registry,
+					projectState);
+		} else {
+			this.kotlinLocator = null;
+		}
 		this.tomlLocator = new TomlArtifactReferenceLocator(projectState);
 	}
 
 	@Override
 	public ArtifactReference resolveArtifactReference(PsiElement element) {
-
-		if (!candidate) {
-			return ArtifactReference.unresolved();
-		}
-
-		return findArtifactReference(element);
+		return candidate ? findArtifactReference(element) : ArtifactReference.unresolved();
 	}
 
 	@Override
@@ -108,7 +108,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return DependencySearchResults.empty();
 		}
 
-		List<DependencySiteSearchHit> hits = siteHits(query);
+		List<DependencySiteSearchHit> hits = doSearch(query);
 		List<DependencySiteSearchHit> deduplicated = new ArrayList<>(hits.size());
 		Set<PsiElement> seen = new HashSet<>();
 		for (DependencySiteSearchHit hit : hits) {
@@ -120,12 +120,12 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return DependencySearchResults.of(deduplicated);
 	}
 
-	private List<DependencySiteSearchHit> siteHits(DependencySiteQuery query) {
+	private List<DependencySiteSearchHit> doSearch(DependencySiteQuery query) {
 
 		if (GradleUtils.isVersionCatalog(file)) {
 			List<DependencySiteSearchHit> hits = new ArrayList<>(
 					propertyDefinitionHits(query.versionProperties(), TomlParser.parseTomlVersions(file)::get));
-			hits.addAll(declarationHits(TomlParser.parseVersionCatalog(file), query));
+			hits.addAll(toDeclarationHits(TomlParser.parseVersionCatalog(file), query));
 			return hits;
 		}
 
@@ -134,18 +134,18 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 					GradlePropertiesParser.parseGradleProperties(file)::get);
 		}
 
-		if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file)) {
+		if (GradleUtils.KOTLIN_AVAILABLE && GradleUtils.isKotlinDsl(file) && kotlinLocator != null) {
 			KotlinDslFileParser parser = new KotlinDslFileParser(file, propertyResolver, registry);
-			List<DependencySiteSearchHit> hits = new ArrayList<>(declarationHits(parser.parseDeclarations(), query));
-			hits.addAll(propertyDefinitionHits(localNames(query, parser.getExtraPropertyNames()),
+			List<DependencySiteSearchHit> hits = new ArrayList<>(toDeclarationHits(parser.parseDeclarations(), query));
+			hits.addAll(propertyDefinitionHits(retainLocalNames(query, parser.getExtraPropertyNames()),
 					parser::getPropertyValue));
 			return hits;
 		}
 
 		if (GradleUtils.isGroovyDsl(file)) {
 			GroovyDslFileParser parser = new GroovyDslFileParser(file, propertyResolver, registry);
-			List<DependencySiteSearchHit> hits = new ArrayList<>(declarationHits(parser.parseDeclarations(), query));
-			hits.addAll(propertyDefinitionHits(localNames(query, parser.getDeclaredPropertyNames()),
+			List<DependencySiteSearchHit> hits = new ArrayList<>(toDeclarationHits(parser.parseDeclarations(), query));
+			hits.addAll(propertyDefinitionHits(retainLocalNames(query, parser.getDeclaredPropertyNames()),
 					parser::getPropertyValue));
 			return hits;
 		}
@@ -157,7 +157,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 	 * Reconstruct declaration and version-usage hits from forward-parsed
 	 * declarations.
 	 */
-	private static List<DependencySiteSearchHit> declarationHits(List<ArtifactDeclaration> declarations,
+	private static List<DependencySiteSearchHit> toDeclarationHits(List<ArtifactDeclaration> declarations,
 			DependencySiteQuery query) {
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
@@ -200,7 +200,6 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
 		for (String name : names) {
-			ProgressManager.checkCanceled();
 
 			biz.paluch.dap.support.Property property = lookup.apply(name);
 			if (property != null) {
@@ -211,22 +210,13 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 		return hits;
 	}
 
-	/**
-	 * The queried version properties that are declared locally in this file, so an
-	 * {@code ext}/{@code extra} property consumed only in another module still
-	 * surfaces as a definition.
-	 */
-	private static Set<String> localNames(DependencySiteQuery query, Set<String> declaredNames) {
+	private static Set<String> retainLocalNames(DependencySiteQuery query, Set<String> declaredNames) {
 
 		Set<String> names = new HashSet<>(query.versionProperties());
 		names.retainAll(declaredNames);
 		return names;
 	}
 
-	/**
-	 * Whether the resolved declaration contributes to the query, by artifact id or
-	 * by a version property the query names.
-	 */
 	private static boolean matches(ArtifactDeclaration declaration, DependencySiteQuery query) {
 
 		if (query.artifacts().contains(declaration.getArtifactId())) {
@@ -237,10 +227,6 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 				&& query.matches(property);
 	}
 
-	/**
-	 * The concise display label: the version for a definition, the version property
-	 * name for a usage.
-	 */
 	private static String labelOf(SiteRole role, PsiElement element, ArtifactDeclaration declaration) {
 
 		if (role == SiteRole.DECLARATION) {
@@ -276,7 +262,7 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 			return groovyLocator.locate(groovyElement);
 		}
 
-		if (GradleUtils.KOTLIN_AVAILABLE && element instanceof KtElement ktElement) {
+		if (GradleUtils.KOTLIN_AVAILABLE && kotlinLocator != null && element instanceof KtElement ktElement) {
 			return kotlinLocator.locate(ktElement);
 		}
 

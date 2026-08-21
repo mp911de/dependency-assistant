@@ -42,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Mark Paluch
  */
-class GroovyArtifactReferenceLocator {
+class GroovyArtifactReferenceLocator implements ArtifactReferenceLocator<GroovyPsiElement> {
 
 	private final PropertyResolver propertyResolver;
 
@@ -79,7 +79,8 @@ class GroovyArtifactReferenceLocator {
 	 * @return the artifact reference, or an unresolved reference if no supported
 	 * declaration can be derived.
 	 */
-	ArtifactReference locate(GroovyPsiElement element) {
+	@Override
+	public ArtifactReference locate(GroovyPsiElement element) {
 
 		ArtifactReference catalogReference = locateCatalogReference(element);
 		if (catalogReference.isResolved()) {

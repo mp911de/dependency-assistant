@@ -18,9 +18,8 @@ package biz.paluch.dap;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
@@ -115,19 +114,24 @@ public class ProjectStateIndexer {
 			return;
 		}
 
-		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, assistants.size());
+		StepsProgressIndicator steps = StepsProgressIndicator.forSteps(indicator, assistants.size() + 1);
 		steps.setIndeterminate(false);
 		List<CancellablePromise<Void>> promises = new ArrayList<>();
 		ProjectStateIndexer indexer = new ProjectStateIndexer(project, indicator);
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		for (DependencyAssistant assistant : assistants) {
 			if (filter.test(assistant)) {
 				promises.add(indexer.refreshAfterImport(assistant).onSuccess(__ -> steps.nextStep()));
 			}
 		}
 
+		Promises.all(promises).onSuccess(__ -> steps.nextStep()).onError(future::completeExceptionally)
+				.onSuccess(__ -> future.complete(null));
+
 		try {
-			Promises.all(promises).onSuccess(__ -> steps.nextStep()).blockingGet(60, TimeUnit.SECONDS);
-		} catch (TimeoutException e) {
+			future.get();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 			throw new RuntimeException(e);
 		} catch (ExecutionException e) {
 			if (e.getCause() instanceof ProcessCanceledException pce) {
