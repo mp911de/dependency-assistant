@@ -47,7 +47,7 @@ dependencies {
 
 	implementation("org.springframework:spring-core:7.0.7")
 	implementation("org.xmlbeam:xmlprojector:1.4.26")
-	compileOnly("org.jspecify:jspecify:1.0.0")
+	compileOnly("org.jspecify:jspecify:1.0.1")
 
 	testImplementation("org.assertj:assertj-core:3.27.7")
 	testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
