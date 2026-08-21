@@ -138,7 +138,7 @@ final class MavenSyncRefresher implements MavenSyncListener, Disposable {
 
 		LOG.debug("Refreshing Maven project state");
 
-		new Task.Backgroundable(project, MessageBundle.message("refreshAfterImport.task"), true) {
+		new Task.Backgroundable(project, MessageBundle.message("refresh-after-import.task"), true) {
 
 			@Override
 			public void run(ProgressIndicator indicator) {

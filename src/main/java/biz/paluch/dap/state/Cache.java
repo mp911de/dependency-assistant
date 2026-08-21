@@ -173,14 +173,13 @@ public class Cache implements ModificationTracker {
 	 * Return whether the user should be asked to refresh because release metadata
 	 * is unavailable or outdated.
 	 *
-	 * @return {@literal true} when the cache should nag the user; {@literal false}
-	 * otherwise.
+	 * @return {@literal true} when the cache should nag the user.
 	 */
 	public boolean shouldNag() {
 
 		Duration age = getAge();
 		Instant lastUpdate = getLastUpdate();
-		if (age != null && lastUpdate != null && age.compareTo(Duration.ofDays(2)) > 0) {
+		if (age != null && lastUpdate != null && age.compareTo(LAST_TIME_CACHE_WAS_UPDATED) > 0) {
 			return doNotNagUntil == 0 || doNotNagUntil < clock.millis();
 		}
 		return false;
@@ -190,7 +189,7 @@ public class Cache implements ModificationTracker {
 	 * Silence the nag automatism for {@code 12} hours.
 	 */
 	public void doNotNag() {
-		doNotNagUntil = clock.instant().plus(Duration.ofHours(12)).toEpochMilli();
+		doNotNagUntil = clock.instant().plus(PLEASE_BE_SILENT_FOR).toEpochMilli();
 		modificationTracker.incModificationCount();
 	}
 

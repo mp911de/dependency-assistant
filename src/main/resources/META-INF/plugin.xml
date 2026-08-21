@@ -35,16 +35,33 @@
 
 	<depends>com.intellij.modules.xml</depends>
 	<depends>com.intellij.modules.vcs</depends>
-	<depends optional="true" config-file="maven.xml">org.jetbrains.idea.maven</depends>
-	<depends optional="true" config-file="gradle-kotlin.xml">org.jetbrains.kotlin
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-maven.xml">
+		org.jetbrains.idea.maven
 	</depends>
-	<depends optional="true" config-file="gradle.xml">org.jetbrains.plugins.gradle</depends>
-	<depends optional="true" config-file="java.xml">com.intellij.modules.java</depends>
-	<depends optional="true" config-file="yaml.xml">org.jetbrains.plugins.yaml</depends>
-	<depends optional="true" config-file="github.xml">org.jetbrains.plugins.github</depends>
-	<depends optional="true" config-file="git.xml">Git4Idea</depends>
-	<depends optional="true" config-file="json.xml">com.intellij.modules.json</depends>
-	<depends optional="true" config-file="package-checker.xml">
+	<depends optional="true"
+	         config-file="biz.paluch.dependency-assistant-gradle-kotlin.xml">
+		org.jetbrains.kotlin
+	</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-gradle.xml">
+		org.jetbrains.plugins.gradle
+	</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-java.xml">
+		com.intellij.modules.java
+	</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-yaml.xml">
+		org.jetbrains.plugins.yaml
+	</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-github.xml">
+		org.jetbrains.plugins.github
+	</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-git.xml">
+		Git4Idea
+	</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-json.xml">
+		com.intellij.modules.json
+	</depends>
+	<depends optional="true"
+	         config-file="biz.paluch.dependency-assistant-package-checker.xml">
 		org.jetbrains.security.package-checker
 	</depends>
 
@@ -84,12 +101,16 @@
 	</extensions>
 
 	<extensions defaultExtensionNs="com.intellij">
+		<applicationService
+				serviceImplementation="biz.paluch.dap.state.ApplicationSettings"/>
 		<fileTemplateGroup implementation="biz.paluch.dap.plan.UpgradePlanTemplateGroup"/>
 		<toolWindow id="Upgrade Plan" anchor="bottom" doNotActivateOnStart="true"
 		            factoryClass="biz.paluch.dap.plan.UpgradePlanToolWindowFactory"
 		            icon="biz.paluch.dap.DependencyAssistantIcons.TOOL_WINDOW_UPGRADE_PLAN"/>
 		<postStartupActivity
 				implementation="biz.paluch.dap.assistant.action.PostStartup"/>
+		<postStartupActivity
+				implementation="biz.paluch.dap.support.PluginUpdateActivity"/>
 		<actionOnSave implementation="biz.paluch.dap.assistant.action.FlushStateOnSave"/>
 		<psi.treeChangeListener
 				implementation="biz.paluch.dap.assistant.action.FlushStateOnEdit"/>
@@ -109,6 +130,11 @@
 		<notificationGroup id="biz.paluch.dependency-assistant.plan"
 		                   displayType="BALLOON"
 		                   bundle="messages.MessageBundle" key="plan.notification.group"/>
+		<notificationGroup displayType="STICKY_BALLOON"
+		                   id="biz.paluch.dependency-assistant.update"
+		                   bundle="messages.MessageBundle"
+		                   key="notification.plugin-update" isLogByDefault="true"/>
+
 		<additionalTextAttributes scheme="Default"
 		                          file="colorSchemes/DependencyAssistantDefault.xml"/>
 		<additionalTextAttributes scheme="Darcula"
@@ -148,7 +174,7 @@
 		<intentionAction id="dap.upgrade.dependencies">
 			<language/>
 			<skipBeforeAfter>true</skipBeforeAfter>
-			<categoryKey>intention.dap.category</categoryKey>
+			<categoryKey>intention.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.assistant.action.UpgradeDependenciesIntention
 			</className>
@@ -156,7 +182,7 @@
 		<intentionAction id="dap.report.issue">
 			<language/>
 			<skipBeforeAfter>true</skipBeforeAfter>
-			<categoryKey>intention.dap.category</categoryKey>
+			<categoryKey>intention.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.assistant.editor.ReportIssueIntention
 			</className>
@@ -164,7 +190,7 @@
 		<intentionAction id="dap.open.release-notes">
 			<language/>
 			<skipBeforeAfter>true</skipBeforeAfter>
-			<categoryKey>intention.dap.category</categoryKey>
+			<categoryKey>intention.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.assistant.editor.OpenReleaseNotesIntention
 			</className>

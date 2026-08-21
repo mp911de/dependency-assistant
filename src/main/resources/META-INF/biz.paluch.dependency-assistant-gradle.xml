@@ -78,7 +78,7 @@
 				implementationClass="biz.paluch.dap.gradle.wrapper.GradleWrapperUrlInspection"/>
 		<intentionAction id="dap.gradle.checksum.distribution">
 			<language>Properties</language>
-			<categoryKey>intention.dap.category</categoryKey>
+			<categoryKey>intention.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.gradle.wrapper.GradleWrapperChecksumIntention</className>
 		</intentionAction>

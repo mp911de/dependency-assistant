@@ -38,13 +38,13 @@
 				implementationClass="biz.paluch.dap.maven.wrapper.MavenWrapperUrlInspection"/>
 		<intentionAction id="dap.maven.checksum.distribution">
 			<language>Properties</language>
-			<categoryKey>intention.dap.category</categoryKey>
+			<categoryKey>intention.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Distribution</className>
 		</intentionAction>
 		<intentionAction id="dap.maven.checksum.wrapper">
 			<language>Properties</language>
-			<categoryKey>intention.dap.category</categoryKey>
+			<categoryKey>intention.category</categoryKey>
 			<bundleName>messages.MessageBundle</bundleName>
 			<className>biz.paluch.dap.maven.wrapper.MavenWrapperChecksumIntention$Wrapper</className>
 		</intentionAction>

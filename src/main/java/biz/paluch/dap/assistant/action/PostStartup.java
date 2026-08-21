@@ -143,7 +143,7 @@ public class PostStartup implements ProjectActivity {
 	private void scanRepositoryTags(Project project, StateService service) {
 
 		RepositoryTagScanner scanner = new RepositoryTagScanner(project, service.getCache());
-		new Task.Backgroundable(project, MessageBundle.message("repository-scan.loading"), true) {
+		new Task.Backgroundable(project, MessageBundle.message("post-startup.repository-scan.loading"), true) {
 
 			@Override
 			public void run(ProgressIndicator indicator) {
@@ -160,7 +160,7 @@ public class PostStartup implements ProjectActivity {
 			return;
 		}
 
-		indicator.setText(MessageBundle.message("checker-startup.loading"));
+		indicator.setText(MessageBundle.message("post-startup.checker-startup.loading"));
 		scanner.scanUsedVersions(indicator);
 	}
 
