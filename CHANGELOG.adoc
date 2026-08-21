@@ -7,9 +7,54 @@ This document provides a curated changelog for each release.
 [[releasenotes]]
 == Release notes
 
+=== 0.5.0-RC2
+
+- Plugin update notification. After updating the plugin, a notification summarizes the changes since the previously installed version. Change notes are taken from the plugin descriptor, no network lookup required.
+- `Apply…` and `Apply and Commit…` actions for selected Upgrade Plan items. Apply only the selected planned upgrades, optionally followed by a commit. Complements the existing `Apply All` actions.
+- Implicit upgrade groups for shared version properties. Upgrades bound to the same version property are grouped under that property instead of being listed as separate items. Reduces noise in the review dialog and in the Upgrade Plan.
+- Dependency Site Search now uses the Usage View. Declaration sites are listed as usages with refined icons and tooltips, so you can navigate and inspect them like any other Find Usages result.
+- Upgrade Plan refinements: badge on the tool window icon, clipboard paste validation with progress and notifications, adjusted batch limits for vulnerability scans.
+- Unpinned GitHub Action inspection considers the full `uses:` declaration, not only the version literal.
+- Updates are applied one-by-one; the completion notification distinguishes upgraded declarations from ones already up to date.
+- Refined ticket creation, error handling, and consistent notification messages.
+- Debounced Maven sync refresh and code analysis restart after Maven and Gradle imports.
+- Fix `pom.xml` updates writing to stale cached PSI elements for declarations and properties.
+- Fix release version detection for semver suffixes that are not pre-releases; snapshots are excluded.
+- Fix optional Kotlin module declaration; Gradle support no longer breaks without the Kotlin plugin.
+- Fix `DumbAware` on GitHub-related components during indexing.
+- Unified repository URL handling with artifact and group ID validation.
+- Stronger BOM caching and `PsiFile`-level caching.
+- Move off internal and deprecated Plugin SDK API.
+
 === 0.5.0-RC1
 
-...
+- Gradle support. Scans `build.gradle(.kts)`, `settings.gradle(.kts)`, `gradle.properties`, and version catalogs including multiple TOML catalogs, rich version constraints, version ranges, and platform/BOM blocks. Provides completion, documentation, and upgrades for Groovy and Kotlin DSL declarations.
+- GitHub Actions support. Scans workflows and `action.yaml`, resolves versions from GitHub releases and tags, and supports SHA pinning with release comments. Adds the Unpinned GitHub Action inspection with a quick-fix to pin to a known commit SHA (#1).
+- npm support. Scans `package.json`, resolves releases from npmjs, and handles version prefixes, ranges, and project version resolution. Shows release documentation and upgrade suggestions in completion.
+- Antora support. Scans `antora-playbook.yml` for `ui.bundle.url` versions and offers completion and upgrades. Resolves releases through GitHub release metadata.
+- Maven and Gradle wrapper support. Inspections flag wrapper URLs with plaintext credentials or non-canonical coordinates and offer quick-fixes to rewrite them. Intentions compute and insert SHA-256 distribution and wrapper checksums, guarded by trust checks.
+- Package Checker integration (#2). Vulnerability information for Maven and npm packages surfaces in gutter markers, completion, documentation, quick-fixes, color schemes, and the upgrade dialog. Vulnerable dependencies expose a safe target version, and BOM resolution detects vulnerable managed dependencies.
+- Upgrade Plan (#5). A tool window to stage dependency upgrades for later review, create tickets from planned upgrades, and apply the plan as a batch. Includes badges, preview of changes, ticket linking, and release notes navigation.
+- Dependency rules via `dependencyfile.json`. Pin artifacts to generations per artifact pattern and per branch, across multiple generations, with an optional semver toggle. Ships a JSON schema, completion, a creation action, an `Add to dependencyfile` action, and the Dependency Rule inspection.
+- Upgrade groups and grouping policies. Candidates are grouped by version agreement, name shape, or release history, either governed by rules or inferred. Groups render as one unit in the upgrade dialog.
+- Version and declaration drift inspection. Reports dependencies declared with different versions or mixed declaration styles across build files, with a `Show all declaration sites` quick-fix. Drift for SHA-pinned GitHub Actions is reported correctly (#3).
+- Dependency Site Search. Finds all declaration sites of an artifact across the project. Accessible from the upgrade dialog and the Upgrade Plan.
+- Intentions to open release notes and report a ticket (#6). Reuses project metadata to link to release notes on GitHub, GitLab, Codeberg, and SourceForge, and to the issue tracker.
+- Maven refinements. Mirrors, `settings.xml` credentials, parent updates, extensions and reporting plugins, `extensions.xml`, profile-specific repositories, and multi-file upgrades. Property updates through the update dependency action.
+- Upgrade strategies. `RELEASE` strategy, version-age category, snapshot and preview handling, versioning-scheme-specific ordering, and development-line based release proposals in completion.
+- Dependency check dialog refinements: artifact-focused navigation, balloon and upgrades-done notifications, cache age display.
+- Plugin no longer requires `com.intellij.modules.java`.
+- Honor trusted-projects gate for GitHub account resolution.
+- Color scheme options and icon refinements.
+- Fixes: TOML parsing and updating, NPM prefix baseline parsing, `$`-prefixed expression evaluation, Gradle build file enumeration, GitHub comment positioning and rendering, recoverable GitHub failures, cancellation handling, cache synchronization.
+- ArchUnit package boundary tests, CodeQL workflow, contribution guide.
+
+=== 0.5.0-M2
+
+- Externalize messages into a message bundle.
+- Migrate enforced text attributes to `TextAttributeKey` with proper defaults.
+- Move off deprecated and internal API.
+
 === 0.5.0-M1
 
 - Initial release.
