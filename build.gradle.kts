@@ -45,7 +45,7 @@ dependencies {
 		bundledPlugin("org.jetbrains.security.package-checker")
 	}
 
-	implementation("org.springframework:spring-core:7.0.7")
+	implementation("org.springframework:spring-core:7.0.9")
 	implementation("org.xmlbeam:xmlprojector:1.4.26")
 	compileOnly("org.jspecify:jspecify:1.0.1")
 
