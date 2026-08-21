@@ -33,15 +33,9 @@ import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.QuickFix;
 import com.intellij.ide.trustedProjects.TrustedProjects;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.modcommand.ActionContext;
-import com.intellij.modcommand.ModCommandAction;
-import com.intellij.modcommand.ModCommandQuickFix;
-import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.util.ReflectionUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +52,7 @@ class MavenWrapperUrlInspectionTests {
 
 	private String FIX_REMOVE_CREDENTIALS = "Remove credentials";
 
-	private String FIX_USE_DEFAULT_URL = "Use default URL";
+	private String FIX_USE_DEFAULT_URL = "Fix download URL and use version";
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
@@ -229,7 +223,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void stripCredentialsFixRemovesUserInfo(PsiFile file) {
 
-		invokeQuickFix(FIX_REMOVE_CREDENTIALS);
+		fixture.launchAction(fixture.findSingleIntention(FIX_REMOVE_CREDENTIALS));
 
 		assertThat(file).containsText(
 				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip")
@@ -242,7 +236,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void replaceVersionFixUsesPathVersion(PsiFile file) {
 
-		invokeQuickFix("Use version '3.9.6'", 0);
+		fixture.launchAction(fixture.findSingleIntention("Use version '3.9.6'"));
 
 		assertThat(file).containsText("/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
 	}
@@ -253,7 +247,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void replaceVersionFixUsesFileVersion(PsiFile file) {
 
-		invokeQuickFix("Use version '3.9.5'", 1);
+		fixture.launchAction(fixture.findSingleIntention("Use version '3.9.5'"));
 
 		assertThat(file).containsText("/apache-maven/3.9.5/apache-maven-3.9.5-bin.zip");
 	}
@@ -264,7 +258,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void replaceArtifactFixSetsCanonical(PsiFile file) {
 
-		invokeQuickFix("Set artifact to 'apache-maven'");
+		fixture.launchAction(fixture.findSingleIntention("Set artifact to 'apache-maven'"));
 
 		assertThat(file).containsText("/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
 	}
@@ -275,7 +269,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void replaceGroupPathFixSetsCanonical(PsiFile file) {
 
-		invokeQuickFix("Set group to 'org/apache/maven'");
+		fixture.launchAction(fixture.findSingleIntention("Set group to 'org/apache/maven'"));
 
 		assertThat(file).containsText("/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
 	}
@@ -286,7 +280,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void replaceFileNameFixSetsCanonical(PsiFile file) {
 
-		invokeQuickFix("Set file to 'apache-maven-3.9.6-bin.zip'");
+		fixture.launchAction(fixture.findSingleIntention("Set file to 'apache-maven-3.9.6-bin.zip'"));
 
 		assertThat(file).containsText("/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip");
 	}
@@ -297,7 +291,7 @@ class MavenWrapperUrlInspectionTests {
 			""")
 	void replaceFileNameFixForWrapperUrlUsesJar(PsiFile file) {
 
-		invokeQuickFix("Set file to 'maven-wrapper-3.3.2.jar'");
+		fixture.launchAction(fixture.findSingleIntention("Set file to 'maven-wrapper-3.3.2.jar'"));
 
 		assertThat(file).containsText("/maven-wrapper/3.3.2/maven-wrapper-3.3.2.jar");
 	}
@@ -310,7 +304,7 @@ class MavenWrapperUrlInspectionTests {
 
 		DependencyAssistantFixtures.setup(fixture.getProject());
 
-		invokeQuickFix(FIX_USE_DEFAULT_URL);
+		fixture.launchAction(fixture.findSingleIntention(FIX_USE_DEFAULT_URL + " '3.10.0'"));
 
 		assertThat(file).containsText(
 				"https://repo1.maven.org/maven2/org/apache/maven/apache-maven/3.10.0/apache-maven-3.10.0-bin.zip");
@@ -329,7 +323,7 @@ class MavenWrapperUrlInspectionTests {
 		cache.addArtifacts(List.of(artifact));
 		StateService.getInstance(fixture.getProject()).setCache(cache);
 
-		invokeQuickFix(FIX_USE_DEFAULT_URL);
+		fixture.launchAction(fixture.findSingleIntention(FIX_USE_DEFAULT_URL + " '3.9.9'"));
 
 		assertThat(file)
 				.containsText("/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip")
@@ -341,57 +335,11 @@ class MavenWrapperUrlInspectionTests {
 			distributionUrl=not a url at all<caret>
 			""")
 	void useDefaultUrlFixAbsentWhenCacheEmpty() {
-		assertThat(quickFixLabels()).doesNotContain(FIX_USE_DEFAULT_URL);
-	}
-
-	@SuppressWarnings("rawtypes")
-	private void invokeQuickFix(String label) {
-		invokeQuickFix(label, -1);
-	}
-
-	@SuppressWarnings("rawtypes")
-	private void invokeQuickFix(String label, int position) {
-
-		List<ProblemDescriptor> problems = inspectWrapperFile();
-
-		assertThat(problems).isNotEmpty();
-
-		int item = 0;
-		for (ProblemDescriptor problem : problems) {
-
-			QuickFix[] fixes = problem.getFixes();
-			for (QuickFix fix : fixes) {
-
-				if (item == position || position == -1) {
-					invoke(fix, problem);
-					return;
-				}
-				item++;
-			}
-		}
-
-		fixture.launchAction(fixture.findSingleIntention(label));
-	}
-
-	private List<ProblemDescriptor> inspectWrapperFile() {
-		return inspectWrapperFile(fixture.getFile());
+		assertThat(quickFixLabels()).noneMatch(label -> label.startsWith(FIX_USE_DEFAULT_URL));
 	}
 
 	private List<ProblemDescriptor> inspectWrapperFile(PsiFile file) {
 		return Inspections.inspect(fixture.getProject(), file, new MavenWrapperUrlInspection());
-	}
-
-	private void invoke(QuickFix fix, ProblemDescriptor problem) {
-
-		WriteCommandAction.runWriteCommandAction(fixture.getProject(), () -> {
-			if (fix instanceof ModCommandQuickFix qf) {
-				MavenWrapperUrlFixes.WrapperUrlFix urlfix = (MavenWrapperUrlFixes.WrapperUrlFix) ReflectionUtil
-						.getField(qf.getClass(), qf, ModCommandAction.class, "myAction");
-				urlfix.invoke(ActionContext.from(problem), (PropertyImpl) problem.getStartElement(), null);
-			} else {
-				fix.applyFix(fixture.getProject(), problem);
-			}
-		});
 	}
 
 	private List<String> quickFixLabels() {

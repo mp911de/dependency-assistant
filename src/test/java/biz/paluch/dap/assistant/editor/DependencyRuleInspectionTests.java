@@ -25,10 +25,8 @@ import biz.paluch.dap.fixtures.Inspections;
 import biz.paluch.dap.maven.MavenFixtures;
 import biz.paluch.dap.rule.DependencyRules;
 import biz.paluch.dap.rule.DependencyfileService;
-import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
-import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.junit.jupiter.api.AfterEach;
@@ -227,7 +225,7 @@ class DependencyRuleInspectionTests {
 		MavenFixtures.analyze(pomFile);
 		install(DependencyRules.builder().artifact("org.junit:*", "6.0").build());
 
-		applyFix(inspect(pomFile).getFirst());
+		Inspections.applyFix(fixture.getProject(), inspect(pomFile), "Upgrade to 6.0.3");
 
 		assertThat(pomFile).containsText("6.0.3").doesNotContainText("5.14.0");
 	}
@@ -290,13 +288,6 @@ class DependencyRuleInspectionTests {
 
 	private void install(DependencyRules rules) {
 		DependencyfileService.getInstance(fixture.getProject()).setRules(rules);
-	}
-
-	private void applyFix(ProblemDescriptor problem) {
-
-		LocalQuickFix fix = (LocalQuickFix) problem.getFixes()[0];
-		WriteCommandAction.runWriteCommandAction(fixture.getProject(),
-				() -> fix.applyFix(fixture.getProject(), problem));
 	}
 
 	private List<ProblemDescriptor> inspect(PsiFile file) {

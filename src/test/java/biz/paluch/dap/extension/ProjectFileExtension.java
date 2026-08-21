@@ -155,11 +155,27 @@ class ProjectFileExtension implements BeforeEachCallback, ParameterResolver {
 			}
 			if (editorFile != null) {
 				validateUniqueFileName(byName, editorFile.name());
-				PsiFile psiFile = fixture.configureByText(editorFile.name(), editorFile.content());
+				PsiFile psiFile = configureEditorFile(fixture, editorFile);
 				byName.put(editorFile.name(), psiFile);
 				projectFiles.add(psiFile);
 			}
 		});
+	}
+
+	/**
+	 * Open the editor file. Names with a directory component go through
+	 * {@code addFileToProject} first because the light temp file system rejects
+	 * paths in {@code configureByText}; both routes strip caret markers.
+	 */
+	private static PsiFile configureEditorFile(CodeInsightTestFixture fixture, EditorFile editorFile) {
+
+		if (!editorFile.name().contains("/")) {
+			return fixture.configureByText(editorFile.name(), editorFile.content());
+		}
+
+		PsiFile psiFile = fixture.addFileToProject(editorFile.name(), editorFile.content());
+		fixture.configureFromExistingVirtualFile(psiFile.getVirtualFile());
+		return fixture.getFile();
 	}
 
 	private void registerProjectFiles(ExtensionContext context, ProjectFile[] projectFileAnnotations,

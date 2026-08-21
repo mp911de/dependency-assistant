@@ -16,24 +16,19 @@
 
 package biz.paluch.dap.gradle.wrapper;
 
-import java.util.Arrays;
 import java.util.List;
 
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import biz.paluch.dap.fixtures.Inspections;
-import com.intellij.codeInspection.ProblemDescriptor;
-import com.intellij.codeInspection.QuickFix;
-import com.intellij.lang.properties.psi.impl.PropertyImpl;
-import com.intellij.modcommand.ActionContext;
-import com.intellij.modcommand.ModCommandAction;
-import com.intellij.modcommand.ModCommandQuickFix;
-import com.intellij.openapi.command.WriteCommandAction;
+import biz.paluch.dap.state.Cache;
+import biz.paluch.dap.state.CachedArtifact;
+import biz.paluch.dap.state.CachedRelease;
+import biz.paluch.dap.state.StateService;
+import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
-import com.intellij.util.ReflectionUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -61,6 +56,9 @@ class GradleWrapperUrlInspectionTests {
 			distributionUrl=https://<warning descr="Wrapper URL contains plaintext credentials">alice:secret@</warning>services.gradle.org/distributions/gradle-8.14.3-bin.zip
 			""")
 	void highlightsCredentialsInUrl(PsiFile file) {
+
+		cacheGradleRelease("8.14.3", "sha-8.14.3");
+
 		fixture.testHighlighting(true, false, false, file.getVirtualFile());
 	}
 
@@ -93,6 +91,9 @@ class GradleWrapperUrlInspectionTests {
 			distributionUrl=<weak_warning descr="distributionUrl has no SHA-256 checksum">https://services.gradle.org/distributions/gradle-8.14.3-bin.zip</weak_warning>
 			""")
 	void highlightsMissingDistributionSha(PsiFile file) {
+
+		cacheGradleRelease("8.14.3", "sha-8.14.3");
+
 		fixture.testHighlighting(true, false, true, file.getVirtualFile());
 	}
 
@@ -102,6 +103,9 @@ class GradleWrapperUrlInspectionTests {
 			distributionSha256Sum=
 			""")
 	void skipsMissingDistributionShaWhenShaPropertyExists(PsiFile file) {
+
+		cacheGradleRelease("8.14.3", "sha-8.14.3");
+
 		fixture.testHighlighting(true, false, true, file.getVirtualFile());
 	}
 
@@ -110,7 +114,7 @@ class GradleWrapperUrlInspectionTests {
 			distributionUrl=https://services.gradle.org/distributions/gradle-8.14.3<caret>-bin.zip
 			""")
 	void missingDistributionShaOffersComputeFix() {
-		assertThat(problemQuickFixLabels()).contains("Add SHA-256 checksum");
+		assertThat(intentionLabels()).contains("Add SHA-256 checksum");
 	}
 
 	@Test
@@ -118,6 +122,9 @@ class GradleWrapperUrlInspectionTests {
 			distributionUrl=https://services.gradle.org/distributions/gradle-8.___IntellijIdeaRulezzz___-bin.zip
 			""")
 	void skipsCompletionPlaceholder(PsiFile file) {
+
+		emptyCache();
+
 		fixture.testHighlighting(true, false, true, file.getVirtualFile());
 	}
 
@@ -126,6 +133,9 @@ class GradleWrapperUrlInspectionTests {
 			distributionUrl=ftp://services.gradle.org/distributions/gradle-8.14.3-bin.zip
 			""")
 	void skipsMissingDistributionShaForUnsupportedSchemes(PsiFile file) {
+
+		cacheGradleRelease("8.14.3", "sha-8.14.3");
+
 		fixture.testHighlighting(true, false, true, file.getVirtualFile());
 	}
 
@@ -143,7 +153,7 @@ class GradleWrapperUrlInspectionTests {
 			""")
 	void stripCredentialsFixRemovesUserInfo(PsiFile file) {
 
-		invokeQuickFix(0, 0);
+		fixture.launchAction(fixture.findSingleIntention("Remove credentials"));
 
 		assertThat(file)
 				.containsText("https://services.gradle.org/distributions/gradle-8.14.3-bin.zip")
@@ -152,11 +162,11 @@ class GradleWrapperUrlInspectionTests {
 
 	@Test
 	@EditorFile(name = "gradle-wrapper.properties", content = """
-			distributionUrl=https://services.gradle.org/distributions/wrapper-8.14.3<caret>-bin.zip
+			distributionUrl=https://services.gradle.org/distributions/wrap<caret>per-8.14.3-bin.zip
 			""")
 	void replaceUnknownArtifactFixSetsCanonicalFileName(PsiFile file) {
 
-		invokeQuickFix(0, 0);
+		fixture.launchAction(fixture.findSingleIntention("Set file to 'gradle-8.14.3-bin.zip'"));
 
 		assertThat(file).containsText("https://services.gradle.org/distributions/gradle-8.14.3-bin.zip");
 	}
@@ -167,7 +177,7 @@ class GradleWrapperUrlInspectionTests {
 			""")
 	void replaceMalformedFileNameFixSetsCanonicalFileName(PsiFile file) {
 
-		invokeQuickFix(0, 0);
+		fixture.launchAction(fixture.findSingleIntention("Set file to 'gradle-8.14.3-bin.zip'"));
 
 		assertThat(file).containsText("https://services.gradle.org/distributions/gradle-8.14.3-bin.zip");
 	}
@@ -178,44 +188,31 @@ class GradleWrapperUrlInspectionTests {
 			""")
 	void invalidUrlOffersDefaultUrlFixWhenCacheIsEmpty(PsiFile file) {
 
-		invokeQuickFix(0, 0);
+		fixture.launchAction(fixture.findSingleIntention("Fix download URL and use version '9.5.1'"));
 
 		assertThat(file).containsText("https://services.gradle.org/distributions/gradle-9.5.1-bin.zip");
 	}
 
-	private void invokeQuickFix(int problemIndex, int fixIndex) {
-
-		List<ProblemDescriptor> problems = inspectionProblems();
-		assertThat(problems).hasSizeGreaterThan(problemIndex);
-		QuickFix[] fixes = problems.get(problemIndex).getFixes();
-		assertThat(fixes).hasSizeGreaterThan(fixIndex);
-		invoke(fixes[fixIndex], problems.get(problemIndex));
+	private List<String> intentionLabels() {
+		return fixture.getAvailableIntentions().stream().map(IntentionAction::getText).toList();
 	}
 
-	private List<ProblemDescriptor> inspectionProblems() {
-		return Inspections.inspect(fixture.getProject(), fixture.getFile(), new GradleWrapperUrlInspection());
+	/**
+	 * Replace the cache so the given version is the only, and therefore latest,
+	 * Gradle release. Keeps the checksum available while suppressing upgrade
+	 * suggestions that would add unrelated highlighting.
+	 */
+	private void cacheGradleRelease(String version, String sha) {
+
+		CachedArtifact gradle = new CachedArtifact("org.gradle", "gradle");
+		gradle.addRelease(new CachedRelease(version, "2026-01-23", sha));
+		Cache cache = new Cache();
+		cache.addArtifacts(List.of(gradle));
+		StateService.getInstance(fixture.getProject()).setCache(cache);
 	}
 
-	@SuppressWarnings("rawtypes")
-	private void invoke(QuickFix fix, ProblemDescriptor problem) {
-
-		WriteCommandAction.runWriteCommandAction(fixture.getProject(), () -> {
-			if (fix instanceof ModCommandQuickFix qf) {
-				GradleWrapperUrlFixes.WrapperUrlFix urlfix = (GradleWrapperUrlFixes.WrapperUrlFix) ReflectionUtil
-						.getField(qf.getClass(), qf, ModCommandAction.class, "myAction");
-				urlfix.invoke(ActionContext.from(problem), (PropertyImpl) problem.getStartElement(), null);
-			} else {
-				fix.applyFix(fixture.getProject(), problem);
-			}
-		});
-	}
-
-	private List<String> problemQuickFixLabels() {
-
-		return inspectionProblems().stream()
-				.flatMap(problem -> Arrays.stream(problem.getFixes()))
-				.map(QuickFix::getName)
-				.toList();
+	private void emptyCache() {
+		StateService.getInstance(fixture.getProject()).setCache(new Cache());
 	}
 
 }

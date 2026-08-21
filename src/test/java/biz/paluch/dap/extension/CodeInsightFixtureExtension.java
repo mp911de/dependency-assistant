@@ -30,6 +30,7 @@ import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
+import com.intellij.testFramework.fixtures.impl.LightTempDirTestFixtureImpl;
 import com.intellij.util.Function;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.*;
@@ -279,7 +280,11 @@ class CodeInsightFixtureExtension
 		IdeaTestFixtureFactory factory = IdeaTestFixtureFactory.getFixtureFactory();
 		TestFixtureBuilder<IdeaProjectTestFixture> builder = factory.createLightFixtureBuilder(fixtureName);
 		IdeaProjectTestFixture ideaProjectFixture = builder.getFixture();
-		CodeInsightTestFixture codeInsightFixture = factory.createCodeInsightFixture(ideaProjectFixture);
+		// Files must live in the light project's source root; the default physical temp
+		// dir is outside the project, and PsiBasedModCommandAction fixes refuse files
+		// that fail BaseIntentionAction.canModify (isInProject).
+		CodeInsightTestFixture codeInsightFixture = factory.createCodeInsightFixture(ideaProjectFixture,
+				new LightTempDirTestFixtureImpl(true));
 
 		try {
 			EdtTestUtil.runInEdtAndWait(codeInsightFixture::setUp);

@@ -19,14 +19,11 @@ package biz.paluch.dap.gradle;
 import biz.paluch.dap.extension.CodeInsightFixtureTests;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import com.intellij.testFramework.PsiTestUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import org.jetbrains.plugins.gradle.settings.GradleProjectSettings;
 import org.jetbrains.plugins.gradle.settings.GradleSettings;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -40,15 +37,6 @@ import static org.assertj.core.api.Assertions.*;
 class GradleProjectRootTests {
 
 	private @TestFixture CodeInsightTestFixture fixture;
-
-	@BeforeEach
-	void setUp() {
-
-		// register the temp dir as content root so root detection sees a realistic
-		// project shape
-		VirtualFile tempDir = LocalFileSystem.getInstance().refreshAndFindFileByPath(fixture.getTempDirPath());
-		PsiTestUtil.addContentRoot(fixture.getModule(), tempDir);
-	}
 
 	@Test
 	@ProjectFile(name = "settings.gradle", content = "rootProject.name = 'demo'")

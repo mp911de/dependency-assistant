@@ -16,7 +16,6 @@
 
 package biz.paluch.dap.maven;
 
-import java.util.Arrays;
 import java.util.List;
 
 import biz.paluch.dap.artifact.VersionSource;
@@ -26,7 +25,6 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.fixtures.Inspections;
 import com.intellij.codeInspection.CommonProblemDescriptor;
-import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.QuickFix;
@@ -102,7 +100,7 @@ class DependencyVersionDriftInspectionTests {
 		MavenFixtures.analyze(pomFile);
 		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.3");
 
-		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
+		Inspections.applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 
 		assertThat(pomFile).containsText("<version>6.0.3</version>");
 	}
@@ -177,7 +175,7 @@ class DependencyVersionDriftInspectionTests {
 		MavenFixtures.analyze(pomFile);
 		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.0");
 
-		applyFix(pomFile, "Downgrade to lowest used version '6.0.0'");
+		Inspections.applyFix(pomFile, "Downgrade to lowest used version '6.0.0'");
 
 		assertThat(pomFile).containsText("<version>6.0.0</version>");
 	}
@@ -258,21 +256,12 @@ class DependencyVersionDriftInspectionTests {
 		MavenFixtures.analyze(pomFile);
 		Inspections.registerDependency(fixture.getProject(), "other", "hello.world:drift-bom:6.0.3");
 
-		applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
+		Inspections.applyFix(pomFile, "Upgrade to highest used version '6.0.3'");
 
 		// the current file's runtime state is still stale at 6.0.0; the inspection
 		// must read the open file live and no longer report drift
 		assertThat(pomFile).containsText("<version>6.0.3</version>");
 		assertThat(Inspections.inspect(fixture.getProject(), pomFile)).isEmpty();
-	}
-
-	private void applyFix(PsiFile file, String name) {
-
-		ProblemDescriptor problem = Inspections.inspect(fixture.getProject(), file).get(0);
-		assertThat(problem.getFixes()).extracting(QuickFix::getName).contains(name);
-		LocalQuickFix fix = (LocalQuickFix) Arrays.stream(problem.getFixes())
-				.filter(it -> name.equals(it.getName())).findFirst().orElseThrow();
-		fix.applyFix(fixture.getProject(), problem);
 	}
 
 }

@@ -1,18 +1,18 @@
 /*
-* Copyright 2026-present the original author or authors.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      https://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright 2026-present the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package biz.paluch.dap.github;
 
@@ -23,16 +23,9 @@ import biz.paluch.dap.extension.EditorFile;
 import biz.paluch.dap.extension.ProjectFile;
 import biz.paluch.dap.extension.TestFixture;
 import biz.paluch.dap.fixtures.Inspections;
-import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.codeInspection.QuickFix;
-import com.intellij.modcommand.ActionContext;
-import com.intellij.modcommand.ModCommand;
-import com.intellij.modcommand.ModCommandExecutor;
-import com.intellij.modcommand.ModCommandQuickFix;
-import com.intellij.openapi.command.WriteCommandAction;
-import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
@@ -49,6 +42,8 @@ import static biz.paluch.dap.assertions.Assertions.*;
  */
 @CodeInsightFixtureTests
 class UnpinnedGitHubActionInspectionTests {
+
+	static final String PIN_FIX = "Pin to commit SHA '" + TestGitHubReleases.CHECKOUT_SHA_LATEST_SHORT + "…'";
 
 	private @TestFixture CodeInsightTestFixture fixture;
 
@@ -76,8 +71,7 @@ class UnpinnedGitHubActionInspectionTests {
 		assertThat(highlightText(workflowFile, problem)).isEqualTo("actions/checkout@v4.2.0");
 
 		QuickFix fix = problem.getFixes()[0];
-		assertThat(fix.getName())
-				.isEqualTo("Pin to commit SHA '" + TestGitHubReleases.CHECKOUT_SHA_LATEST_SHORT + "…'");
+		assertThat(fix.getName()).isEqualTo(PIN_FIX);
 		assertThat(fix.getFamilyName()).isEqualTo("Pin to commit SHA");
 	}
 
@@ -182,21 +176,11 @@ class UnpinnedGitHubActionInspectionTests {
 	}
 
 	private void applyFix(PsiFile file) {
-
-		ProblemDescriptor problem = inspect(file).getFirst();
-		LocalQuickFix fix = (LocalQuickFix) problem.getFixes()[0];
-		WriteCommandAction.runWriteCommandAction(fixture.getProject(),
-				() -> fix.applyFix(fixture.getProject(), problem));
+		Inspections.applyFix(fixture.getProject(), inspect(file), PIN_FIX);
 	}
 
 	private void applyFixInEditor(PsiFile file) {
-
-		ProblemDescriptor problem = inspect(file).getFirst();
-		ModCommandQuickFix fix = (ModCommandQuickFix) problem.getFixes()[0];
-		Editor editor = fixture.getEditor();
-		ModCommand command = fix.perform(fixture.getProject(), problem);
-		WriteCommandAction.runWriteCommandAction(fixture.getProject(), () -> ModCommandExecutor.getInstance()
-				.executeInteractively(ActionContext.from(editor, file), command, editor));
+		Inspections.applyFix(fixture.getProject(), fixture.getEditor(), inspect(file), PIN_FIX);
 	}
 
 	private static String highlightText(PsiFile file, ProblemDescriptor problem) {
