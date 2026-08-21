@@ -42,6 +42,7 @@ import biz.paluch.dap.support.Property;
 import biz.paluch.dap.support.PropertyResolver;
 import biz.paluch.dap.support.PropertyValue;
 import com.intellij.codeInsight.completion.CompletionUtilCore;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.SmartPointerManager;
@@ -147,17 +148,15 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		List<DependencySiteSearchHit> hits = new ArrayList<>();
 		MavenParser parser = new MavenParser(buildContext.getPomProperties());
 		for (ArtifactDeclaration declaration : parser.parsePomFile(pomFile)) {
+			ProgressManager.checkCanceled();
 			VersionSource versionSource = declaration.getVersionSource();
 			if (versionSource instanceof VersionSource.VersionProperty property) {
 				if (query.versionProperties().contains(property.getProperty())) {
-					hits.add(
-							DependencySiteSearchHit.usage(declaration.getDeclarationElement(), property.getProperty()));
+					hits.add(DependencySiteSearchHit.usage(declaration.getDeclarationElement(), declaration));
 				}
 			} else if (query.artifacts().contains(declaration.getArtifactId())
 					&& declaration.getVersionLiteral() != null) {
-				hits.add(DependencySiteSearchHit.declaration(declaration.getRequiredVersionLiteral(),
-						declaration.isVersioned() ? declaration.getVersion().toString()
-								: declaration.getRequiredVersionLiteral().getText()));
+				hits.add(DependencySiteSearchHit.declaration(declaration.getRequiredVersionLiteral(), declaration));
 			}
 		}
 
@@ -203,7 +202,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 	}
 
 	@Nullable
-	private ResolvedProperty resolveProperty(Expression expression, XmlTag declaration) {
+	private ResolvedProperty resolveProperty(Expression expression) {
 
 		XmlFile pomFile = getPom();
 		if (pomFile == null) {
@@ -240,7 +239,7 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		ArtifactVersion currentVersion = getCurrentVersion(property, propertyTag);
 
 		String tagName = propertyTag.getLocalName();
-		ResolvedProperty resolvedProperty = resolveProperty(Expression.property(tagName), propertyTag);
+		ResolvedProperty resolvedProperty = resolveProperty(Expression.property(tagName));
 		CachedArtifact firstArtifact = property.artifacts().getFirst();
 
 		return ArtifactReference.from(it -> {
@@ -283,10 +282,6 @@ class MavenArtifactReferenceResolver implements ArtifactReferenceResolver {
 		}
 
 		ArtifactId artifactId = property.artifacts().getFirst().toArtifactId();
-		if (projectState == null) {
-			return null;
-		}
-
 		Dependency dependency = projectState.findDependency(artifactId);
 		return dependency != null ? dependency.getCurrentVersion() : null;
 	}

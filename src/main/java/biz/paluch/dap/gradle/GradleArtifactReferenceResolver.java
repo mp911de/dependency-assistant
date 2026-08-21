@@ -28,7 +28,6 @@ import biz.paluch.dap.lookup.ArtifactReferenceResolver;
 import biz.paluch.dap.lookup.DependencySearchResults;
 import biz.paluch.dap.lookup.DependencySiteQuery;
 import biz.paluch.dap.lookup.DependencySiteSearchHit;
-import biz.paluch.dap.lookup.SiteRole;
 import biz.paluch.dap.state.ProjectState;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import biz.paluch.dap.support.ArtifactReference;
@@ -173,28 +172,29 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 			VersionSource versionSource = declaration.getVersionSource();
 
 			if (versionLiteral != null && declaration.isVersionDefinedInSameFile()) {
-				hits.add(DependencySiteSearchHit.declaration(versionLiteral,
-						labelOf(SiteRole.DECLARATION, versionLiteral, declaration)));
+				hits.add(DependencySiteSearchHit.declaration(versionLiteral, declaration));
 
 				if (!PsiTreeUtil.isAncestor(declarationElement, versionLiteral, false)) {
-					hits.add(DependencySiteSearchHit.usage(declarationElement,
-							labelOf(SiteRole.VERSION_USAGE, declarationElement, declaration)));
+					hits.add(DependencySiteSearchHit.usage(declarationElement, declaration));
 				}
 			} else if (versionSource.isProperty() || versionSource instanceof VersionSource.VersionCatalog) {
-				hits.add(DependencySiteSearchHit.usage(declarationElement,
-						labelOf(SiteRole.VERSION_USAGE, declarationElement, declaration)));
+				hits.add(DependencySiteSearchHit.usage(declarationElement, declaration));
 			}
 		}
 
 		return hits;
 	}
 
-	/**
-	 * Report each named version property defined in this file as a
-	 * {@link SiteRole#DECLARATION} anchored on its value literal. Shared by the
-	 * TOML {@code [versions]}, {@code gradle.properties}, and
-	 * {@code ext}/{@code extra} definition sources.
-	 */
+	private static boolean matches(ArtifactDeclaration declaration, DependencySiteQuery query) {
+
+		if (query.artifacts().contains(declaration.getArtifactId())) {
+			return true;
+		}
+
+		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property
+				&& query.matches(property);
+	}
+
 	private static List<DependencySiteSearchHit> propertyDefinitionHits(Collection<String> names,
 			Function<String, biz.paluch.dap.support.@Nullable Property> lookup) {
 
@@ -215,26 +215,6 @@ class GradleArtifactReferenceResolver implements ArtifactReferenceResolver {
 		Set<String> names = new HashSet<>(query.versionProperties());
 		names.retainAll(declaredNames);
 		return names;
-	}
-
-	private static boolean matches(ArtifactDeclaration declaration, DependencySiteQuery query) {
-
-		if (query.artifacts().contains(declaration.getArtifactId())) {
-			return true;
-		}
-
-		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property
-				&& query.matches(property);
-	}
-
-	private static String labelOf(SiteRole role, PsiElement element, ArtifactDeclaration declaration) {
-
-		if (role == SiteRole.DECLARATION) {
-			return declaration.isVersioned() ? declaration.getVersion().toString() : element.getText();
-		}
-
-		return declaration.getVersionSource() instanceof VersionSource.VersionProperty property ? property.getProperty()
-				: element.getText();
 	}
 
 	/**

@@ -234,8 +234,7 @@ public class DependencyUsageTarget implements UsageTarget, ItemPresentation {
 			PsiElement target = declaration.getVersionLiteral() != null ? declaration.getVersionLiteral()
 					: declaration.getDeclarationElement();
 			if (seen.add(target)) {
-				hits.add(DependencySiteSearchHit.declaration(target,
-						declaration.isVersioned() ? declaration.getVersion().toString() : target.getText()));
+				hits.add(DependencySiteSearchHit.declaration(target, declaration));
 			}
 		}
 

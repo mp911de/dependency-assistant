@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.lookup;
 
+import biz.paluch.dap.artifact.VersionSource;
+import biz.paluch.dap.support.ArtifactDeclaration;
 import com.intellij.psi.PsiElement;
 import org.springframework.util.ObjectUtils;
 
@@ -50,8 +52,7 @@ public class DependencySiteSearchHit {
 	 * Create a {@link SiteRole#DECLARATION} search hit whose display label defaults
 	 * to the element's own text.
 	 *
-	 * @param element the PSI element to navigate to and preview; must not be
-	 * {@literal null}.
+	 * @param element the PSI element to navigate to and preview.
 	 * @return the definition hit.
 	 */
 	public static DependencySiteSearchHit declaration(PsiElement element) {
@@ -62,10 +63,8 @@ public class DependencySiteSearchHit {
 	 * Create a {@link SiteRole#DECLARATION} search hit with an explicit display
 	 * label.
 	 *
-	 * @param element the PSI element to navigate to and preview; must not be
-	 * {@literal null}.
-	 * @param label the concise display text (the version); must not be
-	 * {@literal null}.
+	 * @param element the PSI element to navigate to and preview.
+	 * @param label the concise display text (the version).
 	 * @return the definition hit.
 	 */
 	public static DependencySiteSearchHit declaration(PsiElement element, String label) {
@@ -73,11 +72,24 @@ public class DependencySiteSearchHit {
 	}
 
 	/**
+	 * Create a {@link SiteRole#DECLARATION} search hit from an
+	 * {@link ArtifactDeclaration}.
+	 *
+	 * @param element the PSI element to navigate to and preview.
+	 * @param declaration the originating {@link ArtifactDeclaration}.
+	 * @return the definition hit.
+	 */
+	public static DependencySiteSearchHit declaration(PsiElement element, ArtifactDeclaration declaration) {
+
+		String label = declaration.isVersioned() ? declaration.getVersion().toString() : element.getText();
+		return new DependencySiteSearchHit(element, SiteRole.DECLARATION, label);
+	}
+
+	/**
 	 * Create a {@link SiteRole#VERSION_USAGE} search hit whose display label
 	 * defaults to the element's own text.
 	 *
-	 * @param element the PSI element to navigate to and preview; must not be
-	 * {@literal null}.
+	 * @param element the PSI element to navigate to and preview.
 	 * @return the version-usage hit.
 	 */
 	public static DependencySiteSearchHit usage(PsiElement element) {
@@ -88,14 +100,28 @@ public class DependencySiteSearchHit {
 	 * Create a {@link SiteRole#VERSION_USAGE} search hit with an explicit display
 	 * label.
 	 *
-	 * @param element the PSI element to navigate to and preview; must not be
-	 * {@literal null}.
-	 * @param label the concise display text (the version-property expression); must
-	 * not be {@literal null}.
+	 * @param element the PSI element to navigate to and preview.
+	 * @param label the concise display text (the version-property expression).
 	 * @return the version-usage hit.
 	 */
 	public static DependencySiteSearchHit usage(PsiElement element, String label) {
 		return new DependencySiteSearchHit(element, SiteRole.VERSION_USAGE, label);
+	}
+
+	/**
+	 * Create a {@link SiteRole#VERSION_USAGE} search hit from an
+	 * {@link ArtifactDeclaration}.
+	 *
+	 * @param element the PSI element to navigate to and preview
+	 * @param declaration the originating {@link ArtifactDeclaration}.
+	 * @return the version-usage hit.
+	 */
+	public static DependencySiteSearchHit usage(PsiElement element, ArtifactDeclaration declaration) {
+
+		String label = declaration.getVersionSource() instanceof VersionSource.VersionProperty property
+				? property.getProperty()
+				: element.getText();
+		return usage(element, label);
 	}
 
 	/**
