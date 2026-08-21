@@ -1,0 +1,15 @@
+= Dependency Assistant Plugin Changelog
+
+== About
+
+This document provides a curated changelog for each release.
+
+[[releasenotes]]
+== Release notes
+
+=== 0.5.0-RC1
+
+...
+=== 0.5.0-M1
+
+- Initial release.

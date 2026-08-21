@@ -1,9 +1,12 @@
 import org.jetbrains.intellij.platform.gradle.tasks.RunIdeTask
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
+import org.jsoup.Jsoup
+import kotlin.streams.asSequence
 
 plugins {
 	id("java")
 	id("org.jetbrains.intellij.platform") version "2.16.0"
+	id("org.asciidoctor.jvm.convert") version "4.0.5"
 }
 
 group = "biz.paluch"
@@ -16,8 +19,14 @@ repositories {
 	}
 }
 
+// AsciidoctorJ CLI for rendering CHANGELOG.adoc; kept off the Asciidoctor Gradle plugin as
+// it is neither configuration-cache compatible nor free of Gradle deprecations
+val asciidoctorj = configurations.create("asciidoctorj")
+
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
+	asciidoctorj("org.asciidoctor:asciidoctorj-cli:3.0.1")
+
 	intellijPlatform {
 		intellijIdea("2026.1.3")
 		testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
@@ -59,11 +68,33 @@ intellijPlatform {
 			sinceBuild = "261"
 		}
 
-		name = "Dependency Assistant"
+		description =
+			providers.fileContents(layout.projectDirectory.file("src/main/resources/META-INF/description.html")).asText
 
-		changeNotes = """
-            Initial version
-        """.trimIndent()
+		// no lambda capturing the build script here, it would drag Project into the
+		// configuration cache; patchPluginXml wires the producing task via dependsOn
+		changeNotes = providers.fileContents(layout.buildDirectory.file("docs/asciidoc/CHANGELOG.html")).asText.map { html ->
+			Jsoup.parse(html)
+				.select("#releasenotes").get(0).nextElementSibling()!!.children()
+				.take(20)
+				.stream().map { e ->
+					e.html()
+						.replace(Regex("\\(work in progress\\)"), "")
+						.replace(
+							Regex("\\(preview, available from GitHub releases\\)"),
+							""
+						)
+						.replace(
+							Regex("#([0-9]+)"),
+							"<a href=\"https://github.com/mp911de/dependency-assistant/issues/$1\">#$1</a>"
+						)
+						.replace(
+							Regex("(?i)@([a-z\\d](?:[a-z\\d]|-(?=[a-z\\d])){0,38})"),
+							"<a href=\"https://github.com/$1\">@$1</a>"
+						)
+				}
+				.asSequence().joinToString("\n")
+		}
 	}
 
 	pluginVerification {
@@ -93,6 +124,37 @@ java {
 }
 
 tasks {
+
+	patchPluginXml {
+		dependsOn("asciidoctor")
+		sinceBuild = "253.25908"
+		untilBuild = provider { null }
+	}
+
+	register<JavaExec>("asciidoctor") {
+		description = "Renders CHANGELOG.adoc to HTML for the plugin change notes."
+		group = "documentation"
+
+		val changelog = layout.projectDirectory.file("CHANGELOG.adoc")
+		val html = layout.buildDirectory.file("docs/asciidoc/CHANGELOG.html")
+		val revnumber = project.version.toString()
+		inputs.file(changelog)
+		outputs.file(html)
+
+		classpath = asciidoctorj
+		mainClass = "org.asciidoctor.cli.jruby.AsciidoctorInvoker"
+		// 🤐🔇 JRuby FilenoUtil warning about JDK IO subsystem access
+		jvmArgs("--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED", "--add-opens", "java.base/java.io=ALL-UNNAMED")
+		argumentProviders.add(CommandLineArgumentProvider {
+			listOf(
+				"--safe-mode", "unsafe",
+				"--attribute", "revnumber=$revnumber",
+				"--out-file", html.get().asFile.absolutePath,
+				changelog.asFile.absolutePath
+			)
+		})
+	}
+
 	withType<Test>().configureEach {
 		useJUnitPlatform()
 		failOnNoDiscoveredTests = true

@@ -6,32 +6,9 @@
 	<vendor url="https://github.com/mp911de/dependency-assistant">Mark Paluch</vendor>
 	<category>Build Tools</category>
 
-	<description><![CDATA[
-		<p>
-			Provides assisted upgrading of Maven, Gradle, GitHub Actions, NPM, and Antora dependencies, plus Maven and Gradle wrapper properties, in your IDE. The plugin highlights dependency declarations for newer versions and offers a controlled path to apply updates without replacing your own judgment about when to upgrade.
-		</p>
+	<description><!-- filled during build from description.html --></description>
 
-		The support includes:
-		<ul>
-  <li>Scanning of <code>pom.xml</code> (Maven), <code>build.gradle(.kts)</code>, <code>gradle.properties</code>,
-      <code>settings.gradle(.kts)</code>, <code>gradle/libs.versions.toml</code> (Gradle), <code>action.yaml</code> and workflows (GitHub Action), <code>package.json</code> (NPM), <code>antora-playbook.yml</code> (Antora)</li>
-  <li>Determining version update candidates against remote repositories</li>
-  <li>Selection of dependencies and plugins to update</li>
-  <li>Supports Maven Central, custom Maven repositories, npmjs, and GitHub as release metadata sources</li>
-  <li>Shows Package Checker vulnerability information for Maven and npm packages when that IDE service is available</li>
-</ul>
-
-		<h3>First Steps</h3>
-		<ul>
-			<li>Open a build file in the editor.</li>
-			<li>Use the intention action (light bulb) on a dependency or plugin version to check for updates.</li>
-			<li>Or use the menu action <strong>Tools | Dependency Assistant | Update Dependencies…</strong>.</li>
-		</ul>
-
-		<p>
-			<a href="https://github.com/mp911de/dependency-assistant">Source and issues: mp911de/dependency-assistant</a>
-		</p>
-	]]></description>
+	<change-notes><!-- filled during build from CHANGELOG.adoc --></change-notes>
 
 	<depends>com.intellij.modules.xml</depends>
 	<depends>com.intellij.modules.vcs</depends>
