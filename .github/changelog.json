@@ -1,0 +1,41 @@
+{
+  "sections": [
+    {
+      "title": ":star: New Features",
+      "labels": [
+        "enhancement"
+      ],
+      "summary": "features"
+    },
+    {
+      "title": ":lady_beetle: Bug Fixes",
+      "labels": [
+        "bug",
+        "regression"
+      ],
+      "summary": "bugs"
+    },
+    {
+      "title": ":notebook_with_decorative_cover: Documentation",
+      "labels": [
+        "documentation"
+      ]
+    },
+    {
+      "title": ":hammer: Dependency Upgrades",
+      "labels": [
+        "dependency-upgrade",
+        "dependencies"
+      ]
+    }
+  ],
+  "excludeLabels": [
+    "type: task"
+  ],
+  "team": [
+    "mp911de"
+  ],
+  "followReferences": [
+    "mp911de/dependency-assistant"
+  ]
+}
