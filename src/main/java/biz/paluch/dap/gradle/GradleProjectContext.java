@@ -146,7 +146,7 @@ interface GradleProjectContext extends ProjectBuildContext {
 		}
 
 		BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-		return ReadAction.computeBlocking(
+		return ReadAction.compute(
 				() -> psiManager.optional(file).map(GradleProjectContext::of).orElse(EmptyGradleBuildContext.INSTANCE));
 	}
 

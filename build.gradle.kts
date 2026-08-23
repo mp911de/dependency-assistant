@@ -10,6 +10,7 @@ plugins {
 
 group = "biz.paluch"
 version = "0.5.0-SNAPSHOT"
+val sinceIntelliJBuild = "252"
 
 repositories {
 	mavenCentral()
@@ -64,7 +65,7 @@ dependencies {
 intellijPlatform {
 	pluginConfiguration {
 		ideaVersion {
-			sinceBuild = "261"
+			sinceBuild = sinceIntelliJBuild
 		}
 
 		description =
@@ -126,7 +127,7 @@ tasks {
 
 	patchPluginXml {
 		dependsOn("asciidoctor")
-		sinceBuild = "253.25908"
+		sinceBuild = sinceIntelliJBuild
 		untilBuild = provider { null }
 	}
 

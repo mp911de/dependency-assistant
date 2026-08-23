@@ -18,8 +18,10 @@ package biz.paluch.dap.assistant;
 
 import javax.swing.Icon;
 
+import biz.paluch.dap.DependencyAssistant;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.VersionAge;
+import biz.paluch.dap.assistant.presentation.DependencyIcons;
 import biz.paluch.dap.checker.CheckerIcons;
 import biz.paluch.dap.support.UpgradeStrategy;
 import biz.paluch.dap.util.ResolvableIcon;
@@ -50,8 +52,8 @@ public class DependencyUpgradeIcons {
 	private static final ResolvableIcon NEWER_MAJOR = new ResolvableIcon(AllIcons.Actions.RunAll,
 			"AllIcons.Actions.RunAll");
 
-	private static final ResolvableIcon PREVIEW = new ResolvableIcon(AllIcons.Debugger.DebuggerSync,
-			"AllIcons.Debugger.DebuggerSync");
+	private static final ResolvableIcon PREVIEW = new ResolvableIcon(DependencyAssistantIcons.DEBUGGER_SYNC,
+			"DependencyAssistantIcons.DEBUGGER_SYNC");
 
 	private static final ResolvableIcon SAME_OR_UNKNOWN = new ResolvableIcon(AllIcons.Nodes.PpLibFolder,
 			"AllIcons.Nodes.PpLibFolder");

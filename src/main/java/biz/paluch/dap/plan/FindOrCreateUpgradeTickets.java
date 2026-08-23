@@ -33,8 +33,8 @@ import biz.paluch.dap.ticket.TicketState;
 import biz.paluch.dap.ticket.TicketSystem;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
+import biz.paluch.dap.util.VirtualThreads;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
-import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -57,7 +57,7 @@ class FindOrCreateUpgradeTickets extends Task.Backgroundable {
 
 	private static final int MAX_CONCURRENT_TASKS = 4;
 
-	private static final ThreadFactory THREAD_FACTORY = IntelliJVirtualThreads.ofVirtual()
+	private static final ThreadFactory THREAD_FACTORY = VirtualThreads.ofVirtual()
 			.name("DependencyAssistant")
 			.factory();
 

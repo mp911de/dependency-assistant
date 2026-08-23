@@ -662,10 +662,10 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 	private void restartHighlighting() {
 
-		ReadAction.runBlocking(() -> {
+		ReadAction.run(() -> {
 			DaemonCodeAnalyzer analyzer = DaemonCodeAnalyzer.getInstance(project);
 			BetterPsiManager psiManager = BetterPsiManager.getInstance(project);
-			psiManager.stream(scope.toList()).forEach(psiFile -> analyzer.restart(psiFile, "Dependency Check"));
+			psiManager.stream(scope.toList()).forEach(analyzer::restart);
 		});
 	}
 

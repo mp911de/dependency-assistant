@@ -120,7 +120,8 @@ public class PostStartup implements ProjectActivity {
 			return;
 		}
 
-		DaemonCodeAnalyzer.getInstance(project).restart(MessageBundle.message("post-startup.loading"));
+		// MessageBundle.message("post-startup.loading")
+		DaemonCodeAnalyzer.getInstance(project).restart();
 
 		Cache cache = service.getCache();
 

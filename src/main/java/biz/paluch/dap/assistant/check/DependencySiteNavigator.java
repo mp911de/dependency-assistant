@@ -549,7 +549,7 @@ public class DependencySiteNavigator {
 
 		private void navigate() {
 
-			ReadAction.runBlocking(() -> {
+			ReadAction.run(() -> {
 
 				PsiElement source = element.getElement();
 				if (source == null) {

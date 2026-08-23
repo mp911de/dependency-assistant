@@ -16,6 +16,8 @@
 
 package biz.paluch.dap.support;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,8 +25,6 @@ import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StringUtils;
 import com.intellij.ide.lightEdit.LightEditCompatible;
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
@@ -32,13 +32,15 @@ import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.ProjectActivity;
+import com.intellij.openapi.util.JDOMUtil;
 import com.intellij.util.JavaCoroutines;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
+import org.jdom.Element;
+import org.jdom.JDOMException;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -56,32 +58,46 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 	public @Nullable Object execute(Project project, Continuation<? super Unit> continuation) {
 		return JavaCoroutines.suspendJava(jc -> {
 
+			PluginMetadata metadata = readMetadata();
 			Application application = ApplicationManager.getApplication();
 			ApplicationSettings settings = ApplicationSettings.getInstance();
-			IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID));
 
-			showUpdateNotification(project, application, settings, plugin);
+			if (metadata != null && StringUtils.hasText(metadata.version())) {
+				showUpdateNotification(project, application, settings, metadata);
+			}
 
 			jc.resume(Unit.INSTANCE);
 		}, continuation);
 	}
 
-	private void showUpdateNotification(Project project, Application application, ApplicationSettings settings,
-			@Nullable IdeaPluginDescriptor plugin) {
+	private @Nullable PluginMetadata readMetadata() {
+		try (InputStream is = PluginUpdateActivity.class.getClassLoader()
+				.getResourceAsStream("META-INF/plugin.xml")) {
+			if (is == null) {
+				return null;
+			}
 
-		if (plugin == null) {
-			return;
+			Element element = JDOMUtil.load(is);
+			return new PluginMetadata(element.getChildTextTrim("version"), element.getChildTextTrim("change-notes"));
+		} catch (JDOMException | IOException e) {
+			// handle exception
 		}
-		String version = plugin.getVersion();
+
+		return null;
+	}
+
+	private void showUpdateNotification(Project project, Application application,
+			ApplicationSettings settings, PluginMetadata metadata) {
+
 		String oldVersion = settings.getVersion();
-		boolean updated = !version.equals(oldVersion);
+		boolean updated = !metadata.version().equals(oldVersion);
 		if (!updated) {
 			return;
 		}
-		settings.setVersion(version);
+		settings.setVersion(metadata.version());
 
 		// collect the recent changes the user hasn't seen yet
-		String changes = createChanges(plugin, oldVersion);
+		String changes = createChanges(metadata, oldVersion);
 		NotificationGroup group = NotificationGroupManager.getInstance()
 				.getNotificationGroup(NOTIFICATION_GROUP);
 
@@ -96,15 +112,15 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 
 		application.invokeLater(() -> {
 			Notification notification = group.createNotification(
-					MessageBundle.message("notification.plugin-update.title", version),
+					MessageBundle.message("notification.plugin-update.title", metadata.version()),
 					changesToShow, NotificationType.INFORMATION);
 			Notifications.Bus.notify(notification, project);
 		});
 	}
 
-	private String createChanges(IdeaPluginDescriptor plugin, @Nullable String oldVersion) {
+	private String createChanges(PluginMetadata metadata, @Nullable String oldVersion) {
 
-		String changeNotes = plugin.getChangeNotes();
+		String changeNotes = metadata.changeNotes();
 
 		if (StringUtils.isEmpty(changeNotes)) {
 			return "";
@@ -126,6 +142,9 @@ public class PluginUpdateActivity implements ProjectActivity, DumbAware, LightEd
 		}
 
 		return changes.toString();
+	}
+
+	record PluginMetadata(String version, String changeNotes) {
 	}
 
 }

@@ -160,7 +160,7 @@ public class BomMembershipResolver {
 		for (DependencyAssistant assistant : assistants) {
 
 			BillOfMaterials bom = ReadAction
-					.computeBlocking(() -> assistant.resolveBillOfMaterials(project, candidate));
+					.compute(() -> assistant.resolveBillOfMaterials(project, candidate));
 			if (bom != null) {
 				return bom;
 			}

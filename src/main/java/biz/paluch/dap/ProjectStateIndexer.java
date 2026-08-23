@@ -140,7 +140,7 @@ public class ProjectStateIndexer {
 			throw new RuntimeException(e);
 		}
 
-		DaemonCodeAnalyzer.getInstance(project).restart("Build system import finished");
+		DaemonCodeAnalyzer.getInstance(project).restart();
 	}
 
 	/**

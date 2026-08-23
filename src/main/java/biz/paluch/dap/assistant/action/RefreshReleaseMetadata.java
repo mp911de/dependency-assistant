@@ -115,8 +115,9 @@ class RefreshReleaseMetadata extends Task.Backgroundable {
 		}
 
 		Notifications.releaseMetadataRefreshed(project, result, getDuration());
+		// MessageBundle.message("action.refresh-releases.task.done.title")
 		DaemonCodeAnalyzer.getInstance(project)
-				.restart(MessageBundle.message("action.refresh-releases.task.done.title"));
+				.restart();
 	}
 
 	@Override

@@ -395,7 +395,7 @@ class UpgradePlanPanel extends SimpleToolWindowPanel implements Disposable, Upgr
 
 			@Override
 			public void run(ProgressIndicator indicator) {
-				affectedFiles = ReadAction.computeBlocking(() -> filterAffectedFiles(snapshot, indicator, roots));
+				affectedFiles = ReadAction.compute(() -> filterAffectedFiles(snapshot, indicator, roots));
 			}
 
 			@Override

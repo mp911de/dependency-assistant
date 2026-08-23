@@ -58,7 +58,7 @@ public class CreateDependencyfileAction extends AnAction implements DumbAware, I
 		Project project = event.getProject();
 		Presentation presentation = event.getPresentation();
 
-		presentation.setText(MessageBundle.message("dependencyfile.create.action"));
+		presentation.setText(MessageBundle.message("dependencyfile.create"));
 		presentation.setDescription(MessageBundle.message("dependencyfile.create.description"));
 		presentation.setIcon(getIcon(0));
 

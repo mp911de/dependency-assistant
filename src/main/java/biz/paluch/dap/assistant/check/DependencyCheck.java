@@ -44,9 +44,9 @@ import biz.paluch.dap.state.Cache;
 import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.MessageBundle;
 import biz.paluch.dap.util.StepsProgressIndicator;
+import biz.paluch.dap.util.VirtualThreads;
 import biz.paluch.dap.util.WeightedStepsProgressIndicator;
 import com.google.common.base.Supplier;
-import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -209,8 +209,8 @@ public class DependencyCheck {
 	protected Map<PackageIdentity, ReleaseLookupResult> resolveReleases(ProgressIndicator indicator,
 			List<ReleaseSources> artifactSources, ReleaseResolver.Consistency consistency) {
 
-		ThreadFactory threadFactory = IntelliJVirtualThreads.ofVirtual().name("DependencyAssistant").factory();
-		ThreadFactory resolverFactory = IntelliJVirtualThreads.ofVirtual().name("DependencyAssistant-ReleaseResolver")
+		ThreadFactory threadFactory = VirtualThreads.ofVirtual().name("DependencyAssistant").factory();
+		ThreadFactory resolverFactory = VirtualThreads.ofVirtual().name("DependencyAssistant-ReleaseResolver")
 				.factory();
 		try (ExecutorService executor = Executors.newThreadPerTaskExecutor(threadFactory);
 				ExecutorService resolverExecutor = Executors.newThreadPerTaskExecutor(resolverFactory)) {

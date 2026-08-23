@@ -150,6 +150,8 @@ public class DependencyAssistantIcons {
 	 */
 	public static final Icon PLAN_MILESTONE_UNSCHEDULED = load("/META-INF/icons/plan/milestone-unscheduled.svg");
 
+
+	public static final Icon DEBUGGER_SYNC = load("/META-INF/icons/debuggerSync.svg");
 	/**
 	 * Compose a dependency upgrade icon: the assistant gutter icon scaled into the
 	 * lower-left corner with the target status overlay layered onto the lower-right

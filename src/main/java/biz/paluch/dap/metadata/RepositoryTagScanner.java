@@ -34,7 +34,7 @@ import biz.paluch.dap.state.CachedRepository;
 import biz.paluch.dap.util.Sequence;
 import biz.paluch.dap.util.StepsProgressIndicator;
 import biz.paluch.dap.util.StringUtils;
-import com.intellij.concurrency.virtualThreads.IntelliJVirtualThreads;
+import biz.paluch.dap.util.VirtualThreads;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -75,7 +75,7 @@ public class RepositoryTagScanner {
 
 	private static final int MAX_CONCURRENT_TASKS = Runtime.getRuntime().availableProcessors();
 
-	private static final ThreadFactory THREAD_FACTORY = IntelliJVirtualThreads.ofVirtual()
+	private static final ThreadFactory THREAD_FACTORY = VirtualThreads.ofVirtual()
 			.name("DependencyAssistant")
 			.factory();
 

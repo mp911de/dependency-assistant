@@ -12,35 +12,15 @@
 
 	<depends>com.intellij.modules.xml</depends>
 	<depends>com.intellij.modules.vcs</depends>
-	<depends optional="true" config-file="biz.paluch.dependency-assistant-maven.xml">
-		org.jetbrains.idea.maven
-	</depends>
-	<depends optional="true"
-	         config-file="biz.paluch.dependency-assistant-gradle-kotlin.xml">
-		org.jetbrains.kotlin
-	</depends>
-	<depends optional="true" config-file="biz.paluch.dependency-assistant-gradle.xml">
-		org.jetbrains.plugins.gradle
-	</depends>
-	<depends optional="true" config-file="biz.paluch.dependency-assistant-java.xml">
-		com.intellij.modules.java
-	</depends>
-	<depends optional="true" config-file="biz.paluch.dependency-assistant-yaml.xml">
-		org.jetbrains.plugins.yaml
-	</depends>
-	<depends optional="true" config-file="biz.paluch.dependency-assistant-github.xml">
-		org.jetbrains.plugins.github
-	</depends>
-	<depends optional="true" config-file="biz.paluch.dependency-assistant-git.xml">
-		Git4Idea
-	</depends>
-	<depends optional="true" config-file="biz.paluch.dependency-assistant-json.xml">
-		com.intellij.modules.json
-	</depends>
-	<depends optional="true"
-	         config-file="biz.paluch.dependency-assistant-package-checker.xml">
-		org.jetbrains.security.package-checker
-	</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-maven.xml">org.jetbrains.idea.maven</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-gradle-kotlin.xml">org.jetbrains.kotlin</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-gradle.xml">org.jetbrains.plugins.gradle</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-java.xml">com.intellij.modules.java</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-yaml.xml">org.jetbrains.plugins.yaml</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-github.xml">org.jetbrains.plugins.github</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-git.xml">Git4Idea</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-json.xml">com.intellij.modules.json</depends>
+	<depends optional="true" config-file="biz.paluch.dependency-assistant-package-checker.xml">org.jetbrains.security.package-checker</depends>
 
 	<resource-bundle>messages.MessageBundle</resource-bundle>
 

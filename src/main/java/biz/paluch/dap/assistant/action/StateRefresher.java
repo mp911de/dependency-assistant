@@ -222,7 +222,7 @@ public final class StateRefresher implements Disposable {
 			return;
 		}
 
-		DaemonCodeAnalyzer.getInstance(project).restart("Dependency state changed");
+		DaemonCodeAnalyzer.getInstance(project).restart();
 	}
 
 	private static void cancelScheduled(@Nullable ScheduledFuture<?> scheduled) {

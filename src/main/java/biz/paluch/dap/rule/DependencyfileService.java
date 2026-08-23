@@ -141,7 +141,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	private Rules loadRules() {
 		if (JSON_PRESENT) {
 			VirtualFile descriptor = findDescriptor();
-			return (descriptor != null ? ReadAction.computeBlocking(() -> parseDescriptor(descriptor))
+			return (descriptor != null ? ReadAction.compute(() -> parseDescriptor(descriptor))
 					: Rules.absent());
 		}
 		return Rules.absent();
@@ -210,7 +210,7 @@ public class DependencyfileService implements Disposable, DependencyRuleService 
 	}
 
 	private void restartAnalyzer() {
-		DaemonCodeAnalyzer.getInstance(this.project).restart("Dependencyfile  changed");
+		DaemonCodeAnalyzer.getInstance(this.project).restart();
 	}
 
 	@Override
