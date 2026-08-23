@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant.presentation;
+package biz.paluch.dap.metadata;
 
 import java.util.Locale;
-import java.util.Objects;
 import java.util.regex.Pattern;
 
 import biz.paluch.dap.artifact.ArtifactId;
@@ -33,8 +32,6 @@ import org.jspecify.annotations.Nullable;
 public class ProjectName {
 
 	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
-
-	private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^\\p{L}\\p{N}]+");
 
 	private static final String ROLE_WORD = "(?:bom|bill[\\s-]of[\\s-]materials|release[\\s-]train)";
 
@@ -54,18 +51,28 @@ public class ProjectName {
 
 	private final ArtifactId artifactId;
 
-	private final @Nullable String name;
+	private final @Nullable String projectName;
 
 	private final @Nullable String normalized;
 
 	private final @Nullable String displayName;
 
-	private ProjectName(ArtifactId artifactId, @Nullable String name, @Nullable String normalized,
+	private ProjectName(ArtifactId artifactId, @Nullable String projectName, @Nullable String normalized,
 			@Nullable String displayName) {
 		this.artifactId = artifactId;
-		this.name = name;
+		this.projectName = projectName;
 		this.normalized = normalized;
-		this.displayName = displayName;
+		this.displayName = normalized == null || isRedundant(normalized.toLowerCase(Locale.ROOT)) ? null
+				: displayName;
+	}
+
+	/**
+	 * Create an empty {@link ProjectName} for the given coordinates and captured
+	 * project name.
+	 * @param artifactId the coordinates the name must add information over.
+	 */
+	public static ProjectName empty(ArtifactId artifactId) {
+		return of(artifactId, null);
 	}
 
 	/**
@@ -82,13 +89,43 @@ public class ProjectName {
 	}
 
 	/**
-	 * @return the normalized, display-trimmed name, or {@literal null} when the
-	 * name is absent, unresolved, over-long, or merely echoes the coordinates.
+	 * @return {@literal true} if a name is present, normalized and not redundant.
 	 */
-	public @Nullable String getDisplayName() {
-		return this.normalized == null || isRedundant(this.normalized.toLowerCase(Locale.ROOT))
-				? null
-				: this.displayName;
+	public boolean hasDisplayName() {
+		return StringUtils.hasText(displayName);
+	}
+
+	/**
+	 * Return the normalized, display-trimmed name or throw
+	 * {@link IllegalStateException} if absent.
+	 * @return the normalized, display-trimmed name.
+	 * @throws IllegalStateException when the name is absent, unresolved, over-long,
+	 * or merely echoes the coordinates.
+	 */
+	public String getDisplayName() {
+		if (StringUtils.isEmpty(displayName)) {
+			throw new IllegalStateException("Display name is absent");
+		}
+		return displayName;
+	}
+
+	/**
+	 * @return {@literal true} if a project name is present.
+	 */
+	public boolean hasProjectName() {
+		return StringUtils.hasText(projectName);
+	}
+
+	/**
+	 * Return the project name. {@link IllegalStateException} if absent.
+	 * @return the project name.
+	 * @throws IllegalStateException when the name is absent.
+	 */
+	public String getProjectName() {
+		if (StringUtils.isEmpty(projectName)) {
+			throw new IllegalStateException("Project name is absent");
+		}
+		return projectName;
 	}
 
 	private static @Nullable String normalize(@Nullable String projectName) {
@@ -110,13 +147,14 @@ public class ProjectName {
 	}
 
 	/**
-	 * Runs only on normalized names; acceptance judges the raw name.
-	 * <p>Module-style names containing {@code ::} are kept as written. Otherwise
-	 * trailing role words ({@code BOM}, {@code Bill of Materials},
-	 * {@code Release Train}) and the separator debris they leave behind are
-	 * stripped until stable, then a trailing version token ({@code 3},
-	 * {@code 1.82}). A name consisting only of a role word ({@code bom}) trims to
-	 * empty.
+	 * Trim a normalized project name for display.
+	 *
+	 * <ul>
+	 * <li>Remove text starting at {@code (}.</li>
+	 * <li>Preserve module-style names containing {@code ::}.</li>
+	 * <li>Otherwise remove trailing role words and separators until stable.</li>
+	 * <li>Remove a trailing numeric version token.</li>
+	 * </ul>
 	 */
 	private static String trimForDisplay(String name) {
 
@@ -146,27 +184,12 @@ public class ProjectName {
 	}
 
 	@Override
-	public boolean equals(Object o) {
-
-		if (this == o) {
-			return true;
-		}
-		if (!(o instanceof ProjectName that)) {
-			return false;
-		}
-		return this.artifactId.equals(that.artifactId)
-				&& Objects.equals(this.normalized, that.normalized);
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(this.artifactId, this.normalized);
-	}
-
-	@Override
 	public String toString() {
-		String name = getDisplayName();
-		return "%s (%s)".formatted(StringUtils.isEmpty(name) ? this.artifactId.toString() : name, this.name);
+		if (hasDisplayName()) {
+			String name = getDisplayName();
+			return "%s (%s)".formatted(StringUtils.isEmpty(name) ? this.artifactId.toString() : name, this.projectName);
+		}
+		return this.artifactId.toString();
 	}
 
 }

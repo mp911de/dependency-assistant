@@ -19,29 +19,12 @@ package biz.paluch.dap.assistant.presentation;
 import biz.paluch.dap.artifact.HasArtifactId;
 import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.metadata.ProjectName;
 import biz.paluch.dap.rule.DependencyRule;
-import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Presentation model providing the display names for a dependency as rendered
- * in editor hints, completion, documentation, and the review dialog.
- *
- * <p>A presentation carries up to three name facets:
- * <ul>
- * <li>{@link #getArtifactIdDisplayName()}: the artifact coordinates rendered in
- * the notation of the declaring build system. Always present.</li>
- * <li>{@link #getDependencyName()}: a curated, human-friendly dependency name,
- * typically sourced from a dependency rule or derived from the accepted project
- * name. Optional.</li>
- * <li>{@link #getProjectName()}: the project name captured from the artifact's
- * own metadata. Optional.</li>
- * </ul>
- *
- * <p>{@link #getDisplayName()} is the canonical name to render. Guard access to
- * the optional facets with {@link #hasDependencyName()} and
- * {@link #hasProjectName()}; the corresponding accessors throw
- * {@link IllegalStateException} when the facet is absent.
+ * Presentation model providing the display names for a dependency.
  *
  * <p>Presentations are immutable value objects and safe to share across
  * threads.
@@ -50,16 +33,11 @@ import org.jspecify.annotations.Nullable;
  * @see IconDependencyPresentation
  * @see DependencyPresentationFactory
  */
-public interface DependencyPresentation extends HasArtifactId {
-
-	/**
-	 * Return the package identity.
-	 */
-	PackageIdentity getPackageIdentity();
+public interface DependencyPresentation extends HasArtifactId, HasPackageIdentity {
 
 	/**
 	 * Return the canonical display name: the {@link #getDependencyName() dependency
-	 * name} when present, the {@link #getArtifactIdDisplayName() rendered artifact
+	 * name} when present, the {@link #getShortArtifactId()} rendered artifact
 	 * coordinates} otherwise.
 	 *
 	 * @return the resolved display name.
@@ -67,20 +45,27 @@ public interface DependencyPresentation extends HasArtifactId {
 	String getDisplayName();
 
 	/**
-	 * Return the artifact Id rendered for display, typically in the notation of the
-	 * declaring build system.
-	 *
-	 * @return the rendered artifact coordinates.
+	 * Return the dependency name as HTML-ready text.
+	 * <p>Favors {@link #getDependencyName()} if present, otherwise
+	 * {@link #getDisplayName()} wrapped in quotes to indicate the raw artifact
+	 * coordinates.
+	 * @return the dependency name.
 	 */
-	String getArtifactIdDisplayName();
+	default String getHtmlDisplayName() {
+		return hasDependencyName() ? getDependencyName() : "'" + getDisplayName() + "'";
+	}
 
 	/**
-	 * Return the artifact coordinates rendered for display, typically in the
-	 * notation of the declaring build system.
-	 *
-	 * @return the rendered artifact coordinates.
+	 * @return the short {@link #getArtifactId() artifact id} without the group id.
 	 */
-	String getArtifactCoordinatesDisplayName();
+	String getShortArtifactId();
+
+	/**
+	 * Fully qualified artifact coordinates.
+	 *
+	 * @return fully qualified artifact coordinates.
+	 */
+	String getCoordinates();
 
 	/**
 	 * Return whether this presentation carries a curated dependency name.
@@ -102,35 +87,11 @@ public interface DependencyPresentation extends HasArtifactId {
 	String getDependencyName();
 
 	/**
-	 * Return whether this presentation carries a project name captured from the
-	 * artifact's metadata.
-	 *
-	 * @return {@literal true} if a project name is present; {@literal false}
-	 * otherwise.
-	 */
-	boolean hasProjectName();
-
-	/**
 	 * Return the project name as captured from the artifact's metadata.
 	 *
 	 * @return the project name.
-	 * @throws IllegalStateException if no project name is present.
-	 * @see #hasProjectName()
 	 */
-	String getProjectName();
-
-	/**
-	 * Return the dependency name as HTML.
-	 * <p>Favors {@link #getDependencyName()} if present, otherwise
-	 * {@link #getDisplayName()} wrapped in quotes to indicate the raw artifact
-	 * coordinates.
-	 * @return the dependency name as HTML.
-	 */
-	default HtmlChunk getHtmlDisplayName() {
-		return hasDependencyName()
-				? HtmlChunk.text(getDependencyName())
-				: HtmlChunk.text("'" + getDisplayName() + "'");
-	}
+	ProjectName getProjectName();
 
 	/**
 	 * Create a presentation from the artifact coordinates of the given source,
@@ -153,27 +114,20 @@ public interface DependencyPresentation extends HasArtifactId {
 	 * @return a presentation rendering the plain artifact coordinates.
 	 */
 	public static DependencyPresentation of(PackageIdentity pkg) {
-		return SimpleDependencyPresentation.of(pkg, pkg.getArtifactId().artifactId(), pkg.getArtifactId().toString(),
-				null, null);
+		return SimpleDependencyPresentation.of(pkg, null, ProjectName.empty(pkg.getArtifactId()));
 	}
 
 	/**
 	 * Create a fully populated presentation.
 	 *
 	 * @param pkg the artifact coordinates to present.
-	 * @param artifactIdDisplayName the rendered artifact coordinates returned from
-	 * {@link #getArtifactIdDisplayName()}.
-	 * @param artifactId the rendered artifact coordinates.
 	 * @param dependencyName the curated dependency name; can be {@literal null} if
 	 * no curated name is known.
-	 * @param projectName the project name from the artifact's metadata; can be
-	 * {@literal null} if the metadata does not declare one.
+	 * @param projectName the project name from the artifact's metadata.
 	 * @return the presentation carrying the given name facets.
 	 */
-	static DependencyPresentation of(PackageIdentity pkg, String artifactIdDisplayName,
-			String artifactId, @Nullable String dependencyName,
-			@Nullable String projectName) {
-		return new SimpleDependencyPresentation(pkg, artifactIdDisplayName, artifactId, dependencyName, projectName);
+	static DependencyPresentation of(PackageIdentity pkg, @Nullable String dependencyName, ProjectName projectName) {
+		return new SimpleDependencyPresentation(pkg, dependencyName, projectName);
 	}
 
 }

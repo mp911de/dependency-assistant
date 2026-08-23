@@ -116,8 +116,7 @@ class AssistantReviewActions {
 						update.declarationSources(), BranchSource.of(file), context.getProjectVersion()));
 
 				PackageIdentity pkg = PackageIdentity.of(update.artifactId(), context.getPackageSystem());
-				DependencyPresentation presentation = presentationFactory.create(pkg, rule,
-						context.getInterfaceAssistant());
+				DependencyPresentation presentation = presentationFactory.create(pkg, rule);
 
 				applied.record(file.getVirtualFile(), update, rule, presentation);
 			}

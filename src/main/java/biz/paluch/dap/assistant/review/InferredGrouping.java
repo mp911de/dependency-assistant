@@ -39,7 +39,7 @@ import org.springframework.util.MultiValueMap;
  * @author Mark Paluch
  * @see GroupByRule#isApplicable(TableRow)
  */
-class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
+class InferredGrouping implements GroupingPolicy<SingleTableRow, GroupRow> {
 
 	private final ApplicationSettings settings;
 
@@ -48,10 +48,10 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 	}
 
 	@Override
-	public List<GroupRow> group(List<TableRow> candidates) {
+	public List<GroupRow> group(List<SingleTableRow> candidates) {
 
-		MultiValueMap<Family, TableRow> families = new LinkedMultiValueMap<>();
-		for (TableRow candidate : candidates) {
+		MultiValueMap<Family, SingleTableRow> families = new LinkedMultiValueMap<>();
+		for (SingleTableRow candidate : candidates) {
 
 			if (!GroupByRule.isApplicable(candidate)) {
 				families.add(Family.of(candidate), candidate);
@@ -63,22 +63,15 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 		return groups;
 	}
 
-	/**
-	 * Group one family: the largest version-agreeing cohort is partitioned by
-	 * {@link ReleaseLine}, and each partition with at least two members and a
-	 * derivable group name forms an inferred group. Members whose release line is
-	 * unique stay individual rows. Drifting members join by version match only; a
-	 * shared version property never pulls a member in.
-	 */
-	private List<GroupRow> groupFamily(Family family, List<TableRow> members) {
+	private List<GroupRow> groupFamily(Family family, List<SingleTableRow> members) {
 
 		VersionAgreement agreement = VersionAgreement.select(members);
 		if (agreement == null || agreement.size() < 2) {
 			return List.of();
 		}
 
-		MultiValueMap<ReleaseLine, TableRow> releaseLines = new LinkedMultiValueMap<>();
-		for (TableRow member : agreement.members()) {
+		MultiValueMap<ReleaseLine, SingleTableRow> releaseLines = new LinkedMultiValueMap<>();
+		for (SingleTableRow member : agreement.members()) {
 			releaseLines.add(ReleaseLine.of(member, agreement.version()), member);
 		}
 
@@ -99,16 +92,16 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 		return groups;
 	}
 
-	private @Nullable GroupRow groupReleaseLine(Family family, List<TableRow> line) {
+	private @Nullable GroupRow groupReleaseLine(Family family, List<SingleTableRow> line) {
 
-		List<PackageIdentity> packages = line.stream().map(TableRow::getPackageIdentity).toList();
+		List<PackageIdentity> packages = line.stream().map(SingleTableRow::getPackageIdentity).toList();
 		String name = settings.findNameHint(packages);
 		if (name == null) {
 			name = CoordinateShape
 					.of(packages.stream().map(PackageIdentity::getArtifactId).map(ArtifactId::artifactId).toList())
 					.deriveGroupName(family.groupId());
 		}
-		return name == null ? null : GroupRow.inferred(line, name);
+		return name == null ? null : GroupRow.inferred(name, line);
 	}
 
 	/**
@@ -118,10 +111,10 @@ class InferredGrouping implements GroupingPolicy<TableRow, GroupRow> {
 	 */
 	private record Family(String groupId, PackageSystem packageSystem, String token) {
 
-		static Family of(TableRow candidate) {
+		static Family of(SingleTableRow candidate) {
 			ArtifactId artifactId = candidate.getArtifactId();
 			return new Family(artifactId.groupId(),
-					candidate.getUpgrade().getPresentation().getPackageSystem(),
+					candidate.getPackageSystem(),
 					token(artifactId.artifactId()));
 		}
 

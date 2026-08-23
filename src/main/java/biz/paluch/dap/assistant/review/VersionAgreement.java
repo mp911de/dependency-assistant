@@ -33,7 +33,7 @@ import org.springframework.util.MultiValueMap;
  *
  * @author Mark Paluch
  */
-record VersionAgreement(ArtifactVersion version, List<TableRow> members) {
+record VersionAgreement(ArtifactVersion version, List<SingleTableRow> members) {
 
 	/**
 	 * Select the largest version-agreeing subset within the bucket, tie-breaking
@@ -43,10 +43,10 @@ record VersionAgreement(ArtifactVersion version, List<TableRow> members) {
 	 * @return the agreement, or {@literal null} when the bucket declares no
 	 * version.
 	 */
-	static @Nullable VersionAgreement select(List<TableRow> bucket) {
+	static @Nullable VersionAgreement select(List<SingleTableRow> bucket) {
 
-		MultiValueMap<ArtifactVersion, TableRow> byVersion = new LinkedMultiValueMap<>();
-		for (TableRow candidate : bucket) {
+		MultiValueMap<ArtifactVersion, SingleTableRow> byVersion = new LinkedMultiValueMap<>();
+		for (SingleTableRow candidate : bucket) {
 			for (ArtifactVersion version : candidate.getDeclaredVersions()) {
 				byVersion.add(version, candidate);
 			}

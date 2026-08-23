@@ -86,7 +86,7 @@ public class PackageIdentity implements HasArtifactId, HasPackageSystem {
 
 	@Override
 	public String toString() {
-		return "%s[%s]".formatted(packageSystem.name(), artifactId);
+		return "%s[%s]".formatted(packageSystem.name(), packageSystem.getCoordinates(artifactId));
 	}
 
 }

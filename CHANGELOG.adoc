@@ -25,6 +25,7 @@ This document provides a curated changelog for each release.
 - Unified repository URL handling with artifact and group ID validation.
 - Stronger BOM caching and `PsiFile`-level caching.
 - Move off internal and deprecated Plugin SDK API.
+- Refactor `ProjectName`, and split SingleTableRow/GroupRow to decouple name rendering along with separating concerns. #10
 
 === 0.5.0-RC1
 

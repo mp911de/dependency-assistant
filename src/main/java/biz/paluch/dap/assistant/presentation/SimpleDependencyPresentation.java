@@ -18,6 +18,8 @@ package biz.paluch.dap.assistant.presentation;
 
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.metadata.ProjectName;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -29,29 +31,28 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 
 	private final PackageIdentity pkg;
 
-	private final String artifactIdDisplayName;
+	private final String coordinates;
 
 	private final String artifactId;
 
 	private final @Nullable String dependencyName;
 
-	private final @Nullable String projectName;
+	private final ProjectName projectName;
 
-	public SimpleDependencyPresentation(PackageIdentity pkg, String artifactIdDisplayName,
-			String artifactId, @Nullable String dependencyName, @Nullable String projectName) {
+	public SimpleDependencyPresentation(PackageIdentity pkg,
+			@Nullable String dependencyName, ProjectName projectName) {
+
+		PackageSystem packageSystem = pkg.getPackageSystem();
 		this.pkg = pkg;
-		this.artifactIdDisplayName = artifactIdDisplayName;
-		this.artifactId = artifactId;
+		this.coordinates = packageSystem.getCoordinates(pkg.getArtifactId());
+		this.artifactId = packageSystem.getArtifactId(pkg.getArtifactId());
 		this.dependencyName = dependencyName;
 		this.projectName = projectName;
 	}
 
 	public static SimpleDependencyPresentation of(PackageIdentity pkg,
-			String displayName, String artifactId, @Nullable String dependencyName,
-			@Nullable String projectName) {
-
-		return new SimpleDependencyPresentation(pkg, displayName, artifactId, dependencyName,
-				projectName);
+			@Nullable String dependencyName, ProjectName projectName) {
+		return new SimpleDependencyPresentation(pkg, dependencyName, projectName);
 	}
 
 	@Override
@@ -65,13 +66,13 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 	}
 
 	@Override
-	public String getArtifactIdDisplayName() {
+	public String getShortArtifactId() {
 		return artifactId;
 	}
 
 	@Override
-	public String getArtifactCoordinatesDisplayName() {
-		return artifactIdDisplayName;
+	public String getCoordinates() {
+		return coordinates;
 	}
 
 	@Override
@@ -79,7 +80,7 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 		if (hasDependencyName()) {
 			return getDependencyName();
 		}
-		return getArtifactIdDisplayName();
+		return getShortArtifactId();
 	}
 
 	@Override
@@ -96,24 +97,16 @@ class SimpleDependencyPresentation implements DependencyPresentation {
 	}
 
 	@Override
-	public boolean hasProjectName() {
-		return projectName != null && !projectName.isBlank();
-	}
-
-	@Override
-	public String getProjectName() {
-		if (hasProjectName()) {
-			return projectName;
-		}
-		throw new IllegalStateException("No project name for %s".formatted(pkg));
+	public ProjectName getProjectName() {
+		return projectName;
 	}
 
 	@Override
 	public String toString() {
 		if (hasDependencyName()) {
-			return artifactIdDisplayName + " (" + dependencyName + ")";
+			return getCoordinates() + " (" + dependencyName + ")";
 		}
-		return artifactIdDisplayName;
+		return artifactId;
 	}
 
 }

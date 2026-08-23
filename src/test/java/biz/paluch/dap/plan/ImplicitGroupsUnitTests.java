@@ -67,9 +67,9 @@ class ImplicitGroupsUnitTests {
 		Map<PlannedUpgrade, ArtifactVersion> upgrades = new LinkedHashMap<>();
 		upgrades.put(new TestPlannedUpgrade(candidate("org.springframework:spring-core:6.2.1")),
 				ArtifactVersion.of("6.2.2"));
-		upgrades.put(new TestPlannedUpgrade(List.of(
+		upgrades.put(new TestPlannedUpgrade("jackson", List.of(
 				candidate("com.fasterxml.jackson.core:jackson-core:2.18.0"),
-				candidate("com.fasterxml.jackson.core:jackson-databind:2.18.0")), "jackson"),
+				candidate("com.fasterxml.jackson.core:jackson-databind:2.18.0"))),
 				ArtifactVersion.of("2.18.1"));
 
 		ApplicationSettings settings = new ApplicationSettings();
@@ -104,9 +104,9 @@ class ImplicitGroupsUnitTests {
 	void rememberedNameIgnoresReshapedConstellation() {
 
 		Map<PlannedUpgrade, ArtifactVersion> upgrades = new LinkedHashMap<>();
-		upgrades.put(new TestPlannedUpgrade(List.of(
+		upgrades.put(new TestPlannedUpgrade("jackson", List.of(
 				candidate("com.fasterxml.jackson.core:jackson-core:2.18.0"),
-				candidate("com.fasterxml.jackson.core:jackson-databind:2.18.0")), "jackson"),
+				candidate("com.fasterxml.jackson.core:jackson-databind:2.18.0"))),
 				ArtifactVersion.of("2.18.1"));
 
 		ApplicationSettings settings = new ApplicationSettings();
@@ -220,17 +220,15 @@ class ImplicitGroupsUnitTests {
 	@Test
 	void multiPropertyPeerBelongsToFirstOwnerWithoutMergingGroups() {
 
-		TestPlannedUpgrade jackson = new TestPlannedUpgrade(List.of(
+		TestPlannedUpgrade jackson = new TestPlannedUpgrade("Jackson", List.of(
 				candidate("com.fasterxml.jackson.core:jackson-core:2.18.0",
 						it -> it.versionProperty("jackson.version")),
 				candidate("com.fasterxml.jackson.core:jackson-databind:2.18.0",
-						it -> it.versionProperty("jackson.version"))),
-				"Jackson");
-		TestPlannedUpgrade micrometer = new TestPlannedUpgrade(List.of(
+						it -> it.versionProperty("jackson.version"))));
+		TestPlannedUpgrade micrometer = new TestPlannedUpgrade("Micrometer", List.of(
 				candidate("io.micrometer:micrometer-core:2.18.0", it -> it.versionProperty("micrometer.version")),
 				candidate("io.micrometer:micrometer-registry-prometheus:2.18.0",
-						it -> it.versionProperty("micrometer.version"))),
-				"Micrometer");
+						it -> it.versionProperty("micrometer.version"))));
 
 		Map<PlannedUpgrade, ArtifactVersion> upgrades = new LinkedHashMap<>();
 		upgrades.put(jackson, ArtifactVersion.of("2.19.0"));
@@ -250,10 +248,9 @@ class ImplicitGroupsUnitTests {
 	}
 
 	private static TestPlannedUpgrade springGroup() {
-		return new TestPlannedUpgrade(List.of(
+		return new TestPlannedUpgrade("Spring", List.of(
 				candidate("org.springframework:spring-core:6.2.1", it -> it.versionProperty("spring.version")),
-				candidate("org.springframework:spring-beans:6.2.1", it -> it.versionProperty("spring.version"))),
-				"Spring");
+				candidate("org.springframework:spring-beans:6.2.1", it -> it.versionProperty("spring.version"))));
 	}
 
 }

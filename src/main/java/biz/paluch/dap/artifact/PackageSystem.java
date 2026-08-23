@@ -31,16 +31,59 @@ public enum PackageSystem {
 	/**
 	 * NPM packages declared in {@code package.json} files.
 	 */
-	NPM,
+	NPM {
+
+		@Override
+		public String getCoordinates(ArtifactId artifactId) {
+
+			if (artifactId.groupId().equals(artifactId.artifactId())) {
+				return artifactId.artifactId();
+			}
+
+			String coordinates = artifactId.groupId() + "/" + artifactId.artifactId();
+
+			if (coordinates.startsWith("@")) {
+				return coordinates.substring(1);
+			}
+
+			return coordinates;
+		}
+
+	},
 
 	/**
 	 * GitHub Actions referenced from workflow files.
 	 */
-	GITHUB,
+	GITHUB {
+
+		@Override
+		public String getCoordinates(ArtifactId artifactId) {
+			return artifactId.groupId() + "/" + artifactId.artifactId();
+		}
+
+	},
 
 	/**
 	 * Other ecosystem.
 	 */
-	OTHER
+	OTHER;
+
+	/**
+	 * Return the {@link ArtifactId#artifactId()}.
+	 * @param artifactId the artifact Id.
+	 * @return the artifact Id.
+	 */
+	public String getArtifactId(ArtifactId artifactId) {
+		return artifactId.artifactId();
+	}
+
+	/**
+	 * Return the artifact coordinates.
+	 * @param artifactId the artifact Id.
+	 * @return the artifact coordinates.
+	 */
+	public String getCoordinates(ArtifactId artifactId) {
+		return artifactId.toString();
+	}
 
 }

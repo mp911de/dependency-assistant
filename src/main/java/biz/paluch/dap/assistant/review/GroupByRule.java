@@ -39,14 +39,14 @@ import biz.paluch.dap.util.StringUtils;
  *
  * @author Mark Paluch
  */
-class GroupByRule implements GroupingPolicy<TableRow, GroupRow> {
+class GroupByRule implements GroupingPolicy<SingleTableRow, GroupRow> {
 
 	@Override
-	public List<GroupRow> group(List<TableRow> candidates) {
+	public List<GroupRow> group(List<SingleTableRow> candidates) {
 
-		Map<GroupKey, List<TableRow>> buckets = new LinkedHashMap<>();
-		Map<String, List<TableRow>> byName = new LinkedHashMap<>();
-		for (TableRow candidate : candidates) {
+		Map<GroupKey, List<SingleTableRow>> buckets = new LinkedHashMap<>();
+		Map<String, List<SingleTableRow>> byName = new LinkedHashMap<>();
+		for (SingleTableRow candidate : candidates) {
 
 			if (!isApplicable(candidate)) {
 				continue;
@@ -58,12 +58,6 @@ class GroupByRule implements GroupingPolicy<TableRow, GroupRow> {
 					.add(candidate);
 		}
 
-		byName.values().forEach(named -> {
-			if (named.size() == 1) {
-				named.getFirst().labelByDependencyName();
-			}
-		});
-
 		List<GroupRow> groups = new ArrayList<>();
 		buckets.values().forEach(bucket -> {
 
@@ -71,8 +65,9 @@ class GroupByRule implements GroupingPolicy<TableRow, GroupRow> {
 			if (agreement == null || agreement.members().size() < 2) {
 				return;
 			}
+			String name = bucket.getFirst().getName();
 
-			groups.add(GroupRow.governed(withPropertySharingDrifters(bucket, agreement.members())));
+			groups.add(GroupRow.governed(name, withPropertySharingDrifters(bucket, agreement.members())));
 		});
 
 		return groups;
@@ -86,13 +81,14 @@ class GroupByRule implements GroupingPolicy<TableRow, GroupRow> {
 		return rule.isPresent() && !StringUtils.isEmpty(rule.getDependencyName());
 	}
 
-	private static List<TableRow> withPropertySharingDrifters(List<TableRow> bucket, List<TableRow> cohort) {
+	private static List<SingleTableRow> withPropertySharingDrifters(List<SingleTableRow> bucket,
+			List<SingleTableRow> cohort) {
 
 		Set<String> memberProperties = new LinkedHashSet<>();
 		cohort.forEach(member -> memberProperties.addAll(member.getVersionPropertyNames()));
 
-		List<TableRow> members = new ArrayList<>(bucket.size());
-		for (TableRow candidate : bucket) {
+		List<SingleTableRow> members = new ArrayList<>(bucket.size());
+		for (SingleTableRow candidate : bucket) {
 
 			if (cohort.contains(candidate) || (candidate.getDeclaredVersions().hasVersionDrift()
 					&& !Collections.disjoint(candidate.getVersionPropertyNames(), memberProperties))) {
@@ -112,10 +108,10 @@ class GroupByRule implements GroupingPolicy<TableRow, GroupRow> {
 		 * Return the group key for the candidate, or {@literal null} if the candidate
 		 * is not governed by a named rule.
 		 */
-		static GroupKey of(TableRow candidate) {
+		static GroupKey of(SingleTableRow candidate) {
 
 			DependencyRule rule = candidate.getRule();
-			return new GroupKey(rule.getDependencyName(), candidate.getUpgrade().getPresentation().getPackageSystem());
+			return new GroupKey(rule.getDependencyName(), candidate.getPackageSystem());
 		}
 
 	}

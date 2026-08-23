@@ -37,6 +37,7 @@ import biz.paluch.dap.assistant.check.DependencyCheckResult;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.checker.CheckerIcons;
+import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.support.DependencyUpdate;
 import biz.paluch.dap.support.UpgradeStrategy;
@@ -60,7 +61,7 @@ class UpgradeReview {
 
 	private final Map<TableRow, UpgradeSelection> selections = new HashMap<>();
 
-	private final Set<String> ambiguousArtifactIds = new HashSet<>();
+	private final Set<String> ambiguousNames = new HashSet<>();
 
 	private final Map<TableRow, List<TableRow>> sharedPropertyPeers = new HashMap<>();
 
@@ -82,8 +83,8 @@ class UpgradeReview {
 
 	private static List<TableRow> createRows(DependencyCheckResult result) {
 
-		List<TableRow> rows = new ArrayList<>(result.upgrades().size());
-		result.upgrades().forEach(upgrade -> rows.add(new TableRow(upgrade)));
+		List<SingleTableRow> rows = new ArrayList<>(result.upgrades().size());
+		result.upgrades().forEach(upgrade -> rows.add(new SingleTableRow(upgrade)));
 		return UpgradeRows.of(rows).toList();
 	}
 
@@ -105,13 +106,13 @@ class UpgradeReview {
 		this.candidates = candidates;
 		this.errors = errors;
 
-		Set<String> coordinateLabels = new HashSet<>();
+		Set<String> seenNames = new HashSet<>();
+
 		Map<TableRow, Set<VersionProperty>> versionProperties = new LinkedHashMap<>();
 		for (TableRow row : candidates) {
 
-			if (!row.isLabeledByDependencyName()
-					&& !coordinateLabels.add(row.getArtifactId().artifactId())) {
-				ambiguousArtifactIds.add(row.getArtifactId().artifactId());
+			if (!seenNames.add(row.getName())) {
+				ambiguousNames.add(row.getName());
 			}
 
 			Set<VersionProperty> properties = row.getVersionProperties();
@@ -145,17 +146,19 @@ class UpgradeReview {
 			sharedPropertyPeers.put(row, peers);
 		});
 
-		this.hasVulnerableCandidate = candidates.stream().anyMatch(row -> row.getUpgrade().isVulnerable());
+		this.hasVulnerableCandidate = candidates.stream().anyMatch(row -> {
+			Vulnerabilities vulnerabilities = row.getVulnerabilities(row.getCurrentVersion());
+			return vulnerabilities.isVulnerable();
+		});
 	}
 
 	/**
-	 * Return whether the row's bare artifactId collides with another row labeled by
-	 * its coordinate. Computed once over the full row set so labels stay stable
-	 * while filters toggle.
+	 * Return whether the row's bare name collides with another row labeled by its
+	 * coordinate. Computed once over the full row set so labels stay stable while
+	 * filters toggle.
 	 */
 	boolean isAmbiguous(TableRow row) {
-		return !row.isLabeledByDependencyName()
-				&& ambiguousArtifactIds.contains(row.getArtifactId().artifactId());
+		return ambiguousNames.contains(row.getName());
 	}
 
 	/**
@@ -171,13 +174,13 @@ class UpgradeReview {
 	/**
 	 * Return the fully rendered coordinate-column tooltip for the row.
 	 */
-	String getToolTip(TableRow row) {
-		return toolTips.computeIfAbsent(row, this::renderToolTip);
+	String getCoordinateToolTip(TableRow row) {
+		return toolTips.computeIfAbsent(row, this::renderCoordinateToolTip);
 	}
 
-	private String renderToolTip(TableRow row) {
+	private String renderCoordinateToolTip(TableRow row) {
 
-		List<HtmlChunk> sections = new ArrayList<>(row.getToolTip());
+		List<HtmlChunk> sections = new ArrayList<>(row.getCoordinateToolTip());
 		List<TableRow> peers = getSharedPropertyPeers(row);
 		if (!peers.isEmpty()) {
 			sections.add(sharedPropertySection(peers));
@@ -334,7 +337,7 @@ class UpgradeReview {
 		ArtifactVersion updateTo = getSelection(row).getTargetVersion();
 		if (updateTo == null) {
 			throw new IllegalStateException(
-					"Update version for %s is required but not set".formatted(row.getArtifactId().artifactId()));
+					"Update version for '%s' is required but not set".formatted(row.getName()));
 		}
 		return updateTo;
 	}

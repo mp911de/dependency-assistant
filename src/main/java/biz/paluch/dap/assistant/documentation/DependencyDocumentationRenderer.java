@@ -50,6 +50,7 @@ import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.checker.Vulnerability;
 import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
+import biz.paluch.dap.metadata.ProjectName;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.state.Cache;
@@ -175,11 +176,9 @@ class DependencyDocumentationRenderer {
 		HtmlBuilder content = new HtmlBuilder();
 
 		DependencyPresentation presentation = presentationFactory.create(PackageIdentity.of(artifactId, packageSystem),
-				evaluator.getRule(), interfaceAssistant);
+				evaluator.getRule());
 		List<HtmlChunk> sections = new ArrayList<>();
-		if (presentation.hasProjectName()) {
-			sections.add(section("documentation.project-name", HtmlChunk.text(presentation.getProjectName())));
-		}
+		maybeAppendProjectName(presentation, sections);
 
 		if (currentVersion != null) {
 			sections.add(section("documentation.current-value", nowrapLine(versionCode(currentVersion))));
@@ -544,12 +543,10 @@ class DependencyDocumentationRenderer {
 		HtmlBuilder content = new HtmlBuilder();
 
 		DependencyPresentation presentation = presentationFactory.create(PackageIdentity.of(artifacts
-				.getFirst(), packageSystem), evaluator.getRule(), interfaceAssistant);
+				.getFirst(), packageSystem), evaluator.getRule());
 
 		List<HtmlChunk> sections = new ArrayList<>();
-		if (presentation.hasProjectName()) {
-			sections.add(section("documentation.project-name", HtmlChunk.text(presentation.getProjectName())));
-		}
+		maybeAppendProjectName(presentation, sections);
 
 		if (currentVersion != null) {
 			sections.add(section("documentation.current-value", nowrapLine(versionCode(currentVersion))));
@@ -559,10 +556,10 @@ class DependencyDocumentationRenderer {
 			content.append(sectionsTable(sections));
 		}
 
-		for (ReleaseGroup group : ReleaseGroup.group(stateService.getCache(), MAX_VERSIONS,
+		for (ReleaseGroup group : ReleaseGroup.group(packageSystem, stateService.getCache(), MAX_VERSIONS,
 				artifacts)) {
 
-			content.append(group.renderHeader(interfaceAssistant));
+			content.append(group.renderHeader());
 			if (group.hasReleases()) {
 				ReleaseDigest digest = group.digest(currentVersion, MAX_PREVIEWS, MAX_VERSIONS);
 				content.append(versionsTable(group.artifactIds.getFirst(), digest, withIcons, formatter, presentation));
@@ -572,6 +569,14 @@ class DependencyDocumentationRenderer {
 		}
 
 		return document(HtmlChunk.text(property.name()), content);
+	}
+
+	private void maybeAppendProjectName(DependencyPresentation presentation, List<HtmlChunk> sections) {
+		ProjectName projectName = presentation.getProjectName();
+		if (projectName.hasProjectName()) {
+			sections.add(section("documentation.project-name",
+					HtmlChunk.text(projectName.getProjectName())));
+		}
 	}
 
 	/**
@@ -727,11 +732,14 @@ class DependencyDocumentationRenderer {
 
 	static class ReleaseGroup {
 
+		private final PackageSystem packageSystem;
+
 		private final List<ArtifactId> artifactIds = new ArrayList<>();
 
 		private final Releases releases;
 
-		ReleaseGroup(Releases releases) {
+		ReleaseGroup(PackageSystem packageSystem, Releases releases) {
+			this.packageSystem = packageSystem;
 			this.releases = releases;
 		}
 
@@ -739,7 +747,7 @@ class DependencyDocumentationRenderer {
 			return !releases.isEmpty();
 		}
 
-		static Collection<ReleaseGroup> group(Cache cache, int limit,
+		static Collection<ReleaseGroup> group(PackageSystem packageSystem, Cache cache, int limit,
 				List<CachedArtifact> artifacts) {
 
 			Map<Set<String>, ReleaseGroup> groups = new LinkedHashMap<>();
@@ -748,7 +756,8 @@ class DependencyDocumentationRenderer {
 				Releases releases = cache.getReleases(artifactId);
 				Set<String> versionKeys = releaseVersionKeys(releases, limit);
 
-				ReleaseGroup group = groups.computeIfAbsent(versionKeys, key -> new ReleaseGroup(releases));
+				ReleaseGroup group = groups.computeIfAbsent(versionKeys,
+						key -> new ReleaseGroup(packageSystem, releases));
 				group.add(artifactId);
 			}
 			return groups.values();
@@ -770,12 +779,13 @@ class DependencyDocumentationRenderer {
 		 * row per coordinate, keeping every coordinate a single non-breaking code unit
 		 * with the entire popup width at its disposal.
 		 */
-		HtmlChunk renderHeader(InterfaceAssistant assistant) {
+		HtmlChunk renderHeader() {
 
 			List<HtmlChunk> rows = new ArrayList<>();
 			rows.add(sectionLabelRow("documentation.property-for"));
 			for (ArtifactId artifactId : artifactIds) {
-				rows.add(spanningRow(nowrapLine(HtmlChunk.text(assistant.getDisplayName(artifactId)).code())));
+
+				rows.add(spanningRow(nowrapLine(HtmlChunk.text(packageSystem.getCoordinates(artifactId)).code())));
 			}
 			return sectionsTable(rows);
 		}

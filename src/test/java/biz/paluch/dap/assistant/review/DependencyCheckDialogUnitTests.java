@@ -46,7 +46,8 @@ class DependencyCheckDialogUnitTests {
 	@Test
 	void strategyOptionsOfferSafeWhenACandidateIsVulnerable() {
 
-		TableRow vulnerable = new TableRow(TestCandidates.candidate(SPRING_CORE, ArtifactVersion.of("6.0.0"),
+		SingleTableRow vulnerable = new SingleTableRow(
+				TestCandidates.candidate(SPRING_CORE, ArtifactVersion.of("6.0.0"),
 				it -> it.releases("6.0.0", "6.0.1")
 						.vulnerabilities(TestVulnerabilities.from("6.0.0 CVE-2026-1\n6.0.1 CLEAN\n"))));
 
@@ -57,7 +58,7 @@ class DependencyCheckDialogUnitTests {
 	}
 
 	private static TableRow candidate(ArtifactId artifactId) {
-		return new TableRow(TestCandidates.candidate(artifactId, "6.2.0", it -> it.releases("6.2.0", "6.2.1")));
+		return new SingleTableRow(TestCandidates.candidate(artifactId, "6.2.0", it -> it.releases("6.2.0", "6.2.1")));
 	}
 
 }

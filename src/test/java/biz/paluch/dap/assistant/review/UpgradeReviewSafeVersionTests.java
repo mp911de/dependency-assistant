@@ -146,7 +146,7 @@ class UpgradeReviewSafeVersionTests {
 
 	private static TableRow candidate(ArtifactId artifactId, ArtifactVersion current,
 			VulnerabilityRepository vulnerabilities, String... versions) {
-		return new TableRow(TestCandidates.candidate(artifactId, current, it -> it.releases(versions)
+		return new SingleTableRow(TestCandidates.candidate(artifactId, current, it -> it.releases(versions)
 				.vulnerabilities(vulnerabilities).rule(artifactId.artifactId()).declaredVersions(current.toString())));
 	}
 

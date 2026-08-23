@@ -273,19 +273,11 @@ public class DependencyCheckDialog extends DialogWrapper {
 		return null;
 	}
 
-	/**
-	 * Run a Dependency Site Find for the double-clicked row and present the result
-	 * for navigation.
-	 */
 	private void navigateToSites(TableRow candidate, RelativePoint where) {
 		new DependencySiteNavigator(project, getDisposable(), this::doCancelAction, scope.toList())
 				.browse(candidate.toQuery(), where);
 	}
 
-	/**
-	 * Show the coordinate-column context menu for the right-clicked row: add the
-	 * artifact to {@code dependencyfile.json}, or open the Dependency Sites popup.
-	 */
 	private void showContextMenu(TableRow candidate, RelativePoint where) {
 
 		// PSI-backed availability is computed once per popup so update() stays a
@@ -324,8 +316,8 @@ public class DependencyCheckDialog extends DialogWrapper {
 
 		DataContext dataContext = DataManager.getInstance().getDataContext(this.components);
 
-		String title = candidate.getName().equals(candidate.getDependencyName()) ? candidate.getName()
-				: "%s (%s)".formatted(candidate.getDependencyName(), candidate.getName());
+		String title = candidate.getName().equals(candidate.getDisplayName()) ? candidate.getName()
+				: "%s (%s)".formatted(candidate.getDisplayName(), candidate.getName());
 
 		JBPopupFactory.getInstance()
 				.createActionGroupPopup(title, group, dataContext,

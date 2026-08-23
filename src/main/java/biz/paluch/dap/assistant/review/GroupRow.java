@@ -22,13 +22,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import biz.paluch.dap.artifact.ArtifactVersion;
 import biz.paluch.dap.artifact.CoordinateShape;
 import biz.paluch.dap.artifact.PackageIdentity;
+import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.UpgradeGroup;
 import biz.paluch.dap.assistant.check.VersionProperty;
-import biz.paluch.dap.lookup.DependencySiteQuery;
-import biz.paluch.dap.util.StringUtils;
+import biz.paluch.dap.assistant.presentation.DependencyPresentation;
+import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
+import biz.paluch.dap.checker.Vulnerabilities;
+import biz.paluch.dap.metadata.ProjectName;
+import biz.paluch.dap.rule.DependencyRule;
+import biz.paluch.dap.rule.DependencyRuleEvaluator;
 import com.intellij.openapi.util.text.HtmlBuilder;
 import com.intellij.openapi.util.text.HtmlChunk;
 import org.jspecify.annotations.Nullable;
@@ -40,93 +46,156 @@ class GroupRow extends TableRow {
 
 	private static final int MEMBER_LABEL_LIMIT = 25;
 
-	private final List<TableRow> members;
+	private final UpgradeGroup group;
 
-	private final List<DependencyUpgradeCandidate> upgrades = new ArrayList<>();
+	private final String name;
 
-	private final @Nullable String name;
+	private @Nullable String renderedToolTip;
+
+	private final String searchString;
+
+	private final DependencyRuleEvaluator evaluator;
 
 	private final String groupMembersOrCount;
+
+	private final HtmlChunk toolTipIntro;
 
 	private final List<HtmlChunk> toolTipSections;
 
 	private final Set<VersionProperty> versionProperties = new HashSet<>();
 
-	private GroupRow(UpgradeGroup group, List<TableRow> members, @Nullable String name) {
+	private GroupRow(String name, UpgradeGroup group) {
 
-		super(group.getUpgrade());
-		this.members = members;
+		super(createTableIcon(group.getUpgrade()));
 		this.name = name;
-		if (name == null) {
-			labelByDependencyName();
-		}
+		this.group = group;
+
+		DependencyUpgradeCandidate merged = group.getUpgrade();
+
+		this.evaluator = DependencyRuleEvaluator.create(merged.getRule(),
+				getCurrentVersion());
+		this.toolTipIntro = createToolTipIntro();
 		this.toolTipSections = createGroupToolTipSections();
 
 		List<String> artifactIds = new ArrayList<>();
-		for (TableRow member : members) {
+		for (DependencyUpgradeCandidate member : group) {
 			versionProperties.addAll(member.getVersionProperties());
-			upgrades.add(member.getUpgrade());
 			artifactIds.add(member.getArtifactId().artifactId());
 		}
+
 		String label = String.join(", ", CoordinateShape.of(artifactIds).memberLabelParts());
 		this.groupMembersOrCount = !label.isEmpty() && label.length() <= MEMBER_LABEL_LIMIT ? label
-				: String.valueOf(members.size());
+				: String.valueOf(group.size());
+
+		this.searchString = getSearchString(merged.getPresentation());
 	}
 
-	static GroupRow governed(List<TableRow> members) {
-		return create(members, null);
+	static GroupRow governed(String name, List<SingleTableRow> members) {
+		return create(name, members);
 	}
 
-	static GroupRow governed(TableRow... members) {
-		return governed(List.of(members));
+	static GroupRow inferred(String name, List<SingleTableRow> members) {
+		return create(name, members);
 	}
 
-	static GroupRow inferred(List<TableRow> members, String displayName) {
-		return create(members, displayName);
-	}
+	private static GroupRow create(String name, List<SingleTableRow> members) {
 
-	private static GroupRow create(List<TableRow> members, @Nullable String derivedLabel) {
-
-		List<DependencyUpgradeCandidate> upgrades = members.stream().map(TableRow::getUpgrade).toList();
+		List<DependencyUpgradeCandidate> upgrades = members.stream()
+				.flatMap(it -> it.getUpgradeCandidates().stream()).toList();
 		UpgradeGroup group = UpgradeGroup.of(upgrades);
-		return new GroupRow(group, members, derivedLabel);
+		return new GroupRow(name, group);
+	}
+
+	private HtmlChunk createToolTipIntro() {
+
+		DependencyPresentation presentation = group.getUpgrade().getPresentation();
+		ProjectName projectName = presentation.getProjectName();
+		if (projectName.hasDisplayName()) {
+			return new HtmlBuilder().append(HtmlChunk.text(projectName.getDisplayName()))
+					.append(HtmlChunk.br()).toFragment();
+		}
+		return HtmlChunk.empty();
 	}
 
 	private List<HtmlChunk> createGroupToolTipSections() {
 
 		HtmlBuilder name = new HtmlBuilder().append(HtmlChunk.text(getName()).code());
-		if (StringUtils.hasText(getDependencyOrProjectName()) && !getName().equals(getDependencyOrProjectName())) {
-			name.append(HtmlChunk.text(" (%s)".formatted(getDependencyOrProjectName())));
+		IconDependencyPresentation presentation = group.getUpgrade().getPresentation();
+		ProjectName projectName = presentation.getProjectName();
+
+		if (projectName.hasProjectName()) {
+			name.append(HtmlChunk.text(" (%s)".formatted(projectName.getProjectName())));
 		}
 
 		HtmlBuilder memberLines = new HtmlBuilder();
 		memberLines.appendWithSeparators(HtmlChunk.br(),
-				members.stream().map(member -> HtmlChunk.text(member.getArtifactId().toString()).code()).toList());
+				group.stream()
+						.map(member -> HtmlChunk.text(member.getPresentation().getCoordinates()).code())
+						.toList());
 
 		return List.of(section("dialog.tooltip.group", name.toFragment()),
 				section("dialog.tooltip.group.members", memberLines.toFragment()));
 	}
 
 	@Override
-	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
-		return upgrades;
-	}
-
-	public List<TableRow> getMembers() {
-		return members;
-	}
-
-	/**
-	 * A group row also stands for each of its members.
-	 */
-	@Override
-	public boolean represents(PackageIdentity pkg) {
-		return super.represents(pkg) || members.stream().anyMatch(member -> member.represents(pkg));
+	public DependencyUpgradeCandidate getUpgrade() {
+		return group.getUpgrade();
 	}
 
 	@Override
 	public String getName() {
-		return name != null ? name : super.getName();
+		return name;
+	}
+
+	@Override
+	public String getSearchString() {
+		return searchString;
+	}
+
+	@Override
+	public String getDisplayName() {
+		IconDependencyPresentation presentation = getUpgrade().getPresentation();
+		if (presentation.hasDependencyName()) {
+			return presentation.getDependencyName();
+		}
+		return getName();
+	}
+
+	@Override
+	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
+		return group.toList();
+	}
+
+	@Override
+	public ArtifactVersion getCurrentVersion() {
+		return group.getUpgrade().getCurrentVersion();
+	}
+
+	@Override
+	public DeclaredVersions getDeclaredVersions() {
+		return group.getUpgrade().getDeclaredVersions();
+	}
+
+	@Override
+	public DependencyRule getRule() {
+		return group.getUpgrade().getRule();
+	}
+
+	@Override
+	public DependencyRuleEvaluator getRuleEvaluator() {
+		return evaluator;
+	}
+
+	@Override
+	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
+
+		Vulnerabilities vulnerabilities = Vulnerabilities.clean();
+
+		for (DependencyUpgradeCandidate candidate : group) {
+			vulnerabilities = vulnerabilities.addAll(candidate.getVulnerabilities(version));
+		}
+
+		return vulnerabilities;
 	}
 
 	public String getMemberLabel() {
@@ -140,23 +209,23 @@ class GroupRow extends TableRow {
 
 	@Override
 	protected HtmlChunk getToolTipIntro() {
-		return HtmlChunk.empty();
+		return toolTipIntro;
 	}
 
 	@Override
-	public List<HtmlChunk> getToolTip() {
+	public List<HtmlChunk> getCoordinateToolTip() {
 		return toolTipSections;
 	}
 
 	@Override
-	public DependencySiteQuery toQuery() {
-		return DependencySiteQuery.union(members.stream().map(TableRow::toQuery).toList());
+	public boolean represents(PackageIdentity pkg) {
+		return group.stream().anyMatch(member -> member.getPackageIdentity().equals(pkg));
 	}
 
 	@Override
-	public void doWithRow(Consumer<TableRow> consumer) {
-		for (TableRow member : members) {
-			consumer.accept(member);
+	public void doWithUpgradeCandidates(Consumer<DependencyUpgradeCandidate> consumer) {
+		for (DependencyUpgradeCandidate upgrade : group) {
+			consumer.accept(upgrade);
 		}
 	}
 

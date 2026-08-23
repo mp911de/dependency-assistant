@@ -36,7 +36,6 @@ import biz.paluch.dap.state.StateService;
 import biz.paluch.dap.util.BetterPsiManager;
 import biz.paluch.dap.util.FileUtils;
 import biz.paluch.dap.util.MessageBundle;
-import biz.paluch.dap.util.StringUtils;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -99,9 +98,7 @@ class DependencyfileArtifactWriter {
 			List<ArtifactId> artifactIds = row.getUpgradeCandidates().stream()
 					.map(DependencyUpgradeCandidate::getArtifactId).toList();
 
-			String dependencyOrProjectName = row.getDependencyOrProjectName();
-			String name = StringUtils.hasText(dependencyOrProjectName) ? dependencyOrProjectName : row.getName();
-
+			String name = row.getDisplayName();
 			TextRange selection = WriteCommandAction.writeCommandAction(project)
 					.withName(MessageBundle.message("dialog.action.addToDependencyfile"))
 					.compute(() -> DependencyfileArtifacts.setName(project, psiManager.findFile(descriptor),

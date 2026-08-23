@@ -21,6 +21,7 @@ import javax.swing.Icon;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.PackageIdentity;
 import biz.paluch.dap.artifact.PackageSystem;
+import biz.paluch.dap.metadata.ProjectName;
 
 class DefaultIconDependencyPresentation implements IconDependencyPresentation {
 
@@ -54,14 +55,15 @@ class DefaultIconDependencyPresentation implements IconDependencyPresentation {
 		return tableIcon;
 	}
 
+
 	@Override
-	public String getArtifactIdDisplayName() {
-		return presentation.getArtifactIdDisplayName();
+	public String getShortArtifactId() {
+		return presentation.getShortArtifactId();
 	}
 
 	@Override
-	public String getArtifactCoordinatesDisplayName() {
-		return presentation.getArtifactCoordinatesDisplayName();
+	public String getCoordinates() {
+		return presentation.getCoordinates();
 	}
 
 	@Override
@@ -80,12 +82,7 @@ class DefaultIconDependencyPresentation implements IconDependencyPresentation {
 	}
 
 	@Override
-	public boolean hasProjectName() {
-		return presentation.hasProjectName();
-	}
-
-	@Override
-	public String getProjectName() {
+	public ProjectName getProjectName() {
 		return presentation.getProjectName();
 	}
 

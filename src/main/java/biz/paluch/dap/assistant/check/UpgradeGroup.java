@@ -17,6 +17,7 @@
 package biz.paluch.dap.assistant.check;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -25,6 +26,7 @@ import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.Release;
 import biz.paluch.dap.artifact.Releases;
 import biz.paluch.dap.checker.VulnerabilityRepository;
+import biz.paluch.dap.util.Sequence;
 
 import org.springframework.util.Assert;
 
@@ -39,7 +41,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Paluch
  */
-public class UpgradeGroup {
+public class UpgradeGroup implements Sequence<DependencyUpgradeCandidate> {
 
 	private final List<DependencyUpgradeCandidate> members;
 
@@ -114,6 +116,20 @@ public class UpgradeGroup {
 	 */
 	public DependencyUpgradeCandidate getUpgrade() {
 		return upgrade;
+	}
+
+	@Override
+	public Iterator<DependencyUpgradeCandidate> iterator() {
+		return members.iterator();
+	}
+
+	public int size() {
+		return members.size();
+	}
+
+	@Override
+	public List<DependencyUpgradeCandidate> toList() {
+		return members;
 	}
 
 }

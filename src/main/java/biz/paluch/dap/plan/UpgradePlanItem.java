@@ -107,13 +107,14 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 	 * @param to the pinned target version.
 	 * @param vulnerabilityFix whether the target fixes current vulnerabilities.
 	 * @param vulnerabilityCount the captured current vulnerability count.
-	 * @param highestVulnerabilitySeverity the captured highest current severity.
+	 * @param highestSeverity the captured highest current severity.
 	 * @param members the reconstructed member dependencies.
 	 * @param assistants the interface metadata resolved for the members, in member
 	 * order.
 	 */
-	UpgradePlanItem(ItemId itemId, @Nullable String displayName, ArtifactVersion to, boolean vulnerabilityFix,
-			int vulnerabilityCount, CvssSeverity highestVulnerabilitySeverity, List<ItemDependency> members,
+	UpgradePlanItem(ItemId itemId, String displayName, ArtifactVersion to,
+			boolean vulnerabilityFix, int vulnerabilityCount,
+			CvssSeverity highestSeverity, List<ItemDependency> members,
 			List<InterfaceAssistant> assistants) {
 
 		Assert.isTrue(!members.isEmpty(), "Upgrade Plan item requires members");
@@ -136,12 +137,13 @@ class UpgradePlanItem implements Sequence<ItemDependency> {
 		this.fromVersion = from == null ? "" : from.toDocumentationString();
 		this.toVersion = to.toDocumentationString();
 		ItemDependency dependency = members.getFirst();
+
 		InterfaceAssistant assistant = assistants.getFirst();
 		this.displayName = StringUtils.hasText(displayName) ? displayName
-				: assistant.getArtifactId(dependency.getArtifactId());
+				: dependency.getPackageSystem().getArtifactId(dependency.getArtifactId());
 		this.vulnerabilityFix = vulnerabilityFix;
 		this.vulnerabilityCount = vulnerabilityCount;
-		this.highestVulnerabilitySeverity = highestVulnerabilitySeverity;
+		this.highestVulnerabilitySeverity = highestSeverity;
 		this.attentionLevel = determineAttentionLevel();
 		this.attentionBadge = createAttentionBadge();
 		this.icon = assistant.getTableIcon(dependency);

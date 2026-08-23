@@ -205,7 +205,7 @@ public class ArtifactReferenceContext implements HasArtifactId, HasPackageIdenti
 		DependencyPresentationFactory presentationFactory = new DependencyPresentationFactory(element.getProject());
 		ProjectMetadata metadata = ProjectMetadataService.getMetadata(declaration);
 		DependencyPresentation presentation = presentationFactory.create(declaration.getPackageIdentity(),
-				rule, context.getInterfaceAssistant());
+				rule);
 		return new ArtifactReferenceContext(context, stateService, declaration, currentVersion,
 				rule, evaluator, metadata, presentation);
 	}

@@ -18,7 +18,6 @@ package biz.paluch.dap;
 
 import javax.swing.Icon;
 
-import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.support.ArtifactDeclaration;
 import com.intellij.openapi.util.TextRange;
@@ -46,22 +45,6 @@ public interface InterfaceAssistant {
 	 */
 	default String getDisplayName(VirtualFile file) {
 		return getDisplayName();
-	}
-
-	/**
-	 * Return the human-readable name for an {@link ArtifactId#artifactId()}.
-	 * @param artifactId the artifact Id to render.
-	 */
-	default String getArtifactId(ArtifactId artifactId) {
-		return artifactId.artifactId();
-	}
-
-	/**
-	 * Return the human-readable name for an {@link ArtifactId}.
-	 * @param artifactId the artifact and potentially groupId to render.
-	 */
-	default String getDisplayName(ArtifactId artifactId) {
-		return artifactId.toString();
 	}
 
 	/**

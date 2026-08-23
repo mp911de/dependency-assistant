@@ -134,11 +134,10 @@ class ArtifactReleaseRenderer extends LookupElementRenderer<LookupElement> {
 			tailText += tailLabel;
 		} else {
 
-			String dependencyName = this.rule.getDependencyName();
-			if (StringUtils.hasText(dependencyName)) {
-				tailText += dependencyName;
+			if (this.presentation.hasDependencyName()) {
+				tailText += this.presentation.getDependencyName();
 			} else {
-				tailText += this.presentation.getArtifactCoordinatesDisplayName();
+				tailText += this.presentation.getCoordinates();
 			}
 		}
 

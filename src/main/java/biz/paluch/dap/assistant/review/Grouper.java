@@ -17,31 +17,25 @@
 package biz.paluch.dap.assistant.review;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+
+import biz.paluch.dap.artifact.PackageIdentity;
 
 /**
  * One-shot accumulator applying {@link GroupingPolicy grouping policies} to the
  * dependency-check candidates and reassembling the display-ordered rows.
  *
- * <p>Each registered group replaces its members at the position of the first
- * member; candidates not claimed by any policy remain individual rows in their
- * original order.
- *
  * @author Mark Paluch
  */
 class Grouper {
 
-	private final List<TableRow> candidates;
+	private final List<SingleTableRow> candidates;
 
-	private final Map<TableRow, GroupRow> groupByFirstMember = new LinkedHashMap<>();
+	private final Set<GroupRow> grouped = new LinkedHashSet<>();
 
-	private final Set<TableRow> grouped = new LinkedHashSet<>();
-
-	Grouper(List<TableRow> candidates) {
+	Grouper(List<SingleTableRow> candidates) {
 		this.candidates = candidates;
 	}
 
@@ -51,23 +45,9 @@ class Grouper {
 	 * @param policy the policy to apply.
 	 * @return {@code this} for chaining.
 	 */
-	Grouper group(GroupingPolicy<TableRow, GroupRow> policy) {
-
-		for (GroupRow group : policy.group(candidates)) {
-			register(group);
-		}
+	Grouper group(GroupingPolicy<SingleTableRow, GroupRow> policy) {
+		grouped.addAll(policy.group(candidates));
 		return this;
-	}
-
-	/**
-	 * Register a formed group: it replaces its members at the first member's
-	 * position and suppresses all members from individual display.
-	 */
-	private void register(GroupRow group) {
-
-		List<TableRow> members = group.getMembers();
-		groupByFirstMember.put(members.getFirst(), group);
-		grouped.addAll(members);
 	}
 
 	/**
@@ -81,16 +61,39 @@ class Grouper {
 		List<TableRow> rows = new ArrayList<>(candidates.size());
 		for (TableRow candidate : candidates) {
 
-			GroupRow group = groupByFirstMember.get(candidate);
-			if (group != null) {
-				rows.add(group);
+			GroupRow matchingGroup = null;
+			PackageIdentity pkg = candidate.getUpgrade().getPackageIdentity();
+
+			for (GroupRow groupRow : grouped) {
+				if (groupRow.represents(pkg)) {
+					matchingGroup = groupRow;
+					break;
+				}
+			}
+
+			if (matchingGroup != null) {
+				grouped.remove(matchingGroup);
+				rows.add(matchingGroup);
 				continue;
 			}
 
-			if (!grouped.contains(candidate)) {
-				rows.add(candidate);
+			boolean represented = false;
+			for (TableRow row : rows) {
+				if (row.represents(pkg)) {
+					represented = true;
+					break;
+				}
 			}
+
+			if (represented) {
+				continue;
+
+			}
+
+			rows.add(candidate);
 		}
+
+		rows.sort(TableRow::compareTo);
 		return rows;
 	}
 

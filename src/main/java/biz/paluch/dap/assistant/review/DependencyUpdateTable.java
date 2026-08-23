@@ -129,7 +129,7 @@ class DependencyUpdateTable extends TableView<TableRow> {
 
 	DependencyUpdateTable(UpgradeReview review, BiConsumer<TableRow, RelativePoint> onNavigate,
 			BiConsumer<TableRow, RelativePoint> onContextMenu) {
-		super(new ListTableModel<>(new DependencyCoordinateColumn(review), new CurrentVersionColumn(),
+		super(new ListTableModel<>(new DependencyCoordinateColumn(review), new CurrentVersionColumn(review),
 				new UpgradeTargetsColumn(review), new UpdateToColumn(review), new DoUpdateColumn(review)));
 		this.review = review;
 		this.onNavigate = onNavigate;
@@ -427,15 +427,10 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		return new Dimension(icon.getIconWidth() + padding, icon.getIconHeight() + padding);
 	}
 
-	static class DependencyCoordinateColumn extends ColumnInfo<TableRow, ArtifactId> {
+	static class DependencyCoordinateColumn extends ColumnInfo<TableRow, TableRow> {
 
 		private final UpgradeReview review;
 
-		/**
-		 * Weak-warning wave underline for rows coupled through a Shared Version
-		 * Property: informative, never blocking. Resolved per dialog so a theme or
-		 * scheme switch is picked up by the next dialog.
-		 */
 		private final SimpleTextAttributes sharedPropertyAttributes;
 
 		private final ColoredTableCellRenderer renderer = new ColoredTableCellRenderer() {
@@ -453,12 +448,12 @@ class DependencyUpdateTable extends TableView<TableRow> {
 				if (candidate instanceof GroupRow group) {
 					append("  (%s)".formatted(group.getMemberLabel()), SimpleTextAttributes.GRAYED_ATTRIBUTES);
 				} else if (review.isAmbiguous(candidate)) {
-					append("  (%s)".formatted(candidate.getArtifactId().groupId()),
+					append("  (%s)".formatted(candidate.getUpgrade().getArtifactId().groupId()),
 							SimpleTextAttributes.GRAYED_ATTRIBUTES);
 				}
 
 				setIcon(peers.isEmpty() ? candidate.getTableIcon() : DependencyAssistantIcons.SHARED_PROPERTY);
-				setToolTipText(review.getToolTip(candidate));
+				setToolTipText(review.getCoordinateToolTip(candidate));
 			}
 
 		};
@@ -475,8 +470,8 @@ class DependencyUpdateTable extends TableView<TableRow> {
 		}
 
 		@Override
-		public ArtifactId valueOf(TableRow item) {
-			return item.getArtifactId();
+		public TableRow valueOf(TableRow item) {
+			return item;
 		}
 
 		@Override
@@ -497,6 +492,8 @@ class DependencyUpdateTable extends TableView<TableRow> {
 	}
 
 	static class CurrentVersionColumn extends ColumnInfo<TableRow, ArtifactVersion> {
+
+		private final UpgradeReview review;
 
 		private final DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
 
@@ -524,7 +521,7 @@ class DependencyUpdateTable extends TableView<TableRow> {
 				setFont(getCachedEditorFont(getFont().getSize()));
 
 				if (declaredVersions.hasVersionDrift() || rule.isPresent()) {
-					String toolTipText = candidate.getToolTipText();
+					String toolTipText = candidate.getCurrentVersionToolTipText();
 					setToolTipText(StringUtils.isEmpty(toolTipText) ? null : toolTipText);
 				} else {
 					setToolTipText(null);
@@ -545,8 +542,9 @@ class DependencyUpdateTable extends TableView<TableRow> {
 
 		};
 
-		CurrentVersionColumn() {
+		CurrentVersionColumn(UpgradeReview review) {
 			super(MessageBundle.message("dialog.column.current"));
+			this.review = review;
 		}
 
 		@Override

@@ -23,14 +23,8 @@ import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 /**
  * A reviewed upgrade ready to be captured into the {@link UpgradePlan}.
  *
- * <p>This is the hand-off contract between the dependency review dialog and the
- * plan model: a review row exposes itself as a {@code PlannedUpgrade} so the
- * plan can persist it without depending on review internals. Implemented by the
- * review rows {@code TableRow} (a single upgrade) and {@code GroupRow} (a
- * collapsed group whose members each contribute one upgrade). Callers pair a
- * planned upgrade with its pinned target
- * {@link biz.paluch.dap.artifact.ArtifactVersion} and hand both to the plan
- * through {@code UpgradePlanService} or {@link UpgradePlanToolWindowFactory}.
+ * <p>This is the hand-off contract between the dependency review and the
+ * upgrade plan model.
  *
  * @author Mark Paluch
  * @see DependencyUpgradeCandidate
@@ -39,27 +33,17 @@ import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 public interface PlannedUpgrade {
 
 	/**
-	 * Return the stable name persisted for this upgrade as its plan item.
+	 * Return the display name for this upgrade.
+	 * <p>The name identifies the item across sessions and drives its display label.
 	 *
-	 * <p>The name identifies the item across sessions and drives its display label:
-	 * the artifact id for a single upgrade, the governing rule's dependency name,
-	 * or the derived group name for a collapsed group.
-	 *
-	 * @return the stable plan-item name.
+	 * @return the upgrade item name.
 	 */
-	String getName();
-
-	String getDependencyName();
-
-	String getDependencyOrProjectName();
+	String getDisplayName();
 
 	/**
 	 * Return the upgrades this planned upgrade contributes, in update order.
 	 *
-	 * <p>A single row yields exactly one upgrade; a collapsed group yields one per
-	 * member so the plan can fan a chosen target out to every grouped dependency.
-	 *
-	 * @return an immutable, non-empty list of upgrades in update order.
+	 * @return non-empty list of upgrades in update order.
 	 */
 	List<DependencyUpgradeCandidate> getUpgradeCandidates();
 

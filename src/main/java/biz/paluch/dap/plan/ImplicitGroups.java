@@ -144,7 +144,7 @@ class ImplicitGroups implements Sequence<Item> {
 		private String name;
 
 		ReviewedUpgrade(PlannedUpgrade capture, ArtifactVersion target) {
-			this.name = capture.getDependencyOrProjectName();
+			this.name = capture.getDisplayName();
 			this.target = target;
 			this.candidates = new ArrayList<>(capture.getUpgradeCandidates());
 			this.group = candidates.size() > 1;

@@ -21,8 +21,8 @@ import javax.swing.Icon;
 import biz.paluch.dap.InterfaceAssistant;
 import biz.paluch.dap.artifact.Dependency;
 import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.metadata.ProjectMetadata;
 import biz.paluch.dap.metadata.ProjectMetadataService;
+import biz.paluch.dap.metadata.ProjectName;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.state.ApplicationSettings;
 import biz.paluch.dap.util.StringUtils;
@@ -52,30 +52,21 @@ public class DependencyPresentationFactory {
 
 	/**
 	 * Create a {@link DependencyPresentation} for the given package.
+	 *
 	 * @param pkg the package to create a presentation for.
 	 * @param rule a rule governing the dependency.
-	 * @param assistant the interface assistant associated with the project.
 	 * @return a new presentation.
 	 */
-	public DependencyPresentation create(PackageIdentity pkg, DependencyRule rule, InterfaceAssistant assistant) {
+	public DependencyPresentation create(PackageIdentity pkg, DependencyRule rule) {
 
-		ProjectMetadata metadata = metadataService.getMetadata(pkg);
-
+		ProjectName projectName = metadataService.getProjectName(pkg.getArtifactId());
 		String dependencyName = rule.getDependencyName();
-		String projectName = metadata.getProjectName();
 
 		if (StringUtils.isEmpty(dependencyName)) {
 			dependencyName = settings.findNameHint(pkg);
 		}
 
-		if (StringUtils.isEmpty(dependencyName)) {
-			projectName = ProjectName.of(pkg.getArtifactId(), projectName).getDisplayName();
-		}
-
-		String displayName = assistant.getDisplayName(pkg.getArtifactId());
-		String artifactId = assistant.getArtifactId(pkg.getArtifactId());
-		return DependencyPresentation.of(pkg, displayName,
-				artifactId, dependencyName, projectName);
+		return DependencyPresentation.of(pkg, dependencyName, projectName);
 	}
 
 	/**
@@ -87,7 +78,7 @@ public class DependencyPresentationFactory {
 	 */
 	public IconDependencyPresentation create(Dependency dependency, DependencyRule rule, InterfaceAssistant assistant) {
 
-		DependencyPresentation presentation = create(dependency.getPackageIdentity(), rule, assistant);
+		DependencyPresentation presentation = create(dependency.getPackageIdentity(), rule);
 		Icon tableIcon = assistant.getTableIcon(dependency);
 		return new DefaultIconDependencyPresentation(tableIcon, presentation);
 	}

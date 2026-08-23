@@ -267,12 +267,10 @@ public class GitHubAssistant implements DependencyAssistant {
 			return MessageBundle.message("assistant.github");
 		}
 
-		@Override
-		public String getArtifactId(ArtifactId artifactId) {
+		private String getArtifactId(ArtifactId artifactId) {
 			return GitHubUtils.toString(artifactId);
 		}
 
-		@Override
 		public String getDisplayName(ArtifactId artifactId) {
 			return getArtifactId(artifactId);
 		}

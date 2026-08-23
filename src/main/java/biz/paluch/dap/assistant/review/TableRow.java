@@ -27,20 +27,15 @@ import javax.swing.Icon;
 import biz.paluch.dap.DependencyAssistantIcons;
 import biz.paluch.dap.artifact.ArtifactId;
 import biz.paluch.dap.artifact.ArtifactVersion;
-import biz.paluch.dap.artifact.DeclarationSource;
-import biz.paluch.dap.artifact.Dependency;
-import biz.paluch.dap.artifact.HasArtifactId;
-import biz.paluch.dap.artifact.HasPackageIdentity;
 import biz.paluch.dap.artifact.PackageIdentity;
-import biz.paluch.dap.artifact.VersionSource;
 import biz.paluch.dap.assistant.VersionStatus;
 import biz.paluch.dap.assistant.check.DeclaredVersions;
 import biz.paluch.dap.assistant.check.DependencyUpgradeCandidate;
 import biz.paluch.dap.assistant.check.VersionProperty;
 import biz.paluch.dap.assistant.presentation.DependencyPresentation;
-import biz.paluch.dap.assistant.presentation.IconDependencyPresentation;
 import biz.paluch.dap.checker.Vulnerabilities;
 import biz.paluch.dap.lookup.DependencySiteQuery;
+import biz.paluch.dap.metadata.ProjectName;
 import biz.paluch.dap.plan.PlannedUpgrade;
 import biz.paluch.dap.rule.DependencyRule;
 import biz.paluch.dap.rule.DependencyRuleEvaluator;
@@ -55,114 +50,134 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Dialog-row presentation over one upgrade aggregate.
+ *
+ * @author Mark Paluch
  */
-class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
-
-	private final DependencyUpgradeCandidate upgradeCandidate;
-
-	private final DependencyRuleEvaluator evaluator;
+abstract class TableRow implements PlannedUpgrade, Comparable<TableRow> {
 
 	private final Icon tableIcon;
 
-	private boolean labelByDependencyName;
+	private @Nullable String renderedCurrentVersionToolTipText;
 
-	private final String artifactIdDisplayName;
-
-	private final String rowName;
-
-	private final String dependencyOrProjectName;
-
-	private final HtmlChunk toolTipIntro;
-
-	private final List<HtmlChunk> toolTipSections;
-
-	private @Nullable String renderedToolTip;
-
-	TableRow(DependencyUpgradeCandidate upgradeCandidate) {
-
-		this.upgradeCandidate = upgradeCandidate;
-		this.evaluator = DependencyRuleEvaluator.create(upgradeCandidate.getRule(),
-				getCurrentVersion());
-
-		IconDependencyPresentation presentation = upgradeCandidate.getPresentation();
-		this.artifactIdDisplayName = presentation.getArtifactIdDisplayName();
-
-		String rowName = this.artifactIdDisplayName;
-		if (presentation.hasDependencyName()) {
-			rowName = presentation.getDependencyName();
-			labelByDependencyName();
-		}
-		this.rowName = rowName;
-
-		if (presentation.hasDependencyName()) {
-			this.dependencyOrProjectName = presentation.getDependencyName();
-		} else if (presentation.hasProjectName()) {
-			this.dependencyOrProjectName = presentation.getProjectName();
-		} else {
-			this.dependencyOrProjectName = "";
-		}
-
-		this.tableIcon = createTableIcon();
-		this.toolTipIntro = createToolTipIntro();
-		this.toolTipSections = createToolTipSections();
+	public TableRow(Icon tableIcon) {
+		this.tableIcon = tableIcon;
 	}
 
-	private Icon createTableIcon() {
+	/**
+	 * Create a table icon for the {@link DependencyUpgradeCandidate}.
+	 * @param candidate the upgrade candidate.
+	 * @return a table icon to be used of the row.
+	 */
+	static Icon createTableIcon(DependencyUpgradeCandidate candidate) {
 
-		Icon base = upgradeCandidate.getPresentation().getTableIcon();
-		if (!upgradeCandidate.getDependency().hasPropertyVersion()) {
+		Icon base = candidate.getPresentation().getTableIcon();
+		if (!candidate.getDependency().hasPropertyVersion()) {
 			return base;
 		}
 
 		return DependencyAssistantIcons.PROPERTY;
 	}
 
-	private HtmlChunk createToolTipIntro() {
+	/**
+	 * Compute the speed-search string containing the row name and presentation
+	 * items.
+	 * @param presentation the dependency presentation used for the table row.
+	 * @return speed search string.
+	 */
+	protected String getSearchString(DependencyPresentation presentation) {
 
-		DependencyPresentation presentation = upgradeCandidate.getPresentation();
-		if (presentation.hasProjectName()
-				&& !presentation.getProjectName().equalsIgnoreCase(artifactIdDisplayName)) {
-			return new HtmlBuilder().append(HtmlChunk.text(presentation.getProjectName()))
-					.append(HtmlChunk.br()).toFragment();
+		Set<String> searchString = new LinkedHashSet<>();
+		searchString.add(getName());
+		searchString.add(presentation.getShortArtifactId());
+		searchString.add(presentation.getCoordinates());
+
+		if (presentation.hasDependencyName()) {
+			searchString.add(presentation.getDependencyName());
 		}
-		return HtmlChunk.empty();
+
+		ProjectName projectName = presentation.getProjectName();
+		if (projectName.hasDisplayName()) {
+			searchString.add(projectName.getDisplayName());
+		} else if (projectName.hasProjectName()) {
+			searchString.add(projectName.getProjectName());
+		}
+		return String.join(" ", searchString);
 	}
 
-	private List<HtmlChunk> createToolTipSections() {
+	public Icon getTableIcon() {
+		return tableIcon;
+	}
 
-		DependencyPresentation presentation = upgradeCandidate.getPresentation();
-		Dependency dependency = upgradeCandidate.getDependency();
+	public abstract DependencyUpgradeCandidate getUpgrade();
 
-		boolean plugin = !dependency.getDeclarationSources().isEmpty()
-				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Plugin;
+	public abstract String getName();
 
-		List<HtmlChunk> sections = new ArrayList<>();
-		sections.add(section(plugin ? "dialog.tooltip.plugin" : "dialog.tooltip.coordinates",
-				HtmlChunk.text(presentation.getArtifactIdDisplayName()).code()));
+	public abstract String getSearchString();
 
-		if (!dependency.getDeclarationSources().isEmpty()
-				&& dependency.getDeclarationSources().iterator().next() instanceof DeclarationSource.Profile profile) {
-			sections.add(section("dialog.tooltip.profile",
-					HtmlChunk.text(profile.getProfileId()).code()));
-		}
+	public abstract ArtifactVersion getCurrentVersion();
 
-		if (dependency.hasPropertyVersion()) {
+	public abstract DeclaredVersions getDeclaredVersions();
 
-			VersionSource.VersionProperty versionProperty = dependency.findPropertyVersion();
-			sections.add(section("dialog.tooltip.property",
-					HtmlChunk.text(String.valueOf(versionProperty)).code()));
-			if (versionProperty instanceof VersionSource.Profile profile) {
-				sections.add(section("dialog.tooltip.profile",
-						HtmlChunk.text(profile.getProfileId()).code()));
+	public Set<String> getVersionPropertyNames() {
+		Set<String> names = new LinkedHashSet<>();
+		getVersionProperties().forEach(it -> names.add(it.property()));
+		return names;
+	}
+
+	public abstract Set<VersionProperty> getVersionProperties();
+
+	public abstract DependencyRule getRule();
+
+	public abstract DependencyRuleEvaluator getRuleEvaluator();
+
+	public abstract Vulnerabilities getVulnerabilities(ArtifactVersion version);
+
+	public VersionStatus getStatus(ArtifactVersion version) {
+		return VersionStatus.of(DependencyRuleEvaluator.create(getRule(), version),
+				getCurrentVersion(), version, getVulnerabilities(version));
+	}
+
+	/**
+	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
+	 */
+	protected abstract HtmlChunk getToolTipIntro();
+
+	/**
+	 * The label/value section rows of this row's tooltip, assembled and rendered by
+	 * {@link UpgradeReview#getCoordinateToolTip(TableRow)}.
+	 */
+	public abstract List<HtmlChunk> getCoordinateToolTip();
+
+	/**
+	 * Current version column tool tip text.
+	 */
+	public String getCurrentVersionToolTipText() {
+
+		if (renderedCurrentVersionToolTipText == null) {
+			HtmlBuilder tooltip = new HtmlBuilder();
+			DeclaredVersions declaredVersions = getDeclaredVersions();
+
+			if (declaredVersions.hasVersionDrift()) {
+				tooltip.append(declaredVersions.getVersionDriftToolTip(getCurrentVersion()));
+			}
+
+			if (getRule().isPresent()) {
+				tooltip.append(getRuleEvaluator().getToolTipText(getName()));
+			}
+
+			if (tooltip.isEmpty()) {
+				renderedCurrentVersionToolTipText = "";
+			} else {
+				renderedCurrentVersionToolTipText = tooltip.wrapWith("html").toString();
 			}
 		}
 
-		return sections;
+		return renderedCurrentVersionToolTipText;
 	}
 
 	@Override
-	public PackageIdentity getPackageIdentity() {
-		return upgradeCandidate.getPackageIdentity();
+	public int compareTo(TableRow o) {
+		return getName().compareToIgnoreCase(o.getName());
 	}
 
 	/**
@@ -173,152 +188,26 @@ class TableRow implements HasArtifactId, HasPackageIdentity, PlannedUpgrade {
 	 * @return {@literal true} if the row represents the artifact; {@literal false}
 	 * otherwise.
 	 */
-	public boolean represents(PackageIdentity pkg) {
-		return getPackageIdentity().equals(pkg);
-	}
-
-	@Override
-	public ArtifactId getArtifactId() {
-		return upgradeCandidate.getArtifactId();
-	}
-
-
-	public DependencyUpgradeCandidate getUpgrade() {
-		return upgradeCandidate;
-	}
-
-	@Override
-	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
-		return List.of(upgradeCandidate);
-	}
-
-	public String getName() {
-		return labelByDependencyName ? rowName : artifactIdDisplayName;
-	}
-
-	public String getDependencyOrProjectName() {
-		return dependencyOrProjectName;
-	}
-
-	public void labelByDependencyName() {
-		this.labelByDependencyName = true;
-	}
-
-	public boolean isLabeledByDependencyName() {
-		return labelByDependencyName;
-	}
-
-	public String getDependencyName() {
-		return upgradeCandidate.getPresentation().getDisplayName();
-	}
-
-	public ArtifactVersion getCurrentVersion() {
-		return upgradeCandidate.getCurrentVersion();
-	}
-
-	public DeclaredVersions getDeclaredVersions() {
-		return upgradeCandidate.getDeclaredVersions();
-	}
-
-	public Set<String> getVersionPropertyNames() {
-
-		Set<String> names = new LinkedHashSet<>();
-
-		doWithRow(it -> {
-			if (it.getUpgrade().getDependency()
-					.findPropertyVersion() instanceof VersionSource.VersionProperty property) {
-				names.add(property.getProperty());
-			}
-		});
-		return names;
-	}
-
-	public Set<VersionProperty> getVersionProperties() {
-		return upgradeCandidate.getVersionProperties();
-	}
-
-	public Icon getTableIcon() {
-		return tableIcon;
-	}
-
-	public DependencyRule getRule() {
-		return upgradeCandidate.getRule();
-	}
-
-	public DependencyRuleEvaluator getRuleEvaluator() {
-		return evaluator;
-	}
-
-	public Vulnerabilities getVulnerabilities(ArtifactVersion version) {
-		return upgradeCandidate.getVulnerabilities(version);
-	}
-
-	public VersionStatus getStatus(ArtifactVersion version) {
-		return VersionStatus.of(DependencyRuleEvaluator.create(getRule(), version),
-				getCurrentVersion(), version, getVulnerabilities(version));
-	}
-
-	public String getSearchString() {
-		return getArtifactId() + " " + getDependencyOrProjectName() + " " + getName();
-	}
+	public abstract boolean represents(PackageIdentity pkg);
 
 	/**
-	 * The headline rendered above the section table, or {@link HtmlChunk#empty()}.
+	 * Create a {@link DependencySiteQuery} to find usages.
+	 * @return the query object.
 	 */
-	protected HtmlChunk getToolTipIntro() {
-		return toolTipIntro;
-	}
-
-	/**
-	 * The label/value section rows of this row's tooltip, assembled and rendered by
-	 * {@link UpgradeReview#getToolTip(TableRow)}.
-	 */
-	public List<HtmlChunk> getToolTip() {
-		return toolTipSections;
-	}
-
-	public @Nullable String getToolTipText() {
-
-		if (renderedToolTip == null) {
-
-			HtmlBuilder tooltip = new HtmlBuilder();
-			DeclaredVersions declaredVersions = getDeclaredVersions();
-
-			if (declaredVersions.hasVersionDrift()) {
-				tooltip.append(declaredVersions.getVersionDriftToolTip(getCurrentVersion()));
-			}
-
-			if (getRule().isPresent()) {
-				tooltip.append(evaluator.getToolTipText(getUpgrade().getPresentation().getHtmlDisplayName()));
-			}
-
-			if (tooltip.isEmpty()) {
-				renderedToolTip = "";
-			} else {
-				renderedToolTip = tooltip.wrapWith("html").toString();
-			}
-		}
-
-		return renderedToolTip;
-	}
-
 	public DependencySiteQuery toQuery() {
 
 		List<String> versionPropertyNames = getVersionProperties().stream().map(VersionProperty::property)
 				.toList();
+
+		List<ArtifactId> artifactIds = new ArrayList<>();
+		doWithUpgradeCandidates(it -> {
+			artifactIds.add(it.getArtifactId());
+		});
 		return DependencySiteQuery
-				.create(it -> it.artifact(getArtifactId()).versionProperties(versionPropertyNames));
+				.create(it -> it.artifacts(artifactIds).versionProperties(versionPropertyNames));
 	}
 
-	public void doWithRow(Consumer<TableRow> consumer) {
-		consumer.accept(this);
-	}
-
-	@Override
-	public String toString() {
-		return (rowName) + "@" + getCurrentVersion() + " -> ["
-				+ upgradeCandidate.getDisplayReleases() + "]";
-	}
+	public abstract void doWithUpgradeCandidates(Consumer<DependencyUpgradeCandidate> consumer);
 
 	/**
 	 * Render one label/value row in {@link DocumentationMarkup} section style.

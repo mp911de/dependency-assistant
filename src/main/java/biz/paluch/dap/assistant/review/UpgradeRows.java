@@ -53,7 +53,7 @@ class UpgradeRows implements Sequence<TableRow> {
 	 * @return the rows with each group replacing its members at the position of the
 	 * first member.
 	 */
-	static UpgradeRows of(List<TableRow> candidates) {
+	static UpgradeRows of(List<SingleTableRow> candidates) {
 
 		return new UpgradeRows(new Grouper(candidates)
 				.group(new GroupByRule())
@@ -91,7 +91,7 @@ class UpgradeRows implements Sequence<TableRow> {
 
 		String toString = "UpgradeRows: " + System.lineSeparator();
 		toString += rows.stream()
-				.map(it -> " * " + it.getDependencyName() + "@" + it.getCurrentVersion())
+				.map(it -> " * " + it.getDisplayName() + "@" + it.getCurrentVersion())
 				.collect(Collectors.joining(System.lineSeparator()));
 		return toString;
 	}

@@ -52,7 +52,7 @@ class ItemDependency extends Dependency {
 	}
 
 	public String getArtifactCoordinates() {
-		return getArtifactId().artifactId();
+		return getPackageSystem().getCoordinates(getArtifactId());
 	}
 
 	public String getCurrentVersionString() {

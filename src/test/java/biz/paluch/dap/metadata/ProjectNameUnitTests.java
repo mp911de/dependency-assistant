@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package biz.paluch.dap.assistant;
+package biz.paluch.dap.metadata;
 
 import biz.paluch.dap.artifact.ArtifactId;
-import biz.paluch.dap.assistant.presentation.ProjectName;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -94,7 +93,8 @@ class ProjectNameUnitTests {
 
 	@Test
 	void bareRoleWordIsAbsent() {
-		assertThat(getDisplayName("bom", "org.mongodb", "mongodb-driver-bom")).isNull();
+		ProjectName bom = ProjectName.of(ArtifactId.of("org.mongodb", "mongodb-driver-bom"), "bom");
+		assertThat(bom.hasDisplayName()).isFalse();
 	}
 
 	@ParameterizedTest
@@ -125,7 +125,7 @@ class ProjectNameUnitTests {
 				.isEqualTo("Spring Framework Core");
 	}
 
-	private static @Nullable String getDisplayName(@Nullable String projectName, String groupId, String artifactId) {
+	private static String getDisplayName(@Nullable String projectName, String groupId, String artifactId) {
 		return ProjectName.of(ArtifactId.of(groupId, artifactId), projectName).getDisplayName();
 	}
 

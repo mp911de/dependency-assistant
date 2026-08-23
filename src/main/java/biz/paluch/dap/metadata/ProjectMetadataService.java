@@ -146,4 +146,23 @@ public final class ProjectMetadataService implements ModificationTracker {
 		return ProjectMetadata.from(name, connection, repository, tracker, tags);
 	}
 
+	/**
+	 * Return the project name for the given artifact.
+	 * @param artifactId the artifact whose metadata should be looked up.
+	 * @return the project name, can be {@link ProjectName#empty(ArtifactId)}.
+	 */
+	public ProjectName getProjectName(ArtifactId artifactId) {
+
+		CachedArtifact cachedArtifact = cache.findCachedArtifact(artifactId);
+		if (cachedArtifact == null) {
+			return ProjectName.empty(artifactId);
+		}
+
+		CachedMetadata cachedMetadata = cachedArtifact.getProjectMetadata();
+		if (cachedMetadata == null) {
+			return ProjectName.empty(artifactId);
+		}
+		return ProjectName.of(artifactId, cachedMetadata.getProjectName());
+	}
+
 }

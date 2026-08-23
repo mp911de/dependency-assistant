@@ -34,15 +34,15 @@ import com.intellij.openapi.project.Project;
 
 class TestPlannedUpgrade implements PlannedUpgrade {
 
-	private final List<DependencyUpgradeCandidate> upgrades;
-
 	private final String name;
 
+	private final List<DependencyUpgradeCandidate> upgrades;
+
 	TestPlannedUpgrade(DependencyUpgradeCandidate upgrade) {
-		this(List.of(upgrade), upgrade.getArtifactId().artifactId());
+		this(upgrade.getArtifactId().artifactId(), List.of(upgrade));
 	}
 
-	TestPlannedUpgrade(List<DependencyUpgradeCandidate> upgrades, String name) {
+	TestPlannedUpgrade(String name, List<DependencyUpgradeCandidate> upgrades) {
 		this.upgrades = List.copyOf(upgrades);
 		this.name = name;
 	}
@@ -102,23 +102,13 @@ class TestPlannedUpgrade implements PlannedUpgrade {
 	}
 
 	@Override
-	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
-		return upgrades;
-	}
-
-	@Override
-	public String getName() {
+	public String getDisplayName() {
 		return name;
 	}
 
 	@Override
-	public String getDependencyName() {
-		return getName();
-	}
-
-	@Override
-	public String getDependencyOrProjectName() {
-		return getName();
+	public List<DependencyUpgradeCandidate> getUpgradeCandidates() {
+		return upgrades;
 	}
 
 }

@@ -355,7 +355,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		private @Nullable ItemId id;
 
 		@Attribute
-		private @Nullable String displayName;
+		private String displayName;
 
 		@Attribute
 		private String toVersion = "";
@@ -381,7 +381,7 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 		static Item from(PlannedUpgrade plannedUpgrade, ArtifactVersion targetVersion) {
 
 			List<Member> members = plannedUpgrade.getUpgradeCandidates().stream().map(Member::of).toList();
-			return from(plannedUpgrade.getDependencyOrProjectName(), targetVersion, members,
+			return from(plannedUpgrade.getDisplayName(), targetVersion, members,
 					plannedUpgrade.getUpgradeCandidates());
 		}
 
@@ -421,11 +421,11 @@ final class UpgradePlanState implements PersistentStateComponent<UpgradePlanStat
 			return id;
 		}
 
-		public @Nullable String getDisplayName() {
+		public String getDisplayName() {
 			return displayName;
 		}
 
-		public void setDisplayName(@Nullable String displayName) {
+		public void setDisplayName(String displayName) {
 			this.displayName = displayName;
 		}
 

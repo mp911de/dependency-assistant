@@ -53,7 +53,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 		}
 
 		@Override
-		public HtmlChunk getToolTipText(HtmlChunk displayName) {
+		public HtmlChunk getToolTipText(String displayName) {
 			return HtmlChunk.text(MessageBundle.message("inspection.dependency-rule.absent"));
 		}
 
@@ -159,7 +159,7 @@ public class DependencyRuleEvaluator implements Predicate<ArtifactVersion> {
 	 * and rule definitions and are escaped; the returned chunk is safe to embed in
 	 * HTML tooltips.
 	 */
-	public HtmlChunk getToolTipText(HtmlChunk displayName) {
+	public HtmlChunk getToolTipText(String displayName) {
 
 		HtmlBuilder tooltip = new HtmlBuilder();
 

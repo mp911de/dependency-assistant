@@ -145,12 +145,11 @@ class UpgradePlanTreeUnitTests {
 	@Test
 	void renameTargetIgnoresGroupMemberRows(Project project) {
 
-		TestPlannedUpgrade group = new TestPlannedUpgrade(List.of(
+		TestPlannedUpgrade group = new TestPlannedUpgrade("spring.version", List.of(
 				TestCandidates.candidate("org.springframework:spring-core:6.0.0",
 						it -> it.releases("6.1.0").versionProperty("spring.version")),
 				TestCandidates.candidate("org.springframework:spring-context:6.0.0",
-						it -> it.releases("6.1.0").versionProperty("spring.version"))),
-				"spring.version");
+						it -> it.releases("6.1.0").versionProperty("spring.version"))));
 		UpgradePlanItem item = TestPlannedUpgrade.create(project, ArtifactVersion.of("6.1.0"), group).getFirst();
 		PlanTreeProbe probe = new PlanTreeProbe(project, item);
 

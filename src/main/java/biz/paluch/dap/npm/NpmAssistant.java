@@ -246,12 +246,6 @@ public class NpmAssistant implements DependencyAssistant {
 			return MessageBundle.message("assistant.npm");
 		}
 
-		@Override
-		public String getArtifactId(ArtifactId artifactId) {
-			return artifactId.artifactId();
-		}
-
-		@Override
 		public String getDisplayName(ArtifactId artifactId) {
 			String displayName = NpmUtils.toString(artifactId);
 			if (displayName.startsWith("@")) {

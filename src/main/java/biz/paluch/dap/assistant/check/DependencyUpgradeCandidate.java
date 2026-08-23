@@ -259,15 +259,6 @@ public class DependencyUpgradeCandidate implements HasArtifactId, HasPackageIden
 	}
 
 	/**
-	 * Return the project name captured from the artifact's own metadata.
-	 *
-	 * @return the captured project name, or {@literal null} when none was captured.
-	 */
-	public @Nullable String getProjectName() {
-		return presentation.hasProjectName() ? presentation.getProjectName() : null;
-	}
-
-	/**
 	 * Return the vulnerability repository used by this upgrade.
 	 *
 	 * @return the supplied vulnerability repository.
